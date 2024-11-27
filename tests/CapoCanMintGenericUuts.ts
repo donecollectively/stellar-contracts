@@ -58,7 +58,7 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
             spendDelegate,
             reqts,
             // inventionPolicy: defineRole("dgDataPolicy", InventionPolicy, {})
-            testDataPolicy: defineRole("dgDataPolicy", DelegatedDatumTester, {}),
+            testData: defineRole("dgDataPolicy", DelegatedDatumTester, {}),
             
         })
     }

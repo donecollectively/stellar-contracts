@@ -81,8 +81,8 @@ import {
 //   ... but controlled, via the reqtsPolicy-* UUT. by the reqts delegate script 
 //   ... which uses the code in this module (see DelegateActivity::additionalDelegateValidation below)
 struct DgDatumTestData {
-    id : ByteArray "@id" // = "tdata-XXXXyyyyZZZZ"
-    type : String "tpe" // = "tdata"
+    id : ByteArray "@id" // = "tData-XXXXyyyyZZZZ"
+    type : String "tpe" // = "testData"
     
     name: String // e.g. "some label"
     number: Int // e.g. 1234    
@@ -196,12 +196,12 @@ enum DelegateActivity {
             CapoLifecycleActivities => error("unreachable"),
             MintingActivities{VMA} => VMA.switch {
                 CreatingTData{seed} => {
-                    print("creating tdata record...\n");
+                    print("creating tData record...\n");
                     mkTn : (String) -> String = mkUutTnFactory(seed);
 
                     cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
                     // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
-                    tokenName = mkTn("tdata");
+                    tokenName = mkTn("tData");
                     depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
 
                     newRec : TxOutput = cctx.delegatedTxOutput( tokenName.encode_utf8() );
@@ -209,7 +209,7 @@ enum DelegateActivity {
                     // print("required listing fee: " + fee.show());
                     assert(
                         newRec.value.contains(depositedValue),
-                        "missing tdata token"
+                        "missing tData token"
                     );
 
                     recData: DgDatumTestData = DgDatumTestData::from_data(
@@ -220,7 +220,7 @@ enum DelegateActivity {
                     validateUutMinting(
                         mph: priorMddd.dd.mph,
                         seed: seed,
-                        purposes: []String{"tdata"},
+                        purposes: []String{"tData"},
                         // otherMintedValue: ... ,
                         mkTokenName: mkTn,
                         needsMintDelegateApproval: true
@@ -235,9 +235,9 @@ enum DelegateActivity {
 
                 VSA.switch {                    
                     UpdatingTData{recId} => {
-                        hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("tdata", recId);
+                        hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("testData", recId);
                         // settings: ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
-                        _hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("tdata", recId);
+                        _hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("testData", recId);
     
                         tx.inputs.filter(hasDD).for_each( (_utxo : TxInput) -> () {
                             // they're all test-data records, because of the above filter

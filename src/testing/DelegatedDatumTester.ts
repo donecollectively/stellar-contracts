@@ -31,14 +31,17 @@ export class DelegatedDatumTester extends DelegatedDataContract {
     get delegateName() {
         return "TestDataDgt";
     }
+    get idPrefix() {
+        return "tData";
+    }
     get recordTypeName() {
-        return "tdata";
+        return "testData";
     }
 
     exampleData() : DgDatumTestDataLike {
         return {
-            id: helios.textToBytes("tdata-‹replaceMe›"),
-            type: "tdata",
+            id: helios.textToBytes("tData-‹replaceMe›"),
+            type: "testData",
             name: "Fred",
             number: 42,
         }
@@ -55,7 +58,7 @@ export class DelegatedDatumTester extends DelegatedDataContract {
         TCX extends StellarTxnContext &
             hasSeedUtxo &
             hasSettingsRef &
-            hasUutContext<"tdata">
+            hasUutContext<"tData">
     >(tcx: TCX, testData: /*TestRecData*/ any): Promise<TCX> {
         const tcx2 = await this.txnGrantAuthority(
             tcx,
@@ -64,13 +67,13 @@ export class DelegatedDatumTester extends DelegatedDataContract {
 
         const testDataOutput = new helios.TxOutput(
             this.capo.address,
-            this.uh.mkMinTv(this.capo.mph, tcx2.state.uuts.tdata),
+            this.uh.mkMinTv(this.capo.mph, tcx2.state.uuts.tData),
             await this.mkDatumDelegatedDataRecord({
                 ...testData,
-                id: tcx.state.uuts.tdata.toString(),
+                id: tcx.state.uuts.tData.toString(),
             }as any /* !!!!!!! */ )
         );
-        console.log("tdata: ", dumpAny(testDataOutput));
+        console.log("tData: ", dumpAny(testDataOutput));
         const tcx4 = tcx2.addOutput(testDataOutput);
         return tcx4 as typeof tcx4 & TCX;
     }

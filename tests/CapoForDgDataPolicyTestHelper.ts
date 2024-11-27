@@ -101,7 +101,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
     }
     async installingTestDataPolicy() {
         const tcx = await this.capo.mkTxnInstallingPolicyDelegate(
-            "testDataPolicy"
+            "testData", "tData"
         );
         return this.submitTxnWithBlock(tcx);
     }
