@@ -7,19 +7,6 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import * as helios from "@hyperionbt/helios";
-
-import {
-    Address,
-    Datum,
-    Signature,
-    Tx,
-    TxOutput,
-    TxInput,
-    Value,
-    bytesToText,
-} from "@hyperionbt/helios";
-
 import { StellarTxnContext } from "../src/StellarTxnContext.js";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing/index.js";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";

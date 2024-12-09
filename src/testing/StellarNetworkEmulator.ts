@@ -1,209 +1,191 @@
-// import * as helios from "@hyperionbt/helios";
 
 import {
-    Assets,
-    Bip32PrivateKey,
+    makeTxId,
+    makeTxInput,
+    makeTxOutput,
+    makeValue,
+    type PubKey,
+    type PubKeyHash,
+    type TxOutput,
+    type NetworkParamsHelper,
+    type Tx,
+    type Address,
     type NetworkParams,
-    TxId,
-    TxInput,
-    TxOutput,
-    TxOutputId,
-    Value,
-    type NumberGenerator,
-    bigIntToBytes,
-    type Wallet,
-    type Network,
-    StakeAddress,
-    Signature,
-    // PubKeyHash as PKH_h,
-    Tx,
-} from "@hyperionbt/helios";
+    type Assets,
+    type TxOutputId,
+    type Signature,
+    makeTxOutputId,
+    type TxInput,
+    type TxId,
+    makeAddress,
+    makeStakingAddress,
+    type StakingAddress,
+    makeNetworkParamsHelper,
+    makeAssets,
+} from "@helios-lang/ledger";
 
-import { Address, PubKey, PubKeyHash } from "@helios-lang/ledger-babbage";
-// import { PubKeyHash} from "@helios-lang/ledger-shelley";
-
-// import { PubKeyHash as PKH_conway } from "@helios-lang/ledger-conway";
-// import { PubKeyHash as PubKeyHash_c } from "@helios-lang/compat";
-
-// const t1 = PKH_ledger === PKH_conway;
-// const t2 = PKH_ledger === PubKeyHash;
-// const t3 = PKH_conway === PubKeyHash;
-// const t4 = PubKeyHash_c === PKH_ledger;
-// const t5 = PubKeyHash_c === PKH_conway;
-// const t6 = PubKeyHash_c === PubKeyHash;
-// const t7 = PKH_h === PKH_ledger;
-// const t8 = PKH_h === PKH_conway;
-// const t9 = PKH_h === PubKeyHash;
-// const t10 = PKH_h === PubKeyHash_c;
-// const t42 = PubKeyHash_c === PubKeyHash_c;
-
-// console.log({
-//     t1,
-//     t2,
-//     t3,
-//     t4,
-//     t5,
-//     t6,
-//     t7,
-//     t8,
-//     t9,
-//     t10,
-//     t42
-// });
-// debugger
-
-import { equalsBytes } from "@helios-lang/codec-utils";
-import { NetworkParamsHelper } from "@helios-lang/ledger";
+import { encodeIntBE, equalsBytes, type IntLike } from "@helios-lang/codec-utils";
 import {
     BIP39_DICT_EN,
-    RootPrivateKey,
     SECOND,
     type EmulatorTx,
+    type Emulator,
+    type Wallet,
+    type EmulatorGenesisTx,
+    type EmulatorRegularTx,
+    type Bip32PrivateKey,
+    restoreRootPrivateKey,
+    type RootPrivateKey,
+    makeEmulatorGenesisTx,
+    makeEmulatorRegularTx,
 } from "@helios-lang/tx-utils";
-import { StakingAddress, DEFAULT_NETWORK_PARAMS } from "@helios-lang/ledger";
+import { DEFAULT_NETWORK_PARAMS } from "@helios-lang/ledger";
+import { type UplcLogger } from "@helios-lang/uplc";
 
 import { dumpAny } from "../diagnostics.js";
 import type { NetworkContext } from "../StellarContract.js";
-import type { UplcLoggingI } from "@helios-lang/uplc";
+import type { NumberGenerator } from "@helios-lang/crypto";
 
 const isInternal = Symbol("isInternal");
 
-class GenesisTx implements EmulatorTx {
-    #id: number;
-    #address: Address;
-    #lovelace: bigint;
-    #assets: Assets;
+// class GenesisTx implements EmulatorGenesisTx {
+//     #id: number;
+//     #address: Address;
+//     #lovelace: bigint;
+//     #assets: Assets;
 
-    constructor(
-        id: number,
-        address: Address,
-        lovelace: bigint,
-        assets: Assets
-    ) {
-        this.#id = id;
-        this.#address = address;
-        this.#lovelace = lovelace;
-        this.#assets = assets;
-    }
+//     constructor(
+//         id: number,
+//         address: Address,
+//         lovelace: bigint,
+//         assets: Assets
+//     ) {
+//         this.#id = id;
+//         this.#address = address;
+//         this.#lovelace = lovelace;
+//         this.#assets = assets;
+//     }
 
-    /**
-     * Simple incremental txId for genesis transactions.
-     * It's very unlikely that regular transactions have the same hash.
-     */
-    id() {
-        let bytes = bigIntToBytes(BigInt(this.#id));
+//     /**
+//      * Simple incremental txId for genesis transactions.
+//      * It's very unlikely that regular transactions have the same hash.
+//      */
+//     id() {
+//         let bytes = encodeIntBE(BigInt(this.#id));
 
-        if (bytes.length < 32) {
-            bytes = new Array(32 - bytes.length).fill(0).concat(bytes);
-        }
+//         if (bytes.length < 32) {
+//             bytes = new Array(32 - bytes.length).fill(0).concat(bytes);
+//         }
 
-        return new TxId(bytes);
-    }
+//         return makeTxId(bytes);
+//     }
 
-    consumes(utxo) {
-        return false;
-    }
+//     consumes(utxo) {
+//         return false;
+//     }
 
-    collectUtxos(address, utxos) {
-        if (equalsBytes(this.#address.bytes, address.bytes)) {
-            utxos = utxos.slice();
+//     collectUtxos(address, utxos) {
+//         if (equalsBytes(this.#address.bytes, address.bytes)) {
+//             utxos = utxos.slice();
 
-            utxos.push(
-                new TxInput(
-                    new TxOutputId(this.id(), 0),
-                    new TxOutput(
-                        this.#address,
-                        new Value(this.#lovelace, this.#assets)
-                    )
-                )
-            );
+//             utxos.push(
+//                 makeTxInput(
+//                     makeTxOutputId(this.id(), 0),
+//                     makeTxOutput(
+//                         this.#address,
+//                         makeValue(this.#lovelace, this.#assets)
+//                     )
+//                 )
+//             );
 
-            return utxos;
-        } else {
-            return utxos;
-        }
-    }
+//             return utxos;
+//         } else {
+//             return utxos;
+//         }
+//     }
 
-    getUtxo(id: TxOutputId) {
-        if (!(this.id().isEqual(id.txId) && id.utxoIdx == 0)) {
-            return null;
-        }
+//     getUtxo(id: TxOutputId) {
+//         if (!(this.id().isEqual(id.txId) && id.index == 0)) {
+//             return null;
+//         }
 
-        return new TxInput(
-            new TxOutputId(this.id(), 0),
-            new TxOutput(this.#address, new Value(this.#lovelace, this.#assets))
-        );
-    }
+//         return makeTxInput(
+//             makeTxOutputId(this.id(), 0),
+//             makeTxOutput(this.#address, makeValue(this.#lovelace, this.#assets))
+//         );
+//     }
 
-    dump() {
-        console.log("GENESIS TX");
-        console.log(
-            `id: ${this.#id.toString()},\naddress: ${this.#address.toBech32()},\nlovelace: ${this.#lovelace.toString()},\nassets: ${JSON.stringify(
-                this.#assets.dump(),
-                undefined,
-                "    "
-            )}`
-        );
-    }
-}
+//     dump() {
+//         console.log("GENESIS TX");
+//         console.log(
+//             `id: ${this.#id.toString()},\naddress: ${this.#address.toString() // same as .toBech32()
+//                 },\nlovelace: ${this.#lovelace.toString()},\nassets: ${JSON.stringify(
+//                 this.#assets.dump(),
+//                 undefined,
+//                 "    "
+//             )}`
+//         );
+//     }
+// }
 
-class RegularTx implements EmulatorTx {
-    #tx: Tx;
+// class RegularTx implements EmulatorRegularTx {
+//     #tx: Tx;
 
-    constructor(tx: Tx) {
-        this.#tx = tx;
-    }
+//     kind = "Regular" as const
+//     constructor(tx: Tx) {
+//         this.#tx = tx;
+//     }
 
-    #txId: TxId | null = null;
-    id() {
-        if (this.#txId) return this.#txId;
-        return (this.#txId = this.#tx.id());
-    }
+//     #txId: TxId | null = null;
+//     id() {
+//         if (this.#txId) return this.#txId;
+//         return (this.#txId = this.#tx.id());
+//     }
 
-    consumes(utxo) {
-        const txInputs = this.#tx.body.inputs;
+//     consumes(utxo) {
+//         const txInputs = this.#tx.body.inputs;
 
-        return txInputs.some((txInput) => txInput.isEqual(utxo));
-    }
+//         return txInputs.some((txInput) => txInput.isEqual(utxo));
+//     }
 
-    collectUtxos(address, utxos) {
-        utxos = utxos.filter((utxo) => !this.consumes(utxo));
+//     collectUtxos(address, utxos) {
+//         utxos = utxos.filter((utxo) => !this.consumes(utxo));
 
-        const txOutputs = this.#tx.body.outputs;
-        const txId = this.id();
-        txOutputs.forEach((txOutput, utxoId) => {
-            if (equalsBytes(txOutput.address.bytes, address.bytes)) {
-                utxos.push(new TxInput(new TxOutputId(txId, utxoId), txOutput));
-            }
-        });
+//         const txOutputs = this.#tx.body.outputs;
+//         const txId = this.id();
+//         txOutputs.forEach((txOutput, utxoId) => {
+//             if (equalsBytes(txOutput.address.bytes, address.bytes)) {
+//                 utxos.push(makeTxInput(makeTxOutputId(txId, utxoId), txOutput));
+//             }
+//         });
 
-        return utxos;
-    }
+//         return utxos;
+//     }
 
-    getUtxo(id) {
-        if (!id.txId.eq(this.id())) {
-            return null;
-        }
+//     getUtxo(id: TxOutputId) : TxInput | undefined{
+//         if (!id.txId.isEqual(this.id())) {
+//             return undefined;
+//         }
 
-        /**
-         * @type {null | TxInput}
-         */
-        let utxo: null | TxInput = null;
+//         /**
+//          * @type {null | TxInput}
+//          */
+//         let utxo: TxInput | undefined;
 
-        this.#tx.body.outputs.forEach((output, i) => {
-            if (i == id.utxoIdx) {
-                utxo = new TxInput(id, output);
-            }
-        });
+//         this.#tx.body.outputs.forEach((output, i) => {
+//             if (i == id.index) {
+//                 utxo = makeTxInput(id, output);
+//             }
+//         });
 
-        return utxo;
-    }
+//         return utxo;
+//     }
 
-    dump() {
-        console.log("REGULAR TX");
-        console.log(JSON.stringify(this.#tx.dump(), undefined, "  "));
-    }
-}
+//     dump() {
+//         console.log("REGULAR TX");
+//         console.log(JSON.stringify(this.#tx.dump(), undefined, "  "));
+//     }
+// }
 
 /**
  * This wallet only has a single private/public key, which isn't rotated. Staking is not yet supported.
@@ -213,10 +195,10 @@ export class SimpleWallet_stellar implements Wallet {
     spendingPrivateKey: Bip32PrivateKey;
     spendingPubKey: PubKey;
 
-    stakingPrivateKey: Option<Bip32PrivateKey>;
-    stakingPubKey: Option<PubKey>;
+    stakingPrivateKey?: Bip32PrivateKey;
+    stakingPubKey?: PubKey;
 
-    get network() {
+    get cardanoClient() {
         return this.#networkCtx.network;
     }
 
@@ -226,7 +208,7 @@ export class SimpleWallet_stellar implements Wallet {
         dict = BIP39_DICT_EN
     ): SimpleWallet_stellar {
         return SimpleWallet_stellar.fromRootPrivateKey(
-            RootPrivateKey.fromPhrase(phrase, dict),
+            restoreRootPrivateKey(phrase, dict),
             networkCtx
         );
     }
@@ -244,7 +226,7 @@ export class SimpleWallet_stellar implements Wallet {
     constructor(
         networkCtx: NetworkContext,
         spendingPrivateKey: Bip32PrivateKey,
-        stakingPrivateKey: Option<Bip32PrivateKey> = undefined
+        stakingPrivateKey: Bip32PrivateKey | undefined = undefined
     ) {
         this.#networkCtx = networkCtx;
         this.spendingPrivateKey = spendingPrivateKey;
@@ -265,33 +247,33 @@ export class SimpleWallet_stellar implements Wallet {
     }
 
     get spendingPubKeyHash(): PubKeyHash {
-        return this.spendingPubKey.toHash();
+        return this.spendingPubKey.hash()
     }
 
     get stakingPubKeyHash() {
-        return this.stakingPubKey?.toHash();
+        return this.stakingPubKey?.hash();
     }
 
     get address(): Address {
-        return Address.fromHashes(
-            this.network.isMainnet(),
+        return makeAddress(
+            this.cardanoClient.isMainnet(),
             this.spendingPubKeyHash,
-            this.stakingPubKey?.toHash()
+            this.stakingPubKey?.hash()
         );
     }
 
     get stakingAddress() {
         if (this.stakingPubKey) {
-            return StakingAddress.fromHash(
-                this.network.isMainnet(),
-                this.stakingPubKey.toHash()
+            return makeStakingAddress(
+                this.cardanoClient.isMainnet(),
+                this.stakingPubKey.hash()
             );
         } else {
             return undefined;
         }
     }
 
-    get stakingAddresses(): Promise<StakeAddress[]> {
+    get stakingAddresses(): Promise<StakingAddress[]> {
         return new Promise((resolve, _) => {
             const stakingAddress = this.stakingAddress;
 
@@ -318,7 +300,7 @@ export class SimpleWallet_stellar implements Wallet {
     }
     get utxos(): Promise<TxInput[]> {
         return new Promise((resolve, _) => {
-            resolve(this.network.getUtxos(this.address));
+            resolve(this.cardanoClient.getUtxos(this.address));
         });
     }
 
@@ -343,7 +325,7 @@ export class SimpleWallet_stellar implements Wallet {
     }
 
     async submitTx(tx: Tx): Promise<TxId> {
-        return await this.network.submitTx(tx);
+        return await this.cardanoClient.submitTx(tx);
     }
 }
 
@@ -355,7 +337,7 @@ export type NetworkSnapshot = {
     seed: number;
     netNumber: number;
     slot: number;
-    genesis: GenesisTx[];
+    genesis: EmulatorGenesisTx[];
     blocks: EmulatorTx[][];
 };
 
@@ -366,11 +348,11 @@ let i = 1;
  * Staking is not yet supported.
  * @alpha
  */
-export class StellarNetworkEmulator implements Network {
+export class StellarNetworkEmulator implements Emulator {
     declare currentSlot: number;
     #seed: number;
     #random: NumberGenerator;
-    genesis: GenesisTx[];
+    genesis: EmulatorGenesisTx[];
     mempool: EmulatorTx[];
     blocks: EmulatorTx[][];
     id: number;
@@ -429,7 +411,7 @@ export class StellarNetworkEmulator implements Network {
 
     netPHelper!: NetworkParamsHelper;
     initHelper() {
-        this.netPHelper = new NetworkParamsHelper(this.parametersSync);
+        this.netPHelper = makeNetworkParamsHelper(this.parametersSync);
         return this.netPHelper;
     }
 
@@ -493,7 +475,8 @@ export class StellarNetworkEmulator implements Network {
      * @deprecated - use TestHelper.createWallet instead, enabling wallets to be transported to
      *     different networks (e.g. ones that have loaded snapshots from the original network).
      */
-    createWallet(lovelace = 0n, assets = new Assets([])) {
+    //@ts-expect-error
+    createWallet(lovelace = 0n, assets = makeAssets([])) : SimpleWallet_stellar {
         throw new Error("use TestHelper.createWallet instead");
     }
 
@@ -503,9 +486,9 @@ export class StellarNetworkEmulator implements Network {
      * @param lovelace - the lovelace amount to create
      * @param assets - other assets to include in the utxo
      */
-    createUtxo(wallet, lovelace, assets = new Assets([])) {
+    createUtxo(wallet, lovelace, assets = makeAssets([])) : TxOutputId {
         if (lovelace != 0n || !assets.isZero()) {
-            const tx = new GenesisTx(
+            const tx = makeEmulatorGenesisTx(
                 this.genesis.length,
                 wallet.address,
                 lovelace,
@@ -514,6 +497,9 @@ export class StellarNetworkEmulator implements Network {
 
             this.genesis.push(tx);
             this.mempool.push(tx);
+            return makeTxOutputId(tx.id(), 0);
+        } else {
+            throw new Error("zero-value utxos not supported");
         }
     }
 
@@ -537,7 +523,7 @@ export class StellarNetworkEmulator implements Network {
     /**
      * Throws an error if the UTxO isn't found
      */
-    async getUtxo(id) {
+    async getUtxo(id : TxOutputId) : Promise<TxInput> {
         this.warnMempool();
 
         for (let block of this.blocks) {
@@ -589,7 +575,7 @@ export class StellarNetworkEmulator implements Network {
         );
     }
 
-    async submitTx(tx: Tx, logger?: UplcLoggingI) {
+    async submitTx(tx: Tx, logger?: UplcLogger) {
         this.warnMempool();
 
         assert(
@@ -607,7 +593,7 @@ export class StellarNetworkEmulator implements Network {
             }
         }
 
-        this.mempool.push(new RegularTx(tx));
+        this.mempool.push(makeEmulatorRegularTx(tx));
         if (logger) {
             logger.logPrint(
                 `[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`
@@ -623,7 +609,7 @@ export class StellarNetworkEmulator implements Network {
     /**
      * Mint a block with the current mempool, and advance the slot by a number of slots.
      */
-    tick(nSlots: number) {
+    tick(nSlots: IntLike) {
         const n = BigInt(nSlots);
         assert(n > 0, `nSlots must be > 0, got ${n.toString()}`);
 
@@ -641,23 +627,30 @@ export class StellarNetworkEmulator implements Network {
             this.mempool = [];
 
             console.log(`█  #${this.id} @ht=${height}`);
-            console.log(`█${
-                '▒'.repeat(count)
-            } ${count} txns -> slot ${this.currentSlot.toString()} = ${formatDate(time)}`);
+            console.log(
+                `█${"▒".repeat(
+                    count
+                )} ${count} txns -> slot ${this.currentSlot.toString()} = ${formatDate(
+                    time
+                )}`
+            );
         } else {
-            console.log(`tick -> slot ${this.currentSlot.toString()} = ${formatDate(time)} (no txns)`);
+            console.log(
+                `tick -> slot ${this.currentSlot.toString()} = ${formatDate(
+                    time
+                )} (no txns)`
+            );
         }
     }
 }
 
 function formatDate(date) {
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-  }
-  
+}

@@ -18,7 +18,7 @@ import {heliosRollupTypeGen} from "./src/helios/heliosRollupTypeGen.js";
 const name = packageJson.main.replace(/\.m?js$/, "");
 
 const serverBundledModules : string[] = [
-    // "@hyperionbt/helios"
+
 ];
 const forcedServerExternals : string[] = [];
 

@@ -1,23 +1,22 @@
-import * as helios from "@hyperionbt/helios";
 import {
-    Address,
-    Crypto,
+    DEFAULT_NETWORK_PARAMS,
+    type Address,
     type NetworkParams,
-    Tx,
-    TxId,
-    TxOutput,
-    Value,
-} from "@hyperionbt/helios";
-import {
-     NetworkParamsHelper,
-     DEFAULT_NETWORK_PARAMS
-    } from "@helios-lang/ledger";
-import { generateBytes } from "@helios-lang/crypto"
-import type { Wallet } from "@hyperionbt/helios";
+    type NetworkParamsHelper,
+    type Tx,
+    type TxId,
+    makeAssets,
+    makeValue,
+    type ShelleyAddress,
+    type PubKeyHash,
+} from "@helios-lang/ledger";
+import { generateBytes, mulberry32 } from "@helios-lang/crypto";
 
 import { SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
 
-export const expectTxnError = { expectError: true as const } as Partial<SubmitOptions>
+export const expectTxnError = {
+    expectError: true as const,
+} as Partial<SubmitOptions>;
 
 import { StellarContract, findInputsInWallets } from "../StellarContract.js";
 import type {
@@ -43,11 +42,19 @@ import type {
     canSkipSetup,
     enhancedNetworkParams,
 } from "./types.js";
-import { SimpleWallet_stellar, StellarNetworkEmulator, type NetworkSnapshot } from "./StellarNetworkEmulator.js";
+import {
+    SimpleWallet_stellar,
+    StellarNetworkEmulator,
+    type NetworkSnapshot,
+} from "./StellarNetworkEmulator.js";
 import type { StellarTxnContext, SubmitOptions } from "../StellarTxnContext.js";
-import { RootPrivateKey } from "@helios-lang/tx-utils";
+import {
+    makeRandomBip32PrivateKey,
+    makeRootPrivateKey,
+    makeTxBuilder,
+    type Wallet,
+} from "@helios-lang/tx-utils";
 import { UtxoHelper } from "../UtxoHelper.js";
-
 
 /**
  * Base class for test-helpers on generic Stellar contracts
@@ -66,7 +73,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     actors: actorMap;
     optimize = false;
     netPHelper: NetworkParamsHelper;
-    networkCtx : NetworkContext<StellarNetworkEmulator>;
+    networkCtx: NetworkContext<StellarNetworkEmulator>;
     protected _actorName!: string;
 
     get actorName() {
@@ -83,31 +90,35 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
      * @public
      **/
     get wallet(): emulatedWallet {
-        const {wallet} = this.actorContext;
+        const { wallet } = this.actorContext;
         if (!wallet) {
             throw new Error(`no current actor; use setActor(actorName) first`);
         }
-        return wallet
+        return wallet;
     }
 
     actorContext: ActorContext<emulatedWallet> = {
-        wallet: undefined
-    }
+        wallet: undefined,
+    };
 
     async setActor(actorName: string) {
         const thisActor = this.actors[actorName];
         if (!thisActor)
             throw new Error(
-                `setCurrentActor: network #${this.network.id}: invalid actor name '${actorName}'\n   ... try one of: \n  - `+ 
+                `setCurrentActor: network #${this.network.id}: invalid actor name '${actorName}'\n   ... try one of: \n  - ` +
                     Object.keys(this.actors).join(",\n  - ")
             );
         if (this._actorName) {
             if (actorName == this._actorName) {
                 if (this.actorContext.wallet !== thisActor) {
-                    throw new Error(`actor / wallet mismatch: ${this._actorName} ${dumpAny(this.actorContext.wallet?.address)} vs ${actorName} ${dumpAny(thisActor.address)}`)
+                    throw new Error(
+                        `actor / wallet mismatch: ${this._actorName} ${dumpAny(
+                            this.actorContext.wallet?.address
+                        )} vs ${actorName} ${dumpAny(thisActor.address)}`
+                    );
                 }
                 // quiet idempotent call.
-                return
+                return;
             }
             console.log(
                 `\n🎭 -> 🎭 changing actor from 🎭 ${
@@ -146,10 +157,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
     helperState?: TestHelperState<SC>;
     constructor(
-        config?: ConfigFor<SC>& canHaveRandomSeed & canSkipSetup,
+        config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup,
         helperState?: TestHelperState<SC>
     ) {
-        
         this.state = {};
         if (!helperState) {
             console.warn(
@@ -197,11 +207,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         });
     })
 
-... happy (and snappy) testing!`);
-            
+... happy (and snappy) testing!`
+            );
         }
         this.helperState = helperState;
-        const {skipSetup, ...cfg} = config || {};
+        const { skipSetup, ...cfg } = config || {};
         if (Object.keys(cfg).length) {
             console.log(
                 "XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config",
@@ -215,9 +225,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             this.fixupParams(DEFAULT_NETWORK_PARAMS())
         );
         this.netPHelper = netParamsHelper;
-        this.networkCtx = { 
-            network: theNetwork
-        }
+        this.networkCtx = {
+            network: theNetwork,
+        };
 
         this.randomSeed = config?.randomSeed || 42;
         this.actors = {};
@@ -227,28 +237,33 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(`obsolete skipSetup: just don't call initialze()`);
             return;
         }
-        console.log(" + StellarTestHelper")
+        console.log(" + StellarTestHelper");
         //xx@ts-expect-error - can serve no-params case or params case
         // this.setupPending = this.initialize();
     }
 
-    fixupParams(preProdParams: NetworkParams) : NetworkParams {
+    fixupParams(preProdParams: NetworkParams): NetworkParams {
         //@ts-expect-error on our synthetic property
         if (preProdParams.isFixedUp) return preProdParams;
-        
+
         const txSize = preProdParams.maxTxSize;
-        const maxTxSize = Math.floor(txSize * 3);
-        console.log("test env: 🔧🔧🔧 fixup max tx size", txSize, " -> 🔧", maxTxSize)
+        const maxTxSize = Math.floor(txSize * 3.5);
+        console.log(
+            "test env: 🔧🔧🔧 fixup max tx size",
+            txSize,
+            " -> 🔧",
+            maxTxSize
+        );
         preProdParams.maxTxSize = maxTxSize;
 
-        const mem = preProdParams.maxTxExMem
-        const maxMem = Math.floor(mem * 2);
-        console.log("test env: 🔧🔧🔧 fixup max memory", mem, " -> 🔧", maxMem)
+        const mem = preProdParams.maxTxExMem;
+        const maxMem = Math.floor(mem * 5.5);
+        console.log("test env: 🔧🔧🔧 fixup max memory", mem, " -> 🔧", maxMem);
         preProdParams.maxTxExMem = maxMem;
 
-        const cpu = preProdParams.maxTxExCpu
-        const maxCpu = Math.floor(cpu * 1);
-        console.log("test env: 🔧🔧🔧 fixup max cpu", cpu, " -> 🔧", maxCpu)
+        const cpu = preProdParams.maxTxExCpu;
+        const maxCpu = Math.floor(cpu * 2);
+        console.log("test env: 🔧🔧🔧 fixup max cpu", cpu, " -> 🔧", maxCpu);
         preProdParams.maxTxExCpu = maxCpu;
 
         //@ts-expect-error on our synthetic property
@@ -257,9 +272,10 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     }
 
     async submitTxnWithBlock(
-        tcx: StellarTxnContext | Promise<StellarTxnContext>, options: SubmitOptions & {
-            futureDate?: Date
-        }={}
+        tcx: StellarTxnContext | Promise<StellarTxnContext>,
+        options: SubmitOptions & {
+            futureDate?: Date;
+        } = {}
     ) {
         const t = await tcx;
         await this.advanceNetworkTimeForTx(t, options.futureDate);
@@ -273,12 +289,12 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     async advanceNetworkTimeForTx(tcx: StellarTxnContext, futureDate?: Date) {
         const { txb: txb } = tcx;
 
-        // determines the validity range of the transaction 
-        const tx = await tcx.builtTx
+        // determines the validity range of the transaction
+        const tx = await tcx.builtTx;
 
         const txBody = tx.body;
         function txnAttr(x: string) {
-            return txBody[x]
+            return txBody[x];
         }
         function withPositiveSign(x: number | bigint) {
             return x < 0 ? `${x}` : `+${x}`;
@@ -290,17 +306,19 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         let targetTime: number = futureDate?.getTime() || Date.now();
         let targetSlot = this.netPHelper.timeToSlot(BigInt(targetTime));
 
-        tcx.logger.logPrint("\n  ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: "+ ( tcx.txnName || ""));
+        tcx.logger.logPrint(
+            "\n  ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: " + (tcx.txnName || "")
+        );
         if (futureDate) {
-            debugger
+            debugger;
             tcx.logger.logPrint(
-            `\n    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`
-            )
+                `\n    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`
+            );
         }
         const { currentSlot } = this.network;
         const { netPHelper: nph } = this;
         const nowSlot = nph.timeToSlot(BigInt(Date.now()));
-        const slotDiff = targetSlot - currentSlot
+        const slotDiff = targetSlot - currentSlot;
 
         const validInPast = validTo && nowSlot > validTo;
         const validInFuture = validFrom && nowSlot < validFrom;
@@ -314,36 +332,55 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         let effectiveNetworkSlot = targetSlot;
         function showEffectiveNetworkSlotTIme() {
             tcx.logger.logPrint(
-                `\n    ⚗️ 🐞ℹ️  with now=network slot ${effectiveNetworkSlot}: ${nph.slotToTime(effectiveNetworkSlot)}\n`+
-                `           tx valid ${
-                    validFrom ? withPositiveSign(effectiveNetworkSlot - validFrom) : "anytime"
-                } -> ${
-                    validTo ? withPositiveSign(effectiveNetworkSlot - validTo) : "anytime"
-                } from now`
+                `\n    ⚗️ 🐞ℹ️  with now=network slot ${effectiveNetworkSlot}: ${nph.slotToTime(
+                    effectiveNetworkSlot
+                )}\n` +
+                    `           tx valid ${
+                        validFrom
+                            ? withPositiveSign(effectiveNetworkSlot - validFrom)
+                            : "anytime"
+                    } -> ${
+                        validTo
+                            ? withPositiveSign(effectiveNetworkSlot - validTo)
+                            : "anytime"
+                    } from now`
             );
-    
         }
         tcx.logger.logPrint(
-            `\n    ---- ⚗️ 🐞🐞 current slot ${currentSlot} ${currentToNowDiff} = now slot ${nowSlot} \n`+
-            `                    current ${currentToTargetDiff} = targetSlot ${targetSlot}`
+            `\n    ---- ⚗️ 🐞🐞 current slot ${currentSlot} ${currentToNowDiff} = now slot ${nowSlot} \n` +
+                `                    current ${currentToTargetDiff} = targetSlot ${targetSlot}`
         );
-        if (
-            (validInPast || validInFuture)
-        ) {
+        if (validInPast || validInFuture) {
             if (futureDate) {
                 // ":info:ℹ️"
                 // ":test: ⚗️"
                 // ":debug: 🐞 "
                 // info emoji with i in a blue square: "ℹ️"
-                tcx.logger.logPrint(`\n    ---- ⚗️ 🐞ℹ️  txnTime ${validInPast ? "already in the past" : validInFuture ? "not yet valid" : "‹??incontheevable??›"}; advancing to explicit futureDate @now + ${targetSlot - nowSlot}s`);
+                tcx.logger.logPrint(
+                    `\n    ---- ⚗️ 🐞ℹ️  txnTime ${
+                        validInPast
+                            ? "already in the past"
+                            : validInFuture
+                            ? "not yet valid"
+                            : "‹??incontheevable??›"
+                    }; advancing to explicit futureDate @now + ${
+                        targetSlot - nowSlot
+                    }s`
+                );
             } else {
                 // test an old txn by constructing it with a date less than Date.now()
                 tcx.logger.logPrint(
-                    `\n    -- ⚗️ 🐞 txnTime ${validInPast ? "already in the past" : validInFuture ? "not yet valid" : "‹??incontheevable??›"}; no futureDate specified; not interfering with network time`
+                    `\n    -- ⚗️ 🐞 txnTime ${
+                        validInPast
+                            ? "already in the past"
+                            : validInFuture
+                            ? "not yet valid"
+                            : "‹??incontheevable??›"
+                    }; no futureDate specified; not interfering with network time`
                 );
                 effectiveNetworkSlot = nowSlot;
                 showEffectiveNetworkSlotTIme();
-                tcx.logger.flush()
+                tcx.logger.flush();
 
                 return;
             }
@@ -354,35 +391,41 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             showEffectiveNetworkSlotTIme();
             if (futureDate) {
                 tcx.logger.logPrint(
-                   `\n    ------ ⚗️ 🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`
+                    `\n    ------ ⚗️ 🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`
                 );
-                throw new Error(`explicit futureDate ${futureDate} is in the past; can't go back ${slotDiff}s`);
+                throw new Error(
+                    `explicit futureDate ${futureDate} is in the past; can't go back ${slotDiff}s`
+                );
             }
             tcx.logger.logPrint(
                 `\n   -- ⚗️ 🐞🐞🐞🐞⚗️  NOT ADVANCING: the network is already ahead of the current time by ${
                     0 - slotDiff
                 }s ⚗️ 🐞🐞🐞🐞⚗️`
             );
-            tcx.logger.flush()
+            tcx.logger.flush();
             return;
         }
         if (this.network.currentSlot < targetSlot) {
             effectiveNetworkSlot = targetSlot;
-            tcx.logger.logPrint(`\n    ⚗️ 🐞ℹ️  advanceNetworkTimeForTx ${withPositiveSign(slotDiff)} slots`);
+            tcx.logger.logPrint(
+                `\n    ⚗️ 🐞ℹ️  advanceNetworkTimeForTx ${withPositiveSign(
+                    slotDiff
+                )} slots`
+            );
             showEffectiveNetworkSlotTIme();
             this.network.tick(slotDiff);
         } else {
-            effectiveNetworkSlot  = currentSlot
+            effectiveNetworkSlot = currentSlot;
             showEffectiveNetworkSlotTIme();
         }
-        tcx.logger.flush()
+        tcx.logger.flush();
     }
 
     async initialize({
         randomSeed = 42,
-    }: {randomSeed?: number } = {}): Promise<SC> {
-        console.log("STINIT")
-        debugger
+    }: { randomSeed?: number } = {}): Promise<SC> {
+        console.log("STINIT");
+        debugger;
 
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(
@@ -402,17 +445,17 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                 "???????????????????????? Test helper initializing without this.strella"
             );
         }
-        console.log("STINIT2")
+        console.log("STINIT2");
         await this.delay(1);
         this._actorName = ""; //only to make typescript happy
         if (!Object.keys(this.actors).length) {
             const actorSetup = this.setupActors();
-            await actorSetup
-            this.setDefaultActor()
+            await actorSetup;
+            this.setDefaultActor();
         }
-        console.log("STINIT3")
-        
-        return this.initStellarClass()
+        console.log("STINIT3");
+
+        return this.initStellarClass();
     }
 
     async initStellarClass(config = this.config) {
@@ -439,7 +482,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         TargetClass: stellarSubclass<SC>,
         config?: ConfigFor<SC>
     ) {
-        const setup : SetupDetails = {
+        const setup: SetupDetails = {
             network: this.network,
             actorContext: this.actorContext,
             networkParams: this.networkParams,
@@ -462,10 +505,10 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         if (setup.actorContext.wallet) {
             console.log(
                 "+strella init with actor addr",
-                ( setup.actorContext.wallet as any).address.toBech32()
+                (setup.actorContext.wallet as any).address.toBech32()
             );
         } else {
-            debugger
+            debugger;
             console.log("+strella init without actor");
         }
         return TargetClass.createWith(cfg);
@@ -480,60 +523,60 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         return new Promise((res) => setTimeout(res, ms));
     }
 
-   /**
+    /**
      * Creates a new SimpleWallet and populates it with a given lovelace quantity and assets.
      * Special genesis transactions are added to the emulated chain in order to create these assets.
      */
-    createWallet(lovelace = 0n, assets = new helios.Assets([])) : SimpleWallet_stellar {
+    createWallet(lovelace = 0n, assets = makeAssets([])): SimpleWallet_stellar {
         const wallet = SimpleWallet_stellar.fromRootPrivateKey(
-            new RootPrivateKey(
-                generateBytes(this.network.mulberry32, 32),
-            ),
+            makeRootPrivateKey(generateBytes(this.network.mulberry32, 32)),
             // the test helper is a network context, because it has a 'network'.  Ducky-typed as networkCtx
             this
         );
-        
+
         new SimpleWallet_stellar(
             this.networkCtx, // the test helper is a network context, because it has a 'network'.  Ducky-typed as networkCtx
-            helios.Bip32PrivateKey.random(this.network.mulberry32)
+            makeRandomBip32PrivateKey(this.network.mulberry32)
         );
 
         this.network.createUtxo(wallet, lovelace, assets);
 
         return wallet;
-    }    
-
+    }
 
     async mkSeedUtxo(seedIndex: bigint = 0n) {
-        const {wallet} = this;
+        const { wallet } = this;
         const { network } = this;
 
-        const txb = new helios.TxBuilder({
-            isMainnet: network.isMainnet()
+        const txb = makeTxBuilder({
+            isMainnet: network.isMainnet(),
         });
         const actorMoney = await wallet.utxos;
         console.log(
             `${this._actorName} has money: \n` + utxosAsString(actorMoney)
         );
 
-        txb.spend(
+        txb.spendWithoutRedeemer(
             await findInputsInWallets(
-                new helios.Value(30n * ADA),
+                makeValue(30n * ADA),
                 { wallets: [wallet] },
                 network
             )
         );
 
-        txb.payUnsafe(wallet.address, new Value(10n * ADA));
-        txb.payUnsafe(wallet.address, new Value(10n * ADA));
+        txb.payUnsafe(wallet.address, makeValue(10n * ADA));
+        txb.payUnsafe(wallet.address, makeValue(10n * ADA));
         let si = 2;
         for (; si < seedIndex; si++) {
-            txb.payUnsafe(wallet.address, new Value(10n * ADA))
+            txb.payUnsafe(wallet.address, makeValue(10n * ADA));
         }
-        const txId = await this.submitTx(await txb.build({
-            changeAddress: wallet.address,
-            networkParams: this.networkParams,
-        }), "force");
+        const txId = await this.submitTx(
+            await txb.build({
+                changeAddress: wallet.address,
+                networkParams: this.networkParams,
+            }),
+            "force"
+        );
 
         return txId;
     }
@@ -589,7 +632,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(
                 `test must set context.randomSeed for deterministic randomness in tests`
             );
-        if (!this.rand) this.rand = Crypto.rand(this.randomSeed);
+        if (!this.rand) this.rand = mulberry32(this.randomSeed);
 
         const bytes: number[] = [];
         for (let i = 0; i < length; i++) {
@@ -638,13 +681,15 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //! it instantiates a wallet with the indicated balance pre-set
         // console.log(new Error(`add actor ${roleName}`).stack);
         const a = this.createWallet(walletBalance);
-        const addr = a.address.toBech32();
+        const addr = a.address.toString();
         console.log(
             `+🎭 Actor: ${roleName}: ${addr.slice(0, 12)}…${addr.slice(
                 -4
-            )} ${lovelaceToAda(
-                walletBalance
-            )} (🔑#${a.address.pubKeyHash?.toHex().substring(0, 8)}…)`
+            )} ${lovelaceToAda(walletBalance)} (🔑#${(
+                a.address as ShelleyAddress
+            ).spendingCredential
+                ?.toHex()
+                .substring(0, 8)}…)`
         );
 
         //! it makes collateral for each actor, above and beyond the initial balance,
@@ -664,17 +709,19 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         return a;
     }
 
-    //todo use this for enabling prettier diagnostics with clear labels for 
+    //todo use this for enabling prettier diagnostics with clear labels for
     //  -- actor addresses -> names
     //  -- script addresses -> names
-    addrRegistry : Record<string, string> = {};
+    addrRegistry: Record<string, string> = {};
 
-    get networkParams() : NetworkParams {
-        return this.netPHelper.params
+    get networkParams(): NetworkParams {
+        return this.netPHelper.params;
     }
 
-    mkNetwork(params : NetworkParams): [StellarNetworkEmulator, NetworkParamsHelper] {
-        const theNetwork = new StellarNetworkEmulator(undefined, {params});
+    mkNetwork(
+        params: NetworkParams
+    ): [StellarNetworkEmulator, NetworkParamsHelper] {
+        const theNetwork = new StellarNetworkEmulator(undefined, { params });
         const emuParams = theNetwork.initHelper();
 
         // debugger

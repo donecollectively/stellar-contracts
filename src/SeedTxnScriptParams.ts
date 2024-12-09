@@ -1,4 +1,4 @@
-import { TxId } from "@hyperionbt/helios";
+import type { TxId } from "@helios-lang/ledger";
 
 /**
  * details of seed transaction

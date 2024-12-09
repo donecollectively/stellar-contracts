@@ -5,11 +5,10 @@
 //
 // NOTE: this file is auto-generated; do not edit directly
 
-import { Cast } from "@helios-lang/contract-utils"
+import { makeErgoCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
-    ByteArrayLike,
  } from "@helios-lang/codec-utils";
 import type {
     Address,
@@ -21,7 +20,6 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
@@ -31,7 +29,7 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
- import { TxOutputDatum } from "@helios-lang/ledger";
+ import { makeInlineTxOutputDatum, type InlineTxOutputDatum, type TxOutputDatum } from "@helios-lang/ledger";
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
@@ -47,7 +45,6 @@ import {
 } from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
-import { StellarCast } from "../helios/dataBridge/StellarCast.js"
 import { 
     impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 
     type funcWithImpliedSeed, type SeedAttrs
@@ -169,17 +166,17 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
 
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺstruct3Cast = new StellarCast<
+    ᱺᱺstruct3Cast = makeErgoCast<
                 struct3, struct3Like
             >(struct3Schema, { isMainnet: true });
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺOtherStructCast = new StellarCast<
+    ᱺᱺOtherStructCast = makeErgoCast<
                 OtherStruct, OtherStructLike
             >(OtherStructSchema, { isMainnet: true });
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺDatumStructCast = new StellarCast<
+    ᱺᱺDatumStructCast = makeErgoCast<
                 DatumStruct, DatumStructLike
             >(DatumStructSchema, { isMainnet: true });
 
@@ -191,7 +188,7 @@ export class OtherActivityTypeHelper extends DataBridge {
     isCallable = true
         /**
         * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         bigint, IntLike
     >({"kind":"internal","name":"Int"}, { isMainnet: true }); // datumAccessorCast
 
@@ -294,7 +291,7 @@ export class struct3Helper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         struct3,
         struct3Like
     >(struct3Schema, { isMainnet: true });
@@ -319,7 +316,7 @@ export class OtherStructHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         OtherStruct,
         OtherStructLike
     >(OtherStructSchema, { isMainnet: true });
@@ -344,7 +341,7 @@ export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        SomeKindaEnum,
        SomeKindaEnumLike
    >(SomeKindaEnumSchema, { isMainnet: true });
@@ -381,7 +378,7 @@ export class DatumStructHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         DatumStruct,
         DatumStructLike
     >(DatumStructSchema, { isMainnet: true });

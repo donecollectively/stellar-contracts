@@ -5,11 +5,10 @@
 //
 // NOTE: this file is auto-generated; do not edit directly
 
-import { Cast } from "@helios-lang/contract-utils"
+import { makeErgoCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
-    ByteArrayLike,
  } from "@helios-lang/codec-utils";
 import type {
     Address,
@@ -21,7 +20,6 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
@@ -31,7 +29,7 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
- import { TxOutputDatum } from "@helios-lang/ledger";
+ import { makeInlineTxOutputDatum, type InlineTxOutputDatum, type TxOutputDatum } from "@helios-lang/ledger";
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
@@ -47,7 +45,6 @@ import {
 } from "./helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "./helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "./helios/typeUtils.js"
-import { StellarCast } from "./helios/dataBridge/StellarCast.js"
 import { 
     impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 
     type funcWithImpliedSeed, type SeedAttrs
@@ -161,7 +158,7 @@ export class CapoDataBridge extends ContractDataBridge {
        */
         RelativeDelegateLink: (fields: RelativeDelegateLinkLike | {
     uutName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
+    delegateValidatorHash: /*minStructField*/ ValidatorHash | string | number[] | undefined
     config: /*minStructField*/ number[]
 }
 ) => {
@@ -173,7 +170,7 @@ export class CapoDataBridge extends ContractDataBridge {
         CapoManifestEntry: (fields: CapoManifestEntryLike | {
     entryType: /*minStructField*/ ManifestEntryTypeLike
     tokenName: /*minStructField*/ number[]
-    mph: /*minStructField*/ Option<MintingPolicyHash | string | number[]>
+    mph: /*minStructField*/ MintingPolicyHash | string | number[] | undefined
 }
 ) => {
         return this.ᱺᱺCapoManifestEntryCast.toUplcData(fields);
@@ -184,8 +181,8 @@ export class CapoDataBridge extends ContractDataBridge {
         PendingDelegateChange: (fields: PendingDelegateChangeLike | {
     action: /*minStructField*/ PendingDelegateActionLike
     role: /*minStructField*/ DelegateRoleLike
-    name: /*minStructField*/ Option<string>
-    dgtLink: /*minStructField*/ Option<RelativeDelegateLinkLike>
+    name: /*minStructField*/ string | undefined
+    dgtLink: /*minStructField*/ RelativeDelegateLinkLike | undefined
 }
 ) => {
         return this.ᱺᱺPendingDelegateChangeCast.toUplcData(fields);
@@ -193,17 +190,17 @@ export class CapoDataBridge extends ContractDataBridge {
 
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺRelativeDelegateLinkCast = new StellarCast<
+    ᱺᱺRelativeDelegateLinkCast = makeErgoCast<
                 RelativeDelegateLink, RelativeDelegateLinkLike
             >(RelativeDelegateLinkSchema, { isMainnet: true });
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺCapoManifestEntryCast = new StellarCast<
+    ᱺᱺCapoManifestEntryCast = makeErgoCast<
                 CapoManifestEntry, CapoManifestEntryLike
             >(CapoManifestEntrySchema, { isMainnet: true });
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺPendingDelegateChangeCast = new StellarCast<
+    ᱺᱺPendingDelegateChangeCast = makeErgoCast<
                 PendingDelegateChange, PendingDelegateChangeLike
             >(PendingDelegateChangeSchema, { isMainnet: true });
 
@@ -433,7 +430,7 @@ export class RelativeDelegateLinkHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         RelativeDelegateLink,
         RelativeDelegateLinkLike
     >(RelativeDelegateLinkSchema, { isMainnet: true });
@@ -458,7 +455,7 @@ export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        DelegateRole,
        DelegateRoleLike
    >(DelegateRoleSchema, { isMainnet: true });
@@ -553,7 +550,7 @@ export class ManifestEntryTypeHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        ManifestEntryType,
        ManifestEntryTypeLike
    >(ManifestEntryTypeSchema, { isMainnet: true });
@@ -627,7 +624,7 @@ export class CapoManifestEntryHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         CapoManifestEntry,
         CapoManifestEntryLike
     >(CapoManifestEntrySchema, { isMainnet: true });
@@ -652,7 +649,7 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        PendingDelegateAction,
        PendingDelegateActionLike
    >(PendingDelegateActionSchema, { isMainnet: true });
@@ -817,7 +814,7 @@ export class PendingDelegateChangeHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         PendingDelegateChange,
         PendingDelegateChangeLike
     >(PendingDelegateChangeSchema, { isMainnet: true });
@@ -835,20 +832,20 @@ export class PendingDelegateChangeHelper extends DataBridge {
 
 
 /**
- * Helper class for generating TxOutputDatum for variants of the ***CapoDatum*** enum type.
+ * Helper class for generating InlineTxOutputDatum for variants of the ***CapoDatum*** enum type.
  * @public
  */
 export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        CapoDatum,
        CapoDatumLike
    >(CapoDatumSchema, { isMainnet: true });
 
     /**
-     * generates  TxOutputDatum for ***"CapoHelpers::CapoDatum.CharterData"***
+     * generates  InlineTxOutputDatum for ***"CapoHelpers::CapoDatum.CharterData"***
      * @remarks - ***CapoDatum$CharterDataLike*** is the same as the expanded field-types.
      */
     CharterData(fields: CapoDatum$CharterDataLike | { 
@@ -860,36 +857,36 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
         govAuthorityLink: RelativeDelegateLinkLike,
         manifest: Map<string, CapoManifestEntryLike>,
         pendingDgtChanges: Array<PendingDelegateChangeLike>
-    }) : TxOutputDatum<"Inline"> {
+    }) : InlineTxOutputDatum {
         const uplc = this.mkUplcData({
             CharterData: fields 
         }, "CapoHelpers::CapoDatum.CharterData");
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     } /*multiFieldVariant enum accessor*/
 
 /**
- * (property getter): TxOutputDatum for ***"CapoHelpers::CapoDatum.ScriptReference"***
+ * (property getter): InlineTxOutputDatum for ***"CapoHelpers::CapoDatum.ScriptReference"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get ScriptReference() {
         const uplc = this.mkUplcData({ ScriptReference: {} }, 
             "CapoHelpers::CapoDatum.ScriptReference");
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     } /* tagOnly variant accessor */
 
     /**
-     * generates  TxOutputDatum for ***"CapoHelpers::CapoDatum.DelegatedData"***
+     * generates  InlineTxOutputDatum for ***"CapoHelpers::CapoDatum.DelegatedData"***
      * @remarks - ***CapoDatum$DelegatedDataLike*** is the same as the expanded field-types.
      */
     DelegatedData(fields: CapoDatum$DelegatedDataLike | { 
         data: Map<string, UplcData>,
         version: IntLike,
         otherDetails: UplcData
-    }) : TxOutputDatum<"Inline"> {
+    }) : InlineTxOutputDatum {
         const uplc = this.mkUplcData({
             DelegatedData: fields 
         }, "CapoHelpers::CapoDatum.DelegatedData");
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     } /*multiFieldVariant enum accessor*/
 }/*mkEnumHelperClass*/
 
@@ -902,7 +899,7 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        ManifestActivity,
        ManifestActivityLike
    >(ManifestActivitySchema, { isMainnet: true });
@@ -985,7 +982,7 @@ export class ManifestActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        ManifestActivity,
        ManifestActivityLike
    >(ManifestActivitySchema, { isMainnet: true });
@@ -1088,7 +1085,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -1173,7 +1170,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      */
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
-        name: Option<string>
+        name: string | undefined
     }) : UplcData {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
@@ -1345,7 +1342,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -1442,7 +1439,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      */
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
-        name: Option<string>
+        name: string | undefined
     }) : isActivity {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
@@ -1630,7 +1627,7 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        CapoActivity,
        CapoActivityLike
    >(CapoActivitySchema, { isMainnet: true });

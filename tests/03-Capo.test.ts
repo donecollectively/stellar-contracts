@@ -7,18 +7,6 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-
-import {
-    Address,
-    Datum,
-    Signature,
-    Tx,
-    TxOutput,
-    TxInput,
-    Value,
-    bytesToText,
-} from "@hyperionbt/helios";
-
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
@@ -29,6 +17,7 @@ import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { Capo } from "../src/Capo";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
+import { makeTxOutput, TxOutput } from "@helios-lang/ledger";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -64,7 +53,7 @@ describe("Capo", async () => {
             const empty = unspent.find((x) => {
                 return (
                     x.id.txId == seedTxn &&
-                    BigInt(x.id.utxoIdx) == BigInt(seedIndex)
+                    BigInt(x.id.index) == BigInt(seedIndex)
                 );
             });
             expect(empty).toBeFalsy();
@@ -104,8 +93,8 @@ describe("Capo", async () => {
                     randomSeed: 43,
                 });
                 await h.bootstrap();
-                expect(t1.address.toBech32()).not.toEqual(
-                    t2.address.toBech32()
+                expect(t1.address.toString()).not.toEqual(
+                    t2.address.toString()
                 );
             } catch (e) {
                 throw e;
@@ -238,7 +227,7 @@ describe("Capo", async () => {
             const tcx = await h.mkCharterSpendTx();
             expect(tcx.outputs).toHaveLength(2);
 
-            const treasury = context.strella!;
+            const treasury = context.strella;
             const hasCharterToken = treasury.uh.mkTokenPredicate(
                 treasury.tvCharter()
             );
@@ -246,13 +235,13 @@ describe("Capo", async () => {
                 tcx.outputs.find((o: TxOutput) => {
                     return (
                         hasCharterToken(o) &&
-                        o.address.toBech32() == treasury.address.toBech32()
+                        o.address.toString() == treasury.address.toString()
                     );
                 })
             ).toBeTruthy();
 
             console.log("------ submit charterSpend");
-            await treasury.submit(tcx, {
+            await tcx.submit({
                 signers: [actors.tracy.address, actors.tom.address],
             });
             const u = await network.getUtxos(treasury.address);
@@ -274,7 +263,7 @@ describe("Capo", async () => {
 
             const tcx: StellarTxnContext = await h.mkCharterSpendTx();
             const bogusPlace = (await actors.tina.usedAddresses)[0];
-            tcx.addOutput(new TxOutput(bogusPlace, treasury.tvCharter()));
+            tcx.addOutput(makeTxOutput(bogusPlace, treasury.tvCharter()));
 
             const submitting = tcx.submit({
                 expectError: true,
@@ -304,7 +293,7 @@ describe("Capo", async () => {
                 // await delay(1000);
                 const tcx: StellarTxnContext = await h.mkCharterSpendTx();
                 tcx.addOutput(
-                    new TxOutput(treasury.address, treasury.tvCharter())
+                    makeTxOutput(treasury.address, treasury.tvCharter())
                 );
 
                 await expect(tcx.submit(expectTxnError)).rejects.toThrow(

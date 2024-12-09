@@ -8,17 +8,6 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import {
-    Address,
-    Datum,
-    Signature,
-    Tx,
-    TxOutput,
-    TxInput,
-    Value,
-    bytesToText,
-} from "@hyperionbt/helios";
-
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";

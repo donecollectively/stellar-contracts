@@ -20,9 +20,9 @@ const profiling = parseInt(process.env.PROFILE);
 //     process.stderr.write(" ... disable it when not profiling.");
 // }
 const profilingOptions = profiling ? {
-    poolOptions: {
+    poolOptions: {        
         forks: {
-            singleFork: true
+            singleFork: true,            
         }
     },
     inspect: true,
@@ -41,7 +41,7 @@ export default defineConfig({
         restoreMocks: true,
         ...profilingOptions,
         hookTimeout: 500000,
-        testTimeout: 500000,
+        testTimeout: 500000,        
         globals: true,
         // browser: {
         //     enabled: true,

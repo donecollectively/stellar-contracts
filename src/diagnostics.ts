@@ -1,26 +1,33 @@
-import {
-    Assets,
-    ByteArrayData,
-    Datum,
-    MintingPolicyHash,
-    Tx,
-    TxId,
-    TxInput,
-    TxOutput,
-    TxOutputId,
-    Value,
-    textToBytes,
-    bytesToHex,
-    type NetworkParams,
-} from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
-import type { UplcProgramV2 } from "@helios-lang/uplc";
-import { Address, type TxRedeemer } from "@helios-lang/ledger-babbage";
+import {
+    makeByteArrayData,
+    type ByteArrayData,
+    type UplcProgramV2,
+} from "@helios-lang/uplc";
 import {
     uplcDataSerializer,
     abbreviatedDetail,
+    abbreviatedDetailBytes,
 } from "./delegation/jsonSerializers.js";
+import {
+    type Value,
+    type Address,
+    type Tx,
+    type TxId,
+    type TxInput,
+    type TxOutput,
+    type TxOutputId,
+    type NetworkParams,
+    type Assets,
+    type MintingPolicyHash,
+    type TxRedeemer,
+    type TxOutputDatum,
+    makeAddress,
+    decodeAddress,
+} from "@helios-lang/ledger";
+import { bytesToHex } from "@helios-lang/codec-utils";
+import { textToBytes, type InlineDatum } from "./HeliosPromotedTypes.js";
 
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
@@ -273,14 +280,14 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
     let hasIndeterminate = false;
     const inputRedeemers: Record<
         string | number,
-        { r?: TxRedeemer<any>; display: string }
+        { r?: TxRedeemer; display: string }
     > = Object.fromEntries(
         allRedeemers
-            .map((x: TxRedeemer<any>, index: number) => {
+            .map((x: TxRedeemer, index: number) => {
                 // debugger;
-                if (x.kind != "Spending") return undefined;
+                if (x.kind != "TxSpendingRedeemer") return undefined;
                 // if (!("inputIndex" in x)) return undefined;
-                const { index: inputIndex } = x;
+                const { inputIndex } = x;
                 const isIndeterminate = inputIndex == -1;
                 if (isIndeterminate) hasIndeterminate = true;
                 const inpIndex = isIndeterminate ? `‹unk${index}›` : inputIndex;
@@ -301,23 +308,21 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
     const mintRedeemers = Object.fromEntries(
         allRedeemers
             .map((x) => {
-                if ("Minting" != x.kind) return undefined;
-                if ("number" != typeof x.props.policyIndex) {
+                if ("TxMintingRedeemer" != x.kind) return undefined;
+                if ("number" != typeof x.policyIndex) {
                     debugger;
                     throw new Error(`non-mint redeemer here not yet supported`);
                 }
-                const isIndeterminate = x.index == -1;
-                if (isIndeterminate)
-                    throw new Error(
-                        `oops, this wasn's supposed to be possible`
-                    );
                 if (!x.data) debugger;
 
-                const showData = x.data.rawData
-                    ? uplcDataSerializer("", x.data.rawData)
-                    : x.data?.toString() || "‹no data›";
+                const showData =
+                    (x.data.rawData
+                        ? uplcDataSerializer("", x.data.rawData)
+                        : x.data?.toString() || "‹no data›") +
+                    "\n" +
+                    bytesToHex(x.data.toCbor());
 
-                return [x.props.policyIndex, showData];
+                return [x.policyIndex, showData];
             })
             .filter((x) => !!x)
     );
@@ -412,7 +417,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         if ("signatures" == x) {
             if (!item) continue;
             item = item.map((s) => {
-                const addr = Address.fromHash(true, s.pubKeyHash);
+                const addr = makeAddress(true, s.pubKeyHash);
                 const hashHex = s.pubKeyHash.toHex();
                 return `🖊️ ${addrAsString(addr)} = 🔑…${hashHex.slice(-4)}`;
             });
@@ -430,10 +435,13 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                 // debugger
                 // const indexInfo = isIndeterminate
                 //     ? `spend txin #‹tbd›`
+                if (x.kind == "TxSpendingRedeemer") {
+                    debugger
+                }
                 const indexInfo =
-                    x.kind == "Minting"
-                        ? `minting policy ${x.index}`
-                        : `spend txin ➡️  @${1 + x.index}`;
+                    x.kind == "TxMintingRedeemer"
+                        ? `minting policy ${x.policyIndex}`
+                        : `spend txin ➡️  @${1 + x.inputIndex}`;
 
                 const showData = seenRedeemers.has(x)
                     ? "(see above)"
@@ -458,7 +466,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                     const vh = s.validatorHash;
 
                     const vhh = vh.toHex();
-                    const addr = Address.fromHash(true, vh);
+                    const addr = makeAddress(true, vh);
                     // debugger
                     return `📜 ${vhh.slice(0, 8)}…${vhh.slice(
                         -4
@@ -503,13 +511,14 @@ export function txInputAsString(
 ): string {
     const { output: oo } = x;
     const redeemerInfo = redeemer ? `\n    r = ${redeemer}` : "";
+    const datumInfo =
+        oo.datum?.kind == "InlineTxOutputDatum" ? datumSummary(oo.datum) : "";
+
     return `${prefix}${addrAsString(x.address)}${showRefScript(
         oo.refScript as any
-    )} ${valueAsString(x.value)} ${datumSummary(
-        oo.datum
-    )} = 📖 ${txOutputIdAsString(x.id)}${redeemerInfo}${
-        "" /* datumExpanded(oo.datum) */
-    }`;
+    )} ${valueAsString(x.value)} ${datumInfo} = 📖 ${txOutputIdAsString(
+        x.id
+    )}${redeemerInfo}`;
 }
 
 /**
@@ -526,11 +535,11 @@ export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
  * Converts a TxOutputId to printable form
  * @public
  */
-export function txOutputIdAsString(x: TxOutputId): string {
+export function txOutputIdAsString(x: TxOutputId, length=8): string {
     return (
-        txidAsString(x.txId) +
+        txidAsString(x.txId, length) +
         "🔹" /* <-- unicode blue bullet */ +
-        `#${x.utxoIdx}`
+        `#${x.index}`
     );
 }
 
@@ -541,9 +550,9 @@ export function txOutputIdAsString(x: TxOutputId): string {
  * ... showing only the first 6 and last 4 characters of the hex
  * @public
  **/
-export function txidAsString(x: TxId): string {
+export function txidAsString(x: TxId, length=8): string {
     const tid = x.toHex();
-    return `${tid.slice(0, 6)}…${tid.slice(-4)}`;
+    return `${tid.slice(0, length)}…${tid.slice(-4)}`;
 }
 
 /**
@@ -567,31 +576,33 @@ export function utxoAsString(x: TxInput, prefix = "💵"): string {
  * using shortening techniques for the datumHash
  * @public
  **/
-export function datumSummary(d: Datum | null | undefined): string {
+export function datumSummary(d: TxOutputDatum | null | undefined): string {
     if (!d) return ""; //"‹no datum›";
 
     // debugger
     const dh = d.hash.toHex();
     const dhss = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
-    const attachedData = d.data.rawData;
-    if (attachedData) {
-        return `\n    d‹inline:${dhss} - ${
-            uplcDataSerializer("", attachedData) //.slice(1,-1)
-        }=${d.toCbor().length} bytes›`;
-    } else if (d.isInline()) {
-        return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
+    if (d.kind == "InlineTxOutputDatum") {
+        const attachedData = d.data.rawData;
+        if (attachedData) {
+            return `\n    d‹inline:${dhss} - ${
+                uplcDataSerializer("", attachedData) //.slice(1,-1)
+            }=${d.toCbor().length} bytes›`;
+        } else {
+            return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
+        }
     }
     return `d‹hash:${dhss}…›`;
 }
-/**
- * @internal
- */
-export function datumExpanded(d: Datum | null | undefined): string {
-    if (!d) return "";
-    if (!d.isInline()) return "";
-    const data = bytesToHex(d.data?.toCbor());
-    return `\n    d = ${data}`;
-}
+// /**
+//  * @internal
+//  */
+// export function datumExpanded(d: Datum | null | undefined): string {
+//     if (!d) return "";
+//     if (!d.isInline()) return "";
+//     const data = bytesToHex(d.data?.toCbor());
+//     return `\n    d = ${data}`;
+// }
 
 /**
  * Displays a short summary of any provided reference script
@@ -631,9 +642,11 @@ export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
  * @public
  **/
 export function addrAsString(address: Address): string {
-    const bech32 = (address as any).bech32 || address.toBech32();
-
+    const bech32 = address.toString();
+    // const uplc = address.toUplcData?.();
+    // const hex = bytesToHex(uplc.toCbor());
     return `${bech32.slice(0, 14)}…${bech32.slice(-4)}`;
+    // + ` = `+abbreviatedDetailBytes("‹cbor:", uplc.toCbor(), 99)+"›"
 }
 
 /**
@@ -690,6 +703,7 @@ export function dumpAny(
         | Tx
         | StellarTxnContext
         | Address
+        | MintingPolicyHash
         | Value
         | TxOutputId
         | TxOutput
@@ -705,64 +719,74 @@ export function dumpAny(
 ) {
     if ("undefined" == typeof x) return "‹undefined›";
     if (Array.isArray(x)) {
-        if (x[0] instanceof TxInput) {
+        const firstItem = x[0];
+        if ("number" == typeof firstItem) {
+            return (
+                "num array: " +
+                byteArrayListAsString([makeByteArrayData(x as number[])])
+            );
+        }
+        if (firstItem.kind == "TxOutput") {
+            return (
+                "tx outputs: \n" +
+                (x as TxOutput[]).map((txo: TxOutput) => txOutputAsString(txo))
+            );
+        }
+
+        if (firstItem.kind == "TxInput") {
             return "utxos: \n" + utxosAsString(x as TxInput[]);
         }
-        if (x[0] instanceof TxOutput) {
-            return "tx outputs: \n" + (x as TxOutput[]).map((txo : TxOutput) => txOutputAsString(txo));
-        }
-        if (x[0] instanceof ByteArrayData) {
+
+        //@ts-expect-error on this type probe
+        if (firstItem.kind == "ByteArrayData") {
             return (
                 "byte array:\n" + byteArrayListAsString(x as ByteArrayData[])
             );
         }
-        if ("number" == typeof x[0]) {
-            return (
-                "num array: " +
-                byteArrayListAsString([new ByteArrayData(x as number[])])
-            );
-        }
+        console.log("firstItem", firstItem);
+        throw new Error(
+            `dumpAny(): unsupported array type: ${typeof firstItem}`
+        );
     }
 
-    if (x instanceof Tx) {
-        return txAsString(x, networkParams);
-    }
-
-    if (x instanceof TxOutput) {
-        return txOutputAsString(x);
-    }
-
-    if (x instanceof TxOutputId) {
-        return txOutputIdAsString(x);
-    }
-
-    if (x instanceof TxId) {
-        return txidAsString(x);
-    }
-
-    if (x instanceof TxInput) {
-        return utxoAsString(x);
-    }
-    if (x instanceof Value) {
-        return valueAsString(x);
-    }
-    if (x instanceof Address) {
-        return addrAsString(x);
-    }
-    if (x instanceof MintingPolicyHash) {
-        return policyIdAsString(x);
+    if ("bigint" == typeof x) {
+        return (x as bigint).toString();
     }
     if (x instanceof StellarTxnContext) {
         debugger;
         throw new Error(`use await build() and dump the result instead.`);
     }
-    if (Array.isArray(x) && x[0] instanceof ByteArrayData) {
-        return x.map((xx) => byteArrayAsString(xx));
+
+    const xx = x;
+
+    if (x.kind == "TxOutput") {
+        return txOutputAsString(x as TxOutput);
     }
-    if ("bigint" == typeof x) {
-        return (x as bigint).toString();
+    if (xx.kind == "Tx") {
+        return txAsString(xx, networkParams);
     }
-    if (forJson) return x;
+
+    if (xx.kind == "TxOutputId") {
+        return txOutputIdAsString(xx);
+    }
+
+    if (xx.kind == "TxId") {
+        return txidAsString(xx);
+    }
+
+    if (xx.kind == "TxInput") {
+        return utxoAsString(xx);
+    }
+    if (xx.kind == "Value") {
+        return valueAsString(xx);
+    }
+    if (xx.kind == "Address") {
+        return addrAsString(xx);
+    }
+    if (xx.kind == "MintingPolicyHash") {
+        return policyIdAsString(xx);
+    }
+    if (forJson) return xx;
     debugger;
     return "dumpAny(): unsupported type or library mismatch";
 }

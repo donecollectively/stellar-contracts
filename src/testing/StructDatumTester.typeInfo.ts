@@ -15,21 +15,20 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
     TxInput,
     TxOutput,
     TxOutputId,
-    TxOutputDatum,
+    InlineTxOutputDatum,
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
 import type { 
     IntLike,
-    ByteArrayLike,
+    // BytesLike,
  } from "@helios-lang/codec-utils";
 
  type TimeLike = IntLike;

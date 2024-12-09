@@ -53,9 +53,7 @@ import {
 // } from ProtocolSettings
 
 func requiresAuthorization(ctd: CapoDatum::CharterData) -> Bool {
-    govDelegate : RelativeDelegateLink = ctd.govAuthorityLink;
-
-    govDelegate.hasValidOutput(mph)
+    ctd.govAuthorityLink.hasValidOutput(mph)
 }
 
 func getCharterOutput(tx: Tx) -> TxOutput {
@@ -349,7 +347,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
 
             hasNeededGovDelegate : Bool =  true ||
             checkpoint("must be validated by existing govDelegate") && 
-            nextGovDelegate.hasValidOutput(mph) && (
+            nextGovDelegate.hasValidOutput( mph) && (
                 unchangedGovDelegate || oldGovDelegate.hasDelegateInput( 
                     inputs: tx.inputs, 
                     mph: mph,
@@ -469,7 +467,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             } else {
                 //  the new one has to go to the right place
                 REQT("the updated mintDgt token must be deposited to its own script address");
-                 mintDelegate.hasValidOutput(mph)
+                mintDelegate.hasValidOutput(mph)
             } && 
             if ( unchangedSpendDgt) {
                 // unchanged spendDgt must not be included in the tx

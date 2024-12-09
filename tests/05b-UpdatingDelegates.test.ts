@@ -8,17 +8,6 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import {
-    Address,
-    Datum,
-    Signature,
-    Tx,
-    TxOutput,
-    TxInput,
-    Value,
-    bytesToText,
-} from "@hyperionbt/helios";
-
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
@@ -27,6 +16,7 @@ import { dumpAny } from "../src/diagnostics";
 import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
+import { bytesToText } from "../src/HeliosPromotedTypes";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;

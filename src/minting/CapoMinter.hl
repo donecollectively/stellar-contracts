@@ -52,14 +52,14 @@ func main(r : MinterActivity) -> Bool {
     mph: MintingPolicyHash = get_current_minting_policy_hash();
     value_minted: Value = tx.minted;
     assert(true || (/* never evaluated */ rev.serialize() == rev.serialize()), "no");
-    print(" 🚥❓ Capo minter: policy id" + get_current_minting_policy_hash().show());
-    print("\n");
+    assert(true || (/* never evaluated */ seedTxn.serialize() == seedTxn.serialize()), "no");
+    print(" 🚥❓ Capo minter: policy id: " + get_current_minting_policy_hash().show());
 
     ok : Bool = r.switch {
         charter: mintingCharter => {
             charterVal : Value = mkTv(mph, "charter");
 
-            // these must be sorted by length first, then lexicographically
+            // these must be sorted BY LENGTH FIRST, then lexicographically
             //   (actually byte-wise, but ~same diff)
             // settingsTnBase: String = "set";
             authTnBase : String = "capoGov";
@@ -79,8 +79,7 @@ func main(r : MinterActivity) -> Bool {
             assert(value_minted >= charterVal,
                 "charter token not minted");
 
-
-                hasSeed: Bool = hasContractSeedUtxo(tx);
+            hasSeed: Bool = hasContractSeedUtxo(tx);
             minterSeed: TxOutputId = TxOutputId::new(seedTxn, seedIndex);
             mkUutName: (String) -> String = mkUutTnFactory(
                 minterSeed  
@@ -176,7 +175,11 @@ func main(r : MinterActivity) -> Bool {
             print("\n  -- hasSeed: " + hasSeed.show());
             print("\n  -- mintsUuts: " + mintsUuts.show());
             print("\n  -- hasGoodDelegates: " + hasGoodDelegates.show());
-            hasGoodDelegates && mintsUuts && hasSeed
+        
+            true
+            && hasGoodDelegates 
+            && mintsUuts 
+            && hasSeed
         },
 
         // ------------------------- MOST MINTING ACTIVITIES USE THIS CODE PATH --------------------

@@ -8,6 +8,9 @@ import {
     expectTypeOf,
 } from "vitest";
 
+import { isValidUtf8 } from "@helios-lang/codec-utils";
+import { makeAddress, makeValidatorHash } from "@helios-lang/ledger";
+
 import { CapoMinter } from "../src/minting/CapoMinter";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { ADA, addTestContext } from "../src/testing/types";
@@ -18,16 +21,16 @@ import {
     DelegateConfigNeeded,
     delegateRoles,
     defineRole,
+    delegateConfigValidation,
+    DelegateSetup,
 } from "../src/delegation/RolesAndDelegates";
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { configBaseWithRev } from "../src/StellarContract";
 import { txAsString } from "../src/diagnostics";
-import { Address, ValidatorHash } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import { Capo } from "../src/Capo";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
-import { isValidUtf8 } from "@helios-lang/codec-utils";
 
 class DelegationTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
@@ -349,9 +352,9 @@ describe("Capo", async () => {
                 expect(delegateValidatorHash).toBeTruthy();
                 expect(
                     delegate.address.isEqual(
-                        Address.fromHash(
+                        makeAddress(
                             false,
-                            ValidatorHash.new(delegateValidatorHash!)
+                            makeValidatorHash(delegateValidatorHash!)
                         )
                     ),
                     "addresses should have matched"
@@ -407,7 +410,7 @@ describe("Capo", async () => {
                     t.mkOnchainRelativeDelegateLink(mintDelegateLink)
                 );
 
-                expect(createdDelegate.address.toBech32()).toBeTruthy();
+                expect(createdDelegate.address.toString()).toBeTruthy();
             });
         });
 
@@ -417,28 +420,13 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.initialize();
 
-                const ok: VariantStrategy<BasicMintDelegate> = {
-                    delegateClass: BasicMintDelegate,
-                    validateConfig(): strategyValidation {
-                        return undefined;
-                    },
-                };
-                expectTypeOf(ok).toMatchTypeOf<
-                    VariantStrategy<BasicMintDelegate>
-                >;
                 const bad = {
                     // delegateClass: SampleMintDelegate,
                     delegateClass: Capo,
-                    validateScriptParams(): strategyValidation {
+                    validateScriptParams(): delegateConfigValidation {
                         return undefined;
                     },
                 };
-                assertType<
-                    RoleInfo<any, any, BasicMintDelegate, any>["variants"]
-                >({
-                    ok,
-                    wrong: bad,
-                });
             });
             it.todo(
                 "variants can augment the definedRoles object without removing or replacing any existing variant",

@@ -15,21 +15,20 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
     TxInput,
     TxOutput,
     TxOutputId,
-    TxOutputDatum,
+    InlineTxOutputDatum,
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
 import type { 
     IntLike,
-    ByteArrayLike,
+    // BytesLike,
  } from "@helios-lang/codec-utils";
 
  type TimeLike = IntLike;
@@ -45,13 +44,13 @@ import type { IntersectedEnum } from "../helios/typeUtils.js"
 
 export type MinterActivity$CreatingNewSpendDelegate = {
     seed: TxOutputId  /*minVariantField*/ ,
-    replacingUut: Option<number[]>  /*minVariantField*/ 
+    replacingUut: number[] | undefined  /*minVariantField*/ 
 }
 
 export type MinterActivity$Ergo$CreatingNewSpendDelegate = MinterActivity$CreatingNewSpendDelegate/*ergo like-canonical-this-variant*/
 export type MinterActivity$CreatingNewSpendDelegateLike = {
     seed: TxOutputId | string  /*minVariantField*/ ,
-    replacingUut: Option<number[]>  /*minVariantField*/ 
+    replacingUut: number[] | undefined  /*minVariantField*/ 
 }
 
 

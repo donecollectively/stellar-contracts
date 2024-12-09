@@ -5,11 +5,10 @@
 //
 // NOTE: this file is auto-generated; do not edit directly
 
-import { Cast } from "@helios-lang/contract-utils"
+import { makeErgoCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
-    ByteArrayLike,
  } from "@helios-lang/codec-utils";
 import type {
     Address,
@@ -21,7 +20,6 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
@@ -31,7 +29,7 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
- import { TxOutputDatum } from "@helios-lang/ledger";
+ import { makeInlineTxOutputDatum, type InlineTxOutputDatum, type TxOutputDatum } from "@helios-lang/ledger";
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
@@ -47,7 +45,6 @@ import {
 } from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
-import { StellarCast } from "../helios/dataBridge/StellarCast.js"
 import { 
     impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 
     type funcWithImpliedSeed, type SeedAttrs
@@ -75,7 +72,7 @@ import type * as types from "./CapoMinter.typeInfo.js";
 export class CapoMinterDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
     isAbstract = false as const;
-datum=null // no datum type defined for this bundle (minter / rewards script)
+datum = undefined // no datum type defined for this bundle (minter / rewards script)
 
 
     /**
@@ -142,7 +139,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        MinterActivity,
        MinterActivityLike
    >(MinterActivitySchema, { isMainnet: true });
@@ -302,7 +299,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * providing an implicit seed utxo. 
      */
     CreatingNewSpendDelegate(value: hasSeed, fields: { 
-        replacingUut: Option<number[]> 
+        replacingUut: number[] | undefined 
     } ) : isActivity
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"*** 
@@ -310,12 +307,12 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      */
     CreatingNewSpendDelegate(fields: MinterActivity$CreatingNewSpendDelegateLike | {
             seed: TxOutputId | string,
-            replacingUut: Option<number[]>
+            replacingUut: number[] | undefined
     } ): isActivity
     CreatingNewSpendDelegate(
         seedOrUf: hasSeed | MinterActivity$CreatingNewSpendDelegateLike, 
         filteredFields?: { 
-            replacingUut: Option<number[]>
+            replacingUut: number[] | undefined
     }) : isActivity {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
@@ -334,7 +331,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"***, 
-     * @param fields - \{ replacingUut: Option\<number[]\> \}
+     * @param fields - \{ replacingUut: number[] | undefined \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -343,14 +340,14 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$CreatingNewSpendDelegate({ replacingUut: Option<number[]> })`
+     *   1. Call the `$seed$CreatingNewSpendDelegate({ replacingUut: number[] | undefined })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      *       record-creation helper.
      */
     $seed$CreatingNewSpendDelegate = impliedSeedActivityMaker(this, 
         this.CreatingNewSpendDelegate as (value: hasSeed, fields: { 
-            replacingUut: Option<number[]> 
+            replacingUut: number[] | undefined 
         } ) => isActivity
     )
     /* coda: seeded helper in same multiFieldVariant/seeded */

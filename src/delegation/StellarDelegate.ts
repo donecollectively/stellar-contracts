@@ -1,8 +1,3 @@
-import {
-    TxInput,
-    ValidatorHash,
-    Value,
-} from "@hyperionbt/helios";
 import { StellarContract, type configBaseWithRev } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import type {
@@ -15,6 +10,8 @@ import type { isActivity } from "../ActivityTypes.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
 import { mkTv } from "../utils.js";
+import type { TxInput, ValidatorHash } from "@helios-lang/ledger";
+import type { Value } from "@helios-lang/ledger";
 
 /**
  * Base class for modules that can serve as Capo delegates
@@ -31,7 +28,7 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
     }
     // not required except for Contract-based delegates.  A subclass can represent a delegation
     // relationship without an on-chain contract, resulting in there being no relevant data-bridge.
-    declare dataBridgeClass : Option<AbstractNew<ContractDataBridgeWithEnumDatum>>;
+    declare dataBridgeClass : AbstractNew<ContractDataBridgeWithEnumDatum> | undefined;
 
     /**
      * Finds and adds the delegate's authority token to the transaction

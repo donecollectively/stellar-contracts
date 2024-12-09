@@ -1,16 +1,13 @@
-import {
-    Address,
-    TxInput,
-    TxOutput,
-    Value,
-    bytesToText,
-} from "@hyperionbt/helios";
-import { UplcInt } from "@helios-lang/uplc";
+import { makeIntData, type UplcInt } from "@helios-lang/uplc";
 
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 import { dumpAny } from "../diagnostics.js";
 import type { isActivity } from "../ActivityTypes.js";
+import { makeAddress, makeTxOutput } from "@helios-lang/ledger";
+import type { Address, TxInput, Value } from "@helios-lang/ledger";
+
+import { bytesToText } from "../HeliosPromotedTypes.js";
 
 /**
  * Token-based authority
@@ -31,8 +28,8 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
 
     getContractScriptParamsUplc() {
         return {
-            rev: new UplcInt(0) as any
-        }
+            rev: makeIntData(0),
+        };
     }
 
     get delegateValidatorHash() {
@@ -66,8 +63,8 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
                       addrHint
                           .map((x) => {
                               const addr =
-                                  "string" == typeof x ? Address.fromBech32(x) : x;
-                              return dumpAny(addr) + " = " + addr.toBech32();
+                                  "string" == typeof x ? makeAddress(x) : x;
+                              return dumpAny(addr) + " = " + addr.toString();
                           })
                           .join("\n or ")
                     : "")
@@ -97,7 +94,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
             dest = addrHint[0];
         }
 
-        const output = new TxOutput(dest, tokenValue);
+        const output = makeTxOutput(dest, tokenValue);
         output.correctLovelace(this.networkParams);
         tcx.addOutput(output);
         console.log(

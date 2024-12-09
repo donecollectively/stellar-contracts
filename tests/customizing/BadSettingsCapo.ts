@@ -12,7 +12,10 @@ import { defineRole } from "../../src/delegation/RolesAndDelegates";
 import { BadSettingsController } from "./BadSettingsController.js";
 import {
     ProtocolSettingsLike,
-    ErgoProtocolSettings
+    ErgoProtocolSettings,
+    ErgoDelegationDetail,
+    ErgoDelegateActivity,
+    ErgoDelegateDatum
 } from "./BadSettings.typeInfo.js";
 
 // const goodSettings: CanBeBadSettings = { data: {
@@ -29,7 +32,16 @@ export class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
     //     return TestBadSettings;
     // }
 
-    initDelegateRoles() {
+    async initDelegateRoles() {
+
+        const myListenerVault = await this.findDelegatedDataUtxos({
+            type: "lsnrBox", 
+            predicate(ud) {
+                return ud.value.isGreaterOrEqual(myMemberToken)
+            }
+        });
+
+
         return {
             ... this.basicDelegateRoles(),
             settings: defineRole("dgDataPolicy", BadSettingsController, {})

@@ -5,11 +5,10 @@
 //
 // NOTE: this file is auto-generated; do not edit directly
 
-import { Cast } from "@helios-lang/contract-utils"
+import { makeErgoCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
-    ByteArrayLike,
  } from "@helios-lang/codec-utils";
 import type {
     Address,
@@ -21,7 +20,6 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
@@ -31,7 +29,7 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
- import { TxOutputDatum } from "@helios-lang/ledger";
+ import { makeInlineTxOutputDatum, type InlineTxOutputDatum, type TxOutputDatum } from "@helios-lang/ledger";
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
@@ -47,7 +45,6 @@ import {
 } from "../../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../../helios/typeUtils.js"
-import { StellarCast } from "../../helios/dataBridge/StellarCast.js"
 import { 
     impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 
     type funcWithImpliedSeed, type SeedAttrs
@@ -204,7 +201,7 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
     a: /*minStructField*/ IntLike
     b: /*minStructField*/ Map<string, number[]>
     c: /*minStructField*/ Array<boolean>
-    d: /*minStructField*/ Option<UplcData>
+    d: /*minStructField*/ UplcData | undefined
 }
 ) => {
         return this.ᱺᱺSampleStructCast.toUplcData(fields);
@@ -212,17 +209,17 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
 
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺAnyDataCast = new StellarCast<
+    ᱺᱺAnyDataCast = makeErgoCast<
                 AnyData, AnyDataLike
             >(AnyDataSchema, { isMainnet: true });
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺDelegationDetailCast = new StellarCast<
+    ᱺᱺDelegationDetailCast = makeErgoCast<
                 DelegationDetail, DelegationDetailLike
             >(DelegationDetailSchema, { isMainnet: true });
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺSampleStructCast = new StellarCast<
+    ᱺᱺSampleStructCast = makeErgoCast<
                 SampleStruct, SampleStructLike
             >(SampleStructSchema, { isMainnet: true });
 
@@ -515,7 +512,7 @@ export class AnyDataHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         AnyData,
         AnyDataLike
     >(AnyDataSchema, { isMainnet: true });
@@ -540,7 +537,7 @@ export class DelegationDetailHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         DelegationDetail,
         DelegationDetailLike
     >(DelegationDetailSchema, { isMainnet: true });
@@ -565,7 +562,7 @@ export class SampleStructHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
         SampleStruct,
         SampleStructLike
     >(SampleStructSchema, { isMainnet: true });
@@ -590,7 +587,7 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        SomeEnum,
        SomeEnumLike
    >(SomeEnumSchema, { isMainnet: true });
@@ -626,7 +623,7 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
     a: /*minStructField*/ IntLike
     b: /*minStructField*/ Map<string, number[]>
     c: /*minStructField*/ Array<boolean>
-    d: /*minStructField*/ Option<UplcData>
+    d: /*minStructField*/ UplcData | undefined
 }
     ) : UplcData {
         const uplc = this.mkUplcData({ 
@@ -673,7 +670,7 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        SomeEnum,
        SomeEnumLike
    >(SomeEnumSchema, { isMainnet: true });
@@ -717,7 +714,7 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
     a: /*minStructField*/ IntLike
     b: /*minStructField*/ Map<string, number[]>
     c: /*minStructField*/ Array<boolean>
-    d: /*minStructField*/ Option<UplcData>
+    d: /*minStructField*/ UplcData | undefined
 }
     ) : UplcData {
         const uplc = this.mkUplcData({ 
@@ -765,35 +762,35 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating TxOutputDatum for variants of the ***DelegateDatum*** enum type.
+ * Helper class for generating InlineTxOutputDatum for variants of the ***DelegateDatum*** enum type.
  * @public
  */
 export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        DelegateDatum,
        DelegateDatumLike
    >(DelegateDatumSchema, { isMainnet: true });
 
     /**
-     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.Cip68RefToken"***
+     * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.Cip68RefToken"***
      * @remarks - ***DelegateDatum$Cip68RefTokenLike*** is the same as the expanded field-types.
      */
     Cip68RefToken(fields: DelegateDatum$Cip68RefTokenLike | { 
         cip68meta: AnyDataLike,
         cip68version: IntLike,
         otherDetails: UplcData
-    }) : TxOutputDatum<"Inline"> {
+    }) : InlineTxOutputDatum {
         const uplc = this.mkUplcData({
             Cip68RefToken: fields 
         }, "uutMintingDelegate::DelegateDatum.Cip68RefToken");
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.IsDelegation"***
+     * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.IsDelegation"***
      * @remarks - ***DelegationDetailLike*** is the same as the expanded field-type.
      */
     IsDelegation(
@@ -802,52 +799,52 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     mph: /*minStructField*/ MintingPolicyHash | string | number[]
     tn: /*minStructField*/ number[]
 }
-    ) : TxOutputDatum {
+    ) : InlineTxOutputDatum {
         const uplc = this.mkUplcData({ 
            IsDelegation: dd
         }, "uutMintingDelegate::DelegateDatum.IsDelegation"); /*singleField enum variant*/
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     }
 
 /**
- * (property getter): TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.TagOnlyDatum"***
+ * (property getter): InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.TagOnlyDatum"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
  */
     get TagOnlyDatum() {
         const uplc = this.mkUplcData({ TagOnlyDatum: {} }, 
             "uutMintingDelegate::DelegateDatum.TagOnlyDatum");
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     } /* tagOnly variant accessor */
 
     /**
-     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.capoStoredData"***
+     * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.capoStoredData"***
      * @remarks - ***DelegateDatum$capoStoredDataLike*** is the same as the expanded field-types.
      */
     capoStoredData(fields: DelegateDatum$capoStoredDataLike | { 
         data: AnyDataLike,
         version: IntLike,
         otherDetails: UplcData
-    }) : TxOutputDatum<"Inline"> {
+    }) : InlineTxOutputDatum {
         const uplc = this.mkUplcData({
             capoStoredData: fields 
         }, "uutMintingDelegate::DelegateDatum.capoStoredData");
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.SingleDataElement"***
+     * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.SingleDataElement"***
      */
     SingleDataElement(
         aString: string
-    ) : TxOutputDatum {
+    ) : InlineTxOutputDatum {
         const uplc = this.mkUplcData({ 
            SingleDataElement: aString
         }, "uutMintingDelegate::DelegateDatum.SingleDataElement"); /*singleField enum variant*/
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     }
 
     /**
-     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.SingleNestedStruct"***
+     * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.SingleNestedStruct"***
      * @remarks - ***SampleStructLike*** is the same as the expanded field-type.
      */
     SingleNestedStruct(
@@ -855,13 +852,13 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     a: /*minStructField*/ IntLike
     b: /*minStructField*/ Map<string, number[]>
     c: /*minStructField*/ Array<boolean>
-    d: /*minStructField*/ Option<UplcData>
+    d: /*minStructField*/ UplcData | undefined
 }
-    ) : TxOutputDatum {
+    ) : InlineTxOutputDatum {
         const uplc = this.mkUplcData({ 
            SingleNestedStruct: aStruct
         }, "uutMintingDelegate::DelegateDatum.SingleNestedStruct"); /*singleField enum variant*/
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     }
 
     /**
@@ -881,26 +878,26 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     } /* nested enum accessor */
 
     /**
-     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.MultiFieldVariant"***
+     * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.MultiFieldVariant"***
      * @remarks - ***DelegateDatum$MultiFieldVariantLike*** is the same as the expanded field-types.
      */
     MultiFieldVariant(fields: DelegateDatum$MultiFieldVariantLike | { 
         field1: IntLike,
         field2: string
-    }) : TxOutputDatum<"Inline"> {
+    }) : InlineTxOutputDatum {
         const uplc = this.mkUplcData({
             MultiFieldVariant: fields 
         }, "uutMintingDelegate::DelegateDatum.MultiFieldVariant");
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.MultiFieldNestedThings"***
+     * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.MultiFieldNestedThings"***
      * @remarks - ***DelegateDatum$MultiFieldNestedThingsLike*** is the same as the expanded field-types.
      */
     MultiFieldNestedThings(fields: DelegateDatum$MultiFieldNestedThingsLike | { 
         nestedStruct: SampleStructLike,
-        nestedEnumMaybe: Option<
+        nestedEnumMaybe: 
         | { justATag: tagOnly /*minEnumVariant*/ }
         | { justAnInt: /* implied wrapper { m: ... } for singleVariantField */ 
 			IntLike    /*minEnumVariant*/ }
@@ -908,12 +905,12 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
 			SampleStructLike    /*minEnumVariant*/ }
         | { hasNestedFields: SomeEnum$hasNestedFieldsLike /*minEnumVariant*/ }
         | { hasRecursiveFields: SomeEnum$hasRecursiveFieldsLike /*minEnumVariant*/ }
->
-    }) : TxOutputDatum<"Inline"> {
+ | undefined
+    }) : InlineTxOutputDatum {
         const uplc = this.mkUplcData({
             MultiFieldNestedThings: fields 
         }, "uutMintingDelegate::DelegateDatum.MultiFieldNestedThings");
-        return TxOutputDatum.Inline(uplc);
+        return makeInlineTxOutputDatum(uplc);
     } /*multiFieldVariant enum accessor*/
 }/*mkEnumHelperClass*/
 
@@ -926,7 +923,7 @@ export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        DelegateRole,
        DelegateRoleLike
    >(DelegateRoleSchema, { isMainnet: true });
@@ -1021,7 +1018,7 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        ManifestActivity,
        ManifestActivityLike
    >(ManifestActivitySchema, { isMainnet: true });
@@ -1104,7 +1101,7 @@ export class ManifestActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        ManifestActivity,
        ManifestActivityLike
    >(ManifestActivitySchema, { isMainnet: true });
@@ -1207,7 +1204,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -1292,7 +1289,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      */
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
-        name: Option<string>
+        name: string | undefined
     }) : UplcData {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
@@ -1464,7 +1461,7 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
@@ -1563,7 +1560,7 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
@@ -1602,7 +1599,7 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
@@ -1691,7 +1688,7 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
@@ -1718,7 +1715,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -1815,7 +1812,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      */
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
-        name: Option<string>
+        name: string | undefined
     }) : isActivity {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
@@ -2003,7 +2000,7 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
@@ -2110,7 +2107,7 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
@@ -2157,7 +2154,7 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
@@ -2254,7 +2251,7 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
@@ -2285,7 +2282,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
+    ᱺᱺcast = makeErgoCast<
        DelegateActivity,
        DelegateActivityLike
    >(DelegateActivitySchema, { isMainnet: true });

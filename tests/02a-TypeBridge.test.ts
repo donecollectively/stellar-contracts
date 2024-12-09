@@ -7,7 +7,6 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import * as helios from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext.js";
 import {
@@ -127,7 +126,7 @@ describe("Type Bridge", async () => {
                         a: 1n,
                         b: new Map(),
                         c: [true],
-                        d: null,
+                        d: undefined,
                     },
                 });
             });
@@ -150,7 +149,7 @@ describe("Type Bridge", async () => {
                             a: 1n,
                             b: new Map(),
                             c: [true],
-                            d: null,
+                            d: undefined,
                         },
                         n: 42n,
                     },
@@ -234,7 +233,7 @@ describe("Type Bridge", async () => {
                             a: 42n,
                             b: new Map([["life", [42, 42, 42]]]),
                             c: [true],
-                            d: null,
+                            d: undefined,
                         },
                     });
                 });
@@ -297,7 +296,7 @@ describe("Type Bridge", async () => {
                                     a: 1n,
                                     b: new Map(),
                                     c: [true],
-                                    d: null,
+                                    d: undefined,
                                 },
                             },
                         });
@@ -324,7 +323,7 @@ describe("Type Bridge", async () => {
                                         a: 1n,
                                         b: new Map(),
                                         c: [true],
-                                        d: null,
+                                        d: undefined,
                                     },
                                     n: 42n,
                                 },
@@ -364,10 +363,10 @@ describe("Type Bridge", async () => {
                         a: 1n,
                         b: new Map(),
                         c: [true],
-                        d: null,
+                        d: undefined,
                         // },
                     },
-                    nestedEnumMaybe: null,
+                    nestedEnumMaybe: undefined,
                 });
             });
 
@@ -399,7 +398,7 @@ describe("Type Bridge", async () => {
                         a: 2n,
                         b: new Map([["life", [42, 42, 42]]]),
                         c: [true, false, true],
-                        d: null,
+                        d: undefined,
                     },
                     // },
                 });

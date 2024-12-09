@@ -1,7 +1,4 @@
-import { ConstrData, Datum } from "@hyperionbt/helios";
-import { DatumAdapter,  type Numeric,  type adapterParsedOnchainData  } from "./DatumAdapter.js";
-import type { AnyDataTemplate } from "./delegation/DelegatedDatumAdapter.js";
-import { type WrappedSettingsAdapterBridge, type ParsedSettings, SettingsAdapter } from "./CapoSettingsTypes.js";
+import type { AnyDataTemplate } from "./delegation/DelegatedData.js";
 
 
 export type RealNumberSettingsMap =  { [key: string]: number };
@@ -9,13 +6,6 @@ export type RealNumberSettingsMap =  { [key: string]: number };
 //     data: AnyDataTemplate<"set-", Record<string, bigint>> 
 // };
 
-type RealNumberSettingsBridge = Record<string, Numeric<"int">>;
-
-type onChainSettings = adapterParsedOnchainData<
-    RealNumberSettingsBridge, 
-    "CanBeBadSettings"
->;
-type BridgeForSettingsData = WrappedSettingsAdapterBridge<RealNumberSettingsBridge>
 
 // export class SampleSettingsAdapter extends SettingsAdapter<
 //     RealNumberSettingsMap,

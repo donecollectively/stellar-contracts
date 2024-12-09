@@ -1,11 +1,12 @@
-import * as helios from "@hyperionbt/helios";
+import { makeTxOutput, makeValue, type Value } from "@helios-lang/ledger";
+import { makeIntData } from "@helios-lang/uplc";
+
 import type {
     FoundDatumUtxo,
     hasCharterRef,
     hasSettingsRef,
     hasUutContext,
 } from "../Capo.js";
-import type { DelegatedDatumAdapter } from "./DelegatedDatumAdapter.js";
 import type { ReqtsMap } from "../Requirements.js";
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
@@ -17,8 +18,8 @@ import {
     SeedActivity,
     type isActivity,
 } from "../ActivityTypes.js";
-import { encodeBoolData, UplcBool } from "@helios-lang/uplc";
 import type { AnyData, ErgoAnyData } from "./UnspecializedDelegate.typeInfo.js";
+import { textToBytes, type InlineDatum } from "../HeliosPromotedTypes.js";
 
 export const NO_WRAPPER = Symbol(
     "no data-adapter; uses on-chain type directly"
@@ -127,6 +128,21 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     //         .then(this.capo.singleItem);
     // }
 
+    /**
+     * base class method for converting a record from the essential
+     * on-chain data structure to a higher-level application-specific
+     * class representation.
+     * @remarks
+     * #### You don't need to implement this method
+     * Application developers should NOT need to override this method.
+     * Instead, they should optionally implement {@link DelegatedDataContract.mkDataWithWrapper|mkDataWithWrapper()}.
+     *
+     * No extra wrapper is used unless that method is provided.
+     * ## Called automatically
+     * When a wrapper is used, the results of Capo's findDelegatedDataUtxos() method
+     * will include the data: property having the wrapped data, as well as
+     * the datumParsed property with the unwrapped version of the data.
+     */
     wrapData(data: DgDataType<this>): MaybeWrappedDataType<this> {
         if (false == this.usesWrappedData) {
             return data as MaybeWrappedDataType<this>;
@@ -175,7 +191,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     async mkDatumDelegatedDataRecord<THIS extends DelegatedDataContract>(
         this: THIS,
         record: Exclude<MaybeWrappedDataType<THIS>, AnyData>
-    ): Promise<helios.Datum> {
+    ): Promise<InlineDatum> {
         // console.log({record}, "8888888888888888888888888888888888888")
         return this.mkDatum.capoStoredData({
             data: this.unwrapData(
@@ -184,7 +200,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
                 record
             ),
             version: 2n,
-            otherDetails: new helios.IntData(0),
+            otherDetails: makeIntData(0),
         });
 
         // const adapter = this.unwrapData(record);
@@ -293,7 +309,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const idPrefix = this.idPrefix as DelegatedDatumIdPrefix<THIS>;
 
         const {
-            addedUtxoValue: extraCreationValue = new helios.Value(0n),
+            addedUtxoValue: extraCreationValue = makeValue(0n),
             beforeSave = (x) => x,
             data: typedData,
             wrappedData,
@@ -309,7 +325,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const { id: _id, type: _type, ...rest } = newRecord;
 
         const fullRecord = {
-            id: helios.textToBytes(uut.toString()),
+            id: textToBytes(uut.toString()),
             type: newType,
             ...rest,
             ...this.creationDefaultDetails(),
@@ -319,7 +335,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             data: beforeSave(fullRecord) as any,
 
             version: 2n,
-            otherDetails: new helios.IntData(0),
+            otherDetails: makeIntData(0),
         });
         console.log(
             `🏒 creating ${newType} ->`,
@@ -327,7 +343,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         );
 
         return tcx2.addOutput(
-            new helios.TxOutput(
+            makeTxOutput(
                 this.capo.address,
                 this.uh.mkMinTv(this.capo.mph, uut).add(extraCreationValue),
                 newDatum
@@ -460,7 +476,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const recType = this.recordTypeName as DelegatedDatumTypeName<THIS>;
 
         const {
-            addedUtxoValue = new helios.Value(0n),
+            addedUtxoValue = makeValue(0),
             beforeSave = (x) => x,
             activity,
             updatedRecord,
@@ -480,15 +496,15 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             dumpAny(addedUtxoValue)
         );
         return tcx2.addOutput(
-            new helios.TxOutput(
+            makeTxOutput(
                 this.capo.address,
                 item.utxo.value
                     // .add(this.mkMinTv(this.capo.mph, id))
                     .add(addedUtxoValue),
-                await this.mkDatum.capoStoredData({
+                this.mkDatum.capoStoredData({
                     data: beforeSave(updatedRecord),
                     version: 2n,
-                    otherDetails: new helios.IntData(0),
+                    otherDetails: makeIntData(0),
                 })
 
                 // this.mkDatumDelegatedDataRecord(beforeSave(record))
@@ -535,7 +551,7 @@ type CreationOptions<
     WDT extends MaybeWrappedDataType<DGDC> = MaybeWrappedDataType<DGDC>,
     DT extends DgDataType<DGDC> = DgDataType<DGDC>
 > = {
-    addedUtxoValue?: helios.Value;
+    addedUtxoValue?: Value;
     wrappedData?: WDT;
     data?: DT;
     beforeSave?(x: DT): DT;
@@ -551,7 +567,7 @@ type WrappedDgDataUpdateOptions<
     updatedRecord?: WDT;
     updatedPartial?: Partial<DT>;
 
-    addedUtxoValue?: helios.Value;
+    addedUtxoValue?: Value;
     beforeSave?(x: DT): DT;
 };
 
@@ -563,6 +579,6 @@ type DgDataUpdateOptions<
     activity: CAI;
     updatedRecord: DT;
 
-    addedUtxoValue?: helios.Value;
+    addedUtxoValue?: Value;
     beforeSave?(x: DT): DT;
 };

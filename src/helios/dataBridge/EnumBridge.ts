@@ -2,6 +2,7 @@ import type { UplcData } from "@helios-lang/uplc";
 import { DataBridge, type DataBridgeOptions } from "./DataBridge.js";
 import type { HeliosScriptBundle } from "../HeliosScriptBundle.js";
 import type { isActivity } from "../../ActivityTypes.js";
+import { bytesToHex } from "@helios-lang/codec-utils";
 
 const JustAnEnum = Symbol("JustAnEnum");
 export type JustAnEnum = typeof JustAnEnum;
@@ -34,7 +35,10 @@ export class EnumBridge<
             //   value from the redirectTo() callback.
             return this.redirectTo(value)
         }
-        const uplc = this.ᱺᱺcast.toUplcData(value);
+        const uplc = this.ᱺᱺcast.toUplcData(value, enumPathExpr);
+        const t = uplc.toString();
+        const cborHex = bytesToHex(uplc.toCbor());
+        
         uplc.dataPath = enumPathExpr;
         if (this.isActivity) {
             return {

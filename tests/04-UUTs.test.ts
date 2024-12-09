@@ -10,23 +10,18 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { Tx, TxBuilder, TxOutput, Value } from "@hyperionbt/helios";
-
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { Capo } from "../src/Capo";
 import { CapoMinter } from "../src/minting/CapoMinter";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { hasAllUuts } from "../src/Capo";
 import type { UutName } from "../src/delegation/UutName";
-import {
-    DelegateConfigNeeded,
-    RoleInfo,
-    VariantStrategy,
-} from "../src/delegation/RolesAndDelegates";
 
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import * as utils from "../src/utils";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts";
+import { makeTxOutput, makeValue } from "@helios-lang/ledger";
+import { Value } from "@helios-lang/ledger";
 
 type localTC = StellarTestContext<
     DefaultCapoTestHelper<CapoCanMintGenericUuts>
@@ -87,7 +82,7 @@ describe("Capo", async () => {
                 });
 
                 const uutVal = capo.uutsValue(tcx1b.state.uuts!);
-                tcx1b.addOutput(new TxOutput(tina.address, uutVal));
+                tcx1b.addOutput(makeTxOutput(tina.address, uutVal));
                 await expect(
                     tcx1b.submit({
                         signers: [tom.address, tina.address, tracy.address],
@@ -104,20 +99,20 @@ describe("Capo", async () => {
             const strella = await h.bootstrap();
             const utxos = await h.wallet.utxos;
             const tcx = h.mkTcx().withName("creates a high-indexed utxo");
-            let totalHeld: Value = new Value(0n * ADA);
+            let totalHeld: Value = makeValue(0n * ADA);
             for (const u of utxos) {
                 tcx.addInput(u);
                 totalHeld = totalHeld.add(u.value);
             }
-            const tinyValue = new Value(1n * ADA);
-            const collateralValue = new Value(5n * ADA);
+            const tinyValue = 1n * ADA;
+            const collateralValue = 5n * ADA;
             for (let i = 0; i < 44; i++) {
-                tcx.addOutput(new TxOutput(actors.tracy.address, tinyValue));
+                tcx.addOutput(makeTxOutput(actors.tracy.address, 1n * ADA));
             }
             //! when the current actor has only outputs with high txo-index:
-            tcx.addOutput(new TxOutput(h.wallet.address, tinyValue));
-            tcx.addOutput(new TxOutput(h.wallet.address, collateralValue));
-            tcx.addOutput(new TxOutput(h.wallet.address, collateralValue));
+            tcx.addOutput(makeTxOutput(h.wallet.address, tinyValue));
+            tcx.addOutput(makeTxOutput(h.wallet.address, collateralValue));
+            tcx.addOutput(makeTxOutput(h.wallet.address, collateralValue));
             await tcx.submit();
             network.tick(1);
             console.log("-------------- minting UUT from high-index txo");
@@ -159,7 +154,7 @@ describe("Capo", async () => {
                 tcx1.addInput(charter, capo.activityUsingAuthority());
                 const datum = charter.datum
                 if (!datum) throw new Error("missing datum")
-                capo.txnKeepCharterToken(tcx1, charter.datum);
+                capo.txnKeepCharterToken(tcx1, datum);
 
                 await capo.txnAddGovAuthorityTokenRef(tcx1);
                 expect(spy).toHaveBeenCalled();
@@ -176,7 +171,7 @@ describe("Capo", async () => {
             });
 
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);
-            tcx1b.addOutput(new TxOutput(tina.address, uutVal));
+            tcx1b.addOutput(makeTxOutput(tina.address, uutVal));
             await expect(
                 tcx1.submit({
                     signers: [tom.address, tina.address, tracy.address],
@@ -216,7 +211,7 @@ describe("Capo", async () => {
                 expect(mock).toHaveBeenCalled();
 
                 const uutVal = capo.uutsValue(tcx1b.state.uuts!);
-                tcx1b.addOutput(new TxOutput(tina.address, uutVal));
+                tcx1b.addOutput(makeTxOutput(tina.address, uutVal));
                 await expect(
                     tcx1b.submit({
                         signers: [tom.address, tina.address, tracy.address],
@@ -244,7 +239,7 @@ describe("Capo", async () => {
             });
 
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);
-            tcx1a.addOutput(new TxOutput(tina.address, uutVal));
+            tcx1a.addOutput(makeTxOutput(tina.address, uutVal));
             await capo.submit(tcx1a, {
                 signers: [tom.address, tina.address, tracy.address],
             });
@@ -282,7 +277,7 @@ describe("Capo", async () => {
             // await delay(4000);
             const uuts = capo.uutsValue(tcx1b.state.uuts!);
 
-            tcx1b.addOutput(new TxOutput(tina.address, uuts));
+            tcx1b.addOutput(makeTxOutput(tina.address, uuts));
             await capo.submit(tcx1b, {
                 signers: [tom.address, tina.address, tracy.address],
             });
@@ -322,7 +317,7 @@ describe("Capo", async () => {
             expect(tcx1b.state.uuts?.foo).toBeTruthy();
             expect(tcx1b.state.uuts?.bar).toBeTruthy();
 
-            tcx1b.addOutput(new TxOutput(tina.address, uuts));
+            tcx1b.addOutput(makeTxOutput(tina.address, uuts));
             await capo.submit(tcx1b, {
                 signers: [tom.address, tina.address, tracy.address],
             });
@@ -366,7 +361,7 @@ describe("Capo", async () => {
 
             const uut = capo.uutsValue(tcx1b.state.uuts!);
 
-            tcx1b.addOutput(new TxOutput(tina.address, uut));
+            tcx1b.addOutput(makeTxOutput(tina.address, uut));
             await expect(
                 tcx1b.submit({
                     signers: [tom.address, tina.address, tracy.address],
@@ -403,7 +398,7 @@ describe("Capo", async () => {
 
             const uut2 = capo.uutsValue(tcx2b.state.uuts!);
 
-            tcx2b.addOutput(new TxOutput(tina.address, uut2));
+            tcx2b.addOutput(makeTxOutput(tina.address, uut2));
             await expect(
                 tcx2b.submit({
                     signers: [tom.address, tina.address, tracy.address],
@@ -436,7 +431,7 @@ describe("Capo", async () => {
 
             const uut3 = capo.uutsValue(tcx3a.state.uuts!);
 
-            tcx3a.addOutput(new TxOutput(tina.address, uut3));
+            tcx3a.addOutput(makeTxOutput(tina.address, uut3));
             await expect(
                 tcx3a.submit({
                     signers: [tom.address, tina.address, tracy.address],
@@ -482,7 +477,7 @@ describe("Capo", async () => {
             });
             const uut = capo.uutsValue(tcx2);
 
-            tcx2.addOutput(new TxOutput(tina.address, uut));
+            tcx2.addOutput(makeTxOutput(tina.address, uut));
             await expect(
                 tcx2.submit({
                     signers: [tom.address, tina.address, tracy.address],
@@ -516,7 +511,7 @@ describe("Capo", async () => {
             });
 
             const uutVal = capo.uutsValue(tcx2.state.uuts!);
-            tcx2.addOutput(new TxOutput(tina.address, uutVal));
+            tcx2.addOutput(makeTxOutput(tina.address, uutVal));
             await capo.submit(tcx2, {
                 signers: [tom.address, tina.address, tracy.address],
             });

@@ -1,8 +1,7 @@
-import { TxOutputId, type TxId } from "@helios-lang/ledger-babbage";
 import type { UplcData } from "@helios-lang/uplc";
 import { StellarTxnContext, type hasSeedUtxo } from "./StellarTxnContext.js";
-import type { TxOutputIdLike } from "@helios-lang/ledger-babbage/types/tx/TxOutputId.js";
 import type { IFISNEVER, TypeError } from "./helios/typeUtils.js";
+import { makeTxOutputId, type TxId, type TxOutputId, type TxOutputIdLike } from "@helios-lang/ledger";
 
 /**
  * @public
@@ -153,17 +152,19 @@ export function impliedSeedActivityMaker<
     return makesActivityWithImplicitSeedAndArgs
 }
 
-export function getSeed(arg: hasSeed): TxOutputId {
-    if (arg instanceof TxOutputId) return arg;
+export function getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
+    //@ts-expect-error on this type probe
+    if (arg.kind == "TxOutputId") return arg;
+
     if (arg instanceof StellarTxnContext) {
         const { txId, idx } = arg.getSeedUtxoDetails();
-        return new TxOutputId(txId, idx);
+        return makeTxOutputId(txId, idx);
     }
     //@ts-expect-error on this type probe
     if (arg.idx && arg.txId) {
         const attr: SeedAttrs = arg as SeedAttrs;
-        return new TxOutputId(attr.txId, attr.idx);
+        return makeTxOutputId(attr.txId, attr.idx);
     }
     const txoIdLike = arg as Exclude<typeof arg, SeedAttrs>;
-    return TxOutputId.new(txoIdLike);
+    return makeTxOutputId(txoIdLike);
 }

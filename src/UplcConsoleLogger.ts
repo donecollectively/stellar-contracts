@@ -1,10 +1,10 @@
 import type { Site } from "@helios-lang/compiler-utils";
-import type { UplcLoggingI } from "@helios-lang/uplc";
+import type { UplcLogger } from "@helios-lang/uplc";
 
-export class UplcConsoleLogger implements UplcLoggingI{
+export class UplcConsoleLogger implements UplcLogger {
     didStart: boolean = false;
     lines: string[] = [];
-    lastMsg: string = "";
+    lastMessage: string = "";
     lastReason?: "build" | "validate";
     history: string[] = [];
 
@@ -14,7 +14,7 @@ export class UplcConsoleLogger implements UplcLoggingI{
         this.reset = this.reset.bind(this);
     }
     reset(reason: "build" | "validate") {
-        this.lastMsg = "";
+        this.lastMessage = "";
         this.lastReason = reason;
         // console.log("    ---- resetting printer due to " + reason);
         // this.didStart = false;
@@ -39,32 +39,34 @@ export class UplcConsoleLogger implements UplcLoggingI{
     //     return this.logPrint(...msgs, "\n");
     // }
 
-    logPrint(message: string, site?: Option<Site>) {
+    logPrint(message: string, site?: Site) {
         // if ( global.validating) debugger
         // if (msg == "no") { debugger }
         // if (this.lastReason && this.lastReason == "validate") {
         //     debugger
         // }
+        
         if ("string" != typeof message) {
             console.log("wtf");
         }
-        if (message.at(-1) != "\n") {
+        if (message && message.at(-1) != "\n") {
             message += "\n";
         }
-        this.lastMsg = message;
+        this.lastMessage = message;
         this.lines.push(message);
         return this;
     }
-    logError(message: string, site? : Option<Site>) {
-        this.logPrint("\n\n");
+    logError(message: string, stack? : Site) {
+        debugger
+        this.logPrint("\n");
         this.logPrint(
             "-".repeat((process?.stdout?.columns || 65) - 8)
         );
-        this.logPrint("\n--- ⚠️  ERROR: " + message.trimStart() + "\n");
+        this.logPrint("--- ⚠️  ERROR: " + message.trimStart() + "\n");
         this.logPrint(
-            "-".repeat((process?.stdout?.columns || 65) - 8) + "\n\n"
+            "-".repeat((process?.stdout?.columns || 65) - 8) + "\n"
         );
-        return this;
+        // return this;
     }
     // printlnFunction(msg) {
     //     console.log("                              ---- println")
@@ -135,7 +137,7 @@ export class UplcConsoleLogger implements UplcLoggingI{
     flush() {
         if (this.lines.length) {
             // console.log("    ---- flushing lines");
-            if (this.lastMsg.at(-1) != "\n") {
+            if (this.lastMessage.at(-1) != "\n") {
                 this.lines.push("\n");
             }
             this.flushLines();
@@ -149,7 +151,7 @@ export class UplcConsoleLogger implements UplcLoggingI{
         // if (this.lastMsg == message) {
         //     this.lines.pop();
         // }
-        if (this.lastMsg.at(-1) != "\n") {
+        if (this.lastMessage.at(-1) != "\n") {
             this.lines.push("\n");
         }
         if (message.at(-1) == "\n") {

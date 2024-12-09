@@ -115,7 +115,7 @@ export abstract class CapoTestHelper<
         const { name } = strella.program;
         console.log(
             name,
-            address.toBech32().substring(0, 18) + "…",
+            address.toString().substring(0, 18) + "…",
             "vHash 📜 " + strella.validatorHash.toHex().substring(0, 12) + "…",
             "mph 🏦 " + mph?.toHex().substring(0, 12) + "…"
         );

@@ -26,9 +26,7 @@
     "type": "module",
     "pnpm": {
         "overrides": {
-            "@hyperionbt/helios": "node_modules/@helios-lang/compat",
             "@helios-lang/Xcompiler": "../helios/compiler",
-            "@helios-lang/Xcompiler-utils": "../helios/compiler-utils"
         }
     },
     "scripts": {
@@ -51,19 +49,14 @@
     },
     "devDependencies": {
         "@helios-lang/codec-utils": "link:../helios/codec-utils",
-        "@helios-lang/compat": "link:../helios/compat",
         "@helios-lang/compiler": "link:../helios/compiler",
         "@helios-lang/compiler-utils": "link:../helios/compiler-utils",
         "@helios-lang/contract-utils": "link:../helios/contract-utils",
         "@helios-lang/crypto": "link:../helios/crypto",
         "@helios-lang/ledger": "link:../helios/ledger",
-        "@helios-lang/ledger-babbage": "link:../helios/ledger-babbage",
-        "@helios-lang/ledger-conway": "link:../helios/ledger-conway",
-        "@helios-lang/ledger-shelley": "link:../helios/ledger-shelley",
         "@helios-lang/tx-utils": "link:../helios/tx-utils",
         "@helios-lang/type-utils": "link:../helios/type-utils",
         "@helios-lang/uplc": "link:../helios/uplc",
-        "@hyperionbt/helios": "^0.16.3",
         "@microsoft/api-extractor": "^7.47.11",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",

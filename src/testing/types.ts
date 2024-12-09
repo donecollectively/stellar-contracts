@@ -1,8 +1,3 @@
-import {
-    type NetworkParams,
-    type Network,
-} from "@hyperionbt/helios";
-
 import type {
     ConfigFor,
     StellarContract,
@@ -14,6 +9,7 @@ import type { StellarTestHelper } from "./StellarTestHelper.js";
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
 import type { Capo, CapoConfig } from "../Capo.js";
 import type { NetworkSnapshot, SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
+import type { NetworkParams } from "@helios-lang/ledger";
 
 export type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;

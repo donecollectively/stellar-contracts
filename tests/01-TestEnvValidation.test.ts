@@ -7,20 +7,11 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import {
-    Address,
-    Datum,
-    Signature,
-    Tx,
-    TxOutput,
-    TxInput,
-    Value,
-    TxBuilder,
-} from "@hyperionbt/helios";
 
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { insufficientInputError } from "../src/testing";
+import { makeTxBuilder } from "@helios-lang/tx-utils";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
 const it = itWithContext<localTC>;
@@ -33,7 +24,7 @@ const describe = descrWithContext<localTC>;
 
 describe("Test environment", async () => {
     beforeEach<localTC>(async (context) => {
-        await new Promise(res => setTimeout(res, 10));
+        await new Promise((res) => setTimeout(res, 10));
         await addTestContext(context, DefaultCapoTestHelper);
     });
 
@@ -77,25 +68,24 @@ describe("Test environment", async () => {
             const firstUtxo = tomMoney[0];
 
             async function tryWithSlop(margin: bigint) {
-                const txb = new TxBuilder({
+                const txb = makeTxBuilder({
                     isMainnet: false,
                 });
 
                 txb.spendUnsafe(firstUtxo);
-                txb.payUnsafe(new TxOutput(tom.address, new Value(3n * ADA)));
+                txb.payUnsafe(tom.address, 3n * ADA);
                 txb.payUnsafe(
-                    new TxOutput(
-                        tom.address,
-                        new Value(firstUtxo.value.lovelace - margin)
-                    )
+                    tom.address,
+                    firstUtxo.value.lovelace - margin
                 );
                 // console.log("s2")
-                return h.submitTx(await txb.build(
-                    {
+                return h.submitTx(
+                    await txb.build({
                         networkParams: h.networkParams,
                         changeAddress: tom.address,
-                    }
-                ), "force");
+                    }),
+                    "force"
+                );
             }
             console.log(
                 "case 1a: should work if finalize doesn't over-estimate fees"

@@ -13,7 +13,10 @@ import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
 export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
 
 export class CapoHeliosBundle extends HeliosScriptBundle {
-    main = mainContract;
+    get main() {
+        return mainContract
+    }
+
     datumTypeName = "CapoDatum"
     capoBundle = this // ???
 

@@ -1,6 +1,6 @@
+import { makeSource, type Source } from "@helios-lang/compiler-utils";
 import type { Capo } from "../Capo.js";
 import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
-import { mkHeliosModule, type HeliosModuleSrc } from "../helios/HeliosModuleSrc.js";
 import { HeliosScriptBundle, type CapoBundleClass } from "../helios/HeliosScriptBundle.js";
 import type { stellarSubclass } from "../StellarContract.js";
 import BasicDelegate from "./BasicDelegate.hl";
@@ -26,7 +26,7 @@ const USING_EXTENSION = Symbol("USING_EXTENSION");
  **/
 //x@ts-expect-error "static using(): cannot assign abstract constructor type to non-abstract class"
 export abstract class CapoDelegateBundle extends HeliosScriptBundle {
-    abstract get specializedDelegateModule(): HeliosModuleSrc;
+    abstract get specializedDelegateModule(): Source;
     declare capoBundle: CapoHeliosBundle;
     static using<CB extends CapoBundleClass>(c : CB) {
         //@ts-expect-error returning a subclass without concrete implementations
@@ -58,6 +58,9 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
 
     get moduleName() {
         const specialDgt = this.specializedDelegateModule;
+        if (!specialDgt.moduleName) {
+            throw new Error("specializedDelegate module must have a moduleName");
+        }
         return specialDgt.moduleName
     }
 
@@ -84,7 +87,8 @@ import {
     SpendingActivity
 } from ${moduleName}\n`;
         // console.log("mkDelegateWrapper:", new Error( src));
-        return mkHeliosModule(src, `generatedSpecializedDelegateModule`, {
+        return makeSource(src, {
+            name: `generatedSpecializedDelegateModule`,
             project: "stellar-contracts",
             moreInfo:
                 `${indent}- wraps ${moduleName} provided by ${this.constructor.name}\n` +

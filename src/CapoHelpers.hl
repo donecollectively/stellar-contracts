@@ -22,7 +22,7 @@ import {
     CapoLifecycleActivity,
     DgTknDisposition as DgTkn,
     DelegateRole,
-    PendingDelegateChange
+    PendingDelegateChange    
 } from CapoDelegateHelpers
 
 enum UtxoSource {
@@ -700,7 +700,7 @@ struct DelegateInput {
             mph: self.mph, 
             required: true,
             createdOrReturned: createdOrReturned
-          )
+        )
     }
 
     func getActivity[ACTIVITY](self) -> ACTIVITY {
@@ -1179,10 +1179,13 @@ struct CapoCtx {
 
     func requiresGovAuthority(self) -> CapoCtx {
         REQT("it must have the Capo's govAuthority approval");
-
-        assert(self.getCharterData().govAuthorityLink.hasValidOutput(
-            mph: self.mph  
-        ) /*always true*/, "no way"); 
+        
+        assert(
+            self.getCharterData().govAuthorityLink.hasValidOutput( 
+                self.mph  
+            ), /*always true*/
+            "no way"
+        ); 
 
         self
     }
@@ -1835,7 +1838,7 @@ struct CapoCtx {
 
         REQT("mint delegate must validate settings");
         mintDelegateIsValidating : Bool = 
-            mintDelegate.validatesUpdatedSettings(
+        mintDelegate.validatesUpdatedSettings(
                 inputs: inputs,
                 mph: mph,
                 inputRequired: true

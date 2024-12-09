@@ -1,4 +1,4 @@
-import { Address, MintingPolicyHash, ValidatorHash } from "@hyperionbt/helios";
+import type { Address, MintingPolicyHash, ValidatorHash } from "@helios-lang/ledger";
 import type {
     ConfigFor,
     configBaseWithRev,
@@ -323,7 +323,7 @@ export type OffchainPartialDelegateLink = {
     uutName?: string;
     // strategyName: string;
     config: Partial<capoDelegateConfig>;
-    delegateValidatorHash?: Option<ValidatorHash>;
+    delegateValidatorHash?: ValidatorHash;
     // reqdAddress?: Address; removed
     // addrHint?: Address[]; moved to config
 };

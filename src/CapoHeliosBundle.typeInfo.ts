@@ -15,21 +15,20 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
     TxInput,
     TxOutput,
     TxOutputId,
-    TxOutputDatum,
+    InlineTxOutputDatum,
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
 import type { 
     IntLike,
-    ByteArrayLike,
+    // BytesLike,
  } from "@helios-lang/codec-utils";
 
  type TimeLike = IntLike;
@@ -45,14 +44,14 @@ import type { IntersectedEnum } from "./helios/typeUtils.js"
 
 export type RelativeDelegateLink = {
     uutName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash>
+    delegateValidatorHash: /*minStructField*/ ValidatorHash | undefined
     config: /*minStructField*/ number[]
 }
 
 export type ErgoRelativeDelegateLink = RelativeDelegateLink/*like canon-other*/
 export type RelativeDelegateLinkLike = {
     uutName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
+    delegateValidatorHash: /*minStructField*/ ValidatorHash | string | number[] | undefined
     config: /*minStructField*/ number[]
 }
 
@@ -238,19 +237,19 @@ export type ManifestEntryTypeLike = IntersectedEnum<
 export type CapoManifestEntry = {
     entryType: /*minStructField*/ ManifestEntryType
     tokenName: /*minStructField*/ number[]
-    mph: /*minStructField*/ Option<MintingPolicyHash>
+    mph: /*minStructField*/ MintingPolicyHash | undefined
 }
 
 export type ErgoCapoManifestEntry = {
     entryType: /*minStructField*/ ErgoManifestEntryType
     tokenName: /*minStructField*/ number[]
-    mph: /*minStructField*/ Option<MintingPolicyHash>
+    mph: /*minStructField*/ MintingPolicyHash | undefined
 }
 
 export type CapoManifestEntryLike = {
     entryType: /*minStructField*/ ManifestEntryTypeLike
     tokenName: /*minStructField*/ number[]
-    mph: /*minStructField*/ Option<MintingPolicyHash | string | number[]>
+    mph: /*minStructField*/ MintingPolicyHash | string | number[] | undefined
 }
 
 
@@ -343,22 +342,22 @@ export type PendingDelegateActionLike = IntersectedEnum<
 export type PendingDelegateChange = {
     action: /*minStructField*/ PendingDelegateAction
     role: /*minStructField*/ DelegateRole
-    name: /*minStructField*/ Option<string>
-    dgtLink: /*minStructField*/ Option<RelativeDelegateLink>
+    name: /*minStructField*/ string | undefined
+    dgtLink: /*minStructField*/ RelativeDelegateLink | undefined
 }
 
 export type ErgoPendingDelegateChange = {
     action: /*minStructField*/ ErgoPendingDelegateAction
     role: /*minStructField*/ ErgoDelegateRole
-    name: /*minStructField*/ Option<string>
-    dgtLink: /*minStructField*/ Option<ErgoRelativeDelegateLink>
+    name: /*minStructField*/ string | undefined
+    dgtLink: /*minStructField*/ ErgoRelativeDelegateLink | undefined
 }
 
 export type PendingDelegateChangeLike = {
     action: /*minStructField*/ PendingDelegateActionLike
     role: /*minStructField*/ DelegateRoleLike
-    name: /*minStructField*/ Option<string>
-    dgtLink: /*minStructField*/ Option<RelativeDelegateLinkLike>
+    name: /*minStructField*/ string | undefined
+    dgtLink: /*minStructField*/ RelativeDelegateLinkLike | undefined
 }
 
 
@@ -480,17 +479,17 @@ export type CapoLifecycleActivity$CreatingDelegateLike = {
 
 export type CapoLifecycleActivity$removePendingDgtChange = {
     role: DelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: string | undefined  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$Ergo$removePendingDgtChange = {
     role: ErgoDelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: string | undefined  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$removePendingDgtChangeLike = {
     role: DelegateRoleLike  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: string | undefined  /*minVariantField*/ 
 }
 
 

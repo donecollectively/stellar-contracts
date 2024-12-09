@@ -434,8 +434,7 @@ func validateUutMinting(
 }
 
 enum MinterActivity { 
-    mintingCharter //0
-    {
+    mintingCharter { // 0
         owner: Address
         //xxx withSettings: Bool
         // we don't have a responsiblity to enforce delivery to the right location

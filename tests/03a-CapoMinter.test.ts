@@ -7,7 +7,6 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import * as helios from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
@@ -115,7 +114,7 @@ describe("Capo Minter", async () => {
             const mintDelegate = await capo.getMintDelegate();
             const tcx1 = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["fooPurpose"];
-            debugger;
+
             const tcx1a = await capo.txnMintingUuts(tcx1, purposes, {
                 mintDelegateActivity:
                     mintDelegate.activityMultipleDelegateActivities(

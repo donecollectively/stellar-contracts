@@ -1,6 +1,7 @@
-declare module "*.hl" {
-    import type { HeliosModuleSrc } from "src/helios/HeliosModuleSrc.js";
 
-    const value: HeliosModuleSrc;
+declare module "*.hl" {
+    import type { Source } from "@helios-lang/compiler-utils";
+
+    const value: Source;
     export default value;
 }

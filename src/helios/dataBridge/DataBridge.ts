@@ -1,6 +1,6 @@
 import type { TypeSchema } from "@helios-lang/type-utils"
-import { Cast } from "@helios-lang/contract-utils"
-import { TxOutputId } from "@helios-lang/ledger-babbage"
+import { type Cast, makeCast, makeErgoCast } from "@helios-lang/contract-utils"
+import { type TxOutputId } from "@helios-lang/ledger"
 import type { UplcData } from "@helios-lang/uplc"
 
 import type { 
@@ -188,7 +188,7 @@ export class DataBridge extends (dataBridgeProxyBase as any) {
     protected getTypeSchema() {
         if (!this.ᱺᱺschema) {
             this.ᱺᱺschema = "placeholder" as any // this.__typeDetails.dataType.toSchema() 
-            this.ᱺᱺcast = new Cast(this.ᱺᱺschema, {isMainnet: true})
+            this.ᱺᱺcast = makeErgoCast(this.ᱺᱺschema, {isMainnet: true})
         }
         return this.ᱺᱺschema
     }
@@ -214,10 +214,10 @@ export class ContractDataBridge {
     static isAbstract : (true | false) = true as const
     isAbstract : (true | false) = true as const
     declare types: Record<string, DataBridge | ((x: any) => UplcData)>
-    declare reader: Option<DataBridgeReaderClass>;
-    declare datum: Option<DataBridge>;
+    declare reader: DataBridgeReaderClass | undefined;
+    declare datum: DataBridge | undefined;
     declare activity: DataBridge;
-    declare readDatum : Option<readsUplcData<any>>
+    declare readDatum : readsUplcData<any> | undefined
 
     constructor(public bundle: HeliosScriptBundle) {
         this.bundle = bundle;
@@ -254,5 +254,5 @@ export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
 //     [key: string]: (x : UplcData) => any
 // }
 export class DataBridgeReaderClass {
-    declare datum: Option<readsUplcTo<unknown>>
+    declare datum: readsUplcTo<unknown> | undefined
 }

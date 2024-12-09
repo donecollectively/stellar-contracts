@@ -1,7 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
-import { type TypeSchema, genTypes } from "@helios-lang/contract-utils";
 import * as rollup from "rollup";
 import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import esbuild from "rollup-plugin-esbuild";
@@ -21,8 +20,7 @@ type BundleStatusEntry = {
     bundleClassName: string;
     parentClassName?: string;
     bundleClass?: typeof HeliosScriptBundle; // or a subclass
-    bundle?: Option<HeliosScriptBundle>;
-    // types?: Option<HeliosBundleTypeInfo>;
+    bundle?: HeliosScriptBundle;
 };
 
 export function isUplcData(x: any): x is UplcData {
@@ -47,7 +45,7 @@ export class StellarHeliosProject {
     static root: string;
 
     bundleEntries: Map<string, BundleStatusEntry>;
-    capoBundle: HeliosScriptBundle | null = null;
+    capoBundle: HeliosScriptBundle | undefined = undefined;
     projectRoot: string;
     constructor() {
         this.bundleEntries = new Map();
@@ -172,20 +170,9 @@ export class StellarHeliosProject {
                 parentClassName,
             };
             // if we have the CapoBundle, we can use it to instantiate this bundle now.
-            if (this.capoBundle) {
-                console.log(`instantiating bundle ${bundleClassName} with capo ${this.capoBundle.constructor.name}`);
                 bundle = new (bundleClass as any)(this.capoBundle);
                 bundleEntry.bundle = bundle;
                 bundleEntry.status = "loaded";
-            } else {
-                console.log("existing bundle entries: ", [
-                    ...this.bundleEntries.values(),
-                ]);
-                throw new Error(
-                    `wanted capoBundle before loading another bundle`
-                );
-                bundleEntry.status = "pendingLoad";
-            }
             this.bundleEntries.set(filename, bundleEntry);
         }
 

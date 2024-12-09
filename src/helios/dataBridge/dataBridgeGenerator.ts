@@ -8,14 +8,17 @@ import type {
     typeDetails,
     variantTypeDetails,
 } from "../HeliosScriptBundle.js";
-import type { DataType } from "@helios-lang/compiler/src/index.js";
 import type {
     EnumTypeSchema,
     TypeSchema,
     VariantTypeSchema,
 } from "@helios-lang/type-utils";
-import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.js";
+import type { 
+    DataType,
+    EnumMemberType
+} from "@helios-lang/compiler";
 import { BundleBasedGenerator } from "./BundleBasedGenerator.js";
+import { makeInlineTxOutputDatum, type InlineTxOutputDatum, type TxOutputDatum } from "@helios-lang/ledger";
 
 type dataBridgeTypeInfo = {
     accessorCode: string;
@@ -51,7 +54,7 @@ type fullTypeDetails = typeDetails<dataBridgeTypeInfo>;
  * 2.  Each enum type is exposed as its name, with nested accessors for each enum variant,
  *       ... with the accessors for each variant depend on the number of fields in the variant.
  *
- *     - if the variant has no fields, the accessor directly returns <cast>.toUplcData(\{ variantName: \{\} \})
+ *     - if the variant has no fields, the accessor directly returns ‹cast›.toUplcData(\{ variantName: \{\} \})
  *
  *     - if the variant has a single field, the accessor is a function that takes the field value
  *        (with a strong type) and returns ‹cast›.toUplcData(\{ variantName: \{ fieldName: value \} \}
@@ -59,7 +62,7 @@ type fullTypeDetails = typeDetails<dataBridgeTypeInfo>;
  *     - if the variant has multiple fields, the accessor is a function that takes a strongly-typed
  *       object having the fields and returns ‹cast›.toUplcData(\{ variantName: \{ ...fields \} \})
  *
- * 3. Datum creator functions return a TxOutputDatum<"Inline">, not just UplcData.
+ * 3. Datum creator functions return a InlineTxOutputDatum, not just UplcData.
  *
  * 4. Reader types use an ergonomic type, where enum variants at any level are merged into a single
  *     type, not a union of its variants.  Enums and Structs with nested enums are also ergonomic.
@@ -102,7 +105,7 @@ export class dataBridgeGenerator
 
         return {
             castCode: `
-                 /*unused?*/ ${castMemberName}: StellarCast<${structName}Like, ${structName}> = new StellarCast<${structName}Like, ${structName}>(this.schema.${structName}, { isMainnet: true });
+                 /*unused?*/ ${castMemberName}: Cast<${structName}Like, ${structName}> = makeErgoCast<${structName}Like, ${structName}>(this.schema.${structName}, { isMainnet: true });
             `,
             accessorCode: `${structName}(fields: ${structName}Like}) {
                 return this.${castMemberName}.toUplcData(fields);
@@ -130,11 +133,10 @@ export class dataBridgeGenerator
         let imports =
             /*-----------------imports---------------*/
             `
-import { Cast } from "@helios-lang/contract-utils"
+import { makeErgoCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
-    ByteArrayLike,
  } from "@helios-lang/codec-utils";
 import type {
     Address,
@@ -146,7 +148,6 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
@@ -156,7 +157,7 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
- import { TxOutputDatum } from "@helios-lang/ledger";
+ import { makeInlineTxOutputDatum, type InlineTxOutputDatum, type TxOutputDatum } from "@helios-lang/ledger";
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 `; // ---------------------/imports------------------------------
@@ -165,7 +166,6 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
     DataBridge, 
     DataBridgeReaderClass ,
     EnumBridge,
-    StellarCast,
     impliedSeedActivityMaker,
     type tagOnly, 
     type hasSeed, 
@@ -201,10 +201,6 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                 `import type { IntersectedEnum } from "${this.mkRelativeImport(
                     inputFile,
                     "src/helios/typeUtils.js"
-                )}"\n` +
-                `import { StellarCast } from "${this.mkRelativeImport(
-                    inputFile,
-                    "src/helios/dataBridge/StellarCast.js"
                 )}"\n` +
                 `import { \n` +
                 `    impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, \n` +
@@ -430,7 +426,7 @@ ${this.includeStructReaders()}
                 this.additionalCastMemberDefs[castMemberName] =
                     `    /**
                 * uses unicode U+1c7a - sorts to the end */\n` +
-                    `    ${castMemberName} = new StellarCast<
+                    `    ${castMemberName} = makeErgoCast<
                 ${canonicalTypeName}, ${permissiveTypeName}
             >(${typeName}Schema, { isMainnet: true });\n`;
                 return (
@@ -520,7 +516,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             activityDetails.permissiveType;
         const activityTypeName = activityDetails.canonicalTypeName!;
         const castDef = `
-    ᱺᱺactivityCast = new StellarCast<
+    ᱺᱺactivityCast = makeErgoCast<
         ${canonicalType}, ${permissiveType}
     >(${schemaName}, { isMainnet: true }); // activityAccessorCast`;
 
@@ -582,7 +578,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         if (!datumDetails) {
             // debugger;
             this.datumTypeDetails;
-            return `datum=null // no datum type defined for this bundle (minter / rewards script)\n`;
+            return `datum = undefined // no datum type defined for this bundle (minter / rewards script)\n`;
         }
 
         if (datumDetails.typeSchema.kind === "variant") {
@@ -719,7 +715,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const castDef =
             `    /**
         * uses unicode U+1c7a - sorts to the end */\n` +
-            `    ᱺᱺcast = new StellarCast<
+            `    ᱺᱺcast = makeErgoCast<
         ${canonicalType}, ${permissiveType}
     >(${JSON.stringify(
         typeSchema
@@ -822,7 +818,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `    isCallable = true\n` +
             `   /**
             * uses unicode U+1c7a - sorts to the end */\n` +
-            `    ᱺᱺcast = new StellarCast<\n` +
+            `    ᱺᱺcast = makeErgoCast<\n` +
             `        ${typeDetails.canonicalTypeName},\n` +
             `        ${typeDetails.permissiveTypeName}\n` +
             `    >(${structName}Schema, { isMainnet: true });\n` +
@@ -852,7 +848,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const parentClass = isActivity
             ? `EnumBridge<isActivity>` // ${maybeNested}>`
             : `EnumBridge<JustAnEnum>`; //${maybeNested}>`;
-        const normalType = isDatum ? "TxOutputDatum" : "UplcData";
+        const normalType = isDatum ? "InlineTxOutputDatum" : "UplcData";
 
         const helperClassName = isNested
             ? this.nestedHelperClassName(typeDetails, isActivity)
@@ -867,7 +863,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `    /*mkEnumHelperClass*/\n` +
             `    /**
             *  uses unicode U+1c7a - sorts to the end */\n` +
-            `    ᱺᱺcast = new StellarCast<\n` +
+            `    ᱺᱺcast = makeErgoCast<\n` +
             `       ${typeDetails.canonicalTypeName},\n` +
             `       ${typeDetails.permissiveTypeName}\n` +
             `   >(${enumName}Schema, { isMainnet: true });\n` +
@@ -958,7 +954,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             .map((variantName) => {
                 const variantDetails = enumDetails.variants[variantName];
                 const fieldCount = variantDetails.fieldCount;
-                const normalType = isDatum ? "TxOutputDatum" : "UplcData";
+                const normalType = isDatum ? "InlineTxOutputDatum" : "UplcData";
 
                 if (fieldCount === 0) {
                     const enumPathExpr = this.getEnumPathExpr(variantDetails);
@@ -971,7 +967,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                         `        const uplc = this.mkUplcData({ ${variantName}: {} }, \n` +
                         `            ${enumPathExpr});\n` +
                         (isDatum
-                            ? `        return TxOutputDatum.Inline(uplc);\n`
+                            ? `        return makeInlineTxOutputDatum(uplc);\n`
                             : `        return uplc;\n`) +
                         `    } /* tagOnly variant accessor */`
                     );
@@ -1028,7 +1024,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const returnType = isActivity
             ? "isActivity"
             : isDatum
-            ? `TxOutputDatum<"Inline">`
+            ? `InlineTxOutputDatum`
             : "UplcData";
         if ("seed" == Object.keys(variantDetails.fields)[0] && !isDatum) {
             // && isSeededActivity
@@ -1134,7 +1130,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `     * generates ${
                 isActivity ? "isActivity/redeemer wrapper with" : ""
             } ${
-                isDatum ? "TxOutputDatum" : "UplcData"
+                isDatum ? "InlineTxOutputDatum" : "UplcData"
             } for ***${enumPathExpr}***\n` +
             `     * @remarks - ***${permissiveTypeName}*** is the same as the expanded field-types.\n` +
             (isNested
@@ -1152,7 +1148,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `            ${variantName}: fields \n` +
             `        }, ${enumPathExpr});\n` +
             (isDatum
-                ? `        return TxOutputDatum.Inline(uplc);\n`
+                ? `        return makeInlineTxOutputDatum(uplc);\n`
                 : `       return uplc;\n`) +
             `    } /*multiFieldVariant enum accessor*/`
         );
@@ -1176,7 +1172,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const returnType = isActivity
             ? "isActivity"
             : isDatum
-            ? "TxOutputDatum"
+            ? "InlineTxOutputDatum"
             : "UplcData";
 
         if ("enum" == oneField.typeSchema.kind) {
@@ -1263,7 +1259,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `     * generates ${
                 isActivity ? "isActivity/redeemer wrapper with" : ""
             } ${
-                isDatum ? "TxOutputDatum" : "UplcData"
+                isDatum ? "InlineTxOutputDatum" : "UplcData"
             } for ***${enumPathExpr}***\n${expandedTypeNote}` +
             (isNested
                 ? `    * ## Nested activity: \n` +
@@ -1279,7 +1275,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `           ${variantName}: ${argNameIsFieldName}\n` +
             `        }, ${enumPathExpr}); /*singleField enum variant*/\n` +
             (isDatum
-                ? `        return TxOutputDatum.Inline(uplc);\n`
+                ? `        return makeInlineTxOutputDatum(uplc);\n`
                 : `       return uplc;\n`) +
             `    }`
         );

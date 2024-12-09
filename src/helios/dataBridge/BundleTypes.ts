@@ -1,4 +1,4 @@
-import { genTypes, type TypeSchema } from "@helios-lang/contract-utils";
+import { genTypes } from "@helios-lang/contract-utils";
 import type {
     anyTypeDetails,
     EnumId,
@@ -17,9 +17,9 @@ import type {
 import type {
     EnumTypeSchema,
     VariantTypeSchema,
+    TypeSchema
 } from "@helios-lang/type-utils";
-import type { DataType } from "@helios-lang/compiler/src/index.js";
-import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.js";
+import type { DataType, EnumMemberType } from "@helios-lang/compiler";
 
 export interface TypeGenHooks<T> {
     registerNamedType?(details: anyTypeDetails): void;
@@ -58,7 +58,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         return this.topLevelTypeDetails.redeemer;
     }
 
-    get datumTypeDetails(): Option<anyTypeDetails> {
+    get datumTypeDetails(): anyTypeDetails | undefined {
         return this.topLevelTypeDetails.datum;
     }
 
@@ -70,7 +70,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         return {
             datum: dataTypes.datum
                 ? this.gatherTypeDetails(dataTypes.datum)
-                : null,
+                : undefined,
             redeemer: this.gatherTypeDetails(dataTypes.redeemer),
         };
     }
@@ -140,15 +140,15 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                 );
                 break;
             case "list":
-                this.gatherTypeDetails((dataType as any).types[0]);
+                this.gatherTypeDetails((dataType as any)._types[0]);
                 // this.gatherTypeDetails(type.itemType);
                 break;
             case "map":
-                this.gatherTypeDetails((dataType as any).types[0]);
-                this.gatherTypeDetails((dataType as any).types[1]);
+                this.gatherTypeDetails((dataType as any)._types[0]);
+                this.gatherTypeDetails((dataType as any)._types[1]);
             case "option":
                 // console.log("how to register an Option's nested DataType?");
-                this.gatherTypeDetails((dataType as any).types[0]);
+                this.gatherTypeDetails((dataType as any)._types[0]);
                 break;
             case "struct":
                 for (const field of dataType.fieldNames) {
@@ -407,11 +407,11 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                     "nestedField"
                 )}>`;
             case "option":
-                return `Option<${this.mkMinimalType(
+                return `${this.mkMinimalType(
                     typeVariety,
                     schema.someType,
                     useTypeNamesAt
-                )}>`;
+                )} | undefined`;
             case "struct":
                 if (typeVariety === "permissive") {
                     nameLikeOrName = $nameLike;

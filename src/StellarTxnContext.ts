@@ -1,30 +1,28 @@
-import {
-    Tx,
-    TxOutput,
-    TxInput,
-    WalletHelper,
-    PubKeyHash,
-    bytesToHex,
-} from "@hyperionbt/helios";
-import {
-    TxBuilder,
-    type Address,
-    type NetworkParams,
-    type Wallet,
-} from "@hyperionbt/helios";
-
 import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
 import type { hasUutContext } from "./Capo.js";
 import { UutName } from "./delegation/UutName.js";
-import type {
-    ActorContext,
-    SetupDetails,
-} from "./StellarContract.js";
+import type { ActorContext, SetupDetails } from "./StellarContract.js";
 import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";
 import type { UplcData } from "@helios-lang/uplc";
 import { UplcConsoleLogger } from "./UplcConsoleLogger.js";
-import { NetworkParamsHelper } from "@helios-lang/ledger-babbage";
 import type { isActivity, SeedAttrs } from "./ActivityTypes.js";
+import {
+    type TxBuilder,
+    type WalletHelper,
+    type Wallet,
+    makeTxBuilder,
+    makeWalletHelper,
+} from "@helios-lang/tx-utils";
+import {
+    makeNetworkParamsHelper,
+    type Address,
+    type NetworkParams,
+    type PubKeyHash,
+    type Tx,
+    type TxInput,
+    type TxOutput,
+} from "@helios-lang/ledger";
+import { bytesToHex } from "@helios-lang/codec-utils";
 
 /**
  * A txn context having a seedUtxo in its state
@@ -122,9 +120,8 @@ export interface anyState {
 export type uutMap = Record<string, unknown>;
 export const emptyUuts: uutMap = Object.freeze({});
 
-type addInputArgs = Parameters<TxBuilder["spend"]>;
-type addRefInputArgs = Parameters<TxBuilder["addRefInput"]>;
-type addRefInputsArgs = Parameters<TxBuilder["addRefInput"]>;
+// type addInputArgs = Parameters<TxBuilder["spend"]>;
+type addRefInputArgs = Parameters<TxBuilder["refer"]>;
 
 type RedeemerArg = {
     redeemer?: UplcData;
@@ -138,7 +135,7 @@ export type SubmitOptions = {
     beforeValidate?: (tx: Tx) => Promise<any> | any;
 };
 
-type MintUnsafeParams = Parameters<TxBuilder["mintUnsafe"]>;
+type MintUnsafeParams = Parameters<TxBuilder["mintPolicyTokensUnsafe"]>;
 type MintTokensParams = [
     MintUnsafeParams[0],
     MintUnsafeParams[1],
@@ -197,7 +194,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this.networkParams = setup.networkParams;
         this.parentTcx = parentTcx;
         this.setup = setup;
-        this.txb = new TxBuilder({
+        this.txb = makeTxBuilder({ 
             isMainnet: this.setup.isMainnet || false,
         });
         // const { uuts = { ...emptyUuts }, ...moreState } = state;
@@ -209,7 +206,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
     withParent(tcx: StellarTxnContext<any>) {
         this.parentTcx = tcx;
-        return this
+        return this;
     }
 
     get actorWallet() {
@@ -250,8 +247,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
     mintTokens(...args: MintTokensParams): StellarTxnContext<S> {
         const [policy, tokens, r = { redeemer: undefined }] = args;
         const { redeemer } = r;
-        if (this.txb.mintUnsafe) {
-            this.txb.mintUnsafe(policy, tokens, redeemer);
+        if (this.txb.mintPolicyTokensUnsafe) {
+            this.txb.mintPolicyTokensUnsafe(policy, tokens, redeemer);
         } else {
             //@ts-expect-error
             this.txb.mintTokens(policy, tokens, redeemer);
@@ -264,7 +261,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         // const { seedUtxo } = this.state;  // bad api-extractor!
         const seedUtxo = this.state.seedUtxo;
         // const { txId, utxoIdx: seedIndex } = seedUtxo.id; // ugh, api-extractor!
-        return { txId: seedUtxo.id.txId, idx: BigInt(seedUtxo.id.utxoIdx) };
+        return { txId: seedUtxo.id.txId, idx: BigInt(seedUtxo.id.index) };
     }
 
     reservedUtxos(): TxInput[] {
@@ -324,7 +321,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const seedUtxo = this.state.seedUtxo;
         return {
             txId: seedUtxo.id.txId,
-            idx: BigInt(seedUtxo.id.utxoIdx),
+            idx: BigInt(seedUtxo.id.index),
         };
     }
 
@@ -504,7 +501,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     addRefInputs<TCX extends StellarTxnContext<S>>(
         this: TCX,
-        ...args: addRefInputsArgs
+        ...args: addRefInputArgs
     ) {
         throw new Error(`deprecated`);
     }
@@ -517,11 +514,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (r && !r.redeemer) {
             console.log("activity without redeemer tag: ", r);
             throw new Error(
-                `addInput() redeemer must match the isActivity type {redeemer: ‹activity›}\n` 
-                    // JSON.stringify(r, delegateLinkSerializer)
+                `addInput() redeemer must match the isActivity type {redeemer: ‹activity›}\n`
+                // JSON.stringify(r, delegateLinkSerializer)
             );
         }
 
+        //@ts-expect-error probing for pubKeyHash
         if (input.address.pubKeyHash) this.neededSigners.push(input.address);
         this.inputs.push(input);
         if (this.parentTcx) {
@@ -542,63 +540,32 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this;
     }
 
-    XXXaddInputs<TCX extends StellarTxnContext<S>>(
-        this: TCX,
-        inputs: Parameters<TxBuilder["spend"]>[0] & Array<any>,
-        r: RedeemerArg
-    ): TCX {
-        if (r && !r.redeemer) {
-            console.log("activity without redeemer tag: ", r);
-            throw new Error(
-                `addInputs() redeemer must match the isActivity type {redeemer: ‹activity›}\n` 
-                    // JSON.stringify(r, delegateLinkSerializer)
-            );
-        }
-        for (const input of inputs) {
-            if (input.address.pubKeyHash)
-                this.neededSigners.push(input.address);
-        }
-        this.inputs.push(...inputs);
-        if (this.parentTcx) {
-            this.parentTcx.childReservedUtxos.push(...inputs);
-        }
-        this.txb.spend(inputs, r.redeemer);
-
-        return this;
-    }
 
     addOutput<TCX extends StellarTxnContext<S>>(
         this: TCX,
-        output: TxOutput
+        output: TxOutput 
     ): TCX {
         try {
-            this.txb.payUnsafe(output);
+            this.txb.addOutput(output);
             this.outputs.push(output);
         } catch (e: any) {
             console.log(
-                "Error adding output to txn: \n"+
-                "  | inputs:\n  | "+utxosAsString(this.inputs,  "\n  | ")+
-                "\n  | "+(dumpAny(this.outputs) as string) .split("\n").join( "\n  |   ")+
-                "\n... in context of partial tx above: failed adding output: \n  |  ",
+                "Error adding output to txn: \n" +
+                    "  | inputs:\n  | " +
+                    utxosAsString(this.inputs, "\n  | ") +
+                    "\n  | " +
+                    (dumpAny(this.outputs) as string)
+                        .split("\n")
+                        .join("\n  |   ") +
+                    "\n... in context of partial tx above: failed adding output: \n  |  ",
                 dumpAny(output),
-                "\n"+ e.message,
+                "\n" + e.message,
                 "\n   (see thrown stack trace below)"
             );
-            e.message = 
-                `addOutput: ${e.message}` +
-                    "\n   ...see logged details above"
+            e.message =
+                `addOutput: ${e.message}` + "\n   ...see logged details above";
             throw e;
         }
-
-        return this;
-    }
-
-    addOutputs<TCX extends StellarTxnContext<S>>(
-        this: TCX,
-        outputs: TxOutput[]
-    ): TCX {
-        this.outputs.push(...outputs);
-        this.txb.payUnsafe(outputs);
 
         return this;
     }
@@ -724,11 +691,17 @@ export class StellarTxnContext<S extends anyState = anyState> {
             const spares = await this.findAnySpareUtxos();
 
             const willSign = [...signers, ...this.neededSigners]
-                .map((addr) => addr.pubKeyHash)
+                .map((addr) =>
+                    addr.era == "Shelley" &&
+                    addr.spendingCredential.kind == "PubKeyHash"
+                        ? addr.spendingCredential
+                        : undefined
+                )
+                .filter((pkh) => !!pkh)
                 .flat(1) as PubKeyHash[];
             console.timeStamp?.(`submit(): addSIgners()`);
             this.txb.addSigners(...willSign);
-            const wHelper = wallet && new WalletHelper(wallet);
+            const wHelper = wallet && makeWalletHelper(wallet);
 
             // determine whether we need to request signing from wallet.
             // may involve adding signers to the txn
@@ -742,15 +715,20 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 if (!walletMustSign) {
                     // if any inputs from the wallet were added as part of finalizing,
                     // add the wallet's signature to the txn
-                    //@ts-expect-error on internal prop
-                    const inputs = this.txb.inputs as TxInput[];
+                    const inputs = this.txb.inputs
                     if (!inputs) throw new Error(`no inputs in txn`);
                     for (const input of inputs) {
                         if (!(await wHelper.isOwnAddress(input.address)))
                             continue;
                         this.neededSigners.push(input.address);
                         walletMustSign = true;
-                        this.txb.addSigners(input.address.pubKeyHash!);
+
+                        //@ts-expect-error on type-probe
+                        const pubKeyHash = input.address.pubKeyHash;
+
+                        if (pubKeyHash) {
+                            this.txb.addSigners(pubKeyHash);
+                        }   
                         break;
                     }
                 }
@@ -765,21 +743,25 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     logOptions: logger,
                     beforeValidate,
                 });
+                this.txb.validToTime
             } catch (e: any) {
                 // buildUnsafe shouldn't throw errors.
-                throw new Error(`this shouldn't be possible`);
-
+                
                 logger.logError(`txn build failed: ${e.message}`);
-                logger.logPrint(this.dump(tx!));
+                if (tx!) logger.logPrint(dumpAny(tx!) as string);
+
+                logger.logError(`  (it shouldn't be possible for buildUnsafe to be throwing errors!)`);
                 logger.flushError();
+                debugger
                 throw e;
             }
             if (tx.hasValidationError) {
                 const e = tx.hasValidationError;
+                debugger
                 const scriptContext =
                     "string" == typeof e ? undefined : e.scriptContext;
                 logger.logError(
-                    `Unexpected build-phase failure: \n  ${
+                    `tx validation failure: \n  ${
                         //@ts-expect-error
                         tx.hasValidationError.message || tx.hasValidationError
                     }`
@@ -973,15 +955,21 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     get currentSlot() {
-        return new NetworkParamsHelper(this.networkParams).timeToSlot(
+        return makeNetworkParamsHelper(this.networkParams).timeToSlot(
             this.setup.network.now
         );
     }
     private checkTxValidityDetails(tx: Tx) {
         const b = tx.body;
-        const db = tx.dump().body;
+        // const db = tx.dump().body;
         function getAttr(x: string) {
-            return tx.body[x] || db[x];
+            const qq = tx.body[x];
+            if (!qq) {
+                throw new Error(
+                    `no ${x} in tx.body: `
+                );
+            }
+            return qq;
         }
 
         const validFrom = getAttr("firstValidSlot");

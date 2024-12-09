@@ -1,34 +1,11 @@
-import {
-    Datum,
-} from "@hyperionbt/helios";
+import type { InlineTxOutputDatum } from "@helios-lang/ledger";
+import { makeCardanoClientHelper } from "@helios-lang/tx-utils";
 
-export {
-    Datum,
-} from "@hyperionbt/helios";
-//! because we are separately exporting all of helios,
-//! it's not necessary to import or export any of its members.
-//! ... but it's helpful to re-export some of its types.
+export { 
+    encodeUtf8 as textToBytes,
+    decodeUtf8 as bytesToText,
+} from "@helios-lang/codec-utils";
 
-export type {
-    Tx,
-    TxInput,
-    Address,
-    TxOutput,
-    ValidatorHash,
-    Value,
-    StakingValidatorHash,
-    StakeAddress,
-    Wallet,
-    WalletHelper,
-    Network,
-} from "@hyperionbt/helios";
-
-const DatumInline = Datum.Inline
-/**
- * Inline Datum for contract outputs
- * @public
- **/
-export type InlineDatum = ReturnType<typeof DatumInline>;
 /**
  * tuple expressing a token-name and count
  * @public
@@ -39,3 +16,6 @@ export type tokenNamesOrValuesEntry = [string | number[], bigint];
  * @public
  **/
 export type valuesEntry = [number[], bigint];
+
+export type InlineDatum = InlineTxOutputDatum
+

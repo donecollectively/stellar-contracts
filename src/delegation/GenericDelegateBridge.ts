@@ -1,5 +1,4 @@
 import type { UplcData } from "@helios-lang/uplc";
-import type { TxOutputDatum } from "@helios-lang/ledger-babbage";
 
 import type { isActivity } from "../ActivityTypes.js";
 import type {
@@ -25,6 +24,7 @@ import type {
     DelegateDatum$Ergo$capoStoredData, 
     ErgoDelegateDatum 
 } from "./UnspecializedDelegate.typeInfo.js";
+import type { InlineTxOutputDatum } from "@helios-lang/ledger";
 
 export type GenericDelegateBridgeClass = AbstractNew<GenericDelegateBridge>;
 export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
@@ -92,7 +92,7 @@ export type GenericDelegateDatum = Pick<ErgoDelegateDatum,
 export type SomeDgtDatumHelper = EnumBridge<JustAnEnum> &
 Omit<DelegateDatumHelper, "capoStoredData"> & {
     // capoStoredData(x: AbstractStoredDataLike): TxOutputDatum<"Inline">;
-    capoStoredData(x: unknown): TxOutputDatum<"Inline">;
+    capoStoredData(x: unknown): InlineTxOutputDatum;
 };
 // DelegateDatumHelper;
 

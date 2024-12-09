@@ -8,19 +8,6 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import {
-    Address,
-    Datum,
-    Signature,
-    Tx,
-    TxOutput,
-    TxInput,
-    Value,
-    bytesToText,
-    textToBytes,
-    ConstrData,
-} from "@hyperionbt/helios";
-
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
@@ -28,25 +15,18 @@ import { dumpAny } from "../src/diagnostics";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
  
 import {
-    SettingsAdapter,
     ParsedSettings,
 } from "../src/CapoSettingsTypes";
 import { Capo } from "../src/Capo";
 import {
-    DatumAdapter,
-    Numeric,
-    adapterParsedOnchainData,
-    offchainDatumType,
-} from "../src/DatumAdapter";
-import {
     AnyDataTemplate,
-    DelegatedDatumAdapter,
     hasAnyDataTemplate,
 } from "../src/delegation/DelegatedDatumAdapter";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
 import { defineRole } from "../src/delegation/RolesAndDelegates";
 import { DelegatedDataContract } from "../src/delegation/DelegatedDataContract";
 import { CapoCanHaveBadSettings } from "./customizing/BadSettingsCapo";
+import { textToBytes } from "../src/HeliosPromotedTypes";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 const it = itWithContext<localTC>;

@@ -1,5 +1,4 @@
 import { blake2b } from "@helios-lang/crypto";
-import { bytesToHex, textToBytes } from "@hyperionbt/helios";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { createFilter } from "rollup-pluginutils";
@@ -22,13 +21,13 @@ import esbuild from "rollup-plugin-esbuild";
 // import CapoBundle from "../Capo.hlbundle.js";
 import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
 import {
-    LoadedScriptsWriter,
     loadCompilerLib,
-    typeCheckScripts,
 } from "@helios-lang/contract-utils";
 import { genTypes } from "@helios-lang/contract-utils";
 import { StellarHeliosProject } from "./StellarHeliosProject.js";
 import { heliosRollupLoader } from "./heliosRollupLoader.js";
+import { bytesToHex } from "@helios-lang/codec-utils";
+import { textToBytes } from "../HeliosPromotedTypes.js";
 
 type TypeGenPluginState = {
     capoBundle: any; // CapoHeliosBundle;
@@ -238,7 +237,6 @@ export function heliosRollupTypeGen(
 
                 let replacedCapo = false
                 if (SomeBundleClass.isCapoBundle) {
-                    throw new Error(`any use case for this?`);
                     let skipInstallingThisOne = false; 
                     if (state.hasExplicitCapoBundle) {
                             let existingBundleProtoChainNames : string[]= [];
@@ -260,7 +258,6 @@ export function heliosRollupTypeGen(
                             } else {
                                 // console.log({id, x, y})
                                 debugger
-                                console.warn(`${SomeBundleClass.name}: replacing ${state.capoBundle.constructor.name}`);
                             }
 
 
@@ -308,16 +305,17 @@ export function heliosRollupTypeGen(
                     if (state.project.bundleEntries.size === 0 ) {
                         // just-in-time load of default capoBundle
                         const capoName = bundle.capoBundle.constructor.name;
-                        if (capoName !== "CapoHeliosBundle") {
-                            throw new Error(`expected ${capoName} to already be registered`)
+                        if (capoName == "CapoHeliosBundle" && !state.capoBundle) {
+                            state.project.loadBundleWithClass(
+                                "src/CapoHeliosBundle.ts", 
+                                bundle.capoBundle.constructor
+                            );
+                            state.project.generateBundleTypes(
+                                "src/CapoHeliosBundle.ts"
+                            );
                         }
-                        state.project.loadBundleWithClass(
-                            "src/CapoHeliosBundle.ts", 
-                            bundle.capoBundle.constructor
-                        );
-                        state.project.generateBundleTypes(
-                            "src/CapoHeliosBundle.ts"
-                        );
+                    } else {
+                        }
                     }
 
                     // try {

@@ -9,7 +9,6 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
@@ -24,11 +23,6 @@ import type { Cast } from "@helios-lang/contract-utils";
 
 import UnspecializedDelegateScript from "../delegation/UnspecializedDelegate.hl"
 import { CapoDelegateBundle } from "./CapoDelegateBundle.js"
-import type { EnumTypeMeta, HeliosScriptBundle, makesUplcActivityEnumData, singleEnumVariantMeta, tagOnly } from "../helios/HeliosScriptBundle.js";
-import type { 
-    IntLike,
-    ByteArrayLike,
- } from "@helios-lang/codec-utils";
 import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 
 

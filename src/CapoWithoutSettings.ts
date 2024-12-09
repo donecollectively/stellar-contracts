@@ -1,10 +1,4 @@
-import { ConstrData, Datum } from "@hyperionbt/helios";
 import { Capo } from "./Capo.js";
-import { DatumAdapter, type offchainDatumType, type adapterParsedOnchainData } from "./DatumAdapter.js";
-import { SettingsAdapter, type ParsedSettings } from "./CapoSettingsTypes.js";
-import type { DelegatedDatumAdapter } from "./delegation/DelegatedDatumAdapter.js";
-import type { StellarTestContext } from "./testing/StellarTestContext.js";
-import { CapoHeliosBundle } from "./CapoHeliosBundle.js";
 import { defineRole } from "./delegation/RolesAndDelegates.js";
 import { ReqtsController } from "./reqts/ReqtsController.js";
 
@@ -57,10 +51,6 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
     //     return new CapoHeliosBundle();
     // }
     
-    initDelegatedDatumWrappers(): Promise<Record<string, DelegatedDatumAdapter<any>>> {
-        return {} as any
-    }
-
     initDelegateRoles() {
         return {
             ... this.basicDelegateRoles(),

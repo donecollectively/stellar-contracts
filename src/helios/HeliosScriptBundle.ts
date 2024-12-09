@@ -1,5 +1,9 @@
+import { existsSync, readFileSync, statSync } from "fs";
+
 import type { UplcData } from "@helios-lang/uplc";
-import type { DataType } from "@helios-lang/compiler/src/index.js";
+import type { DataType } from "@helios-lang/compiler";
+import type { Source } from "@helios-lang/compiler-utils";
+import type { TxOutputId } from "@helios-lang/ledger";
 
 import type {
     EnumTypeSchema,
@@ -7,11 +11,9 @@ import type {
     VariantTypeSchema,
 } from "@helios-lang/type-utils";
 import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
-import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 
 import { DataBridge } from "./dataBridge/DataBridge.js";
 import { DataReader } from "./dataBridge/DataReader.js";
-import type { TxOutputId } from "@helios-lang/ledger-babbage";
 import type { hasSeedUtxo } from "../StellarTxnContext.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type { hasSeed, isActivity, SeedAttrs } from "../ActivityTypes.js";
@@ -301,12 +303,12 @@ export type makesUplcActivityEnumData<
  * each variant.
  */
 export type HeliosBundleTypeDetails<T=undefined> = {
-    datum: Option<typeDetails<T> | enumTypeDetails<T>>;
+    datum?: typeDetails<T> | enumTypeDetails<T>;
     redeemer: typeDetails<T> | enumTypeDetails<T>;
 };
 
 export type HeliosBundleTypes = {
-    datum: Option<DataType>;
+    datum?: DataType;
     redeemer: DataType;
 };
 const defaultNoDefinedModuleName = "‹default-needs-override›";
@@ -315,9 +317,26 @@ const defaultNoDefinedModuleName = "‹default-needs-override›";
 export abstract class HeliosScriptBundle {
     static isCapoBundle = false;
     abstract capoBundle: CapoHeliosBundle;
+    /**
+     * Constructs a base class for any Helios script bundle,
+     * given the class for an application-specific CapoHeliosBundle.
+     * @remarks
+     * The resulting class provides its own CapoHeliosBundle instance
+     * for independent use (specifically, for compiling this bundle using 
+     * the dependency libraries provided by the Capo bundle).
+     */
+    //
+//     * NOTE: the following is NOT needed for efficiency, and not implemented
+//     *, as the Capo
+//     * bundle referenced above should never need to be compiled via 
+//     * `this.capoBundle.program`.
+//     * 
+//     * XXX - For application runtime purposes, it can ALSO accept a 
+//     * XXX - CapoHeliosBundle instance as a constructor argument, 
+//     * XXX - enabling lower-overhead instantiation and re-use across 
+//     * XXX - various bundles used within a single Capo,
+//     */
     static using<CB extends CapoBundleClass>(c : CB) {
-        //@ts-expect-error returning a subclass without concrete implementations
-        // of the abstract members; hopefully the subclass will error if they're missing
         const newClass = class aCapoBoundBundle 
         extends HeliosScriptBundle {
         // implements hasCapoBundle {
@@ -347,8 +366,42 @@ export abstract class HeliosScriptBundle {
     constructor() {
         // this.devReloadModules()
     }
-    abstract get main(): HeliosModuleSrc;
-    abstract get modules(): HeliosModuleSrc[];
+
+    // these should be unnecessary if we arrange the rollup plugin
+    // ... to watch the underlying helios files for changes that would affect the hlbundle
+    // checkDevReload() {
+    //     const env = process.env.NODE_ENV;
+    //     if (env !== "test" && env !== "development") {
+    //         console.log("disabling module reloading in non-dev environment");
+    //         return
+    //     }
+    //     this.reloadModule(this.main);
+    //     for (const module of this.modules) {
+    //         this.reloadModule(module)
+    //     }
+    // }
+    // reloadModule(module: HeliosModuleSrc) {
+    //     // treat module.name as a filename.
+    //     // check if it can be opened as a file.
+    //     // reassign module.content to the file's contents.
+
+    //     if (existsSync(module.name)) {
+    //         console.log(`bundle module load: ${module.name}`);
+    //         const newContent = readFileSync(module.name, "utf8");
+    //         if (module.content !== newContent) {
+    //             console.log(`♻️ module reload: ${module.name}`);
+    //             module.content = newContent;
+    //         }
+    //     }
+    // }
+
+    get main() : Source {
+        throw new Error(`${this.constructor.name}: get main() must be implemented in subclass`);
+    }
+
+    get modules(): Source[] {
+        return []
+    };
     
     get bridgeClassName() {
         const mName = this.moduleName || this.program.name;
@@ -526,7 +579,7 @@ export abstract class HeliosScriptBundle {
         return this.datumTypeName || this.locateDatumType()?.name || "‹unknown datum-type name›";
     }
 
-    locateDatumType(): Option<DataType> {
+    locateDatumType(): DataType | undefined{
         let datumType: DataType | undefined;
         // let datumTypeName: string | undefined;
 

@@ -1,4 +1,7 @@
-import { genTypes, type TypeSchema } from "@helios-lang/contract-utils";
+import { 
+    genTypes
+} from "@helios-lang/contract-utils";
+
 import type {
     anyTypeDetails,
     EnumId,
@@ -14,12 +17,14 @@ import type {
 } from "../HeliosScriptBundle.js";
 import type {
     EnumTypeSchema,
+    TypeSchema,
     VariantTypeSchema,
 } from "@helios-lang/type-utils";
-import type { DataType } from "@helios-lang/compiler/src/index.js";
-import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.js";
+// import type { DataType } from "@helios-lang/compiler/src/index.js";
+// import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.js";
 import { BundleTypes } from "./BundleTypes.js";
 import { BundleBasedGenerator } from "./BundleBasedGenerator.js";
+
 
 /**
  * Gathers any number of types expressible for an on-chain Helios script,
@@ -94,21 +99,20 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
     TxInput,
     TxOutput,
     TxOutputId,
-    TxOutputDatum,
+    InlineTxOutputDatum,
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
 import type { 
     IntLike,
-    ByteArrayLike,
+    // BytesLike,
  } from "@helios-lang/codec-utils";
 
  type TimeLike = IntLike;

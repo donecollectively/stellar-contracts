@@ -1,17 +1,21 @@
-import * as helios from "@hyperionbt/helios";
-import { DatumAdapter  } from "../DatumAdapter.js";
 import type { StellarContract, anyDatumProps } from "../StellarContract.js";
+import type { UplcData } from "@helios-lang/uplc";
 import type { ContractBasedDelegate } from "./ContractBasedDelegate.js";
+import type { T } from "vitest/dist/chunks/environment.C5eAp3K6.js";
 
 /**
  * @public
  */
 export type AnyDataTemplate<TYPENAME extends string, others extends anyDatumProps> = {
-    [ key in string & ( "@id" | "tpe" | keyof Omit<others, "id"> ) ]: 
-        key extends "@id" ? string :  // same as the UUT-name on the data
-        key extends "tpe" ? TYPENAME : // for a type-indicator on the data 
+    [ key in string & ( "id" | "type" | keyof Omit<others, "id"> ) ]: 
+        key extends "id" ? string :  // same as the UUT-name on the data
+        key extends "type" ? TYPENAME : // for a type-indicator on the data 
             others[key]
 } // & anyDatumProps 
+
+export type minimalData<
+    T extends AnyDataTemplate<any, anyDatumProps>
+> = Omit<T, "id" | "type">
 
 /**
  * @public
@@ -68,55 +72,6 @@ export interface hasAnyDataTemplate<DATA_TYPE extends string, T extends anyDatum
 // 9odG1sPg==
 
 
-// TODO: update this to collaborate with a DelegatedDataController class 
-// (a new subclass of ContractBasedDelegate) for easier type-safety and developer experience.
-
-/**
- * @public
- */
-export abstract class DelegatedDatumAdapter<
-onChainType extends { id: string; type: string },
-    // OnchainBridgeType extends hasAnyDataTemplate<any, anyDatumProps>
-> extends DatumAdapter<onChainType, any>{
-    constructor(strella: ContractBasedDelegate) {
-        super(strella)
-    }
-    datumName = "DelegatedData";
-
-    /**
-     * creates and returns a delegated-data object suitable for storing
-     * in a Capo utxo.  The input argument should be a javascript object
-     * mapping keys in YOUR delegated-data type to UplcData objects.
-     * 
-     * The returned value is an inline datum, suitable for direct use in a TxOutput.
-     * Its content is a single-item list with an internal CIP-68-style key/value map, 
-     * tagged with the ConstrData index suitable for the Capo's DelegatedDatum 
-     * variant.
-     * 
-     * You may wish to use this.uplcString(), this.uplcint(), this.toMphUplc(), etc,
-     * to convert your data to UplcData objects.
-     * 
-     * @param d - an object map of the UplcData (suitable for use in `this.toMapData({...})`) 
-     */
-    // DelegatedData(d: DelegatedDataAttrs<onChainType>): helios.Datum {
-    //     const DD = this.capo.onChainDatumType.DelegatedData;
-    //     const {constrIndex} = DD.prototype._enumVariantStatement;
-
-    //     const CIP68version: bigint = 2n
-    //     const constrData = new helios.ConstrData(constrIndex, [
-    //         this.toMapData(
-    //             d
-    //         ),
-    //         this.uplcInt(CIP68version),
-    //         this.toMapData({})
-    //     ]);
-    //     //@ts-ignore !!!
-    //     return helios.Datum.inline(
-    //         constrData
-    //     )
-    // }    
-}
-
 type DelegatedDataAttrs<D extends AnyDataTemplate<any,any>> = {
-    [key in "@id" | "tpe" | keyof D /*Omit<D, "id" >*/ ]: helios.UplcData
+    [key in "@id" | "tpe" | keyof D /*Omit<D, "id" >*/ ]: UplcData
 }

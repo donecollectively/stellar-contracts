@@ -25,9 +25,6 @@ import type {
     DelegateSetup,
 } from "../delegation/RolesAndDelegates.js";
 import type { UutName } from "../delegation/UutName.js";
-import type { Address } from "@helios-lang/ledger-babbage";
-import type { DetectSettingsType } from "../CapoSettingsTypes.js";
-import { bytesToText, textToBytes } from "@hyperionbt/helios";
 
 declare namespace NodeJS {
     interface Global {
@@ -180,7 +177,7 @@ export class DefaultCapoTestHelper<
                 }
             );
 
-            const addr = this.wallet.address;
+            const addr = this.wallet.address
             const newLink = await capo.txnCreateOffchainDelegateLink(
                 helperTxn as any,
                 dgtLabel,
@@ -202,7 +199,7 @@ export class DefaultCapoTestHelper<
 
     mkDefaultCharterArgs(): MinimalCharterDataArgs {
         const addr = this.wallet.address;
-        console.log("test helper charter -> actor addr", addr.toBech32());
+        console.log("test helper charter -> actor addr", addr.toString());
         return {
             govAuthorityLink: {
                 config: {

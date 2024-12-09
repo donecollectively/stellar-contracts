@@ -2,21 +2,20 @@ import {
     Program,
     type CompileOptions,
     type ProgramProps,
+
 } from "@helios-lang/compiler";
 import type { Source } from "@helios-lang/compiler-utils";
 import {
-    UplcProgramV2,
-    // UplcProgramV3,
-    type UplcProgramV2I,
-    type UplcProgramV3I,
+    decodeUplcProgramV2FromCbor,
+    type UplcProgramV2,
 } from "@helios-lang/uplc";
 import { mkCachedHeliosProgramFS } from "./CachedHeliosProgramFs.js";
 import { mkCachedHeliosProgramWeb } from "./CachedHeliosProgramWeb.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { blake2b } from "@helios-lang/crypto";
-import { textToBytes } from "@hyperionbt/helios";
 import { existsSync } from "fs";
-import { extractName } from "@helios-lang/compiler/src/parse/parseHeader.js";
+import { extractName } from "@helios-lang/compiler";
+import { textToBytes } from "../HeliosPromotedTypes.js";
 
 export type CacheableProgramProps = ProgramProps & {
     /**
@@ -64,10 +63,10 @@ export type HeliosProgramCacheEntry = {
     createdBy: string;
     programElements: Record<string, string | Object>;
     optimizeOptions: OptimizeOptions;
-    optimized?: UplcProgramV2I | UplcProgramV3I;
-    unoptimized?: UplcProgramV2I | UplcProgramV3I;
-    optimizedIR?: Option<string>;
-    unoptimizedIR?: Option<string>;
+    optimized?: UplcProgramV2 // | UplcProgramV3I;
+    unoptimized?: UplcProgramV2 //| UplcProgramV3I;
+    optimizedIR?: string;
+    unoptimizedIR?: string;
 };
 export type StringifiedCacheEntry = {
     version: "PlutusV2" | "PlutusV3";
@@ -199,30 +198,29 @@ export class CachedHeliosProgram extends Program {
         const { optimized, optimizedIR, unoptimized, unoptimizedIR, version } =
             fromCache;
         if (version !== "PlutusV2" ) throw new Error(`pv3supportpending`)
-        const TargetClass = UplcProgramV2;
             // TargetClass = version == "PlutusV2" ? UplcProgramV2 : UplcProgramV3;
         const o = optimized
-            ? TargetClass.fromCbor(optimized, {
+            ? decodeUplcProgramV2FromCbor(optimized, {
                   ir: optimizedIR,
               })
             : undefined;
         const u = unoptimized
-            ? TargetClass.fromCbor(unoptimized, {
+            ? decodeUplcProgramV2FromCbor(unoptimized, {
                   ir: unoptimizedIR,
               })
             : undefined;
         if (o) {
             if (u) {
-                return o.withAlt(u as any) as UplcProgramV2 // | UplcProgramV3;
+                return o.withAlt(u) // | UplcProgramV3;
             }
-            return o;
+            return o 
         }
         if (!u) {
             throw new Error(
                 `🐢${this.id}: No optimized or unoptimized program in cache entry: ${fromCache}`
             );
         }
-        return u;
+        return u 
     }
 
     static serializeCacheEntry(entry: HeliosProgramCacheEntry): string {
@@ -471,7 +469,7 @@ export class CachedHeliosProgram extends Program {
      */
     async compileCached(
         optimizeOrOptions: boolean | CompileOptionsForCachedHeliosProgram
-    ): Promise<UplcProgramV2> { // | UplcProgramV3> {
+    ): Promise<UplcProgramV2> { // Promise<UplcProgramV2 | UplcProgramV3> {
         const options: CompileOptionsForCachedHeliosProgram =
             typeof optimizeOrOptions === "boolean"
                 ? { optimize: optimizeOrOptions }
@@ -546,6 +544,7 @@ export class CachedHeliosProgram extends Program {
             this.storeInCache(cacheKey, cacheEntry);
             return program;
         } catch (e: any) {
+            debugger
             console.log(
                 `🐢${this.id}: compiler cache: throwing compile error: ${e.message} (not caching)`
             );
@@ -582,10 +581,10 @@ export class CachedHeliosProgram extends Program {
 
     async getFromCache(
         cacheKey: string
-    ): Promise<Option<UplcProgramV2 /* | UplcProgramV3 */>> {
+    ): Promise<undefined | UplcProgramV2 /* | UplcProgramV3 */> {
         const cacheEntry = await this.ifCached(cacheKey);
         if (cacheEntry) return this.programFromCacheEntry(cacheEntry);
-        return null;
+        return undefined;
     }
 
     get subclass(): typeof CachedHeliosProgram {

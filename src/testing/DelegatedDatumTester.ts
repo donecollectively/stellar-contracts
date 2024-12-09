@@ -1,6 +1,3 @@
-import * as helios from "@hyperionbt/helios";
-const { Value, TxOutput } = helios;
-
 import type {
     Capo,
     FoundDatumUtxo,
@@ -21,6 +18,8 @@ import type {
 } from "./DelegatedDatumTester.typeInfo.js"
 
 import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlbundle.js"
+import { textToBytes } from "../HeliosPromotedTypes.js";
+import { makeTxOutput } from "@helios-lang/ledger";
 
 export class DelegatedDatumTester extends DelegatedDataContract {
     dataBridgeClass = DelegateDatumTesterDataBridge
@@ -40,7 +39,7 @@ export class DelegatedDatumTester extends DelegatedDataContract {
 
     exampleData() : DgDatumTestDataLike {
         return {
-            id: helios.textToBytes("tData-‹replaceMe›"),
+            id: textToBytes("tData-‹replaceMe›"),
             type: "testData",
             name: "Fred",
             number: 42,
@@ -65,7 +64,7 @@ export class DelegatedDatumTester extends DelegatedDataContract {
             this.activity.CreatingTData(tcx)
         );
 
-        const testDataOutput = new helios.TxOutput(
+        const testDataOutput = makeTxOutput(
             this.capo.address,
             this.uh.mkMinTv(this.capo.mph, tcx2.state.uuts.tData),
             await this.mkDatumDelegatedDataRecord({

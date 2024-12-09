@@ -1,26 +1,26 @@
-import {
-    Address,
-    MintingPolicyHash,
-    Program,
-    TxOutput,
-    TxInput,
-    Value,
-    Datum,
-    type UplcData,
-    ListData,
-    ConstrData,
-} from "@hyperionbt/helios";
-import * as helios from "@hyperionbt/helios";
-import { Cast } from "@helios-lang/contract-utils";
-import { TxOutputDatum } from "@helios-lang/ledger-babbage";
+import { 
+    makeAddress,
+    makeTxOutput,
+    makeValidatorHash,
+    type Address,
+    type MintingPolicyHash,
+    type NetworkParams, 
+    type TxInput,
+    type ValidatorHash, 
+    type TxOutput,
+    type TxOutputDatum,
+    type Value,
+    makeMintingPolicyHash,
+    makeInlineTxOutputDatum,
+ } from "@helios-lang/ledger";
+
+ import type { CardanoClient, Emulator, Wallet } from "@helios-lang/tx-utils";
 import type {
-    UplcProgramV2I,
-    UplcProgramV3I,
     UplcProgramV2,
     UplcProgramV3,
+    UplcData,
 } from "@helios-lang/uplc";
-import type { DataType } from "@helios-lang/compiler";
-import type { Network, Wallet } from "@hyperionbt/helios";
+import type { DataType, Program, EnumMemberType } from "@helios-lang/compiler";
 export type anyUplcProgram = UplcProgramV2;
 // | UplcProgramV3;
 
@@ -31,12 +31,7 @@ import {
 } from "./StellarTxnContext.js";
 import { betterJsonSerializer } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
-import {
-    HeliosModuleSrc,
-    type HeliosModuleOptions,
-} from "./helios/HeliosModuleSrc.js";
 import type { Capo } from "./Capo.js";
-import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
 // import { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 // import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
@@ -45,9 +40,23 @@ import {
     type HeliosBundleClass,
 } from "./helios/HeliosScriptBundle.js";
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
-import { DataBridge, ContractDataBridge, DataBridgeReaderClass, ContractDataBridgeWithOtherDatum, ContractDataBridgeWithEnumDatum } from "./helios/dataBridge/DataBridge.js";
-import type { mustFindConcreteContractBridgeType, findActivityType, findDatumType, findReadDatumType, possiblyAbstractContractBridgeType, AbstractNew } from "./helios/dataBridge/BridgeTypeUtils.js";
+import {
+    DataBridge,
+    ContractDataBridge,
+    DataBridgeReaderClass,
+    ContractDataBridgeWithOtherDatum,
+    ContractDataBridgeWithEnumDatum,
+} from "./helios/dataBridge/DataBridge.js";
+import type {
+    mustFindConcreteContractBridgeType,
+    findActivityType,
+    findDatumType,
+    findReadDatumType,
+    possiblyAbstractContractBridgeType,
+    AbstractNew,
+} from "./helios/dataBridge/BridgeTypeUtils.js";
 import { getSeed, type hasSeed, type SeedAttrs } from "./ActivityTypes.js";
+import { makeCast } from "@helios-lang/contract-utils";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -249,8 +258,8 @@ export function partialTxn(proto, thingName, descriptor) {
 export async function findInputsInWallets(
     v: Value,
     searchIn: WalletsAndAddresses,
-    network: Network
-): Promise<TxInput<null, any>> {
+    network: CardanoClient
+): Promise<TxInput<any>> {
     const { wallets, addresses } = searchIn;
 
     const lovelaceOnly = v.assets.isZero();
@@ -260,7 +269,7 @@ export async function findInputsInWallets(
 
     for (const w of wallets) {
         const [a] = await w.usedAddresses;
-        console.log("finding funds in wallet", a.toBech32().substring(0, 18));
+        console.log("finding funds in wallet", a.toString().substring(0, 18));
         const utxos = await w.utxos;
         for (const u of utxos) {
             if (lovelaceOnly) {
@@ -306,8 +315,8 @@ export async function findInputsInWallets(
  * @public
  **/
 export type SetupDetails = {
-    network: Network;
-    networkParams: helios.NetworkParams;
+    network: CardanoClient | Emulator;
+    networkParams: NetworkParams;
     isMainnet?: boolean;
     actorContext: ActorContext;
     isTest?: boolean;
@@ -348,7 +357,7 @@ type scriptPurpose =
     | "non-script";
 
 type ComputedScriptProperties = Partial<{
-    vh: helios.ValidatorHash;
+    vh: ValidatorHash;
     addr: Address;
     mph: MintingPolicyHash;
     program: CachedHeliosProgram;
@@ -360,7 +369,7 @@ const isInternalConstructor = Symbol("internalConstructor");
 export type ActorContext<WTP extends Wallet = Wallet> = {
     wallet?: WTP;
 };
-export type NetworkContext<NWT extends Network = Network> = {
+export type NetworkContext<NWT extends CardanoClient = CardanoClient> = {
     network: NWT;
 };
 
@@ -393,8 +402,8 @@ export class StellarContract<
     partialConfig?: Partial<ConfigType>;
     contractParams?: UplcRecord<ConfigType>;
     setup: SetupDetails;
-    network: Network;
-    networkParams: helios.NetworkParams;
+    network: CardanoClient | Emulator;
+    networkParams: NetworkParams;
     actorContext: ActorContext<any>;
     // isTest?: boolean
     static get defaultParams() {
@@ -408,12 +417,12 @@ export class StellarContract<
 
     /** each StellarContracts subclass needs to provide a scriptBundle class.
      * @remarks
-     * Your script bundle MUST be defined in a separate file using a convention of 
-     * `‹scriptName›.hlbundle.ts`, and exported as a default class.  It should inherit 
-     * from HeliosScriptBundle or one of its subclasses.  Stellar contracts processes 
-     * this file, analyzes the on-chain types defined in your Helios sources, and generates 
-     * Typescript types and a data-bridging class for your script.  
-     * 
+     * Your script bundle MUST be defined in a separate file using a convention of
+     * `‹scriptName›.hlbundle.ts`, and exported as a default class.  It should inherit
+     * from HeliosScriptBundle or one of its subclasses.  Stellar contracts processes
+     * this file, analyzes the on-chain types defined in your Helios sources, and generates
+     * Typescript types and a data-bridging class for your script.
+     *
      * Once the data-bridge class is generated, you should import it into your contract
      * module and assign it to your `dataBridgeClass` attribute.
      */
@@ -438,8 +447,7 @@ export class StellarContract<
      * note that ***mint delegates*** do in fact have datum types. If you are defining
      * a custom delegate of that kind, you will need to define this attribute.
      */
-    dataBridgeClass: Option<AbstractNew<ContractDataBridge>> = null;
-    // dataBridgeClass : Option<typeof ContractDataBridgeWithEnumDatum | typeof ContractDataBridgeWithOtherDatum> = null
+    dataBridgeClass: AbstractNew<ContractDataBridge> | undefined = undefined;
 
     /**
      * The `onchain` object provides access to all bridging capabilities for this contract script.
@@ -447,17 +455,17 @@ export class StellarContract<
      * Its nested attributes include:
      *  - `types` - a collection of all the on-chain types defined in the script, with data-creation helpers for each
      *  - `activity` - a creation helper for the activities/redeemers defined in the script
-     * 
+     *
      * Scripts that use datum types (not including minters) will also have:
      *  - `datum` - a data-creation helper for the datum type of the script
      *  - `readDatum` - a data-reading helper for the datum type of the script
-     * 
+     *
      * ### Low-level type access
      * For low-level access (it's likely you don't need to use this) for on-chain types, the `reader` attribute (aka `offchain`) exists: .
      *  - `reader` - a collection of data-reading helpers for the on-chain types, given UPLC data known to be of that type
      */
-    get onchain() : possiblyAbstractContractBridgeType<this> {
-        return this.getOnchainBridge()
+    get onchain(): possiblyAbstractContractBridgeType<this> {
+        return this.getOnchainBridge();
     }
 
     /**
@@ -465,38 +473,38 @@ export class StellarContract<
      * @remarks
      * Its nested attributes include all the on-chain types defined in the script, with data-reading helpers for each.
      * This is useful for reading on-chain data in off-chain code.
-     * 
+     *
      * ### Warning: low-level typed-data access!
-     * 
-     * Note that these readers will work properly with UPLC data known to be of the correct type.  If you 
+     *
+     * Note that these readers will work properly with UPLC data known to be of the correct type.  If you
      * encounter errors related to these results, it's likely you are using the wrong reader for the data you
      * have in hand.
-     * 
+     *
      * For the typical use-case of reading the datum type from a UTxO held in the contract, this is not a problem,
      * and note that the `readDatum` helper provides a shortcut for this most-common use-case.
-     * 
-     * If you're not sure what you're doing, it's likely that this is not the right tool for your job. 
+     *
+     * If you're not sure what you're doing, it's likely that this is not the right tool for your job.
      */
-    get offchain() : possiblyAbstractContractBridgeType<this>["reader"] {
+    get offchain(): possiblyAbstractContractBridgeType<this>["reader"] {
         // ensures the dataBridge is initialized by accessing the 'onchain' getter
         // accesses its data-reader.
-        return this.getOnchainBridge().reader 
+        return this.getOnchainBridge().reader;
     }
 
-    get reader() : possiblyAbstractContractBridgeType<this>["reader"] {
+    get reader(): possiblyAbstractContractBridgeType<this>["reader"] {
         // ensures the dataBridge is initialized by accessing the 'onchain' getter
         // accesses its data-reader.
-        return this.getOnchainBridge().reader 
+        return this.getOnchainBridge().reader;
     }
 
     /**
      * Converts UPLC from an on-chain datum object to a typed off-chain datum object.
-     * 
+     *
      * Given a **utxo with a datum of the contract's datum type**, this method will convert the UPLC datum
      * to a typed off-chain datum object.
-     * 
+     *
      * ### Standard WARNING
-     * 
+     *
      * If the datum's structure is not of the expected type, this method MAY throw an error, or it might
      * return data that can cause problems somewhere else in your code.  That won't happen if you're
      * following the guidance above.
@@ -504,10 +512,12 @@ export class StellarContract<
     get newReadDatum(): findReadDatumType<this> {
         const bridge = this.getOnchainBridge();
         //x@ts-expect-error probing for presence
-        const {readDatum} = bridge;
+        const { readDatum } = bridge;
         if (!readDatum) {
             throw new Error(
-                `${(this as any).constructor.name}: this contract script doesn't use datum`
+                `${
+                    (this as any).constructor.name
+                }: this contract script doesn't use datum`
             );
         }
 
@@ -517,7 +527,7 @@ export class StellarContract<
     _bundle: HeliosScriptBundle | undefined;
     getBundle(): HeliosScriptBundle {
         if (!this._bundle) {
-            this._bundle = this.scriptBundle() 
+            this._bundle = this.scriptBundle();
             // this._bundle.checkDevReload()
         }
         return this._bundle;
@@ -558,20 +568,20 @@ export class StellarContract<
      * With a defined script bundle, `import YourScriptNameBundle from "./YourBundleName.hlbundle.js"`
      * to your StellarContracts class module, and define a `scriptBundle() { return new YourScriptNameBundle() }` or
      * similar method in that class.
-     * 
+     *
      * This results in a generated **`.typeInfo.ts`** and **`.bridge.ts`** with complete
      * typescript bindings for your on-chain script (trouble? check Plugin setup below).
-     * 
+     *
      * #### Step 2: Import the generated bridge class
      * Using the generated .bridge file:
-     * > `import YourScriptNameDataBridge from "./YourBundleName.bridge.js"` 
-     * 
+     * > `import YourScriptNameDataBridge from "./YourBundleName.bridge.js"`
+     *
      * ... and set the `dataBridgeClass` property in your class:
-     * 
+     *
      * >    `dataBridgeClass = YourScriptNameDataBridge`
-     * 
+     *
      * ### Plugin Setup
-     * 
+     *
      * The activity types should be available through type-safe auto-complete in your editor.  If not,
      * you may need to install and configure the Stellar Contracts rollup plugins for importing .hl
      * files and generating .d.ts for your .hlbundle.js files.  See the Stellar Contracts development
@@ -582,7 +592,7 @@ export class StellarContract<
     //     const bridge = this.onchain;
     //     // each specific bridge has to have an activity type, but this code can't
     //     // introspect that type.  It could be a getter OR a method, and Typescript can only
-    //     // be told it is one, or the other, concretely.  
+    //     // be told it is one, or the other, concretely.
     //     // findActivityType() does probe for the specific type for specific contracts,
     //     // at the **interface** level, but this code has no visibility of that.
 
@@ -607,7 +617,7 @@ export class StellarContract<
      * @remarks
      *
      */
-    _dataBridge?: Option<ContractDataBridge>; // Option<BundleType<this>["mkDatum"]>
+    _dataBridge?: ContractDataBridge
     // get mkDatum() : findDatumType<this> {
     //     //x@ts-expect-error probing for presence
     //     if (!this.onchain?.datum) throw new Error(`${this.constructor.name}: no datum is used on this type of script`);
@@ -627,17 +637,19 @@ export class StellarContract<
                         }: each contract script needs a dataBridgeClass = dataBridge‹YourScriptName›\n` +
                             `  ... this dataBridge class is generated by heliosRollupTypeGen \n` +
                             `  ... and imported (\`import dataBridge‹something› from "./‹yourScriptName›.bridge.js"\`)\n` +
-                            `      This critical class converts between off-chain and on-chain typed data\n\n`+
-                            `Note: if you haven't customized the mint AND spend delegates for your Capo, \n`+
-                            `  ... you might want to define both of those roles using a single \n`+
-                            `  ... subclass of the BasicMintDelegate. That fixes the most common \n`+
+                            `      This critical class converts between off-chain and on-chain typed data\n\n` +
+                            `Note: if you haven't customized the mint AND spend delegates for your Capo, \n` +
+                            `  ... you might want to define both of those roles using a single \n` +
+                            `  ... subclass of the BasicMintDelegate. That fixes the most common \n` +
                             `  ... first-time setup problems of this kind.`
                     );
                 } else {
-                    console.log(`${this.constructor.name} dataBridgeClass = NONE`);
-                    this._dataBridge = null;
+                    console.log(
+                        `${this.constructor.name} dataBridgeClass = NONE`
+                    );
+                    this._dataBridge = undefined;
                     //@ts-expect-error setting to degenerate type
-                    return null
+                    return null;
                 }
             }
             const datumType = this.getBundle().locateDatumType();
@@ -669,9 +681,9 @@ export class StellarContract<
             }
             // if the code above did its job right, the dataBridge matches the expected type.
             // ... cast it, rather than jumping through hoops to make TS happy
-            return (this._dataBridge as any);
+            return this._dataBridge as any;
         }
-        
+
         if (!this._dataBridge) {
             throw new Error(
                 `${this.constructor.name}: this contract script doesn't have a dataBridgeClass defined`
@@ -856,7 +868,8 @@ export class StellarContract<
         const { vh } = this._cache;
         if (vh) return vh;
         // console.log(this.constructor.name, "cached vh", vh?.hex || "none");
-        const nvh = this.compiledScript.hash();
+        
+        const nvh = this.compiledScript.hash()
         // console.log("nvh", nvh.hex);
         // if (vh) {
         //     if (!vh.eq(nvh)) {
@@ -864,9 +877,7 @@ export class StellarContract<
         //         debugger
         //     }
         // }
-        return (this._cache.vh = new helios.ValidatorHash(
-            this.compiledScript.hash()
-        ));
+        return (this._cache.vh = makeValidatorHash(nvh))
     }
 
     //  todo: stakingAddress?: Address or credential or whatever;
@@ -879,8 +890,7 @@ export class StellarContract<
             "TODO TODO TODO - ensure each contract can indicate the right stake part of its address"
         );
         console.log("and that the onchain part also supports it");
-
-        const nAddr = Address.fromHash(
+        const nAddr = makeAddress(
             this.setup.isMainnet || false,
             this.validatorHash
         );
@@ -900,7 +910,7 @@ export class StellarContract<
         const { mph } = this._cache;
         if (mph) return mph;
         // console.log(this.constructor.name, "_mph", this._mph?.hex || "none");
-        const nMph = new helios.MintingPolicyHash(this.compiledScript.hash());
+        const nMph = makeMintingPolicyHash(this.compiledScript.hash());
         // console.log("nMph", nMph.hex);
         // if (this._mph) {
         //     if (!this._mph.eq(nMph)) {
@@ -920,11 +930,11 @@ export class StellarContract<
 
         let result: string;
         if ("minting" == this.purpose) {
-            const b32 = this.mintingPolicyHash!.toBech32();
+            const b32 = this.mintingPolicyHash!.toString();
             //!!! todo: verify bech32 checksum isn't messed up by this:
             result = b32.replace(/^asset/, "mph");
         } else {
-            result = this.address.toBech32();
+            result = this.address.toString();
         }
         // if (this._identity) {
         //     if (this._identity != result) {
@@ -961,7 +971,7 @@ export class StellarContract<
     //  ... EXPECTS  the value to already have minUtxo calculated on it.
     @partialTxn // non-activity partial
     txnKeepValue(tcx: StellarTxnContext, value: Value, datum: InlineDatum) {
-        tcx.addOutput(new TxOutput(this.address, value, datum));
+        tcx.addOutput(makeTxOutput(this.address, value, datum));
 
         return tcx;
     }
@@ -1073,7 +1083,7 @@ export class StellarContract<
     }
 
     getSeed(arg: hasSeed) {
-        return getSeed(arg)
+        return getSeed(arg);
     }
 
     /**
@@ -1183,11 +1193,11 @@ export class StellarContract<
                     ` ... variants in this enum: ${variantNames.join(", ")}`
             );
         }
-        return variantType;
+        return variantType.asEnumMemberType;
     }
 
     inlineDatum(datumName: string, data: any) {
-        return TxOutputDatum.Inline(
+        return makeInlineTxOutputDatum(
             this.typeToUplc(this.onChainDatumType, {
                 [datumName]: data,
             })
@@ -1196,7 +1206,7 @@ export class StellarContract<
 
     typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
         const schema = type.toSchema();
-        const cast = new Cast(schema, {
+        const cast = makeCast(schema, {
             isMainnet: this.setup.isMainnet || false,
         });
         return cast.toUplcData(data, path);
@@ -1207,56 +1217,62 @@ export class StellarContract<
         const { paramTypes } = this.program;
 
         return Object.fromEntries(
-            Object.entries(params).map(([paramName, data]) => {
-                const fullName = `${namespace}::${paramName}`;
-                // console.log("  -- param", fullName);
-                const thatType = paramTypes[fullName];
-                if (!thatType) {
-                    // group the params by namespace to produce a list of:
-                    //   "namespace::{ ... paramNames ... }"
-                    //   "namespace2::{ ... paramNames ... }"
-                    const availableParams = Object.entries(paramTypes).reduce(
-                        (acc, [k, v]) => {
+            Object.entries(params)
+                .map(([paramName, data]) => {
+                    const fullName = `${namespace}::${paramName}`;
+                    // console.log("  -- param", fullName);
+                    const thatType = paramTypes[fullName];
+                    if (!thatType) {
+                        // group the params by namespace to produce a list of:
+                        //   "namespace::{ ... paramNames ... }"
+                        //   "namespace2::{ ... paramNames ... }"
+                        const availableParams = Object.entries(
+                            paramTypes
+                        ).reduce((acc, [k, v]) => {
                             const [ns, name] = k.split("::");
                             if (!acc[ns]) acc[ns] = [];
                             acc[ns].push(name);
                             return acc;
-                        },
-                        {} as Record<string, string[]>
-                    );
-                    // if (Array.isArray(data)) {
-                    //     // probably it's wrong to categorically reject arrays,
-                    //     // but if you have this problem, please let us know and we'll help you resolve it.
-                    //     throw new Error(
-                    //         `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
-                    //             `  ... expected single value, got array`
-                    //     );
-                    // }
+                        }, {} as Record<string, string[]>);
+                        // if (Array.isArray(data)) {
+                        //     // probably it's wrong to categorically reject arrays,
+                        //     // but if you have this problem, please let us know and we'll help you resolve it.
+                        //     throw new Error(
+                        //         `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
+                        //             `  ... expected single value, got array`
+                        //     );
+                        // }
 
-                    // throw an error showing all the namespaces and all the short params in each
-                    const availableScriptParams = Object.entries(
-                        availableParams
-                    )
-                        .map(([ns, names]) => `  ${ns}::{${names.join(", ")}}`)
-                        .join("\n");
-                    // console.log("availableScriptParams", availableScriptParams);
-                    if (paramName == "0") {
-                        throw new Error(`numeric param name is probably wrong`);                        
+                        // throw an error showing all the namespaces and all the short params in each
+                        const availableScriptParams = Object.entries(
+                            availableParams
+                        )
+                            .map(
+                                ([ns, names]) =>
+                                    `  ${ns}::{${names.join(", ")}}`
+                            )
+                            .join("\n");
+                        // console.log("availableScriptParams", availableScriptParams);
+                        if (paramName == "0") {
+                            throw new Error(
+                                `numeric param name is probably wrong`
+                            );
+                        }
+                        if ((paramName = "addrHint")) {
+                            // silently ignore this one
+                            return undefined;
+                        }
+                        throw new Error(
+                            `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
+                                `  ... expected one of: ${availableScriptParams}`
+                        );
                     }
-                    if (paramName="addrHint") {
-                        // silently ignore this one
-                        return undefined
-                    } 
-                    throw new Error(
-                        `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
-                            `  ... expected one of: ${availableScriptParams}`
-                    );
-                }
-                return [
-                    fullName,
-                    this.typeToUplc(thatType, data, `params[${fullName}]`),
-                ];
-            }).filter((x) => !!x)
+                    return [
+                        fullName,
+                        this.typeToUplc(thatType, data, `params[${fullName}]`),
+                    ];
+                })
+                .filter((x) => !!x)
         ) as UplcRecord<ConfigType>;
     }
 
@@ -1268,429 +1284,431 @@ export class StellarContract<
         return (this._cache.program = program);
     }
 
-    async readDatum<
-        DPROPS extends anyDatumProps,
-        adapterType extends DatumAdapter<DPROPS, any> | undefined = undefined
-    >(
-        datumNameOrAdapter: string | adapterType,
-        datum: Datum | InlineDatum,
-        ignoreOtherTypes?: "ignoreOtherTypes"
-    ): Promise<
-        | (adapterType extends DatumAdapter<any, any> ? adapterType : DPROPS)
-        | undefined
-    > {
-        const ts1 = Date.now();
-        const hasAdapter = datumNameOrAdapter instanceof DatumAdapter;
-        const datumName: string = hasAdapter
-            ? datumNameOrAdapter.datumName
-            : (datumNameOrAdapter as string);
+    // async readDatum<
+    //     DPROPS extends anyDatumProps,
+    //     adapterType extends DatumAdapter<DPROPS, any> | undefined = undefined
+    // >(
+    //     datumNameOrAdapter: string | adapterType,
+    //     datum: InlineDatum,
+    //     ignoreOtherTypes?: "ignoreOtherTypes"
+    // ): Promise<
+    //     | (adapterType extends DatumAdapter<any, any> ? adapterType : DPROPS)
+    //     | undefined
+    // > {
+    //     throw new Error(`obsolete?`);
 
-        const scriptDatumType = this.onChainDatumType;
-        const thisDatumType = scriptDatumType.typeMembers[datumName];
-        if (!thisDatumType) throw new Error(`invalid datumName ${datumName}`);
+    //     const ts1 = Date.now();
+    //     const hasAdapter = datumNameOrAdapter instanceof DatumAdapter;
+    //     const datumName: string = hasAdapter
+    //         ? datumNameOrAdapter.datumName
+    //         : (datumNameOrAdapter as string);
 
-        const cast = new Cast(scriptDatumType.toSchema(), {
-            isMainnet: this.setup.isMainnet || false,
-        });
+    //     const scriptDatumType = this.onChainDatumType;
+    //     const thisDatumType = scriptDatumType.typeMembers[datumName];
+    //     if (!thisDatumType) throw new Error(`invalid datumName ${datumName}`);
 
-        const parsedData = (cast.fromUplcData(datum.data) as any)[
-            datumName
-        ] as DPROPS;
-        const ts2 = Date.now();
-        // throw new Error(`todo: parse some datum here`);
-        // // console.log(` ----- read datum ${datumName}`)
+    //     const cast = new Cast(scriptDatumType.toSchema(), {
+    //         isMainnet: this.setup.isMainnet || false,
+    //     });
 
-        // if (!datum.isInline())
-        //     throw new Error(
-        //         `datum must be an InlineDatum to be readable using readDatum()`
-        //     );
+    //     const parsedData = (cast.fromUplcData(datum.data) as any)[
+    //         datumName
+    //     ] as DPROPS;
+    //     const ts2 = Date.now();
+    //     // throw new Error(`todo: parse some datum here`);
+    //     // // console.log(` ----- read datum ${datumName}`)
 
-        // let ts2;
-        // const rawParsedData = (await this.readUplcDatum(
-        //     thisDatumType,
-        //     datum.data!,
-        //     ignoreOtherTypes
-        // )
-        //     .catch((e) => {
-        //         if (e.message?.match(/expected constrData/)) return undefined;
-        //         throw e;
-        //     })
-        //     .finally(() => {
-        //         ts2 = Date.now();
-        //         const elapsed = ts2 - ts1;
-        //         if (elapsed > 10) {
-        //             console.log(
-        //                 `    -- readUplcDatum ${datumName} took ${ts2 - ts1}ms`
-        //             );
-        //         }
-        //     })) as DPROPS | undefined;
-        // if (!rawParsedData) return undefined;
-        if (hasAdapter) {
-            debugger; // ??? vvv
-            const adapted = datumNameOrAdapter.fromOnchainDatum(parsedData);
-            const ts3 = Date.now();
-            const elapsed = ts3 - ts1;
-            if (elapsed > 10) {
-                console.log(`    -- adapter ${datumName} took ${ts3 - ts2}ms`);
-                console.log(
-                    `  ⏱ readDatum ${datumName} took ${ts3 - ts1}ms total`
-                );
-            }
-            console.log(
-                JSON.parse(JSON.stringify(adapted, betterJsonSerializer, 2))
-            );
-            return adapted;
-        }
-        return parsedData as any;
-    }
+    //     // if (!datum.isInline())
+    //     //     throw new Error(
+    //     //         `datum must be an InlineDatum to be readable using readDatum()`
+    //     //     );
 
-    private async readUplcStructList(uplcType: any, uplcData: ListData) {
-        const { fieldNames, instanceMembers } = uplcType as any;
+    //     // let ts2;
+    //     // const rawParsedData = (await this.readUplcDatum(
+    //     //     thisDatumType,
+    //     //     datum.data!,
+    //     //     ignoreOtherTypes
+    //     // )
+    //     //     .catch((e) => {
+    //     //         if (e.message?.match(/expected constrData/)) return undefined;
+    //     //         throw e;
+    //     //     })
+    //     //     .finally(() => {
+    //     //         ts2 = Date.now();
+    //     //         const elapsed = ts2 - ts1;
+    //     //         if (elapsed > 10) {
+    //     //             console.log(
+    //     //                 `    -- readUplcDatum ${datumName} took ${ts2 - ts1}ms`
+    //     //             );
+    //     //         }
+    //     //     })) as DPROPS | undefined;
+    //     // if (!rawParsedData) return undefined;
+    //     if (hasAdapter) {
+    //         debugger; // ??? vvv
+    //         const adapted = datumNameOrAdapter.fromOnchainDatum(parsedData);
+    //         const ts3 = Date.now();
+    //         const elapsed = ts3 - ts1;
+    //         if (elapsed > 10) {
+    //             console.log(`    -- adapter ${datumName} took ${ts3 - ts2}ms`);
+    //             console.log(
+    //                 `  ⏱ readDatum ${datumName} took ${ts3 - ts1}ms total`
+    //             );
+    //         }
+    //         console.log(
+    //             JSON.parse(JSON.stringify(adapted, betterJsonSerializer, 2))
+    //         );
+    //         return adapted;
+    //     }
+    //     return parsedData as any;
+    // }
 
-        if (uplcType.fieldNames?.length == 1) {
-            const fn = fieldNames[0];
-            const singleFieldStruct = {
-                [fn]: await this.readUplcField(
-                    fn,
-                    instanceMembers[fn],
-                    uplcData
-                ),
-            };
-            return singleFieldStruct;
-        }
+    // private async readUplcStructList(uplcType: any, uplcData: ListData) {
+    //     const { fieldNames, instanceMembers } = uplcType as any;
 
-        const nestedFieldList = uplcData.list;
-        return Object.fromEntries(
-            await Promise.all(
-                fieldNames.map(async (fn: string, i: number) => {
-                    const fieldData = nestedFieldList[i];
-                    const fieldType = instanceMembers[fn];
-                    // console.log(` ----- read struct field ${fn}`)
-                    const value = await this.readUplcField(
-                        fn,
-                        fieldType,
-                        fieldData
-                    );
-                    // console.log(` <----- struct field ${fn}`, value);
+    //     if (uplcType.fieldNames?.length == 1) {
+    //         const fn = fieldNames[0];
+    //         const singleFieldStruct = {
+    //             [fn]: await this.readUplcField(
+    //                 fn,
+    //                 instanceMembers[fn],
+    //                 uplcData
+    //             ),
+    //         };
+    //         return singleFieldStruct;
+    //     }
 
-                    return [fn, value];
-                })
-            )
-        );
-    }
+    //     const nestedFieldList = uplcData.list;
+    //     return Object.fromEntries(
+    //         await Promise.all(
+    //             fieldNames.map(async (fn: string, i: number) => {
+    //                 const fieldData = nestedFieldList[i];
+    //                 const fieldType = instanceMembers[fn];
+    //                 // console.log(` ----- read struct field ${fn}`)
+    //                 const value = await this.readUplcField(
+    //                     fn,
+    //                     fieldType,
+    //                     fieldData
+    //                 );
+    //                 // console.log(` <----- struct field ${fn}`, value);
 
-    private async readUplcEnumVariant(
-        uplcType: any,
-        enumDataDef: any,
-        uplcData: ConstrData & UplcData
-    ) {
-        const fieldNames: string[] = enumDataDef.fieldNames;
+    //                 return [fn, value];
+    //             })
+    //         )
+    //     );
+    // }
 
-        const { fields } = uplcData;
-        return Object.fromEntries(
-            await Promise.all(
-                fieldNames.map(async (fn, i) => {
-                    const fieldData = fields[i];
-                    const fieldType = enumDataDef.fields[i].type;
+    // private async readUplcEnumVariant(
+    //     uplcType: any,
+    //     enumDataDef: any,
+    //     uplcData: ConstrData & UplcData
+    // ) {
+    //     const fieldNames: string[] = enumDataDef.fieldNames;
 
-                    const value = await this.readUplcField(
-                        fn,
-                        fieldType,
-                        fieldData
-                    ).catch((nestedError) => {
-                        console.warn(
-                            "error parsing nested data inside enum variant",
-                            { fn, fieldType, fieldData }
-                        );
-                        debugger;
-                        throw nestedError;
-                    });
-                    return [fn, value];
-                })
-            )
-        );
-    }
+    //     const { fields } = uplcData;
+    //     return Object.fromEntries(
+    //         await Promise.all(
+    //             fieldNames.map(async (fn, i) => {
+    //                 const fieldData = fields[i];
+    //                 const fieldType = enumDataDef.fields[i].type;
 
-    private async readUplcDatum(
-        uplcType: any,
-        uplcData: UplcData,
-        ignoreOther?: "ignoreOtherTypes"
-    ) {
-        const { fieldNames, instanceMembers } = uplcType as any;
-        if (!fieldNames) {
-            const enumVariant = uplcType.prototype._enumVariantStatement;
-            if (enumVariant) {
-                //@ts-expect-error because TS doesn't grok ConstrData here
-                const foundIndex = uplcData.index;
-                const { dataDefinition: enumDataDef, constrIndex } =
-                    enumVariant;
-                if (!(uplcData instanceof ConstrData)) {
-                    throw new Error(
-                        `uplcData mismatch - no constrData, expected constData#${constrIndex}`
-                    );
-                }
-                if (!(foundIndex == constrIndex)) {
-                    if (ignoreOther) return undefined;
-                    throw new Error(
-                        `uplcData expected constrData#${constrIndex}, got #${foundIndex}`
-                    );
-                }
-                const t = this.readUplcEnumVariant(
-                    uplcType,
-                    enumDataDef,
-                    uplcData
-                );
-                return t; // caller can deal with catching the error
-            }
-            throw new Error(
-                `can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`
-            );
-        }
+    //                 const value = await this.readUplcField(
+    //                     fn,
+    //                     fieldType,
+    //                     fieldData
+    //                 ).catch((nestedError) => {
+    //                     console.warn(
+    //                         "error parsing nested data inside enum variant",
+    //                         { fn, fieldType, fieldData }
+    //                     );
+    //                     debugger;
+    //                     throw nestedError;
+    //                 });
+    //                 return [fn, value];
+    //             })
+    //         )
+    //     );
+    // }
 
-        // const heliosTypes = Object.fromEntries(
-        //     fieldNames.map((fn) => {
-        //         return [fn, instanceMembers[fn].name];
-        //     })
-        // );
-        // const inputTypes = Object.fromEntries(
-        //     fieldNames.map((fn) => {
-        //         return [fn, instanceMembers[fn].typeDetails.inputType];
-        //     })
-        // );
-        // const outputTypes = Object.fromEntries(
-        //     fieldNames.map((fn) => {
-        //         debugger
-        //         return [fn, instanceMembers[fn].typeDetails.outputType];
-        //     })
-        // );
-        return Object.fromEntries(
-            await Promise.all(
-                fieldNames.map(async (fn, i) => {
-                    let current;
+    // private async readUplcDatum(
+    //     uplcType: any,
+    //     uplcData: UplcData,
+    //     ignoreOther?: "ignoreOtherTypes"
+    // ) {
+    //     const { fieldNames, instanceMembers } = uplcType as any;
+    //     if (!fieldNames) {
+    //         const enumVariant = uplcType.prototype._enumVariantStatement;
+    //         if (enumVariant) {
+    //             //@ts-expect-error because TS doesn't grok ConstrData here
+    //             const foundIndex = uplcData.index;
+    //             const { dataDefinition: enumDataDef, constrIndex } =
+    //                 enumVariant;
+    //             if (!(uplcData instanceof ConstrData)) {
+    //                 throw new Error(
+    //                     `uplcData mismatch - no constrData, expected constData#${constrIndex}`
+    //                 );
+    //             }
+    //             if (!(foundIndex == constrIndex)) {
+    //                 if (ignoreOther) return undefined;
+    //                 throw new Error(
+    //                     `uplcData expected constrData#${constrIndex}, got #${foundIndex}`
+    //                 );
+    //             }
+    //             const t = this.readUplcEnumVariant(
+    //                 uplcType,
+    //                 enumDataDef,
+    //                 uplcData
+    //             );
+    //             return t; // caller can deal with catching the error
+    //         }
+    //         throw new Error(
+    //             `can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`
+    //         );
+    //     }
 
-                    //@ts-expect-error
-                    const uplcDataField = uplcData.fields[i];
-                    const fieldType = instanceMembers[fn];
-                    // console.log(` ----- read field ${fn}`)
+    //     // const heliosTypes = Object.fromEntries(
+    //     //     fieldNames.map((fn) => {
+    //     //         return [fn, instanceMembers[fn].name];
+    //     //     })
+    //     // );
+    //     // const inputTypes = Object.fromEntries(
+    //     //     fieldNames.map((fn) => {
+    //     //         return [fn, instanceMembers[fn].typeDetails.inputType];
+    //     //     })
+    //     // );
+    //     // const outputTypes = Object.fromEntries(
+    //     //     fieldNames.map((fn) => {
+    //     //         debugger
+    //     //         return [fn, instanceMembers[fn].typeDetails.outputType];
+    //     //     })
+    //     // );
+    //     return Object.fromEntries(
+    //         await Promise.all(
+    //             fieldNames.map(async (fn, i) => {
+    //                 let current;
 
-                    current = await this.readUplcField(
-                        fn,
-                        fieldType,
-                        uplcDataField
-                    );
+    //                 //@ts-expect-error
+    //                 const uplcDataField = uplcData.fields[i];
+    //                 const fieldType = instanceMembers[fn];
+    //                 // console.log(` ----- read field ${fn}`)
 
-                    return [fn, current];
-                })
-            )
-        );
-    }
+    //                 current = await this.readUplcField(
+    //                     fn,
+    //                     fieldType,
+    //                     uplcDataField
+    //                 );
 
-    async readTypedUplcMapData(fn: string, uplcMap, valueType) {
-        const t = Object.fromEntries(
-            await Promise.all(
-                uplcMap.map.map(async ([keyThingy, vThingy]) => {
-                    // const key = keyThingy.string;
-                    const key = helios.bytesToText(keyThingy.bytes);
-                    return [
-                        key,
-                        await this.readUplcField(
-                            `${fn}.[${key}]`,
-                            valueType,
-                            vThingy
-                        ),
-                    ];
-                })
-            )
-        );
-        // if (uplcMap.map.length > 0) debugger
-        return t;
-    }
+    //                 return [fn, current];
+    //             })
+    //         )
+    //     );
+    // }
 
-    private async readUplcField(
-        fn: string,
-        fieldType: any,
-        uplcDataField: any
-    ) {
-        let value;
-        const { offChainType } = fieldType;
-        const isMapData = uplcDataField instanceof helios.MapData;
-        try {
-            let internalType;
-            try {
-                internalType = fieldType.typeDetails?.internalType.type;
-                if ("Struct" == internalType) {
-                    if (isMapData) {
-                        value = await this.readOtherUplcType(
-                            fn,
-                            uplcDataField,
-                            fieldType
-                        );
-                        return value;
-                    } else {
-                        value = await this.readUplcStructList(
-                            fieldType,
-                            uplcDataField
-                        );
-                        // console.log(`  <-- field value`, value)
-                        return value;
-                    }
-                }
-            } catch (e) {}
-            value = fieldType.uplcToJs(uplcDataField);
-            if (value.then) value = await value;
+    // async readTypedUplcMapData(fn: string, uplcMap, valueType) {
+    //     const t = Object.fromEntries(
+    //         await Promise.all(
+    //             uplcMap.map.map(async ([keyThingy, vThingy]) => {
+    //                 // const key = keyThingy.string;
+    //                 const key = helios.bytesToText(keyThingy.bytes);
+    //                 return [
+    //                     key,
+    //                     await this.readUplcField(
+    //                         `${fn}.[${key}]`,
+    //                         valueType,
+    //                         vThingy
+    //                     ),
+    //                 ];
+    //             })
+    //         )
+    //     );
+    //     // if (uplcMap.map.length > 0) debugger
+    //     return t;
+    // }
 
-            if (internalType) {
-                if (
-                    "Enum" === internalType &&
-                    0 === uplcDataField.fields.length
-                ) {
-                    return (value = Object.keys(value)[0]);
-                }
-            } else if (typeof value === "string") {
-                return value;
-            } else {
-                console.log(
-                    "no internal type for special post-uplc-to-JS handling at",
-                    fn
-                );
-                debugger;
-                return value;
-            }
-        } catch (e: any) {
-            if (e.message?.match(/doesn't support converting from Uplc/)) {
-                if (!offChainType) {
-                    return this.readOtherUplcType(fn, uplcDataField, fieldType);
-                }
-                try {
-                    value = await offChainType.fromUplcData(uplcDataField);
-                    if (value && "some" in value) value = value.some;
-                    if (value && "string" in value) value = value.string;
+    // private async readUplcField(
+    //     fn: string,
+    //     fieldType: any,
+    //     uplcDataField: any
+    // ) {
+    //     let value;
+    //     const { offChainType } = fieldType;
+    //     const isMapData = uplcDataField instanceof helios.MapData;
+    //     try {
+    //         let internalType;
+    //         try {
+    //             internalType = fieldType.typeDetails?.internalType.type;
+    //             if ("Struct" == internalType) {
+    //                 if (isMapData) {
+    //                     value = await this.readOtherUplcType(
+    //                         fn,
+    //                         uplcDataField,
+    //                         fieldType
+    //                     );
+    //                     return value;
+    //                 } else {
+    //                     value = await this.readUplcStructList(
+    //                         fieldType,
+    //                         uplcDataField
+    //                     );
+    //                     // console.log(`  <-- field value`, value)
+    //                     return value;
+    //                 }
+    //             }
+    //         } catch (e) {}
+    //         value = fieldType.uplcToJs(uplcDataField);
+    //         if (value.then) value = await value;
 
-                    if (isMapData) {
-                        const { valueType } =
-                            fieldType.typeDetails.internalType;
-                        // Map[String]SomethingSpecific?
-                        return this.readTypedUplcMapData(
-                            fn,
-                            uplcDataField,
-                            fieldType.instanceMembers.head_value
-                        );
-                    }
-                } catch (e: any) {
-                    console.error(`datum: field ${fn}: ${e.message}`);
-                    // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
-                    debugger;
-                    throw e;
-                }
-            } else {
-                throw e;
-            }
-        }
-        // console.log(`  <-- field value`, value)
-        return value;
-    }
-    async readOtherUplcType(fn: string, uplcDataField: any, fieldType: any) {
-        if (uplcDataField instanceof helios.IntData) {
-            return uplcDataField.value;
-        }
-        if (uplcDataField instanceof helios.ListData) {
-            const entries = [];
-            const promises = uplcDataField.list.map((item, i) => {
-                const readOne = this.readOtherUplcType(
-                    `${fn}.[${i}]`,
-                    item,
-                    undefined
-                );
-                return readOne;
-            });
-            const gotList = Promise.all(promises).catch((e) => {
-                console.error(
-                    `datum: field ${fn}: error reading list`,
-                    e,
-                    "\n   ",
-                    { uplcDataField, fieldType }
-                );
-                debugger;
-                throw e;
-            });
-            return gotList;
-        }
-        if (uplcDataField instanceof helios.IntData) {
-            return uplcDataField.value;
-        }
-        if (uplcDataField instanceof helios.ByteArrayData) {
-            return uplcDataField.bytes;
-        }
+    //         if (internalType) {
+    //             if (
+    //                 "Enum" === internalType &&
+    //                 0 === uplcDataField.fields.length
+    //             ) {
+    //                 return (value = Object.keys(value)[0]);
+    //             }
+    //         } else if (typeof value === "string") {
+    //             return value;
+    //         } else {
+    //             console.log(
+    //                 "no internal type for special post-uplc-to-JS handling at",
+    //                 fn
+    //             );
+    //             debugger;
+    //             return value;
+    //         }
+    //     } catch (e: any) {
+    //         if (e.message?.match(/doesn't support converting from Uplc/)) {
+    //             if (!offChainType) {
+    //                 return this.readOtherUplcType(fn, uplcDataField, fieldType);
+    //             }
+    //             try {
+    //                 value = await offChainType.fromUplcData(uplcDataField);
+    //                 if (value && "some" in value) value = value.some;
+    //                 if (value && "string" in value) value = value.string;
 
-        // it unwraps an existential type tag (#242) providing CIP-68 struct compatibility,
-        // to return the inner details' key/value pairs as a JS object.
-        if (uplcDataField instanceof helios.ConstrData) {
-            //@ts-expect-error
-            const { index } = uplcDataField;
-            let fieldName = `‹constr#${index}›`;
-            if (index == 242) {
-                fieldName = "‹cip68›";
-                if (
-                    // prettier-ignore
-                    //@ts-expect-error
-                    (uplcDataField.fields.length != 1 || uplcDataField.fields.length != 3) &&
+    //                 if (isMapData) {
+    //                     const { valueType } =
+    //                         fieldType.typeDetails.internalType;
+    //                     // Map[String]SomethingSpecific?
+    //                     return this.readTypedUplcMapData(
+    //                         fn,
+    //                         uplcDataField,
+    //                         fieldType.instanceMembers.head_value
+    //                     );
+    //                 }
+    //             } catch (e: any) {
+    //                 console.error(`datum: field ${fn}: ${e.message}`);
+    //                 // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
+    //                 debugger;
+    //                 throw e;
+    //             }
+    //         } else {
+    //             throw e;
+    //         }
+    //     }
+    //     // console.log(`  <-- field value`, value)
+    //     return value;
+    // }
+    // async readOtherUplcType(fn: string, uplcDataField: any, fieldType: any) {
+    //     if (uplcDataField instanceof helios.IntData) {
+    //         return uplcDataField.value;
+    //     }
+    //     if (uplcDataField instanceof helios.ListData) {
+    //         const entries = [];
+    //         const promises = uplcDataField.list.map((item, i) => {
+    //             const readOne = this.readOtherUplcType(
+    //                 `${fn}.[${i}]`,
+    //                 item,
+    //                 undefined
+    //             );
+    //             return readOne;
+    //         });
+    //         const gotList = Promise.all(promises).catch((e) => {
+    //             console.error(
+    //                 `datum: field ${fn}: error reading list`,
+    //                 e,
+    //                 "\n   ",
+    //                 { uplcDataField, fieldType }
+    //             );
+    //             debugger;
+    //             throw e;
+    //         });
+    //         return gotList;
+    //     }
+    //     if (uplcDataField instanceof helios.IntData) {
+    //         return uplcDataField.value;
+    //     }
+    //     if (uplcDataField instanceof helios.ByteArrayData) {
+    //         return uplcDataField.bytes;
+    //     }
 
-                    !(uplcDataField.fields[0] instanceof helios.MapData
-                )
-                ) {
-                    console.log(
-                        "CIP68 wrapper: expected MapData, got ",
-                        uplcDataField
-                    );
-                    debugger;
-                    throw new Error(
-                        `datum error at ${fn} existential ConstrData(#242) must wrap a single field of MapData, or a triplet with Map, Version, Any`
-                    );
-                }
-            }
+    //     // it unwraps an existential type tag (#242) providing CIP-68 struct compatibility,
+    //     // to return the inner details' key/value pairs as a JS object.
+    //     if (uplcDataField instanceof helios.ConstrData) {
+    //         //@ts-expect-error
+    //         const { index } = uplcDataField;
+    //         let fieldName = `‹constr#${index}›`;
+    //         if (index == 242) {
+    //             fieldName = "‹cip68›";
+    //             if (
+    //                 // prettier-ignore
+    //                 //@ts-expect-error
+    //                 (uplcDataField.fields.length != 1 || uplcDataField.fields.length != 3) &&
 
-            if (!uplcDataField.fields.length) {
-                // console.log(`datum: field ${fn}: empty ConstrData`, {
-                //     fieldType,
-                //     uplcDataField,
-                // });
-                // enum variant without any nested data.  That's ok!!!
-                return uplcDataField; // return `variant #${index}`;
-            }
-            return this.readOtherUplcType(
-                `${fn}.${fieldName}`,
+    //                 !(uplcDataField.fields[0] instanceof helios.MapData
+    //             )
+    //             ) {
+    //                 console.log(
+    //                     "CIP68 wrapper: expected MapData, got ",
+    //                     uplcDataField
+    //                 );
+    //                 debugger;
+    //                 throw new Error(
+    //                     `datum error at ${fn} existential ConstrData(#242) must wrap a single field of MapData, or a triplet with Map, Version, Any`
+    //                 );
+    //             }
+    //         }
 
-                uplcDataField.fields[0],
-                undefined
-            );
-        }
-        if (uplcDataField instanceof helios.MapData) {
-            const entries: Record<string, any> = {};
-            for (const [k, v] of uplcDataField["map"]) {
-                let parsedKey: string;
-                try {
-                    parsedKey = helios.bytesToText(k.bytes);
-                } catch (e) {
-                    parsedKey = k.hex;
-                }
-                // type of value??
-                entries[parsedKey] = await this.readOtherUplcType(
-                    `${fn}.‹map›@${parsedKey}`,
-                    v,
-                    undefined
-                );
-            }
+    //         if (!uplcDataField.fields.length) {
+    //             // console.log(`datum: field ${fn}: empty ConstrData`, {
+    //             //     fieldType,
+    //             //     uplcDataField,
+    //             // });
+    //             // enum variant without any nested data.  That's ok!!!
+    //             return uplcDataField; // return `variant #${index}`;
+    //         }
+    //         return this.readOtherUplcType(
+    //             `${fn}.${fieldName}`,
 
-            return entries;
-        }
-        console.log(`datum: field ${fn}: no offChainType, no internalType`, {
-            fieldType,
-            uplcDataField,
-        });
+    //             uplcDataField.fields[0],
+    //             undefined
+    //         );
+    //     }
+    //     if (uplcDataField instanceof helios.MapData) {
+    //         const entries: Record<string, any> = {};
+    //         for (const [k, v] of uplcDataField["map"]) {
+    //             let parsedKey: string;
+    //             try {
+    //                 parsedKey = helios.bytesToText(k.bytes);
+    //             } catch (e) {
+    //                 parsedKey = k.hex;
+    //             }
+    //             // type of value??
+    //             entries[parsedKey] = await this.readOtherUplcType(
+    //                 `${fn}.‹map›@${parsedKey}`,
+    //                 v,
+    //                 undefined
+    //             );
+    //         }
 
-        debugger;
-        return uplcDataField;
-    }
+    //         return entries;
+    //     }
+    //     console.log(`datum: field ${fn}: no offChainType, no internalType`, {
+    //         fieldType,
+    //         uplcDataField,
+    //     });
+
+    //     debugger;
+    //     return uplcDataField;
+    // }
 
     _utxoHelper: UtxoHelper;
     /**
@@ -1757,18 +1775,6 @@ export class StellarContract<
     //     }
     // }
 
-    /**
-     * Sets a list of Helios source modules to be available for import by the smart contract
-     * indicated by `this.contractSource()`
-     * @remarks
-     * The list of modules is used when compiling the smart contract.
-     *
-     * Note that the super class may provide import modules, so you should include the result
-     * of `super.importModules()` in your return value.
-     */
-    // importModules(): HeliosModuleSrc[] {
-    //     return [];
-    // }
     _cache: ComputedScriptProperties = {};
 
     async compileWithScriptParams() {
@@ -1798,12 +1804,9 @@ export class StellarContract<
             script.changeParam(p, v);
         }
 
-        const bundle = this.getBundle()
+        const bundle = this.getBundle();
         const name = bundle.moduleName;
-        console.log(
-            `${name} with params:`,
-            script.entryPoint.paramsDetails()
-        );
+        console.log(`${name} with params:`, script.entryPoint.paramsDetails());
 
         this.compiledScript = await script.compileCached({
             optimize: false,
@@ -1817,7 +1820,7 @@ export class StellarContract<
             //     inlineErrorFreeSingleUserCallExprs: false,
             //     inlineSingleUseFuncExprs: false,
             // },
-            withAlt: true,
+            // withAlt: true,
         });
 
         console.log(`       ✅ ${this.constructor.name}`);
@@ -2101,5 +2104,4 @@ export class StellarContract<
             tcx
         );
     }
-
 }

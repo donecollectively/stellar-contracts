@@ -6,8 +6,6 @@ import {
     vi,
 } from "vitest";
 
-import { Address, TxId, TxOutput } from "@hyperionbt/helios";
-
 import { CustomTreasury } from "./customizing/CustomTreasury";
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import {

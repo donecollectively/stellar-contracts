@@ -15,21 +15,20 @@ import type {
     ScriptHash,
     SpendingCredential,
     StakingCredential,
-    StakingHash,
     StakingValidatorHash,
     TimeRange,
     TxId,
     TxInput,
     TxOutput,
     TxOutputId,
-    TxOutputDatum,
+    InlineTxOutputDatum,
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
 import type { 
     IntLike,
-    ByteArrayLike,
+    // BytesLike,
  } from "@helios-lang/codec-utils";
 
  type TimeLike = IntLike;
@@ -111,7 +110,7 @@ export type SampleStruct = {
     a: /*minStructField*/ bigint
     b: /*minStructField*/ Map<string, number[]>
     c: /*minStructField*/ Array<boolean>
-    d: /*minStructField*/ Option<UplcData>
+    d: /*minStructField*/ UplcData | undefined
 }
 
 export type ErgoSampleStruct = SampleStruct/*like canon-other*/
@@ -119,7 +118,7 @@ export type SampleStructLike = {
     a: /*minStructField*/ IntLike
     b: /*minStructField*/ Map<string, number[]>
     c: /*minStructField*/ Array<boolean>
-    d: /*minStructField*/ Option<UplcData>
+    d: /*minStructField*/ UplcData | undefined
 }
 
 
@@ -241,17 +240,17 @@ export type DelegateDatum$MultiFieldVariantLike = {
 
 export type DelegateDatum$MultiFieldNestedThings = {
     nestedStruct: SampleStruct  /*minVariantField*/ ,
-    nestedEnumMaybe: Option<SomeEnum>  /*minVariantField*/ 
+    nestedEnumMaybe: SomeEnum | undefined  /*minVariantField*/ 
 }
 
 export type DelegateDatum$Ergo$MultiFieldNestedThings = {
     nestedStruct: ErgoSampleStruct  /*minVariantField*/ ,
-    nestedEnumMaybe: Option<ErgoSomeEnum>  /*minVariantField*/ 
+    nestedEnumMaybe: ErgoSomeEnum | undefined  /*minVariantField*/ 
 }
 
 export type DelegateDatum$MultiFieldNestedThingsLike = {
     nestedStruct: SampleStructLike  /*minVariantField*/ ,
-    nestedEnumMaybe: Option<SomeEnumLike>  /*minVariantField*/ 
+    nestedEnumMaybe: SomeEnumLike | undefined  /*minVariantField*/ 
 }
 
 
@@ -454,17 +453,17 @@ export type DelegateRoleLike = IntersectedEnum<
 
 export type CapoLifecycleActivity$removePendingDgtChange = {
     role: DelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: string | undefined  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$Ergo$removePendingDgtChange = {
     role: ErgoDelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: string | undefined  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$removePendingDgtChangeLike = {
     role: DelegateRoleLike  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: string | undefined  /*minVariantField*/ 
 }
 
 

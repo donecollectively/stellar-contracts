@@ -45,7 +45,7 @@ import UnspecializedDelegateBridge, {
     UnspecializedDelegateBridgeReader,
 } from "../../delegation/UnspecializedDelegate.bridge.js";
 import type { ErgoDelegateDatum } from "../../delegation/UnspecializedDelegate.typeInfo.js";
-type canHaveDataBridge = { dataBridgeClass: Option<AbstractNew<ContractDataBridge>> };
+type canHaveDataBridge = { dataBridgeClass?: AbstractNew<ContractDataBridge> };
 type someContractBridgeClass = //typeof ContractDataBridge &
     AbstractNew<ContractDataBridge>;
 type abstractContractBridgeClass = typeof ContractDataBridge & {
@@ -87,7 +87,7 @@ export type possiblyAbstractContractBridgeType<
     T extends canHaveDataBridge,
     bridgeClassMaybe extends someContractBridgeClass = T["dataBridgeClass"] extends someContractBridgeClass
         ? T["dataBridgeClass"]
-        : T["dataBridgeClass"] extends null
+        : T["dataBridgeClass"] extends undefined
         ? never
         : abstractContractBridgeClass,
     instanceMaybe extends InstanceType<bridgeClassMaybe> = InstanceType<bridgeClassMaybe> extends ContractDataBridge
@@ -115,7 +115,7 @@ type debugContractBridgeType<
 // > = hasDatumMaybe;
 
 export type findDatumType<
-    T extends { dataBridgeClass: Option<AbstractNew<ContractDataBridge>> },
+    T extends { dataBridgeClass?: AbstractNew<ContractDataBridge> },
     CBT extends possiblyAbstractContractBridgeType<T> = possiblyAbstractContractBridgeType<T>,
     DT = CBT extends { datum: infer D }
         ? D
@@ -160,9 +160,9 @@ export type mustFindReadDatumType<
     CBT extends someContractBridgeType = mustFindConcreteContractBridgeType<T>
     // BI extends bridgeInspector<T> = bridgeInspector<T>
 > =
-    null extends CBT["datum"]
+    undefined extends CBT["datum"]
         ? /**??? */ never
-        : null extends CBT["readDatum"]
+        : undefined extends CBT["readDatum"]
         ? never
         : CBT["readDatum"];
 
@@ -173,9 +173,9 @@ export type findReadDatumType<
 > = IF<
     CBT["isAbstract"],
     readsUplcTo<any>,
-    null extends CBT["datum"]
+    undefined extends CBT["datum"]
         ? /**??? */ never
-        : null extends CBT["readDatum"]
+        : undefined extends CBT["readDatum"]
         ? never
         : CBT["readDatum"]
     // : CBT["reader"] extends DataBridge
@@ -531,7 +531,7 @@ if (testing) {
             {} as ContractDataBridge;
         const t3: findActivityType<StellarContract<any>> = {} as DataBridge;
 
-        // T extends { dataBridgeClass: Option<typeof ContractDataBridge> },
+        // T extends { dataBridgeClass?: typeof ContractDataBridge },
         // CBT extends possiblyAbstractContractBridgeType<T> = possiblyAbstractContractBridgeType<T>,
         // DT = CBT extends { datum: infer D }
         //     ? D
@@ -739,7 +739,7 @@ if (testing) {
         const shouldntBeAbstract: IF<MD_BT["isAbstract"], true, false, never> =
             false;
         type datumExtracted = MD_BT["datum"];
-        const datumIsNull: null extends datumExtracted ? true : false = false;
+        const datumIsMissing: undefined extends datumExtracted ? true : false = false;
         type readDatum = MD_BT["readDatum"];
         type foundReadDatumType =
             findReadDatumType<MintDelegateWithGenericUuts>;
@@ -851,7 +851,7 @@ if (testing) {
             thatDefinedBridgeType: CapoMinterDataBridge,
             bridgeClass: CapoMinterDataBridge,
             bridgeType: {} as CapoMinterDataBridge,
-            foundMkDatumType: null, // no datum here
+            foundMkDatumType: undefined, // no datum here
             activityHelper: {} as MinterActivityHelper,
         };
     }

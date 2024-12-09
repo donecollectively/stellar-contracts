@@ -11,7 +11,7 @@ import BadSettingsBundle from "./BadSettings.hlbundle.js";
 import { 
     BadSettingsPolicyDataBridge
 } from "./BadSettings.bridge.js" ;
-import { textToBytes } from "@hyperionbt/helios";
+import { textToBytes } from "../../src/HeliosPromotedTypes.js";
 
 export class BadSettingsController extends DelegatedDataContract {
     dataBridgeClass = BadSettingsPolicyDataBridge;

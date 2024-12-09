@@ -10,19 +10,7 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import {
-    Address,
-    Datum,
-    Signature,
-    Tx,
-    TxOutput,
-    TxInput,
-    Value,
-    TxBuilder,
-} from "@hyperionbt/helios";
-
 import { StellarTxnContext } from "../src/StellarTxnContext";
-import { MintingPolicyHash } from "@hyperionbt/helios";
 // import { DefaultMinter } from "../src/DefaultMinter";
 // import { BasicMintDelegate } from "../src/delegation/BasicMintDelegate";
 import { ADA, addTestContext } from "../src/testing/";
@@ -31,7 +19,9 @@ import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 
 import { hasAllUuts } from "../src/Capo";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { stringToNumberArray } from "../src/utils";
+import { textToBytes } from "../src/HeliosPromotedTypes";
+import { makeValue, Value, Address } from "@helios-lang/ledger";
+import { makeTxBuilder } from "@helios-lang/tx-utils";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper<CapoWithoutSettings>>;
@@ -49,8 +39,11 @@ const smokeTest = (smoke ? fit : it) as smokeTestType;
 
 describe("StellarContract", async () => {
     beforeEach<localTC>(async (context) => {
-        await new Promise(res => setTimeout(res, 10));
-        await addTestContext(context, DefaultCapoTestHelper<CapoWithoutSettings>);
+        await new Promise((res) => setTimeout(res, 10));
+        await addTestContext(
+            context,
+            DefaultCapoTestHelper<CapoWithoutSettings>
+        );
     });
 
     describe("things provided by the base class", () => {
@@ -101,7 +94,7 @@ describe("StellarContract", async () => {
             } = context;
 
             const treasury = await h.initialize();
-            expect(treasury.address).toBeInstanceOf(Address);
+            expect(treasury.address.kind).toBe("Address")
         });
         describe("getter: mintingPolicyHash", () => {
             it("is defined, by delegation to Capo's minting-purposed helper", async (context: localTC) => {
@@ -113,10 +106,10 @@ describe("StellarContract", async () => {
                 const t = await h.bootstrap();
 
                 expect(t.mph.toHex()).toEqual(t.mintingPolicyHash.toHex());
-                expect(t.mph.toHex()).toEqual(t.minter!.mintingPolicyHash.toHex());
-                expect(t.minter!.mintingPolicyHash).toBeInstanceOf(
-                    MintingPolicyHash
+                expect(t.mph.toHex()).toEqual(
+                    t.minter!.mintingPolicyHash.toHex()
                 );
+                expect(t.minter!.mintingPolicyHash.kind).toBe("MintingPolicyHash")
                 console.log("--- init again with different seed");
                 const t2 = await h.initialize({ randomSeed: 43 });
                 await h.bootstrap();
@@ -137,7 +130,7 @@ describe("StellarContract", async () => {
                 expect(treasury.identity.length).toBe(63);
             });
 
-            it("returns a bech32-encoded thing that's not an address for minters", async (context: localTC) => {
+            it("returns a hex-encoded policy-id for minters", async (context: localTC) => {
                 const {
                     h,
                     h: { network, actors, delay, state },
@@ -145,8 +138,7 @@ describe("StellarContract", async () => {
 
                 const treasury = await h.initialize();
                 await h.mintCharterToken();
-
-                expect(treasury.minter!.identity.length).toBe(42);
+                expect(treasury.minter!.identity.length).toBe(56);
             });
         });
 
@@ -167,7 +159,7 @@ describe("StellarContract", async () => {
 
                 type FOO = { foo: "bar"; uuts: {} };
                 await h.initialize();
-                const tcx : StellarTxnContext<FOO> = context.h.mkTcx() as any;
+                const tcx: StellarTxnContext<FOO> = context.h.mkTcx() as any;
                 //! basic type-checks only
                 tcx.state.foo = "bar";
                 //@ts-expect-error
@@ -177,65 +169,82 @@ describe("StellarContract", async () => {
             });
         });
 
-        describe("lower-level helpers", () => {
-            it("stringToNumberArray()", async (context: localTC) => {
+        it.todo(
+            "mkValuesEntry() helps make Value objects",
+            async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+                const t = await h.initialize();
+
+                //!!! todo: check involvement in tokenAsValue
+            }
+        );
+
+        describe("tokenAsValue()", () => {
+            it("makes a Value from a token name, using the contract's mph", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+
+                const t: CapoWithoutSettings = await h.bootstrap();
+
+                const tokenCount = 19n;
+                const tokenName = "foo";
+                const tv: Value = t.tokenAsValue(tokenName, tokenCount);
+                expect(tv.kind).toBe("Value");
+                expect(
+                    tv.assets.getAssetClassQuantity([
+                        t.mph,
+                        textToBytes(tokenName),
+                    ])
+                ).toBe(tokenCount);
+            });
+        });
+    });
+
+    describe("transaction helpers", () => {
+        describe("ADA(n)", () => {
+            it("returns bigint lovelace for the indicated ADA amount", async (context: localTC) => {
                 const {
                     h,
                     h: { network, actors, delay, state },
                 } = context;
 
                 const t = await h.initialize();
-                const a = stringToNumberArray("ABCDE");
-                expect(a).toHaveLength(5);
-                expect(a[0]).toBe(65);
+                expect(t.ADA(42)).toBe(42_000_000n);
+            });
+            it("accepts integer or bigint, or fractional number", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+
+                const t = await h.initialize();
+
+                expect(t.ADA(4n)).toBe(4_000_000n);
+                expect(t.ADA(2)).toBe(2_000_000n);
+                expect(t.ADA(3.141593)).toBe(3_1415_93n);
             });
 
-            it.todo(
-                "mkValuesEntry() helps make Value objects",
-                async (context: localTC) => {
-                    const {
-                        h,
-                        h: { network, actors, delay, state },
-                    } = context;
-                    const t = await h.initialize();
+            it("returns ONLY integer lovelace even if given a numeric having a very small fractional part", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
 
-                    //!!! todo: check involvement in tokenAsValue
-                }
-            );
+                const t = await h.initialize();
 
-            describe("tokenAsValue()", () => {
-                it("makes a Value from a token name, using the contract's mph", async (context: localTC) => {
-                    const {
-                        h,
-                        h: { network, actors, delay, state },
-                    } = context;
-
-                    const t: CapoWithoutSettings = await h.bootstrap();
-
-                    const tokenCount = 19n;
-                    const tokenName = "foo";
-                    const tv: Value = t.tokenAsValue(tokenName, tokenCount);
-
-                    expect(tv).toBeInstanceOf(Value);
-                    expect(
-                        tv.assets.getQuantity([t.mph, stringToNumberArray(tokenName)])
-                    ).toBe(tokenCount);
-                });
+                expect(t.ADA(3.141592653589793238)).toBe(3_1415_93n);
+                expect(t.ADA(0.0000001)).toBe(0n);
             });
         });
 
-        describe("transaction helpers", () => {
-            describe("ADA(n)", () => {
-                it("returns bigint lovelace for the indicated ADA amount", async (context: localTC) => {
-                    const {
-                        h,
-                        h: { network, actors, delay, state },
-                    } = context;
-
-                    const t = await h.initialize();
-                    expect(t.ADA(42)).toBe(42_000_000n);
-                });
-                it("accepts integer or bigint, or fractional number", async (context: localTC) => {
+        describe("finding utxos", () => {
+            describe("mustFindActorUtxo", () => {
+                it("finds a first matching utxo in the current user's wallet, based on a value predicate function", async (context: localTC) => {
                     const {
                         h,
                         h: { network, actors, delay, state },
@@ -243,12 +252,22 @@ describe("StellarContract", async () => {
 
                     const t = await h.initialize();
 
-                    expect(t.ADA(4n)).toBe(4_000_000n);
-                    expect(t.ADA(2)).toBe(2_000_000n);
-                    expect(t.ADA(3.141593)).toBe(3_1415_93n);
+                    const tcx = h.mkTcx();
+                    const found = await t.uh.mustFindActorUtxo(
+                        "biggest",
+                        (u) => {
+                            return (
+                                (u.value.lovelace > t.ADA(500) && u) ||
+                                undefined
+                            );
+                        },
+                        tcx
+                    );
+                    // more than 500 ada - actually > 1k with the given setup.
+                    expect(found.value.lovelace).toBeGreaterThan(1_000_000_000);
                 });
 
-                it("returns ONLY integer lovelace even if given a numeric having a very small fractional part", async (context: localTC) => {
+                it("uses hasUtxo underneath", async (context: localTC) => {
                     const {
                         h,
                         h: { network, actors, delay, state },
@@ -256,212 +275,85 @@ describe("StellarContract", async () => {
 
                     const t = await h.initialize();
 
-                    expect(t.ADA(3.141592653589793238)).toBe(3_1415_93n);
-                    expect(t.ADA(0.0000001)).toBe(0n);
-                });
-            });
-
-            describe("finding utxos", () => {
-                describe("mustFindActorUtxo", () => {
-                    it("finds a first matching utxo in the current user's wallet, based on a value predicate function", async (context: localTC) => {
-                        const {
-                            h,
-                            h: { network, actors, delay, state },
-                        } = context;
-
-                        const t = await h.initialize();
-
-                        const tcx = h.mkTcx()
-                        const found = await t.uh.mustFindActorUtxo(
-                            "biggest",
-                            (u) => {
-                                return (
-                                    (u.value.lovelace > t.ADA(500) && u) ||
-                                    undefined
-                                );
-                            },
-                            tcx
-                        );
-                        // more than 500 ada - actually > 1k with the given setup.
-                        expect(found.value.lovelace).toBeGreaterThan(
-                            1_000_000_000
-                        );
-                    });
-
-                    it("uses hasUtxo underneath", async (context: localTC) => {
-                        const {
-                            h,
-                            h: { network, actors, delay, state },
-                        } = context;
-
-                        const t = await h.initialize();
-
-                        const tcx = h.mkTcx();
-                        let findingInWallet;
-                        const hasUtxo = vi
-                            .spyOn(t.utxoHelper, "hasUtxo")
-                            .mockImplementation(async (_a, _b, { wallet }) => {
-                                findingInWallet = wallet;
-                                return undefined;
-                            });
-                        await expect(
-                            t.utxoHelper.mustFindActorUtxo("any", (x) => x, tcx)
-                        ).rejects.toThrow();
-                        expect(hasUtxo).toHaveBeenCalled();
-                        expect(findingInWallet).toBe(actors.tina);
-                    });
-
-                    it("throws an error if no utxo is matched", async (context: localTC) => {
-                        const {
-                            h,
-                            h: { network, actors, delay, state },
-                        } = context;
-
-                        const t = await h.initialize();
-                        const tcx = h.mkTcx();
-                        await expect(
-                            t.utxoHelper.mustFindActorUtxo(
-                                "testSomeThing",
-                                () => undefined,
-                                tcx
-                            )
-                        ).rejects.toThrow(/testSomeThing.*utxo not found/);
-                    });
-
-                    describe("with tokenPredicate", () => {
-                        it("ignores utxos already in a tcx (inputs/collateral), if provided", async (context: localTC) => {
-                            const {
-                                h,
-                                h: { network, actors, delay, state },
-                            } = context;
-                            await h.initialize();
-                            // await delay(1000)
-
-                            const tina = h.wallet;
-                            const tinaMoney = await tina.utxos;
-                            const firstUtxo = tinaMoney[0];
-
-                            const tx = new TxBuilder({
-                                isMainnet: false
-                            });
-
-                            tx.spendUnsafe(firstUtxo);
-                            tx.payUnsafe( 
-                                tina.address, new Value(3n * ADA)
-                            );
-                            tx.payUnsafe(
-                                tina.address, new Value(45n * ADA)
-                            );
-                            tx.payUnsafe(
-                                tina.address, new Value(32n * ADA)
-                            );
-
-                            // console.log("s2")
-                            await h.submitTx(await tx.build({
-                                changeAddress: tina.address
-                            }), "force");
-                            h.network.tick(1);
-
-                            const capo: CapoWithoutSettings = await h.initialize();
-                            const uh = capo.utxoHelper;
-                            const tcx = h.mkTcx()
-                            const isEnoughT = uh.mkTokenPredicate(
-                                new Value(42000)
-                            );
-                            const u1 = await uh.mustFindActorUtxo(
-                                "first with token",
-                                isEnoughT,
-                                tcx
-                            );
-                            const u1a = await uh.mustFindActorUtxo(
-                                "t1a",
-                                isEnoughT
-                            );
-                            const u1b = await uh.mustFindActorUtxo(
-                                "t1b",
-                                isEnoughT,
-                                tcx
-                            );
-
-                            expect(uh.toUtxoId(u1a)).toEqual(uh.toUtxoId(u1));
-                            expect(uh.toUtxoId(u1b)).toEqual(uh.toUtxoId(u1));
-
-                            tcx.addInput(u1);
-                            const u2 = await uh.mustFindActorUtxo(
-                                "second with token",
-                                isEnoughT,
-                                tcx
-                            );
-                            tcx.addCollateral(u2);
-                            const u3 = await uh.mustFindActorUtxo(
-                                "third, with token",
-                                isEnoughT,
-                                tcx
-                            );
-
-                            // yes, but it doesn't mean anything; different refs to same details
-                            //  will also not be === despite being equivalent.
-                            expect(u2 === u1).not.toBeTruthy();
-                            expect(u3 === u1).not.toBeTruthy();
-                            expect(u3 === u2).not.toBeTruthy();
-
-                            // using the utxo's own eq() logic:
-                            expect(u2.isEqual(u1)).not.toBeTruthy();
-                            expect(u3.isEqual(u1)).not.toBeTruthy();
-                            expect(u3.isEqual(u2)).not.toBeTruthy();
-
-                            // using stringified forms:
-                            const t1 = uh.toUtxoId(u1);
-                            const t2 = uh.toUtxoId(u2);
-                            const t3 = uh.toUtxoId(u3);
-                            expect(t2).not.toEqual(t1);
-                            expect(t3).not.toEqual(t1);
-                            expect(t3).not.toEqual(t2);
-
-                            // console.log({t1, t2, eq: u1.eq(u2), identical: u2 === u1});
+                    const tcx = h.mkTcx();
+                    let findingInWallet;
+                    const hasUtxo = vi
+                        .spyOn(t.utxoHelper, "hasUtxo")
+                        .mockImplementation(async (_a, _b, { wallet }) => {
+                            findingInWallet = wallet;
+                            return undefined;
                         });
-                    });
+                    await expect(
+                        t.utxoHelper.mustFindActorUtxo("any", (x) => x, tcx)
+                    ).rejects.toThrow();
+                    expect(hasUtxo).toHaveBeenCalled();
+                    expect(findingInWallet).toBe(actors.tina);
                 });
-                describe("with valuePredicate for ada-only", () => {
+
+                it("throws an error if no utxo is matched", async (context: localTC) => {
+                    const {
+                        h,
+                        h: { network, actors, delay, state },
+                    } = context;
+
+                    const t = await h.initialize();
+                    const tcx = h.mkTcx();
+                    await expect(
+                        t.utxoHelper.mustFindActorUtxo(
+                            "testSomeThing",
+                            () => undefined,
+                            tcx
+                        )
+                    ).rejects.toThrow(/testSomeThing.*utxo not found/);
+                });
+
+                describe("with tokenPredicate", () => {
                     it("ignores utxos already in a tcx (inputs/collateral), if provided", async (context: localTC) => {
                         const {
                             h,
                             h: { network, actors, delay, state },
                         } = context;
+                        await h.initialize();
                         // await delay(1000)
-                        const t: CapoWithoutSettings = await h.initialize();
-                        const uh = t.utxoHelper;
-                        const tcx = t.mkTcx()
 
                         const tina = h.wallet;
                         const tinaMoney = await tina.utxos;
                         const firstUtxo = tinaMoney[0];
 
-                        const tx = new TxBuilder({
-                            isMainnet: false
+                        const tx = makeTxBuilder({
+                            isMainnet: false,
                         });
 
                         tx.spendUnsafe(firstUtxo);
-                        tx.payUnsafe(tina.address, new Value(3n * ADA));
-                        tx.payUnsafe(tina.address, new Value(45n * ADA));
-                        tx.payUnsafe(tina.address, new Value(77n * ADA));
+                        tx.payUnsafe(tina.address, makeValue(3n * ADA));
+                        tx.payUnsafe(tina.address, makeValue(45n * ADA));
+                        tx.payUnsafe(tina.address, makeValue(32n * ADA));
 
                         // console.log("s2")
-                        await h.submitTx(await tx.build({
-                            changeAddress: tina.address
-                        }), "force");
+                        await h.submitTx(
+                            await tx.build({
+                                changeAddress: tina.address,
+                            }),
+                            "force"
+                        );
                         h.network.tick(1);
 
-                        const isEnough = uh.mkValuePredicate(42_000n, tcx);
+                        const capo: CapoWithoutSettings = await h.initialize();
+                        const uh = capo.utxoHelper;
+                        const tcx = h.mkTcx();
+                        const isEnoughT = uh.mkTokenPredicate(makeValue(42000));
                         const u1 = await uh.mustFindActorUtxo(
-                            "first",
-                            isEnough,
+                            "first with token",
+                            isEnoughT,
                             tcx
                         );
-                        const u1a = await uh.mustFindActorUtxo("1a", isEnough);
+                        const u1a = await uh.mustFindActorUtxo(
+                            "t1a",
+                            isEnoughT
+                        );
                         const u1b = await uh.mustFindActorUtxo(
-                            "1b",
-                            isEnough,
+                            "t1b",
+                            isEnoughT,
                             tcx
                         );
 
@@ -470,14 +362,14 @@ describe("StellarContract", async () => {
 
                         tcx.addInput(u1);
                         const u2 = await uh.mustFindActorUtxo(
-                            "second",
-                            isEnough,
+                            "second with token",
+                            isEnoughT,
                             tcx
                         );
                         tcx.addCollateral(u2);
                         const u3 = await uh.mustFindActorUtxo(
-                            "#3with token",
-                            isEnough,
+                            "third, with token",
+                            isEnoughT,
                             tcx
                         );
 
@@ -504,124 +396,202 @@ describe("StellarContract", async () => {
                     });
                 });
             });
-
-            describe("mustFindMyUtxo", () => {
-                it("uses hasUtxo underneath", async (context: localTC) => {
+            describe("with valuePredicate for ada-only", () => {
+                it("ignores utxos already in a tcx (inputs/collateral), if provided", async (context: localTC) => {
                     const {
                         h,
                         h: { network, actors, delay, state },
                     } = context;
+                    // await delay(1000)
+                    const t: CapoWithoutSettings = await h.initialize();
+                    const uh = t.utxoHelper;
+                    const tcx = t.mkTcx();
 
-                    const t = await h.initialize();
+                    const tina = h.wallet;
+                    const tinaMoney = await tina.utxos;
+                    const firstUtxo = tinaMoney[0];
 
-                    const tcx = h.mkTcx();
-                    let foundAddress;
-                    const hasUtxo = vi
-                        .spyOn(t.utxoHelper, "hasUtxo")
-                        .mockImplementation(async (_a, _b, { address }) => {
-                            foundAddress = address;
-                            return undefined;
-                        });
-                    await expect(
-                        t.mustFindMyUtxo("any", (x) => x, tcx)
-                    ).rejects.toThrow();
-                    expect(hasUtxo).toHaveBeenCalled();
-                    expect(foundAddress.toBech32()).toEqual(
-                        t.address.toBech32()
+                    const tx = makeTxBuilder({
+                        isMainnet: false,
+                    });
+
+                    tx.spendUnsafe(firstUtxo);
+                    tx.payUnsafe(tina.address, makeValue(3n * ADA));
+                    tx.payUnsafe(tina.address, makeValue(45n * ADA));
+                    tx.payUnsafe(tina.address, makeValue(77n * ADA));
+
+                    // console.log("s2")
+                    await h.submitTx(
+                        await tx.build({
+                            changeAddress: tina.address,
+                        }),
+                        "force"
                     );
+                    h.network.tick(1);
+
+                    const isEnough = uh.mkValuePredicate(42_000n, tcx);
+                    const u1 = await uh.mustFindActorUtxo(
+                        "first",
+                        isEnough,
+                        tcx
+                    );
+                    const u1a = await uh.mustFindActorUtxo("1a", isEnough);
+                    const u1b = await uh.mustFindActorUtxo("1b", isEnough, tcx);
+
+                    expect(uh.toUtxoId(u1a)).toEqual(uh.toUtxoId(u1));
+                    expect(uh.toUtxoId(u1b)).toEqual(uh.toUtxoId(u1));
+
+                    tcx.addInput(u1);
+                    const u2 = await uh.mustFindActorUtxo(
+                        "second",
+                        isEnough,
+                        tcx
+                    );
+                    tcx.addCollateral(u2);
+                    const u3 = await uh.mustFindActorUtxo(
+                        "#3with token",
+                        isEnough,
+                        tcx
+                    );
+
+                    // yes, but it doesn't mean anything; different refs to same details
+                    //  will also not be === despite being equivalent.
+                    expect(u2 === u1).not.toBeTruthy();
+                    expect(u3 === u1).not.toBeTruthy();
+                    expect(u3 === u2).not.toBeTruthy();
+
+                    // using the utxo's own eq() logic:
+                    expect(u2.isEqual(u1)).not.toBeTruthy();
+                    expect(u3.isEqual(u1)).not.toBeTruthy();
+                    expect(u3.isEqual(u2)).not.toBeTruthy();
+
+                    // using stringified forms:
+                    const t1 = uh.toUtxoId(u1);
+                    const t2 = uh.toUtxoId(u2);
+                    const t3 = uh.toUtxoId(u3);
+                    expect(t2).not.toEqual(t1);
+                    expect(t3).not.toEqual(t1);
+                    expect(t3).not.toEqual(t2);
+
+                    // console.log({t1, t2, eq: u1.eq(u2), identical: u2 === u1});
                 });
             });
+        });
 
-            describe("mustFindUtxo", () => {
-                it("uses hasUtxo underneath", async (context: localTC) => {
-                    const {
-                        h,
-                        h: { network, actors, delay, state },
-                    } = context;
+        describe("mustFindMyUtxo", () => {
+            it("uses hasUtxo underneath", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
 
-                    const t = await h.initialize();
+                const t = await h.initialize();
 
-                    h.mkTcx();
-                    let foundAddress;
-                    const hasUtxo = vi
-                        .spyOn(t.utxoHelper, "hasUtxo")
-                        .mockImplementation(async (_a, _b, { address }) => {
-                            foundAddress = address;
-                            return undefined;
-                        });
-                    await expect(
-                        t.utxoHelper.mustFindUtxo("any", (x) => x, {
-                            address: actors.tracy.address,
-                        })
-                    ).rejects.toThrow();
-                    expect(hasUtxo).toHaveBeenCalled();
-                    expect(foundAddress.toBech32()).toEqual(
-                        actors.tracy.address.toBech32()
-                    );
-                });
-            });
-
-            describe("TODO: TEST: findAnySpareUtxos()", () => {
-                it.todo(
-                    "finds utxos in the current user's wallet, for use in txn balancing during finalize()"
-                );
-                it.todo("will only return non-token utxos, if any exist");
-                it.todo(
-                    "ignores token-only utxos, having only the minAda/minUtxo required"
-                );
-                it.todo(
-                    "will only include token-bearing utxos if they have at least 2 ADA to spare"
-                );
-                it.todo("sorts the smallest utxos first");
-            });
-
-            describe("submit()", () => {
-                it.todo("uses findAnySpareUtxos() to help with txn-balancing");
-                it.todo(
-                    "accepts {signers}, a list of wallets, in arg2, and ensures the tx is expecting their signatures"
-                );
-                it.todo(
-                    "implicitly adds the current user's first-used-address, aka primary addr as a signer"
-                );
-                it.todo(
-                    "doesn't add current-user to signers if overridden {sign:false} option is provided"
-                );
-                it.todo(
-                    "throws a console message and an exception if finalize() fails"
-                );
-                it.todo("signs the txn with all the indicated {signers}");
-                it.todo("finalizes the txn with the indicated signers, if any");
-                it.todo("submits the txn to the configured network");
+                const tcx = h.mkTcx();
+                let foundAddress;
+                const hasUtxo = vi
+                    .spyOn(t.utxoHelper, "hasUtxo")
+                    .mockImplementation(async (_a, _b, { address }) => {
+                        foundAddress = address;
+                        return undefined;
+                    });
+                await expect(
+                    t.mustFindMyUtxo("any", (x) => x, tcx)
+                ).rejects.toThrow();
+                expect(hasUtxo).toHaveBeenCalled();
+                expect(foundAddress.toBech32()).toEqual(t.address.toString());
             });
         });
 
-        describe("TODO: TEST: Composing contract constellations", () => {
-            it.todo(
-                "addScriptWithParams(): instantiates related contracts",
-                async (context: localTC) => {
-                    const {
-                        h,
-                        h: { network, actors, delay, state },
-                    } = context;
+        describe("mustFindUtxo", () => {
+            it("uses hasUtxo underneath", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
 
-                    const t = await h.initialize();
+                const t = await h.initialize();
 
-                    // !!! todo: test it works with a specific example collaborating contract
-                }
-            );
+                h.mkTcx();
+                let foundAddress;
+                const hasUtxo = vi
+                    .spyOn(t.utxoHelper, "hasUtxo")
+                    .mockImplementation(async (_a, _b, { address }) => {
+                        foundAddress = address;
+                        return undefined;
+                    });
+                await expect(
+                    t.utxoHelper.mustFindUtxo("any", (x) => x, {
+                        address: actors.tracy.address,
+                    })
+                ).rejects.toThrow();
+                expect(hasUtxo).toHaveBeenCalled();
+                expect(foundAddress.toString()).toEqual(
+                    actors.tracy.address.toString()
+                );
+            });
         });
 
-        describe("TODO: TEST: mkValuePredicate()", () => {
+        describe("TODO: TEST: findAnySpareUtxos()", () => {
             it.todo(
-                "makes a predicate function for filtering any kind of value-bearing data"
+                "finds utxos in the current user's wallet, for use in txn balancing during finalize()"
+            );
+            it.todo("will only return non-token utxos, if any exist");
+            it.todo(
+                "ignores token-only utxos, having only the minAda/minUtxo required"
             );
             it.todo(
-                "requires only a mph/token name, or a Value, to make the predicate function"
+                "will only include token-bearing utxos if they have at least 2 ADA to spare"
             );
-            it.todo(
-                "returns a predicate that can filter utxos, tx inputs, txoutputs, or assets in a Value"
-            );
+            it.todo("sorts the smallest utxos first");
         });
+
+        describe("submit()", () => {
+            it.todo("uses findAnySpareUtxos() to help with txn-balancing");
+            it.todo(
+                "accepts {signers}, a list of wallets, in arg2, and ensures the tx is expecting their signatures"
+            );
+            it.todo(
+                "implicitly adds the current user's first-used-address, aka primary addr as a signer"
+            );
+            it.todo(
+                "doesn't add current-user to signers if overridden {sign:false} option is provided"
+            );
+            it.todo(
+                "throws a console message and an exception if finalize() fails"
+            );
+            it.todo("signs the txn with all the indicated {signers}");
+            it.todo("finalizes the txn with the indicated signers, if any");
+            it.todo("submits the txn to the configured network");
+        });
+    });
+
+    describe("TODO: TEST: Composing contract constellations", () => {
+        it.todo(
+            "addScriptWithParams(): instantiates related contracts",
+            async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+
+                const t = await h.initialize();
+
+                // !!! todo: test it works with a specific example collaborating contract
+            }
+        );
+    });
+
+    describe("TODO: TEST: mkValuePredicate()", () => {
+        it.todo(
+            "makes a predicate function for filtering any kind of value-bearing data"
+        );
+        it.todo(
+            "requires only a mph/token name, or a Value, to make the predicate function"
+        );
+        it.todo(
+            "returns a predicate that can filter utxos, tx inputs, txoutputs, or assets in a Value"
+        );
     });
 });
 

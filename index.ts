@@ -1,10 +1,7 @@
-export { mkHeliosModule } from "./src/helios/HeliosModuleSrc.js";
-export type { HeliosModuleSrc } from "./src/helios/HeliosModuleSrc.js";
 export { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
 export {
     mkValuesEntry,
     mkUutValuesEntries,
-    stringToNumberArray,
     realDiv,
     debugMath,
     realMul,
@@ -29,7 +26,6 @@ export {
     txOutputIdAsString,
     byteArrayListAsString,
     datumSummary,
-    datumExpanded,
     hexToPrintableString,
     dumpAny,
     betterJsonSerializer,
@@ -50,6 +46,7 @@ export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
 export type {
     MintUutActivityArgs,
     CharterDataLike,
+    CharterDataLike as CharterDatumProps,
     FoundDatumUtxo,
     FoundUut,
     uutPurposeMap,
@@ -62,16 +59,6 @@ export type {
 } from "./src/Capo.js";
 
 export { type utxoPredicate, UtxoHelper } from "./src/UtxoHelper.js";
-
-export { SettingsAdapter } from "./src/CapoSettingsTypes.js";
-export type {
-    ParsedSettings,
-    WrappedSettingsAdapterBridge,
-    // CapoOffchainSettingsType,
-    // CapoOnchainSettingsType,
-    // CapoSettingsAdapterFor,
-    DatumAdapterOffchainType,
-} from "./src/CapoSettingsTypes.js";
 
 export {
     delegateRoles,
@@ -151,28 +138,15 @@ export type {
     ConfigFor,
 } from "./src/StellarContract.js";
 
-export { DatumAdapter } from "./src/DatumAdapter.js";
-export type {
-    BigIntRecord,
-    Numeric,
-    RawBytes,
-    Optional,
-    OnchainEnum,
-    OnchainEnum2,
-    adapterParsedOnchainData,
-    offchainDatumType,
-    inferOffchainNumericType,
-} from "./src/DatumAdapter.js";
-
 export {
-    DelegatedDatumAdapter,
     type AnyDataTemplate,
     type hasAnyDataTemplate,
-} from "./src/delegation/DelegatedDatumAdapter.js";
+    type minimalData
+} from "./src/delegation/DelegatedData.js";
 
 export {
     type DgDataCreationAttrs,
-    type DelegatedDatumType,
+    type MaybeWrappedDataType as DelegatedDatumType,
     type DelegatedDatumTypeName,
     type updateActivityFunc,
     DelegatedDataContract,
@@ -195,7 +169,6 @@ export {
     type Nested,
     type NotNested
 } from "./src/helios/dataBridge/EnumBridge.js";
-export { StellarCast } from "./src/helios/dataBridge/StellarCast.js";
 
 export {
     CapoMinter,
@@ -217,18 +190,8 @@ export type {
     tokenNamesOrValuesEntry,
     InlineDatum,
     valuesEntry,
-    Datum,
-    Tx,
-    TxInput,
-    Address,
-    TxOutput,
-    ValidatorHash,
-    Value,
-    StakingValidatorHash,
-    StakeAddress,
-    Wallet,
-    WalletHelper,
-    Network,
+    bytesToText,
+    textToBytes,    
 } from "./src/HeliosPromotedTypes.js";
 
 // export {
@@ -242,14 +205,12 @@ export type {
 //     StakingValidatorHash,
 //     StakeAddress,
 // } from "./src/HeliosPromotedTypes.js";
-import * as helios from "@hyperionbt/helios";
 
 export {
     StellarNetworkEmulator,
     type NetworkSnapshot,
 } from "./src/testing/StellarNetworkEmulator.js";
 
-export { helios };
 export * from "./src/testing/index.js";
 
 export type { TestHelperState } from "./src/testing/types.js";

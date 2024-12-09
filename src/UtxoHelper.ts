@@ -1,21 +1,28 @@
-import {
-    Address,
-    AssetClass,
-    Assets,
-    MintingPolicyHash,
-    TxInput,
-    TxOutput,
-    Value,
-} from "@hyperionbt/helios";
-import { StellarTxnContext } from "./StellarTxnContext.js";
-import type { ByteArrayLike } from "@helios-lang/codec-utils";
+import { bytesToHex, hexToBytes, type BytesLike } from "@helios-lang/codec-utils";
 import type { SimpleWallet, Wallet } from "@helios-lang/tx-utils";
+import {
+    type Address,
+    type AssetClass,
+    type Assets,
+    type MintingPolicyHash,
+    type TxInput,
+    type TxOutput,
+    type Value,
+    type NetworkParams,
+    makeTxOutput,
+    makeValue,
+    makeAssetClass,
+    makeAddress,
+    decodeShelleyAddress,
+    makeDummyAddress,
+} from "@helios-lang/ledger";
+
+import { StellarTxnContext } from "./StellarTxnContext.js";
 import type { SimpleWallet_stellar } from "./testing/StellarNetworkEmulator.js";
 import { dumpAny, utxosAsString } from "./diagnostics.js";
 import { UutName } from "./delegation/UutName.js";
-import { stringToNumberArray } from "./utils.js";
 import type { SetupDetails, StellarContract } from "./StellarContract.js";
-import type { NetworkParams } from "@helios-lang/ledger";
+import { textToBytes } from "./HeliosPromotedTypes.js";
 
 export type utxoSortInfo = {
     u: TxInput;
@@ -65,7 +72,7 @@ export type UtxoSearchScopeWithUtxos = UtxoSearchScope & {
  * @public
  */
 export class UtxoHelper {
-    strella?: StellarContract<any>
+    strella?: StellarContract<any>;
     setup: SetupDetails;
 
     constructor(setup: SetupDetails, strella?: StellarContract<any>) {
@@ -159,9 +166,9 @@ export class UtxoHelper {
             const minAdaAmount = u.value.assets.isZero()
                 ? BigInt(0)
                 : (() => {
-                      const dummy = new TxOutput(
+                      const dummy = makeTxOutput(
                           u.output.address,
-                          new Value(undefined, u.output.value.assets)
+                          makeValue(0, u.output.value.assets)
                       );
                       dummy.correctLovelace(this.networkParams);
                       return dummy.value.lovelace;
@@ -186,31 +193,34 @@ export class UtxoHelper {
         tokenName?: string,
         quantity?: bigint
     ): tokenBearer | undefined {
-        if (something instanceof TxInput)
+        if (something.kind == "TxOutput")
             return (
-                (this.utxoHasToken(something, value, tokenName, quantity) &&
-                    something) ||
-                undefined
-            );
-        if (something instanceof TxOutput)
-            return (
-                (this.outputHasToken(something, value, tokenName, quantity) &&
-                    something) ||
-                undefined
-            );
-        if (something instanceof Assets)
-            return (
-                (this.assetsHasToken(something, value, tokenName, quantity) &&
+                (this.outputHasToken(something as TxOutput, value, tokenName, quantity) &&
                     something) ||
                 undefined
             );
 
-        //!!! todo: more explicit match for TxInput, which seems to be a type but not an 'instanceof'-testable thing.
-        return (
-            (this.inputHasToken(something, value, tokenName, quantity) &&
-                something) ||
-            undefined
-        );
+        if (something.kind == "TxInput")
+            return (
+                (this.utxoHasToken(something as TxInput, value, tokenName, quantity) &&
+                    something) ||
+                undefined
+            );
+            
+        if (something.kind == "Assets")
+            return (
+                (this.assetsHasToken(something as Assets, value, tokenName, quantity) &&
+                    something) ||
+                undefined
+            );
+
+        throw new Error("unexpected")
+        // //!!! todo: more explicit match for TxInput, which seems to be a type but not an 'instanceof'-testable thing.
+        // return (
+        //     (this.inputHasToken(something, value, tokenName, quantity) &&
+        //         something) ||
+        //     undefined
+        // );
     }
 
     utxoHasToken(
@@ -238,7 +248,7 @@ export class UtxoHelper {
         quantity?: bigint
     ) {
         const v =
-            vOrMph instanceof MintingPolicyHash
+            vOrMph.kind == "MintingPolicyHash" 
                 ? this.mkAssetValue(vOrMph, tokenName!, quantity!)
                 : vOrMph;
 
@@ -251,7 +261,7 @@ export class UtxoHelper {
         tokenName?: string,
         quantity?: bigint
     ) {
-        const isValue = vOrMph instanceof Value;
+        const isValue = vOrMph.kind == "Value"
         if (!isValue) {
             if (!tokenName || !quantity) {
                 throw new Error(
@@ -269,7 +279,7 @@ export class UtxoHelper {
 
     mkAssetValue(
         mph: MintingPolicyHash,
-        tokenName: ByteArrayLike,
+        tokenName: BytesLike,
         count: bigint = 1n
     ) {
         // const TL  = [ tokenName, count ] as [ ByteArrayLike, bigint ];
@@ -282,17 +292,12 @@ export class UtxoHelper {
         // const v2 = new Value(undefined, [
         //     [ mph, [ TL ] ]
         // ]);
-        const v = new Value(undefined, [
-            [
-                mph,
-                [
-                    // ... token map:
-                    [tokenName, count],
-                    // ...other token-name/count pairs in the map
-                ],
-            ],
+        const v = makeValue(
+            mph, 
+            tokenName,
+            count
             // ...other mph / token-map pairs
-        ]);
+        );
         return v;
     }
 
@@ -301,7 +306,7 @@ export class UtxoHelper {
         utxos: TxInput[],
         tcx?: StellarTxnContext
     ): TxInput | undefined {
-        const value = new Value(lovelace);
+        const value = makeValue(lovelace);
         const toSortInfo = this.mkUtxoSortInfo(value.lovelace);
 
         const found = utxos
@@ -330,7 +335,7 @@ export class UtxoHelper {
         lovelace: bigint,
         tcx?: StellarTxnContext
     ): tokenPredicate<TxInput> {
-        const value = new Value(lovelace);
+        const value = makeValue(lovelace);
         const predicate = _adaPredicate.bind(this, tcx) as tokenPredicate<any>;
         predicate.predicateValue = value;
         return predicate;
@@ -346,18 +351,23 @@ export class UtxoHelper {
     /**
      * Creates an asset class for the given token name, for the indicated minting policy
      */
-    acAuthorityToken(tokenName: string | number[], mph? : MintingPolicyHash): AssetClass {
-        let ourMph = mph
+    acAuthorityToken(
+        tokenName: string | number[],
+        mph?: MintingPolicyHash
+    ): AssetClass {
+        let ourMph = mph;
         if (!ourMph) {
             if (!this.strella) {
-                throw new Error(`no contract available for resolving minting policy hash; provide to acAuthorityToken or use a UtxoHelper having a strella prop`);
+                throw new Error(
+                    `no contract available for resolving minting policy hash; provide to acAuthorityToken or use a UtxoHelper having a strella prop`
+                );
             }
             ourMph = this.strella.mintingPolicyHash;
         }
         if (!ourMph) {
             throw new Error(`no minting policy hash available`);
-         }        
-        return new AssetClass(ourMph, tokenName);
+        }
+        return makeAssetClass(ourMph, tokenName);
     }
 
     /**
@@ -372,19 +382,20 @@ export class UtxoHelper {
     ) {
         const tnBytes = Array.isArray(tokenName)
             ? tokenName
-            : stringToNumberArray(tokenName.toString());
+            : textToBytes(tokenName.toString());
 
         return this.mkMinAssetValue(mph, tnBytes, count);
     }
 
     mkMinAssetValue(
         mph: MintingPolicyHash,
-        tokenName: ByteArrayLike,
+        tokenName: BytesLike,
         count: bigint = 1n
     ) {
         const v = this.mkAssetValue(mph, tokenName, count);
         // uses a dummy address so it can be used even during bootstrap
-        const txo = new TxOutput(new Address(Array<number>(29).fill(0)), v);
+        const dummyAddr = makeDummyAddress(false)
+        const txo = makeTxOutput(dummyAddr, v);
         txo.correctLovelace(this.networkParams);
         return txo.value;
     }
@@ -458,18 +469,21 @@ export class UtxoHelper {
             );
         const predicate = _tokenPredicate.bind(this) as tokenPredicate<any>;
 
-        const isValue = specifier instanceof Value;
+        //@ts-expect-error
+        const isValue = specifier.kind == "Value";
+        
         const isTokenNameOnly =
             "string" === typeof specifier ||
             (Array.isArray(specifier) && "number" === typeof specifier[0]);
         const isUut = specifier instanceof UutName;
         if (isValue) {
+            const v = specifier as Value;
             // v = predicate.value = specifier;
             const t = _tokenPredicate.bind(
                 this,
-                specifier
+                v
             ) as tokenPredicate<any>;
-            t.predicateValue = specifier;
+            t.predicateValue = v;
             return t;
         } else if (isUut || isTokenNameOnly) {
             const tn = specifier as UutName | number[] | string;
@@ -481,8 +495,9 @@ export class UtxoHelper {
             const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
             t.predicateValue = tv;
             return t;
-        } else if (specifier instanceof MintingPolicyHash) {
-            mph = specifier;
+            //@ts-expect-error
+        } else if (specifier.kind == "MintingPolicyHash") {
+            mph = specifier as MintingPolicyHash;
             if ("string" !== typeof quantOrTokenName)
                 throw new Error(
                     `with minting policy hash, token-name must be a string (or ByteArray support is TODO)`
@@ -497,8 +512,10 @@ export class UtxoHelper {
             const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
             t.predicateValue = tv;
             return t;
-        } else if (specifier instanceof AssetClass) {
-            mph = specifier.mph;
+            //@ts-expect-error
+        } else if (specifier.kind == "AssetClass") {
+            const s = specifier as AssetClass;
+            mph = s.mph;
             if (!quantOrTokenName) quantOrTokenName = 1n;
             if ("bigint" !== typeof quantOrTokenName)
                 throw new Error(
@@ -508,8 +525,8 @@ export class UtxoHelper {
 
             // v = predicate.value = new Value(0n, [[specifier, quantity]]);
             // return predicate;
-            const tv = new Value(0n, [
-                [specifier.mph, [[specifier.tokenName, quantity]]],
+            const tv = makeValue(0n, [
+                [mph, [[s.tokenName, quantity]]],
             ]);
             const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
             t.predicateValue = tv;
@@ -535,7 +552,7 @@ export class UtxoHelper {
     totalValue(utxos: TxInput[]): Value {
         return utxos.reduce((v: Value, u: TxInput) => {
             return v.add(u.value);
-        }, new Value(0n));
+        }, makeValue(0n));
     }
 
     /**
@@ -761,7 +778,7 @@ export class UtxoHelper {
         walletAddresses?: Address | Address[]
     ): string {
         const where = searchScope.address
-            ? `searched in address ${searchScope.address.toBech32()}\n`
+            ? `searched in address ${searchScope.address.toString()}\n`
             : ``;
         const wAddrs: Address[] = Array.isArray(walletAddresses)
             ? walletAddresses
@@ -769,7 +786,7 @@ export class UtxoHelper {
             ? [walletAddresses]
             : [];
         let more = wAddrs.length
-            ? wAddrs.map((x) => dumpAny(x) + ` = ${x.toBech32()}`).join("\n")
+            ? wAddrs.map((x) => dumpAny(x) + ` = ${x.toString()}`).join("\n")
             : "";
         if (wAddrs.length > 1) {
             more = "\n  ... wallet addrs:\n";
@@ -786,6 +803,6 @@ export class UtxoHelper {
     }
 
     toUtxoId(u: TxInput) {
-        return `${u.id.txId.toHex()}@${u.id.utxoIdx}`;
+        return `${u.id.txId.toHex()}@${u.id.index}`;
     }
 }

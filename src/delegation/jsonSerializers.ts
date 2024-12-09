@@ -1,6 +1,9 @@
-import { isValidUtf8 } from "@helios-lang/codec-utils";
+import { bytesToHex, isValidUtf8 } from "@helios-lang/codec-utils";
 import { encodeBech32 } from "@helios-lang/crypto";
-import { Address, ScriptHash, bytesToHex, bytesToText } from "@hyperionbt/helios";
+import { type Address } from "@helios-lang/ledger";
+import { decodeAddress, makeAddress, type MintingPolicyHash, type ScriptHash } from "@helios-lang/ledger";
+import { bytesToText } from "../HeliosPromotedTypes.js";
+import { txOutputIdAsString } from "../diagnostics.js";
 
 /**
  * toJSON adapter for delegate links
@@ -13,8 +16,8 @@ export function delegateLinkSerializer(key: string, value: any) {
         return value.toString();
     } else if ("bytes" == key && Array.isArray(value)) {
         return bytesToHex(value);
-    } else if (value instanceof Address) {
-        return value.toBech32();
+    } else if (value?.kind == "Address") {
+        return value.toString();
     } else if ("tn" == key && Array.isArray(value)) {
         return bytesToText(value);
     }
@@ -27,17 +30,38 @@ export function delegateLinkSerializer(key: string, value: any) {
 
 // this is NOT a jsonifier, but it emits nice-looking info onscreen when used with JSON.stringify (in arg2)
 export function uplcDataSerializer(key: string, value: any, depth=0) {
+    const indent = "    ".repeat(depth);
+    const outdent = "    ".repeat(Math.max(0, depth-1));
+
     if (typeof value === "bigint") {
         return `big‹${value.toString()}n›`;
     } else if ("bytes" == key && Array.isArray(value)) {
         // return `‹bytes‹${value.length}›=${bytesToHex(value)}›`;
         return `${abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 40)}`
-    } else if (value instanceof Address) {
-        return `‹${abbrevAddress(value)}›`;
-    } else if (value instanceof ScriptHash) {
+    } else if ("string" == typeof value) {
+        return `'${value}'`// JSON.stringify(value, null, 4);
+    } else if ("undefined" == typeof value) {
+        return `‹und›`
+    } else if (value.kind == "Address") {
+        const a = value as Address;
+        const cbor = a.toCbor();
+        const b = decodeAddress(cbor)
+        return `‹${abbrevAddress(value)}› = `+abbreviatedDetailBytes("‹cbor:", cbor, 99)+"›"
+    }  else if (value.kind == "ValidatorHash") {
         return `${abbreviatedDetailBytes("script‹", value.bytes)}›`
             // .toHex())}›`;
-    } else if ("tn" == key && Array.isArray(value)) {
+    }  else if (value.kind == "MintingPolicyHash") {
+        const v : MintingPolicyHash = value;
+        return `${abbreviatedDetailBytes("mph‹", v.bytes)}›`
+            // .toHex())}›`;
+    } else if (value.kind == "TxOutputId") {
+        return `‹txoid:${txOutputIdAsString(value,8)}›`;
+    }
+    if (value.rawData) {
+        return uplcDataSerializer(key, value.rawData, Math.max(depth, 3));
+    }
+    if(value.kind) console.log("info: no special handling for KIND = ", value.kind);
+    if ("tn" == key && Array.isArray(value)) {
         return bytesToText(value);
     } else if ("number" == typeof value) {
         return value.toString();
@@ -52,10 +76,25 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
         return `${abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 40)}`
     // } else if (value.toString) {
     //     return value.toString();
-    } else if ("string" == typeof value) {
-        return `'${value}'`// JSON.stringify(value, null, 4);
+    } else if (Array.isArray(value)) {
+        const inner = value.map((v) => uplcDataSerializer("", v, Math.max(depth+1,3)));
+        let extraNewLine = ""
+        let usesOutdent = ""
+        const multiLine = inner.map((s) => {
+            const hasNewline = s.trim().includes("\n");
+            if ( s.length > 40) {
+                extraNewLine = "\n"
+                usesOutdent = outdent
+                return `${indent}${s}`
+            } else {
+                // console.log("length, hasNewline = ", s.length, hasNewline)
+            }
+            return s
+        }).join(", ${extraNewLine}");
+        // console.log("array uses newline/outdent", {extraNewLine, usesOutdent});
+        return `[ ${extraNewLine}${multiLine}${extraNewLine}${usesOutdent} ]`
     }
-    
+        
     if (!value) {
         return JSON.stringify(value);
     }
@@ -65,30 +104,47 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
     }
     if (keys.length == 1) {
         const singleKey = keys[0];
-        let inner = uplcDataSerializer("", value[singleKey], Math.max(depth,3)) || "";
-        if (inner.length) inner = ` ${inner} `
-        let s = `${singleKey}: {${inner}}`
+        const thisValue = value[singleKey];
+        let inner = uplcDataSerializer("", thisValue, Math.max(depth,3)) || "";
+        if (Array.isArray(thisValue)) { 
+            if (!inner.length) {
+                inner = "[ ‹empty list› ]"
+            }
+        } else {
+            if (inner.length) inner = `{ ${inner} }`
+        }
+        let s = `${singleKey}: ${inner}`
         // if (key) return `**1k** ${key}: ${s}`
         return s
     }
-    const indent = "    ".repeat(depth);
-    const outdent = "    ".repeat(depth-1);
-    const s = keys.map((k) => `${indent}${k}: ${
+    let extraNewLine = ""
+    let usesOutdent = ""
+    let s = keys.map((k) => `${indent}${k}: ${
         uplcDataSerializer(k, value[k], Math.max(depth+1,2))
     //    JSON.stringify(value[k], datumSerializer, 4)
 // }`).join(`,\nz${indent}`);
-    }`).join(`,\n`);
-if (key) return `{\n${s}\n${outdent}}`
-    // if (key) return `${s}\n`
+    }`)
+    const multiLine = s.map((s) => {
+        if ( s.length > 40 && !s.includes("\n")) {
+            extraNewLine = "\n"
+            usesOutdent = outdent
+            return `${s}`
+        }
+        return s
+    }).join(`, ${extraNewLine}`);
+    s = `${multiLine}${extraNewLine}${usesOutdent}`
+
+    if (key) return `{${extraNewLine}${s}}`
     return `\n${s}`
-    // return value; // return everything else unchanged
 }
 export function abbrevAddress(address: Address) {
-    return abbreviatedDetail(address.toBech32(), 12, false);
+    return abbreviatedDetail(address.toString(), 12, false);
 }
 export function abbreviatedDetailBytes(prefix: string, value: number[], initLength=8) {    
     const hext = bytesToHex(value);
-    const text = isValidUtf8(value) ? ` ‹"${abbreviatedDetail(bytesToText(value), initLength)}"›` : "";
+    const Len = value.length
+    const text = isValidUtf8(value) ? 
+        ` (${Len})‹"${abbreviatedDetail(bytesToText(value), initLength)}"›` : ` (${Len} bytes)`;
 
     if (value.length <= initLength) return `${prefix}${hext}${text}`
     const checksumString = encodeBech32("_", value).slice(-4)

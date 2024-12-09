@@ -1,5 +1,4 @@
-import { TxId, bytesToText } from "@hyperionbt/helios";
-
+import { bytesToText } from "../HeliosPromotedTypes.js";
 export const _uutName = Symbol("uutName");
 export const maxUutName = 32;
 

@@ -1,14 +1,13 @@
 import {
-    Address,
-    Value,
-    MintingPolicyHash,
-    Assets
-} from "@hyperionbt/helios";
+    type Assets,
+    type Address,
+    type MintingPolicyHash,
+    makeAssets,
+} from "@helios-lang/ledger";
+import { makeValue } from "@helios-lang/ledger";
+
 import { Activity, StellarContract, partialTxn } from "../StellarContract.js";
-import type {
-    UplcRecord,
-    configBaseWithRev,
-} from "../StellarContract.js";
+import type { UplcRecord, configBaseWithRev } from "../StellarContract.js";
 
 import { StellarTxnContext, type anyState } from "../StellarTxnContext.js";
 import type { Capo, MintUutActivityArgs, MinterBaseMethods } from "../Capo.js";
@@ -16,7 +15,6 @@ import type { SeedTxnScriptParams } from "../SeedTxnScriptParams.js";
 import type { valuesEntry } from "../HeliosPromotedTypes.js";
 import { UutName } from "../delegation/UutName.js";
 
-import type { HeliosModuleSrc } from "../helios/HeliosModuleSrc.js";
 import { mkValuesEntry } from "../utils.js";
 
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
@@ -24,10 +22,16 @@ import type { BasicMintDelegate } from "./BasicMintDelegate.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import CapoMinterBundle from "./CapoMinter.hlbundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
-import type { HeliosBundleClass, HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import type {
+    HeliosBundleClass,
+    HeliosScriptBundle,
+} from "../helios/HeliosScriptBundle.js";
 import CapoMinterDataBridge from "./CapoMinter.bridge.js";
 import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
-import type { mustFindActivityType, mustFindConcreteContractBridgeType } from "../helios/dataBridge/BridgeTypeUtils.js";
+import type {
+    mustFindActivityType,
+    mustFindConcreteContractBridgeType,
+} from "../helios/dataBridge/BridgeTypeUtils.js";
 import type { hasSeed, isActivity } from "../ActivityTypes.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
@@ -73,7 +77,7 @@ export class CapoMinter
     /**
      * the data bridge for this minter is fixed to one particular type
      */
-    dataBridgeClass : typeof CapoMinterDataBridge = CapoMinterDataBridge;
+    dataBridgeClass: typeof CapoMinterDataBridge = CapoMinterDataBridge;
     get onchain(): mustFindConcreteContractBridgeType<this> {
         return this.getOnchainBridge() as any;
     }
@@ -110,11 +114,7 @@ export class CapoMinter
     getContractScriptParamsUplc(
         config: BasicMinterParams
     ): UplcRecord<configBaseWithRev & SeedTxnScriptParams> {
-        const {
-            seedIndex,
-            seedTxn,
-            rev = this.currentRev,
-        } = config;
+        const { seedIndex, seedTxn, rev = this.currentRev } = config;
 
         return this.paramsToUplc({
             rev,
@@ -151,7 +151,7 @@ export class CapoMinter
      **/
     @Activity.redeemer
     activityMintWithDelegateAuthorizing(): isActivity {
-        return this.activityRedeemer("mintWithDelegateAuthorizing");    
+        return this.activityRedeemer("mintWithDelegateAuthorizing");
     }
 
     /**
@@ -170,7 +170,7 @@ export class CapoMinter
     activityAddingMintInvariant(seedFrom: hasSeed): isActivity {
         const seed = this.getSeed(seedFrom);
 
-        return this.activityRedeemer("addingMintInvariant", {seed});
+        return this.activityRedeemer("addingMintInvariant", { seed });
     }
 
     /** Mints a new UUT specifically for a spending invariant
@@ -183,7 +183,7 @@ export class CapoMinter
     @Activity.redeemer
     activityAddingSpendInvariant(seedFrom: hasSeed): isActivity {
         const seed = this.getSeed(seedFrom);
-        return this.activityRedeemer("addingSpendInvariant", {seed});
+        return this.activityRedeemer("addingSpendInvariant", { seed });
     }
 
     /**
@@ -201,7 +201,7 @@ export class CapoMinter
                 "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
         );
         const seed = this.getSeed(seedFrom);
-        return this.activityRedeemer("forcingNewMintDelegate", {seed});
+        return this.activityRedeemer("forcingNewMintDelegate", { seed });
     }
 
     /**
@@ -223,9 +223,10 @@ export class CapoMinter
         seedFrom: hasSeed,
         replacingUut?: number[]
     ): isActivity {
-        const seed = this.getSeed(seedFrom);        
+        const seed = this.getSeed(seedFrom);
         return this.activityRedeemer("forcingNewSpendDelegate", {
-            seed, replacingUut
+            seed,
+            replacingUut,
         });
     }
 
@@ -241,9 +242,9 @@ export class CapoMinter
     tvCharter() {
         const { mintingPolicyHash } = this;
 
-        const v = new Value(
-            undefined,
-            new Assets([[mintingPolicyHash, [this.charterTokenAsValuesEntry]]])
+        const v = makeValue(
+            0,
+            makeAssets([[mintingPolicyHash, [this.charterTokenAsValuesEntry]]])
         );
         return v;
     }
@@ -264,8 +265,8 @@ export class CapoMinter
             capoGov,
             mintDelegate,
             spendDelegate,
-            // settingsUut,
-        }: {
+        }: // settingsUut,
+        {
             owner: Address;
             capoGov: UutName;
             mintDelegate: UutName;
@@ -292,25 +293,24 @@ export class CapoMinter
             mintDgtVE,
             spendDgtVE,
         ];
-
-        return (
-            await this.attachScript( tcx, false )
-        ).mintTokens(
+        
+        const activity = this.activity.mintingCharter(owner);
+        return (await this.attachScript(tcx, false)).mintTokens(
             this.mintingPolicyHash!,
             values,
-            // this.activity.MintingCharter({
-            this.activityMintingCharter({
-                owner,
-            })
-        )  as TCX;
+            activity
+        ) as TCX;
     }
 
-    attachScript<TCX extends StellarTxnContext<anyState>>(tcx : TCX, useRefScript=true) {
+    attachScript<TCX extends StellarTxnContext<anyState>>(
+        tcx: TCX,
+        useRefScript = true
+    ) {
         return this.configIn!.capo.txnAttachScriptOrRefScript(
             tcx,
             this.compiledScript,
             useRefScript
-        ) as Promise<TCX>
+        ) as Promise<TCX>;
     }
 
     @Activity.partialTxn
@@ -319,11 +319,11 @@ export class CapoMinter
         vEntries: valuesEntry[],
         minterActivity: isActivity
     ): Promise<TCX> {
-        return ( await this.attachScript(tcx) ).mintTokens(
+        return (await this.attachScript(tcx)).mintTokens(
             this.mintingPolicyHash!,
             vEntries,
             minterActivity
-        ) as TCX
+        ) as TCX;
     }
 
     @Activity.partialTxn
@@ -342,8 +342,7 @@ export class CapoMinter
             mintDgtRedeemer,
             skipReturningDelegate
         );
-
-        return (await this.attachScript(tcx) ).mintTokens(
+        return (await this.attachScript(tcx)).mintTokens(
             this.mintingPolicyHash!,
             vEntries,
             this.activityMintWithDelegateAuthorizing()

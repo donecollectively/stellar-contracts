@@ -25,7 +25,6 @@ import {
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { configBaseWithRev, txn } from "../src/StellarContract";
 import { dumpAny, txAsString } from "../src/diagnostics";
-import { Address } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts";
 import { ContractBasedDelegate } from "../src/delegation/ContractBasedDelegate";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
@@ -70,7 +69,7 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
     }
 
     initDelegateRoles() {
-        const inherited = super.basicDelegateRoles();
+        const inherited = super.initDelegateRoles();
         const { mintDelegate: parentMintDelegate, ...othersInherited } =
             inherited;
         const {

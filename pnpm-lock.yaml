@@ -5,9 +5,10 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@hyperionbt/helios': node_modules/@helios-lang/compat
   '@helios-lang/Xcompiler': ../helios/compiler
-  '@helios-lang/Xcompiler-utils': ../helios/compiler-utils
+  xxx@helios-lang/compiler-utils@^0.3.2: ../helios/node_modules/@helios-lang/compiler-utils
+  xxxx@helios-lang/compiler-utils@^0.2.1: ../helios/compiler-utils-v02
+  xxxx@helios-lang/compiler-utils-head: ../helios/compiler-utils
 
 importers:
 
@@ -26,9 +27,6 @@ importers:
       '@helios-lang/codec-utils':
         specifier: link:../helios/codec-utils
         version: link:../helios/codec-utils
-      '@helios-lang/compat':
-        specifier: link:../helios/compat
-        version: link:../helios/compat
       '@helios-lang/compiler':
         specifier: link:../helios/compiler
         version: link:../helios/compiler
@@ -44,15 +42,6 @@ importers:
       '@helios-lang/ledger':
         specifier: link:../helios/ledger
         version: link:../helios/ledger
-      '@helios-lang/ledger-babbage':
-        specifier: link:../helios/ledger-babbage
-        version: link:../helios/ledger-babbage
-      '@helios-lang/ledger-conway':
-        specifier: link:../helios/ledger-conway
-        version: link:../helios/ledger-conway
-      '@helios-lang/ledger-shelley':
-        specifier: link:../helios/ledger-shelley
-        version: link:../helios/ledger-shelley
       '@helios-lang/tx-utils':
         specifier: link:../helios/tx-utils
         version: link:../helios/tx-utils
@@ -62,9 +51,6 @@ importers:
       '@helios-lang/uplc':
         specifier: link:../helios/uplc
         version: link:../helios/uplc
-      '@hyperionbt/helios':
-        specifier: node_modules/@helios-lang/compat
-        version: link:node_modules/@helios-lang/compat
       '@microsoft/api-extractor':
         specifier: ^7.47.11
         version: 7.47.11(@types/node@20.16.2)
