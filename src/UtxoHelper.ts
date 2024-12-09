@@ -277,6 +277,9 @@ export class UtxoHelper {
         return o.value.isGreaterOrEqual(v);
     }
 
+    /**
+     * @deprecated - use helios `makeValue()` instead
+     */
     mkAssetValue(
         mph: MintingPolicyHash,
         tokenName: BytesLike,

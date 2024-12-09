@@ -383,7 +383,7 @@ export class DefaultCapoTestHelper<
                         {
                             tokenName: initialSettings.id,
                             entryType: { NamedTokenRef: {} },
-                            mph: null
+                            mph: undefined
                         }
                     );
                 },

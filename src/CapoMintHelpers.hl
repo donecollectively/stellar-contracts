@@ -374,19 +374,16 @@ func validateUutMinting(
         purposes.sort((a:String, b:String) -> Bool { a != b }).map(
             (purpose: String) -> Value {
                 // print("purpose: " + purpose);
-                mkTv(mph, mkTokenName(purpose))
+                mkTv(mph, mkTokenName(purpose) /*, quantity=1 */)
             }
         )
     );
     if (! valueMinted.contains_policy(mph) ) {
-        print( "  -- no mint from our policy at (mph, valueMinted): ( ");
-        print( mph.show() );
-        print(valueMinted.show() );
-        print(")\n");
-        error("validateUutMinting(): no mint")
-    } else {
-        assert(true, "no")
-        // print("  -- minted: " + valueMinted.get_policy(mph).show());
+        print( "  -- no mint from our policy "+ 
+            mph.show() +
+            "value minted: \n"+ valueMinted.show() 
+        );
+        error("❌❌ validateUutMinting(): no mint from our policy")
     };
 
     print("\n  -- uut-minting seed: " + seed.tx_id.show() + "🔹#"+seed.index.show() + "\n");
@@ -404,10 +401,7 @@ func validateUutMinting(
         print(Value::from_map(valueMinted.to_map().filter( (b:MintingPolicyHash, _ /* Map[ByteArray]Int */ ) -> Bool {
             b != mph
         })).show());
-        print("^ other policy values minted \n")
-        
-    } else {
-        assert(true, "never")
+        print("^ other policy values minted \n")        
     };
 
     temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
@@ -422,11 +416,7 @@ func validateUutMinting(
 
     expectationsMet : Bool = valueMinted  == expectedValue;
 
-    assert(expectationsMet, "mismatch in UUT mint"
-        // +";\n   ... expected "+ expectedValue.show()+
-        // "   ... actual "+ valueMinted.show()+
-        // "   ... diff = \n" + (expectedValue - valueMinted).show()
-    );
+    assert(expectationsMet, "mismatch in UUT mint");
     assert(hasSeedUtxo(tx, seed), "no seed"); //, "UUT "+purposes.join("+")
     print(" ✅ validateUutMinting:  ok!\n");
 

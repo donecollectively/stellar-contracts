@@ -294,16 +294,10 @@ struct RelativeDelegateLink {
         createdOrReturned: DgTknDisposition = DgTknDisposition::Returned
     ) -> Bool {
         RelativeDelegateLink{
-            uut,  // strategy,
+            uut,  
             validatorHash, 
             _ /* configJson */
         } = self;
-        // if (strategy.encode_utf8().length < 4) {
-        //     error("strategy too short")
-        //     // error("strategy must be at least 4 bytes, got: '"+strategy +
-        //     //     "' = "+ strategy.encode_utf8().length.show()
-        //     // )
-        // } else { assert(true, "no") };
     
         v : Value = mkTv(mph, uut);
         cOrR : String = createdOrReturned.switch{
@@ -317,7 +311,7 @@ struct RelativeDelegateLink {
                 tx.value_locked_by(vh).contains(v)
             },
             None => {
-                print("   (to anywhere)\n");
+                print("   (to anywhere)");
 
                 tx.outputs.find_safe((o : TxOutput) -> Bool {
                     o.value.contains(v)

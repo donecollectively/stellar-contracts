@@ -26,7 +26,6 @@
     "type": "module",
     "pnpm": {
         "overrides": {
-            "@helios-lang/Xcompiler": "../helios/compiler",
         }
     },
     "scripts": {
