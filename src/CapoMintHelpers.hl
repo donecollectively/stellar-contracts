@@ -404,15 +404,15 @@ func validateUutMinting(
         print("^ other policy values minted \n")        
     };
 
-    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
-        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{
-            None => l.prepend(b),
-            Some /*{x}*/ => error("UUT duplicate purpose "
-                // +  x.decode_utf8()
-            )
-        }
-    }, []ByteArray{});
-    assert(true || (temp == temp), "prevent unused var");
+    // _temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
+    //     l.find_safe((x : ByteArray) -> Bool { x == b }).switch{
+    //         None => l.prepend(b),
+    //         Some /*{x}*/ => error("UUT duplicate purpose "
+    //             // +  x.decode_utf8()
+    //         )
+    //     }
+    // }, []ByteArray{});
+    // assert(true || (temp == temp), "prevent unused var");
 
     expectationsMet : Bool = valueMinted  == expectedValue;
 
