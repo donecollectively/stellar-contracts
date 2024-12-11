@@ -7,7 +7,9 @@ import {
 import type { Source } from "@helios-lang/compiler-utils";
 import {
     decodeUplcProgramV2FromCbor,
+    makeUplcSourceMap,
     type UplcProgramV2,
+    type UplcSourceMapJsonSafe,
 } from "@helios-lang/uplc";
 import { mkCachedHeliosProgramFS } from "./CachedHeliosProgramFs.js";
 import { mkCachedHeliosProgramWeb } from "./CachedHeliosProgramWeb.js";
@@ -29,7 +31,7 @@ export type CacheableProgramProps = ProgramProps & {
     cacheRequired?: true;
     /**
      * The timeout, in milliseconds for waiting for another instance to finish compiling.
-     * The default timeout is 15 seconds.
+     * The default timeout is 30 seconds.
      */
     timeout?: number;
     /**
@@ -47,7 +49,7 @@ export type CacheableProgramProps = ProgramProps & {
 export type CompileOptionsForCachedHeliosProgram = CompileOptions & {
     /**
      * The timeout for waiting for another instance to finish compiling.
-     * Defaults to 15 seconds.
+     * Defaults to 30 seconds.
      */
     timeout?: number;
 };
@@ -67,7 +69,10 @@ export type HeliosProgramCacheEntry = {
     unoptimized?: UplcProgramV2 //| UplcProgramV3I;
     optimizedIR?: string;
     unoptimizedIR?: string;
+    optimizedSmap?: UplcSourceMapJsonSafe;
+    unoptimizedSmap?: UplcSourceMapJsonSafe;
 };
+
 export type StringifiedCacheEntry = {
     version: "PlutusV2" | "PlutusV3";
     createdBy: string;
@@ -77,6 +82,8 @@ export type StringifiedCacheEntry = {
     unoptimized?: string;
     optimizedIR?: string;
     unoptimizedIR?: string;
+    optimizedSmap?: UplcSourceMapJsonSafe;
+    unoptimizedSmap?: UplcSourceMapJsonSafe;
 };
 
 export type lockInfo<T> = {
@@ -133,7 +140,7 @@ export class CachedHeliosProgram extends Program {
         this.id = this.subclass.id;
         const effectiveProps = {
             ...{
-                timeout: 15000,
+                timeout: 30000,
             },
             ...(props || {}),
         };
@@ -195,18 +202,21 @@ export class CachedHeliosProgram extends Program {
         fromCache: StringifiedCacheEntry
     ): UplcProgramV2 { //  | UplcProgramV3 {
         // the program is a hex-string, accepted by both UplcProgramV2 and UplcProgramV3
-        const { optimized, optimizedIR, unoptimized, unoptimizedIR, version } =
+        const { optimized, optimizedIR, unoptimized, unoptimizedIR, version, optimizedSmap, unoptimizedSmap } =
             fromCache;
         if (version !== "PlutusV2" ) throw new Error(`pv3supportpending`)
             // TargetClass = version == "PlutusV2" ? UplcProgramV2 : UplcProgramV3;
+        
         const o = optimized
             ? decodeUplcProgramV2FromCbor(optimized, {
                   ir: optimizedIR,
+                  sourceMap: optimizedSmap,
               })
             : undefined;
         const u = unoptimized
             ? decodeUplcProgramV2FromCbor(unoptimized, {
                   ir: unoptimizedIR,
+                    sourceMap: unoptimizedSmap,
               })
             : undefined;
         if (o) {
@@ -527,18 +537,25 @@ export class CachedHeliosProgram extends Program {
                 optimizeOptions: optimize,
                 programElements,
             };
+            
             if (program.alt) {
                 cacheEntry.unoptimized = program.alt;
                 cacheEntry.unoptimizedIR = program.alt.ir;
+                cacheEntry.unoptimizedSmap = makeUplcSourceMap({ term: program.alt.root }).toJsonSafe();
+
                 cacheEntry.optimized = program;
                 cacheEntry.optimizedIR = program.ir;
+                cacheEntry.optimizedSmap = makeUplcSourceMap({ term: program.root }).toJsonSafe()
             } else {
+                const sourceMap = makeUplcSourceMap({ term: program.root })
                 if (false == options.optimize) {
                     cacheEntry.unoptimized = program;
                     cacheEntry.unoptimizedIR = program.ir;
+                    cacheEntry.unoptimizedSmap = sourceMap.toJsonSafe();
                 } else {
                     cacheEntry.optimized = program;
                     cacheEntry.optimizedIR = program.ir;
+                    cacheEntry.optimizedSmap = sourceMap.toJsonSafe();
                 }
             }
             this.storeInCache(cacheKey, cacheEntry);
