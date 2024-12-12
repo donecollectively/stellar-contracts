@@ -26,19 +26,15 @@ export type TypeVariety = "canonical" | "permissive" | "ergonomic";
 export type VariantFlavor = "tagOnly" | "fields" | "singletonField";
 export type SpecialActivityFlags = "isSeededActivity" | "noSpecialFlags";
 
-export type tagOnly=Record<string, never>
-export const tagOnly: tagOnly = Object.freeze({})
+export type tagOnly = Record<string, never>;
+export const tagOnly: tagOnly = Object.freeze({});
 
 // external-facing types for reading and writing data for use in contract scripts.
 // 1. create data for Datum or other non-Activity scenarios
 
-
-
 export type uplcDataBridge<permissiveType> =
     // can be called
-    (
-        (arg: permissiveType) => UplcData
-    ) & DataBridge
+    ((arg: permissiveType) => UplcData) & DataBridge;
 
 // 2. read data from Datum.  Can also be used for returned results
 //  ... of utility functions defined in Helios code.
@@ -60,7 +56,7 @@ export type makesSomeActivityData<T> = T extends EnumTypeMeta<any, any>
     : makesUplcActivityData<any>;
 
 // export type AnyHeliosTypeInfo = TypeSchema | anyTypeDetails;
-export type anyTypeDetails<T=undefined> = typeDetails<T> | enumTypeDetails<T>;
+export type anyTypeDetails<T = undefined> = typeDetails<T> | enumTypeDetails<T>;
 
 // creates smashed type of all possible variant-accessors of any signature.
 // this brings together all the separate entries from separate union elements into a single type
@@ -69,27 +65,25 @@ export type expanded<T> = {
     [k in keyof T]: T[k];
 };
 
-
-
 // Utility types representing runtime information retrievable through the Helios APi
 //   ... these are all ABOUT the types seen in the contract scripts
-export type typeDetails<T=undefined> = {
+export type typeDetails<T = undefined> = {
     typeName?: string;
     typeSchema: TypeSchema;
     dataType: DataType;
 
-    canonicalTypeName? : string; // type name (strict)
+    canonicalTypeName?: string; // type name (strict)
     ergoCanonicalTypeName?: string; // canonical type for ergonomic use
-    permissiveTypeName? : string; // type name (permissive)
+    permissiveTypeName?: string; // type name (permissive)
 
     canonicalType: string; // minimal canonical type (name if avaiable, or inline type as string)
     ergoCanonicalType: string; // minimal canonical type (name if avaiable, or inline type as string)
     permissiveType?: string; // minimal permissive type (name if available, or inline type as string)
-    moreInfo: T
+    moreInfo: T;
 };
 
-export type variantTypeDetails<T=undefined> = {
-    variantName: string; 
+export type variantTypeDetails<T = undefined> = {
+    variantName: string;
     fieldCount: number;
     fields: Record<string, anyTypeDetails<T>>;
     typeSchema: VariantTypeSchema; // for consistency
@@ -97,7 +91,7 @@ export type variantTypeDetails<T=undefined> = {
     canonicalType: string; // minimal canonical type
     ergoCanonicalType: string; // minimal canonical type
     permissiveType: string; // minimal permissive type
-    
+
     canonicalTypeName: string; // type name, always available
     ergoCanonicalTypeName: string; // canonical type for ergonomic use
     permissiveTypeName: string; // typ name, always available
@@ -108,11 +102,11 @@ export type variantTypeDetails<T=undefined> = {
     moreInfo: T;
 };
 
-export type enumTypeDetails<T=undefined> = {
+export type enumTypeDetails<T = undefined> = {
     enumName: string;
     typeSchema: EnumTypeSchema; // for consistency
     dataType: DataType;
-    
+
     canonicalTypeName: string; // type name for this enum
     ergoCanonicalTypeName: string; // type name for this enum (strict/enumLike form)
     permissiveTypeName: string; // type name for this enum (loose/enumLike form)
@@ -146,7 +140,10 @@ export type EnumId = {
  * This type is used as an intermediate representation of an enum,
  * for generating the types for reading and writing data conforming to the type.
  */
-export type EnumTypeMeta<EID extends EnumId, enumVariants extends VariantMap> = {
+export type EnumTypeMeta<
+    EID extends EnumId,
+    enumVariants extends VariantMap
+> = {
     NEVER_INSTANTIATED: "?maybe?";
     SEE_BUNDLE_CLASS: "accessor gateway there";
     kind: "enum";
@@ -170,7 +167,7 @@ export type singleEnumVariantMeta<
     variantConstr extends `Constr#${string}`,
     FLAVOR extends VariantFlavor,
     // variantArgs must be well specified for each variant
-    variantArgs extends (FLAVOR extends "tagOnly" ? tagOnly : any),
+    variantArgs extends FLAVOR extends "tagOnly" ? tagOnly : any,
     specialFlags extends SpecialActivityFlags,
     EID extends EnumId = ET["enumId"]
 > = {
@@ -188,7 +185,14 @@ export type singleEnumVariantMeta<
 
 // utility types for transforming an EnumType into interfaces for reading/writing data of that type
 
-type anySingleEnumVariantMeta = singleEnumVariantMeta<any, any, any, any, any, any>;
+type anySingleEnumVariantMeta = singleEnumVariantMeta<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+>;
 
 if (false) {
     type test = "x" | "y" extends "x" ? true : false; // false
@@ -204,8 +208,6 @@ type _expandInputFields<V extends anySingleEnumVariantMeta> = {
 };
 
 // -------------------- Non-Activity Variant Creator Types  --------------------
-
-
 
 type _variantFieldArity<V extends anySingleEnumVariantMeta> = V["variantKind"];
 
@@ -256,10 +258,14 @@ export type ActivityEnumVariantCreator<
     : never;
 
 export type _noRedeemerWrappers<T extends makesUplcActivityEnumData<any>> = {
-    [k in keyof T]: _noRedeemerWrapper<T[k]>; 
-}
+    [k in keyof T]: _noRedeemerWrapper<T[k]>;
+};
 
-export type _noRedeemerWrapper<T> = T extends (...args: infer A) => {redeemer: infer R} ? (...args: A) => R : T;
+export type _noRedeemerWrapper<T> = T extends (...args: infer A) => {
+    redeemer: infer R;
+}
+    ? (...args: A) => R
+    : T;
 
 export type EnumUplcActivityResult<
     V extends anySingleEnumVariantMeta,
@@ -411,38 +417,42 @@ export abstract class HeliosScriptBundle {
     //     }
     // }
 
-    get main() : Source {
-        throw new Error(`${this.constructor.name}: get main() must be implemented in subclass`);
+    get main(): Source {
+        throw new Error(
+            `${this.constructor.name}: get main() must be implemented in subclass`
+        );
     }
 
     get modules(): Source[] {
-        return []
-    };
-    
+        return [];
+    }
+
     get bridgeClassName() {
         const mName = this.moduleName || this.program.name;
-        return `${mName}DataBridge`
+        return `${mName}DataBridge`;
     }
 
     get moduleName() {
-        return this.constructor.name.replace(/Bundle/, "").replace(/Helios/, "")
-        defaultNoDefinedModuleName// overridden in subclasses where relevant
+        return this.constructor.name
+            .replace(/Bundle/, "")
+            .replace(/Helios/, "");
+        defaultNoDefinedModuleName; // overridden in subclasses where relevant
     }
 
     get program(): CachedHeliosProgram {
-        let mName = this.moduleName
+        let mName = this.moduleName;
         if (mName === defaultNoDefinedModuleName) {
-            mName = ""
+            mName = "";
         }
         try {
             return CachedHeliosProgram.forCurrentPlatform(this.main, {
                 moduleSources: this.modules,
-                name: mName // it will fall back to the program name if this is empty
+                name: mName, // it will fall back to the program name if this is empty
             });
         } catch (e: any) {
             // !!! probably this stuff needs to move to compileWithScriptParams()
             if (e.message.match(/invalid parameter name/)) {
-                debugger                
+                debugger;
                 throw new Error(
                     e.message +
                         `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})` +
@@ -474,11 +484,14 @@ export abstract class HeliosScriptBundle {
                     //  reminder: ensure "pause on caught exceptions" is enabled
                     //  before playing this next line to dig deeper into the error.
 
-                    const try2 = CachedHeliosProgram.forCurrentPlatform(this.main, {
-                        moduleSources: this.modules,
-                        name: mName // it will fall back to the program name if this is empty
-                    });
-        
+                    const try2 = CachedHeliosProgram.forCurrentPlatform(
+                        this.main,
+                        {
+                            moduleSources: this.modules,
+                            name: mName, // it will fall back to the program name if this is empty
+                        }
+                    );
+
                     // const script2 = new Program(codeModule, {
                     //     moduleSources: modules,
                     //     isTestnet: this.setup.isTest,
@@ -498,14 +511,20 @@ export abstract class HeliosScriptBundle {
                 // throw e;
             }
             debugger;
-            const [_, notFoundModule] = e.message.match(/module '(.*)' not found/) || []
+            const [_, notFoundModule] =
+                e.message.match(/module '(.*)' not found/) || [];
             if (notFoundModule) {
-                console.log("module not found; included modules:\n"+ 
-                    this.modules.map((m) => {
-                        const pInfo = m.project ? ` [in ${m.project}]/` : "";
-                        return ` • ${m.moduleName}${pInfo}${m.name} (${m.content.length} bytes)`
-                    }).join("\n")
-                )
+                console.log(
+                    "module not found; included modules:\n" +
+                        this.modules
+                            .map((m) => {
+                                const pInfo = m.project
+                                    ? ` [in ${m.project}]/`
+                                    : "";
+                                return ` • ${m.moduleName}${pInfo}${m.name} (${m.content.length} bytes)`;
+                            })
+                            .join("\n")
+                );
             }
             if (!e.site) {
                 console.warn(
@@ -514,10 +533,9 @@ export abstract class HeliosScriptBundle {
                 throw e;
             }
             const moduleName2 = e.site.file; // moduleName? & filename ? :pray:
-            const errorModule = [
-                this.main,
-                 ...this.modules
-            ].find((m) => m.name == moduleName2);
+            const errorModule = [this.main, ...this.modules].find(
+                (m) => m.name == moduleName2
+            );
 
             // const errorModule = [codeModule, ...modules].find(
             //     (m) => (m as any).name == moduleName
@@ -547,24 +565,28 @@ export abstract class HeliosScriptBundle {
             const { startLine, startColumn } = e.site;
             const t = new Error(errorInfo);
             const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
-            debugger
-            const additionalErrors = (e.otherErrors || [])
-                .slice(1)
-                .map((oe) => `       |         ⚠️  also: ${
-                    // (oe.message as string).replace(e.site.file, "")}`);
-                    oe.site.file == e.site.file ?
-                        oe.site.toString().replace(e.site.file+":", "at ") + ": "+ oe.originalMessage
-                    : oe.site.toString() + " - " + oe.originalMessage
-                }`);
+            debugger;
+            const additionalErrors = (e.otherErrors || []).slice(1).map(
+                (oe) =>
+                    `       |         ⚠️  also: ${
+                        // (oe.message as string).replace(e.site.file, "")}`);
+                        oe.site.file == e.site.file
+                            ? oe.site
+                                  .toString()
+                                  .replace(e.site.file + ":", "at ") +
+                              ": " +
+                              oe.originalMessage
+                            : oe.site.toString() + " - " + oe.originalMessage
+                    }`
+            );
             const addlErrorText = additionalErrors.length
                 ? ["", ...additionalErrors, "       v"].join("\n")
                 : "";
-            t.message = `${e.kind}: ${this.constructor.name}\n${
-                e.site.toString() 
-            } - ${
+            t.message = `${e.kind}: ${
+                this.constructor.name
+            }\n${e.site.toString()} - ${
                 e.originalMessage
-            }${addlErrorText
-            }\n${errorInfo}`;
+            }${addlErrorText}\n${errorInfo}`;
 
             t.stack =
                 `${this.constructor.name}: ${
@@ -578,24 +600,27 @@ export abstract class HeliosScriptBundle {
     }
 
     isHeliosScriptBundle() {
-        return true
+        return true;
     }
 
     addTypeProxies() {
         // const typeGenerator = new BundleTypeGenerator(this);
         // const { activityTypeDetails, datumTypeDetails } = typeGenerator;
-
         // this.Activity = new ActivityMaker(this);
-        // if (datumTypeDetails) {                    
+        // if (datumTypeDetails) {
         //     this.readDatum = new DataReader(datumTypeDetails);
         // }
     }
 
     effectiveDatumTypeName() {
-        return this.datumTypeName || this.locateDatumType()?.name || "‹unknown datum-type name›";
+        return (
+            this.datumTypeName ||
+            this.locateDatumType()?.name ||
+            "‹unknown datum-type name›"
+        );
     }
 
-    locateDatumType(): DataType | undefined{
+    locateDatumType(): DataType | undefined {
         let datumType: DataType | undefined;
         // let datumTypeName: string | undefined;
 
