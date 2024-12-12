@@ -302,7 +302,7 @@ export type makesUplcActivityEnumData<
  * in creating ergonomic branded types for reading, detecting, and writing
  * each variant.
  */
-export type HeliosBundleTypeDetails<T=undefined> = {
+export type HeliosBundleTypeDetails<T = undefined> = {
     datum?: typeDetails<T> | enumTypeDetails<T>;
     redeemer: typeDetails<T> | enumTypeDetails<T>;
 };
@@ -313,37 +313,53 @@ export type HeliosBundleTypes = {
 };
 const defaultNoDefinedModuleName = "‹default-needs-override›";
 
+export type Constructor<T> = new (...args: any[]) => T;
+export type EmptyConstructor<T> = new () => T;
+
+type HeliosBundleClassWithCapo = typeof HeliosScriptBundle &
+    //Constructor<HeliosScriptBundle> & 
+    EmptyConstructor<HeliosScriptBundle> &
+    {
+        capoBundle: CapoHeliosBundle;
+        isConcrete: true;
+    };
 
 export abstract class HeliosScriptBundle {
     static isCapoBundle = false;
-    abstract capoBundle: CapoHeliosBundle;
+    capoBundle?: CapoHeliosBundle;
+    isConcrete = false;
+
     /**
      * Constructs a base class for any Helios script bundle,
      * given the class for an application-specific CapoHeliosBundle.
      * @remarks
      * The resulting class provides its own CapoHeliosBundle instance
-     * for independent use (specifically, for compiling this bundle using 
+     * for independent use (specifically, for compiling this bundle using
      * the dependency libraries provided by the Capo bundle).
      */
     //
-//     * NOTE: the following is NOT needed for efficiency, and not implemented
-//     *, as the Capo
-//     * bundle referenced above should never need to be compiled via 
-//     * `this.capoBundle.program`.
-//     * 
-//     * XXX - For application runtime purposes, it can ALSO accept a 
-//     * XXX - CapoHeliosBundle instance as a constructor argument, 
-//     * XXX - enabling lower-overhead instantiation and re-use across 
-//     * XXX - various bundles used within a single Capo,
-//     */
-    static using<CB extends CapoBundleClass>(c : CB) {
-        const newClass = class aCapoBoundBundle 
-        extends HeliosScriptBundle {
-        // implements hasCapoBundle {
-            capoBundle = new c()
-        } //as HeliosBundleClass // & hasCapoBundle //& typeof HeliosScriptBundle &  // & typeof newClass
+    //     * NOTE: the following is NOT needed for efficiency, and not implemented
+    //     *, as the Capo
+    //     * bundle referenced above should never need to be compiled via
+    //     * `this.capoBundle.program`.
+    //     *
+    //     * XXX - For application runtime purposes, it can ALSO accept a
+    //     * XXX - CapoHeliosBundle instance as a constructor argument,
+    //     * XXX - enabling lower-overhead instantiation and re-use across
+    //     * XXX - various bundles used within a single Capo,
+    //     */
+    static usingCapoBundleClass<CB extends CapoBundleClass>(c: CB) : HeliosBundleClassWithCapo {
+        const cb = new c();
+        const newClass = class aCapoBoundBundle extends HeliosScriptBundle {
+            capoBundle = cb;
+            constructor() {
+                super();
+            }
 
-        return newClass
+            isConcrete = true;
+        } as HeliosBundleClassWithCapo & typeof newClass
+
+        return newClass;
     }
     /**
      * optional attribute explicitly naming a type for the datum

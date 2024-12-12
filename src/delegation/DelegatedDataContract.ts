@@ -20,6 +20,11 @@ import {
 } from "../ActivityTypes.js";
 import type { AnyData, ErgoAnyData } from "./UnspecializedDelegate.typeInfo.js";
 import { textToBytes, type InlineDatum } from "../HeliosPromotedTypes.js";
+import type {
+    CapoHeliosBundle,
+    CapoHeliosBundleClass,
+} from "../CapoHeliosBundle.js";
+import type { CapoDelegateBundle } from "./CapoDelegateBundle.js";
 
 export const NO_WRAPPER = Symbol(
     "no data-adapter; uses on-chain type directly"
@@ -115,6 +120,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     get delegateName() {
         return `${this.recordTypeName}Pol`;
     }
+
     // abstract get capo(): Capo<any>;
     abstract exampleData(): ErgoAnyData;
     abstract requirements(): ReqtsMap<any, any> | ReqtsMap<any, never>;
@@ -127,6 +133,43 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     //         })
     //         .then(this.capo.singleItem);
     // }
+
+    declare abstractBundleClass?: () => typeof CapoDelegateBundle;
+
+    scriptBundle() {
+        if (this.abstractBundleClass) {
+            throw new Error(
+                `${this.constructor.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.` +
+                    `First, ensure you have derived a subclass for the controller, with a scriptBundle() method.\n` +
+                    `\nThat method should \`return new YourConcreteBundle()\`\n` +
+                    `\n  ... where YourConcreteBundle is a subclass of CapoDelegateBundle that you've created.\n` +
+                    `\A concrete bundle class should be defined in \`${this.delegateName}.concrete.hlbundle.js\`\n` +
+                    `  ... in the same directory as your derived controller class:\n` +
+                    `    import {YourAppCapo} from "./YourAppCapo.js";\n` +
+                    `    import {${this.abstractBundleClass().name}} from ...` +
+                    `    export default class YourConcreteBundle extends ${
+                        this.abstractBundleClass().name
+                    }} {\n` +
+                    `        // ... \n` +
+                    `    }\n`
+            );
+        }
+        
+        throw new Error(
+            `${this.constructor.name}: missing required implementation of abstractBundleClass()\n` +
+                `\nDefined in a \`*.hlbundle.js\` file, it should have at minimum:\n` +
+                `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
+                `    import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";\n\n` +
+                `    export default class SomeDelegateBundle extends CapoHeliosBundle {\n` +
+                `        get specializedDelegateModule() { return SomeSpecializedDelegate; }\n` +
+                `    }\n\n` +
+                `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
+                `\nWhen your delegated-data controller is used within your Capo, your bundle will\n` +
+                `have access via import {...} to any helios modules provided by that Capo. `
+        );
+
+        return null as unknown as CapoDelegateBundle;
+    }
 
     /**
      * base class method for converting a record from the essential

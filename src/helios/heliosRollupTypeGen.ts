@@ -223,6 +223,9 @@ export function heliosRollupTypeGen(
                     return null;
                 }
 
+                // todo: load an existing bundle if it's already compiled, and ask that class to
+                //   check its sources for changes, so we can skip rollup and recompilation if
+                //   things are already up-to-date.
                 const SomeBundleClass = await rollupSingleBundleToBundleClass(id);
                 const relativeFilename = path.relative(projectRoot, id);
                 this.warn(`👁️ checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`)
@@ -234,7 +237,7 @@ export function heliosRollupTypeGen(
                 // compile the program seen in that bundle!
                 // ... to trigger helios syntax-checking:
                 let program = bundle.program;
-
+ 
                 let replacedCapo = false
                 if (SomeBundleClass.isCapoBundle) {
                     let skipInstallingThisOne = false; 
@@ -291,14 +294,10 @@ export function heliosRollupTypeGen(
                         // state.project.generateBundleTypes(id);
                     }
                     this.warn(` 👁️ checking (Capo) helios bundle ${SomeBundleClass.name}`)
-                    if (bundle.loadSources) {
-                        // ??? load from filesystem, not from the bundle
-                        bundle.loadSources();
-                    } else {
-                        this.warn(`NOTE: checking bundled sources, not filesystem sources`)
-                    }
                     if (!skipInstallingThisOne) {
                         state.capoBundle = bundle;
+                        state.project.loadBundleWithClass(id, SomeBundleClass);
+                        state.project.generateBundleTypes(id);
                     }
                 } else {
                     state.hasOtherBundles = true;
@@ -314,10 +313,7 @@ export function heliosRollupTypeGen(
                                 "src/CapoHeliosBundle.ts"
                             );
                         }
-                    } else {
-                        }
                     }
-
                     // try {
                     //     bundle = new SomeBundleClass(state.capoBundle);
                     //     this.warn(`👁️ checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`)

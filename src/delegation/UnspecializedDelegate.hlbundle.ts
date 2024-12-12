@@ -21,19 +21,21 @@ import type {
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
 
-import UnspecializedDelegateScript from "../delegation/UnspecializedDelegate.hl"
-import { CapoDelegateBundle } from "./CapoDelegateBundle.js"
+import UnspecializedDelegateScript from "../delegation/UnspecializedDelegate.hl";
+import { CapoDelegateBundle } from "./CapoDelegateBundle.js";
 import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 
-
-export default class UnspecializedDgtBundle extends CapoDelegateBundle.using(CapoHeliosBundle) {
-    get moduleName() { return "UnspecializedDelegate" };
+/* prettier-ignore */
+export default class UnspecializedDgtBundle 
+extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
+    get moduleName() {
+        return "UnspecializedDelegate";
+    }
     get bridgeClassName(): string {
         return "UnspecializedDelegateBridge";
     }
-    
+
     get specializedDelegateModule() {
-        return UnspecializedDelegateScript
+                    return UnspecializedDelegateScript;
     }
 }
-

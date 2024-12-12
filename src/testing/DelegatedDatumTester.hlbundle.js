@@ -8,7 +8,7 @@ import TesterPolicy from "./DelegatedDatumTester.hl"
 
 
 export default class DelegatedDatumTesterBundle 
-extends CapoDelegateBundle.using(CapoHeliosBundle){
+extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle){
     get specializedDelegateModule() {
         return TesterPolicy
     }

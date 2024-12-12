@@ -18,7 +18,7 @@ import CapoMinterScript from "./CapoMinter.hl";
  *  to the minter for imports
  **/
 export default class CapoMinterBundle extends 
-HeliosScriptBundle.using(CapoHeliosBundle) {
+HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     declare capoBundle: CapoHeliosBundle;
     
     // // no datum types in this script
