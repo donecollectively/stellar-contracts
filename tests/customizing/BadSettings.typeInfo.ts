@@ -37,7 +37,7 @@ import type {
 import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, 
     type singleEnumVariantMeta
 } from "../../src/helios/HeliosScriptBundle.js"
-
+import type { minimalData } from "../../src/delegation/DelegatedData.js"
 import type { IntersectedEnum } from "../../src/helios/typeUtils.js"
                 
 
@@ -53,7 +53,7 @@ export type AnyDataLike = {
     type: /*minStructField*/ string
 }
 
-
+export type minimalAnyData = minimalData<AnyDataLike>
 export type DelegateDatum$Cip68RefToken = {
     cip68meta: AnyData  /*minVariantField*/ ,
     cip68version: bigint  /*minVariantField*/ ,
@@ -104,7 +104,7 @@ export type ProtocolSettingsLike = {
     badMinterSetting: /*minStructField*/ IntLike
 }
 
-
+export type minimalProtocolSettings = minimalData<ProtocolSettingsLike>
 export type DelegateDatum$capoStoredData = {
     data: ProtocolSettings  /*minVariantField*/ ,
     version: bigint  /*minVariantField*/ ,

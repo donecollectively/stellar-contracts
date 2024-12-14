@@ -68,7 +68,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         if (!isUsingExtension) {
             throw new Error(
                 "CapoDelegateBundle is abstract; create your base class like this:\n" +
-                    " class ‹YourBundle› extends CapoDelegateBundle.using(‹some CapoHeliosBundleClass ›) {\n     ... \n}"
+                    " class ‹YourBundle› extends CapoDelegateBundle.usingCapoBundleClass(‹some CapoHeliosBundleClass ›) {\n     ... \n}"
             );
         }
 

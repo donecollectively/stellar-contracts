@@ -43,15 +43,15 @@ export class BundleTypeGenerator extends BundleBasedGenerator {
         inputFile: string
     ) {
         let stellarImports = `        
-import type {CapoHeliosBundle} from "@donecollectively/stellar-contracts"
-import type {CapoDelegateBundle} from "@donecollectively/stellar-contracts"
 import type {
+    CapoHeliosBundle,
+    CapoDelegateBundle,
+    minimalData,
     HeliosScriptBundle,
-    // mkEnum,
-    type EnumTypeMeta,
-    type singleEnumVariantMeta,
-    type tagOnly
-    type IntersectedEnum
+    EnumTypeMeta,
+    singleEnumVariantMeta,
+    tagOnly,
+    IntersectedEnum
 } from "@donecollectively/stellar-contracts"
 `;
 
@@ -63,7 +63,10 @@ import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta,
                 inputFile,
                 "src/helios/HeliosScriptBundle.js"
             )}"
-
+import type { minimalData } from "${this.mkRelativeImport(
+            inputFile,
+            "src/delegation/DelegatedData.js"
+)}"
 import type { IntersectedEnum } from "${this.mkRelativeImport(
                 inputFile,
                 "src/helios/typeUtils.js"
@@ -195,10 +198,18 @@ ${this.generateNamedDependencyTypes()}
     generateOtherNamedTypeSource(name: string, typeInfo: typeDetails) {
         if (!typeInfo.ergoCanonicalTypeName) throw new Error("missing ergoCanonicalTypeName");
         if (!typeInfo.permissiveTypeName) throw new Error("missing permissiveTypeName");
+        const schema = typeInfo.typeSchema;
+        const minimalTypeInfo = schema.kind === "struct" &&
+        !! schema.fieldTypes.find((f) => f.name === "id" && f.type.kind == "internal" && f.type.name == "ByteArray") &&
+        !! schema.fieldTypes.find((f) => f.name === "type" && f.type.kind == "internal" && f.type.name == "String") 
+        ?
+            `export type minimal${typeInfo.canonicalTypeName} = minimalData<${typeInfo.permissiveTypeName}>` : "";
+
         return (
             `export type ${typeInfo.canonicalTypeName || name} = ${typeInfo.canonicalType}\n` +
             `export type ${typeInfo.ergoCanonicalTypeName} = ${typeInfo.ergoCanonicalType}\n` +
-            `export type ${typeInfo.permissiveTypeName} = ${typeInfo.permissiveType}\n`
+            `export type ${typeInfo.permissiveTypeName} = ${typeInfo.permissiveType}\n`+
+            minimalTypeInfo
         );
     }
 

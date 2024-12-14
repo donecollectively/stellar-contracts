@@ -37,7 +37,7 @@ import type {
 import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, 
     type singleEnumVariantMeta
 } from "../helios/HeliosScriptBundle.js"
-
+import type { minimalData } from "../delegation/DelegatedData.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
                 
 
