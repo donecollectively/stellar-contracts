@@ -8,7 +8,7 @@ import type {
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { dumpAny } from "../diagnostics.js";
 import { hasReqts } from "../Requirements.js";
-import { DelegatedDataContract, type DgDataTypeLike, type MaybeWrappedDataType } from "../delegation/DelegatedDataContract.js";
+import { DelegatedDataContract, type DgDataTypeLike, type WrappedOrPlainDgDataType } from "../delegation/DelegatedDataContract.js";
 import {
     DelegateDatumTesterDataBridge
 } from "./DelegatedDatumTester.bridge.js"
@@ -72,7 +72,7 @@ export class DelegatedDatumTester extends DelegatedDataContract<DelegatedDatumTe
             this.activity.CreatingTData(tcx)
         );
 
-        type mwdt = MaybeWrappedDataType<DelegatedDatumTester>
+        type mwdt = WrappedOrPlainDgDataType<DelegatedDatumTester>
 
         const testDataOutput = makeTxOutput(
             this.capo.address,

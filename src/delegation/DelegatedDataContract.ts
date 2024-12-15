@@ -53,17 +53,19 @@ export type DgDataType<
     DATUM extends InstanceType<T["dataBridgeClass"]>["readDatum"] &
         SomeDgtDatumReader = InstanceType<T["dataBridgeClass"]>["readDatum"] &
         SomeDgtDatumReader,
-    CSD_struct extends ReturnType<DATUM>["capoStoredData"] 
-    // & {
-    //     data: AnyDataTemplate<any, any>;
-    // } 
-    = ReturnType<DATUM>["capoStoredData"],
-    DTYP extends CSD_struct extends { data: AnyDataTemplate<any, any> } ? CSD_struct["data"] : never = 
-    CSD_struct extends { data: AnyDataTemplate<any, any> } ? CSD_struct["data"] : never 
+    CSD_struct extends Exclude<
+        ReturnType<DATUM>["capoStoredData"],
+        undefined
+    > = Exclude<ReturnType<DATUM>["capoStoredData"], undefined>,
+    DTYP extends CSD_struct extends { data: AnyDataTemplate<any, any> }
+        ? CSD_struct["data"]
+        : never = CSD_struct extends { data: AnyDataTemplate<any, any> }
+        ? CSD_struct["data"]
+        : never
     // & {
     //     data: AnyDataTemplate<any, any>;
     // }
-> = ErgoAnyData & DTYP // CSD_struct["data"];
+> = ErgoAnyData & DTYP; // CSD_struct["data"];
 
 export type DgDataTypeLike<
     T extends DelegatedDataContract<any>,
@@ -77,20 +79,23 @@ export type DgDataTypeLike<
     > = Parameters<
         InstanceType<T["dataBridgeClass"]>["DelegateDatum"]["capoStoredData"]
     >,
-    csdLike extends (
-            CSDFP extends [{ data: AnyDataTemplate<any, any> }, ...any]
-            ? CSDFP extends [{data: infer specificDT }] ? specificDT : never : never
-    ) = CSDFP extends [{ data: AnyDataTemplate<any, any> }, ...any] 
-        ? CSDFP extends [{data: infer specificDT }] ? specificDT : never : never
+    csdLike extends CSDFP extends [{ data: AnyDataTemplate<any, any> }, ...any]
+        ? CSDFP extends [{ data: infer specificDT }]
+            ? specificDT
+            : never
+        : never = CSDFP extends [{ data: AnyDataTemplate<any, any> }, ...any]
+        ? CSDFP extends [{ data: infer specificDT }]
+            ? specificDT
+            : never
+        : never
 > = csdLike;
 
 /**
- * use for new or updated record data, where id and type can 
+ * use for new or updated record data, where id and type can
  * be implied instead of explicitly provided
  */
-export type minimalDgDataTypeLike<
-    T extends DelegatedDataContract<any>
->  = minimalData<DgDataTypeLike<T>>;
+export type minimalDgDataTypeLike<T extends DelegatedDataContract<any>> =
+    minimalData<DgDataTypeLike<T>>;
 
 /**
  * @public
@@ -112,42 +117,51 @@ export type DgDataCreationAttrs<
 /**
  * @public
  */
-export type MaybeWrappedDataType<
+export type WrappedOrPlainDgDataType<
     T extends DelegatedDataContract<any>,
-    RT extends ReturnType<T["mkDataWithWrapper"]> = ReturnType<
-        T["mkDataWithWrapper"]
+    WRAPPED extends T["usesWrappedData"] extends true
+        ? ReturnType<T["mkDataWrapper"]>
+        : never = T["usesWrappedData"] extends true
+        ? ReturnType<T["mkDataWrapper"]>
+        : never,
+    MWT extends IFISNEVER<WRAPPED, DgDataType<T>> = IFISNEVER<
+        WRAPPED,
+        DgDataType<T>
     >
-> = RT extends NoWrapper
-    ? DgDataType<T>
-    : RT extends someDataWrapper<any>
-    ? RT
-    : never;
+> = MWT;
 
 /**
  * @public
  */
-export type MaybeWrappedDataTypeLike<
-T extends DelegatedDataContract<any>,
-RT extends ReturnType<T["mkDataWithWrapper"]> = ReturnType<
-    T["mkDataWithWrapper"]
->
-> = RT extends NoWrapper
-? DgDataTypeLike<T>
-: RT extends someDataWrapper<any>
-? RT
-: never;
+export type WrappedOrPlainDgDataTypeLike<
+    T extends DelegatedDataContract<any>,
+    WRAPPED extends T["usesWrappedData"] extends true
+        ? ReturnType<T["mkDataWrapper"]>
+        : never = T["usesWrappedData"] extends true
+        ? ReturnType<T["mkDataWrapper"]>
+        : never,
+    MWT extends IFISNEVER<WRAPPED, DgDataTypeLike<T>> = IFISNEVER<
+        WRAPPED,
+        DgDataTypeLike<T>
+    >
+> = MWT;
 
+/**
+ * @public
+ */
+export type WrappedDgDataType<
+    T extends DelegatedDataContract<any>,
+    WRAPPED extends T["usesWrappedData"] extends true
+        ? ReturnType<T["mkDataWrapper"]>
+        : never = T["usesWrappedData"] extends true
+        ? ReturnType<T["mkDataWrapper"]>
+        : never
+> = WRAPPED;
 
 // Break the circular dependency by using a type alias???
 type DgDataTypeAlias<T extends DelegatedDataContract<any>> = DgDataType<T>;
 
-export type DelegatedDataWrapper<
-    T extends DelegatedDataContract<any>,
-    DDTL extends DgDataTypeLike<T> = DgDataTypeLike<T>,
-    WDT extends MaybeWrappedDataTypeLike<T> = MaybeWrappedDataTypeLike<T>
-> = DDTL extends WDT ? DDTL : someDataWrapper<DDTL>;
-
-export type someDataWrapper<wrappedType extends AnyDataTemplate<any,any>> = {
+export type someDataWrapper<wrappedType extends AnyDataTemplate<any, any>> = {
     unwrapData(): wrappedType;
 };
 
@@ -173,9 +187,8 @@ export type DelegatedDatumIdPrefix<
  *@public
  */
 export abstract class DelegatedDataContract<
-    DDC extends DelegatedDataContract<any>,
-> extends ContractBasedDelegate 
-{
+    DDC extends DelegatedDataContract<any>
+> extends ContractBasedDelegate {
     usesWrappedData?: boolean;
 
     abstract get recordTypeName(): string;
@@ -224,7 +237,7 @@ export abstract class DelegatedDataContract<
                     `    }\n`
             );
         }
-        
+
         throw new Error(
             `${this.constructor.name}: missing required implementation of abstractBundleClass()\n` +
                 `\nDefined in a \`*.hlbundle.js\` file, it should have at minimum:\n` +
@@ -248,7 +261,7 @@ export abstract class DelegatedDataContract<
      * @remarks
      * #### You don't need to implement this method
      * Application developers should NOT need to override this method.
-     * Instead, they should optionally implement {@link DelegatedDataContract.mkDataWithWrapper|mkDataWithWrapper()}.
+     * Instead, they should optionally implement {@link DelegatedDataContract.mkDataWrapper|mkDataWithWrapper()}.
      *
      * No extra wrapper is used unless that method is provided.
      * ## Called automatically
@@ -256,79 +269,56 @@ export abstract class DelegatedDataContract<
      * will include the data: property having the wrapped data, as well as
      * the datumParsed property with the unwrapped version of the data.
      */
-    wrapData(data: DgDataType<DDC>): MaybeWrappedDataType<DDC> {
+    wrapData(data: DgDataTypeLike<DDC>): WrappedDgDataType<DDC> {
         if (false == this.usesWrappedData) {
-            return data as MaybeWrappedDataType<DDC>;
+            throw new Error(
+                `wrapData() called on a controller that doesn't use wrapped data.`
+            );
         }
-        if (true == this.usesWrappedData) {
-            return this.mkDataWithWrapper(data) as MaybeWrappedDataType<DDC>;
+        if (!this.mkDataWrapper) {
+            throw new Error(
+                `${this.constructor.name} must implement mkDataWithWrapper(data: DgDataTypeLike<${this.constructor.name}>)`
+            );
         }
-        const maybeWrapped = this.mkDataWithWrapper(data);
-        if (maybeWrapped[NO_WRAPPER]) {
-            this.usesWrappedData = false;
-            return data as MaybeWrappedDataType<DDC>;
-        }
-        this.usesWrappedData = true;
-        return maybeWrapped as MaybeWrappedDataType<DDC>;
+
+        return this.mkDataWrapper(data) as any;
     }
 
     /**
-     * Optional method specifying a class that is used at application runtime
-     * for business logic on a record.  If not implemented, the record is
-     * returned from the on-chain store as a plain object, and updates are
-     * performed based on the plain object.
+     * Transforms the on-chain data structure into a higher-level
+     * application-specific class representation.  That class should
+     * provide an unwrapData() method to get back to the on-chain data.
      */
-    mkDataWithWrapper(d: DgDataType<DDC>): someDataWrapper<any> | NoWrapper {
-        return {
-            [NO_WRAPPER]: true,
-        };
-    }
-
-    unwrapData(
-        d: DelegatedDataWrapper<DDC>
-    ): DgDataTypeLike<DDC> {
-        if ("undefined" == typeof this.usesWrappedData) {
-            // invoke wrapData once with the (typed, delegate-specific sample data )
-            // to populate the "uses adapter" flag
-            try {
-                this.wrapData({} as any);
-            } catch (e) {
-                console.warn(
-                    `inferring usesWrappedData from the presence of a wrapData() error. \n`+
-                    `Set this.usesWrappedData = true to remove this warning`
-                );
-                this.usesWrappedData = true;
-            }
-        }
+    mkDataWrapper?(
+        d: DDC["usesWrappedData"] extends true ? DgDataTypeLike<DDC> : never
+    ): DDC["usesWrappedData"] extends true ? someDataWrapper<
+        DgDataTypeLike<DDC>
+    > : never {
         if (false == this.usesWrappedData) {
-            return d as DgDataTypeLike<DDC>;
-        } else if (true != this.usesWrappedData) {
-            throw new Error(`inconth...eeevible!`)
+            throw new Error(
+                `mkDataWithWrapper() called on a controller that doesn't use wrapped data.`
+            );
         }
-        return (d as any).unwrapData() as DgDataTypeLike<DDC>;
+        throw new Error(
+            `${this.constructor.name} must implement mkDataWithWrapper(data: DgDataTypeLike<${this.constructor.name}>)`
+        );
+        return {} as any;
     }
 
     async mkDatumDelegatedDataRecord(
         this: DDC,
-        record: MaybeWrappedDataTypeLike<DDC>
+        record: WrappedOrPlainDgDataTypeLike<DDC>
     ): Promise<InlineDatum> {
         // console.log({record}, "8888888888888888888888888888888888888")
+        const unwrapped: DgDataTypeLike<DDC> = this.usesWrappedData
+            ? record.unwrapData()
+            : record;
+
         return this.mkDatum.capoStoredData({
-            data: this.unwrapData(
-                //x@ts-expect-error because we can't seem to express strongly enough
-                // for TS's needs that only real data-wrappers will be passed to this method
-                record
-            ),
+            data: unwrapped,
             version: 2n,
             otherDetails: makeIntData(0),
         });
-
-        // const adapter = this.unwrapData(record);
-        // let data = record
-        // throw new Error(`implement on-chain path for DgData`)
-        // if (adapter) {
-        // data = record.toOnchain()
-        // }
     }
 
     /**
@@ -403,7 +393,7 @@ export abstract class DelegatedDataContract<
         ).then((tcx3) => tcx3);
     }
 
-    creationDefaultDetails(): Partial<MaybeWrappedDataType<DDC>> {
+    creationDefaultDetails(): Partial<DgDataTypeLike<this>> {
         return {};
     }
 
@@ -413,9 +403,9 @@ export abstract class DelegatedDataContract<
             hasSeedUtxo &
             // hasSettingsRef &
             hasUutContext<DelegatedDatumIdPrefix<DDC>>,
-        WDT extends MaybeWrappedDataType<DDC> = MaybeWrappedDataType<DDC>,
+        WDT extends WrappedOrPlainDgDataType<DDC> = WrappedOrPlainDgDataType<DDC>,
         RDTL extends DgDataTypeLike<DDC> = DgDataTypeLike<DDC>,
-        RDT extends DgDataType<DDC> = DgDataType<DDC>,
+        RDT extends DgDataType<DDC> = DgDataType<DDC>
     >(
         this: DDC,
         tcx: TCX,
@@ -428,9 +418,8 @@ export abstract class DelegatedDataContract<
 
         const {
             addedUtxoValue: extraCreationValue = makeValue(0n),
-            beforeSave = (x) => x,
             data: typedData,
-            wrappedData,
+            wrapped: wrappedData,
         } = options;
 
         const tcx2 = await this.txnGrantAuthority(tcx, controllerActivity);
@@ -438,19 +427,25 @@ export abstract class DelegatedDataContract<
         const uut = tcx.state.uuts[idPrefix];
         let newRecord: RDTL = typedData as any;
         if (wrappedData) {
-            newRecord = this.unwrapData(newRecord) as RDTL;
+            if (!this.usesWrappedData) {
+                throw new Error(
+                    `wrappedData provided, but controller does not use wrapped data`
+                );
+            }
+            newRecord = wrappedData.unwrapData(); // as RDTL;
         }
 
+        const defaults = this.creationDefaultDetails() || {};
         const fullRecord = {
             id: textToBytes(uut.toString()),
             type: newType,
+            ...defaults,
             ...newRecord,
-            ...this.creationDefaultDetails(),
         } as RDTL;
+
         const newDatum = this.mkDatum.capoStoredData({
             // data: new Map(Object.entries(beforeSave(fullRecord) as any)),
-            data: beforeSave(fullRecord) as any,
-
+            data: fullRecord,
             version: 2n,
             otherDetails: makeIntData(0),
         });
@@ -486,7 +481,12 @@ export abstract class DelegatedDataContract<
     usesUpdateActivity<
         UA extends updateActivityFunc<any>
         // (...args: [hasRecId, ...any]) => isActivity
-    >(this: DDC, a: UA, idPlaceholder: "...recId", ...args: UpdateActivityArgs<UA>) {
+    >(
+        this: DDC,
+        a: UA,
+        idPlaceholder: "...recId",
+        ...args: UpdateActivityArgs<UA>
+    ) {
         return new UpdateActivity(this, a, args);
     }
 
@@ -507,13 +507,8 @@ export abstract class DelegatedDataContract<
     >(
         this: DDC,
         txnName: string,
-        item: FoundDatumUtxo<DgDataType<DDC>, MaybeWrappedDataType<DDC>>,
-        options: WrappedDgDataUpdateOptions<
-            DDC,
-            CAI,
-            MaybeWrappedDataType<DDC>,
-            DgDataTypeLike<DDC>
-        >,
+        item: FoundDatumUtxo<DgDataType<DDC>, WrappedOrPlainDgDataType<DDC>>,
+        options: DgDataUpdateOptions<DDC, CAI>,
         tcx?: TCX
     ): Promise<TCX> {
         tcx = tcx || (this.mkTcx(txnName) as TCX);
@@ -525,16 +520,16 @@ export abstract class DelegatedDataContract<
         const {
             activity,
             addedUtxoValue,
-            beforeSave,
-            updatedPartial,
-            updatedRecord,
+            // beforeSave = (x) => x,
+            updatedWrapped: updatedWrapper,
+            updatedFields: updatedFields,
         } = options;
         // tell Capo to spend the DD record
         const tcx2 = await capo.txnAttachScriptOrRefScript(
             tcx1.addInput(item.utxo, capo.activitySpendingDelegatedDatum()),
             capo.compiledScript
         );
-        const existingTypedData = this.newReadDatum(item.datum.data);
+        const existingTypedData = item.data!;
         const { id } = existingTypedData;
 
         // tell the spend delegate to allow the spend,
@@ -553,25 +548,34 @@ export abstract class DelegatedDataContract<
                 ? activity.mkRedeemer(id)
                 : activity;
 
-        let recordWithUpdates: DgDataType<DDC> = {} as any;
-        if (updatedPartial) {
+        let recordWithUpdates: DgDataTypeLike<DDC> = {} as any;
+        if (updatedWrapper) {
+            recordWithUpdates = updatedWrapper.unwrapData();
+            if (updatedFields) {
+                throw new Error(
+                    `mkTxnUpdateRecord: updatedFields and updatedWrapped are mutually exclusive`
+                );
+            }
+        } else if (updatedFields) {
             recordWithUpdates = {
                 ...existingTypedData,
-                ...updatedPartial,
+                ...updatedFields,
             };
-        } else if (updatedRecord) {
-            recordWithUpdates = this.unwrapData(updatedRecord as any);
         } else {
             throw new Error(
-                `mkTxnUpdateRecord: must provide either updatedRecord or updatedPartial`
+                `mkTxnUpdateRecord(): must provide option {updatedFields}` +
+                this.usesWrappedData
+                    ? ` or {updatedWrapped}`
+                    : ``
             );
         }
 
+        // const patchedRecord = beforeSave(recordWithUpdates);
+
         return this.txnUpdatingRecord(tcx2a, id, item, {
             activity: materializedActivity,
-            updatedRecord: recordWithUpdates,
             addedUtxoValue,
-            beforeSave,
+            updatedFields: recordWithUpdates,
         });
     }
 
@@ -584,18 +588,18 @@ export abstract class DelegatedDataContract<
         this: DDC,
         tcx: TCX,
         id: hasRecId,
-        item: FoundDatumUtxo<DgDataType<DDC>, MaybeWrappedDataType<DDC>>,
+        item: FoundDatumUtxo<DgDataType<DDC>, any>,
         // controllerActivity: isActivity,
         // record: WrappedDataType<THIS>,
-        options: DgDataUpdateOptions<DDC, any, DgDataType<DDC>>
+        options: CoreDgDataUpdateOptions<DDC, any>
     ): Promise<TCX> {
         const recType = this.recordTypeName as DelegatedDatumTypeName<DDC>;
 
         const {
             addedUtxoValue = makeValue(0),
-            beforeSave = (x) => x,
+            // beforeSave = (x) => x,
             activity,
-            updatedRecord,
+            updatedFields: updatedRecord,
         } = options;
         console.log(
             `🏒 updating ${recType} ->`,
@@ -618,7 +622,7 @@ export abstract class DelegatedDataContract<
                     // .add(this.mkMinTv(this.capo.mph, id))
                     .add(addedUtxoValue),
                 this.mkDatum.capoStoredData({
-                    data: beforeSave(updatedRecord),
+                    data: updatedRecord,
                     version: 2n,
                     otherDetails: makeIntData(0),
                 })
@@ -664,37 +668,37 @@ class UpdateActivity<
 type hasRecId = string | number[] | UutName;
 type CreationOptions<
     DGDC extends DelegatedDataContract<any>,
-    WDT extends MaybeWrappedDataType<DGDC> = MaybeWrappedDataType<DGDC>,
+    WDT extends WrappedDgDataType<DGDC> = WrappedDgDataType<DGDC>,
     DT extends minimalDgDataTypeLike<DGDC> = minimalDgDataTypeLike<DGDC>
 > = {
     addedUtxoValue?: Value;
-    wrappedData?: WDT;
-    data?: DT;
-    beforeSave?(x: DT): DT;
-};
-
-type WrappedDgDataUpdateOptions<
-    DGDC extends DelegatedDataContract<any>,
-    CAI extends isActivity | UpdateActivity<any>,
-    WDT extends MaybeWrappedDataType<DGDC> = MaybeWrappedDataType<DGDC>,
-    DT extends minimalDgDataTypeLike<DGDC> = minimalDgDataTypeLike<DGDC>
-> = {
-    activity: CAI;
-    updatedRecord?: WDT;
-    updatedPartial?: Partial<DT>;
-
-    addedUtxoValue?: Value;
-    beforeSave?(x: DT): DT;
+    wrapped?: WDT;
+    data: IFISNEVER<WDT, DT, undefined | DT>;
+    // beforeSave?(x: DT): DT;
 };
 
 type DgDataUpdateOptions<
     DGDC extends DelegatedDataContract<any>,
     CAI extends isActivity | UpdateActivity<any>,
-    DT extends DgDataType<DGDC> = DgDataType<DGDC>
+    WRAPPED extends never | WrappedDgDataType<DGDC> = WrappedDgDataType<DGDC>,
+    DTL extends DgDataTypeLike<DGDC> = DgDataTypeLike<DGDC>
 > = {
     activity: CAI;
-    updatedRecord: DT;
+    updatedFields?: DTL;
+    updatedWrapped: WRAPPED;
 
     addedUtxoValue?: Value;
-    beforeSave?(x: DT): DT;
+    // beforeSave?(x: DTL): DTL;
+};
+
+// omits type-wrapper and requires all fields for data-type-like
+type CoreDgDataUpdateOptions<
+    DGDC extends DelegatedDataContract<any>,
+    CAI extends isActivity | UpdateActivity<any>,
+    DTL extends DgDataTypeLike<DGDC> = DgDataTypeLike<DGDC>
+> = {
+    activity: CAI;
+    updatedFields: DTL;
+    addedUtxoValue?: Value;
+    // beforeSave?(x: DTL): DTL;
 };

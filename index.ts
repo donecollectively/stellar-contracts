@@ -146,7 +146,7 @@ export {
 
 export {
     type DgDataCreationAttrs,
-    type MaybeWrappedDataType as DelegatedDatumType,
+    type WrappedOrPlainDgDataType as DelegatedDatumType,
     type DelegatedDatumTypeName,
     type updateActivityFunc,
     DelegatedDataContract,

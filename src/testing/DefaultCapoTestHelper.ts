@@ -366,7 +366,7 @@ export class DefaultCapoTestHelper<
                         throw new Error("can't find settings record");
                     }
 
-                    const initialSettings = settingsUtxo.datumParsed
+                    const initialSettings = settingsUtxo.data
                     
                     if (!initialSettings) {
                         throw new Error("can't extract initial settings record data");

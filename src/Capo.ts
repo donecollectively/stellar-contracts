@@ -193,8 +193,8 @@ export type FoundDatumUtxo<
 > = {
     utxo: TxInput;
     datum: InlineDatum;
-    datumParsed?: DelegatedDatumType;
-    data?: WRAPPED_DatumType;
+    data?: DelegatedDatumType;
+    dataWrapped?: WRAPPED_DatumType;
 };
 
 export type UutCreationAttrsWithSeed = {
@@ -406,7 +406,7 @@ import type {
 import type {
     DelegatedDataContract,
     DgDataType,
-    MaybeWrappedDataType,
+    WrappedOrPlainDgDataType,
     someDataWrapper,
 } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
@@ -3121,7 +3121,7 @@ export abstract class Capo<
                         return {
                             utxo,
                             datum,
-                            data: `Error: ${msg}, couldn't parse data` as any,
+                            dataWrapped: `Error: ${msg}, couldn't parse data` as any,
                         };
                     }
 
@@ -3153,38 +3153,42 @@ export abstract class Capo<
             utxo: TxInput,
             delegate: DelegatedDataContract<any>,
             datum: InlineDatum,
-            datumParsed: DelegateDatum$capoStoredDataLike["data"]
+            data: DelegateDatum$capoStoredDataLike["data"]
         ) {
             // console.log("hi mkFoundDatum", datum);
-            if (!datumParsed) {
+            if (!data) {
                 // console.log("  -- skipped 1 mismatch (non-DelegatedDatum)");
                 return null;
             }
             debugger;
-            if (!datumParsed.id || !datumParsed.type) {
+            if (!data.id || !data.type) {
                 console.log(
                     `⚠️  WARNING: missing required 'id' or 'type' field in this delegated datum\n`,
                     dumpAny(utxo),
-                    datumParsed
+                    data
                 );
                 debugger;
                 return null;
             }
-            if (type && datumParsed.type != type) {
+            if (type && data.type != type) {
                 // console.log(`  -- skipped ${datum.type}; need ${type})`);
                 return null;
             }
 
-            if (predicate && !predicate(utxo, datumParsed as unknown as RAW_DATUM_TYPE)) {
+            if (predicate && !predicate(utxo, data as unknown as RAW_DATUM_TYPE)) {
                 // console.log("  -- skipped due to predicate");
                 return null;
             }
+            const dataWrapped = delegate.usesWrappedData ?
+                //@ts-expect-error because we don't have a strong type for the delegate
+                delegate.wrapData(data) 
+                : undefined;
             // console.log("-- matched: ", datum);
             return {
                 utxo,
                 datum,
-                datumParsed,
-                data: delegate.wrapData(datumParsed),
+                data,
+                dataWrapped
             } as FoundDatumUtxo<any>;
         }
     }
