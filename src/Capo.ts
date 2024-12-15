@@ -3964,9 +3964,10 @@ export abstract class Capo<
             mintDgt.activity.CapoLifecycleActivities.commitPendingDgtChanges
         );
         const tcx1c = await this.txnAddGovAuthority(tcx1b);
+
         
         const currentManifest = currentCharter.manifest;
-        const updatedManifest = new Map(currentManifest);
+        const newManifestEntries = new Map();
         for (const pendingChange of pendingChanges) {
             const { action: thisAction, role, name, dgtLink } = pendingChange;
             if (!role.DgDataPolicy) {
@@ -4018,7 +4019,7 @@ export abstract class Capo<
                     );
                 }
             }
-            updatedManifest.set(name, {
+            newManifestEntries.set(name, {
                 tokenName: textToBytes(uutName),
                 mph: undefined,
                 entryType: {
@@ -4030,6 +4031,13 @@ export abstract class Capo<
                 },
             });
         }
+        // new manifest entries must be at the front of the list, and in the same
+        // order as the pending changes
+        const updatedManifest = new Map([
+            ...newManifestEntries.entries(),
+            ...currentManifest.entries(),
+        ]);
+
         const tcx2 = await this.mkTxnUpdateCharter(
             {
                 ...currentCharter,
