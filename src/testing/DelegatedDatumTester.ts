@@ -23,6 +23,7 @@ import { makeTxOutput } from "@helios-lang/ledger";
 
 export class DelegatedDatumTester extends DelegatedDataContract<DelegatedDatumTester> {
     dataBridgeClass = DelegateDatumTesterDataBridge
+
     scriptBundle() {
         return new DelegatedDatumTesterBundle()
     }
@@ -30,21 +31,23 @@ export class DelegatedDatumTester extends DelegatedDataContract<DelegatedDatumTe
     get delegateName() {
         return "TestDataDgt";
     }
+
     get idPrefix() {
         return "tData";
     }
+
     get recordTypeName() {
         return "testData";
     }
 
-    exampleData() : DgDatumTestDataLike {
-        return {
-            id: textToBytes("tData-‹replaceMe›"),
-            type: "testData",
-            name: "Fred",
-            number: 42,
-        }
-    }
+    // exampleData() : DgDatumTestDataLike {
+    //     return {
+    //         id: textToBytes("tData-‹replaceMe›"),
+    //         type: "testData",
+    //         name: "Fred",
+    //         number: 42,
+    //     }
+    // }
 
     // get capo(): Capo<any> {
     //     // type S = CapoOffchainSettingsType<DEMUTokenomicsCapo>;
@@ -67,6 +70,8 @@ export class DelegatedDatumTester extends DelegatedDataContract<DelegatedDatumTe
             tcx,
             this.activity.CreatingTData(tcx)
         );
+
+        type mwdt = MaybeWrappedDataType<DelegatedDatumTester>
 
         const testDataOutput = makeTxOutput(
             this.capo.address,

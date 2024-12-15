@@ -54,13 +54,24 @@ export type DgDataType<
         SomeDgtDatumReader = InstanceType<T["dataBridgeClass"]>["readDatum"] &
         SomeDgtDatumReader,
     CSD_struct extends ReturnType<DATUM>["capoStoredData"] 
+    // & {
+    //     data: AnyDataTemplate<any, any>;
+    // } 
     = ReturnType<DATUM>["capoStoredData"],
     DTYP extends CSD_struct extends { data: AnyDataTemplate<any, any> } ? CSD_struct["data"] : never = 
     CSD_struct extends { data: AnyDataTemplate<any, any> } ? CSD_struct["data"] : never 
+    // & {
+    //     data: AnyDataTemplate<any, any>;
+    // }
 > = ErgoAnyData & DTYP // CSD_struct["data"];
 
 export type DgDataTypeLike<
     T extends DelegatedDataContract<any>,
+    // CDCC extends DelegatedDataContract<any> = T extends DelegatedDataContract<
+    //     infer D
+    // >
+    //     ? D
+    //     : never,
     CSDFP extends Parameters<
         InstanceType<T["dataBridgeClass"]>["DelegateDatum"]["capoStoredData"]
     > = Parameters<
@@ -126,6 +137,9 @@ RT extends ReturnType<T["mkDataWithWrapper"]> = ReturnType<
 ? RT
 : never;
 
+
+// Break the circular dependency by using a type alias???
+type DgDataTypeAlias<T extends DelegatedDataContract<any>> = DgDataType<T>;
 
 export type DelegatedDataWrapper<
     T extends DelegatedDataContract<any>,
