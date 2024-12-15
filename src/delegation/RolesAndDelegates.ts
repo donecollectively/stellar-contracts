@@ -175,7 +175,7 @@ export type DelegateSetup<
  **/
 export function defineRole<
     DT extends DelegateTypes,
-    SC extends (DT extends "dgDataPolicy" ? DelegatedDataContract : StellarDelegate),
+    SC extends (DT extends "dgDataPolicy" ? DelegatedDataContract<any> : StellarDelegate),
     const CONFIG extends DelegateConfigDetails<SC>,
     // = CONFIG extends DelegateConfigDetails<infer sc> ? sc : never
     // DelegateClass extends stellarSubclass<infer sc> ? 

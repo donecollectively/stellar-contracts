@@ -18,6 +18,8 @@ import MDWGU_Bridge, * as MDWGU from "../../testing/specialMintDelegate/uutMinti
 //     DelegateActivityHelper as MDWGU_DelegateActivityHelper,
 // } from "../../testing/specialMintDelegate/uutMintingMintDelegate.bridge.js"
 
+import DgDtest_Bridge, * as DgDtest from "../../testing/DelegatedDatumTester.bridge.js";
+
 import type {
     ErgoDelegateDatum as MDWGU_ErgoDelegateDatum,
     DelegateActivity as MDWGU_DelegateActivity,
@@ -905,6 +907,71 @@ if (testing) {
             // "" as unknown as ContractDataBridgeWithEnumDatum,
         };
     }
+
+    {
+        const dgDataBridge: BI_DgDB["bridgeClass"] = DgDtest_Bridge
+        type BI_DgDB = bridgeInspector<DelegatedDatumTester>;
+
+        type BridgeBools = BridgeBooleanEntries<BI_DgDB>;
+        const bools: BridgeBools = {
+            isAnyMintDgt: false,
+            isTheBasicMintDgt: false,
+            isAnyContractDgt: true,
+            isTheBaseContractDgt: false,
+            isAbstractCDB: false,
+            isAbstractMDB: false,
+            isAbstractOB: false,
+            isAbstractBridgeType: false,
+        };
+
+        const MinimalAnysAllowed: BridgeAnyEntries<BI_DgDB> = {
+        }
+        type NeverEntries = BridgeNeverEntries<BI_DgDB>;
+        const neverEntries: NeverEntries = {
+            extendsCapoBridge: IS_A_NEVER,
+            usesMintDgtBridge: IS_A_NEVER,
+            usesOtherBridge: IS_A_NEVER,
+            hasMkDatum: IS_A_NEVER,
+            abstractBridgeType: IS_A_NEVER,
+            // readsDatumUplcAs: IS_A_NEVER,
+        };
+
+        type NonNeverEntries = BridgeNonNeverEntries<BI_DgDB>;
+        const nonNeverEntries: NonNeverEntries = {
+            inspected: {} as DelegatedDatumTester,
+            thatDefinedBridgeType: DgDtest_Bridge,
+            usesContractDgtBridge: {} as typeof DgDtest_Bridge,
+            bridgeClass: {} as typeof DgDtest_Bridge, // ContractDataBridgeWithEnumDatum, 
+            foundMkDatumType: {} as DgDtest.DelegateDatumHelper,
+            bridgeType: {} as DgDtest_Bridge,
+            readsDatumUplcAs: {} as DgDtest.types.ErgoDelegateDatum,
+            activityHelper: {} as DgDtest.DelegateActivityHelper,
+        };
+
+        type ExampleData = Expand<DgDataTypeLike<DelegatedDatumTester>>
+
+        // const exampleDataAsExpected : ReturnType<
+        //     DelegatedDatumTester["exampleData"]
+        // > extends ExampleData ? true : false = true;
+
+        type ddtl = Expand<DgDataTypeLike<DelegatedDatumTester>>;
+        const dataLike : ddtl = {
+            name: "kevin",
+            number: 14,
+        };
+        const badDataLike : ddtl = {
+            name: "kevin",
+            number: 14,
+
+            //@ts-expect-error
+            badAttr: "no way"
+        };
+
+        const dataCanonical : DgDataType<DelegatedDatumTester> = {} as DgDatumTestData
+
+    }
+
+
 
     // const t6 : never extends never ? true : false = true;
     // any -> never = true | false (INDETERMINATE! )

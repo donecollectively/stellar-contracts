@@ -189,7 +189,7 @@ export type NormalDelegateSetup = {
  */
 
 export type FoundDatumUtxo<
-    // DelegatedDatumType extends AnyDataTemplate<any, any>
+    // DelegatedDatumType extends AnyDataTemplate<any, any>,
     DelegatedDatumType extends AnyData,
     WRAPPED_DatumType extends any = any
 > = {
@@ -401,7 +401,10 @@ import type {
     CapoDatum$Ergo$DelegatedData,
 } from "./CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
-import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.js";
+import type {
+    GenericDelegateDatum,
+    SomeDgtActivityHelper,
+} from "./delegation/GenericDelegateBridge.js";
 import type {
     DelegatedDataContract,
     DgDataType,
@@ -574,7 +577,7 @@ type FooUnkYES = { foo: string } extends unknown ? "yes" : "no";
 /**
  * @public
  */
-export type DelegatedDataPredicate<DATUM_TYPE extends anyDatumProps & AnyData> =
+export type DelegatedDataPredicate<DATUM_TYPE extends AnyDataTemplate<any,any>> =
     (utxo: TxInput, data: DATUM_TYPE) => boolean;
 
 type ManifestEntryTokenRef = Omit<CapoManifestEntryLike, "entryType"> & {
@@ -1500,7 +1503,7 @@ export abstract class Capo<
      *   ... The later properties in this sequence take precedence.
      **/
     async txnCreateOffchainDelegateLink<
-        RoLabel extends string & keyof this["delegateRoles"],
+        RoLabel extends string & keyof SELF["_delegateRoles"],
         DT extends StellarDelegate = ContractBasedDelegate
     >(
         tcx: hasUutContext<RoLabel>,
@@ -1638,7 +1641,7 @@ export abstract class Capo<
      * @public
      **/
     async txnCreateConfiguredDelegate<
-        RN extends string & keyof this["delegateRoles"],
+        RN extends string & keyof SELF["_delegateRoles"],
         DT extends StellarDelegate = ContractBasedDelegate
     >(
         tcx: hasUutContext<RN>,
@@ -1664,7 +1667,7 @@ export abstract class Capo<
         const impliedDelegationDetails = this.mkImpliedDelegationDetails(uut);
 
         const selectedDgt =
-            delegateRoles[roleName] as this["delegateRoles"][RN] //prettier-ignore
+            delegateRoles[roleName] as SELF["_delegateRoles"][RN] //prettier-ignore
         // if (!foundStrategies) {
         //     throw new Error(`no delegateRoles entry for role '${roleName}'`);
         // }
@@ -1783,7 +1786,7 @@ export abstract class Capo<
 
     // get connectDelegate()
     async connectDelegateWithOnchainRDLink<
-        RN extends string & keyof this["delegateRoles"],
+        RN extends string & keyof SELF["_delegateRoles"],
         DT extends StellarDelegate = ContractBasedDelegate // StellarDelegate
     >(
         roleLabel: RN,
@@ -2019,7 +2022,7 @@ export abstract class Capo<
     }
 
     _delegateRoles!: basicDelegateMap<any> &
-        ReturnType<this["initDelegateRoles"]>;
+        ReturnType<SELF["initDelegateRoles"]>;
     abstract initDelegateRoles(): // THISTYPE extends Capo<any>, //<
     // myDelegateRoles extends basicRoleMap
     //        >(
@@ -2301,11 +2304,12 @@ export abstract class Capo<
      * and that the off-chain Capo delegateMap provides an off-chain controller
      * for that typeName.
      */
-    async getDgDataController<RN extends string & keyof this["_delegateRoles"]>(
+    async getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(
+        this: SELF,
         roleName: RN,
         // typeName: string,
         charterData?: CharterData
-    ): Promise<DelegatedDataContract> {
+    ): Promise<DelegatedDataContract<any>> {
         const chD = charterData || (await this.findCharterData());
         const foundME = chD.manifest.get(roleName);
         if (!foundME) {
@@ -2316,7 +2320,7 @@ export abstract class Capo<
         if (foundME?.entryType.DgDataPolicy) {
             return this.connectDelegateWithOnchainRDLink<
                 RN,
-                DelegatedDataContract
+                DelegatedDataContract<any>
             >(roleName, foundME.entryType.DgDataPolicy.policyLink); // as Promise<>;
         } else {
             const actualEntryType = Object.keys(foundME.entryType)[0];
@@ -2664,7 +2668,7 @@ export abstract class Capo<
         }
         const delegate = (await this.getDgDataController(
             "settings"
-        )) as DelegatedDataContract;
+        )) as DelegatedDataContract<any>;
         const settingsData = foundSettingsUtxo.output.datum?.data;
         if (!settingsData) {
             throw new Error(
@@ -2962,43 +2966,10 @@ export abstract class Capo<
      * The `predicate` function, if provided, can implement any logic suitable for a specific case of data-finding.
      */
     async findDelegatedDataUtxos<
-        THIS extends Capo<any>,
-        const T extends undefined | (string & keyof THIS["delegateRoles"]),
-        RAW_DATUM_TYPE extends T extends string & keyof THIS["delegateRoles"]
-            ? THIS["_delegateRoles"][T] extends DelegateSetup<
-                  "dgDataPolicy",
-                  infer DT,
-                  any
-              >
-                ? DgDataType<DT & DelegatedDataContract>
-                : never
-            : DgDataType<any> = T extends string & keyof THIS["delegateRoles"]
-            ? THIS["_delegateRoles"][T] extends DelegateSetup<
-                  "dgDataPolicy",
-                  infer DT,
-                  any
-              >
-                ? DgDataType<DT & DelegatedDataContract>
-                : never
-            : DgDataType<any>,
-        PARSED_DATUM_TYPE extends ( T extends string & keyof THIS["delegateRoles"] ? (
-            THIS["_delegateRoles"][T] extends DelegateSetup<"dgDataPolicy", infer DT, any> ? 
-            MaybeWrappedDataType<DT & DelegatedDataContract> : never 
-            ) : MaybeWrappedDataType<any>
-        ) = ( T extends string & keyof THIS["delegateRoles"] ? (
-            THIS["_delegateRoles"][T] extends DelegateSetup<"dgDataPolicy", infer DT, any> ? 
-            MaybeWrappedDataType<DT & DelegatedDataContract> : never 
-            ) : MaybeWrappedDataType<any>
-        )
-        // prettier-ignore
-        // ADAPTER_TYPE extends DelegatedDatumAdapter<any> | undefined
-        //         = T extends keyof this["datumAdapters"]
-        //         ? this["datumAdapters"][T]
-        //         : undefined,
-        // DATUM_TYPE extends anyDatumProps &
-        //     AnyDataTemplate<T extends undefined ? any : T, any> = any
-        // &DatumAdapterAppType<ADAPTER_TYPE> = DatumAdapterAppType<ADAPTER_TYPE>
-    >({
+        const T extends undefined | (string & keyof SELF["_delegateRoles"]),
+        RAW_DATUM_TYPE extends T extends string ? AnyDataTemplate<T, any> : never,
+        PARSED_DATUM_TYPE
+    >(this: SELF, {
         type,
         id,
         predicate,
@@ -3017,7 +2988,15 @@ export abstract class Capo<
         }
         if (id) {
             const idBytes = textToBytes(id.toString());
-            predicate = (utxo, datum) => equalsBytes(datum.id, idBytes);
+            predicate = (utxo, datum) => {
+                if (!datum.id) {
+                    throw new Error(`um?`)
+                }
+                return equalsBytes(
+                    datum.id, 
+                    idBytes
+                );
+            }
         }
         // console.log("\n\n\n\n\n\n\n\n\n======= findDelegatedDataUtxos =======\n\n\n\n\n\n\n\n\n");
         // console.log({ type, types: Object.keys(this.datumAdapters)})
@@ -3108,9 +3087,9 @@ export abstract class Capo<
                     }
                     const dgtForType =
                         type &&
-                        ((await this.getDgDataController(
+                        (await this.getDgDataController(
                             type
-                        )) as DelegatedDataContract);
+                        )) // as DelegatedDataContract<any>);
                     if (!dgtForType) {
                         console.log(
                             "no type found in datum",
@@ -3155,7 +3134,7 @@ export abstract class Capo<
 
         function mkFoundDatum(
             utxo: TxInput,
-            delegate: DelegatedDataContract,
+            delegate: DelegatedDataContract<any>,
             datum: InlineDatum,
             datumParsed: DelegateDatum$capoStoredDataLike["data"]
         ) {
@@ -3178,7 +3157,8 @@ export abstract class Capo<
                 // console.log(`  -- skipped ${datum.type}; need ${type})`);
                 return null;
             }
-            if (predicate && !predicate(utxo, datumParsed as RAW_DATUM_TYPE)) {
+
+            if (predicate && !predicate(utxo, datumParsed as unknown as RAW_DATUM_TYPE)) {
                 // console.log("  -- skipped due to predicate");
                 return null;
             }
@@ -3643,7 +3623,7 @@ export abstract class Capo<
      */
     @txn
     async mkTxnInstallingPolicyDelegate<
-        const RoLabel extends string & keyof this["delegateRoles"],
+        const RoLabel extends string & keyof SELF["delegateRoles"],
         THIS extends Capo<any>
     >(
         this: THIS,
@@ -3753,7 +3733,7 @@ export abstract class Capo<
     async mkTxnQueuingDelegateChange<
         DT extends StellarDelegate,
         THIS extends Capo<any>,
-        const RoLabel extends string & keyof this["delegateRoles"],
+        const RoLabel extends string & keyof SELF["delegateRoles"],
         OPTIONS extends OffchainPartialDelegateLink,
         TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
     >(
