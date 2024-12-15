@@ -1,5 +1,7 @@
 import { MinimalCharterDataArgs } from "../src/Capo.js";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings.js";
+import { minimalReqtData } from "../src/reqts/Reqts.concrete.typeInfo.js";
+import { ReqtsController } from "../src/reqts/ReqtsController.js";
 import { CapoTestHelper } from "../src/testing/CapoTestHelper.js";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
 import { StellarTestContext } from "../src/testing/StellarTestContext.js";
@@ -8,7 +10,6 @@ import { ADA, TestHelperState } from "../src/testing/types.js";
 export let helperState: TestHelperState<CapoWithoutSettings> = {
     snapshots: {},
 } as any;
-
 
 export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCapoClass(
     CapoWithoutSettings
@@ -35,7 +36,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
 
     //@ts-expect-error - why does it expect this is a property, when it's defined as a getter everywhere?
     get stellarClass() {
-        return CapoWithoutSettings
+        return CapoWithoutSettings;
     }
 
     async setupActors() {
@@ -54,8 +55,6 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         // --- NOTE: these actors are better placed in a tokenomics-generic test helper,
         //     - sticking them here only because we don't yet have an intermediate test-helper
         //        subclass for tokenomics that's easy to further subclass for DEMU
-
-
     }
 
     get capo(): CapoWithoutSettings {
@@ -93,7 +92,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         //         );
         //         // throw new Error("hi")
         //     });
-        return this.strella
+        return this.strella;
     }
 
     @CapoTestHelper.hasNamedSnapshot("firstReqt", "tina")
@@ -104,8 +103,13 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
 
     async firstReqt() {
         this.setActor("tina");
-
-        return this.createReqt(sampleReqt);
+        const reqtsController = (await this.capo.getDgDataController(
+            "reqts"
+        )) as ReqtsController;
+        const t = await this.capo.findDelegatedDataUtxos({
+            type: "reqts",
+        });
+        return this.createReqt(reqtsController.exampleData());
     }
 
     @CapoTestHelper.hasNamedSnapshot("firstDependentReqt", "tina")
@@ -118,18 +122,24 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         this.setActor("tina");
         await this.snapToFirstReqt();
         const purpose = await this.findFirstReqt();
+        // type t = dgDataRoles<typeof this.capo>;
+        const reqtsController = await this.capo.reqtsController()
+        const exampleData = reqtsController.exampleData() as minimalReqtData;
+
         return this.createReqt({
-            ... sampleReqt,
+            ...exampleData,
             purpose: "a reqt depending on another",
-            requires: purpose.id
+            requires: purpose.id,
         });
     }
 
     async findFirstDependentReqt() {
-        const delegate = await this.capo.getReqtsDelegate();
+        const delegate = (await this.capo.getDgDataController(
+            "reqts"
+        )) as ReqtsController;
         const firstReqt = await this.findFirstReqt();
         const reqts = await this.capo.findReqts({
-            requires: firstReqt.id
+            requires: firstReqt.id,
         });
         if (reqts.length > 1) {
             throw new Error("expected only one dependent requirement");
@@ -139,7 +149,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
 
     async findFirstReqt() {
         const purposes = await this.capo.findReqts({
-            requires: null
+            requires: null,
         });
         if (purposes.length > 1) {
             throw new Error("expected only one purpose");
@@ -151,33 +161,42 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         reqt: minimalReqtData,
         options: {
             submit?: boolean;
-        }={}
+        } = {}
     ) {
-        const {  submit = true } = options;
+        const { submit = true } = options;
         this.requiresActorRole("CapoAdmin", "t");
 
-        console.log(
-            "  -- ⚗️🐞 ⚗️🐞 " +
-                this.relativeTs +
-                " Creating reqt"
-        );
+        console.log("  -- ⚗️🐞 ⚗️🐞 " + this.relativeTs + " Creating reqt");
 
-        const delegate = ( await this.capo.getNamedDelegate("reqtCtrl") ) as ReqtsController
-        const tcx = await delegate.mkTxnCreateReqt(reqt);
+        const delegate = (await this.capo.getDgDataController(
+            "reqts"
+        )) as ReqtsController;
+        // ).getNamedDelegate("reqtCtrl");
+        // getNamedDelegate("reqtCtrl") ) as ReqtsController
+        // const tcx = await delegate.mkTxnCreateReqt(reqt);
+        const tcx = await delegate.mkTxnCreateRecord(
+            delegate.activity.$seed$CreatingDelegatedData({
+                dataType: "reqts",
+            }),
+            {
+                data: reqt,
+            }
+        );
 
         if (!submit) return tcx;
         return this.submitTxnWithBlock(tcx);
     }
-
-
-
 }
 
-
-
-export type TestContext_CapoWithoutSettings = StellarTestContext<CapoWithoutSettings_testHelper> & {
-    helperState: typeof helperState;
-    snapshot(this: TestContext_CapoWithoutSettings, snapName: string): void;
-    loadSnapshot(this: TestContext_CapoWithoutSettings, snapName: string): void;
-    reusableBootstrap(this: TestContext_CapoWithoutSettings): Promise<CapoWithoutSettings>;
-};
+export type TestContext_CapoWithoutSettings =
+    StellarTestContext<CapoWithoutSettings_testHelper> & {
+        helperState: typeof helperState;
+        snapshot(this: TestContext_CapoWithoutSettings, snapName: string): void;
+        loadSnapshot(
+            this: TestContext_CapoWithoutSettings,
+            snapName: string
+        ): void;
+        reusableBootstrap(
+            this: TestContext_CapoWithoutSettings
+        ): Promise<CapoWithoutSettings>;
+    };

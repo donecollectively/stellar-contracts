@@ -57,6 +57,9 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
             reqts: defineRole("dgDataPolicy", ReqtsController, {})
         }
     }
+    async reqtsController() { 
+        return this.getDgDataController("reqts") as Promise<ReqtsController>;
+    }
 
     // async mkInitialSettings() {
     //     return {

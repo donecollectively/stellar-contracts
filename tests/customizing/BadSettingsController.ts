@@ -13,22 +13,22 @@ import {
 } from "./BadSettings.bridge.js" ;
 import { textToBytes } from "../../src/HeliosPromotedTypes.js";
 
-export class BadSettingsController extends DelegatedDataContract {
+
+export class BadSettingsController extends DelegatedDataContract<BadSettingsController> {
     dataBridgeClass = BadSettingsPolicyDataBridge;
     scriptBundle() {
         return new BadSettingsBundle()
     }
 
-    exampleData() : ProtocolSettingsLike { // !!! fix the upstream type to omit id
+    exampleData() {
         return {
-            id: textToBytes("set-42"),
-            type: "settings",
+            // id: textToBytes("set-42"),
+            // type: "settings",
             meaning: 42,
             badSpenderSetting: 0,
             badMinterSetting: 0
         }
     }
-
     get delegateName() {
         return "settingsPolicy";
     }

@@ -72,7 +72,6 @@ import type {
     DelegationDetail,
     delegateConfigValidation,
     capoDelegateConfig,
-    SelectedDelegate,
 } from "./delegation/RolesAndDelegates.js";
 
 import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
@@ -687,6 +686,9 @@ export abstract class Capo<
             | "spendDelegate"]: ConfiguredDelegate<any>;
     };
 
+    // abstract delegatedDataWrappers(): Promise<
+    //     Record<string, someDataWrapper<any>>
+    // >;
 
     static parseConfig(rawJsonConfig: {
         mph: { bytes: string };
@@ -807,6 +809,9 @@ export abstract class Capo<
             // this.connectMintingScript(this.getMinterParams());
         }
 
+        // //@ts-expect-error - trust the subclass's initDelegatedDatumAdapters() to be type-matchy
+        // //   ... based on other abstract methods defined below
+        // this.datumWrappers = await this.delegatedDataWrappers();
 
         return this;
     }
@@ -2194,6 +2199,8 @@ export abstract class Capo<
         return this.inlineDatum("ScriptReference", {});
     }
 
+    // dataWrappers!: Record<string, someDataWrapper<any>> &
+    //     Awaited<ReturnType<this["delegatedDataWrappers"]>>;
 
     // @datum
     // async mkDatumSettingsData<THISTYPE extends Capo<any>>(
@@ -2266,6 +2273,8 @@ export abstract class Capo<
     //     THIS extends Capo<any>,
     //     MDT extends BasicMintDelegate & THIS["delegateRoles"]["mintDgt"] extends RoleInfo<any, any, infer DT> ? DT : never
     // >() : Promise<MDT>{
+
+    // todo: get mintDelegate type from delegateRoles
     async getMintDelegate(
         // <
         //     T extends BasicMintDelegate=BasicMintDelegate
@@ -2284,6 +2293,7 @@ export abstract class Capo<
         >("mintDelegate", chD.mintDelegateLink);
     }
 
+    // todo: get spendDelegate type from delegateRoles
     async getSpendDelegate(charterData?: CharterData) {
         const chD = charterData || (await this.findCharterData());
         // if (!charterData) {
@@ -2321,6 +2331,15 @@ export abstract class Capo<
                 RN,
                 DelegatedDataContract<any>
             >(roleName, foundME.entryType.DgDataPolicy.policyLink); // as Promise<>;
+                // DelegatedDataContract<any> & specificDataController<SELF, RN>
+                // DelegatedDataContract<
+                //     specificDataController<
+                //         SELF["_delegateRoles"][RN]> 
+                // > 
+                // >(
+                //     roleName, 
+                //     foundME.entryType.DgDataPolicy.policyLink
+                // )
         } else {
             const actualEntryType = Object.keys(foundME.entryType)[0];
             throw new Error(
@@ -2657,7 +2676,7 @@ export abstract class Capo<
         ctx: SettingsDataContext = {}
     ): Promise<DetectSettingsType<thisType>> {
         const { settingsUtxo, tcx, charterUtxo } = ctx;
-        
+
         const foundSettingsUtxo =
             settingsUtxo || (await this.findSettingsUtxo(tcx || charterUtxo));
         if (!this.delegateRoles["settings"]) {
@@ -2770,7 +2789,6 @@ export abstract class Capo<
             : hasAddlTxns<TCX>
     >(tcx: TCX, scriptName: string, script: anyUplcProgram): Promise<RETURNS> {
         const mkRefScript = () => {
-            debugger;
             const refScriptOut = makeTxOutput(
                 this.address,
                 makeValue(this.ADA(0n)),
@@ -3944,7 +3962,6 @@ export abstract class Capo<
         );
         const tcx1c = await this.txnAddGovAuthority(tcx1b);
 
-        
         const currentManifest = currentCharter.manifest;
         const newManifestEntries = new Map();
         for (const pendingChange of pendingChanges) {
