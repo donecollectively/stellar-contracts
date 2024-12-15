@@ -43,7 +43,7 @@ import type { GenericDelegateBridge, GenericDelegateBridgeClass, GenericDelegate
 import type { ErgoDelegateDatum } from "../../delegation/UnspecializedDelegate.typeInfo.js";
 import DelegateDatumTesterDataBridge from "../../testing/DelegatedDatumTester.bridge.js";
 import type { DelegatedDatumTester } from "../../testing/DelegatedDatumTester.js";
-import type { DgDataType, DgDataTypeLike } from "../../delegation/DelegatedDataContract.js";
+import type { DgDataType, DgDataTypeLike, minimalDgDataTypeLike } from "../../delegation/DelegatedDataContract.js";
 import type { DgDatumTestData } from "../../testing/DelegatedDatumTester.typeInfo.js";
 import type { Expand } from "../../testing/types.js";
 type canHaveDataBridge = { dataBridgeClass?: AbstractNew<ContractDataBridge> };
@@ -954,7 +954,7 @@ if (testing) {
         //     DelegatedDatumTester["exampleData"]
         // > extends ExampleData ? true : false = true;
 
-        type ddtl = Expand<DgDataTypeLike<DelegatedDatumTester>>;
+        type ddtl = Expand<minimalDgDataTypeLike<DelegatedDatumTester>>;
         const dataLike : ddtl = {
             name: "kevin",
             number: 14,

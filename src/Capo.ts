@@ -189,8 +189,7 @@ export type NormalDelegateSetup = {
  */
 
 export type FoundDatumUtxo<
-    // DelegatedDatumType extends AnyDataTemplate<any, any>,
-    DelegatedDatumType extends AnyData,
+    DelegatedDatumType extends AnyDataTemplate<any, any>,
     WRAPPED_DatumType extends any = any
 > = {
     utxo: TxInput;

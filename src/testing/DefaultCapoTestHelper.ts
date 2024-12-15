@@ -25,6 +25,7 @@ import type {
     DelegateSetup,
 } from "../delegation/RolesAndDelegates.js";
 import type { UutName } from "../delegation/UutName.js";
+import type { Address } from "@helios-lang/ledger";
 
 declare namespace NodeJS {
     interface Global {

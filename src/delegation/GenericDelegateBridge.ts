@@ -109,7 +109,7 @@ export type SomeDgtDatumHelper<T extends AnyDataTemplate<any,any>> = EnumBridge<
     Omit<DelegateDatumHelper, "capoStoredData"> & {
         // capoStoredData(x: AbstractStoredDataLike): TxOutputDatum<"Inline">;
         capoStoredData(fields: {
-            data: minimalData<T>;
+            data: T;
             version: IntLike;
             otherDetails: UplcData;
         }): InlineTxOutputDatum;

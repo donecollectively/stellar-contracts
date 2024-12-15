@@ -8,7 +8,7 @@ import type {
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { dumpAny } from "../diagnostics.js";
 import { hasReqts } from "../Requirements.js";
-import { DelegatedDataContract } from "../delegation/DelegatedDataContract.js";
+import { DelegatedDataContract, type DgDataTypeLike, type MaybeWrappedDataType } from "../delegation/DelegatedDataContract.js";
 import {
     DelegateDatumTesterDataBridge
 } from "./DelegatedDatumTester.bridge.js"
@@ -21,7 +21,7 @@ import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlbundle.js"
 import { textToBytes } from "../HeliosPromotedTypes.js";
 import { makeTxOutput } from "@helios-lang/ledger";
 
-export class DelegatedDatumTester extends DelegatedDataContract {
+export class DelegatedDatumTester extends DelegatedDataContract<DelegatedDatumTester> {
     dataBridgeClass = DelegateDatumTesterDataBridge
     scriptBundle() {
         return new DelegatedDatumTesterBundle()
@@ -53,12 +53,16 @@ export class DelegatedDatumTester extends DelegatedDataContract {
     // }
 
 
-    async txnCreatingTestRecrd<
+    async txnCreatingTestRecord<
         TCX extends StellarTxnContext &
             hasSeedUtxo &
             hasSettingsRef &
             hasUutContext<"tData">
-    >(tcx: TCX, testData: /*TestRecData*/ any): Promise<TCX> {
+    >(
+        this: DelegatedDatumTester,
+        tcx: TCX, 
+        testData: DgDataTypeLike<DelegatedDatumTester>
+    ): Promise<TCX> {
         const tcx2 = await this.txnGrantAuthority(
             tcx,
             this.activity.CreatingTData(tcx)

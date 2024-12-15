@@ -53,28 +53,24 @@ export type DgDataType<
     DATUM extends InstanceType<T["dataBridgeClass"]>["readDatum"] &
         SomeDgtDatumReader = InstanceType<T["dataBridgeClass"]>["readDatum"] &
         SomeDgtDatumReader,
-    CSD_struct extends ReturnType<DATUM>["capoStoredData"] & {
-        data: AnyDataTemplate<any, any>;
-    } = ReturnType<DATUM>["capoStoredData"] & {
-        data: AnyDataTemplate<any, any>;
-    }
-> = ErgoAnyData & CSD_struct["data"];
+    CSD_struct extends ReturnType<DATUM>["capoStoredData"] 
+    = ReturnType<DATUM>["capoStoredData"],
+    DTYP extends CSD_struct extends { data: AnyDataTemplate<any, any> } ? CSD_struct["data"] : never = 
+    CSD_struct extends { data: AnyDataTemplate<any, any> } ? CSD_struct["data"] : never 
+> = ErgoAnyData & DTYP // CSD_struct["data"];
 
 export type DgDataTypeLike<
     T extends DelegatedDataContract<any>,
-    CDCC extends DelegatedDataContract<any> = T extends DelegatedDataContract<
-        infer D
-    >
-        ? D
-        : never,
     CSDFP extends Parameters<
-        InstanceType<CDCC["dataBridgeClass"]>["DelegateDatum"]["capoStoredData"]
+        InstanceType<T["dataBridgeClass"]>["DelegateDatum"]["capoStoredData"]
     > = Parameters<
-        InstanceType<CDCC["dataBridgeClass"]>["DelegateDatum"]["capoStoredData"]
+        InstanceType<T["dataBridgeClass"]>["DelegateDatum"]["capoStoredData"]
     >,
-    csdLike extends CSDFP extends [{ data: AnyDataTemplate<any, any> }, ...any]
-        ? AnyDataTemplate<any, any>
-        : never = CSDFP extends [{ data: AnyDataTemplate<any, infer D> }, ...any] ? D : never
+    csdLike extends (
+            CSDFP extends [{ data: AnyDataTemplate<any, any> }, ...any]
+            ? CSDFP extends [{data: infer specificDT }] ? specificDT : never : never
+    ) = CSDFP extends [{ data: AnyDataTemplate<any, any> }, ...any] 
+        ? CSDFP extends [{data: infer specificDT }] ? specificDT : never : never
 > = csdLike;
 
 /**
@@ -115,15 +111,29 @@ export type MaybeWrappedDataType<
     : RT extends someDataWrapper<any>
     ? RT
     : never;
-// : Exclude<Exclude<RT, NoWrapper>, AnyData>;
+
+/**
+ * @public
+ */
+export type MaybeWrappedDataTypeLike<
+T extends DelegatedDataContract<any>,
+RT extends ReturnType<T["mkDataWithWrapper"]> = ReturnType<
+    T["mkDataWithWrapper"]
+>
+> = RT extends NoWrapper
+? DgDataTypeLike<T>
+: RT extends someDataWrapper<any>
+? RT
+: never;
+
 
 export type DelegatedDataWrapper<
     T extends DelegatedDataContract<any>,
-    DDT extends DgDataType<T> = DgDataType<T>,
-    WDT extends MaybeWrappedDataType<T> = MaybeWrappedDataType<T>
-> = DDT extends WDT ? DDT : someDataWrapper<DDT>;
+    DDTL extends DgDataTypeLike<T> = DgDataTypeLike<T>,
+    WDT extends MaybeWrappedDataTypeLike<T> = MaybeWrappedDataTypeLike<T>
+> = DDTL extends WDT ? DDTL : someDataWrapper<DDTL>;
 
-export type someDataWrapper<wrappedType extends AnyData> = {
+export type someDataWrapper<wrappedType extends AnyDataTemplate<any,any>> = {
     unwrapData(): wrappedType;
 };
 
@@ -261,8 +271,8 @@ export abstract class DelegatedDataContract<
     }
 
     unwrapData(
-        d: Exclude<DelegatedDataWrapper<DDC>, AnyData>
-    ): DgDataType<DDC> {
+        d: DelegatedDataWrapper<DDC>
+    ): DgDataTypeLike<DDC> {
         if ("undefined" == typeof this.usesWrappedData) {
             // invoke wrapData once with the (typed, delegate-specific sample data )
             // to populate the "uses adapter" flag
@@ -270,23 +280,23 @@ export abstract class DelegatedDataContract<
                 this.wrapData({} as any);
             } catch (e) {
                 console.warn(
-                    `inferring usesWrappedData: wrapData() failed to wrap an empty object, \n ...which probably means it caused error in a wrap implementation.  \nAssuming Yes, it uses a wrapper.  Call wrapData() before unwrapData() to avoid this warning.`
+                    `inferring usesWrappedData from the presence of a wrapData() error. \n`+
+                    `Set this.usesWrappedData = true to remove this warning`
                 );
                 this.usesWrappedData = true;
             }
         }
         if (false == this.usesWrappedData) {
-            return d as DgDataType<DDC>;
+            return d as DgDataTypeLike<DDC>;
+        } else if (true != this.usesWrappedData) {
+            throw new Error(`inconth...eeevible!`)
         }
-        if (true == this.usesWrappedData) {
-            return d.unwrapData() as DgDataType<DDC>;
-        }
-        throw new Error(`incontheieieieievible!`);
+        return (d as any).unwrapData() as DgDataTypeLike<DDC>;
     }
 
     async mkDatumDelegatedDataRecord(
         this: DDC,
-        record: Exclude<MaybeWrappedDataType<DDC>, AnyData>
+        record: MaybeWrappedDataTypeLike<DDC>
     ): Promise<InlineDatum> {
         // console.log({record}, "8888888888888888888888888888888888888")
         return this.mkDatum.capoStoredData({
@@ -414,7 +424,7 @@ export abstract class DelegatedDataContract<
         const uut = tcx.state.uuts[idPrefix];
         let newRecord: RDTL = typedData as any;
         if (wrappedData) {
-            newRecord = this.unwrapData(newRecord as any) as RDTL;
+            newRecord = this.unwrapData(newRecord) as RDTL;
         }
 
         const fullRecord = {
@@ -641,7 +651,7 @@ type hasRecId = string | number[] | UutName;
 type CreationOptions<
     DGDC extends DelegatedDataContract<any>,
     WDT extends MaybeWrappedDataType<DGDC> = MaybeWrappedDataType<DGDC>,
-    DT extends DgDataTypeLike<DGDC> = DgDataTypeLike<DGDC>
+    DT extends minimalDgDataTypeLike<DGDC> = minimalDgDataTypeLike<DGDC>
 > = {
     addedUtxoValue?: Value;
     wrappedData?: WDT;
@@ -653,7 +663,7 @@ type WrappedDgDataUpdateOptions<
     DGDC extends DelegatedDataContract<any>,
     CAI extends isActivity | UpdateActivity<any>,
     WDT extends MaybeWrappedDataType<DGDC> = MaybeWrappedDataType<DGDC>,
-    DT extends DgDataTypeLike<DGDC> = DgDataTypeLike<DGDC>
+    DT extends minimalDgDataTypeLike<DGDC> = minimalDgDataTypeLike<DGDC>
 > = {
     activity: CAI;
     updatedRecord?: WDT;
