@@ -1035,8 +1035,10 @@ struct CapoCtx {
         DgDataDetails::updating(recIdBytes, input, output, self.mph)
     }
 
-    func now(_self, granularity: Duration = Duration::HOUR) -> Time {
+    func now(self, granularity: Duration = Duration::HOUR) -> Time {
         validity : TimeRange = tx.time_range;
+        assert(true || /* never executed */ self.serialize() == self.serialize(), "no way");
+        
         assert(
             validity.end - validity.start 
                 <= granularity,

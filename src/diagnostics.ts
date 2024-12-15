@@ -435,9 +435,9 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                 // debugger
                 // const indexInfo = isIndeterminate
                 //     ? `spend txin #‹tbd›`
-                if (x.kind == "TxSpendingRedeemer") {
-                    debugger
-                }
+                // if (x.kind == "TxSpendingRedeemer") {
+                //     debugger
+                // }
                 const indexInfo =
                     x.kind == "TxMintingRedeemer"
                         ? `minting policy ${x.policyIndex}`
@@ -719,6 +719,8 @@ export function dumpAny(
 ) {
     if ("undefined" == typeof x) return "‹undefined›";
     if (Array.isArray(x)) {
+        if (!x.length) return "‹empty array›";
+        
         const firstItem = x[0];
         if ("number" == typeof firstItem) {
             return (

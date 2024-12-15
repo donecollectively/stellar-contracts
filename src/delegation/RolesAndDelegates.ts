@@ -17,13 +17,10 @@ import type { DelegatedDataContract } from "./DelegatedDataContract.js";
 /**
  * An error type for reflecting configuration problems at time of delegate setup
  * @remarks
- * 
- * acts like a regular error, plus has an `errors` object mapping field names
- * to problems found in those fields.   
  *
- * When a strategy-selection failure happens, the `availableStrategies` property 
- * also has a list of known strategies for a selected delegation role.
- *  
+ * acts like a regular error, plus has an `errors` object mapping field names
+ * to problems found in those fields.
+ *
  * @param ‹pName› - descr
  * @public
  **/
@@ -35,7 +32,7 @@ export class DelegateConfigNeeded extends Error {
         options: {
             errors?: ErrorMap;
             availableDgtNames?: string[];
-            errorRole? : string;
+            errorRole?: string;
         }
     ) {
         super(message);
@@ -63,7 +60,7 @@ export type delegateConfigValidation = ErrorMap | undefined | void;
 /**
  * Captures normal details of every delegate relationship
  * @remarks
- * 
+ *
  * Includes the address of the leader contract, its minting policy, and the token-name
  * used for the delegate
  * @public
@@ -99,25 +96,27 @@ export type capoDelegateConfig = configBaseWithRev & {
  * Richly-typed structure that can capture the various delegation roles available
  * in a Capo contract
  * @remarks
- * 
- * Defined in a delegateRoles() method using the standalone delegateRoles() 
+ *
+ * Defined in a delegateRoles() method using the standalone delegateRoles()
  * and defineRole() helper functions.
- * @typeParam KR - deep, strong type of the role map - always inferred by 
+ * @typeParam KR - deep, strong type of the role map - always inferred by
  * delegateRoles() helper.
  * @public
  **/
-export type DelegateMap<KR extends Record<string, DelegateSetup<any, any, any>>> = {
+export type DelegateMap<
+    KR extends Record<string, DelegateSetup<any, any, any>>
+> = {
     [roleName in keyof KR]: KR[roleName];
 };
 
 /**
  * Standalone helper method defining a specific DelegateMap; used in a Capo's delegateRoles() instance method
  * @remarks
- * 
+ *
  * Called with a set of literal role defintitions, the full type  of the DelegateMap is inferred.
- * 
+ *
  * Use {@link defineRole}() to create each role entry
- * 
+ *
  * @param roleMap - maps role-names to role-definitions
  * @typeParam RM - inferred type of the `delegateMap` param
  * @public
@@ -128,23 +127,27 @@ export function delegateRoles<const RM extends DelegateMap<any>>(
     return delegateMap;
 }
 
-type DelegateTypes = "spendDgt" | "mintDgt" | "authority" | "dgDataPolicy" | "other";
+type DelegateTypes =
+    | "spendDgt"
+    | "mintDgt"
+    | "authority"
+    | "dgDataPolicy"
+    | "other";
 
 /**
  * Describes one delegation role used in a Capo contract
  * @remarks
- * 
- * Includes the base class for all the variants of the role, a 
- * uutPurpose (base name for their authority tokens), and
- * named variants for that role
- * 
+ *
+ * Includes the controller / delegate class, the configuration details for that class,
+ * and a uutPurpose (base name for the authority tokens).
+ *
  * All type-parameters are normally inferred from {@link defineRole}()
- * 
+ *
  * @public
  **/
 export type DelegateSetup<
     DT extends DelegateTypes,
-    SC extends (DT extends "dgDataPolicy" ? DelegatedDataContract : StellarDelegate),
+    SC extends (DT extends "dgDataPolicy" ? DelegatedDataContract<any> : StellarDelegate),
     CONFIG extends DelegateConfigDetails<SC>,
     // variantNames extends string = string & keyof Vmap,
 > = {
@@ -244,9 +247,9 @@ export type PartialParamConfig<CT extends configBaseWithRev> = Partial<CT>;
 /**
  * declaration for one strategy-variant of a delegate role
  * @remarks
- * 
+ *
  * Indicates the details needed to construct a delegate script
- * 
+ *
  * NOTE: the Type param is always inferred by defineRole()
  * @public
  **/
@@ -258,7 +261,7 @@ export interface DelegateConfigDetails<
     partialConfig?: PartialParamConfig<ConfigFor<DT>>;
     //! it has a function used for validating parameter details
     validateConfig?: (p: ConfigFor<DT>) => delegateConfigValidation;
-};
+}
 
 //! a map of delegate selections needed for a transaction
 //  ... to construct a concrete delegate that hasn't yet been manifested.
@@ -301,21 +304,21 @@ export type ConfiguredDelegate<DT extends StellarDelegate> = {
     delegate: DT;
     roleName: string;
     fullCapoDgtConfig: Partial<CapoConfig> & capoDelegateConfig;
-} & OffchainPartialDelegateLink
+} & OffchainPartialDelegateLink;
 
 /**
  * Minimal structure for connecting a specific Capo contract to a configured StellarDelegate
  * @remarks
- * 
+ *
  * This structure can always resolve to a reproducible delegate class (a {@link StellarDelegate}),
- * given a specific Capo and roleName.  
- * 
- * When the delegate isn't backed by a specific on-chain contract script, the delegateValidatorHash 
+ * given a specific Capo and roleName.
+ *
+ * When the delegate isn't backed by a specific on-chain contract script, the delegateValidatorHash
  * is optional.
- * 
- * Use Capo mkDelegateLink(x: OffchainRelativeDelegateLink) to 
+ *
+ * Use Capo mkDelegateLink(x: OffchainRelativeDelegateLink) to
  * convert this data for on-chain use in the Capo's charter data structure
- * 
+ *
  * @typeParam DT - the base class, to which all role-strategy variants conform
  * @public
  **/

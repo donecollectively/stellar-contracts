@@ -1087,14 +1087,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     //     }
                     // };
 
-                    // no longer TODO :party: // TODO("the mint-delegate specialization MUST re-delegate authority to the right data-controller");
-                    TODO("it must check that the data-controller has exactly one minting activity for the indicated recId");
-                    print("    -- e.g. using CapoCtx: cctx\n      .requiresNamedDelegateInput(delegateName)\n      .withSeededMintingActivity(seed)\n");
-
-                    //!!! if the thing being created is a Settings record,
-                    //  make sure the capo CharterData is also being updated
-                    //  with a new manifest entry (settings -> this record-id)
-
                     true
                     && validateUutMinting(
                         mph: dd.mph,

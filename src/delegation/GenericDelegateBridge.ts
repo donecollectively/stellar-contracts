@@ -19,12 +19,16 @@ import UnspecializedDelegateBridge, {
     SpendingActivityHelperNested,
     UnspecializedDelegateBridgeReader,
 } from "./UnspecializedDelegate.bridge.js";
-import type { 
-    DelegateDatum$capoStoredDataLike, 
-    DelegateDatum$Ergo$capoStoredData, 
-    ErgoDelegateDatum 
+import type {
+    AnyDataLike,
+    DelegateDatum$capoStoredDataLike,
+    DelegateDatum$Ergo$capoStoredData,
+    ErgoDelegateDatum,
+    minimalAnyData,
 } from "./UnspecializedDelegate.typeInfo.js";
 import type { InlineTxOutputDatum } from "@helios-lang/ledger";
+import type { IntLike } from "@helios-lang/codec-utils";
+import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
 
 export type GenericDelegateBridgeClass = AbstractNew<GenericDelegateBridge>;
 export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
@@ -41,20 +45,22 @@ export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
         reader: SomeDgtBridgeReader;
         activity: EnumBridge<isActivity>;
         DelegateActivity: EnumBridge<isActivity>;
-        datum: SomeDgtDatumHelper;
-        DelegateDatum: SomeDgtDatumHelper;
+        datum: SomeDgtDatumHelper<any>;
+        DelegateDatum: SomeDgtDatumHelper<any>;
         readDatum: (d: UplcData) => GenericDelegateDatum;
         types: Pick<
             UnspecializedDelegateBridge["types"],
-            //  "PendingDelegateAction" | 
-             "DelegateRole" |
-            "ManifestActivity" | "CapoLifecycleActivity" | "DelegateLifecycleActivity" |
-            "DelegationDetail" 
+            //  "PendingDelegateAction" |
+            | "DelegateRole"
+            | "ManifestActivity"
+            | "CapoLifecycleActivity"
+            | "DelegateLifecycleActivity"
+            | "DelegationDetail"
         > & {
             SpendingActivity: EnumBridge<JustAnEnum>;
             MintingActivity: EnumBridge<JustAnEnum>;
             BurningActivity: EnumBridge<JustAnEnum>;
-            DelegateDatum: SomeDgtDatumHelper;
+            DelegateDatum: SomeDgtDatumHelper<any>;
             DelegateActivity: EnumBridge<isActivity>;
         };
         // types: Omit<
@@ -71,8 +77,8 @@ export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
         // };
     };
 
-type AbstractStoredData = DelegateDatum$Ergo$capoStoredData
-type AbstractStoredDataLike = DelegateDatum$capoStoredDataLike
+type AbstractStoredData = DelegateDatum$Ergo$capoStoredData;
+type AbstractStoredDataLike = DelegateDatum$capoStoredDataLike;
 // , "data"> & {
 //     data: unknown;
 // };
@@ -81,28 +87,44 @@ type AbstractStoredDataLike = DelegateDatum$capoStoredDataLike
     //     capoStoredData?: unknown;
     // };
     
-export type GenericDelegateDatum = Pick<ErgoDelegateDatum,
+export type GenericDelegateDatum = Pick<
+    ErgoDelegateDatum,
     "Cip68RefToken" | "IsDelegation"
 > & {
-    capoStoredData?: unknown;
+    capoStoredData?: { // !!! was optional!  --> does this cause any problems if required?
+        data: AnyDataTemplate<any,any>;
+        version: bigint;
+        otherDetails: unknown;
+    };
     // capoStoredData?: AbstractStoredData;
-}
+};
 // const t : "oo" extends unknown ? "yes" : "no" = "yes";
 
-export type SomeDgtDatumHelper = EnumBridge<JustAnEnum> &
-Omit<DelegateDatumHelper, "capoStoredData"> & {
-    // capoStoredData(x: AbstractStoredDataLike): TxOutputDatum<"Inline">;
-    capoStoredData(x: unknown): InlineTxOutputDatum;
-};
+export type hasConcreteCapoStoredData = Required<GenericDelegateDatum>
+export type SomeDgtDatumReader = SomeDgtBridgeReader & {
+    readDatum: (d: UplcData) => hasConcreteCapoStoredData
+}
+
+export type SomeDgtDatumHelper<T extends AnyDataTemplate<any,any>> = EnumBridge<JustAnEnum> &
+    Omit<DelegateDatumHelper, "capoStoredData"> & {
+        // capoStoredData(x: AbstractStoredDataLike): TxOutputDatum<"Inline">;
+        capoStoredData(fields: {
+            data: minimalData<T>;
+            version: IntLike;
+            otherDetails: UplcData;
+        }): InlineTxOutputDatum;
+    };
 // DelegateDatumHelper;
 
-    // Omit<..., "SpendingActivity" | "MintingActivity" | "BurningActivity" | "ᱺᱺcast">
+// Omit<..., "SpendingActivity" | "MintingActivity" | "BurningActivity" | "ᱺᱺcast">
 type PartialReader = Pick<
     UnspecializedDelegateBridgeReader,
-    // "PendingDelegateAction" | 
-    "DelegateRole" | "ManifestActivity" |
-    "CapoLifecycleActivity" | "DelegateLifecycleActivity"  |
-    "DelegationDetail" 
+    // "PendingDelegateAction" |
+    | "DelegateRole"
+    | "ManifestActivity"
+    | "CapoLifecycleActivity"
+    | "DelegateLifecycleActivity"
+    | "DelegationDetail"
 >;
 
 export type SomeDgtBridgeReader = DataBridgeReaderClass &
@@ -123,12 +145,14 @@ export type SomeDgtActivityHelper = EnumBridge<isActivity> &
     //     "SpendingActivities" | "MintingActivities" | "BurningActivities"
     // >
     Pick<
-    DelegateActivityHelper,
-    "CapoLifecycleActivities" | "DelegateLifecycleActivities"  |
-    "CreatingDelegatedData" | "UpdatingDelegatedData" | "DeletingDelegatedData" |
-    "MultipleDelegateActivities"
-    >
-     & {
+        DelegateActivityHelper,
+        | "CapoLifecycleActivities"
+        | "DelegateLifecycleActivities"
+        | "CreatingDelegatedData"
+        | "UpdatingDelegatedData"
+        | "DeletingDelegatedData"
+        | "MultipleDelegateActivities"
+    > & {
         SpendingActivities: EnumBridge<isActivity> & {
             isAbstract?: "NOTE: use a specific delegate to get concrete delegate activities";
         };

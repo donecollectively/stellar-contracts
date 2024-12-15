@@ -1820,7 +1820,7 @@ export class StellarContract<
             //     inlineErrorFreeSingleUserCallExprs: false,
             //     inlineSingleUseFuncExprs: false,
             // },
-            // withAlt: true,
+            withAlt: true,
         });
 
         console.log(`       ✅ ${this.constructor.name}`);

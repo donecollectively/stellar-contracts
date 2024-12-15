@@ -45,8 +45,10 @@ func hasSeedUtxo(tx: Tx, seedUtxo: TxOutputId
 }
 
 func noOtherActivitiesSupported( _: AbstractDelegateActivitiesEnum) -> Bool {
-    print("yikes, expected DelegateLifecycleActivities:ReplacingMe or authorizingDelegate  \n");
-    print("   -- note: for other cases, the checkMintDgtActivity( (AbstractDelegateActivitiesEnum) -> Bool): option can provide context-specific checks\n");
+    print("yikes, expected the delegate to use activity DelegateLifecycleActivities:ReplacingMe or authorizingDelegate...\n");
+    print("   -- note: for other cases, a context-specific check via validateUutMinting's (\n"+
+      "  ...\n  checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool)\n"+
+      ") option can be used to steer around this failure.\n");
     assert(false, "unexpected delegate activity");
     false
 }

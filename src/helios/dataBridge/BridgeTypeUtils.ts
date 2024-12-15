@@ -38,13 +38,12 @@ import type { EnumBridge } from "./EnumBridge.js";
 import type { IF, IF_ISANY, IFISNEVER, IntersectedEnum, ISNEVER, NEVERIF, OR, TypeError } from "../typeUtils.js";
 import type { StellarDelegate } from "../../delegation/StellarDelegate.js";
 import type { GenericDelegateBridge, GenericDelegateBridgeClass, GenericDelegateDatum, SomeDgtActivityHelper, SomeDgtDatumHelper } from "../../delegation/GenericDelegateBridge.js";
-import UnspecializedDelegateBridge, {
-    DelegateActivityHelper,
-    DelegateDatumHelper,
-    SpendingActivityHelperNested,
-    UnspecializedDelegateBridgeReader,
-} from "../../delegation/UnspecializedDelegate.bridge.js";
 import type { ErgoDelegateDatum } from "../../delegation/UnspecializedDelegate.typeInfo.js";
+import DelegateDatumTesterDataBridge from "../../testing/DelegatedDatumTester.bridge.js";
+import type { DelegatedDatumTester } from "../../testing/DelegatedDatumTester.js";
+import type { DgDataType, DgDataTypeLike } from "../../delegation/DelegatedDataContract.js";
+import type { DgDatumTestData } from "../../testing/DelegatedDatumTester.typeInfo.js";
+import type { Expand } from "../../testing/types.js";
 type canHaveDataBridge = { dataBridgeClass?: AbstractNew<ContractDataBridge> };
 type someContractBridgeClass = //typeof ContractDataBridge &
     AbstractNew<ContractDataBridge>;
@@ -659,20 +658,20 @@ if (testing) {
             thatDefinedBridgeType: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum,
             usesContractDgtBridge: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, 
             bridgeClass: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, // dataBridgeError("BasicMintDelegate"),
-            foundMkDatumType: {} as SomeDgtDatumHelper,
+            foundMkDatumType: {} as SomeDgtDatumHelper<any>,
             // abstractBridgeType:
             //     "" as unknown as ContractDataBridgeWithEnumDatum,
 
             activityHelper: {} as SomeDgtActivityHelper,
             bridgeType: {} as GenericDelegateBridge,
-            readsDatumUplcAs: {} as SomeDgtDatumHelper,
+            readsDatumUplcAs: {} as GenericDelegateDatum,
         };
     }
 
     {
         type BI_BMD = bridgeInspector<BasicMintDelegate>;
         type BridgeBools = BridgeBooleanEntries<BI_BMD>;
-        const MinmalAnysAllowed: BridgeAnyEntries<BI_BMD> = {
+        const MinimalAnysAllowed: BridgeAnyEntries<BI_BMD> = {
             readsDatumUplcAs: IS_AN_ANY,
         };
         type dCB = definesContractBridge<BasicMintDelegate>;
@@ -708,7 +707,7 @@ if (testing) {
             thatDefinedBridgeType: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum,
             usesMintDgtBridge: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, 
             bridgeClass: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, 
-            foundMkDatumType: {} as SomeDgtDatumHelper,
+            foundMkDatumType: {} as SomeDgtDatumHelper<any>,
 
             activityHelper: {} as SomeDgtActivityHelper,
             bridgeType: {} as GenericDelegateBridge,
@@ -899,9 +898,9 @@ if (testing) {
             thatDefinedBridgeType: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum,           
             usesMintDgtBridge: {} as GenericDelegateBridgeClass, // dataBridgeError("BasicMintDelegate"),
             bridgeClass: {} as GenericDelegateBridgeClass, // dataBridgeError("BasicMintDelegate"),
-            foundMkDatumType: {} as SomeDgtDatumHelper,
+            foundMkDatumType: {} as SomeDgtDatumHelper<any>,
             bridgeType: {} as GenericDelegateBridge,
-            readsDatumUplcAs: {} as SomeDgtDatumHelper,
+            readsDatumUplcAs: {} as GenericDelegateDatum,
             // abstractBridgeType: 
             // "" as unknown as ContractDataBridgeWithEnumDatum,
         };

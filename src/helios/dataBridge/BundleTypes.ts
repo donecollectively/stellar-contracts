@@ -147,7 +147,6 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                 this.gatherTypeDetails((dataType as any)._types[0]);
                 this.gatherTypeDetails((dataType as any)._types[1]);
             case "option":
-                // console.log("how to register an Option's nested DataType?");
                 this.gatherTypeDetails((dataType as any)._types[0]);
                 break;
             case "struct":

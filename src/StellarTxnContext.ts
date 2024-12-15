@@ -1141,7 +1141,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             chainDepth++;
 
             for (const { tcx } of chainedTxns) {
-                const { addlTxns: nestedAddlTxns } = tcx.state as {
+                const { addlTxns: nestedAddlTxns } = (tcx.state || {}) as {
                     addlTxns?: Record<string, TxDescription<any>>;
                 };
                 if (!nestedAddlTxns) continue;
