@@ -192,9 +192,12 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         return null as unknown as CapoDelegateBundle;
     }
 
-    async mkDatumDelegatedDataRecord(
-        record: DgDataTypeLike<this>
-    ): Promise<InlineDatum> {
+    mkDgDatum<
+        THIS extends DelegatedDataContract
+    >(
+        this: THIS,
+        record: DgDataTypeLike<THIS>
+    ): InlineDatum {
         // console.log({record}, "8888888888888888888888888888888888888")
 
         return this.mkDatum.capoStoredData({
@@ -229,13 +232,11 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     }
 
     async mkTxnCreateRecord<
-        CAI extends isActivity | SeedActivity<any>,
         TCX extends StellarTxnContext
         // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
         // minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
     >(
-        controllerActivity: CAI,
-        options: DgDataCreationOptions<this>,
+        options: DgDataCreationOptions<this, any>,
         tcx?: TCX
     ): Promise<TCX> {
         // ... it does the setup for the creation activity,
@@ -260,9 +261,9 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         });
 
         const activity: isActivity =
-            controllerActivity instanceof SeedActivity
-                ? controllerActivity.mkRedeemer(tcx2)
-                : controllerActivity;
+            options.activity instanceof SeedActivity
+                ? options.activity.mkRedeemer(tcx2)
+                : options.activity;
 
         // ... now the transaction has what it needs to trigger the creation policy
         // ... and be approved by it creation policy.
@@ -291,7 +292,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         tcx: TCX,
         // record: minDDType,
         controllerActivity: isActivity,
-        options: DgDataCreationOptions<this>
+        options: DgDataCreationOptions<this, any>
     ): Promise<TCX> {
         const newType = this.recordTypeName as DelegatedDatumTypeName<this>;
         const idPrefix = this.idPrefix as DelegatedDatumIdPrefix<this>;
@@ -495,7 +496,7 @@ type UpdateActivityArgs<
     UA extends updateActivityFunc<any> //  (...args: [hasRecId, ...any]) => isActivity
 > = UA extends updateActivityFunc<infer ARGS> ? ARGS : never;
 
-class UpdateActivity<
+export class UpdateActivity<
     FactoryFunc extends updateActivityFunc<any>,
     ARGS extends [...any] = FactoryFunc extends updateActivityFunc<infer ARGS>
         ? ARGS
@@ -521,13 +522,15 @@ export type DgDataCreationOptions<
     DTL extends minimalDgDataTypeLike<DGDC> = minimalDgDataTypeLike<DGDC>,
     WDT extends WrappedDgDataType<DGDC> = WrappedDgDataType<DGDC>,
 > = {
-    addedUtxoValue?: Value;
+    activity: isActivity | SeedActivity<any>;
     wrapped?: WDT;
     data: IFISNEVER<WDT, DTL, undefined | DTL>;
     // beforeSave?(x: DT): DT;
+
+    addedUtxoValue?: Value;
 };
 
-type DgDataUpdateOptions<
+export type DgDataUpdateOptions<
     DGDC extends DelegatedDataContract,
     CAI extends isActivity | UpdateActivity<any>,
     DTL extends DgDataTypeLike<DGDC> = DgDataTypeLike<DGDC>,
@@ -542,7 +545,7 @@ type DgDataUpdateOptions<
 };
 
 // omits type-wrapper and requires all fields for data-type-like
-type CoreDgDataUpdateOptions<
+export type CoreDgDataUpdateOptions<
     DGDC extends DelegatedDataContract,
     CAI extends isActivity | UpdateActivity<any>,
     DTL extends DgDataTypeLike<DGDC> = DgDataTypeLike<DGDC>

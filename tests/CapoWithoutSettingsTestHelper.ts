@@ -123,7 +123,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         await this.snapToFirstReqt();
         const purpose = await this.findFirstReqt();
         // type t = dgDataRoles<typeof this.capo>;
-        const reqtsController = await this.capo.reqtsController()
+        const reqtsController = await this.capo.reqtsController();
         const exampleData = reqtsController.exampleData() as minimalReqtData;
 
         return this.createReqt({
@@ -174,14 +174,12 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         // ).getNamedDelegate("reqtCtrl");
         // getNamedDelegate("reqtCtrl") ) as ReqtsController
         // const tcx = await delegate.mkTxnCreateReqt(reqt);
-        const tcx = await delegate.mkTxnCreateRecord(
-            delegate.activity.$seed$CreatingDelegatedData({
+        const tcx = await delegate.mkTxnCreateRecord({
+            activity: delegate.activity.$seed$CreatingDelegatedData({
                 dataType: "reqts",
             }),
-            {
-                data: reqt,
-            }
-        );
+            data: reqt,
+        });
 
         if (!submit) return tcx;
         return this.submitTxnWithBlock(tcx);

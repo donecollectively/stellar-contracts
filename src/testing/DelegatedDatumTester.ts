@@ -75,7 +75,7 @@ export class DelegatedDatumTester extends DelegatedDataContract {
         const testDataOutput = makeTxOutput(
             this.capo.address,
             this.uh.mkMinTv(this.capo.mph, tcx2.state.uuts.tData),
-            await this.mkDatumDelegatedDataRecord({
+            await this.mkDgDatum({
                 ...testData,
                 id: tcx.state.uuts.tData.toString(),
             }as any /* !!!!!!! */ )

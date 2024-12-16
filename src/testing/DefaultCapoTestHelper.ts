@@ -339,10 +339,9 @@ export class DefaultCapoTestHelper<
                         "settings"
                     );
 
-                    return settingsController.mkTxnCreateRecord(
-                        settingsController.activity.MintingActivities
+                    return settingsController.mkTxnCreateRecord({
+                        activity: settingsController.activity.MintingActivities
                             .$seed$CreatingRecord,
-                        {
                             data: initialSettings,                            
                         }
                     );

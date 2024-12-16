@@ -1,11 +1,15 @@
 import type { isActivity, SeedActivity } from "../ActivityTypes.js";
+import type { FoundDatumUtxo } from "../Capo.js";
 import type { InlineDatum } from "../HeliosPromotedTypes.js";
 import type { StellarTxnContext } from "../StellarTxnContext.js";
 import type { AnyDataTemplate } from "./DelegatedData.js";
 import {
     DelegatedDataContract,
+    UpdateActivity,
     type DgDataCreationOptions,
+    type DgDataType,
     type DgDataTypeLike,
+    type DgDataUpdateOptions,
 } from "./DelegatedDataContract.js";
 
 export type someDataWrapper<wrappedType extends AnyDataTemplate<any, any>> = {
@@ -26,16 +30,24 @@ export type WrappedDgDataType<
 
 export abstract class WrappedDgDataContract extends DelegatedDataContract {
     usesWrappedData = true;
+    /**
+     * Transforms the on-chain data structure into a higher-level
+     * application-specific class representation.  That class should
+     * provide an unwrapData() method to get back to the on-chain data.
+     */
+    abstract mkDataWrapper(
+        d: DgDataTypeLike<this>
+    ): someDataWrapper<DgDataTypeLike<this>>;
 
-    async mkDatumDelegatedDataRecord(
+
+    mkDgDatum(
         record: DgDataTypeLike<this> | WrappedDgDataType<this>
-    ): Promise<InlineDatum> {
+    ): InlineDatum {
         // console.log({record}, "8888888888888888888888888888888888888")
-        const unwrapped : DgDataTypeLike<this> = (
-            ("unwrapData" in record ? record.unwrapData() : record) 
-        );
+        const unwrapped: DgDataTypeLike<this> =
+            "unwrapData" in record ? record.unwrapData() : record;
 
-        return super.mkDatumDelegatedDataRecord(unwrapped);
+        return super.mkDgDatum(unwrapped);
     }
 
     /**
@@ -51,31 +63,38 @@ export abstract class WrappedDgDataContract extends DelegatedDataContract {
         return this.mkDataWrapper(data) as any;
     }
 
-    /**
-     * Transforms the on-chain data structure into a higher-level
-     * application-specific class representation.  That class should
-     * provide an unwrapData() method to get back to the on-chain data.
-     */
-    abstract mkDataWrapper(
-        d: DgDataTypeLike<this>
-    ): someDataWrapper<DgDataTypeLike<this>>;
 
     async mkTxnCreateRecord<
-        CAI extends isActivity | SeedActivity<any>,
         TCX extends StellarTxnContext
         // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
         // minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
     >(
-        controllerActivity: CAI,
         options: DgDataCreationOptions<
-            this,
-            DgDataTypeLike<this>,
-            WrappedDgDataType<this>
+            this
         >
     ): Promise<TCX> {
-        return super.mkTxnCreateRecord(controllerActivity, {
+        return super.mkTxnCreateRecord({
             ...options,
             data: options.wrapped?.unwrapData(),
         });
     }
+
+    async mkTxnUpdateRecord<
+        CAI extends isActivity | UpdateActivity<any>,
+        TCX extends StellarTxnContext
+    >(
+        txnName: string,
+        item: FoundDatumUtxo<DgDataType<this>, WrappedDgDataType<this>>,
+        options: DgDataUpdateOptions<this, CAI>,
+        tcx?: TCX
+    ): Promise<TCX> {
+        return super.mkTxnUpdateRecord(txnName, item, {
+            ...options,
+            updatedFields: {
+                ...(options.updatedWrapped?.unwrapData() || {}),
+                ...(options.updatedFields || {}),
+            },
+        });
+    }
+
 }

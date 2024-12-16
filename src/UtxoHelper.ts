@@ -395,7 +395,7 @@ export class UtxoHelper {
         tokenName: BytesLike,
         count: bigint = 1n
     ) {
-        const v = this.mkAssetValue(mph, tokenName, count);
+        const v = makeValue(mph, tokenName, count);
         // uses a dummy address so it can be used even during bootstrap
         const dummyAddr = makeDummyAddress(false)
         const txo = makeTxOutput(dummyAddr, v);
@@ -560,7 +560,7 @@ export class UtxoHelper {
 
     /**
      * Creates a Value object representing a token with the given name and quantity
-     * @deprecated - Use {@link UtxoHelper.mkAssetValue | mkAssetValue(mph, tokenName, quantity)} instead.
+     * @deprecated - Use `helios' makeValue()` instead.
      * @remarks
      * This method doesn't include any lovelace in the Value object.
      * use mkMinAssetValue() to include the minimum lovelace for storing that token in its own utxo
@@ -574,7 +574,7 @@ export class UtxoHelper {
         quantity: bigint,
         mph: MintingPolicyHash
     ): Value {
-        return this.mkAssetValue(mph, tokenName, quantity);
+        return makeValue(mph, tokenName, quantity);
     }
 
     /**
