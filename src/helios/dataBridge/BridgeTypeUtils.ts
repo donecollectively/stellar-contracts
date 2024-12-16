@@ -370,12 +370,12 @@ type bridgeInspector<
     >,
     isTheBaseDgDataContract extends IF<
         isAnyContractDgt,
-        DelegatedDataContract<any> extends SC ? true : false,
+        DelegatedDataContract extends SC ? true : false,
         false,
-        CANNOT_ERROR /* suppresses unreachable error alternative, given good Bool input to IF */
+        boolean /* suppresses unreachable error alternative, given good Bool input to IF */
     > = IF<
         isAnyContractDgt,
-        DelegatedDataContract<any> extends SC ? true : false,
+        DelegatedDataContract extends SC ? true : false,
         false,
         CANNOT_ERROR /* suppresses unreachable error alternative, given good Bool input to IF */
     >,
@@ -622,7 +622,7 @@ if (testing) {
     {
         type BI_CBD = bridgeInspector<ContractBasedDelegate>;
         type BridgeBools = BridgeBooleanEntries<BI_CBD>;
-        const MinmalAnysAllowed: BridgeAnyEntries<BI_CBD> = {
+        const MinimalAnysAllowed: BridgeAnyEntries<BI_CBD> = {
             readsDatumUplcAs: IS_AN_ANY,
         };
         type dCB = definesContractBridge<ContractBasedDelegate>;
@@ -891,7 +891,7 @@ if (testing) {
             isAbstractMDB: false,
             isAbstractOB: false,
         };
-        const MinmalAnysAllowed: BridgeAnyEntries<BI_IMD> = {
+        const MinimalAnysAllowed: BridgeAnyEntries<BI_IMD> = {
             readsDatumUplcAs: IS_AN_ANY,
         };
 
@@ -923,27 +923,29 @@ if (testing) {
     }
 
     {
-        type BI_DgDc = bridgeInspector<DelegatedDataContract<any>>;
+        type abstractClass = DelegatedDataContract
+        type BI_DgDc = bridgeInspector<abstractClass>;
+
         type BridgeBools = BridgeBooleanEntries<BI_DgDc>;
-        const MinmalAnysAllowed: BridgeAnyEntries<BI_DgDc> = {
+        const MinimalAnysAllowed: BridgeAnyEntries<BI_DgDc> = {
             readsDatumUplcAs: IS_AN_ANY,
         };
-        type dCB = definesContractBridge<DelegatedDataContract<any>>;
+        type dCB = definesContractBridge<DelegatedDataContract>;
 
         // type delegateActivityType = StellarDelegate["activity"];
-        type CBDactivityType = DelegatedDataContract<any>["activity"];
+        type CBDactivityType = DelegatedDataContract["activity"];
         type delegateSubclass = stellarSubclass<StellarDelegate>;
-        type DgDataSubclass = stellarSubclass<DelegatedDataContract<any>>;
+        type DgDataSubclass = stellarSubclass<DelegatedDataContract>;
         //@ts-expect-error referencing abstract class
         const t: stellarSubclass<DelegatedDataContract<any>> = DelegatedDataContract
-        const t2: StellarDelegate = {} as DelegatedDataContract<any>;
+        const t2: StellarDelegate = {} as DelegatedDataContract;
 
         const hasReadDatum : BI_DgDc["bridgeType"]["readDatum"] extends 
             readsUplcTo<infer RD> 
         ? true : false = true;
 
-        type CDB_iType = InstanceType<definesContractBridge<DelegatedDataContract<any>>>
-        type DGDT = Expand<DgDataType<DelegatedDataContract<any>>>
+        type CDB_iType = InstanceType<definesContractBridge<DelegatedDataContract>>
+        type DGDT = Expand<DgDataType<DelegatedDataContract>>
 
         const readsDatumToGenericDatum : GenericDelegateDatum extends 
             BI_DgDc["readsDatumUplcAs"] ? IF_ISANY<
@@ -975,7 +977,7 @@ if (testing) {
 
         type NonNeverEntries = BridgeNonNeverEntries<BI_DgDc>;
         const nonNeverEntries: NonNeverEntries = {
-            inspected: {} as DelegatedDataContract<any>,
+            inspected: {} as DelegatedDataContract,
             thatDefinedBridgeType: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum,
             usesContractDgtBridge: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, 
             bridgeClass: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, // dataBridgeError("BasicMintDelegate"),
@@ -1082,8 +1084,10 @@ type anyBridgeInspector = bridgeInspector<
     any, // usesMintDgtBridge
     any, // isAnyContractDgt
     any, // isTheBaseContractDgt
+    any, // isTheBaseDgDataContract
     any, // usesContractDgtBridge
     any, // isSCBaseClass
+    any, // isDgDataBaseClass
     any, // usesOtherBridge
     any, // bridgeClass
     any, // isAbstractMDB

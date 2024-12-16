@@ -8,7 +8,7 @@ import type {
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { dumpAny } from "../diagnostics.js";
 import { hasReqts } from "../Requirements.js";
-import { DelegatedDataContract, type DgDataTypeLike, type WrappedOrPlainDgDataType } from "../delegation/DelegatedDataContract.js";
+import { DelegatedDataContract, type DgDataTypeLike } from "../delegation/DelegatedDataContract.js";
 import {
     DelegateDatumTesterDataBridge
 } from "./DelegatedDatumTester.bridge.js"
@@ -22,7 +22,7 @@ import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlbundle.js"
 import { textToBytes } from "../HeliosPromotedTypes.js";
 import { makeTxOutput } from "@helios-lang/ledger";
 
-export class DelegatedDatumTester extends DelegatedDataContract<DelegatedDatumTester> {
+export class DelegatedDatumTester extends DelegatedDataContract {
     dataBridgeClass = DelegateDatumTesterDataBridge
 
     scriptBundle() {
@@ -71,8 +71,6 @@ export class DelegatedDatumTester extends DelegatedDataContract<DelegatedDatumTe
             tcx,
             this.activity.CreatingTData(tcx)
         );
-
-        type mwdt = WrappedOrPlainDgDataType<DelegatedDatumTester>
 
         const testDataOutput = makeTxOutput(
             this.capo.address,

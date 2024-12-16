@@ -374,6 +374,7 @@ export class ContractBasedDelegate extends StellarDelegate {
             MintingActivity,
             mintingActivityName
         )
+        console.warn(`mkSeededMintingActivity: deprecate?`);
         if (!NestedVariant) {
             throw new Error(
                 `mkSeededMintingActivity: missing MintingActivity variant '${mintingActivityName}'`

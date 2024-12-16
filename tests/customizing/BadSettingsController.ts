@@ -14,7 +14,7 @@ import {
 import { textToBytes } from "../../src/HeliosPromotedTypes.js";
 
 
-export class BadSettingsController extends DelegatedDataContract<BadSettingsController> {
+export class BadSettingsController extends DelegatedDataContract {
     dataBridgeClass = BadSettingsPolicyDataBridge;
     scriptBundle() {
         return new BadSettingsBundle()

@@ -82,8 +82,7 @@ type WalletsAndAddresses = {
  * @public
  **/
 export type stellarSubclass<S extends StellarContract<any>> = (new (
-    setup: SetupDetails,
-    internal: typeof isInternalConstructor
+    setup: SetupDetails, ...args: any[]
 ) => S) & {
     // & StellarContract<CT>
     defaultParams: Partial<ConfigFor<S>>;

@@ -406,8 +406,6 @@ import type {
 import type {
     DelegatedDataContract,
     DgDataType,
-    WrappedOrPlainDgDataType,
-    someDataWrapper,
 } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
 import type { isActivity } from "./ActivityTypes.js";
@@ -2318,7 +2316,7 @@ export abstract class Capo<
         roleName: RN,
         // typeName: string,
         charterData?: CharterData
-    ): Promise<DelegatedDataContract<any>> {
+    ): Promise<DelegatedDataContract> {
         const chD = charterData || (await this.findCharterData());
         const foundME = chD.manifest.get(roleName);
         if (!foundME) {
@@ -2329,17 +2327,8 @@ export abstract class Capo<
         if (foundME?.entryType.DgDataPolicy) {
             return this.connectDelegateWithOnchainRDLink<
                 RN,
-                DelegatedDataContract<any>
+                DelegatedDataContract
             >(roleName, foundME.entryType.DgDataPolicy.policyLink); // as Promise<>;
-                // DelegatedDataContract<any> & specificDataController<SELF, RN>
-                // DelegatedDataContract<
-                //     specificDataController<
-                //         SELF["_delegateRoles"][RN]> 
-                // > 
-                // >(
-                //     roleName, 
-                //     foundME.entryType.DgDataPolicy.policyLink
-                // )
         } else {
             const actualEntryType = Object.keys(foundME.entryType)[0];
             throw new Error(
@@ -2686,7 +2675,7 @@ export abstract class Capo<
         }
         const delegate = (await this.getDgDataController(
             "settings"
-        )) as DelegatedDataContract<any>;
+        )) as DelegatedDataContract;
         const settingsData = foundSettingsUtxo.output.datum?.data;
         if (!settingsData) {
             throw new Error(
@@ -3106,7 +3095,7 @@ export abstract class Capo<
                         type &&
                         (await this.getDgDataController(
                             type
-                        )) // as DelegatedDataContract<any>);
+                        ))
                     if (!dgtForType) {
                         console.log(
                             "no type found in datum",
@@ -3151,7 +3140,7 @@ export abstract class Capo<
 
         function mkFoundDatum(
             utxo: TxInput,
-            delegate: DelegatedDataContract<any>,
+            delegate: DelegatedDataContract,
             datum: InlineDatum,
             data: DelegateDatum$capoStoredDataLike["data"]
         ) {

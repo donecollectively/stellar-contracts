@@ -38,7 +38,7 @@ export {
     type MinimalDelegateLink,
     type dgtStateKey,
     type hasNamedDelegate,
-    mkDgtStateKey 
+    mkDgtStateKey,
 } from "./src/Capo.js";
 
 export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
@@ -74,7 +74,7 @@ export type {
     ErrorMap,
     ConfiguredDelegate,
     OffchainPartialDelegateLink,
-    DelegateConfigDetails
+    DelegateConfigDetails,
 } from "./src/delegation/RolesAndDelegates.js";
 
 export type { SeedTxnScriptParams } from "./src/SeedTxnScriptParams.js";
@@ -91,7 +91,7 @@ export {
 export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
 export {
     ContractBasedDelegate,
-    type NamedPolicyCreationOptions, 
+    type NamedPolicyCreationOptions,
 } from "./src/delegation/ContractBasedDelegate.js";
 
 export type {
@@ -101,7 +101,7 @@ export type {
     SomeDgtActivityHelper,
     SomeDgtBridgeReader,
     SomeDgtDatumHelper,
-} from "./src/delegation/GenericDelegateBridge.js"
+} from "./src/delegation/GenericDelegateBridge.js";
 
 export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
 export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
@@ -118,7 +118,7 @@ export {
     type MultiTxnCallback,
 } from "./src/StellarTxnContext.js";
 
-export { 
+export {
     type SeedAttrs,
     type isActivity,
     type hasSeed,
@@ -127,8 +127,8 @@ export {
     type funcWithImpliedSeed,
     SeedActivity,
     impliedSeedActivityMaker,
-    getSeed
-} from "./src/ActivityTypes.js"
+    getSeed,
+} from "./src/ActivityTypes.js";
 
 export type {
     stellarSubclass,
@@ -141,33 +141,36 @@ export type {
 export {
     type AnyDataTemplate,
     type hasAnyDataTemplate,
-    type minimalData
+    type minimalData,
 } from "./src/delegation/DelegatedData.js";
 
 export {
     type DgDataCreationAttrs,
-    type WrappedOrPlainDgDataType as DelegatedDatumType,
     type DelegatedDatumTypeName,
     type updateActivityFunc,
     DelegatedDataContract,
 } from "./src/delegation/DelegatedDataContract.js";
+export {
+    WrappedDgDataContract,
+    type WrappedDgDataType,
+} from "./src/delegation/WrappedDgDataContract.js";
 
 export { CapoHeliosBundle } from "./src/CapoHeliosBundle.js";
-export { 
-    ContractDataBridge, 
+export {
+    ContractDataBridge,
     DataBridge,
     DataBridgeReaderClass,
     ContractDataBridgeWithEnumDatum,
     ContractDataBridgeWithOtherDatum,
     type DataBridgeOptions,
-    type callWith
+    type callWith,
 } from "./src/helios/dataBridge/DataBridge.js";
 export type { IntersectedEnum } from "./src/helios/typeUtils.js";
-export { 
+export {
     EnumBridge,
     type JustAnEnum,
     type Nested,
-    type NotNested
+    type NotNested,
 } from "./src/helios/dataBridge/EnumBridge.js";
 
 export {
@@ -191,7 +194,7 @@ export type {
     InlineDatum,
     valuesEntry,
     bytesToText,
-    textToBytes,    
+    textToBytes,
 } from "./src/HeliosPromotedTypes.js";
 
 // export {
