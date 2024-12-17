@@ -65,6 +65,14 @@ export abstract class WrappedDgDataContract<
         return this.mkDataWrapper(data)
     }
 
+    /**
+     * builds a txn creating a record of this type in the data store
+     * @remarks
+     * The {activity} option can be a {@link SeedActivity} object provided by
+     * `this.activity.MintingActivities.$seeded$‹activityName›` accessors/methods,
+     * which creates a record id based on the (unique) spend of a seed value.
+     */
+
     async mkTxnCreateRecord<
         TCX extends StellarTxnContext
         // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
@@ -83,6 +91,12 @@ export abstract class WrappedDgDataContract<
         });
     }
 
+    /**
+     * builds a txn updating a record of this type in the data store
+     * @remarks
+     * Use `this.activity.SpendingActivities.*` to access the available
+     * types of update offered by the contract.
+     */
     async mkTxnUpdateRecord<
         TCX extends StellarTxnContext
     >(

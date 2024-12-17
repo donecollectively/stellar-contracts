@@ -176,7 +176,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
     * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
     *  - in a context providing an implicit seed utxo, use 
-    *    the {@link $seed$addingMintInvariant} variant of this activity instead
+    *    the {@link $seeded$addingMintInvariant} variant of this activity instead
     *
      */
     addingMintInvariant(thingWithSeed: hasSeed | TxOutputId | string) 
@@ -197,12 +197,12 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
      * provided implicitly by a SeedActivity-supporting library function. 
      * ## Usage
-     * Call the method with no arguments: `$seed$addingMintInvariant()`
+     * Access the activity-creator as a getter: `$seeded$addingMintInvariant`
      *
-     * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     * record-creation helper.
+     * Use the resulting activity-creator in a seed-providing context, such as the delegated-data-controller's
+     * `mkTxnCreateRecord({activity, ...})` method.
      */
-    get $seed$addingMintInvariant() {
+    get $seeded$addingMintInvariant() {
         return impliedSeedActivityMaker(this,this.addingMintInvariant)() // called with no args needed
     } /* coda: seeded helper in same singleField/seeded enum variant*/
 
@@ -217,7 +217,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
     * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
     *  - in a context providing an implicit seed utxo, use 
-    *    the {@link $seed$addingSpendInvariant} variant of this activity instead
+    *    the {@link $seeded$addingSpendInvariant} variant of this activity instead
     *
      */
     addingSpendInvariant(thingWithSeed: hasSeed | TxOutputId | string) 
@@ -238,12 +238,12 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
      * provided implicitly by a SeedActivity-supporting library function. 
      * ## Usage
-     * Call the method with no arguments: `$seed$addingSpendInvariant()`
+     * Access the activity-creator as a getter: `$seeded$addingSpendInvariant`
      *
-     * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     * record-creation helper.
+     * Use the resulting activity-creator in a seed-providing context, such as the delegated-data-controller's
+     * `mkTxnCreateRecord({activity, ...})` method.
      */
-    get $seed$addingSpendInvariant() {
+    get $seeded$addingSpendInvariant() {
         return impliedSeedActivityMaker(this,this.addingSpendInvariant)() // called with no args needed
     } /* coda: seeded helper in same singleField/seeded enum variant*/
 
@@ -258,7 +258,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
     * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
     *  - in a context providing an implicit seed utxo, use 
-    *    the {@link $seed$forcingNewMintDelegate} variant of this activity instead
+    *    the {@link $seeded$forcingNewMintDelegate} variant of this activity instead
     *
      */
     forcingNewMintDelegate(thingWithSeed: hasSeed | TxOutputId | string) 
@@ -279,12 +279,12 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
      * provided implicitly by a SeedActivity-supporting library function. 
      * ## Usage
-     * Call the method with no arguments: `$seed$forcingNewMintDelegate()`
+     * Access the activity-creator as a getter: `$seeded$forcingNewMintDelegate`
      *
-     * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     * record-creation helper.
+     * Use the resulting activity-creator in a seed-providing context, such as the delegated-data-controller's
+     * `mkTxnCreateRecord({activity, ...})` method.
      */
-    get $seed$forcingNewMintDelegate() {
+    get $seeded$forcingNewMintDelegate() {
         return impliedSeedActivityMaker(this,this.forcingNewMintDelegate)() // called with no args needed
     } /* coda: seeded helper in same singleField/seeded enum variant*/
 
@@ -295,7 +295,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$CreatingNewSpendDelegate} method for use in a context
+     * See the {@link $seeded$CreatingNewSpendDelegate} accessor for use in a context
      * providing an implicit seed utxo. 
      */
     CreatingNewSpendDelegate(value: hasSeed, fields: { 
@@ -340,12 +340,12 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$CreatingNewSpendDelegate({ replacingUut: number[] | undefined })`
+     *   1. Call the `$seeded$CreatingNewSpendDelegate({ replacingUut })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
+     *       `mkTxnCreateRecord({activity})` method.
      */
-    $seed$CreatingNewSpendDelegate = impliedSeedActivityMaker(this, 
+    $seeded$CreatingNewSpendDelegate = impliedSeedActivityMaker(this, 
         this.CreatingNewSpendDelegate as (value: hasSeed, fields: { 
             replacingUut: number[] | undefined 
         } ) => isActivity

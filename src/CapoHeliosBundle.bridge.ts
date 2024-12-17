@@ -660,7 +660,7 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$Add} method for use in a context
+     * See the {@link $seeded$Add} accessor for use in a context
      * providing an implicit seed utxo. 
      */
     Add(value: hasSeed, fields: { 
@@ -708,12 +708,12 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$Add({ purpose: string, idPrefix: string })`
+     *   1. Call the `$seeded$Add({ purpose, idPrefix })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
+     *       `mkTxnCreateRecord({activity})` method.
      */
-    $seed$Add = impliedSeedActivityMaker(this, 
+    $seeded$Add = impliedSeedActivityMaker(this, 
         this.Add as (value: hasSeed, fields: { 
             purpose: string,
             idPrefix: string 
@@ -738,7 +738,7 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$Replace} method for use in a context
+     * See the {@link $seeded$Replace} accessor for use in a context
      * providing an implicit seed utxo. 
      */
     Replace(value: hasSeed, fields: { 
@@ -789,12 +789,12 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$Replace({ purpose: string, idPrefix: string, replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]} })`
+     *   1. Call the `$seeded$Replace({ purpose, idPrefix, replacesDgt })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
+     *       `mkTxnCreateRecord({activity})` method.
      */
-    $seed$Replace = impliedSeedActivityMaker(this, 
+    $seeded$Replace = impliedSeedActivityMaker(this, 
         this.Replace as (value: hasSeed, fields: { 
             purpose: string,
             idPrefix: string,
@@ -1096,7 +1096,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$CreatingDelegate} method for use in a context
+     * See the {@link $seeded$CreatingDelegate} accessor for use in a context
      * providing an implicit seed utxo. 
      */
     CreatingDelegate(value: hasSeed, fields: { 
@@ -1141,12 +1141,12 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$CreatingDelegate({ purpose: string })`
+     *   1. Call the `$seeded$CreatingDelegate({ purpose })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
+     *       `mkTxnCreateRecord({activity})` method.
      */
-    $seed$CreatingDelegate = impliedSeedActivityMaker(this, 
+    $seeded$CreatingDelegate = impliedSeedActivityMaker(this, 
         this.CreatingDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => UplcData
@@ -1194,7 +1194,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$forcingNewSpendDelegate} method for use in a context
+     * See the {@link $seeded$forcingNewSpendDelegate} accessor for use in a context
      * providing an implicit seed utxo. 
      */
     forcingNewSpendDelegate(value: hasSeed, fields: { 
@@ -1239,12 +1239,12 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$forcingNewSpendDelegate({ purpose: string })`
+     *   1. Call the `$seeded$forcingNewSpendDelegate({ purpose })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
+     *       `mkTxnCreateRecord({activity})` method.
      */
-    $seed$forcingNewSpendDelegate = impliedSeedActivityMaker(this, 
+    $seeded$forcingNewSpendDelegate = impliedSeedActivityMaker(this, 
         this.forcingNewSpendDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => UplcData
@@ -1258,7 +1258,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$forcingNewMintDelegate} method for use in a context
+     * See the {@link $seeded$forcingNewMintDelegate} accessor for use in a context
      * providing an implicit seed utxo. 
      */
     forcingNewMintDelegate(value: hasSeed, fields: { 
@@ -1303,12 +1303,12 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$forcingNewMintDelegate({ purpose: string })`
+     *   1. Call the `$seeded$forcingNewMintDelegate({ purpose })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
+     *       `mkTxnCreateRecord({activity})` method.
      */
-    $seed$forcingNewMintDelegate = impliedSeedActivityMaker(this, 
+    $seeded$forcingNewMintDelegate = impliedSeedActivityMaker(this, 
         this.forcingNewMintDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => UplcData
@@ -1353,7 +1353,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$CreatingDelegate} method for use in a context
+     * See the {@link $seeded$CreatingDelegate} accessor for use in a context
      * providing an implicit seed utxo. 
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1402,16 +1402,16 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$CreatingDelegate({ purpose: string })`
+     *   1. Call the `$seeded$CreatingDelegate({ purpose })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
+     *       `mkTxnCreateRecord({activity})` method.
     * ## Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
     * the parent's uplc-encoder, producing a single uplc object with 
     * a complete wrapper for this inner activity detail.
      */
-    $seed$CreatingDelegate = impliedSeedActivityMaker(this, 
+    $seeded$CreatingDelegate = impliedSeedActivityMaker(this, 
         this.CreatingDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => isActivity
@@ -1463,7 +1463,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$forcingNewSpendDelegate} method for use in a context
+     * See the {@link $seeded$forcingNewSpendDelegate} accessor for use in a context
      * providing an implicit seed utxo. 
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1512,16 +1512,16 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$forcingNewSpendDelegate({ purpose: string })`
+     *   1. Call the `$seeded$forcingNewSpendDelegate({ purpose })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
+     *       `mkTxnCreateRecord({activity})` method.
     * ## Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
     * the parent's uplc-encoder, producing a single uplc object with 
     * a complete wrapper for this inner activity detail.
      */
-    $seed$forcingNewSpendDelegate = impliedSeedActivityMaker(this, 
+    $seeded$forcingNewSpendDelegate = impliedSeedActivityMaker(this, 
         this.forcingNewSpendDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => isActivity
@@ -1535,7 +1535,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$forcingNewMintDelegate} method for use in a context
+     * See the {@link $seeded$forcingNewMintDelegate} accessor for use in a context
      * providing an implicit seed utxo. 
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1584,16 +1584,16 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * provided implicitly by a SeedActivity-supporting library function. 
      *
      * ## Usage
-     *   1. Call the `$seed$forcingNewMintDelegate({ purpose: string })`
+     *   1. Call the `$seeded$forcingNewMintDelegate({ purpose })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
+     *       `mkTxnCreateRecord({activity})` method.
     * ## Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
     * the parent's uplc-encoder, producing a single uplc object with 
     * a complete wrapper for this inner activity detail.
      */
-    $seed$forcingNewMintDelegate = impliedSeedActivityMaker(this, 
+    $seeded$forcingNewMintDelegate = impliedSeedActivityMaker(this, 
         this.forcingNewMintDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => isActivity

@@ -182,29 +182,27 @@ export abstract class DelegatedDataContract<
     }
 
     /**
-     * Creates an indirect reference to a seed activity with arguments,
-     * using a seed placeholder.
-     *
+     * Intuition hook redirecting to activity.MintingActivities.$seeded$...
      * @remarks
-     * Provide a seed activity function, a placeholder for the seed, any other args
-     * for the on-chain activity/redeemer.  The seed-activity function can be any of this
-     * contract's `activity.MintingActivities.*` functions.
-     *
-     * The arguments are passed to the seed activity function, which is expected to return
-     * an {@link isActivity} object serializing the `{redeemer}` data as a UplcData object.
-     * 
-     * ^This was formerly done with {@link ContractBasedDelegate.mkSeededMintingActivity|mkSeededMintingActivity()}
+     * @deprecated use activites.MintingActivites.$seeded$* accessors/methods instead.
      */
     usesSeedActivity<SA extends seedActivityFunc<any, any>>(
         a: SA,
         seedPlaceholder: "...seed",
         ...args: SeedActivityArg<SA>
     ) {
-        throw new Error(`unused up until now, doesn't mean unused!`);
+        throw new Error(`make an implied-seed activity with this.activity.MintingActivites.$seeded$*`)
         // console.log("seed activity with function ", a.name, a)
         // return new SeedActivity(this, a, args);
     }
 
+    /**
+     * builds a txn creating a record of this type in the data store
+     * @remarks
+     * The {activity} option can be a {@link SeedActivity} object provided by
+     * `this.activity.MintingActivities.$seeded$‹activityName›` accessors/methods,
+     * which creates a record id based on the (unique) spend of a seed value.
+     */
     async mkTxnCreateRecord<
         TCX extends StellarTxnContext
         // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,

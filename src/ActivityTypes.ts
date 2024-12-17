@@ -85,13 +85,12 @@ const tt : IFISNEVER<SeedActivityArg<typeof noArgsFunc>, true, false> = true;
  */
 export class SeedActivity<
     FactoryFunc extends seedActivityFunc<any, any>,
-    ARG extends SeedActivityArg<FactoryFunc> = SeedActivityArg<FactoryFunc>
 > {
-    arg: ARG;
+    arg: SeedActivityArg<FactoryFunc>;
     constructor(
         private host: { getSeed(x: hasSeed): TxOutputId },
-        private factoryFunc,
-        arg: ARG
+        private factoryFunc : FactoryFunc,
+        arg: SeedActivityArg<FactoryFunc>
     ) {
         // console.log("+ seed activity" + new Error("").stack);
         this.arg = arg;
@@ -112,8 +111,8 @@ export type funcWithImpliedSeed<
     // > = [ any ] extends ARGS ?
     // (...args: ARGS) => unknown & SeedActivity<FACTORY_FUNC, ARGS>
     FACTORY_FUNC extends seedActivityFunc<any, any>,
-    ARG extends SeedActivityArg<FACTORY_FUNC> = 
-        SeedActivityArg<FACTORY_FUNC> //extends SeedActivityArg<any, iArg> ? iArg : never,
+    // ARG extends SeedActivityArg<FACTORY_FUNC> = 
+    //     SeedActivityArg<FACTORY_FUNC> //extends SeedActivityArg<any, iArg> ? iArg : never,
 
     // seedActivityFunc<[infer iArg, ... infer oArgs], any> ?
     // [ any ] extends oArgs ? seedActivityFunc<
@@ -121,11 +120,11 @@ export type funcWithImpliedSeed<
     //     > :
     // [ any ] extends iArg ? iArg : never : never
 > = IFISNEVER<
-    ARG,
+    SeedActivityArg<FACTORY_FUNC>,
     () => SeedActivity<FACTORY_FUNC>,
-    ARG extends NeedsSingleArgError
+    SeedActivityArg<FACTORY_FUNC> extends NeedsSingleArgError
         ? never
-        : (fields: ARG) => SeedActivity<FACTORY_FUNC, ARG>
+        : (fields: SeedActivityArg<FACTORY_FUNC>) => SeedActivity<FACTORY_FUNC>
 >;
 
 const x: [any] extends [] ? true : false = false;

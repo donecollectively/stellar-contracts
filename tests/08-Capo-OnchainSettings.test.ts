@@ -14,14 +14,7 @@ import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { dumpAny } from "../src/diagnostics";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
  
-import {
-    ParsedSettings,
-} from "../src/CapoSettingsTypes";
 import { Capo } from "../src/Capo";
-import {
-    AnyDataTemplate,
-    hasAnyDataTemplate,
-} from "../src/delegation/DelegatedDatumAdapter";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
 import { defineRole } from "../src/delegation/RolesAndDelegates";
 import { DelegatedDataContract } from "../src/delegation/DelegatedDataContract";
@@ -116,7 +109,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
         );
     });
 
-    fit("updatingCharter activity MUST NOT change the set-UUT reference", async (context: localTC) => {
+    it("updatingCharter activity MUST NOT change the set-UUT reference", async (context: localTC) => {
         // prettier-ignore
         // !!! change by ensuring that updatingCharter can't also
         // do other kinds of activities at the same time.

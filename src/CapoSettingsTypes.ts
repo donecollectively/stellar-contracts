@@ -5,13 +5,9 @@ import type {
     hasAnyDataTemplate,
 } from "./delegation/DelegatedData.js";
 
-// an incantation so that settings adapters don't have to get the finicky details right
 
-// type isOkay = "yes" extends never ? "yikes?  whew, this doesn't happen" : "okay!";
-
-// arranges an abstract interface for indicating the general
-// type of settings adapters for Capo classes.
 /**
+ * 
  * @public
  */
 export interface hasSettingsType{

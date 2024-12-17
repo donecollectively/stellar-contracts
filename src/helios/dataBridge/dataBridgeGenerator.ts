@@ -1050,7 +1050,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `     * @remarks\n` +
                 `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass \n` +
                 `     * to create a context satisfying \`hasSeed\`.\n` +
-                `     * See the {@link $seed$${variantName}} method for use in a context\n` +
+                `     * See the {@link $seeded$${variantName}} accessor for use in a context\n` +
                 `     * providing an implicit seed utxo. \n` +
                 (isNested
                     ? `    * ### Nested activity: \n` +
@@ -1103,12 +1103,12 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `     * provided implicitly by a SeedActivity-supporting library function. \n` +
                 `     *\n` +
                 `     * ## Usage\n` +
-                `     *   1. Call the \`$seed$${variantName}({ ` +
-                filteredFields(0, undefined, ", ") +
+                `     *   1. Call the \`$seeded$${variantName}({ ` +
+                filteredFields(0, (fn) => fn, ", ") +
                 ` })\`\n ` +
                 `     *       method with the indicated (non-seed) details.\n` +
                 `     *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's\n` +
-                `     *       record-creation helper.\n` +
+                `     *       \`mkTxnCreateRecord({activity})\` method.\n` +
                 (isNested
                     ? `    * ## Nested activity: \n` +
                       `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
@@ -1116,7 +1116,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                       `    * a complete wrapper for this inner activity detail.\n`
                     : "") +
                 `     */\n` +
-                `    $seed$${variantName} = impliedSeedActivityMaker(this, \n` +
+                `    $seeded$${variantName} = impliedSeedActivityMaker(this, \n` +
                 `        this.${variantName} as (value: hasSeed, fields: { \n${filteredFields(
                     3
                 )} \n` +
@@ -1200,7 +1200,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    *    see the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.\n` +
                 `    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.\n` +
                 `    *  - in a context providing an implicit seed utxo, use \n` +
-                `    *    the {@link $seed$${variantName}} variant of this activity instead\n` +
+                `    *    the {@link $seeded$${variantName}} variant of this activity instead\n` +
                 `    *\n ` +
                 (isNested
                     ? `    * ## Nested activity: \n` +
@@ -1231,10 +1231,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `     * Creates a SeedActivity based on the provided args, reserving space for a seed to be \n` +
                 `     * provided implicitly by a SeedActivity-supporting library function. \n` +
                 `     * ## Usage\n` +
-                `     * Call the method with no arguments: \`$seed$${variantName}()\`\n` +
+                `     * Access the activity-creator as a getter: \`$seeded$${variantName}\`\n` +
                 `     *\n` +
-                `     * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's\n` +
-                `     * record-creation helper.\n` +
+                `     * Use the resulting activity-creator in a seed-providing context, such as the delegated-data-controller's\n` +
+                `     * \`mkTxnCreateRecord({activity, ...})\` method.\n` +
                 (isNested
                     ? `    * ## Nested activity: \n` +
                       `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
@@ -1242,7 +1242,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                       `    * a complete wrapper for this inner activity detail.\n`
                     : "") +
                 `     */\n` +
-                `    get $seed$${variantName}() {\n`+
+                `    get $seeded$${variantName}() {\n`+
                 `        return impliedSeedActivityMaker(this,this.${variantName})() // called with no args needed\n` +
                 `    } /* coda: seeded helper in same singleField/seeded enum variant*/\n`
             );

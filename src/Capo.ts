@@ -2069,6 +2069,7 @@ export abstract class Capo<
                 //     },
                 // },
             ),
+            
             mintDelegate: defineRole("mintDgt", UnspecializedMintDelegate, {
                 partialConfig: {},
                 validateConfig(args): delegateConfigValidation {
