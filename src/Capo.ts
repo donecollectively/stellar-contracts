@@ -66,6 +66,7 @@ import type {
     DelegationDetail,
     delegateConfigValidation,
     capoDelegateConfig,
+    DelegateMap,
 } from "./delegation/RolesAndDelegates.js";
 
 import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
@@ -167,6 +168,7 @@ import type {
     hasCharterRef,
     hasGovAuthority,
     hasNamedDelegate,
+    hasSettingsRef,
     hasSpendDelegate,
     hasUutContext,
     uutPurposeMap,
@@ -174,14 +176,15 @@ import type {
 import { mkDgtStateKey } from "./CapoTypes.js";
 
 /**
- * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
+ * Base class for leader contracts, with predefined roles for cooperating/delegated policies
  * @remarks
  *
  * A Capo contract provides a central contract address that can act as a treasury or data registry;
  * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract
  * scripts.  Capo contract can use these capabilities in custom ways for strong flexibility.
  *
- * Any Capo contract can define delegateRoles() to establish customc ollaborating scripts; these are used for
+ * ### Defining Delegates
+ * Any Capo contract can define delegateRoles() to establish custom collaborating scripts; these are used for
  * separating granular responsbilities for different functional purposes within your (on-chain and off-chain)
  * application; this approach enables delegates to use any one of multiple strategies with different
  * functional logic to serve in any given role, thus providing flexibility and extensibility.
@@ -190,29 +193,47 @@ import { mkDgtStateKey } from "./CapoTypes.js";
  * the lifecycle of charter creation & update.   To add custom roles, override initDelegateRoles(), extending the returned
  * roles from super.initDelegateRoles().  Advanced versions of the govAuthority, mintDelegate and spendDelegate roles
  * can created by extending specific role types found in the base initDelegateRoles() method.
+ * You may wish to use the `basicRoles()` helper function to easily access any of the default 
+ * mint/ spend/ authority delegate definitions, and the defineRole() method to make additional
+ * roles for your application's data types.
  *
- * The delegation pattern uses UUTs, which are non-fungible / unique utility tokens.
+ * ### The Delegation Pattern and UUTs
+ * 
+ * The delegation pattern uses UUTs, which are non-fungible / ***unique utility tokens***.  This is
+ * equivalent to a "thread token" - a provable source of self-authority or legitimacy for contract
+ * UTxOs.  Without the UUT, a contract UTxO is just a piece of untrusted data; with the UUT, it
+ * can be blessed with proactive policy enforcement during creation.
  *
  * Architecturally, UUTs provide a simple and unique handle for the Capo to use as a  **required transaction element**
  * in key operational activities (like updating the charter details); so that the delegate holding the UUT is entrusted to
  * approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the
  * delegation.
  *
- * The Capo class provides utilities for creating and using UUT's, or **unique utility tokens**,
- * which are non-fungible assets that can form a positive linkage between the Capo (which should
- * normally retain a reference to that UUT) and any delegate; that delegate is most commonly another
- * contract script also referenced within the roles() definition, with a selected strategy.
- *
+ * UUTs can be used to form a positive linkage between the Capo (which should normally retain a reference 
+ * to that UUT) and any delegate; that delegate is most commonly another contract script also 
+ * referenced within the roles() definition.
+ * 
  *  * **Example: Multisig authority delegation** - a Capo contract would get much more complicated if it
  * contained multisig logic.  Instead, the governance authority for the Capo can be delegated to a
  * standalone multi-sig contract, which can contain all (and only) the multi-sig logic.  Separating the
- * responsibilities makes each part simpler, easing the process of ensuring each part is doing its job
- * perfectly :pray:
+ * responsibilities makes each part simpler, easing the process of ensuring each part is doing its job :pray:
+ * 
+ * ### UUTs and Delegated Data
+ * 
+* UUTs can also be used as a form of uniqueness for data stored in the Capo's UTxOs (i.e. a record id).
+ * The UTxO only lasts until it is spent, but the UUT's identity can continue along with any value and
+ * connected data.  
+ * 
+ * Policy delegates provide on-chain delegation of authority for the Capo's data, while being upgradable
+ * to support the evolving needs of the application.  Delegated datums store data of various types
+ * at the Capo's address, while delegate policies, each at its own address are invoked to enforce creation
+ * and update rules for each type of data.
  *
  * @public
  */
 export abstract class Capo<
-    SELF extends Capo<any>
+    SELF extends Capo<any/*, roleMap */>,
+    // roleMap extends DelegateMap<any>
 > extends StellarContract<CapoConfig> {
     // implements hasSettingsType<SELF>
     //, hasRoleMap<SELF>
@@ -231,16 +252,16 @@ export abstract class Capo<
         return super.offchain as any;
     }
 
-    get activity(): mustFindActivityType<Capo<any>> {
+    get activity(): mustFindActivityType<this> {
         const bridge = this.onchain;
         return bridge.activity as any;
     }
 
-    get mkDatum(): mustFindDatumType<Capo<any>> {
+    get mkDatum(): mustFindDatumType<this> {
         return this.onchain.datum;
     }
 
-    get newReadDatum(): mustFindReadDatumType<Capo<any>> {
+    get newReadDatum(): mustFindReadDatumType<this> {
         // & ( (d: UplcData) => CapoDatumLike ) {
         const bridge = this.getOnchainBridge();
         //x@ts-expect-error probing for presence
@@ -1053,7 +1074,7 @@ export abstract class Capo<
         );
         //! accumulates min-utxos for each stringy token-name in a reduce()
         function addTokenValue(
-            this: Capo<any>,
+            this: Capo<any/*, any*/>,
             accumulator: Value,
             tn: string
         ): Value {
@@ -1687,7 +1708,7 @@ export abstract class Capo<
                 //     },
                 // },
             ),
-            
+
             mintDelegate: defineRole("mintDgt", UnspecializedMintDelegate, {
                 partialConfig: {},
                 validateConfig(args): delegateConfigValidation {
@@ -2592,19 +2613,24 @@ export abstract class Capo<
      */
     async findDelegatedDataUtxos<
         const T extends undefined | (string & keyof SELF["_delegateRoles"]),
-        RAW_DATUM_TYPE extends T extends string ? AnyDataTemplate<T, any> : never,
+        RAW_DATUM_TYPE extends T extends string
+            ? AnyDataTemplate<T, any>
+            : never,
         PARSED_DATUM_TYPE
-    >(this: SELF, {
-        type,
-        id,
-        predicate,
-        query,
-    }: {
-        type?: T;
-        id?: string | UutName;
-        predicate?: DelegatedDataPredicate<RAW_DATUM_TYPE>;
-        query?: never; // todo
-    }): Promise<FoundDatumUtxo<RAW_DATUM_TYPE, PARSED_DATUM_TYPE>[]> {
+    >(
+        this: SELF,
+        {
+            type,
+            id,
+            predicate,
+            query,
+        }: {
+            type?: T;
+            id?: string | UutName;
+            predicate?: DelegatedDataPredicate<RAW_DATUM_TYPE>;
+            query?: never; // todo
+        }
+    ): Promise<FoundDatumUtxo<RAW_DATUM_TYPE, PARSED_DATUM_TYPE>[]> {
         if (!type && !predicate && !id) {
             throw new Error("Must provide either type, predicate or id");
         }
@@ -2615,13 +2641,10 @@ export abstract class Capo<
             const idBytes = textToBytes(id.toString());
             predicate = (utxo, datum) => {
                 if (!datum.id) {
-                    throw new Error(`um?`)
+                    throw new Error(`um?`);
                 }
-                return equalsBytes(
-                    datum.id, 
-                    idBytes
-                );
-            }
+                return equalsBytes(datum.id, idBytes);
+            };
         }
         // console.log("\n\n\n\n\n\n\n\n\n======= findDelegatedDataUtxos =======\n\n\n\n\n\n\n\n\n");
         // console.log({ type, types: Object.keys(this.datumAdapters)})
@@ -2711,10 +2734,7 @@ export abstract class Capo<
                         }
                     }
                     const dgtForType =
-                        type &&
-                        (await this.getDgDataController(
-                            type
-                        ))
+                        type && (await this.getDgDataController(type));
                     if (!dgtForType) {
                         console.log(
                             "no type found in datum",
@@ -2729,12 +2749,13 @@ export abstract class Capo<
                         return {
                             utxo,
                             datum,
-                            dataWrapped: `Error: ${msg}, couldn't parse data` as any,
+                            dataWrapped:
+                                `Error: ${msg}, couldn't parse data` as any,
                         };
                     }
 
                     const data = dgtForType.newReadDatum(datum.data) as any; // todo: better type? RAW_DATUM_TYPE;
-                    
+
                     const typedData = data.capoStoredData.data;
                     return mkFoundDatum(utxo, dgtForType, datum, typedData);
                     // return datum.then(
@@ -2783,20 +2804,23 @@ export abstract class Capo<
                 return null;
             }
 
-            if (predicate && !predicate(utxo, data as unknown as RAW_DATUM_TYPE)) {
+            if (
+                predicate &&
+                !predicate(utxo, data as unknown as RAW_DATUM_TYPE)
+            ) {
                 // console.log("  -- skipped due to predicate");
                 return null;
             }
-            const dataWrapped = delegate.usesWrappedData ?
-                //@ts-expect-error because we don't have a strong type for the delegate
-                delegate.wrapData(data) 
+            const dataWrapped = delegate.usesWrappedData
+                ? //@ts-expect-error because we don't have a strong type for the delegate
+                  delegate.wrapData(data)
                 : undefined;
             // console.log("-- matched: ", datum);
             return {
                 utxo,
                 datum,
                 data,
-                dataWrapped
+                dataWrapped,
             } as FoundDatumUtxo<any>;
         }
     }
@@ -3734,7 +3758,7 @@ export abstract class Capo<
             }
 
             // directly mint the UUTs, without involving the mint delegate
-            const tcx2 = await this.minter.txnMIntingWithoutDelegate(
+            const tcx2 = await this.minter.txnMintingWithoutDelegate(
                 tcx,
                 [
                     ...mkUutValuesEntries(tcx.state.uuts),

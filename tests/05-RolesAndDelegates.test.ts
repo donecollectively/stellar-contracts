@@ -180,17 +180,21 @@ describe("Capo", async () => {
                                 purpose
                             ),
                     },
-                    { 
+                    {
                         noDefault: "x",
-                        badName: "x"
+                        badName: "x",
                     }
                 );
 
                 // todo: Ideally, this strategy name would be a type error.
-                const problem = t.txnCreateOffchainDelegateLink(tcx1b, "badName", {
-                    uutName: tcx1b.state.uuts.noDefault.name,
-                    config: {},
-                });
+                const problem = t.txnCreateOffchainDelegateLink(
+                    tcx1b,
+                    "badName",
+                    {
+                        uutName: tcx1b.state.uuts.noDefault.name,
+                        config: {},
+                    }
+                );
                 expect(problem).rejects.toThrow(DelegateConfigNeeded);
                 expect(problem).rejects.toThrow(/invalid dgt role requested/);
             });
@@ -250,7 +254,7 @@ describe("Capo", async () => {
                 }
             });
 
-            it("If the strategy-configuration has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object", async (context: localTC) => {
+            it("If the delegate has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap({
@@ -274,7 +278,7 @@ describe("Capo", async () => {
                                 purpose
                             ),
                     },
-                    { 
+                    {
                         mintDelegate: "mintDgt",
                         failsWhenBad: "mintDgt",
                     }
@@ -284,12 +288,14 @@ describe("Capo", async () => {
                 };
                 let dgtRole = "mintDelegate";
                 const getDelegate = () => {
-                    return t.txnCreateOffchainDelegateLink(tcx1b, dgtRole, {
-                        uutName: tcx1b.state.uuts.mintDgt.name,
-                        config,
-                    }).then(() => {
-                        return "getDelegate did resolve"
-                    })
+                    return t
+                        .txnCreateOffchainDelegateLink(tcx1b, dgtRole, {
+                            uutName: tcx1b.state.uuts.mintDgt.name,
+                            config,
+                        })
+                        .then(() => {
+                            return "getDelegate did resolve";
+                        });
                 };
                 await expect(getDelegate()).resolves.toBeTruthy();
                 console.log("---------------------------------");
@@ -405,38 +411,25 @@ describe("Capo", async () => {
                 //     txAsString(tcx1b.tx, t.networkParams)
                 // );
 
-                const createdDelegate = await t.connectDelegateWithOnchainRDLink(
-                    "mintDelegate",
-                    t.mkOnchainRelativeDelegateLink(mintDelegateLink)
-                );
+                const createdDelegate =
+                    await t.connectDelegateWithOnchainRDLink(
+                        "mintDelegate",
+                        t.mkOnchainRelativeDelegateLink(mintDelegateLink)
+                    );
 
                 expect(createdDelegate.address.toString()).toBeTruthy();
             });
         });
 
-        describe("Each role uses a RoleVariants structure which can accept new variants", () => {
-            it("RoleVariants has type-parameters indicating the baseline types & interfaces for delegates in that role", async (context: localTC) => {
+        describe("Each delegate's UUT has a capoAddr pointing back to the capo, for positive connectivity", () => {
+            it("expects the minter to fail creating the mint delegate without the expected capoAddr", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.initialize();
 
-                const bad = {
-                    // delegateClass: SampleMintDelegate,
-                    delegateClass: Capo,
-                    validateScriptParams(): delegateConfigValidation {
-                        return undefined;
-                    },
-                };
+                throw new Error(`test not implemented`);
             });
-            it.todo(
-                "variants can augment the definedRoles object without removing or replacing any existing variant",
-                async (context: localTC) => {
-                    // prettier-ignore
-                    const {h, h:{network, actors, delay, state} } = context;
-                    const t = await h.initialize();
-                    throw new Error(`test not implemented`);
-                }
-            );
+            });
         });
         describe("the mint delegate token is used for enforcing minting policy", () => {
             it("builds minting txns that include the mintDgt and reference script", async (context: localTC) => {

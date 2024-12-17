@@ -38,10 +38,10 @@
      //"src/helios/HeliosScriptBundle.js" 
      ],
     "include": [
-        "src/@types/heliosModule.d.ts",
-        "src/**/*.hl",
-        "src/**/*.ts", 
-        "src/**/*.js",
+        "./src/@types/heliosModule.d.ts",
+        "./src/**/*.hl",
+        "./src/**/*.ts", 
+        "./src/**/*.js",
         "test/**/*.ts", 
         "test/**/*.hl"
 ],

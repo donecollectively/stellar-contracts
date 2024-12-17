@@ -7,6 +7,7 @@ import BadSettingsBundle from "./BadSettings.hlbundle.js";
     SpendingActivityLike,
     type ProtocolSettingsLike,
     type ProtocolSettings,
+    minimalProtocolSettings,
  } from "./BadSettings.typeInfo.js";
 import { 
     BadSettingsPolicyDataBridge
@@ -23,11 +24,12 @@ export class BadSettingsController extends DelegatedDataContract<
         return new BadSettingsBundle()
     }
 
-    exampleData() {
+    exampleData(this: BadSettingsController) : minimalProtocolSettings {
         return {
             // id: textToBytes("set-42"),
             // type: "settings",
             meaning: 42,
+            // xx: 42,
             badSpenderSetting: 0,
             badMinterSetting: 0
         }
@@ -43,7 +45,7 @@ export class BadSettingsController extends DelegatedDataContract<
     }
 
     requirements() {
-        // this.activity.$seed$CreatingDelegatedData({
+        // this.activity.$seeded$CreatingDelegatedData({
         //     dataType: "settings",
         // })
         return hasReqts({});
@@ -73,11 +75,12 @@ extends WrappedDgDataContract<ProtocolSettings, ProtocolSettingsLike, NoOpWrappe
         return {
             // id: textToBytes("set-42"),
             // type: "settings",
-            meaning: 42,
+            meaning: 42,            
             badSpenderSetting: 0,
             badMinterSetting: 0
-        }
+        } as minimalProtocolSettings
     }
+
     get delegateName() {
         return "settingsPolicy";
     }
@@ -89,7 +92,7 @@ extends WrappedDgDataContract<ProtocolSettings, ProtocolSettingsLike, NoOpWrappe
     }
 
     requirements() {
-        // this.activity.$seed$CreatingDelegatedData({
+        // this.activity.$seeded$CreatingDelegatedData({
         //     dataType: "settings",
         // })
         return hasReqts({});

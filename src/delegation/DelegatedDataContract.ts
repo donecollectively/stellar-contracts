@@ -91,19 +91,14 @@ export type DelegatedDatumIdPrefix<
 export abstract class DelegatedDataContract<
     T extends AnyDataTemplate<any,any>,
     tLike extends AnyDataTemplate<any,any>,
-> extends ContractBasedDelegate {
+> extends ContractBasedDelegate { // implements ExampleData<tLike>{
     usesWrappedData?: boolean;
     dgDatumHelper = this.dataBridgeClass?.prototype.DelegateDatum
 
     abstract get recordTypeName(): string;
     abstract get idPrefix(): string;
 
-    // exampleData<T>() : 
-    //     [ T, DgDataTypeLike<this> ] extends [ DgDataTypeLike<this>, T ] ? 
-    //     Expand<T> : Expand<DgDataTypeLike<this>
-    // > {
-    //     return {} as any
-    // };
+    abstract exampleData(): minimalData<tLike>
 
     /**
      * Provides a customized label for the delegate, used in place of
@@ -164,6 +159,40 @@ export abstract class DelegatedDataContract<
         );
 
         return null as unknown as CapoDelegateBundle;
+    }
+
+    /**
+     * Finds records of this delegate's type, optionally by ID. 
+     * @remarks
+     * Returns a record list when no ID is provided, or a single record when an ID is provided.
+     */
+    async findRecords<
+        THIS extends DelegatedDataContract<any, any>,
+        ID extends undefined | string | UutName | number[]
+    > (this: THIS, options: {
+            id? : T, 
+            // TODO: support single/predicate/query options by passing them through
+            // single : boolean
+            // predicate: ...
+            // query
+        } = {}) : Promise< 
+        ID extends undefined ? FoundDatumUtxo<T, tLike>[] : 
+        FoundDatumUtxo<T, tLike>
+    > {
+        const result = await this.capo.findDelegatedDataUtxos({
+            type: this.recordTypeName,
+            // single, // todo: support single in the options
+            // predicate 
+        });
+        if (options.id == undefined) {
+            // this is the typed-array case.  We could get more explicit
+            // about casting the result type, but that's already provided by the
+            // definition of ***this function's*** return type.
+            return result as any
+        }
+        // the caller will already know whether the expected type is an array above,
+        // or a  single item below.
+        return this.capo.singleItem(result) as any
     }
 
     mkDgDatum<

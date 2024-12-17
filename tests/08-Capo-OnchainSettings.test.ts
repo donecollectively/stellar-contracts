@@ -75,8 +75,8 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
         const {h, h:{network, actors, delay, state} } = context;
 
         const capo = await h.bootstrap();
-        const settings = await capo.findSettingsData();
-        expect(settings.meaning).toEqual(42n);
+        const settings = await capo.findSettingsInfo();
+        expect(settings.data.meaning).toEqual(42n);
     });
     it.todo("TEST: onchain code can read the settings data from the contract");
 
@@ -149,8 +149,8 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
             });
             await updating;
             await expect(updating).resolves.toBeTruthy();
-            const newSettings = await capo.findSettingsData();
-            expect(newSettings.meaning).toEqual(19);
+            const newSettings = await capo.findSettingsInfo();
+            expect(newSettings.data.meaning).toEqual(19);
         });
 
         it("requires the capoGov- authority uut to update the settings data", async (context: localTC) => {

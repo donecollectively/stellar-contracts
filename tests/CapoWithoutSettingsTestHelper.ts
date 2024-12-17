@@ -175,7 +175,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         // getNamedDelegate("reqtCtrl") ) as ReqtsController
         // const tcx = await delegate.mkTxnCreateReqt(reqt);
         const tcx = await delegate.mkTxnCreateRecord({
-            activity: delegate.activity.$seed$CreatingDelegatedData({
+            activity: delegate.activity.$seeded$CreatingDelegatedData({
                 dataType: "reqts",
             }),
             data: reqt,

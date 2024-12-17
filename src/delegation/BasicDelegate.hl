@@ -539,7 +539,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         "the UUT must have the right disposition (is it checked somewhere else?!?)"
                                     );
                                     cctx.getNextCharterData().otherNamedDelegates.get_safe(purpose).switch {
-                                        None => error("the new delegate is not present in the Capo's manifest"),
+                                        None => error("the new delegate is not present in the Capo's named-delegates list"),
                                         Some{dgtLink} => {
                                             assert(dgtLink.uutName == mkTn(purpose), "uutName mismatch");
 

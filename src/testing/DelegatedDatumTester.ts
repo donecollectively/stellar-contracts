@@ -47,14 +47,14 @@ export class DelegatedDatumTester extends DelegatedDataContract<
         return "testData";
     }
 
-    // exampleData() : DgDatumTestDataLike {
-    //     return {
-    //         id: textToBytes("tData-‹replaceMe›"),
-    //         type: "testData",
-    //         name: "Fred",
-    //         number: 42,
-    //     }
-    // }
+    exampleData() : minimalDgDatumTestData {
+        return {
+            // id: textToBytes("tData-‹replaceMe›"),
+            // type: "testData",
+            name: "Fred",
+            number: 42,
+        }
+    }
 
     // get capo(): Capo<any> {
     //     // type S = CapoOffchainSettingsType<DEMUTokenomicsCapo>;

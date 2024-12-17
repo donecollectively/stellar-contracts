@@ -262,7 +262,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         preProdParams.maxTxExMem = maxMem;
 
         const cpu = preProdParams.maxTxExCpu;
-        const maxCpu = Math.floor(cpu * 2);
+        const maxCpu = Math.floor(cpu * 2.1);
         console.log("test env: 🔧🔧🔧 fixup max cpu", cpu, " -> 🔧", maxCpu);
         preProdParams.maxTxExCpu = maxCpu;
 

@@ -1,14 +1,9 @@
 import { Capo } from "../Capo.js";
 import type {
-    anyDatumArgs,
-} from "../Capo.js";
-import type {
-    CapoConfig,
-    MinterBaseMethods, hasBootstrappedCapoConfig,
+    hasBootstrappedCapoConfig,
     hasUutContext
 } from "src/CapoTypes.js";
 import type {
-    CharterDataLike,
     MinimalCharterDataArgs
 } from "src/CapoTypes.js";
 

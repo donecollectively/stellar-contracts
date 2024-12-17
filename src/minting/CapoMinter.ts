@@ -315,7 +315,7 @@ export class CapoMinter
     }
 
     @Activity.partialTxn
-    async txnMIntingWithoutDelegate<TCX extends StellarTxnContext>(
+    async txnMintingWithoutDelegate<TCX extends StellarTxnContext>(
         tcx: TCX,
         vEntries: valuesEntry[],
         minterActivity: isActivity
