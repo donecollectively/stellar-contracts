@@ -1,3 +1,5 @@
+import type { CharterDataLike } from "./src/CapoTypes.js";
+
 export { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
 export {
     mkValuesEntry,
@@ -33,18 +35,14 @@ export {
 
 export { UutName } from "./src/delegation/UutName.js";
 export {
-    Capo,
-    type CapoConfig as CapoBaseConfig,
-    type MinimalDelegateLink,
-    type dgtStateKey,
-    type hasNamedDelegate,
-    mkDgtStateKey,
+    Capo
 } from "./src/Capo.js";
 
 export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
 
 export type {
     MintUutActivityArgs,
+    CharterData,
     CharterDataLike,
     CharterDataLike as CharterDatumProps,
     FoundDatumUtxo,
@@ -56,7 +54,15 @@ export type {
     hasCharterRef,
     hasSettingsRef,
     hasUutContext,
-} from "./src/Capo.js";
+    CapoConfig as CapoBaseConfig,
+    MinimalDelegateLink,
+    dgtStateKey,
+    hasNamedDelegate,
+    
+} from "./src/CapoTypes.js";
+export {
+    mkDgtStateKey
+} from "./src/CapoTypes.js";
 
 export { type utxoPredicate, UtxoHelper } from "./src/UtxoHelper.js";
 
@@ -178,7 +184,6 @@ export {
     type BasicMinterParams,
 } from "./src/minting/CapoMinter.js";
 
-import type { CharterDataLike } from "./src/Capo.js";
 
 /**
  * @deprecated - use CharterDataLike instead

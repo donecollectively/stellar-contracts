@@ -1,9 +1,11 @@
 import type {
     Capo,
-    FoundDatumUtxo,
-    hasSettingsRef,
-    hasUutContext,
 } from "../Capo.js";
+import type {
+    FoundDatumUtxo,
+    hasUutContext
+} from "src/CapoTypes.js";
+import type { hasSettingsRef } from "src/CapoTypes.js";
 
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { dumpAny } from "../diagnostics.js";

@@ -9,7 +9,8 @@ import {
 } from "../StellarContract.js";
 
 import { StellarDelegate } from "./StellarDelegate.js";
-import type { Capo, CapoConfig } from "../Capo.js";
+import type { Capo } from "../Capo.js";
+import type { CapoConfig } from "src/CapoTypes.js";
 import type { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { RelativeDelegateLinkLike } from "../CapoHeliosBundle.typeInfo.js";
 import type { DelegatedDataContract } from "./DelegatedDataContract.js";

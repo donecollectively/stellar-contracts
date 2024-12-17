@@ -1,13 +1,16 @@
 import { Capo } from "../Capo.js";
 import type {
-    CapoConfig,
-    CharterDataLike,
-    MinimalCharterDataArgs,
-    MinterBaseMethods,
     anyDatumArgs,
-    hasBootstrappedCapoConfig,
-    hasUutContext,
 } from "../Capo.js";
+import type {
+    CapoConfig,
+    MinterBaseMethods, hasBootstrappedCapoConfig,
+    hasUutContext
+} from "src/CapoTypes.js";
+import type {
+    CharterDataLike,
+    MinimalCharterDataArgs
+} from "src/CapoTypes.js";
 
 import { StellarTxnContext, type anyState, type hasAddlTxns, type SubmitOptions } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";

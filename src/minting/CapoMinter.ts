@@ -10,7 +10,8 @@ import { Activity, StellarContract, partialTxn } from "../StellarContract.js";
 import type { UplcRecord, configBaseWithRev } from "../StellarContract.js";
 
 import { StellarTxnContext, type anyState } from "../StellarTxnContext.js";
-import type { Capo, MintUutActivityArgs, MinterBaseMethods } from "../Capo.js";
+import type { Capo } from "../Capo.js";
+import type { MintUutActivityArgs, MinterBaseMethods } from "src/CapoTypes.js";
 import type { SeedTxnScriptParams } from "../SeedTxnScriptParams.js";
 import type { valuesEntry } from "../HeliosPromotedTypes.js";
 import { UutName } from "../delegation/UutName.js";

@@ -10,11 +10,13 @@ import type { ConfigFor, stellarSubclass } from "../StellarContract.js";
 import { Capo } from "../Capo.js";
 import type {
     CapoConfig,
-    CharterDataLike,
-    MinimalCharterDataArgs,
     hasBootstrappedCapoConfig,
-    hasUutContext,
-} from "../Capo.js";
+    hasUutContext
+} from "src/CapoTypes.js";
+import type {
+    CharterDataLike,
+    MinimalCharterDataArgs
+} from "src/CapoTypes.js";
 // import { CapoMinter } from "../minting/CapoMinter.js";
 
 import type { expect as expectType } from "vitest";

@@ -211,3 +211,22 @@ export function typeError<T extends string, moreInfo extends Object = {}>(
         moreInfo: (moreInfo || {}) as moreInfo,
     };
 }
+
+
+type AnyAnyOfcourse = any extends any ? "yes" : "no";
+// this type looks useless.  Its result is interesting, though.
+//  ... it's matchiness for "yes" | "no" means ANYTHING could happen
+type AnyThingUselessEither = any extends "something" ? "yes" : "no";
+type ThingAnyYes = "something" extends any ? "yes" : "no";
+type AnyUnkYes = any extends unknown ? "yes" : "no";
+type UnkAnyYes = unknown extends any ? "yes" : "no";
+
+type UnkStrNo = unknown extends string ? "yes" : "no";
+type UnkUnkYes = unknown extends unknown ? "yes" : "no";
+
+type StrUnkYes = string extends unknown ? "yes" : "no";
+type StrAnyYes = string extends any ? "yes" : "no";
+type UnkConstStringNo = unknown extends "MyCONST STRING" ? "yes" : "no";
+type UnkFooNo = unknown extends { foo: string } ? "yes" : "no";
+type ConstStringUnkYES = "MyCONST STRING" extends unknown ? "yes" : "no";
+type FooUnkYES = { foo: string } extends unknown ? "yes" : "no";

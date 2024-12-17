@@ -1,5 +1,5 @@
 import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
-import type { hasUutContext } from "./Capo.js";
+import type { hasUutContext } from "./CapoTypes.js";
 import { UutName } from "./delegation/UutName.js";
 import type { ActorContext, SetupDetails } from "./StellarContract.js";
 import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";

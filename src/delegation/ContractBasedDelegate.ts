@@ -1,12 +1,14 @@
 import type {
     Capo,
+} from "../Capo.js";
+import type {
     DelegateSetupWithoutMintDelegate,
     MinimalDelegateLink,
     MintUutActivityArgs,
     NormalDelegateSetup,
-    hasCharterRef,
-    hasSettingsRef,
-} from "../Capo.js";
+    hasCharterRef
+} from "src/CapoTypes.js";
+import type { hasSettingsRef } from "src/CapoTypes.js";
 import { Activity, datum } from "../StellarContract.js";
 import { StellarDelegate } from "./StellarDelegate.js";
 import type {

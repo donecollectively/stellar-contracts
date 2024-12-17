@@ -7,7 +7,8 @@ import type {
 import type { StellarTestContext } from "./StellarTestContext.js";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
-import type { Capo, CapoConfig } from "../Capo.js";
+import type { Capo } from "../Capo.js";
+import type { CapoConfig } from "src/CapoTypes.js";
 import type { NetworkSnapshot, SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
 import type { NetworkParams } from "@helios-lang/ledger";
 

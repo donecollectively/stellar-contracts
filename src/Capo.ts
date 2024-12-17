@@ -3,11 +3,7 @@ import { makeIntData, type UplcData } from "@helios-lang/uplc";
 import {
     type MintingPolicyHash,
     type TxInput,
-    type ValidatorHash,
     type Value,
-    type Address,
-    type MintingPolicyHashLike,
-    type TxOutputId,
     makeTxId,
     makeMintingPolicyHash,
     makeValidatorHash,
@@ -42,10 +38,8 @@ import {
     bytesToText,
     textToBytes,
     type InlineDatum,
-    type valuesEntry,
 } from "./HeliosPromotedTypes.js";
 import {
-    type uutMap,
     StellarTxnContext,
     type hasAddlTxns,
     type hasSeedUtxo,
@@ -103,265 +97,6 @@ import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
 import CapoHelpers from "./CapoHelpers.hl";
 import { type NamedPolicyCreationOptions } from "./delegation/ContractBasedDelegate.js";
 
-/**
- * Includes key details needed to create a delegate link
- * @remarks
- *
- * uutName can't be specified in this structure because creating a delegate link
- * should use txnMustGetSeedUtxo() instead, minting a new UUT for the purpose.
- * If you seek to reuse an existing uutName, probably you're modifying an existing
- * full RelativeDelegateLink structure instead - e.g. with a different `strategy` and
- * `config`; this type wouldn't be involved in that case.
- *
- * @public
- **/
-export type MinimalDelegateLink = Partial<OffchainPartialDelegateLink>;
-//     Omit<RelativeDelegateLinkLike, "uutName">
-// >;
-
-// const spendDelegate = await this.txnCreateOffchainDelegateLink(
-//     spendDelegateLink: this.mkOnchainRelativeDelegateLink(govAuthority),
-
-/**
- * Delegate updates can, in an "escape hatch" scenario, be forced by sole authority
- * of the Capo's govAuthority.  While the normal path of update involves the existing
- * mint/spend delegate's involvement, a forced update can be used to bypass that route.
- * This provides that signal.
- */
-export type MinimalDelegateUpdateLink = Omit<
-    OffchainPartialDelegateLink,
-    "uutName"
-> & {
-    forcedUpdate?: true;
-};
-
-/**
- * represents a UUT found in a user-wallet, for use in authorizing a transaction
- * @public
- */
-export type FoundUut = { utxo: TxInput; uut: UutName };
-
-/**
- * strongly-typed map of purpose-names to Uut objects
- *
- * @public
- */
-export type uutPurposeMap<unionPurpose extends string> = {
-    [purpose in unionPurpose]: UutName;
-};
-
-// export type hasSomeUuts<uutEntries extends string> = {
-//     uuts: Partial<uutPurposeMap<uutEntries>>;
-// };
-
-/**
- * used for transaction-context state having specific uut-purposes
- *
- * @public
- */
-export type hasAllUuts<uutEntries extends string> = {
-    uuts: uutPurposeMap<uutEntries>;
-};
-
-type useRawMinterSetup = Omit<NormalDelegateSetup, "mintDelegateActivity"> & {
-    omitMintDelegate: true; // it's a little like "are you sure?"
-    specialMinterActivity: isActivity;
-    mintDelegateActivity?: undefined;
-};
-
-export type DelegateSetupWithoutMintDelegate = {
-    withoutMintDelegate: useRawMinterSetup;
-};
-
-export type NormalDelegateSetup = {
-    usingSeedUtxo?: TxInput | undefined;
-    additionalMintValues?: valuesEntry[];
-    skipDelegateReturn?: true;
-    mintDelegateActivity: isActivity;
-    // withoutMintDelegate: never
-};
-
-/**
- * Pre-parsed results of finding and matching contract-held UTxOs
- * with datum details.
- * @public
- */
-
-export type FoundDatumUtxo<
-    DelegatedDatumType extends AnyDataTemplate<any, any>,
-    WRAPPED_DatumType extends any = any
-> = {
-    utxo: TxInput;
-    datum: InlineDatum;
-    data?: DelegatedDatumType;
-    dataWrapped?: WRAPPED_DatumType;
-};
-
-export type UutCreationAttrsWithSeed = {
-    usingSeedUtxo: TxInput;
-};
-
-/**
- * the uut-factory interface
- *
- * @public
- */
-export interface hasUutCreator {
-    txnWillMintUuts<
-        const purposes extends string,
-        existingTcx extends StellarTxnContext,
-        const RM extends Record<ROLES, purposes>,
-        const ROLES extends keyof RM & string = string & keyof RM
-    >(
-        initialTcx: existingTcx,
-        uutPurposes: purposes[],
-        uutArgs: UutCreationAttrsWithSeed,
-        roles?: RM
-    ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
-
-    txnMintingUuts<
-        const purposes extends string,
-        existingTcx extends StellarTxnContext & hasSeedUtxo,
-        const RM extends Record<ROLES, purposes>,
-        const ROLES extends keyof RM & string = string & keyof RM
-    >(
-        initialTcx: existingTcx,
-        uutPurposes: purposes[],
-        uutArgs: NormalDelegateSetup | DelegateSetupWithoutMintDelegate,
-        roles?: RM
-    ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
-
-    // txnBurnUuts<
-    //     existingTcx extends StellarTxnContext<any>,
-    // >(
-    //     initialTcx: existingTcx,
-    //     uutNames: UutName[],
-    // ): Promise<existingTcx>;
-}
-
-/**
- * UUT minting should always use these settings to guard for uniqueness
- *
- * @public
- */
-export type MintUutActivityArgs = {
-    seed: TxOutputId;
-    purposes: string[];
-};
-/**
- * A txn context having specifically-purposed UUTs in its state
- * @public
- */
-export type hasUutContext<uutEntries extends string> = StellarTxnContext<
-    hasAllUuts<uutEntries>
->;
-
-/**
- * charter-minting interface
- *
- * @public
- */
-export interface MinterBaseMethods {
-    get mintingPolicyHash(): MintingPolicyHashLike;
-    txnMintingCharter<TCX extends StellarTxnContext>(
-        tcx: TCX,
-        charterMintArgs: {
-            owner: Address;
-            capoGov: UutName;
-        },
-        tVal: valuesEntry
-    ): Promise<TCX>;
-    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(
-        tcx: TCX,
-        vEntries: valuesEntry[],
-        delegate: BasicMintDelegate,
-        redeemer: isActivity
-    ): Promise<TCX>;
-}
-
-export type anyDatumArgs = Record<string, any>;
-
-export type rootCapoConfig = {
-    rootCapoScriptHash?: ValidatorHash;
-};
-
-/**
- * Configuration details for a Capo
- * @public
- */
-export type CapoConfig = configBaseWithRev &
-    rootCapoConfig &
-    SeedTxnScriptParams & {
-        mph: MintingPolicyHash;
-        rev: bigint;
-        bootstrapping?: true;
-    };
-
-/**
- * StellarTransactionContext exposing a bootstrapped Capo configuration
- * @remarks
- *
- * During first-time setup of a Capo contract, its manifest configuration details
- * should be captured for reproducibility, and this type allows the bootstrap
- * transaction to expose that configuration.
- *
- * {@link Capo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context
- * of this type, with `state.bootstrappedConfig`;
- * @public
- **/
-export type hasBootstrappedCapoConfig = StellarTxnContext<{
-    bsc: CapoConfig;
-    uuts: uutMap;
-    bootstrappedConfig: any;
-}>;
-
-type PreconfiguredDelegate<T extends StellarDelegate> = Omit<
-    ConfiguredDelegate<T>,
-    "delegate" | "delegateValidatorHash"
->;
-
-export type basicDelegateMap<
-    anyOtherRoles extends {
-        [k: string]: DelegateSetup<any, StellarDelegate, any>;
-    } = {},
-    defaultRoles = {
-        govAuthority: DelegateSetup<"authority", StellarDelegate, any>;
-        mintDelegate: DelegateSetup<"mintDgt", BasicMintDelegate, any>;
-        spendDelegate: DelegateSetup<"spendDgt", ContractBasedDelegate, any>;
-        // namedDelegate: RoleInfo<any, "namedDgt", StellarDelegate>;
-    }
-> = {
-    [k in
-        | keyof anyOtherRoles
-        | keyof defaultRoles]: k extends keyof anyOtherRoles
-        ? anyOtherRoles[k]
-        : k extends keyof defaultRoles
-        ? defaultRoles[k]
-        : never;
-};
-
-/**
- * @public
- */
-export type hasCharterRef = StellarTxnContext<
-    anyState & {
-        charterRef: TxInput;
-        charterData: CharterData;
-    }
->;
-
-export type hasSpendDelegate = StellarTxnContext<
-    anyState & {
-        spendDelegate: ContractBasedDelegate;
-    }
->;
-
-export type hasGovAuthority = StellarTxnContext<
-    anyState & {
-        govAuthority: AuthorityPolicy;
-    }
->;
-
 import UncustomCapoSettings from "./UncustomCapoSettings.hl";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
@@ -383,10 +118,8 @@ import type {
     mustFindReadDatumType,
 } from "./helios/dataBridge/BridgeTypeUtils.js";
 import type {
-    CapoDatum$CharterDataLike,
     CapoDatum$Ergo$CharterData,
     CapoDatumLike,
-    ErgoCapoDatum,
     ErgoRelativeDelegateLink,
     RelativeDelegateLinkLike,
     RelativeDelegateLink,
@@ -395,7 +128,6 @@ import type {
     PendingDelegateChangeLike,
     PendingDelegateAction$AddLike,
     ManifestEntryTypeLike,
-    CapoManifestEntryLike,
     CapoDatum$Ergo$DelegatedData,
 } from "./CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
@@ -414,104 +146,32 @@ import type {
     DelegateDatum$capoStoredDataLike,
     DelegateDatumLike,
 } from "./delegation/UnspecializedDelegate.typeInfo.js";
-
-export type CapoDatum = ErgoCapoDatum;
-export type CharterData = CapoDatum$Ergo$CharterData;
-export type CharterDataLike = CapoDatum$CharterDataLike;
-
-/**
- * Schema for initial setup of Charter Datum - state stored in the Leader contract
- * together with its primary or "charter" utxo.  Converted from this convenient form
- * to the on-chain form during mkTxnMintCharterToken().
- * @public
- **/
-export interface MinimalCharterDataArgs extends configBaseWithRev {
-    spendDelegateLink: OffchainPartialDelegateLink;
-    spendInvariants: OffchainPartialDelegateLink[];
-    otherNamedDelegates: Map<string, OffchainPartialDelegateLink>;
-    // | Record<string, OffchainPartialDelegateLink>;
-    mintDelegateLink: OffchainPartialDelegateLink;
-    mintInvariants: OffchainPartialDelegateLink[];
-    govAuthorityLink: OffchainPartialDelegateLink;
-    manifest: Map<string, OffchainPartialDelegateLink>;
-    // typeMapUut: UutName | number[];
-}
-
-/**
- * Establishes minimum requirements for creating a charter-datum
- * @remarks
- *
- * requires a baseline configuration for the gov authority and mint delegate.
- *
- * @public
- **/
-export type newMinimalCharterDataArgs_maybeUnneeded = {
-    govAuthorityLink: MinimalDelegateLink;
-    mintDelegateLink: MinimalDelegateLink;
-    spendDelegateLink: MinimalDelegateLink;
-    mintInvariants: MinimalDelegateLink[];
-    spendInvariants: MinimalDelegateLink[];
-};
-
-export type RemainingMinimalCharterDataArgs = Omit<
+import type {
+    CapoConfig,
+    CharterData,
     CharterDataLike,
-    "govAuthorityLink" | "mintDelegateLink" | "spendDelegateLink"
->;
-
-export type HeldAssetsArgs = {
-    purposeId?: string;
-    purpose?: string;
-};
-
-/**
- * A transaction context flagged as containing a settings-utxo reference
- * @public
- */
-export type hasSettingsRef = StellarTxnContext<
-    anyState & { settingsRef: TxInput }
->;
-export function mkDgtStateKey<
-    const N extends string,
-    const PREFIX extends string = "dgPoi"
->(n: N, p: PREFIX = "dgPol" as PREFIX) {
-    return `${p}${n.slice(0, 1).toUpperCase()}${n.slice(1)}` as dgtStateKey<
-        N,
-        PREFIX
-    >;
-}
-
-export type dgtStateKey<
-    N extends string,
-    PREFIX extends string = "dgPol"
-> = `${PREFIX}${Capitalize<N>}`;
-
-export type hasNamedDelegate<
-    DT extends StellarDelegate,
-    N extends string,
-    PREFIX extends string = "namedDelegate"
-> = StellarTxnContext<
-    anyState & {
-        [k in dgtStateKey<N, PREFIX>]: ConfiguredDelegate<DT> &
-            ErgoRelativeDelegateLink;
-    }
->;
-
-export type hasDelegateMap<
-    C extends Capo<any>,
-    SpecificCapo = C extends Capo<infer S>
-        ? S extends unknown
-            ? never
-            : S
-        : never
-> = {
-    initDelegateRoles(): basicDelegateMap<any>;
-    _delegateRoles: SpecificCapo extends never
-        ? null
-        : basicDelegateMap & ReturnType<C["initDelegateRoles"]>;
-    get delegateRoles(): SpecificCapo extends never
-        ? null
-        : basicDelegateMap<any> & ReturnType<C["initDelegateRoles"]>;
-};
+    DelegateSetupWithoutMintDelegate,
+    DelegatedDataPredicate,
+    FoundDatumUtxo,
+    FoundUut,
+    ManifestEntryTokenRef,
+    MinimalCharterDataArgs,
+    MinimalDelegateLink,
+    MinimalDelegateUpdateLink,
+    NormalDelegateSetup,
+    PreconfiguredDelegate,
+    SettingsDataContext,
+    UutCreationAttrsWithSeed,
+    basicDelegateMap,
+    hasBootstrappedCapoConfig,
+    hasCharterRef,
+    hasGovAuthority,
+    hasNamedDelegate,
+    hasSpendDelegate,
+    hasUutContext,
+    uutPurposeMap,
+} from "./CapoTypes.js";
+import { mkDgtStateKey } from "./CapoTypes.js";
 
 /**
  * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
@@ -549,48 +209,6 @@ export type hasDelegateMap<
  * responsibilities makes each part simpler, easing the process of ensuring each part is doing its job
  * perfectly :pray:
  *
- * @public
- */
-
-type AnyAnyOfcourse = any extends any ? "yes" : "no";
-// this type looks useless.  Its result is interesting, though.
-//  ... it's matchiness for "yes" | "no" means ANYTHING could happen
-type AnyThingUselessEither = any extends "something" ? "yes" : "no";
-type ThingAnyYes = "something" extends any ? "yes" : "no";
-type AnyUnkYes = any extends unknown ? "yes" : "no";
-type UnkAnyYes = unknown extends any ? "yes" : "no";
-
-type UnkStrNo = unknown extends string ? "yes" : "no";
-type UnkUnkYes = unknown extends unknown ? "yes" : "no";
-
-type StrUnkYes = string extends unknown ? "yes" : "no";
-type StrAnyYes = string extends any ? "yes" : "no";
-type UnkConstStringNo = unknown extends "MyCONST STRING" ? "yes" : "no";
-type UnkFooNo = unknown extends { foo: string } ? "yes" : "no";
-type ConstStringUnkYES = "MyCONST STRING" extends unknown ? "yes" : "no";
-type FooUnkYES = { foo: string } extends unknown ? "yes" : "no";
-
-/**
- * @public
- */
-export type DelegatedDataPredicate<DATUM_TYPE extends AnyDataTemplate<any,any>> =
-    (utxo: TxInput, data: DATUM_TYPE) => boolean;
-
-type ManifestEntryTokenRef = Omit<CapoManifestEntryLike, "entryType"> & {
-    entryType: Pick<CapoManifestEntryLike["entryType"], "NamedTokenRef">;
-};
-
-type SettingsDataContext = {
-    settingsUtxo?: TxInput;
-    tcx?: hasCharterRef;
-    charterUtxo?: TxInput;
-};
-
-/**
- * Base class for a "leader" contract that supports custom settings,
- * multiple data types that can evolve over time, support for the software
- * development lifecycle with evolving policies, and a flexible delegation
- * system for managing the contract's roles.
  * @public
  */
 export abstract class Capo<

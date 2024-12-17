@@ -1,4 +1,4 @@
-import type { uutPurposeMap } from "./Capo.js";
+import type { uutPurposeMap } from "./CapoTypes.js";
 import { textToBytes, type valuesEntry } from "./HeliosPromotedTypes.js";
 import { UutName } from "./delegation/UutName.js";
 import {

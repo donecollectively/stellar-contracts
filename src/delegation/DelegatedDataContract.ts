@@ -4,9 +4,9 @@ import { makeIntData } from "@helios-lang/uplc";
 import type {
     FoundDatumUtxo,
     hasCharterRef,
-    hasSettingsRef,
-    hasUutContext,
-} from "../Capo.js";
+    hasUutContext
+} from "src/CapoTypes.js";
+import type { hasSettingsRef } from "src/CapoTypes.js";
 import type { ReqtsMap } from "../Requirements.js";
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";

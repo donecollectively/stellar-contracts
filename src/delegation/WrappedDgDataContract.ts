@@ -1,6 +1,6 @@
 import type { Value } from "@helios-lang/ledger";
 import type { isActivity, SeedActivity } from "../ActivityTypes.js";
-import type { FoundDatumUtxo } from "../Capo.js";
+import type { FoundDatumUtxo } from "src/CapoTypes.js";
 import type { InlineDatum } from "../HeliosPromotedTypes.js";
 import type { StellarTxnContext } from "../StellarTxnContext.js";
 import type { AnyDataTemplate } from "./DelegatedData.js";
