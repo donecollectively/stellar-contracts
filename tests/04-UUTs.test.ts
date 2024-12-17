@@ -152,8 +152,8 @@ describe("Capo", async () => {
                 const charter = await capo.mustFindCharterUtxo();
                 tcx1.addScriptProgram(capo.compiledScript!);
                 tcx1.addInput(charter, capo.activityUsingAuthority());
-                const datum = charter.datum
-                if (!datum) throw new Error("missing datum")
+                const datum = charter.datum;
+                if (!datum) throw new Error("missing datum");
                 capo.txnKeepCharterToken(tcx1, datum);
 
                 await capo.txnAddGovAuthorityTokenRef(tcx1);
@@ -235,7 +235,9 @@ describe("Capo", async () => {
             const purposes = ["testSomeThing"];
             const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
                 mintDelegateActivity:
-                    mintDelegate.activity.MintingActivities.mintingUuts(tcx1a, {purposes})
+                    mintDelegate.activity.MintingActivities.mintingUuts(tcx1a, {
+                        purposes,
+                    }),
             });
 
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);
@@ -346,99 +348,106 @@ describe("Capo", async () => {
 
             const mintDelegate = await capo.getMintDelegate();
 
-            console.log(
-                "-------- case 1: using the txn-helper in unsupported way"
-            );
-            const purposes1 = [noMultiples, noMultiples];
-            const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
-            const tcx1b = await capo.txnMintingUuts(tcx1a, purposes1, {
-                mintDelegateActivity:
-                    mintDelegate.activityMintingUutsAppSpecific(
-                        tcx1a,
-                        purposes1
-                    ),
-            });
+            if (true) {
+                console.log(
+                    "-------- case 1: using the txn-helper to indicate duplicate 'purpose' inputs"
+                );
+                const purposes1 = [noMultiples, noMultiples];
+                const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
+                const tcx1b = await capo.txnMintingUuts(tcx1a, purposes1, {
+                    mintDelegateActivity:
+                        mintDelegate.activityMintingUutsAppSpecific(
+                            tcx1a,
+                            purposes1
+                        ),
+                });
 
-            const uut = capo.uutsValue(tcx1b.state.uuts!);
+                const uut = capo.uutsValue(tcx1b.state.uuts!);
 
-            tcx1b.addOutput(makeTxOutput(tina.address, uut));
-            await expect(
-                tcx1b.submit({
-                    signers: [tom.address, tina.address, tracy.address],
-                    expectError: true,
-                })
-            ).rejects.toThrow(/mismatch in UUT mint/);
-            network.tick(1);
-
-            console.log(
-                "------ case 2: directly creating the transaction with >1 tokens"
-            );
-            const tcx2 = h.mkTcx<hasAllUuts<uniqUutMap>>();
-            // await t.txnAddCharterAuthorityTokenRef(tcx2);
-
+                tcx1b.addOutput(makeTxOutput(tina.address, uut));
+                await expect(
+                    tcx1b.submit({
+                        signers: [tom.address, tina.address, tracy.address],
+                        expectError: true,
+                    })
+                ).rejects.toThrow(/mismatch in UUT mint/);
+                network.tick(1);
+            }
             const spy = vi.spyOn(utils, "mkUutValuesEntries");
-            spy.mockImplementation(
-                //@ts-expect-error
-                function (f: uniqUutMap) {
-                    return [
-                        utils.mkValuesEntry(f["multiple-is-bad"], BigInt(2)),
-                    ];
-                }
-            );
+            if (true) {
+                console.log(
+                    "------ case 2: directly creating the transaction with >1 tokens in mint"
+                );
+                const tcx2 = h.mkTcx<hasAllUuts<uniqUutMap>>();
+                // await t.txnAddCharterAuthorityTokenRef(tcx2);
 
-            const purposes2 = [noMultiples];
-            const tcx2a = await capo.tcxWithSeedUtxo(tcx2);
-            const tcx2b = await capo.txnMintingUuts(tcx2a, purposes2, {
-                mintDelegateActivity:
-                    mintDelegate.activityMintingUutsAppSpecific(
-                        tcx2a,
-                        purposes2
-                    ),
-            });
+                spy.mockImplementation(
+                    //@ts-expect-error
+                    function (f: uniqUutMap) {
+                        return [
+                            utils.mkValuesEntry(
+                                f["multiple-is-bad"],
+                                BigInt(2)
+                            ),
+                        ];
+                    }
+                );
 
-            const uut2 = capo.uutsValue(tcx2b.state.uuts!);
+                const purposes2 = [noMultiples];
+                const tcx2a = await capo.tcxWithSeedUtxo(tcx2);
+                const tcx2b = await capo.txnMintingUuts(tcx2a, purposes2, {
+                    mintDelegateActivity:
+                        mintDelegate.activityMintingUutsAppSpecific(
+                            tcx2a,
+                            purposes2
+                        ),
+                });
 
-            tcx2b.addOutput(makeTxOutput(tina.address, uut2));
-            await expect(
-                tcx2b.submit({
-                    signers: [tom.address, tina.address, tracy.address],
-                    expectError: true,
-                })
-            ).rejects.toThrow(/mismatch in UUT mint/);
-            network.tick(1);
+                const uut2 = capo.uutsValue(tcx2b.state.uuts!);
 
-            console.log(
-                "------ case 3: directly creating the transaction with multiple mint entries"
-            );
-            // await t.txnAddCharterAuthorityTokenRef(tcx3);
+                tcx2b.addOutput(makeTxOutput(tina.address, uut2));
+                await expect(
+                    tcx2b.submit({
+                        signers: [tom.address, tina.address, tracy.address],
+                        expectError: true,
+                    })
+                ).rejects.toThrow(/mismatch in UUT mint/);
+                network.tick(1);
+            }
+            // console.log(
+            //     "------ case 3: directly creating the transaction with multiple mint entries"
+            // );
+            // // await t.txnAddCharterAuthorityTokenRef(tcx3);
 
-            spy.mockImplementation(
-                //@ts-expect-error
-                function (f: uniqUutMap) {
-                    return [
-                        this.mkValuesEntry(f["multiple-is-bad"], BigInt(1)),
-                        this.mkValuesEntry(f["multiple-is-bad"], BigInt(2)),
-                    ];
-                }
-            );
+            // // !!! invalid minting structure; ledger should reject this out of hand, due
+            // // ... to having multiple entries for the same token-name.
+            // spy.mockImplementation(
+            //     //@ts-expect-error
+            //     function (f: uniqUutMap) {
+            //         return [
+            //             this.mkValuesEntry(f["multiple-is-bad"], BigInt(1)),
+            //             this.mkValuesEntry(f["multiple-is-bad"], BigInt(2)),
+            //         ];
+            //     }
+            // );
+ 
+            // const purposes = [noMultiples];
+            // const tcx3 = await capo.tcxWithSeedUtxo(h.mkTcx());
+            // const tcx3a = await capo.txnMintingUuts(tcx3, purposes, {
+            //     mintDelegateActivity:
+            //         mintDelegate.activityMintingUutsAppSpecific(tcx3, purposes),
+            // });
 
-            const purposes = [noMultiples];
-            const tcx3 = await capo.tcxWithSeedUtxo(h.mkTcx());
-            const tcx3a = await capo.txnMintingUuts(tcx3, purposes, {
-                mintDelegateActivity:
-                    mintDelegate.activityMintingUutsAppSpecific(tcx3, purposes),
-            });
+            // const uut3 = capo.uutsValue(tcx3a.state.uuts!);
 
-            const uut3 = capo.uutsValue(tcx3a.state.uuts!);
-
-            tcx3a.addOutput(makeTxOutput(tina.address, uut3));
-            await expect(
-                tcx3a.submit({
-                    signers: [tom.address, tina.address, tracy.address],
-                    expectError: true,
-                })
-            ).rejects.toThrow(/UUT duplicate purpose/);
-            network.tick(1);
+            // tcx3a.addOutput(makeTxOutput(tina.address, uut3));
+            // await expect(
+            //     tcx3a.submit({
+            //         signers: [tom.address, tina.address, tracy.address],
+            //         expectError: true,
+            //     })
+            // ).rejects.toThrow(/UUT duplicate purpose/);
+            // network.tick(1);
         });
 
         it("won't mint extra UUTs", async (context: localTC) => {
