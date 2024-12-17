@@ -13,6 +13,7 @@ import {
     DelegateDatumTesterDataBridge
 } from "./DelegatedDatumTester.bridge.js"
 import type {
+    DgDatumTestData,
     DgDatumTestDataLike,
     ErgoDgDatumTestData,    
     minimalDgDatumTestData
@@ -22,7 +23,10 @@ import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlbundle.js"
 import { textToBytes } from "../HeliosPromotedTypes.js";
 import { makeTxOutput } from "@helios-lang/ledger";
 
-export class DelegatedDatumTester extends DelegatedDataContract {
+export class DelegatedDatumTester extends DelegatedDataContract<
+    DgDatumTestData,
+    DgDatumTestDataLike
+> {
     dataBridgeClass = DelegateDatumTesterDataBridge
 
     scriptBundle() {
@@ -56,7 +60,6 @@ export class DelegatedDatumTester extends DelegatedDataContract {
     //     return this.configIn?.capo as unknown as Capo<any>;
     // }
 
-
     async txnCreatingTestRecord<
         TCX extends StellarTxnContext &
             hasSeedUtxo &
@@ -69,13 +72,13 @@ export class DelegatedDatumTester extends DelegatedDataContract {
     ): Promise<TCX> {
         const tcx2 = await this.txnGrantAuthority(
             tcx,
-            this.activity.CreatingTData(tcx)
+            this.activity.MintingActivities.CreatingTData(tcx)
         );
 
         const testDataOutput = makeTxOutput(
             this.capo.address,
             this.uh.mkMinTv(this.capo.mph, tcx2.state.uuts.tData),
-            await this.mkDgDatum({
+            this.mkDgDatum({
                 ...testData,
                 id: tcx.state.uuts.tData.toString(),
             }as any /* !!!!!!! */ )

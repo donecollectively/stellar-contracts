@@ -20,11 +20,9 @@ import type {
     TypeSchema,
     VariantTypeSchema,
 } from "@helios-lang/type-utils";
-// import type { DataType } from "@helios-lang/compiler/src/index.js";
-// import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.js";
+
 import { BundleTypes } from "./BundleTypes.js";
 import { BundleBasedGenerator } from "./BundleBasedGenerator.js";
-
 
 /**
  * Gathers any number of types expressible for an on-chain Helios script,

@@ -36,64 +36,27 @@ import type { Expand } from "../testing/types.js";
 import type { IFISNEVER, TypeError } from "../helios/typeUtils.js";
 import type { WrappedDgDataType } from "./WrappedDgDataContract.js";
 
-export const NO_WRAPPER = Symbol(
-    "no data-adapter; uses on-chain type directly"
-);
-export type NoWrapper = {
-    [NO_WRAPPER]: true;
-};
-
-type OnchainType = {
-    placeholder: true;
-    id: string;
-    type: string;
-};
-
 export type DgDataType<
-    T extends DelegatedDataContract,
-    DATUM extends InstanceType<T["dataBridgeClass"]>["readDatum"] &
-        SomeDgtDatumReader = InstanceType<T["dataBridgeClass"]>["readDatum"] &
-        SomeDgtDatumReader,
-    CSD_struct extends Exclude<
-        ReturnType<DATUM>["capoStoredData"],
-        undefined
-    > = Exclude<ReturnType<DATUM>["capoStoredData"], undefined>,
-    DTYP extends CSD_struct extends { data: AnyDataTemplate<any, any> }
-        ? CSD_struct["data"]
-        : never = CSD_struct extends { data: AnyDataTemplate<any, any> }
-        ? CSD_struct["data"]
-        : never
-    // & {
-    //     data: AnyDataTemplate<any, any>;
-    // }
-> = ErgoAnyData & DTYP; // CSD_struct["data"];
+    T extends DelegatedDataContract<any,any>,
+> = dgDataTypes<T>["canonical"];
+
+export type dgDataTypes<T extends DelegatedDataContract<any,any>> = 
+    T extends DelegatedDataContract<infer T, infer TLike> ? {
+        canonical: T, 
+        permissive: TLike
+    } : never;
+
+
 
 export type DgDataTypeLike<
-    T extends DelegatedDataContract,
-    CSDFP extends Parameters<
-        InstanceType<T["dataBridgeClass"]>["DelegateDatum"]["capoStoredData"]
-    > = Parameters<
-        InstanceType<T["dataBridgeClass"]>["DelegateDatum"]["capoStoredData"]
-    >,
-    csdLike extends CSDFP extends [{ data: AnyDataTemplate<any, any> }, ...any]
-        ? CSDFP extends [{ data: infer specificDT }]
-            ? specificDT
-            : TypeError<any,any>
-        : TypeError<any,any> = CSDFP extends [{ data: AnyDataTemplate<any, any> }, ...any]
-        ? CSDFP extends [{ data: infer specificDT }]
-            ? specificDT
-            : TypeError<"unreachable", {}>
-        : TypeError<
-            "delegated data contract must define a dataBridgeClass with capoStoredData matching data:AnyDataTemplate",
-            { dataBridgeClass: T["dataBridgeClass"] }
-        >
-> = csdLike;
+    T extends DelegatedDataContract<any,any>,
+> = dgDataTypes<T>["permissive"];
 
 /**
  * use for new or updated record data, where id and type can
  * be implied instead of explicitly provided
  */
-export type minimalDgDataTypeLike<T extends DelegatedDataContract> =
+export type minimalDgDataTypeLike<T extends DelegatedDataContract<any,any>> =
     minimalData<DgDataTypeLike<T>>;
 
 /**
@@ -101,19 +64,19 @@ export type minimalDgDataTypeLike<T extends DelegatedDataContract> =
  * @deprecated use minimalDgDataTypeLike instead
  */
 export type DgDataCreationAttrs<
-    T extends DelegatedDataContract // | DelegatedDatumAdapter<any>
+    T extends DelegatedDataContract<any,any> // | DelegatedDatumAdapter<any>
 > = Omit<DgDataTypeLike<T>, "id" | "type">;
 
 /**
  * @public
  */
 export type DelegatedDatumTypeName<
-    T extends DelegatedDataContract,
+    T extends DelegatedDataContract<any,any>,
     TN extends string = T["recordTypeName"]
 > = TN;
 
 export type DelegatedDatumIdPrefix<
-    T extends DelegatedDataContract,
+    T extends DelegatedDataContract<any,any>,
     TN extends string = T["idPrefix"]
 > = TN;
 
@@ -125,12 +88,23 @@ export type DelegatedDatumIdPrefix<
  * transaction by the Capo's delegate policy (or its spend-delegate's).
  *@public
  */
-export abstract class DelegatedDataContract extends ContractBasedDelegate {
+export abstract class DelegatedDataContract<
+    T extends AnyDataTemplate<any,any>,
+    tLike extends AnyDataTemplate<any,any>,
+> extends ContractBasedDelegate {
     usesWrappedData?: boolean;
-    // dgDatumHelper: SomeDgtDatumHelper<any> = this.dataBridgeClass.prototype.DelegateDatum
+    dgDatumHelper = this.dataBridgeClass?.prototype.DelegateDatum
 
     abstract get recordTypeName(): string;
     abstract get idPrefix(): string;
+
+    // exampleData<T>() : 
+    //     [ T, DgDataTypeLike<this> ] extends [ DgDataTypeLike<this>, T ] ? 
+    //     Expand<T> : Expand<DgDataTypeLike<this>
+    // > {
+    //     return {} as any
+    // };
+
     /**
      * Provides a customized label for the delegate, used in place of
      * a generic script name ("BasicDelegate").  DelegatedDataContract
@@ -193,10 +167,10 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     }
 
     mkDgDatum<
-        THIS extends DelegatedDataContract
+        THIS extends DelegatedDataContract<any, any>
     >(
         this: THIS,
-        record: DgDataTypeLike<THIS>
+        record: tLike
     ): InlineDatum {
         // console.log({record}, "8888888888888888888888888888888888888")
 
@@ -236,7 +210,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
         // minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
     >(
-        options: DgDataCreationOptions<this, any>,
+        options: DgDataCreationOptions<this>,
         tcx?: TCX
     ): Promise<TCX> {
         // ... it does the setup for the creation activity,
@@ -271,13 +245,14 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         // delegate policy that checks the creation.
         return this.txnCreatingRecord(
             tcx2,
-            // record,
-            activity,
-            options
+            {
+                ... options,
+                activity
+            }
         ).then((tcx3) => tcx3);
     }
 
-    creationDefaultDetails(): Partial<DgDataTypeLike<this>> {
+    creationDefaultDetails(): Partial<tLike> {
         return {};
     }
 
@@ -287,12 +262,10 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             hasSeedUtxo &
             // hasSettingsRef &
             hasUutContext<DelegatedDatumIdPrefix<this>>,
-        RDTL extends DgDataTypeLike<this> = DgDataTypeLike<this>,
     >(
         tcx: TCX,
         // record: minDDType,
-        controllerActivity: isActivity,
-        options: DgDataCreationOptions<this, any>
+        options: CoreDgDataCreationOptions<this>
     ): Promise<TCX> {
         const newType = this.recordTypeName as DelegatedDatumTypeName<this>;
         const idPrefix = this.idPrefix as DelegatedDatumIdPrefix<this>;
@@ -300,12 +273,13 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const {
             addedUtxoValue: extraCreationValue = makeValue(0n),
             data: typedData,
+            activity,
         } = options;
 
-        const tcx2 = await this.txnGrantAuthority(tcx, controllerActivity);
+        const tcx2 = await this.txnGrantAuthority(tcx, activity);
 
         const uut = tcx.state.uuts[idPrefix];
-        let newRecord: RDTL = typedData as any;
+        let newRecord: DgDataTypeLike<this> = typedData as any;
 
         const defaults = this.creationDefaultDetails() || {};
         const fullRecord = {
@@ -313,7 +287,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             type: newType,
             ...defaults,
             ...newRecord,
-        } as RDTL;
+        } as DgDataTypeLike<this>;
 
         const newDatum = this.mkDatum.capoStoredData({
             // data: new Map(Object.entries(beforeSave(fullRecord) as any)),
@@ -374,12 +348,11 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
      * The updatedRecord only needs to contain the fields that are being updated.
      */
     async mkTxnUpdateRecord<
-        CAI extends isActivity | UpdateActivity<any>,
         TCX extends StellarTxnContext
     >(
         txnName: string,
-        item: FoundDatumUtxo<DgDataType<this>, any>,
-        options: DgDataUpdateOptions<this, CAI>,
+        item: FoundDatumUtxo<T, any>,
+        options: DgDataUpdateOptions<this>,
         tcx?: TCX
     ): Promise<TCX> {
         tcx = tcx || (this.mkTcx(txnName) as TCX);
@@ -439,10 +412,10 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     >(
         tcx: TCX,
         id: hasRecId,
-        item: FoundDatumUtxo<DgDataType<this>, any>,
+        item: FoundDatumUtxo<T, any>,
         // controllerActivity: isActivity,
         // record: WrappedDataType<THIS>,
-        options: CoreDgDataUpdateOptions<this, any>
+        options: CoreDgDataUpdateOptions<this>
     ): Promise<TCX> {
         const recType = this.recordTypeName as DelegatedDatumTypeName<this>;
 
@@ -504,7 +477,7 @@ export class UpdateActivity<
 > {
     args: ARGS;
     constructor(
-        private host: DelegatedDataContract,
+        private host: DelegatedDataContract<any, any>,
         private factoryFunc: updateActivityFunc<any>,
         args: ARGS
     ) {
@@ -517,28 +490,32 @@ export class UpdateActivity<
 }
 
 type hasRecId = string | number[] | UutName;
+
 export type DgDataCreationOptions<
-    DGDC extends DelegatedDataContract,
-    DTL extends minimalDgDataTypeLike<DGDC> = minimalDgDataTypeLike<DGDC>,
-    WDT extends WrappedDgDataType<DGDC> = WrappedDgDataType<DGDC>,
+    DGDC extends DelegatedDataContract<any, any>,
 > = {
     activity: isActivity | SeedActivity<any>;
-    wrapped?: WDT;
-    data: IFISNEVER<WDT, DTL, undefined | DTL>;
+    data: minimalDgDataTypeLike<DGDC>,
+    // beforeSave?(x: DT): DT;
+
+    addedUtxoValue?: Value;
+};
+
+export type CoreDgDataCreationOptions<
+    DGDC extends DelegatedDataContract<any, any>,
+> = {
+    activity: isActivity;
+    data: minimalDgDataTypeLike<DGDC>;
     // beforeSave?(x: DT): DT;
 
     addedUtxoValue?: Value;
 };
 
 export type DgDataUpdateOptions<
-    DGDC extends DelegatedDataContract,
-    CAI extends isActivity | UpdateActivity<any>,
-    DTL extends DgDataTypeLike<DGDC> = DgDataTypeLike<DGDC>,
-    WRAPPED extends never | WrappedDgDataType<DGDC> = WrappedDgDataType<DGDC>,
+    DGDC extends DelegatedDataContract<any, any>,
 > = {
-    activity: CAI;
-    updatedFields?: DTL;
-    updatedWrapped: WRAPPED;
+    activity: isActivity | UpdateActivity<any>;
+    updatedFields: DgDataTypeLike<DGDC>;
 
     addedUtxoValue?: Value;
     // beforeSave?(x: DTL): DTL;
@@ -546,12 +523,11 @@ export type DgDataUpdateOptions<
 
 // omits type-wrapper and requires all fields for data-type-like
 export type CoreDgDataUpdateOptions<
-    DGDC extends DelegatedDataContract,
-    CAI extends isActivity | UpdateActivity<any>,
-    DTL extends DgDataTypeLike<DGDC> = DgDataTypeLike<DGDC>
+    DGDC extends DelegatedDataContract<any, any>,
 > = {
-    activity: CAI;
-    updatedFields: DTL;
+    activity: isActivity;
+    updatedFields: DgDataTypeLike<DGDC>;
+
     addedUtxoValue?: Value;
     // beforeSave?(x: DTL): DTL;
 };

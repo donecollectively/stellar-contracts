@@ -1,3 +1,4 @@
+import type { Value } from "@helios-lang/ledger";
 import type { isActivity, SeedActivity } from "../ActivityTypes.js";
 import type { FoundDatumUtxo } from "../Capo.js";
 import type { InlineDatum } from "../HeliosPromotedTypes.js";
@@ -10,6 +11,7 @@ import {
     type DgDataType,
     type DgDataTypeLike,
     type DgDataUpdateOptions,
+    type minimalDgDataTypeLike,
 } from "./DelegatedDataContract.js";
 
 export type someDataWrapper<wrappedType extends AnyDataTemplate<any, any>> = {
@@ -20,15 +22,15 @@ export type someDataWrapper<wrappedType extends AnyDataTemplate<any, any>> = {
  * @public
  */
 export type WrappedDgDataType<
-    T extends DelegatedDataContract | WrappedDgDataContract,
-    WRAPPED extends T extends WrappedDgDataContract
-        ? ReturnType<T["mkDataWrapper"]>
-        : never = T extends WrappedDgDataContract
-        ? ReturnType<T["mkDataWrapper"]>
-        : never
-> = WRAPPED;
+    WDDC extends WrappedDgDataContract<any, any, any>
+> = 
+    WDDC extends WrappedDgDataContract<any, any, infer WRAPPER> ? WRAPPER : never;
 
-export abstract class WrappedDgDataContract extends DelegatedDataContract {
+export abstract class WrappedDgDataContract<
+    T extends AnyDataTemplate<any,any>,
+    tLike extends AnyDataTemplate<any,any>,
+    WRAPPER extends someDataWrapper<tLike>
+> extends DelegatedDataContract<T, tLike> {
     usesWrappedData = true;
     /**
      * Transforms the on-chain data structure into a higher-level
@@ -36,18 +38,18 @@ export abstract class WrappedDgDataContract extends DelegatedDataContract {
      * provide an unwrapData() method to get back to the on-chain data.
      */
     abstract mkDataWrapper(
-        d: DgDataTypeLike<this>
-    ): someDataWrapper<DgDataTypeLike<this>>;
-
+        d: tLike
+    ): WRAPPER;
 
     mkDgDatum(
-        record: DgDataTypeLike<this> | WrappedDgDataType<this>
+        record: tLike | WRAPPER
     ): InlineDatum {
         // console.log({record}, "8888888888888888888888888888888888888")
-        const unwrapped: DgDataTypeLike<this> =
-            "unwrapData" in record ? record.unwrapData() : record;
+        const unwrapped: tLike = (record as any).unwrapData?.() || record;
 
-        return super.mkDgDatum(unwrapped);
+        //@ts-ignore typescript doesn't seem to understand the connection
+        //  between the tLike type and the parent class's mkDgDatum type
+        return super.mkDgDatum(unwrapped as any);
     }
 
     /**
@@ -59,10 +61,9 @@ export abstract class WrappedDgDataContract extends DelegatedDataContract {
      * will include the data: property having the unwrapped data, as well as
      * the dataWrapped property with the unwrapped version of the data.
      */
-    wrapData(data: DgDataTypeLike<this>): WrappedDgDataType<this> {
-        return this.mkDataWrapper(data) as any;
+    wrapData(data: tLike): WRAPPER {
+        return this.mkDataWrapper(data)
     }
-
 
     async mkTxnCreateRecord<
         TCX extends StellarTxnContext
@@ -71,21 +72,23 @@ export abstract class WrappedDgDataContract extends DelegatedDataContract {
     >(
         options: DgDataCreationOptions<
             this
-        >
+        > & {  wrapped?: WRAPPER } 
+
     ): Promise<TCX> {
+        //@ts-expect-error "could be instantiated with a different subtype...""
+        const data : tLike = options.wrapped?.unwrapData() || options.data;
         return super.mkTxnCreateRecord({
             ...options,
-            data: options.wrapped?.unwrapData(),
+            data
         });
     }
 
     async mkTxnUpdateRecord<
-        CAI extends isActivity | UpdateActivity<any>,
         TCX extends StellarTxnContext
     >(
         txnName: string,
-        item: FoundDatumUtxo<DgDataType<this>, WrappedDgDataType<this>>,
-        options: DgDataUpdateOptions<this, CAI>,
+        item: FoundDatumUtxo<T, WRAPPER>,
+        options: DgDataUpdateOptions<this> & { updatedWrapped?: WRAPPER },
         tcx?: TCX
     ): Promise<TCX> {
         return super.mkTxnUpdateRecord(txnName, item, {

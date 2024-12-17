@@ -40,6 +40,8 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
         return `${abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 40)}`
     } else if ("string" == typeof value) {
         return `'${value}'`// JSON.stringify(value, null, 4);
+    } else if (value === null ) {
+        return`‹null›`
     } else if ("undefined" == typeof value) {
         return `‹und›`
     } else if (value.kind == "Address") {

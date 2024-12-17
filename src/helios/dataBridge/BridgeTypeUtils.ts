@@ -370,12 +370,12 @@ type bridgeInspector<
     >,
     isTheBaseDgDataContract extends IF<
         isAnyContractDgt,
-        DelegatedDataContract extends SC ? true : false,
+        DelegatedDataContract<any,any> extends SC ? true : false,
         false,
         boolean /* suppresses unreachable error alternative, given good Bool input to IF */
     > = IF<
         isAnyContractDgt,
-        DelegatedDataContract extends SC ? true : false,
+        DelegatedDataContract<any,any> extends SC ? true : false,
         false,
         CANNOT_ERROR /* suppresses unreachable error alternative, given good Bool input to IF */
     >,
@@ -923,29 +923,29 @@ if (testing) {
     }
 
     {
-        type abstractClass = DelegatedDataContract
+        type abstractClass = DelegatedDataContract<any,any>
         type BI_DgDc = bridgeInspector<abstractClass>;
 
         type BridgeBools = BridgeBooleanEntries<BI_DgDc>;
         const MinimalAnysAllowed: BridgeAnyEntries<BI_DgDc> = {
             readsDatumUplcAs: IS_AN_ANY,
         };
-        type dCB = definesContractBridge<DelegatedDataContract>;
+        type dCB = definesContractBridge<DelegatedDataContract<any,any>>;
 
         // type delegateActivityType = StellarDelegate["activity"];
-        type CBDactivityType = DelegatedDataContract["activity"];
+        type CBDactivityType = DelegatedDataContract<any,any>["activity"];
         type delegateSubclass = stellarSubclass<StellarDelegate>;
-        type DgDataSubclass = stellarSubclass<DelegatedDataContract>;
+        type DgDataSubclass = stellarSubclass<DelegatedDataContract<any,any>>;
         //@ts-expect-error referencing abstract class
         const t: stellarSubclass<DelegatedDataContract<any>> = DelegatedDataContract
-        const t2: StellarDelegate = {} as DelegatedDataContract;
+        const t2: StellarDelegate = {} as DelegatedDataContract<any,any>;
 
         const hasReadDatum : BI_DgDc["bridgeType"]["readDatum"] extends 
             readsUplcTo<infer RD> 
         ? true : false = true;
 
-        type CDB_iType = InstanceType<definesContractBridge<DelegatedDataContract>>
-        type DGDT = Expand<DgDataType<DelegatedDataContract>>
+        type CDB_iType = InstanceType<definesContractBridge<DelegatedDataContract<any,any>>>
+        type DGDT = Expand<DgDataType<DelegatedDataContract<any,any>>>
 
         const readsDatumToGenericDatum : GenericDelegateDatum extends 
             BI_DgDc["readsDatumUplcAs"] ? IF_ISANY<
@@ -977,7 +977,7 @@ if (testing) {
 
         type NonNeverEntries = BridgeNonNeverEntries<BI_DgDc>;
         const nonNeverEntries: NonNeverEntries = {
-            inspected: {} as DelegatedDataContract,
+            inspected: {} as DelegatedDataContract<any,any>,
             thatDefinedBridgeType: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum,
             usesContractDgtBridge: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, 
             bridgeClass: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, // dataBridgeError("BasicMintDelegate"),
@@ -1061,7 +1061,6 @@ if (testing) {
             //@ts-expect-error
             badAttr: "no way"
         };
-
 
     }
 

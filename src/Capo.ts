@@ -2316,7 +2316,7 @@ export abstract class Capo<
         roleName: RN,
         // typeName: string,
         charterData?: CharterData
-    ): Promise<DelegatedDataContract> {
+    ): Promise<DelegatedDataContract<any, any>> {
         const chD = charterData || (await this.findCharterData());
         const foundME = chD.manifest.get(roleName);
         if (!foundME) {
@@ -2327,7 +2327,7 @@ export abstract class Capo<
         if (foundME?.entryType.DgDataPolicy) {
             return this.connectDelegateWithOnchainRDLink<
                 RN,
-                DelegatedDataContract
+                DelegatedDataContract<any, any>
             >(roleName, foundME.entryType.DgDataPolicy.policyLink); // as Promise<>;
         } else {
             const actualEntryType = Object.keys(foundME.entryType)[0];
@@ -2675,7 +2675,7 @@ export abstract class Capo<
         }
         const delegate = (await this.getDgDataController(
             "settings"
-        )) as DelegatedDataContract;
+        )) as DelegatedDataContract<any, any>;
         const settingsData = foundSettingsUtxo.output.datum?.data;
         if (!settingsData) {
             throw new Error(
@@ -3115,7 +3115,7 @@ export abstract class Capo<
                     }
 
                     const data = dgtForType.newReadDatum(datum.data) as any; // todo: better type? RAW_DATUM_TYPE;
-                    debugger;
+                    
                     const typedData = data.capoStoredData.data;
                     return mkFoundDatum(utxo, dgtForType, datum, typedData);
                     // return datum.then(
@@ -3140,7 +3140,7 @@ export abstract class Capo<
 
         function mkFoundDatum(
             utxo: TxInput,
-            delegate: DelegatedDataContract,
+            delegate: DelegatedDataContract<any, any>,
             datum: InlineDatum,
             data: DelegateDatum$capoStoredDataLike["data"]
         ) {

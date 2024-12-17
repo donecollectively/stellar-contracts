@@ -416,7 +416,7 @@ func validateUutMinting(
     // }, []ByteArray{});
     // assert(true || (temp == temp), "prevent unused var");
 
-    expectationsMet : Bool = valueMinted  == expectedValue;
+    expectationsMet : Bool = valueMinted == expectedValue;
 
     assert(expectationsMet, "mismatch in UUT mint");
     assert(hasSeedUtxo(tx, seed), "no seed"); //, "UUT "+purposes.join("+")

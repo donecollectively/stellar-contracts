@@ -32,15 +32,14 @@ export class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
     //     return TestBadSettings;
     // }
 
-    async initDelegateRoles() {
+    initDelegateRoles() {
 
-        const myListenerVault = await this.findDelegatedDataUtxos({
-            type: "lsnrBox", 
-            predicate(ud) {
-                return ud.value.isGreaterOrEqual(myMemberToken)
-            }
-        });
-
+        // const myListenerVault = await this.findDelegatedDataUtxos({
+        //     type: "lsnrBox", 
+        //     predicate(ud) {
+        //         return ud.value.isGreaterOrEqual(myMemberToken)
+        //     }
+        // });
 
         return {
             ... this.basicDelegateRoles(),
