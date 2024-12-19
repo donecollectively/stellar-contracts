@@ -660,6 +660,25 @@ export abstract class Capo<
         return tcx2.addRefInput(ctUtxo);
     }
 
+    async tcxWithSettingsRef<TCX extends StellarTxnContext>(
+        this: SELF,
+        tcx: TCX
+    ): Promise<TCX & hasSettingsRef<any,any>> {
+            if (
+                //@ts-expect-error on type-probe:
+                tcx.state.settingsInfo
+            ) {
+                return tcx as TCX & hasSettingsRef<any,any>;
+            }
+            const settingsInfo = await this.findSettingsInfo();
+            tcx.addRefInput(settingsInfo.utxo);
+    
+            const tcx2 = tcx as TCX & hasSettingsRef<any,any>;
+            tcx2.state.settingsInfo = settingsInfo
+            return tcx2;
+        }
+    
+
     /**
      * finds and spends the Capo's charter utxo, typically for updating
      * its CharterData datum.
@@ -965,15 +984,17 @@ export abstract class Capo<
         // return this.parseDelegateLinksInCharter(charterData);
     }
 
-    async findSettingsUtxo(
+    async findSettingsInfo(
+        this: SELF,
         charterRefOrInputOrProps?:
             | hasCharterRef
             | TxInput
             | CapoDatum$Ergo$CharterData
-    ) {
+            // !!! todo: make this type more specific
+    ) : Promise<FoundDatumUtxo<any, any>>{
         const chUtxo =
             charterRefOrInputOrProps || (await this.mustFindCharterUtxo());
-        const charterData: CapoDatum$Ergo$CharterData =
+        let charterData: CapoDatum$Ergo$CharterData =
             charterRefOrInputOrProps instanceof StellarTxnContext
                 ? charterRefOrInputOrProps.state.charterData
                 : //@ts-expect-error - probing for txinput
@@ -982,9 +1003,10 @@ export abstract class Capo<
                 : (charterRefOrInputOrProps as CapoDatum$Ergo$CharterData);
 
         if (!charterData) {
-            throw new Error(
-                `charterData must be provided or found in the transaction context`
-            );
+            charterData = await this.findCharterData();
+            // throw new Error(
+            //     `charterData must be provided or found in the transaction context`
+            // );
         }
         const currentSettings = charterData.manifest.get("currentSettings");
         if (!currentSettings) {
@@ -993,12 +1015,11 @@ export abstract class Capo<
             );
         }
         const uutName = currentSettings?.tokenName;
-        const uutValue = this.uutsValue(uutName);
 
-        return await this.mustFindMyUtxo(
-            "settings uut",
-            this.uh.mkTokenPredicate(uutValue)
-        );
+        return this.findDelegatedDataUtxos({ 
+            type: "settings", 
+            id: uutName 
+        }).then((xs) => this.singleItem(xs))
     }
 
     async connectMintingScript(
@@ -2300,46 +2321,6 @@ export abstract class Capo<
         return tcxWithCharterMint as TCX3 & Awaited<typeof tcxWithCharterMint>;
     }
 
-    async findSettingsData<thisType extends Capo<any>>(
-        this: thisType,
-        ctx: SettingsDataContext = {}
-    ): Promise<DetectSettingsType<thisType>> {
-        const { settingsUtxo, tcx, charterUtxo } = ctx;
-
-        const foundSettingsUtxo =
-            settingsUtxo || (await this.findSettingsUtxo(tcx || charterUtxo));
-        if (!this.delegateRoles["settings"]) {
-            throw new Error(
-                "this Capo doesn't have a delegate role defined for settings"
-            );
-        }
-        const delegate = (await this.getDgDataController(
-            "settings"
-        )) as DelegatedDataContract<any, any>;
-        const settingsData = foundSettingsUtxo.output.datum?.data;
-        if (!settingsData) {
-            throw new Error(
-                `missing expected datum on delegated-data utxo: ` +
-                    dumpAny(foundSettingsUtxo)
-            );
-        }
-        const storedData = (await delegate.newReadDatum(
-            settingsData
-        )) as Required<Pick<DelegateDatumLike, "capoStoredData">>;
-        if (!storedData?.capoStoredData)
-            throw Error(`missing or invalid settings UTxO datum`);
-
-        const typedData = storedData.capoStoredData.data;
-
-        console.log("CHECK TYPE NAME", delegate.recordTypeName, typedData.type);
-        if (typedData.type != delegate.recordTypeName) {
-            throw new Error(
-                `record-type mismatch; expected ${delegate.recordTypeName}, got ${typedData.type}`
-            );
-        }
-
-        return typedData as DetectSettingsType<thisType>;
-    }
 
     // async txnAddSettingsOutput<
     //     TCX extends StellarTxnContext<hasAllUuts<"set">>
@@ -2386,7 +2367,7 @@ export abstract class Capo<
     //     )
     //         return tcx as TCX & hasSettingsRef;
 
-    //     const settingsUtxo = await this.findSettingsUtxo(
+    //     const settingsUtxo = await this.findSettingsInfo(
     //         //@ts-expect-error it's ok if it's not there
     //         tcx.state.charterData
     //     );
@@ -2536,7 +2517,7 @@ export abstract class Capo<
     //     tcx: StellarTxnContext = new StellarTxnContext(this.setup)
     // ): Promise<TCX> {
     //     // uses the charter ref input
-    //     settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
+    //     settingsUtxo = settingsUtxo || (await this.findSettingsInfo));
     //     const spendingDelegate = await this.getSpendDelegate();
     //     const mintDelegate = await this.getMintDelegate();
 
@@ -2626,7 +2607,7 @@ export abstract class Capo<
             query,
         }: {
             type?: T;
-            id?: string | UutName;
+            id?: string | number[] | UutName;
             predicate?: DelegatedDataPredicate<RAW_DATUM_TYPE>;
             query?: never; // todo
         }
@@ -2638,7 +2619,12 @@ export abstract class Capo<
             throw new Error("Cannot provide both id and predicate");
         }
         if (id) {
-            const idBytes = textToBytes(id.toString());
+            let idBytes : number[]
+            if (Array.isArray(id)) {
+                idBytes = id
+            } else { 
+                idBytes = textToBytes(id.toString());
+            }
             predicate = (utxo, datum) => {
                 if (!datum.id) {
                     throw new Error(`um?`);
@@ -2789,7 +2775,7 @@ export abstract class Capo<
                 // console.log("  -- skipped 1 mismatch (non-DelegatedDatum)");
                 return null;
             }
-            debugger;
+
             if (!data.id || !data.type) {
                 console.log(
                     `⚠️  WARNING: missing required 'id' or 'type' field in this delegated datum\n`,
@@ -3484,6 +3470,7 @@ export abstract class Capo<
             // idPrefix,
             dgtLink: tempOCDPLink,
         };
+
         const tcx2 = await this.txnMintingUuts(
             tcx1,
             [purpose],
