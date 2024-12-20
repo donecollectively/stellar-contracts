@@ -11,12 +11,9 @@ import { Capo } from "../Capo.js";
 import type {
     CapoConfig,
     hasBootstrappedCapoConfig,
-    hasUutContext
+    hasUutContext,
 } from "src/CapoTypes.js";
-import type {
-    CharterDataLike,
-    MinimalCharterDataArgs
-} from "src/CapoTypes.js";
+import type { CharterDataLike, MinimalCharterDataArgs } from "src/CapoTypes.js";
 // import { CapoMinter } from "../minting/CapoMinter.js";
 
 import type { expect as expectType } from "vitest";
@@ -180,7 +177,7 @@ export class DefaultCapoTestHelper<
                 }
             );
 
-            const addr = this.wallet.address
+            const addr = this.wallet.address;
             const newLink = await capo.txnCreateOffchainDelegateLink(
                 helperTxn as any,
                 dgtLabel,
@@ -326,27 +323,26 @@ export class DefaultCapoTestHelper<
                 moreInfo: "needed to  configure other contract scripts",
                 optional: false,
                 tcx: async () => {
-                    const initialSettings =
-                        //@ts-expect-error probing for optional mkInitialSettings method
-                        (await capo.mkInitialSettings?.()) as AnyData;
-
-                    if (!initialSettings) {
-                        throw new Error(
-                            "a capo with a settings policy must implement mkInitialSettings()"
-                        );
-                    }
                     // console.log({ initialSettings });
 
                     const settingsController = await capo.getDgDataController(
                         "settings"
                     );
 
+                    const initialSettings = settingsController.exampleData();
+
+                    if (!initialSettings) {
+                        throw new Error(
+                            "the settings policy must implement exampleData()"
+                        );
+                    }
+
                     return settingsController.mkTxnCreateRecord({
-                        activity: settingsController.activity.MintingActivities
-                            .$seeded$CreatingRecord,
-                            data: initialSettings,                            
-                        }
-                    );
+                        activity:
+                            settingsController.activity.MintingActivities
+                                .$seeded$CreatingRecord,
+                        data: initialSettings,
+                    });
                 },
             });
 
@@ -360,17 +356,21 @@ export class DefaultCapoTestHelper<
                     );
                     // settingsController.$find
 
-                    const settingsUtxo = (await capo.findDelegatedDataUtxos({
-                        type: "settings",
-                    }))[0];
+                    const settingsUtxo = (
+                        await capo.findDelegatedDataUtxos({
+                            type: "settings",
+                        })
+                    )[0];
                     if (!settingsUtxo) {
                         throw new Error("can't find settings record");
                     }
 
-                    const initialSettings = settingsUtxo.data
-                    
+                    const initialSettings = settingsUtxo.data;
+
                     if (!initialSettings) {
-                        throw new Error("can't extract initial settings record data");
+                        throw new Error(
+                            "can't extract initial settings record data"
+                        );
                     }
 
                     console.log(
@@ -378,14 +378,13 @@ export class DefaultCapoTestHelper<
                     );
                     console.log({ initialSettings });
 
-
                     return capo.mkTxnAddManifestEntry(
                         "currentSettings",
                         settingsUtxo,
                         {
                             tokenName: initialSettings.id,
                             entryType: { NamedTokenRef: {} },
-                            mph: undefined
+                            mph: undefined,
                         }
                     );
                 },
@@ -395,8 +394,6 @@ export class DefaultCapoTestHelper<
                 await mkSetPolTxn.submitAddlTxns();
             });
         }
-
-
     }
 
     // async updateSettings(

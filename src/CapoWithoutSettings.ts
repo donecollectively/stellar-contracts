@@ -60,11 +60,5 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
     async reqtsController() { 
         return this.getDgDataController("reqts") as Promise<ReqtsController>;
     }
-
-    // async mkInitialSettings() {
-    //     return {
-    //         none: "🙈" as const,
-    //     } //as NoSettings5
-    // }
 }
 

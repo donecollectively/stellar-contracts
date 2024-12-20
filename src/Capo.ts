@@ -83,14 +83,6 @@ import { hasReqts } from "./Requirements.js";
 import { mkUutValuesEntries, mkValuesEntry } from "./utils.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 
-import {
-    // type CapoOnchainSettingsType,
-    // type CapoOffchainSettingsType,
-    // type CapoSettingsAdapterFor,
-    type DetectSettingsType,
-    type hasSettingsType,
-} from "./CapoSettingsTypes.js";
-
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
 import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
@@ -235,7 +227,6 @@ export abstract class Capo<
     SELF extends Capo<any/*, roleMap */>,
     // roleMap extends DelegateMap<any>
 > extends StellarContract<CapoConfig> {
-    // implements hasSettingsType<SELF>
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
     dataBridgeClass = CapoDataBridge;
@@ -1008,6 +999,7 @@ export abstract class Capo<
             //     `charterData must be provided or found in the transaction context`
             // );
         }
+
         const currentSettings = charterData.manifest.get("currentSettings");
         if (!currentSettings) {
             throw new Error(

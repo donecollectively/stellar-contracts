@@ -745,6 +745,12 @@ export function dumpAny(
                 "byte array:\n" + byteArrayListAsString(x as ByteArrayData[])
             );
         }
+        if ("object" == typeof firstItem) {
+            return `[` + x.map(
+                (item) => JSON.stringify(item, betterJsonSerializer) 
+            ).join(", ") + `]`;
+        }
+
         console.log("firstItem", firstItem);
         throw new Error(
             `dumpAny(): unsupported array type: ${typeof firstItem}`
