@@ -1038,12 +1038,15 @@ export class StellarTxnContext<S extends anyState = anyState> {
             TxDescription<any>
         ][]) {
             const { txName, description } = addlTxInfo;
-            console.log("  -- before " + description);
+            console.log("  -- before: " + description)
             const tcx = (
                 "function" == typeof addlTxInfo.tcx
                     ? await addlTxInfo.tcx()
                     : addlTxInfo.tcx
             ) as StellarTxnContext;
+            if ("undefined"  == typeof tcx) {
+                throw new Error(`no txn provided for addlTx ${txName}`);
+            }
             addlTxInfo.tcx = tcx;
             // if (callback) {
             //     console.log("   -- submitTxns: callback", {
