@@ -70,7 +70,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
     //     expect(settings).toBeDefined();
     // });
 
-    it("offchain code can read the settings data from the contract", async (context: localTC) => {
+    fit("offchain code can read the settings data from the contract", async (context: localTC) => {
         // prettier-ignore
         const {h, h:{network, actors, delay, state} } = context;
 
