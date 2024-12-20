@@ -667,7 +667,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
         walletMustSign: boolean;
         wallet: Wallet;
         wHelper: WalletHelper<any>;
-        costs: Cost;
+        costs: { 
+            total: Cost,
+            [ key: string ] : Cost
+        }
     }> {
         console.timeStamp?.(`submit() txn ${this.txnName}`);
         console.log("tcx build() @top");
@@ -734,7 +737,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     }
                 }
             }
-            let capturedCosts : Cost = { cpu: 0n, mem: 0n };
+            let capturedCosts : {
+                total: Cost,
+                [ key: string ] : Cost
+            } = {total: { cpu: 0n, mem: 0n } };
             try {
                 // the transaction can fail validation without throwing an error
                 tx = await this.txb.buildUnsafe({
@@ -744,7 +750,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     logOptions: logger,
                     beforeValidate,
                     modifyExBudget: (txi, purpose, index, costs) => {
-                        capturedCosts = costs;
+                        capturedCosts.total.cpu += costs.cpu;
+                        capturedCosts.total.mem += costs.mem;
+                        if ("minting" == purpose) purpose = "minting ";
+                        capturedCosts[`${purpose} @${1+index}`] = costs;
                         return costs
                     }
                 });
@@ -828,7 +837,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }: SubmitOptions = {}
     ) {
         const { logger } = this;
-        const { tx, willSign, walletMustSign, wallet, wHelper, costs = { cpu: 0n, mem: 0n} } =
+        const { tx, willSign, walletMustSign, wallet, wHelper, costs = { 
+            total: {cpu: 0n, mem: 0n}
+        } } =
             await this.build({
                 signers,
                 addlTxInfo,
@@ -848,6 +859,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
             logger.logPrint(`⚠️  txn validation failed: ${errMsg}\n`);
             logger.logPrint(this.dump(tx));
+            this.emitCostDetails(tx, costs);
             logger.flush();
             if (beforeError) {
                 await beforeError(tx);
@@ -907,42 +919,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         logger.logPrint(`tx transcript: ${description}\n`);
         logger.logPrint(this.dump(tx));
-        const {
-            maxTxExCpu,
-            maxTxExMem,
-            maxTxSize,
-            exCpuFeePerUnit,
-            exMemFeePerUnit,
-            txFeePerByte,
-            txFeeFixed
-        } = this.networkParams
-        const txSize = tx.calcSize();
-        const txFee = Number(tx.calcMinFee(this.networkParams));
-        const cpuFee = Number(costs.cpu) * exCpuFeePerUnit;
-        const memFee = Number(costs.mem) * exMemFeePerUnit;
-        const sizeFee = txSize * txFeePerByte;
-
-        logger.logPrint("costs: " +
-            `\n  -- cpu units ${costs.cpu}`+
-            ` (${
-                (Number(1000n * costs.cpu / BigInt(maxTxExCpu)) / 10).toFixed(1)
-            }% of max)`+
-            ` = ${lovelaceToAda(cpuFee)}`+
-            `\n  -- memory units ${costs.mem}`+
-            ` (${
-                (Number(1000n * costs.mem / BigInt(maxTxExMem)) / 10).toFixed(1)
-            }% of max)`+
-            ` = ${lovelaceToAda(memFee)}`+
-            `\n  -- total size ${txSize}`+
-            ` (${
-                (Number(1000 * txSize / maxTxSize) / 10).toFixed(1)
-            }% of max)`+
-            ` = ${lovelaceToAda(sizeFee)}`+
-            `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}`+
-            `\n  -- remainder ${
-                lovelaceToAda(txFee - cpuFee - memFee - sizeFee - txFeeFixed)
-            } is for refScripts/etc`
-        )
+        this.emitCostDetails(tx, costs);
         logger.flush();
 
         console.timeStamp?.(`submit(): to net/wallet`);
@@ -994,6 +971,57 @@ export class StellarTxnContext<S extends anyState = anyState> {
             logger.finish();
             return r;
         });
+    }
+    emitCostDetails(tx: Tx, costs: { total: Cost, [ key: string ] : Cost }) {
+        const {logger} = this;
+        const {
+            maxTxExCpu,
+            maxTxExMem,
+            maxTxSize,
+            exCpuFeePerUnit,
+            exMemFeePerUnit,
+            txFeePerByte,
+            txFeeFixed
+        } = this.networkParams
+        const {total, ... otherCosts} = costs;
+        const txSize = tx.calcSize();
+        const txFee = Number(tx.calcMinFee(this.networkParams));
+        const cpuFee = Number(total.cpu) * exCpuFeePerUnit;
+        const memFee = Number(total.mem) * exMemFeePerUnit;
+        const sizeFee = txSize * txFeePerByte;
+
+        logger.logPrint("costs: " +
+            `\n  -- scripting costs`+
+            `\n    -- cpu units ${total.cpu}`+
+            ` = ${lovelaceToAda(cpuFee)}`+
+            ` (${
+                (Number(1000n * total.cpu / BigInt(maxTxExCpu)) / 10).toFixed(1)
+            }% of max)`+
+            `\n    -- memory units ${total.mem}`+
+            ` = ${lovelaceToAda(memFee)}`+
+            ` (${
+                (Number(1000n * total.mem / BigInt(maxTxExMem)) / 10).toFixed(1)
+            }% of max)`+
+
+            `\n    -- per script (with % blame for actual costs):`+
+            Object.entries(otherCosts).map(([key, { cpu, mem }]) => 
+                `\n      -- ${key}: cpu ${lovelaceToAda(Number(cpu) * exCpuFeePerUnit)} = ${
+                    (Number(cpu) / Number(total.cpu) * 100).toFixed(1)
+                }%, mem ${lovelaceToAda(Number(mem) * exMemFeePerUnit)} = ${
+                    (Number(mem) / Number(total.mem) * 100).toFixed(1)
+                }%`
+            ).join("")+
+
+            `\n  -- tx size ${txSize}`+
+            ` (${
+                (Number(1000 * txSize / maxTxSize) / 10).toFixed(1)
+            }% of max)`+
+            ` = ${lovelaceToAda(sizeFee)}`+
+            `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}`+
+            `\n  -- remainder ${
+                lovelaceToAda(txFee - cpuFee - memFee - sizeFee - txFeeFixed)
+            } is for refScripts/etc`
+        )
     }
 
     get currentSlot() {
