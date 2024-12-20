@@ -1,9 +1,9 @@
-import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
+import { dumpAny, lovelaceToAda, txAsString, utxosAsString } from "./diagnostics.js";
 import type { hasUutContext } from "./CapoTypes.js";
 import { UutName } from "./delegation/UutName.js";
 import type { ActorContext, SetupDetails } from "./StellarContract.js";
 import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";
-import type { UplcData } from "@helios-lang/uplc";
+import type { Cost, UplcData } from "@helios-lang/uplc";
 import { UplcConsoleLogger } from "./UplcConsoleLogger.js";
 import type { isActivity, SeedAttrs } from "./ActivityTypes.js";
 import {
@@ -529,7 +529,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             this.txb.spendUnsafe(input, r?.redeemer);
         } catch (e: any) {
             // console.log("failed adding input to txn: ", dumpAny(this));
-
+            debugger
             throw new Error(
                 `addInput: ${e.message}` +
                     "\n   ...TODO: dump partial txn from txb above.  Failed TxInput:\n" +
@@ -667,6 +667,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         walletMustSign: boolean;
         wallet: Wallet;
         wHelper: WalletHelper<any>;
+        costs: Cost;
     }> {
         console.timeStamp?.(`submit() txn ${this.txnName}`);
         console.log("tcx build() @top");
@@ -733,7 +734,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     }
                 }
             }
-
+            let capturedCosts : Cost = { cpu: 0n, mem: 0n };
             try {
                 // the transaction can fail validation without throwing an error
                 tx = await this.txb.buildUnsafe({
@@ -742,6 +743,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     networkParams: this.networkParams,
                     logOptions: logger,
                     beforeValidate,
+                    modifyExBudget: (txi, purpose, index, costs) => {
+                        capturedCosts = costs;
+                        return costs
+                    }
                 });
                 this.txb.validToTime
             } catch (e: any) {
@@ -787,6 +792,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 walletMustSign,
                 wallet,
                 wHelper,
+                costs: capturedCosts
             };
         } else {
             throw new Error("no 'actorContext.wallet'; can't make  a txn");
@@ -822,7 +828,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }: SubmitOptions = {}
     ) {
         const { logger } = this;
-        const { tx, willSign, walletMustSign, wallet, wHelper } =
+        const { tx, willSign, walletMustSign, wallet, wHelper, costs = { cpu: 0n, mem: 0n} } =
             await this.build({
                 signers,
                 addlTxInfo,
@@ -901,6 +907,42 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         logger.logPrint(`tx transcript: ${description}\n`);
         logger.logPrint(this.dump(tx));
+        const {
+            maxTxExCpu,
+            maxTxExMem,
+            maxTxSize,
+            exCpuFeePerUnit,
+            exMemFeePerUnit,
+            txFeePerByte,
+            txFeeFixed
+        } = this.networkParams
+        const txSize = tx.calcSize();
+        const txFee = Number(tx.calcMinFee(this.networkParams));
+        const cpuFee = Number(costs.cpu) * exCpuFeePerUnit;
+        const memFee = Number(costs.mem) * exMemFeePerUnit;
+        const sizeFee = txSize * txFeePerByte;
+
+        logger.logPrint("costs: " +
+            `\n  -- cpu units ${costs.cpu}`+
+            ` (${
+                (Number(1000n * costs.cpu / BigInt(maxTxExCpu)) / 10).toFixed(1)
+            }% of max)`+
+            ` = ${lovelaceToAda(cpuFee)}`+
+            `\n  -- memory units ${costs.mem}`+
+            ` (${
+                (Number(1000n * costs.mem / BigInt(maxTxExMem)) / 10).toFixed(1)
+            }% of max)`+
+            ` = ${lovelaceToAda(memFee)}`+
+            `\n  -- total size ${txSize}`+
+            ` (${
+                (Number(1000 * txSize / maxTxSize) / 10).toFixed(1)
+            }% of max)`+
+            ` = ${lovelaceToAda(sizeFee)}`+
+            `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}`+
+            `\n  -- remainder ${
+                lovelaceToAda(txFee - cpuFee - memFee - sizeFee - txFeeFixed)
+            } is for refScripts/etc`
+        )
         logger.flush();
 
         console.timeStamp?.(`submit(): to net/wallet`);
