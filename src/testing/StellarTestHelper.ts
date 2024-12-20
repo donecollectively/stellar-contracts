@@ -244,7 +244,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
     fixupParams(preProdParams: NetworkParams): NetworkParams {
         //@ts-expect-error on our synthetic property
-        if (preProdParams.isFixedUp) return preProdParams;
+        if (true || preProdParams.isFixedUp) return preProdParams;
 
         const txSize = preProdParams.maxTxSize;
         const maxTxSize = Math.floor(txSize * 3.5);
