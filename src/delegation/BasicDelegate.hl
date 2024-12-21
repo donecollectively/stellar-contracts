@@ -706,10 +706,14 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 _ => error("unreachable") // other DelegateRoles 
                             }; // -> possibleMintDgtVerifications
 
-                            possibleSpendDgtVerifications : Bool = myCurrentRole.switch {
-                                MintDgt => /* no-op */ true,
-                                SpendDgt => {
-                                    REQT("(general) the spendDgt checks everything about the charterData update");
+                            otherPossibleVerifications : Bool = myCurrentRole.switch { 
+                                SpendDgt => /* no-op */ error(
+                                    "this block had been run by spendDgt, but\n"+
+                                    "... it's much cheaper to let the MintDgt do it ...\n"+
+                                    "... since it's already involved anyway"
+                                ),
+                                MintDgt => {
+                                    // REQT("(general) the spendDgt checks everything about the charterData update");
 
                                     REQT("doesn't allow a queued change to duplicate any other pending entry for the same delegate name");
                                     isNotADuplicate = charterData.pendingDgtChanges.all( (pdChange: PendingDelegateChange) -> Bool {
@@ -773,7 +777,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                  
                             true
                             && possibleMintDgtVerifications 
-                            && possibleSpendDgtVerifications
+                            && otherPossibleVerifications
                         },
                         removePendingDgtChange{_role, _name} => {
                             // this code-path is only found in the spend-delegate

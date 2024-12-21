@@ -3395,8 +3395,6 @@ export abstract class Capo<
         const currentCharter = await this.findCharterData();
         const mintDgt = await this.getMintDelegate(currentCharter);
         const mintDgtActivity = mintDgt.activity as SomeDgtActivityHelper;
-        const spendDgt = await this.getSpendDelegate(currentCharter);
-        const spendDgtActivity = spendDgt.activity as SomeDgtActivityHelper;
 
         // const dgtActivity = this.onchain.types.PendingDelegateAction
         const tcx1 =
@@ -3459,13 +3457,6 @@ export abstract class Capo<
                       },
                   };
 
-        const pendingDgtChange: PendingDelegateChangeLike = {
-            action: dgtAction,
-            role: { DgDataPolicy: {} },
-            name: policyName,
-            // idPrefix,
-            dgtLink: tempOCDPLink,
-        };
 
         const tcx2 = await this.txnMintingUuts(
             tcx1,
@@ -3488,12 +3479,15 @@ export abstract class Capo<
         const delegateLink = this.mkOnchainRelativeDelegateLink(
             await this.txnCreateOffchainDelegateLink(tcx2, policyName, options)
         );
-        const tcx3 = await spendDgt.txnGrantAuthority(
-            tcx2,
-            spendDgtActivity.CapoLifecycleActivities.queuePendingDgtChange
-            //     pendingDgtChange
-            // )
-        );
+        const pendingDgtChange: PendingDelegateChangeLike = {
+            action: dgtAction,
+            role: { DgDataPolicy: {} },
+            name: policyName,
+            // idPrefix,
+            // dgtLink: tempOCDPLink,
+            dgtLink: delegateLink,
+        };
+
         const tcx4 = await this.mkTxnUpdateCharter(
             {
                 ...currentCharter,
@@ -3506,7 +3500,7 @@ export abstract class Capo<
             // (
             //     pendingDgtChange
             // ),
-            await this.txnAddGovAuthority(tcx3)
+            await this.txnAddGovAuthority(tcx2)
         );
         const stateKey = mkDgtStateKey<RoLabel>(policyName);
         //@ts-expect-error "could be instantiated with different subtype"

@@ -70,7 +70,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
     //     expect(settings).toBeDefined();
     // });
 
-    fit("offchain code can read the settings data from the contract", async (context: localTC) => {
+    it("offchain code can read the settings data from the contract", async (context: localTC) => {
         // prettier-ignore
         const {h, h:{network, actors, delay, state} } = context;
 
@@ -96,18 +96,23 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
         );
     });
 
-    it.todo("TEST: Settings creation adds a uutManfest.currentSettings pointing to the settings UUT", async (context: localTC) => {
-        // prettier-ignore
-        const {h, h:{network, actors, delay, state} } = context;
+    it.todo(
+        "TEST: Settings creation adds a uutManfest.currentSettings pointing to the settings UUT",
+        async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
 
-        const capo = await h.initialize();
-        vi.spyOn(capo, "mkSettingsUutName").mockImplementation((uutName) => {
-            return textToBytes("thisTokenNameDoesNotExist");
-        });
-        await expect(h.bootstrap({}, expectTxnError)).rejects.toThrow(
-            /settings output not found in contract with expected UUT/
-        );
-    });
+            const capo = await h.initialize();
+            vi.spyOn(capo, "mkSettingsUutName").mockImplementation(
+                (uutName) => {
+                    return textToBytes("thisTokenNameDoesNotExist");
+                }
+            );
+            await expect(h.bootstrap({}, expectTxnError)).rejects.toThrow(
+                /settings output not found in contract with expected UUT/
+            );
+        }
+    );
 
     it("updatingCharter activity MUST NOT change the set-UUT reference", async (context: localTC) => {
         // prettier-ignore
@@ -124,12 +129,15 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
                 ...charterData,
                 manifest: new Map([
                     ...charterData.manifest.entries(),
-                    ["currentSettings", {
-                        tokenName: textToBytes("charter"), // a token-name that does exist in the contract
-                        entryType: {NamedTokenRef: {}},
-                        mph: null
-                    }]
-                ])
+                    [
+                        "currentSettings",
+                        {
+                            tokenName: textToBytes("charter"), // a token-name that does exist in the contract
+                            entryType: { NamedTokenRef: {} },
+                            mph: null,
+                        },
+                    ],
+                ]),
             },
             expectTxnError
         );

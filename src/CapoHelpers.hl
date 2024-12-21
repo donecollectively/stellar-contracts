@@ -1941,7 +1941,7 @@ struct CapoCtx {
 
             queuePendingDgtChange => {
                 REQT("... for queuing a pending dgt-change...");
-                DelegateRole::BothMintAndSpendDgt
+                DelegateRole::MintDgt
             },
             removePendingDgtChange => {
                 REQT("... for removing a pending dgt-change entry...");
