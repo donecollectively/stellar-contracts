@@ -542,7 +542,7 @@ export type DgDataUpdateOptions<
     DGDC extends DelegatedDataContract<any, any>,
 > = {
     activity: isActivity | UpdateActivity<any>;
-    updatedFields: DgDataTypeLike<DGDC>;
+    updatedFields: minimalData<DgDataTypeLike<DGDC>>;
 
     addedUtxoValue?: Value;
     // beforeSave?(x: DTL): DTL;
