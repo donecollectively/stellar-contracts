@@ -29,11 +29,13 @@ export class BadSettingsController extends DelegatedDataContract<
             // id: textToBytes("set-42"),
             // type: "settings",
             meaning: 42,
-            // xx: 42,
             badSpenderSetting: 0,
-            badMinterSetting: 0
+            badMinterSetting: 0,
+            //@ts-expect-error on this bad attribute
+            x: 19,
         }
     }
+
     get delegateName() {
         return "settingsPolicy";
     }

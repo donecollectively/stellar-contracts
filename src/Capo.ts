@@ -1957,6 +1957,10 @@ export abstract class Capo<
         >("spendDelegate", chD.spendDelegateLink);
     }
 
+    getSettingsController(this: SELF) {
+        return this.getDgDataController("settings");
+    }
+
     /**
      * Finds the delegated-data controller for a given typeName.
      * @remarks
