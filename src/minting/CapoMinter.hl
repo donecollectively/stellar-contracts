@@ -215,7 +215,7 @@ func main(r : MinterActivity) -> Bool {
                                 print("WARNING: capo lifecycle activity is forcing a new mint-delegate with its Escape-hatch activity");
                                 print("NOTE: the normal lifecycle is to use minter:mintWithDelegateAuthorizing, \n"+
                                     "  ... which defers to the Capo's current minting delegate and allows \n"+
-                                    "  ... queuePendingDgtChange(role: MintDgt) to queue the new mint delegate for installation"
+                                    "  ... queuePendingChange(role: MintDgt) to queue the new mint delegate for installation"
                                 );
                                 REQT("Ensures the new mintDgt-* uut is minted with a seed");
                                 assert(seed == seedToCapo, "seed mismatch:"+
@@ -233,7 +233,7 @@ func main(r : MinterActivity) -> Bool {
                             }, 
                             _ => error(badCharterActivity)
                             
-                            // queuePendingDgtChange{capoActivitySeed, purpose, role, name} => {
+                            // queuePendingChange{capoActivitySeed, purpose, role, name} => {
                             //     assert(purpose == "mintDgt", "wrong purpose");
                             //     role.switch {
                             //         MintDgt => {
@@ -284,8 +284,8 @@ func main(r : MinterActivity) -> Bool {
                                 true
                             },
                             // capoLifecycleActivity{activity} => activity.switch {                                
-                            // queuePendingDgtChange{capoActivitySeed, purpose, role, name} => {
-                            //     assert(!replaceExisting, "queuePendingDgtChange can't use replaceExisting option");
+                            // queuePendingChange{capoActivitySeed, purpose, role, name} => {
+                            //     assert(!replaceExisting, "queuePendingChange can't use replaceExisting option");
 
                             //     assert(purpose == "spendDgt", "wrong purpose");
                             //     role.switch {
@@ -307,7 +307,7 @@ func main(r : MinterActivity) -> Bool {
                                     print("WARNING: capo lifecycle activity is forcing a spend-delegate with its Escape-hatch activity");
                                     print("NOTE: the normal lifecycle is to use minter:mintWithDelegateAuthorizing, \n"+
                                         "  ... which defers to the Capo's current minting delegate and allows \n"+
-                                        "  ... queuePendingDgtChange(role: SpendDgt) to queue the new spend delegate for installation"
+                                        "  ... queuePendingChange(role: SpendDgt) to queue the new spend delegate for installation"
                                     );
 
                                     REQT("Ensures the Capo activity's seed matches the minter's seed");

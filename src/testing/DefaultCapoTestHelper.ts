@@ -308,7 +308,7 @@ export class DefaultCapoTestHelper<
                 "set"
             );
             const commitChanges = () => {
-                return capo.mkTxnCommittingPendingDgtChanges();
+                return capo.mkTxnCommittingPendingChanges();
             };
 
             mkSetPolTxn.includeAddlTxn(`commitSettings`, {

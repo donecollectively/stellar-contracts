@@ -50,7 +50,7 @@ describe("Capo", async () => {
             // });
         })
 
-        it("registers the pending installation in the Capo charter's pendingDgtChanges queue", async (context: localTC) => {
+        it("registers the pending installation in the Capo charter's pendingChanges queue", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
@@ -59,7 +59,7 @@ describe("Capo", async () => {
                 expect(charter.otherNamedDelegates).toBeTruthy();
                 expect(charter.otherNamedDelegates.size).toBe(0);
                 expect(charter.manifest.size).toBe(0);
-                expect(charter.pendingDgtChanges.length).toBe(0);
+                expect(charter.pendingChanges.length).toBe(0);
                 
                 // const tcx = await capo.mkTxnInstallingPolicyDelegate("inventionPolicy");
                 // expect(tcx.state).toBeTruthy()
@@ -70,9 +70,9 @@ describe("Capo", async () => {
 
             {
                 const charter2 = await capo.findCharterData();
-                expect(charter2.pendingDgtChanges).toBeTruthy();
+                expect(charter2.pendingChanges).toBeTruthy();
                 console.log("charter2.namedDelegates", charter2.otherNamedDelegates);
-                expect(charter2.pendingDgtChanges.length).toBe(1);
+                expect(charter2.pendingChanges.length).toBe(1);
                 expect(charter2.otherNamedDelegates.size).toBe(0);
                 expect(charter2.manifest.size).toBe(0);
             }
@@ -97,7 +97,7 @@ describe("Capo", async () => {
             await h.snapToInstalledTestDataPolicy();
 
             const charter = await capo.findCharterData();
-            expect(charter.pendingDgtChanges.length).toBe(0);
+            expect(charter.pendingChanges.length).toBe(0);
             expect(charter.otherNamedDelegates.size).toBe(0);
             expect(charter.manifest.size).toBe(1);
         })

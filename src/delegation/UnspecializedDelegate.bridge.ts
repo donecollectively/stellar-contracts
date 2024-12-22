@@ -61,7 +61,6 @@ import type {
     DelegateDatum, ErgoDelegateDatum, DelegateDatumLike,
     CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$Ergo$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
     DelegateRole, ErgoDelegateRole, DelegateRoleLike,
-    CapoLifecycleActivity$removePendingDgtChange, CapoLifecycleActivity$Ergo$removePendingDgtChange, CapoLifecycleActivity$removePendingDgtChangeLike,
     CapoLifecycleActivity$forcingNewSpendDelegate, CapoLifecycleActivity$Ergo$forcingNewSpendDelegate, CapoLifecycleActivity$forcingNewSpendDelegateLike,
     CapoLifecycleActivity$forcingNewMintDelegate, CapoLifecycleActivity$Ergo$forcingNewMintDelegate, CapoLifecycleActivity$forcingNewMintDelegateLike,
     ManifestActivity$updatingEntry, ManifestActivity$Ergo$updatingEntry, ManifestActivity$updatingEntryLike,
@@ -601,25 +600,29 @@ export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
         return uplc;
     } /* tagOnly variant accessor */
 
-/**
- * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.DgDataPolicy"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#4***
- */
-    get DgDataPolicy() {
-        const uplc = this.mkUplcData({ DgDataPolicy: {} }, 
-            "CapoDelegateHelpers::DelegateRole.DgDataPolicy");
-        return uplc;
-    } /* tagOnly variant accessor */
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::DelegateRole.DgDataPolicy"***
+     */
+    DgDataPolicy(
+        name: string
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
+           DgDataPolicy: name
+        }, "CapoDelegateHelpers::DelegateRole.DgDataPolicy"); /*singleField enum variant*/
+       return uplc;
+    }
 
-/**
- * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.OtherNamedDgt"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#5***
- */
-    get OtherNamedDgt() {
-        const uplc = this.mkUplcData({ OtherNamedDgt: {} }, 
-            "CapoDelegateHelpers::DelegateRole.OtherNamedDgt");
-        return uplc;
-    } /* tagOnly variant accessor */
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::DelegateRole.OtherNamedDgt"***
+     */
+    OtherNamedDgt(
+        name: string
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
+           OtherNamedDgt: name
+        }, "CapoDelegateHelpers::DelegateRole.OtherNamedDgt"); /*singleField enum variant*/
+       return uplc;
+    }
 
 /**
  * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.BothMintAndSpendDgt"***
@@ -723,6 +726,113 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
         }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
        return uplc;
     } /*multiFieldVariant enum accessor*/
+}/*mkEnumHelperClass*/
+
+
+/**
+ * Helper class for generating UplcData for variants of the ***DelegateRole*** enum type.
+ * @public
+ */
+export class ActivityDelegateRoleHelperNested extends EnumBridge<isActivity> {
+    /*mkEnumHelperClass*/
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = makeErgoCast<
+       DelegateRole,
+       DelegateRoleLike
+   >(DelegateRoleSchema, { isMainnet: true });
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintDgt"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
+ */
+    get MintDgt() {
+        const uplc = this.mkUplcData({ MintDgt: {} }, 
+            "CapoDelegateHelpers::DelegateRole.MintDgt");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.SpendDgt"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
+ */
+    get SpendDgt() {
+        const uplc = this.mkUplcData({ SpendDgt: {} }, 
+            "CapoDelegateHelpers::DelegateRole.SpendDgt");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintInvariant"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
+ */
+    get MintInvariant() {
+        const uplc = this.mkUplcData({ MintInvariant: {} }, 
+            "CapoDelegateHelpers::DelegateRole.MintInvariant");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.SpendInvariant"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
+ */
+    get SpendInvariant() {
+        const uplc = this.mkUplcData({ SpendInvariant: {} }, 
+            "CapoDelegateHelpers::DelegateRole.SpendInvariant");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::DelegateRole.DgDataPolicy"***
+    * ## Nested activity: 
+    * this is connected to a nested-activity wrapper, so the details are piped through 
+    * the parent's uplc-encoder, producing a single uplc object with 
+    * a complete wrapper for this inner activity detail.
+     */
+    DgDataPolicy(
+        name: string
+    ) : isActivity {
+        const uplc = this.mkUplcData({ 
+           DgDataPolicy: name
+        }, "CapoDelegateHelpers::DelegateRole.DgDataPolicy"); /*singleField enum variant*/
+       return uplc;
+    }
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::DelegateRole.OtherNamedDgt"***
+    * ## Nested activity: 
+    * this is connected to a nested-activity wrapper, so the details are piped through 
+    * the parent's uplc-encoder, producing a single uplc object with 
+    * a complete wrapper for this inner activity detail.
+     */
+    OtherNamedDgt(
+        name: string
+    ) : isActivity {
+        const uplc = this.mkUplcData({ 
+           OtherNamedDgt: name
+        }, "CapoDelegateHelpers::DelegateRole.OtherNamedDgt"); /*singleField enum variant*/
+       return uplc;
+    }
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.BothMintAndSpendDgt"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#6***
+ */
+    get BothMintAndSpendDgt() {
+        const uplc = this.mkUplcData({ BothMintAndSpendDgt: {} }, 
+            "CapoDelegateHelpers::DelegateRole.BothMintAndSpendDgt");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.HandledByCapoOnly"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#7***
+ */
+    get HandledByCapoOnly() {
+        const uplc = this.mkUplcData({ HandledByCapoOnly: {} }, 
+            "CapoDelegateHelpers::DelegateRole.HandledByCapoOnly");
+        return uplc;
+    } /* tagOnly variant accessor */
 }/*mkEnumHelperClass*/
 
 
@@ -907,36 +1017,38 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange"***
+ * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingChange"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
-    get queuePendingDgtChange() {
-        const uplc = this.mkUplcData({ queuePendingDgtChange: {} }, 
-            "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
+    get queuePendingChange() {
+        const uplc = this.mkUplcData({ queuePendingChange: {} }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingChange");
         return uplc;
     } /* tagOnly variant accessor */
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange"***
-     * @remarks - ***CapoLifecycleActivity$removePendingDgtChangeLike*** is the same as the expanded field-types.
+     * access to different variants of the ***nested DelegateRole*** type needed for ***CapoLifecycleActivity:removePendingChange***.
      */
-    removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
-        role: DelegateRoleLike,
-        name: string | undefined
-    }) : UplcData {
-        const uplc = this.mkUplcData({
-            removePendingDgtChange: fields 
-        }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
-       return uplc;
-    } /*multiFieldVariant enum accessor*/
+    get removePendingChange() {
+        const nestedAccessor = new DelegateRoleHelperNested(this.bundle,
+            {isNested: true, isActivity: false 
+        });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
+        nestedAccessor.mkDataVia(
+            (role: DelegateRoleLike) => {
+                return  this.mkUplcData({ removePendingChange: role }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.removePendingChange");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
 
 /**
- * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.commitPendingDgtChanges"***
+ * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.commitPendingChanges"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
  */
-    get commitPendingDgtChanges() {
-        const uplc = this.mkUplcData({ commitPendingDgtChanges: {} }, 
-            "CapoDelegateHelpers::CapoLifecycleActivity.commitPendingDgtChanges");
+    get commitPendingChanges() {
+        const uplc = this.mkUplcData({ commitPendingChanges: {} }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.commitPendingChanges");
         return uplc;
     } /* tagOnly variant accessor */
 
@@ -1381,40 +1493,38 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
 
 
 /**
- * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange"***
+ * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingChange"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
-    get queuePendingDgtChange() {
-        const uplc = this.mkUplcData({ queuePendingDgtChange: {} }, 
-            "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
+    get queuePendingChange() {
+        const uplc = this.mkUplcData({ queuePendingChange: {} }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingChange");
         return uplc;
     } /* tagOnly variant accessor */
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange"***
-     * @remarks - ***CapoLifecycleActivity$removePendingDgtChangeLike*** is the same as the expanded field-types.
-    * ### Nested activity: 
-    * this is connected to a nested-activity wrapper, so the details are piped through 
-    * the parent's uplc-encoder, producing a single uplc object with 
-    * a complete wrapper for this inner activity detail.
+     * access to different variants of the ***nested DelegateRole*** type needed for ***CapoLifecycleActivity:removePendingChange***.
      */
-    removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
-        role: DelegateRoleLike,
-        name: string | undefined
-    }) : isActivity {
-        const uplc = this.mkUplcData({
-            removePendingDgtChange: fields 
-        }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
-       return uplc;
-    } /*multiFieldVariant enum accessor*/
+    get removePendingChange() {
+        const nestedAccessor = new ActivityDelegateRoleHelperNested(this.bundle,
+            {isNested: true, isActivity: true 
+        });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
+        nestedAccessor.mkDataVia(
+            (role: DelegateRoleLike) => {
+                return  this.mkUplcData({ removePendingChange: role }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.removePendingChange");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
 
 /**
- * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.commitPendingDgtChanges"***
+ * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.commitPendingChanges"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
  */
-    get commitPendingDgtChanges() {
-        const uplc = this.mkUplcData({ commitPendingDgtChanges: {} }, 
-            "CapoDelegateHelpers::CapoLifecycleActivity.commitPendingDgtChanges");
+    get commitPendingChanges() {
+        const uplc = this.mkUplcData({ commitPendingChanges: {} }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.commitPendingChanges");
         return uplc;
     } /* tagOnly variant accessor */
 
@@ -2253,14 +2363,30 @@ export const DelegateRoleSchema : EnumTypeSchema = {
             "tag": 4,
             "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
             "name": "DgDataPolicy",
-            "fieldTypes": []
+            "fieldTypes": [
+                {
+                    "name": "name",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                }
+            ]
         },
         {
             "kind": "variant",
             "tag": 5,
             "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
             "name": "OtherNamedDgt",
-            "fieldTypes": []
+            "fieldTypes": [
+                {
+                    "name": "name",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                }
+            ]
         },
         {
             "kind": "variant",
@@ -2420,15 +2546,15 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 1,
-            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__queuePendingDgtChange",
-            "name": "queuePendingDgtChange",
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__queuePendingChange",
+            "name": "queuePendingChange",
             "fieldTypes": []
         },
         {
             "kind": "variant",
             "tag": 2,
-            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__removePendingDgtChange",
-            "name": "removePendingDgtChange",
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__removePendingChange",
+            "name": "removePendingChange",
             "fieldTypes": [
                 {
                     "name": "role",
@@ -2470,14 +2596,30 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                 "tag": 4,
                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
                                 "name": "DgDataPolicy",
-                                "fieldTypes": []
+                                "fieldTypes": [
+                                    {
+                                        "name": "name",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    }
+                                ]
                             },
                             {
                                 "kind": "variant",
                                 "tag": 5,
                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
                                 "name": "OtherNamedDgt",
-                                "fieldTypes": []
+                                "fieldTypes": [
+                                    {
+                                        "name": "name",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    }
+                                ]
                             },
                             {
                                 "kind": "variant",
@@ -2495,24 +2637,14 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                             }
                         ]
                     }
-                },
-                {
-                    "name": "name",
-                    "type": {
-                        "kind": "option",
-                        "someType": {
-                            "kind": "internal",
-                            "name": "String"
-                        }
-                    }
                 }
             ]
         },
         {
             "kind": "variant",
             "tag": 3,
-            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__commitPendingDgtChanges",
-            "name": "commitPendingDgtChanges",
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__commitPendingChanges",
+            "name": "commitPendingChanges",
             "fieldTypes": []
         },
         {
@@ -2839,15 +2971,15 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                             {
                                 "kind": "variant",
                                 "tag": 1,
-                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__queuePendingDgtChange",
-                                "name": "queuePendingDgtChange",
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__queuePendingChange",
+                                "name": "queuePendingChange",
                                 "fieldTypes": []
                             },
                             {
                                 "kind": "variant",
                                 "tag": 2,
-                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__removePendingDgtChange",
-                                "name": "removePendingDgtChange",
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__removePendingChange",
+                                "name": "removePendingChange",
                                 "fieldTypes": [
                                     {
                                         "name": "role",
@@ -2889,14 +3021,30 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                                                     "tag": 4,
                                                     "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
                                                     "name": "DgDataPolicy",
-                                                    "fieldTypes": []
+                                                    "fieldTypes": [
+                                                        {
+                                                            "name": "name",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "String"
+                                                            }
+                                                        }
+                                                    ]
                                                 },
                                                 {
                                                     "kind": "variant",
                                                     "tag": 5,
                                                     "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
                                                     "name": "OtherNamedDgt",
-                                                    "fieldTypes": []
+                                                    "fieldTypes": [
+                                                        {
+                                                            "name": "name",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "String"
+                                                            }
+                                                        }
+                                                    ]
                                                 },
                                                 {
                                                     "kind": "variant",
@@ -2914,24 +3062,14 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                                                 }
                                             ]
                                         }
-                                    },
-                                    {
-                                        "name": "name",
-                                        "type": {
-                                            "kind": "option",
-                                            "someType": {
-                                                "kind": "internal",
-                                                "name": "String"
-                                            }
-                                        }
                                     }
                                 ]
                             },
                             {
                                 "kind": "variant",
                                 "tag": 3,
-                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__commitPendingDgtChanges",
-                                "name": "commitPendingDgtChanges",
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__commitPendingChanges",
+                                "name": "commitPendingChanges",
                                 "fieldTypes": []
                             },
                             {

@@ -252,8 +252,8 @@ enum DelegateActivity {
             //  ... you can add more constraints here if needed
             DelegateLifecycleActivities => true,
             CapoLifecycleActivities{CLA} => {
-                // CapoLifecycleActivites.queuePendingDgtChange is only relevant for the MINT delegate.
-                // CapoLifecycleActivites.{removing, committing}PendingDgtChange(s) are served by the SPEND delegate
+                // CapoLifecycleActivites.queuePendingChange is only relevant for the MINT delegate.
+                // CapoLifecycleActivites.{removing, committing}PendingChange(s) are served by the SPEND delegate
                 // Capo
                 // CapoLifecycleActivites.{forcing}* are ONLY ever served by the Capo itself as an escape-hatch
                 //  assert(isMintingDelegate, "unreachable"); // TODO access this const defined in the main script
@@ -264,11 +264,11 @@ enum DelegateActivity {
                 //   ... in your Capo, you can implement checks for that here.
                 //  You can use this construct as-is, or modify it to suit your needs.
                 CLA.switch {
-                    // queuePendingDgtChange{action, role, name} => {
-                    //     print("unspecialized mint delegate allowing queuePendingDgtChange");
+                    // queuePendingChange{action, role, name} => {
+                    //     print("unspecialized mint delegate allowing queuePendingChange");
                     // },
                     // committingPendingDgtChange{action, role, name} => {
-                    //     print("unspecialized mint delegate allowing committingPendingDgtChange");
+                    //     print("unspecialized mint delegate allowing committingPendingChange");
                     // },
                     CreatingDelegate{seed, purpose} => {
                         self.supportedCapoDelegatePurposes().find_safe(

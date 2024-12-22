@@ -162,20 +162,20 @@ func requiresMintDelegateApproval(
     mintDgtActivity.switch {
         CapoLifecycleActivities{CLA} => CLA.switch {
             CreatingDelegate => {
-                TODO( "make this obsolete: generic creatingDelegate (use queuePendingDgtChange and committingPendingDgtChanges in sequence)");
+                TODO( "make this obsolete: generic creatingDelegate (use queuePendingChange and committingPendingDgtChanges in sequence)");
                 // print("  -- minter wants mintDgt + CapoLifecycle (delegate-creation)\n");
 
                 mintDgtInput.requiresValidOutput() && 
                 true
             },
-            queuePendingDgtChange => {
-                print("  -- ok: mintDgt using CapoLifecycle.queuePendingDgtChange)\n");
+            queuePendingChange => {
+                print("  -- ok: mintDgt using CapoLifecycle.queuePendingChange)\n");
                 mintDgtInput.requiresValidOutput() && 
                 true
             },
             forcingNewSpendDelegate => error("invalid forcingNewSpendDelegate activity on mintDgt (escape-hatch reserved for Minter/Capo pair)"),
             forcingNewMintDelegate => error("invalid forcingNewMintDelegate activity on mintDgt (escape-hatch reserved for Minter/Capo pair)"),
-            _ => error("mint dgt can only approve CapoLifecycleActivities.queuePendingDgtChange or non-CLA activities")
+            _ => error("mint dgt can only approve CapoLifecycleActivities.queuePendingChange or non-CLA activities")
             // _ => error("no")// ---- left as a compile-time error if any further variants are added 
         },
         SpendingActivities => error("DelegateInput::SpendingActivity can't mint!"),
@@ -434,12 +434,12 @@ enum MinterActivity {
     }
     mintWithDelegateAuthorizing // 1 - delegate is handling all mints
 
-    // obsoleted by Capo lifecycle activity (queuePendingDgtChange with role=MintInvariant)
+    // obsoleted by Capo lifecycle activity (queuePendingChange with role=MintInvariant)
     addingMintInvariant { //2 
         seed: TxOutputId
     }
 
-    // obsoleted by Capo lifecycle activity (queuePendingDgtChange with role=SpendInvariant)
+    // obsoleted by Capo lifecycle activity (queuePendingChange with role=SpendInvariant)
     addingSpendInvariant { //3
         seed: TxOutputId
     }

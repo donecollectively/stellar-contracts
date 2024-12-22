@@ -41,8 +41,12 @@ enum DelegateRole {
     SpendDgt
     MintInvariant
     SpendInvariant
-    DgDataPolicy
-    OtherNamedDgt
+    DgDataPolicy {
+        name: String
+    }
+    OtherNamedDgt {
+        name: String
+    }
     BothMintAndSpendDgt
     HandledByCapoOnly
 }
@@ -98,7 +102,7 @@ enum CapoLifecycleActivity {
         seed: TxOutputId
         purpose: String
     }
-    queuePendingDgtChange 
+    queuePendingChange 
         // seed: TxOutputId
         // purpose: String
         // action: PendingDelegateAction
@@ -106,18 +110,17 @@ enum CapoLifecycleActivity {
         // role: DelegateRole
         // name: Option[String]
     // }
-    removePendingDgtChange {
+    removePendingChange {
         role: DelegateRole
-        name: Option[String]
     }
-    commitPendingDgtChanges
+    commitPendingChanges
     forcingNewSpendDelegate {
         seed: TxOutputId
-        purpose: String
+        purpose: String //uut purpose "spendDgt"
     }
     forcingNewMintDelegate {
         seed: TxOutputId
-        purpose: String
+        purpose: String //uut purpose "mintDgt"
     }
         // manifest-updating activities, ALWAYS at Enum position 5
     // this is not application-specific.  It's placed into the delegation
@@ -359,7 +362,7 @@ struct RelativeDelegateLink {
 struct PendingDelegateChange {
     action: PendingDelegateAction
     role: DelegateRole
-    name: Option[String] // only valid for named delegates and dgDataPolicy
+    // name: Option[String] // moved to DelegateRole variants for named delegates/dgDataPolicy
     dgtLink: Option[RelativeDelegateLink]
 
     func isValid(self) -> Bool {
@@ -367,19 +370,31 @@ struct PendingDelegateChange {
             BothMintAndSpendDgt => error(
                 "DelegateRole::BothMintAndSpendDgt not applicable in a PendingDelegateChange struct"
             ),
-            DgDataPolicy => self.name.switch {
-                Some => true,
-                None => false
-            },
-            OtherNamedDgt => self.name.switch {
-                Some => true,
-                None => false
-            },
-            _ => self.name.switch {
-                Some => false,
-                None => true
-            }
+            _ => true
         }
+    }
+}
+
+enum PendingCharterChange {
+    delegateChange {
+        change: PendingDelegateChange
+    }
+    otherManifestChange {
+        activity: ManifestActivity,
+        /**
+         * indicates delegates that are needed to validate a pending change
+         * @remarks
+         * not every manifest change has to be validated by delegates, 
+         * ... but those that do can enforce:
+         *   (a) creating this list of delegates that must validate
+         *   (b) that the list becomes empty before the change is committed.
+         *   (c) OR that any remaining delegates are validating the committed data
+         * ... as part of the txn completing the change.
+         *
+         * This helps ensure that the change is validated by the right delegates,
+         *  ... without needing all the validation to be done in a single transaction
+         */ 
+         remainingDelegateValidations: []DelegateRole
     }
 }
 

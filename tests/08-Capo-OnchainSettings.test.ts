@@ -52,7 +52,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
         await addTestContext(context, BadSettingsTestHelper);
     });
 
-    it("can create a dgDataPolicy in the pendingDgtChanges queue to be adopted by the Capo", async (context: localTC) => {
+    it("can create a dgDataPolicy in the pendingChanges queue to be adopted by the Capo", async (context: localTC) => {
         const {
             h,
             h: { network, actors, delay, state },

@@ -22,7 +22,7 @@ import {
     CapoLifecycleActivity,
     DgTknDisposition as DgTkn,
     DelegateRole,
-    PendingDelegateChange    
+    PendingCharterChange    
 } from CapoDelegateHelpers
 
 enum UtxoSource {
@@ -157,7 +157,7 @@ enum CapoDatum {
         mintInvariants: []RelativeDelegateLink
         govAuthorityLink: RelativeDelegateLink
         manifest: Map[String]CapoManifestEntry
-        pendingDgtChanges: []PendingDelegateChange
+        pendingChanges: []PendingCharterChange
         // typeMapUut: Option[ByteArray]   // optional reference to a UUT having TypeMapInfo datum
     }
     ScriptReference
@@ -1199,7 +1199,7 @@ struct CapoCtx {
             None => error("missing required delegate with name: " + dgtName),
 
             Some{dgtLink} => {
-                self.requiresDelegateInput(dgtLink, DelegateRole::OtherNamedDgt)
+                self.requiresDelegateInput(dgtLink, DelegateRole::OtherNamedDgt{dgtName})
             }
         }
     }
@@ -1215,7 +1215,7 @@ struct CapoCtx {
                 REQT("requires the delegated-data policy for type="+typeName);
                 self.requiresDelegateInput(
                     dgtLink, 
-                    DelegateRole::DgDataPolicy, 
+                    DelegateRole::DgDataPolicy{typeName}, 
                     required,
                     Option[String]::Some{idPrefix}
                 )
@@ -1921,15 +1921,15 @@ struct CapoCtx {
                 DelegateRole::SpendDgt
             },
 
-            queuePendingDgtChange => {
+            queuePendingChange => {
                 REQT("... for queuing a pending dgt-change...");
                 DelegateRole::MintDgt
             },
-            removePendingDgtChange => {
+            removePendingChange => {
                 REQT("... for removing a pending dgt-change entry...");
                 DelegateRole::SpendDgt
             },
-            commitPendingDgtChanges => {
+            commitPendingChanges => {
                 REQT("... for committing pending dgt-changes...");
                  DelegateRole::BothMintAndSpendDgt
             },

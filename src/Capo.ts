@@ -122,6 +122,7 @@ import type {
     PendingDelegateAction$AddLike,
     ManifestEntryTypeLike,
     CapoDatum$Ergo$DelegatedData,
+    PendingCharterChangeLike,
 } from "./CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
 import type {
@@ -2255,7 +2256,7 @@ export abstract class Capo<
                 manifest: new Map(),
                 spendInvariants: [],
                 mintInvariants: [],
-                pendingDgtChanges: [],
+                pendingChanges: [],
             })
             // this.compiledScript
         );
@@ -3290,19 +3291,19 @@ export abstract class Capo<
     //     const spendDelegate = await this.getSpendDelegate(currentCharter);
     //     const tcx1 = await spendDelegate.txnGrantAuthority(
     //         tcx,
-    //         spendDelegate.activity.capoLifecycleActivity.queuePendingDgtChange(
+    //         spendDelegate.activity.capoLifecycleActivity.queuePendingChange(
     //             pendingChange
     //         )
     //     );
     //     const tcx2 = await this.mkTxnUpdateCharter(
     //         {
     //             ...currentCharter,
-    //             pendingDgtChanges: [
+    //             pendingChanges: [
     //                 pendingChange,
-    //                 ...currentCharter.pendingDgtChanges,
+    //                 ...currentCharter.pendingChanges,
     //             ],
     //         },
-    //         this.activity.capoLifecycleActivity.queuePendingDgtChange(
+    //         this.activity.capoLifecycleActivity.queuePendingChange(
     //             pendingChange
     //         ),
     //         tcx1
@@ -3465,7 +3466,7 @@ export abstract class Capo<
                 usingSeedUtxo: tcx1.state.seedUtxo,
                 mintDelegateActivity:
                     mintDgtActivity.CapoLifecycleActivities
-                        .queuePendingDgtChange,
+                        .queuePendingChange,
                 // (
                 //     pendingDgtChange
                 // ),
@@ -3479,24 +3480,25 @@ export abstract class Capo<
         const delegateLink = this.mkOnchainRelativeDelegateLink(
             await this.txnCreateOffchainDelegateLink(tcx2, policyName, options)
         );
-        const pendingDgtChange: PendingDelegateChangeLike = {
-            action: dgtAction,
-            role: { DgDataPolicy: {} },
-            name: policyName,
-            // idPrefix,
-            // dgtLink: tempOCDPLink,
-            dgtLink: delegateLink,
+        const pendingChange: PendingCharterChangeLike = {
+            delegateChange: {
+                action: dgtAction,
+                role: { DgDataPolicy: policyName },
+                // idPrefix,
+                // dgtLink: tempOCDPLink,
+                dgtLink: delegateLink
+            }
         };
 
         const tcx4 = await this.mkTxnUpdateCharter(
             {
                 ...currentCharter,
-                pendingDgtChanges: [
-                    pendingDgtChange,
-                    ...currentCharter.pendingDgtChanges,
+                pendingChanges: [
+                    pendingChange,
+                    ...currentCharter.pendingChanges,
                 ],
             },
-            this.activity.capoLifecycleActivity.queuePendingDgtChange,
+            this.activity.capoLifecycleActivity.queuePendingChange,
             // (
             //     pendingDgtChange
             // ),
@@ -3536,7 +3538,7 @@ export abstract class Capo<
                 usingSeedUtxo: seedUtxo,
                 mintDelegateActivity:
                     mintDgtActivity.CapoLifecycleActivities
-                        .queuePendingDgtChange,
+                        .queuePendingChange,
                 //     {
                 //         action: {
                 //             Add: {
@@ -3558,35 +3560,35 @@ export abstract class Capo<
         return this.txnCreateOffchainDelegateLink(ttcx2, policyName, options);
     }
 
-    async mkTxnCommittingPendingDgtChanges<TCX extends StellarTxnContext>(
+    async mkTxnCommittingPendingChanges<TCX extends StellarTxnContext>(
         tcx: TCX = this.mkTcx() as TCX
     ) {
         const currentCharter = await this.findCharterData();
         const mintDgt = await this.getMintDelegate(currentCharter);
         const spendDgt = await this.getSpendDelegate(currentCharter);
-        const pendingChanges = currentCharter.pendingDgtChanges;
+        const pendingChanges = currentCharter.pendingChanges;
         const tcx1a = await spendDgt.txnGrantAuthority(
             tcx,
-            spendDgt.activity.CapoLifecycleActivities.commitPendingDgtChanges
+            spendDgt.activity.CapoLifecycleActivities.commitPendingChanges
         );
         const tcx1b = await mintDgt.txnGrantAuthority(
             tcx1a,
-            mintDgt.activity.CapoLifecycleActivities.commitPendingDgtChanges
+            mintDgt.activity.CapoLifecycleActivities.commitPendingChanges
         );
         const tcx1c = await this.txnAddGovAuthority(tcx1b);
 
         const currentManifest = currentCharter.manifest;
         const newManifestEntries = new Map();
         for (const pendingChange of pendingChanges) {
-            const { action: thisAction, role, name, dgtLink } = pendingChange;
-            if (!role.DgDataPolicy) {
+            if (pendingChange.otherManifestChange) {
+                throw new Error(`otherManifestChange not yet supported`)
+            }
+            const { action: thisAction, role, dgtLink } = pendingChange.delegateChange!;
+            const name = role.DgDataPolicy
+            if (!name) {
                 throw new Error(
                     `only DgDataPolicy changes are currently supported here`
                 );
-            }
-            if (!name) {
-                console.log("missing name in ", { pendingChange });
-                throw new Error(`missing expected 'name' in pendingChange`);
             }
             if (!dgtLink) {
                 throw new Error(`missing expected 'dgtLink' in pendingChange`);
@@ -3651,9 +3653,9 @@ export abstract class Capo<
             {
                 ...currentCharter,
                 manifest: updatedManifest,
-                pendingDgtChanges: [],
+                pendingChanges: [],
             },
-            this.activity.capoLifecycleActivity.commitPendingDgtChanges,
+            this.activity.capoLifecycleActivity.commitPendingChanges,
             tcx1c
         );
 

@@ -22,7 +22,7 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     }
     async t() {
         const t = await this.getSpendDelegate()
-        t.activity.CapoLifecycleActivities.commitPendingDgtChanges
+        t.activity.CapoLifecycleActivities.commitPendingChanges
     }
     
     initDelegateRoles() {

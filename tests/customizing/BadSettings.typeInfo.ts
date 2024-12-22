@@ -211,10 +211,12 @@ export type DelegateRoleMeta = EnumTypeMeta<
             "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         DgDataPolicy: singleEnumVariantMeta<DelegateRoleMeta, "DgDataPolicy",
-            "Constr#4", "tagOnly", tagOnly, "noSpecialFlags"
+            "Constr#4", "singletonField", /* implied wrapper { name: ... } for singleVariantField */ 
+			string   , "noSpecialFlags"
         >,
         OtherNamedDgt: singleEnumVariantMeta<DelegateRoleMeta, "OtherNamedDgt",
-            "Constr#5", "tagOnly", tagOnly, "noSpecialFlags"
+            "Constr#5", "singletonField", /* implied wrapper { name: ... } for singleVariantField */ 
+			string   , "noSpecialFlags"
         >,
         BothMintAndSpendDgt: singleEnumVariantMeta<DelegateRoleMeta, "BothMintAndSpendDgt",
             "Constr#6", "tagOnly", tagOnly, "noSpecialFlags"
@@ -240,8 +242,10 @@ export type DelegateRole =
         | { SpendDgt: tagOnly /*minEnumVariant*/ }
         | { MintInvariant: tagOnly /*minEnumVariant*/ }
         | { SpendInvariant: tagOnly /*minEnumVariant*/ }
-        | { DgDataPolicy: tagOnly /*minEnumVariant*/ }
-        | { OtherNamedDgt: tagOnly /*minEnumVariant*/ }
+        | { DgDataPolicy: /* implied wrapper { name: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
+        | { OtherNamedDgt: /* implied wrapper { name: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
         | { BothMintAndSpendDgt: tagOnly /*minEnumVariant*/ }
         | { HandledByCapoOnly: tagOnly /*minEnumVariant*/ }
 
@@ -265,27 +269,13 @@ export type DelegateRoleLike = IntersectedEnum<
         | { SpendDgt: tagOnly /*minEnumVariant*/ }
         | { MintInvariant: tagOnly /*minEnumVariant*/ }
         | { SpendInvariant: tagOnly /*minEnumVariant*/ }
-        | { DgDataPolicy: tagOnly /*minEnumVariant*/ }
-        | { OtherNamedDgt: tagOnly /*minEnumVariant*/ }
+        | { DgDataPolicy: /* implied wrapper { name: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
+        | { OtherNamedDgt: /* implied wrapper { name: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
         | { BothMintAndSpendDgt: tagOnly /*minEnumVariant*/ }
         | { HandledByCapoOnly: tagOnly /*minEnumVariant*/ }
 >
-
-export type CapoLifecycleActivity$removePendingDgtChange = {
-    role: DelegateRole  /*minVariantField*/ ,
-    name: string | undefined  /*minVariantField*/ 
-}
-
-export type CapoLifecycleActivity$Ergo$removePendingDgtChange = {
-    role: ErgoDelegateRole  /*minVariantField*/ ,
-    name: string | undefined  /*minVariantField*/ 
-}
-
-export type CapoLifecycleActivity$removePendingDgtChangeLike = {
-    role: DelegateRoleLike  /*minVariantField*/ ,
-    name: string | undefined  /*minVariantField*/ 
-}
-
 
 export type CapoLifecycleActivity$forcingNewSpendDelegate = {
     seed: TxOutputId  /*minVariantField*/ ,
@@ -439,14 +429,14 @@ export type CapoLifecycleActivityMeta = EnumTypeMeta<
             "Constr#0", 
             "fields", CapoLifecycleActivity$CreatingDelegate, "isSeededActivity"
         >,
-        queuePendingDgtChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "queuePendingDgtChange",
+        queuePendingChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "queuePendingChange",
             "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
-        removePendingDgtChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "removePendingDgtChange",
-            "Constr#2", 
-            "fields", CapoLifecycleActivity$removePendingDgtChange, "noSpecialFlags"
+        removePendingChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "removePendingChange",
+            "Constr#2", "singletonField", /* implied wrapper { role: ... } for singleVariantField */ 
+			DelegateRole   , "noSpecialFlags"
         >,
-        commitPendingDgtChanges: singleEnumVariantMeta<CapoLifecycleActivityMeta, "commitPendingDgtChanges",
+        commitPendingChanges: singleEnumVariantMeta<CapoLifecycleActivityMeta, "commitPendingChanges",
             "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         forcingNewSpendDelegate: singleEnumVariantMeta<CapoLifecycleActivityMeta, "forcingNewSpendDelegate",
@@ -476,9 +466,10 @@ export type CapoLifecycleActivityMeta = EnumTypeMeta<
  */
 export type CapoLifecycleActivity = 
         | { CreatingDelegate: CapoLifecycleActivity$CreatingDelegate /*minEnumVariant*/ }
-        | { queuePendingDgtChange: tagOnly /*minEnumVariant*/ }
-        | { removePendingDgtChange: CapoLifecycleActivity$removePendingDgtChange /*minEnumVariant*/ }
-        | { commitPendingDgtChanges: tagOnly /*minEnumVariant*/ }
+        | { queuePendingChange: tagOnly /*minEnumVariant*/ }
+        | { removePendingChange: /* implied wrapper { role: ... } for singleVariantField */ 
+			DelegateRole    /*minEnumVariant*/ }
+        | { commitPendingChanges: tagOnly /*minEnumVariant*/ }
         | { forcingNewSpendDelegate: CapoLifecycleActivity$forcingNewSpendDelegate /*minEnumVariant*/ }
         | { forcingNewMintDelegate: CapoLifecycleActivity$forcingNewMintDelegate /*minEnumVariant*/ }
         | { updatingManifest: /* implied wrapper { activity: ... } for singleVariantField */ 
@@ -486,9 +477,10 @@ export type CapoLifecycleActivity =
 
 export type ErgoCapoLifecycleActivity = IntersectedEnum<
         | { CreatingDelegate: CapoLifecycleActivity$Ergo$CreatingDelegate /*minEnumVariant*/ }
-        | { queuePendingDgtChange: tagOnly /*minEnumVariant*/ }
-        | { removePendingDgtChange: CapoLifecycleActivity$Ergo$removePendingDgtChange /*minEnumVariant*/ }
-        | { commitPendingDgtChanges: tagOnly /*minEnumVariant*/ }
+        | { queuePendingChange: tagOnly /*minEnumVariant*/ }
+        | { removePendingChange: /* implied wrapper { role: ... } for singleVariantField */ 
+			ErgoDelegateRole    /*minEnumVariant*/ }
+        | { commitPendingChanges: tagOnly /*minEnumVariant*/ }
         | { forcingNewSpendDelegate: CapoLifecycleActivity$Ergo$forcingNewSpendDelegate /*minEnumVariant*/ }
         | { forcingNewMintDelegate: CapoLifecycleActivity$Ergo$forcingNewMintDelegate /*minEnumVariant*/ }
         | { updatingManifest: /* implied wrapper { activity: ... } for singleVariantField */ 
@@ -510,9 +502,10 @@ export type ErgoCapoLifecycleActivity = IntersectedEnum<
  */
 export type CapoLifecycleActivityLike = IntersectedEnum<
         | { CreatingDelegate: CapoLifecycleActivity$CreatingDelegateLike /*minEnumVariant*/ }
-        | { queuePendingDgtChange: tagOnly /*minEnumVariant*/ }
-        | { removePendingDgtChange: CapoLifecycleActivity$removePendingDgtChangeLike /*minEnumVariant*/ }
-        | { commitPendingDgtChanges: tagOnly /*minEnumVariant*/ }
+        | { queuePendingChange: tagOnly /*minEnumVariant*/ }
+        | { removePendingChange: /* implied wrapper { role: ... } for singleVariantField */ 
+			DelegateRoleLike    /*minEnumVariant*/ }
+        | { commitPendingChanges: tagOnly /*minEnumVariant*/ }
         | { forcingNewSpendDelegate: CapoLifecycleActivity$forcingNewSpendDelegateLike /*minEnumVariant*/ }
         | { forcingNewMintDelegate: CapoLifecycleActivity$forcingNewMintDelegateLike /*minEnumVariant*/ }
         | { updatingManifest: /* implied wrapper { activity: ... } for singleVariantField */ 
