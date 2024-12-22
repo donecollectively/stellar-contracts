@@ -596,8 +596,7 @@ struct DelegateInput {
 
         REQT("withUniqueDDSpendingActivity: checks presence of delegated-data controller's spending activity for recId");
         strId : String = recId.decode_utf8();
-        print("    -- recId: ");
-        print(strId);
+        print("    -- recId: "+ strId);
         print("\n");
 
         TODO("TEST THIS v");
@@ -612,13 +611,10 @@ struct DelegateInput {
                         foundRecId: ByteArray = ByteArray::from_data(fields.head);
                         if(recId != foundRecId) {
                             print("  -- expected: Spending:"+strId);
-                            print("\n  -- actual: Spending:"+foundRecId.show());
-                            print("\n");
+                            print("  -- actual: Spending:"+foundRecId.show());
                             self.error("recId mismatch")
                         } else {
-                            print ("  -- ok: DD controller spending activity for ");
-                            print(strId);
-                            print("\n")
+                            print ("  -- ok: DD controller spending activity for "+strId)
                         }
                     },
                     _ => error("no way")
@@ -1795,10 +1791,10 @@ struct CapoCtx {
         // );
 
         CapoDatum::CharterData{
-            spendDelegate,
+            _spendDelegate,
             spendInvariants,
             otherNamedDelegates,
-            mintDelegate,
+            _mintDelegate,
             mintInvariants,
             govDelegate,
             manifest,
@@ -1829,22 +1825,9 @@ struct CapoCtx {
         
         inputs: []TxInput = tx.inputs;
         //!!! actually requiring delegates' SettingsValidation starts here.
-        REQT("spend delegate must validate settings ... wait - thats myself.  Call validate directly?");
-
-        spendDelegateIsValidating : Bool = 
-            spendDelegate.validatesUpdatedSettings(
-                inputs: inputs,
-                mph: mph,
-                inputRequired: true
-            ).unwrap();
-
-        REQT("mint delegate must validate settings");
-        mintDelegateIsValidating : Bool = 
-        mintDelegate.validatesUpdatedSettings(
-                inputs: inputs,
-                mph: mph,
-                inputRequired: true
-            ).unwrap();
+        REQT("   -- only the spend delegate calls this function");
+        spendDelegateIsValidating : Bool = self.nowActingAsSpendDgt();
+        REQT("  -- spend delegate requires the other delegates validate (except mint delegate == same as spend delegate)");
 
         // govAuthority is checking the settings
         REQT( "govDelegate MAY contribute to settings validation");
@@ -1920,7 +1903,6 @@ struct CapoCtx {
         // isUpdatingSettings &&
         dgDataPoliciesAreValidating &&
         spendDelegateIsValidating &&
-        mintDelegateIsValidating &&
         govDelegateMaybeValidating &&
         spendInvariantsAreValidating &&
         mintInvariantsAreValidating &&

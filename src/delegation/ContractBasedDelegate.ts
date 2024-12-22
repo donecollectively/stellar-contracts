@@ -42,6 +42,7 @@ export class ContractBasedDelegate extends StellarDelegate {
      * use the same essential template for the outer layer of their activity & datum interface.
      */
     declare dataBridgeClass : GenericDelegateBridgeClass;
+    declare _dataBridge: GenericDelegateBridge;
     static currentRev = 1n;
 
     /**
@@ -237,11 +238,11 @@ export class ContractBasedDelegate extends StellarDelegate {
         if (txin) return txin.output.datum!;
         const { capoAddr, mph, tn, ..._otherCfgSettings } = this.configIn!;
 
-        return this.mkDatumIsDelegation({
+        return this.mkDatum.IsDelegation({
             capoAddr,
             mph,
             tn,
-        });
+        })
     }
 
     /**
@@ -619,6 +620,7 @@ export class ContractBasedDelegate extends StellarDelegate {
      **/
 
     async DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(
+        this: ContractBasedDelegate,
         tcx: StellarTxnContext,
         fromFoundUtxo: TxInput
     ): Promise<TCX> {

@@ -187,7 +187,7 @@ enum DelegateActivity {
     func additionalDelegateValidation( self,
         priorMddd: DelegateDatum::IsDelegation
     ) -> Bool {
-        print("  -- addl dgt val \n");
+        print("  -- addl dgt validity check");
         self.switch {
             // generic DelegateLifecycleActivities is already validated, but 
             //  ... you can add more constraints here if needed
@@ -216,6 +216,7 @@ enum DelegateActivity {
                         fromCip68Wrapper( newRec.datum.inline )
                     );
 
+                    cctx.requiresGovAuthority().orFail() &&
                     recData.validate() &&
                     validateUutMinting(
                         mph: priorMddd.dd.mph,
@@ -242,33 +243,44 @@ enum DelegateActivity {
                 print("capo mph: " + priorMddd.dd.mph.show());
                 cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
                 print( "capo addr: " + cctx.resolveCharterUtxo().address.show());
+                assert(cctx.requiresGovAuthority().orFail(), "unreachable");
 
                 VSA.switch {
                     UpdatingRecord{recId} => {
-                        hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("set", recId);
+                        hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("settings", recId);
                         // settings: ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
-                        _hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("settings", recId);
     
-                        tx.inputs.filter(hasDD).for_each( (_utxo : TxInput) -> () {
-                            // they're all settings records, because of the above filter
-                            // recData : DgDatumTestData = DgDatumTestData::from_data(utxo.datum.inline);
-                            // updatedUtxo : TxOutput = tx.outputs.find(hasDDOutput);
-                            // updatedTData : DgDatumTestData = DgDatumTestData::from_data(updatedUtxo.datum.inline);
+                        matched = tx.inputs.filter(hasDD);
+                        assert( (matched.length == 1 ).trace("  -- has record input? "),
+                            "expected record not found in inputs; matched "+matched.length.show() 
+                        );
 
-                            // previousDeposit : Int = utxo.value.get_lovelace(); 
-                            // newDepositTotal : Int = updatedUtxo.value.get_lovelace();                                  
-                            assert(true, "no way")
-                        });
-                        true
+                        hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("settings", recId);
+                        updatedUtxo : TxOutput = tx.outputs.find(hasDDOutput);
+                        // this utxo from the capo (variant = DelegatedData) is cast as our own type because it's
+                        // expected to be capoStoredData at the same ConstrData index.
+                        DelegateDatum::from_data(updatedUtxo.datum.inline).switch {
+                            capoStoredData{updatedRec, _v, _other} => {
+                                // previousDeposit : Int = utxo.value.get_lovelace(); 
+                                // newDepositTotal : Int = updatedUtxo.value.get_lovelace();                                  
+                                assert(updatedRec.validate(), "unreachable");
+                                true
+                            },
+                            _ => error("delegated-data output must be capoStoredData (=DelegatedData)")
+                        }
                     }
+                    // , _ => /* is already a compile-time error*/ error("unrecognized Spending activity")
                 }
             }, 
-            _ => false  
+            _ => {
+                assert(false, "expected Spending or Minting activity");
+                false
+            }
         } || tx.serialize() == priorMddd.serialize()        
     }
 
     func supportedCapoDelegatePurposes(self) -> []String {
-        assert(true || /* prevent unused variable */ self == self, "no way" );
+        assert(true || /* prevent unused variable */ self == self, "unreachable" );
         []String{ 
             // "nothingHereYet",
         }

@@ -43,9 +43,9 @@ export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
         | "DelegateDatum"
     > & {
         reader: SomeDgtBridgeReader;
-        activity: EnumBridge<isActivity>;
-        DelegateActivity: EnumBridge<isActivity>;
-        datum: SomeDgtDatumHelper<any>;
+        activity: EnumBridge<isActivity> & SomeDgtActivityHelper;
+        DelegateActivity: EnumBridge<isActivity> & SomeDgtActivityHelper;
+        datum: EnumBridge<JustAnEnum> & SomeDgtDatumHelper<any>;
         DelegateDatum: SomeDgtDatumHelper<any>;
         readDatum: (d: UplcData) => GenericDelegateDatum;
         types: Pick<
@@ -105,8 +105,12 @@ export type SomeDgtDatumReader = SomeDgtBridgeReader & {
     readDatum: (d: UplcData) => hasConcreteCapoStoredData
 }
 
-export type SomeDgtDatumHelper<T extends AnyDataTemplate<any,any>> = EnumBridge<JustAnEnum> &
-    Omit<DelegateDatumHelper, "capoStoredData"> & {
+type x = DelegateDatumHelper
+type t = Pick<DelegateDatumHelper, "Cip68RefToken" | "IsDelegation">
+
+export type SomeDgtDatumHelper<T extends AnyDataTemplate<any,any>> = 
+    EnumBridge<JustAnEnum> &
+    Pick<DelegateDatumHelper, "Cip68RefToken" | "IsDelegation"> & {
         // capoStoredData(x: AbstractStoredDataLike): TxOutputDatum<"Inline">;
         capoStoredData(fields: {
             data: T;

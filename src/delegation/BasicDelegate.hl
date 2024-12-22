@@ -1155,9 +1155,21 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
 
                     if ("settings" == dDataType) {
                         curSettingsId = cctx.getSettingsId(required: true).unwrap();
-                        REQT(
+                        TODO(
                             "when updating the current Capo settings, the delegates must all "+
                             "have a chance to ensure the settings are valid for their needs"
+
+                            // NOTE that requiring all policies to validate the settings update
+                            // in a single transaction carries a risk of requiring a transaction that
+                            // will be over-limit in some dimension.  To address this, the data structure
+                            // for a pending update should be able to include a list of policies that
+                            // haven't yet validated the settings; each one can validate and remove itself
+                            // from the list; then, the commit can happen when the list becomes empty.
+
+                            // ... as a special case, a single transaction that commits the changes AND
+                            // involves all the remaining policies from the list doing the validation can
+                            // be used to commit the changes, reducing transaction count needed to 
+                            // complete the update.
                         );
                         if (curSettingsId == recId) {
                             assert(

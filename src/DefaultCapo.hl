@@ -166,12 +166,25 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
     allActivitySpecificChecks : Bool = activity.switch {
         // checks for higher-frequency cases first
         spendingDelegatedDatum => {
+            charterData : CapoDatum::CharterData = getTxCharterData(
+                mph: mph
+            );
+            // NOT all delegated-data policies need gov authority!
+            // hasGovAuthority = charterData.govAuthorityLink.hasValidOutput(mph);
+
             // this is part two of j6bmfv
             REQT("j6bmfv: all and ONLY DelegatedData datums must be spent with the Capo's spendingDelegatedDatum activity");
             print( "  ...with activity spendingDelegatedDatum\n");
             // check that the datum is a DelegatedData variant
             datumId : ByteArray = capoDatum.switch{
-                DelegatedData => AnyData::from_data(datum).id,
+                DelegatedData => {
+                    datum.switch {
+                        ConstrData{_index, fields} => {
+                            AnyData::from_data(fields.head).id
+                        },
+                        _ => error("unreachable")
+                    }
+                },
                 _ => {
                     error(
                         "activity spendingDelegatedDatum used on mismatched datum type"
@@ -192,14 +205,12 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             cctx = mkCapoCtx(mph).needsCharter();
             // ?? is this checking the same things as the rest of the code below?
             checkThingOne = cctx.requiresSpendDelegateInput()
-                .withUniqueDDSpendingActivity(datumId)
+                // .withUniqueDDSpendingActivity(datumId)
                 .requiresValidOutput();
             TODO("VERIFY the above versus the below!");
 
             // the below stuff was already tested
-            charterData : CapoDatum::CharterData = getTxCharterData(
-                mph: mph
-            );
+
             spendDelegate: RelativeDelegateLink = charterData.spendDelegateLink;
             
             // consider allowing this as a refInput, with other stuff to enable more parallelism for populations
@@ -216,13 +227,16 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             getSpendingRecId : (Data) -> ByteArray = (dgSpendActivity : Data) -> ByteArray {
                 dgSpendActivity.switch {
                     ConstrData{index, fields} => {
-                        assert(true || index==index, "no way"); // prevent unused variable warning
+                        assert(true || index==index, "unreachable"); // prevent unused variable warning
                         fields.head.switch {
-                            ByteArrayData{recId} => recId,
+                            ByteArrayData{recId} => {
+                                print("  -- found recId: " + recId.show());
+                                recId
+                            },
                             _ => error("spending activity must have a record-id as first field")
                         }
                     },
-                    _ => error("no way")
+                    _ => error("unreachable")
                 }
             };
             uniqMatchingSpendDgtActivity : Bool = AbstractDelegateActivitiesEnum::from_data(
@@ -244,6 +258,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 UpdatingDelegatedData{/*dataType*/ _ , recId} => {
                     // todo: expect that this record-id matches the token in the current UTxO.
                     assert(recId == datumId, "spendDgt UpdDgData must act on the correct record-id");
+                    print("  -- ok: activity matches data being updated");
                     true
                 },
                 MultipleDelegateActivities{activities} => {
@@ -272,7 +287,6 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     );
                     TODO("TEST THIS v");
                     print("recId: " + datumId.show());
-                    print("\n");
                     REQT("spendDgt must be acting on the matching record-id");
                     assert(  // fails a test having a spending activity, but on wrong recId
                         ( found.length > 0 ).trace( "found activity for this recId? ")
@@ -291,10 +305,10 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         ConstrData{index, fields} => {
                             print("unexpected redeemer: " + index.show() );
                             print("\n");
-                            assert(true || /* never executed */ fields.length > 0, "no way");
+                            assert(true || /* never executed */ fields.length > 0, "unreachable");
                             error("spend delegate not triggered with a Spending activity")
                         },
-                        _ => error("no way")
+                        _ => error("unreachable")
                     }
                 }
             };

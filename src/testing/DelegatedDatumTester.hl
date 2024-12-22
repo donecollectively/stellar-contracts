@@ -189,7 +189,7 @@ enum DelegateActivity {
     func additionalDelegateValidation( self,
         priorMddd: DelegateDatum::IsDelegation
     ) -> Bool {
-        print("  -- addl dgt val \n");
+        print("  -- addl dgt validity check");
         self.switch {
             // generic DelegateLifecycleActivities is already validated, but 
             //  ... you can add more constraints here if needed
