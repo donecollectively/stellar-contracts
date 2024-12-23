@@ -40,18 +40,11 @@ import type { IFISNEVER, TypeError } from "../helios/typeUtils.js";
 import type { WrappedDgDataType } from "./WrappedDgDataContract.js";
 
 export type DgDataType<T extends DelegatedDataContract<any, any>> =
-    dgDataTypes<T>["canonical"] & AnyDataTemplate<any, any>;
+    T extends DelegatedDataContract<infer T, infer TLike> ? T : never;
 
-export type dgDataTypes<T extends DelegatedDataContract<any, any>> =
-    T extends DelegatedDataContract<infer T, infer TLike>
-        ? {
-              canonical: T;
-              permissive: TLike;
-          }
-        : never;
 
 export type DgDataTypeLike<T extends DelegatedDataContract<any, any>> =
-    dgDataTypes<T>["permissive"] & AnyDataTemplate<any, any>;
+    T extends DelegatedDataContract<infer T, infer TLike> ? TLike : never;
 
 /**
  * use for new or updated record data, where id and type can
@@ -91,7 +84,7 @@ export type DelegatedDatumIdPrefix<
  */
 export abstract class DelegatedDataContract<
     T extends AnyDataTemplate<any, any>,
-    tLike extends AnyDataTemplate<any, any>
+    TLike extends AnyDataTemplate<any, any>
 > extends ContractBasedDelegate {
     usesWrappedData?: boolean;
     dgDatumHelper = this.dataBridgeClass?.prototype.DelegateDatum;
@@ -107,7 +100,7 @@ export abstract class DelegatedDataContract<
     abstract get recordTypeName(): string;
     abstract get idPrefix(): string;
 
-    abstract exampleData(): minimalData<tLike>;
+    abstract exampleData(): minimalData<TLike>;
 
     /**
      * Provides a customized label for the delegate, used in place of
@@ -189,8 +182,8 @@ export abstract class DelegatedDataContract<
         } = {}
     ): Promise<
         ID extends undefined
-            ? FoundDatumUtxo<T, tLike>[]
-            : FoundDatumUtxo<T, tLike>
+            ? FoundDatumUtxo<T, TLike>[]
+            : FoundDatumUtxo<T, TLike>
     > {
         const result = await this.capo.findDelegatedDataUtxos({
             type: this.recordTypeName,
@@ -210,7 +203,7 @@ export abstract class DelegatedDataContract<
 
     mkDgDatum<THIS extends DelegatedDataContract<any, any>>(
         this: THIS,
-        record: tLike
+        record: TLike
     ): InlineDatum {
         // console.log({record}, "8888888888888888888888888888888888888")
 
@@ -249,7 +242,7 @@ export abstract class DelegatedDataContract<
         TCX extends StellarTxnContext
         // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
         // minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
-    >(options: DgDataCreationOptions<this>, tcx?: TCX): Promise<TCX> {
+    >(options: DgDataCreationOptions<TLike>, tcx?: TCX): Promise<TCX> {
         // ... it does the setup for the creation activity,
         //   so that the actual "creation" part of the transaction will be ready to go
 
@@ -268,7 +261,7 @@ export abstract class DelegatedDataContract<
         const tcx2 = await capo.txnMintingUuts(tcx1c, [this.idPrefix], {
             mintDelegateActivity: mintDelegate.activity.CreatingDelegatedData(
                 tcx1c,
-                {dataType}
+                { dataType }
             ),
         });
 
@@ -287,7 +280,7 @@ export abstract class DelegatedDataContract<
         }).then((tcx3) => tcx3);
     }
 
-    creationDefaultDetails(): Partial<tLike> {
+    creationDefaultDetails(): Partial<TLike> {
         return {};
     }
 
@@ -300,7 +293,7 @@ export abstract class DelegatedDataContract<
     >(
         tcx: TCX,
         // record: minDDType,
-        options: CoreDgDataCreationOptions<this>
+        options: CoreDgDataCreationOptions<TLike>
     ): Promise<TCX> {
         const newType = this.recordTypeName as DelegatedDatumTypeName<this>;
         const idPrefix = this.idPrefix as DelegatedDatumIdPrefix<this>;
@@ -334,7 +327,7 @@ export abstract class DelegatedDataContract<
             `🏒 creating ${newType} ->`,
             JSON.parse(JSON.stringify(fullRecord, betterJsonSerializer, 2))
         );
-        let tcx3 = tcx2
+        let tcx3 = tcx2;
         if (this.needsGovAuthority) {
             tcx3 = await this.capo.txnAddGovAuthority(tcx2);
         }
@@ -386,7 +379,7 @@ export abstract class DelegatedDataContract<
         this: DelegatedDataContract<any, any>,
         txnName: string,
         item: FoundDatumUtxo<T, any>,
-        options: DgDataUpdateOptions<this>,
+        options: DgDataUpdateOptions<TLike>,
         tcx?: TCX
     ): Promise<TCX> {
         tcx = tcx || (this.mkTcx(txnName) as TCX);
@@ -464,7 +457,7 @@ export abstract class DelegatedDataContract<
         item: FoundDatumUtxo<T, any>,
         // controllerActivity: isActivity,
         // record: WrappedDataType<THIS>,
-        options: CoreDgDataUpdateOptions<this>
+        options: CoreDgDataUpdateOptions<TLike>
     ): Promise<TCX> {
         const recType = this.recordTypeName as DelegatedDatumTypeName<this>;
 
@@ -540,41 +533,35 @@ export class UpdateActivity<
 
 type hasRecId = string | number[] | UutName;
 
-export type DgDataCreationOptions<
-    DGDC extends DelegatedDataContract<any, any>
-> = {
+export type DgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> = {
     activity: isActivity | SeedActivity<any>;
-    data: minimalDgDataTypeLike<DGDC>;
+    data: minimalData<TLike>;
     // beforeSave?(x: DT): DT;
 
     addedUtxoValue?: Value;
 };
 
-export type CoreDgDataCreationOptions<
-    DGDC extends DelegatedDataContract<any, any>
-> = {
-    activity: isActivity;
-    data: minimalDgDataTypeLike<DGDC>;
-    // beforeSave?(x: DT): DT;
-
-    addedUtxoValue?: Value;
-};
-
-export type DgDataUpdateOptions<DGDC extends DelegatedDataContract<any, any>> =
+export type CoreDgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> =
     {
-        activity: isActivity | UpdateActivity<any>;
-        updatedFields: minimalData<DgDataTypeLike<DGDC>>;
+        activity: isActivity;
+        data: minimalData<TLike>;
+        // beforeSave?(x: DT): DT;
 
         addedUtxoValue?: Value;
-        // beforeSave?(x: DTL): DTL;
     };
 
+export type DgDataUpdateOptions<TLike extends AnyDataTemplate<any, any>> = {
+    activity: isActivity | UpdateActivity<any>;
+    updatedFields: minimalData<TLike>;
+
+    addedUtxoValue?: Value;
+    // beforeSave?(x: DTL): DTL;
+};
+
 // omits type-wrapper and requires all fields for data-type-like
-export type CoreDgDataUpdateOptions<
-    DGDC extends DelegatedDataContract<any, any>
-> = {
+export type CoreDgDataUpdateOptions<TLike extends AnyDataTemplate<any, any>> = {
     activity: isActivity;
-    updatedFields: DgDataTypeLike<DGDC>;
+    updatedFields: minimalData<TLike>;
 
     addedUtxoValue?: Value;
     // beforeSave?(x: DTL): DTL;

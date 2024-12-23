@@ -3,7 +3,7 @@ import type { isActivity, SeedActivity } from "../ActivityTypes.js";
 import type { FoundDatumUtxo } from "src/CapoTypes.js";
 import type { InlineDatum } from "../HeliosPromotedTypes.js";
 import type { StellarTxnContext } from "../StellarTxnContext.js";
-import type { AnyDataTemplate } from "./DelegatedData.js";
+import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
 import {
     DelegatedDataContract,
     UpdateActivity,
@@ -28,9 +28,9 @@ export type WrappedDgDataType<
 
 export abstract class WrappedDgDataContract<
     T extends AnyDataTemplate<any,any>,
-    tLike extends AnyDataTemplate<any,any>,
-    WRAPPER extends someDataWrapper<tLike>
-> extends DelegatedDataContract<T, tLike> {
+    TLike extends AnyDataTemplate<any,any>,
+    WRAPPER extends someDataWrapper<TLike>
+> extends DelegatedDataContract<T, TLike> {
     usesWrappedData = true;
     /**
      * Transforms the on-chain data structure into a higher-level
@@ -38,14 +38,14 @@ export abstract class WrappedDgDataContract<
      * provide an unwrapData() method to get back to the on-chain data.
      */
     abstract mkDataWrapper(
-        d: tLike
+        d: TLike
     ): WRAPPER;
 
     mkDgDatum(
-        record: tLike | WRAPPER
+        record: TLike | WRAPPER
     ): InlineDatum {
         // console.log({record}, "8888888888888888888888888888888888888")
-        const unwrapped: tLike = (record as any).unwrapData?.() || record;
+        const unwrapped: TLike = (record as any).unwrapData?.() || record;
 
         //@ts-ignore typescript doesn't seem to understand the connection
         //  between the tLike type and the parent class's mkDgDatum type
@@ -61,7 +61,7 @@ export abstract class WrappedDgDataContract<
      * will include the data: property having the unwrapped data, as well as
      * the dataWrapped property with the unwrapped version of the data.
      */
-    wrapData(data: tLike): WRAPPER {
+    wrapData(data: TLike): WRAPPER {
         return this.mkDataWrapper(data)
     }
 
@@ -79,12 +79,11 @@ export abstract class WrappedDgDataContract<
         // minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
     >(
         options: DgDataCreationOptions<
-            this
+        TLike
         > & {  wrapped?: WRAPPER } 
 
     ): Promise<TCX> {
-        //@ts-expect-error "could be instantiated with a different subtype...""
-        const data : tLike = options.wrapped?.unwrapData() || options.data;
+        const data : minimalData<TLike> = options.wrapped?.unwrapData() || options.data;
         return super.mkTxnCreateRecord({
             ...options,
             data
@@ -102,16 +101,17 @@ export abstract class WrappedDgDataContract<
     >(
         txnName: string,
         item: FoundDatumUtxo<T, WRAPPER>,
-        options: DgDataUpdateOptions<this> & { updatedWrapped?: WRAPPER },
+        options: DgDataUpdateOptions<TLike> & { updatedWrapped?: WRAPPER },
         tcx?: TCX
     ): Promise<TCX> {
+        const updatedFields : minimalData<TLike> = options.updatedFields
         return super.mkTxnUpdateRecord(txnName, item, {
             ...options,
             updatedFields: {
                 ...(options.updatedWrapped?.unwrapData() || {}),
-                ...(options.updatedFields || {}),
+                ...updatedFields,
             },
-        });
+        }, tcx);
     }
 
 }
