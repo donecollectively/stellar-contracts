@@ -771,14 +771,37 @@ export class StellarTxnContext<S extends anyState = anyState> {
             }
             if (tx.hasValidationError) {
                 const e = tx.hasValidationError;
+                //@ts-expect-error accessing the stack of something that might be a string instead
+                let heliosStack = e.stack?.split("\n") || undefined
+                // locate the first TxImpl line in the stack trace.
+                // include it but remove remaining trace lines. 
+                // heliosStack = heliosStack?.slice(
+                //     0, heliosStack.findIndex(l => l.match(/TxImpl/)) + 2
+                // ) || ""
+                // locate any lines like "<helios>@at <anonymous>, [mkTv=<fn>, tvCharter=<fn>, mustFindInputRedeemer=<fn>, fromCip68Wrapper=<fn>, RelativeDelegateLink::tvAuthorityToken=<fn>, RelativeDelegateLink::acAuthorityToken=<fn>, RelativeDelegateLink::validatesUpdatedSettings=<fn>, RelativeDelegateLink::hasDelegateInput=<fn>, RelativeDelegateLink::hasValidOutput=<fn>, DelegateInput::genericDelegateActivity=<fn>], src/CapoHelpers.hl:761:9:0"
+                // and transform it to a multi-line, indented function trace with the
+                // square-bracketed items indented to indicate the scope of the function they're provided to 
+                heliosStack = heliosStack.map((line : string) => {
+                    if (line.match(/<helios>@at/)) {
+                        line = line.
+                            replace(/<helios>@at /, "\n ... in helios script: \n      ").
+                            replace(/, \[([^\]]*)\],/, (_,bracketed) => 
+                                ` with scope [\n        ${
+                                    bracketed.replace(/, /g, ",\n        ")
+                                }\n      ]`
+                            )
+                    }
+                    return line
+                })
                 debugger
                 const scriptContext =
                     "string" == typeof e ? undefined : e.scriptContext;
                 logger.logError(
                     `tx validation failure: \n  ${
                         //@ts-expect-error
-                        tx.hasValidationError.message || tx.hasValidationError
-                    }`
+                        tx.hasValidationError.message || tx.hasValidationError 
+                    }`+
+                    heliosStack?.join("\n  ")
                 );
                 logger.flush();
                 const ctxCbor = scriptContext?.toCbor();
