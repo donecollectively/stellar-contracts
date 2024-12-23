@@ -1,7 +1,6 @@
 import type { StellarContract, anyDatumProps } from "../StellarContract.js";
 import type { UplcData } from "@helios-lang/uplc";
 import type { ContractBasedDelegate } from "./ContractBasedDelegate.js";
-import type { T } from "vitest/dist/chunks/environment.C5eAp3K6.js";
 
 /**
  * @public

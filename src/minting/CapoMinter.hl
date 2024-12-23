@@ -161,7 +161,7 @@ func main(r : MinterActivity) -> Bool {
                                     
                 //     outputAndDatum[CapoDatum::DelegatedData] = 
                 //         charterData.mustFindSettingsOutput(mph: mph, inAddr: charter.owner);
-                //     assert(foundSettings == foundSettings, "no way");
+                //     assert(foundSettings == foundSettings, "no way, no");
 
                 //     true
                 // } else { 

@@ -323,7 +323,7 @@ enum DelegateActivity {
         } || tx.serialize() == priorMddd.serialize()        
     }
     func supportedCapoDelegatePurposes(self) -> []String {
-        assert(true || /* prevent unused variable */ self == self, "no way" );
+        assert(true || /* prevent unused variable */ self == self, "no way, man" );
          []String{ 
             // "nothingHereYet",
         }

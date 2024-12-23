@@ -249,7 +249,7 @@ enum DelegateActivity {
 
                             // previousDeposit : Int = utxo.value.get_lovelace(); 
                             // newDepositTotal : Int = updatedUtxo.value.get_lovelace();                                  
-                            assert(true, "no way")
+                            assert(true, "no way u")
                         });
                         true
                     }
@@ -260,7 +260,7 @@ enum DelegateActivity {
     }
 
     func supportedCapoDelegatePurposes(self) -> []String {
-        assert(true || /* prevent unused variable */ self == self, "no way" );
+        assert(true || /* prevent unused variable */ self == self, "no way W" );
         []String{ 
             // "nothingHereYet",
         }

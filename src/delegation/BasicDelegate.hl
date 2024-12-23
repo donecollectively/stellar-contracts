@@ -480,7 +480,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 error("this Capo lifecycle activity is only valid on mint/spend delegate, not "+ delegateName)
                             }
                         },
-                        _ => error("no way") // unreachable
+                        _ => error("no way k") // unreachable
                     };
 
                     // the Capo policy already requires that this activity is identical
@@ -591,7 +591,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         _ => error("unreachable")
                                     }
                                 }, 
-                                _ => assert(true, "no way")
+                                _ => assert(true, "no way l")
 
                             };
 
@@ -1174,7 +1174,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     );
 
                     inputDD : TxInput = cctx.delegatedDataTxInput(recIdBytes: recId);
-                    assert(inputDD == inputDD, "no way");
+                    assert(inputDD == inputDD, "no way m");
                     // ^^ same as vv
                     // hasDDofType : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate(dDataType);
                     // simply finding the input is enough to imply that the that those utxos are spend-governed by the Capo 
@@ -1201,20 +1201,24 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             // be used to commit the changes, reducing transaction count needed to 
                             // complete the update.
                         );
-                        if (curSettingsId == recId) {
-                            assert(
-                                // fails if the delegates aren't all validating settings:
-                                cctx.allDelegatesAreValidatingSettings(),
-                                // can't fail:
-                                "no way"
-                            )
-                        } else {
-                            print("  -- NOTE: updating "+ recId.decode_utf8()
-                            +", which isn't currentSettings="+curSettingsId.decode_utf8())
+                        if( false ) {
+                            if (curSettingsId == recId) {
+                                print(" -> ");
+                                assert(
+                                    // fails if the delegates aren't all validating settings:
+                                    cctx.allDelegatesAreValidatingSettings(),
+                                    // can't fail:
+                                    "no way jose"
+                                );
+                                print( " <- ")
+                            } else {
+                                print("  -- NOTE: updating "+ recId.decode_utf8()
+                                +", which isn't currentSettings="+curSettingsId.decode_utf8())
+                            }
                         }
                     };
 
-                    cctx.mustOutputDelegatedData(recId, dDataType)
+                    cctx.mustOutputDelegatedData(recId, dDataType).trace("  -- did output delegated data? ")
                     && true
                 },
 

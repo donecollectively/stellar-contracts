@@ -8,7 +8,7 @@ struct ProtocolSettings {
     meaning: Int  "meaning"
     happy: Int  "happy"
     func validate(self) -> Bool {
-        assert(self == self, "no way");
+        assert(self == self, "no way, yo");
         // assert(self.meaning == 42, "meaning must be 42");
         true
     }

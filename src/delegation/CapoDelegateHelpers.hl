@@ -199,7 +199,7 @@ struct RelativeDelegateLink {
     // stakingCred: stakingKeyRequirement
 
     func getRedeemer(self,  input : TxInput)  -> AbstractDelegateActivitiesEnum {
-        assert(self == self, "no way");// avoid unused variable
+        assert( true || /* not executed */ self == self, "no way s");// avoid unused variable
         AbstractDelegateActivitiesEnum::from_data( 
             mustFindInputRedeemer(input)
         )
@@ -238,10 +238,10 @@ struct RelativeDelegateLink {
                             _ => error("delegate not ValidatingSettings: "+ self.uutName)
                         }
                     },
-                    _ => error("no way") // throws if the redeemer isn't #0.
+                    _ => error("no way n") // throws if the redeemer isn't #0.
                 };
 
-                assert(spendDelegateIsValid, "no way"); // it threw any error already
+                assert(spendDelegateIsValid, "no way o"); // it threw any error already
                 Option[Bool]::Some{spendDelegateIsValid}
             }
         }
@@ -350,7 +350,7 @@ struct RelativeDelegateLink {
                     //         // throws if it's spent, but not returned correctly:
                     //         error("⬅️ ❌ 💁 dgTkn not returned: "+ uut )
                     //     },
-                    //     _ => error("no way")
+                    //     _ => error("no way p")
                     // }
 
     }
@@ -499,9 +499,9 @@ struct delegateLink_hasValidOutput_asMethod {
 // ) -> Bool {
          ///                  vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 //     assert(false, "replaced by delegateLink.hasValidOutput(...)");
-//     assert(delegateLink==delegateLink, "no way");
+//     assert(delegateLink==delegateLink, "no way q");
 //     assert(mph==mph, "no");
-//     assert(required==required, "no way");
+//     assert(required==required, "no way r");
 //     true
 // }
 // :ladybug emoji: "🐞xy"

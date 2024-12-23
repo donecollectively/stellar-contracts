@@ -784,11 +784,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 heliosStack = heliosStack.map((line : string) => {
                     if (line.match(/<helios>@at/)) {
                         line = line.
-                            replace(/<helios>@at /, "\n ... in helios script: \n      ").
-                            replace(/, \[([^\]]*)\],/, (_,bracketed) => 
-                                ` with scope [\n        ${
-                                    bracketed.replace(/, /g, ",\n        ")
-                                }\n      ]`
+                            replace(/<helios>@at /, "   ... in helios function ").
+                            replace(/, \[(.*)\],/, (_,bracketed) => ``
+                                // ` with scope [\n        ${
+                                //     bracketed.replace(/, /g, ",\n        ")
+                                // }\n      ]`
                             )
                     }
                     return line
@@ -800,8 +800,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     `tx validation failure: \n  ${
                         //@ts-expect-error
                         tx.hasValidationError.message || tx.hasValidationError 
-                    }`+
-                    heliosStack?.join("\n  ")
+                    }\n`+
+                    heliosStack?.join("\n")
                 );
                 logger.flush();
                 const ctxCbor = scriptContext?.toCbor();

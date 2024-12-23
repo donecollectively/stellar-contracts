@@ -454,8 +454,8 @@ struct DelegateInput {
                 print("    ---- from input id:" + i.output_id.tx_id.show() + "🔹#" + i.output_id.index.show());
                 print("       = "+i.value.show());
 
-                assert(index==index, "no way"); // must use each destruct field
-                assert(fields.length >0, "no way") // must use each destruct field
+                assert(index==index, "no way A"); // must use each destruct field
+                assert(fields.length >0, "no way B") // must use each destruct field
             } 
         };
         inputData
@@ -564,11 +564,11 @@ struct DelegateInput {
                         MintingActivities{ma} => {
                             ma.switch {
                                 ConstrData{index, fields} => {
-                                    assert(index==index, "no way"); // unused field can't be _ in switch
+                                    assert(index==index, "no way c"); // unused field can't be _ in switch
                                     seed == TxOutputId::from_data(fields.head) &&
                                     true
                                 },
-                                _ => error("no way")
+                                _ => error("no way d")
                             }
                         },
                         _ => false
@@ -607,7 +607,7 @@ struct DelegateInput {
             SpendingActivities{sa} => {
                 sa.switch {
                     ConstrData{index, fields } => {
-                        assert(index==index, "no way"); // unused field can't be _
+                        assert(index==index, "no way e"); // unused field can't be _
                         foundRecId: ByteArray = ByteArray::from_data(fields.head);
                         if(recId != foundRecId) {
                             print("  -- expected: Spending:"+strId);
@@ -617,7 +617,7 @@ struct DelegateInput {
                             print ("  -- ok: DD controller spending activity for "+strId)
                         }
                     },
-                    _ => error("no way")
+                    _ => error("no way f")
                 };
                 self.delegateUnchanged()
             },
@@ -648,11 +648,11 @@ struct DelegateInput {
                             error("")
                         },
                         SpendingActivities{sa} => {
-                            // assert(false && sa.serialize() == sa.serialize(), "no way");
+                            // assert(false && sa.serialize() == sa.serialize(), "no way g");
                             // false
                             sa.switch {
                                 ConstrData{index, fields} => {
-                                    assert(index==index, "no way"); // unused field can't be _
+                                    assert(index==index, "no way h"); // unused field can't be _
                                     foundRecId: ByteArray = ByteArray::from_data(fields.head);
                                     if(recId != foundRecId) {
                                         print("  -- expected: Spending: "+strId);
@@ -757,7 +757,8 @@ struct DelegateInput {
     }
     // syntax sugar.  Implied is that that any other function calls will trip errors,
     func orFail(self) -> Bool {
-        assert(true || /* never executed */ self.serialize() == self.serialize(), "no way");
+        // assert(true || /* never executed */ self.serialize() == self.serialize(), "no way i");
+        _t = self;
         true
     }
 }
@@ -846,7 +847,7 @@ struct DgDataDetails {
     //             dataSrc : dgd_DataSrc = self.dataSrc.switch {
     //                 Unk => dgd_DataSrc::Input{oneInput.head},
     //                 Output{txo} => dgd_DataSrc::Both{oneInput.head, txo},
-    //                 _ => error("no way") // already returned self
+    //                 _ => error("no way j ") // already returned self
     //             };
 
     //             DgDataDetails{
@@ -905,7 +906,7 @@ struct DgDataDetails {
     //             newSrc: dgd_DataSrc = self.dataSrc.switch {
     //                 Output{txo} => dgd_DataSrc::Both{utxo, txo},
     //                 Unk => dgd_DataSrc::Input{utxo},
-    //                 _ => error("no way") // unreachable
+    //                 _ => error("no way k") // unreachable
     //             };
 
     //             DgDataDetails{
@@ -1033,7 +1034,7 @@ struct CapoCtx {
 
     func now(self, granularity: Duration = Duration::HOUR) -> Time {
         validity : TimeRange = tx.time_range;
-        assert(true || /* never executed */ self.serialize() == self.serialize(), "no way");
+        assert(true || /* never executed */ self.serialize() == self.serialize(), "no way l");
         
         assert(
             validity.end - validity.start 
@@ -1182,7 +1183,7 @@ struct CapoCtx {
             self.getCharterData().govAuthorityLink.hasValidOutput( 
                 self.mph  
             ), /*always true*/
-            "no way"
+            "no way m"
         ); 
 
         self
@@ -1947,7 +1948,7 @@ struct CapoCtx {
 
     // syntax sugar.  Implied is that that any other function calls will trip errors,
     func orFail(self) -> Bool {
-        assert(true || /* never executed */ self.serialize() == self.serialize(), "no way");
+        assert(true || /* never executed */ self.serialize() == self.serialize(), "crazy talk");
         true
     }
     

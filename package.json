@@ -4,9 +4,11 @@
     "description": "Smart contract fusion for Cardano",
     "license": "SEE LICENSE IN LICENSE.TXT",
     "main": "./dist/stellar-contracts.mjs",
+    "module": "./dist/stellar-contracts.mjs",
     "types": "./dist/stellar-contracts.d.ts",
     "exports": {
         ".": {
+            "typescriptNative": "./index.ts",
             "types": "./dist/stellar-contracts.d.ts",
             "import": "./dist/stellar-contracts.mjs",
             "XXXrequire": "./dist/stellar-contracts.cjs",
@@ -25,8 +27,7 @@
     },
     "type": "module",
     "pnpm": {
-        "overrides": {
-        }
+        "overrides": {}
     },
     "scripts": {
         "build": "scripts/build",
@@ -75,6 +76,6 @@
         "tslib": "^2.5.3",
         "typescript": "5.6.2",
         "vite": "^4.4.11",
-        "vitest": "^2.1.1"
+        "vitest": "^2.1.8"
     }
 }
