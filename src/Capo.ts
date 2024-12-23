@@ -202,21 +202,21 @@ import { mkDgtStateKey } from "./CapoTypes.js";
  * approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the
  * delegation.
  *
- * UUTs can be used to form a positive linkage between the Capo (which should normally retain a reference 
- * to that UUT) and any delegate; that delegate is most commonly another contract script also 
+ * UUTs can be used to form a positive linkage between the Capo (which should normally retain a reference
+ * to that UUT) and any delegate; that delegate is most commonly another contract script also
  * referenced within the roles() definition.
- * 
+ *
  *  * **Example: Multisig authority delegation** - a Capo contract would get much more complicated if it
  * contained multisig logic.  Instead, the governance authority for the Capo can be delegated to a
  * standalone multi-sig contract, which can contain all (and only) the multi-sig logic.  Separating the
  * responsibilities makes each part simpler, easing the process of ensuring each part is doing its job :pray:
- * 
+ *
  * ### UUTs and Delegated Data
- * 
-* UUTs can also be used as a form of uniqueness for data stored in the Capo's UTxOs (i.e. a record id).
+ *
+ * UUTs can also be used as a form of uniqueness for data stored in the Capo's UTxOs (i.e. a record id).
  * The UTxO only lasts until it is spent, but the UUT's identity can continue along with any value and
- * connected data.  
- * 
+ * connected data.
+ *
  * Policy delegates provide on-chain delegation of authority for the Capo's data, while being upgradable
  * to support the evolving needs of the application.  Delegated datums store data of various types
  * at the Capo's address, while delegate policies, each at its own address are invoked to enforce creation
@@ -225,7 +225,7 @@ import { mkDgtStateKey } from "./CapoTypes.js";
  * @public
  */
 export abstract class Capo<
-    SELF extends Capo<any/*, roleMap */>,
+    SELF extends Capo<any /*, roleMap */>
     // roleMap extends DelegateMap<any>
 > extends StellarContract<CapoConfig> {
     //, hasRoleMap<SELF>
@@ -655,21 +655,20 @@ export abstract class Capo<
     async tcxWithSettingsRef<TCX extends StellarTxnContext>(
         this: SELF,
         tcx: TCX
-    ): Promise<TCX & hasSettingsRef<any,any>> {
-            if (
-                //@ts-expect-error on type-probe:
-                tcx.state.settingsInfo
-            ) {
-                return tcx as TCX & hasSettingsRef<any,any>;
-            }
-            const settingsInfo = await this.findSettingsInfo();
-            tcx.addRefInput(settingsInfo.utxo);
-    
-            const tcx2 = tcx as TCX & hasSettingsRef<any,any>;
-            tcx2.state.settingsInfo = settingsInfo
-            return tcx2;
+    ): Promise<TCX & hasSettingsRef<any, any>> {
+        if (
+            //@ts-expect-error on type-probe:
+            tcx.state.settingsInfo
+        ) {
+            return tcx as TCX & hasSettingsRef<any, any>;
         }
-    
+        const settingsInfo = await this.findSettingsInfo();
+        tcx.addRefInput(settingsInfo.utxo);
+
+        const tcx2 = tcx as TCX & hasSettingsRef<any, any>;
+        tcx2.state.settingsInfo = settingsInfo;
+        return tcx2;
+    }
 
     /**
      * finds and spends the Capo's charter utxo, typically for updating
@@ -982,8 +981,8 @@ export abstract class Capo<
             | hasCharterRef
             | TxInput
             | CapoDatum$Ergo$CharterData
-            // !!! todo: make this type more specific
-    ) : Promise<FoundDatumUtxo<any, any>>{
+        // !!! todo: make this type more specific
+    ): Promise<FoundDatumUtxo<any, any>> {
         const chUtxo =
             charterRefOrInputOrProps || (await this.mustFindCharterUtxo());
         let charterData: CapoDatum$Ergo$CharterData =
@@ -1009,10 +1008,10 @@ export abstract class Capo<
         }
         const uutName = currentSettings?.tokenName;
 
-        return this.findDelegatedDataUtxos({ 
-            type: "settings", 
-            id: uutName 
-        }).then((xs) => this.singleItem(xs))
+        return this.findDelegatedDataUtxos({
+            type: "settings",
+            id: uutName,
+        }).then((xs) => this.singleItem(xs));
     }
 
     async connectMintingScript(
@@ -1088,7 +1087,7 @@ export abstract class Capo<
         );
         //! accumulates min-utxos for each stringy token-name in a reduce()
         function addTokenValue(
-            this: Capo<any/*, any*/>,
+            this: Capo<any /*, any*/>,
             accumulator: Value,
             tn: string
         ): Value {
@@ -2317,7 +2316,6 @@ export abstract class Capo<
 
         return tcxWithCharterMint as TCX3 & Awaited<typeof tcxWithCharterMint>;
     }
-
 
     // async txnAddSettingsOutput<
     //     TCX extends StellarTxnContext<hasAllUuts<"set">>
