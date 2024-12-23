@@ -23,11 +23,19 @@ const profilingOptions = profiling ? {
     poolOptions: {        
         forks: {
             singleFork: true,            
+
         }
     },
     inspect: true,
     disableConsoleIntercept: true,
-} : {};
+} : {
+    poolOptions: {        
+        forks: {
+            minForks: 1,
+            maxForks: 4
+        }
+    }
+};
 
 // --poolOptions.forks.singleFork --disableConsoleIntercept 
 export default defineConfig({
