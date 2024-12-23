@@ -21,6 +21,7 @@ import { TestHelperState } from "../src/testing/types";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 import { expectTxnError } from "../src/testing/StellarTestHelper.js";
+import { textToBytes } from "../src/HeliosPromotedTypes.js";
 
 type localTC = StellarTestContext<
     DefaultCapoTestHelper<CapoCanMintGenericUuts>
@@ -74,7 +75,7 @@ describe("Capo Minter", async () => {
             const purposes = ["fooPurpose"];
             const tcx1a = await capo.txnMintingUuts(tcx1, purposes, {
                 mintDelegateActivity:
-                    mintDelegate.activityMintingUutsAppSpecific(tcx1, purposes),
+                    mintDelegate.activity.MintingActivities.mintingUuts(tcx1, {purposes}),
             });
             await h.submitTxnWithBlock(tcx1a);
         });
@@ -90,11 +91,12 @@ describe("Capo Minter", async () => {
             const tcx1 = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["fooPurpose"];
 
+            const mintDelegateActivity =
+                mintDelegate.activity.SpendingActivities.mockWorkingSpendActivity(
+                    textToBytes("anything")
+                );
             const tcx1a = await capo.txnMintingUuts(tcx1, purposes, {
-                mintDelegateActivity: mintDelegate.mkSpendingActivity(
-                    "mockWorkingSpendActivity",
-                    { id: "anything" }
-                ),
+                mintDelegateActivity,
             });
 
             await expect(
@@ -115,14 +117,11 @@ describe("Capo Minter", async () => {
             const tcx1 = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["fooPurpose"];
 
+            const mintDelegateActivity = mintDelegate.activity.MultipleDelegateActivities([
+                mintDelegate.activity.MintingActivities.mintingUuts(tcx1, {purposes}).redeemer
+            ]);
             const tcx1a = await capo.txnMintingUuts(tcx1, purposes, {
-                mintDelegateActivity:
-                    mintDelegate.activityMultipleDelegateActivities(
-                        mintDelegate.activityMintingUutsAppSpecific(
-                            tcx1,
-                            purposes
-                        )
-                    ),
+                mintDelegateActivity
             });
 
             await expect(
@@ -145,11 +144,9 @@ describe("Capo Minter", async () => {
 
             const tcx1a = await capo.txnMintingUuts(tcx1, purposes, {
                 mintDelegateActivity:
-                    mintDelegate.activityMultipleDelegateActivities(
-                        mintDelegate.mkSpendingActivity(
-                            "mockWorkingSpendActivity",
-                            { id: "anything" }
-                        )
+                    mintDelegate.activity.MultipleDelegateActivities([
+                        mintDelegate.activity.SpendingActivities.mockWorkingSpendActivity(textToBytes("anything")).redeemer
+                    ]
                     ),
             });
 
@@ -169,9 +166,11 @@ describe("Capo Minter", async () => {
             const tcx1 = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["fooPurpose"];
 
-            const hacktivity = mintDelegate.activityUpdatingDelegatedData(
-                "fooPurpose-xyz123"
-            );
+            const hacktivity =
+                mintDelegate.activity.UpdatingDelegatedData({
+                    dataType: "fooPurpose",
+                    recId: textToBytes("fooPurpose-xyz123")
+            });
 
             const tcx1a = await capo.txnMintingUuts(tcx1, purposes, {
                 mintDelegateActivity: hacktivity,
@@ -192,20 +191,25 @@ describe("Capo Minter", async () => {
             const mintDelegate = await capo.getMintDelegate();
             const tcx1 = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["fooPurpose"];
-            
-            const hacktivity = mintDelegate.activityCreatingDelegatedData(tcx1, "fooPurpose")
-            
+
+            const hacktivity = mintDelegate.activity.CreatingDelegatedData(
+                tcx1,
+                {dataType: "fooPurpose"}
+            );
+
             const tcx1a = await capo.txnMintingUuts(tcx1, purposes, {
                 mintDelegateActivity:
-                mintDelegate.activityMultipleDelegateActivities(hacktivity),
+                    mintDelegate.activity.MultipleDelegateActivities([
+                        hacktivity.redeemer
+                    ]),
             });
-            
-            // this test doesn't run a txn successfully, because there are no 
+
+            // this test doesn't run a txn successfully, because there are no
             // delegated-data controllers in the current test setup
             // ... however, the failure message indicates that the script
             // ... unwrapping the MultipleDelegateActivities, trying to
             // ... mint the new delegated data record, and not finding
-            // ... a workable policy for it.  So that's a good kind of failure.  
+            // ... a workable policy for it.  So that's a good kind of failure.
             // We can make this test better and prove the positive use-case end-to-end.
             const submitting = tcx1.submit({ expectError: true });
             await expect(submitting).rejects.toThrow(

@@ -228,7 +228,7 @@ describe("Capo", async () => {
                 purpose2,
                 { // this isn't of any significance; we're just checking that the new
                     // delegate is used in this txn, not expecting the txn to succeed.
-                    mintDelegateActivity: mintDelegate.activityValidatingSettings()
+                    mintDelegateActivity: mintDelegate.activity.DelegateLifecycleActivities.ValidatingSettings
                 }
             );
 

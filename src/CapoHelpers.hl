@@ -214,7 +214,7 @@ enum CapoDatum {
                 nextMintInvariants, 
                 nextGovDelegate, 
                 nextManifest,
-                _nextPendingDgtChanges
+                _nextPendinghanges
             } => {
                 CharterData {
                     oldSpendDelegate,
@@ -224,7 +224,7 @@ enum CapoDatum {
                     oldMintInvariants,
                     oldGovDelegate,
                     oldManifest,
-                    _oldPendingDgtChanges
+                    _oldPendingChanges
                 } = oldDatum;
                 changedSpendDgt : Bool = ( nextSpendDelegate.serialize() != oldSpendDelegate.serialize() );
                 changedSpendInvariants : Bool = ( nextSpendInvariants != oldSpendInvariants );

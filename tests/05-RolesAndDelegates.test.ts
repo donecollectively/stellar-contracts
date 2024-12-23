@@ -31,6 +31,7 @@ import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/
 import { Capo } from "../src/Capo";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
+import { textToBytes } from "../src/HeliosPromotedTypes.js";
 
 class DelegationTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
@@ -85,7 +86,7 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 
 const describe = descrWithContext<localTC>;
 
-describe("Capo", async () => {
+describe("Capo", () => {
     beforeEach<localTC>(async (context) => {
         await new Promise((res) => setTimeout(res, 10));
         await addTestContext(
@@ -95,7 +96,7 @@ describe("Capo", async () => {
     });
 
     describe("Roles and delegates", () => {
-        describe("supports well-typed role declarations", async () => {
+        describe("supports well-typed role declarations", () => {
             it("has defined roles", async (context: localTC) => {
                 const {
                     h,
@@ -134,9 +135,10 @@ describe("Capo", async () => {
                         // just give it **something**:
                         // this isn't really relevant to the test's purpose:
                         mintDelegateActivity:
-                            mintDelegate.activityMintingUutsAppSpecific(tcx1a, [
-                                "mintDgt",
-                            ]),
+                            mintDelegate.activity.MintingActivities.mintingUuts(
+                                tcx1a,
+                                { purposes: ["mintDgt"] }
+                            ),
                     },
                     { mintDelegate: "mintDgt" }
                 );
@@ -175,9 +177,9 @@ describe("Capo", async () => {
                         // just give it **something**:
                         // this isn't really relevant to the test's purpose:
                         mintDelegateActivity:
-                            mintDelegate.activityMintingUutsAppSpecific(
+                            mintDelegate.activity.MintingActivities.mintingUuts(
                                 tcx1a,
-                                purpose
+                                { purposes: ["x"] }
                             ),
                     },
                     {
@@ -210,17 +212,17 @@ describe("Capo", async () => {
 
                 const mintDelegate = await t.getMintDelegate();
                 const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
-                const purpose = ["mintDgt"];
+                const purposes = ["mintDgt"];
                 const tcx1b = await t.txnMintingUuts(
                     tcx1a,
-                    purpose,
+                    purposes,
                     {
                         // just give it **something**:
                         // this isn't really relevant to the test's purpose:
                         mintDelegateActivity:
-                            mintDelegate.activityMintingUutsAppSpecific(
+                            mintDelegate.activity.MintingActivities.mintingUuts(
                                 tcx1a,
-                                purpose
+                                { purposes }
                             ),
                     },
                     {
@@ -265,17 +267,17 @@ describe("Capo", async () => {
 
                 const mintDelegate = await t.getMintDelegate();
                 const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
-                const purpose = ["mintDgt"];
+                const purposes = ["mintDgt"];
                 const tcx1b = await t.txnMintingUuts(
                     tcx1a,
-                    purpose,
+                    purposes,
                     {
                         // just give it **something**:
                         // this isn't really relevant to the test's purpose:
                         mintDelegateActivity:
-                            mintDelegate.activityMintingUutsAppSpecific(
+                            mintDelegate.activity.MintingActivities.mintingUuts(
                                 tcx1a,
-                                purpose
+                                { purposes }
                             ),
                     },
                     {
@@ -333,18 +335,18 @@ describe("Capo", async () => {
 
                 const mintDelegate = await t.getMintDelegate();
                 const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
-                const purpose = ["mintDgt"];
+                const purposes = ["mintDgt"];
 
                 const tcx1b = await t.txnMintingUuts(
                     tcx1a,
-                    purpose,
+                    purposes,
                     {
                         // just give it **something**:
                         // this isn't really relevant to the test's purpose:
                         mintDelegateActivity:
-                            mintDelegate.activityMintingUutsAppSpecific(
+                            mintDelegate.activity.MintingActivities.mintingUuts(
                                 tcx1a,
-                                purpose
+                                { purposes }
                             ),
                     },
                     { mintDelegate: "mintDgt" }
@@ -382,17 +384,17 @@ describe("Capo", async () => {
                 const mintDelegate = await capo.getMintDelegate();
 
                 const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
-                const purpose = ["mintDgt"];
+                const purposes = ["mintDgt"];
                 const tcx1b = await t.txnMintingUuts(
                     tcx1a,
-                    purpose,
+                    purposes,
                     {
                         // just give it **something**:
                         // this isn't really relevant to the test's purpose:
                         mintDelegateActivity:
-                            mintDelegate.activityMintingUutsAppSpecific(
+                            mintDelegate.activity.MintingActivities.mintingUuts(
                                 tcx1a,
-                                purpose
+                                { purposes }
                             ),
                     },
                     { mintDelegate: "mintDgt" }
@@ -422,150 +424,137 @@ describe("Capo", async () => {
         });
 
         describe("Each delegate's UUT has a capoAddr pointing back to the capo, for positive connectivity", () => {
-            it("expects the minter to fail creating the mint delegate without the expected capoAddr", async (context: localTC) => {
+            it.todo("expects the minter to fail creating the mint delegate without the expected capoAddr", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.initialize();
 
                 throw new Error(`test not implemented`);
             });
-            });
         });
-        describe("the mint delegate token is used for enforcing minting policy", () => {
-            it("builds minting txns that include the mintDgt and reference script", async (context: localTC) => {
-                // prettier-ignore
-                const {h, h:{network, actors, delay, state} } = context;
+    });
+    describe("the mint delegate token is used for enforcing minting policy", () => {
+        it("builds minting txns that include the mintDgt and reference script", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
 
-                // initial mint-delegate creation creates an on-chain reference script:
-                const t = await h.bootstrap({
-                    mintDelegateLink: {
-                        config: {},
-                    },
-                });
-
-                const mintDelegate = await t.getMintDelegate();
-
-                const tcx2a = await t.tcxWithSeedUtxo(h.mkTcx());
-                const purpose = ["anything"];
-                const tcx2b = await t.txnMintingUuts(tcx2a, purpose, {
-                    mintDelegateActivity:
-                        mintDelegate.activityMintingUutsAppSpecific(
-                            tcx2a,
-                            purpose
-                        ),
-                });
-
-                const spentDgtToken = tcx2b.inputs.find(
-                    mintDelegate.mkAuthorityTokenPredicate()
-                );
-                const returnedToken = tcx2b.outputs.find(
-                    mintDelegate.mkAuthorityTokenPredicate()
-                );
-                expect(spentDgtToken).toBeTruthy();
-                expect(returnedToken).toBeTruthy();
-                await expect(tcx2b.submit()).resolves.toBeTruthy();
-
-                // uses the reference script in the minting txn:
-                expect(
-                    tcx2b.txRefInputs.find(
-                        (i) =>
-                            i.output.refScript?.toString() ==
-                            mintDelegate.compiledScript.toString()
-                    )
-                ).toBeTruthy();
+            // initial mint-delegate creation creates an on-chain reference script:
+            const t = await h.bootstrap({
+                mintDelegateLink: {
+                    config: {},
+                },
             });
 
-            it.todo(
-                "can spend the ReferenceScript utxo and recover its minUtxo",
-                async (context: localTC) => {
-                    // ... when the mintDgt token is retired, the ReferenceScript is also retired
-                    // the ReferenceScript spend (Retiring) requires the mintDgt token to be spent
-                    // ... the mintDgt token spend (Retiring) requires
-                    //   - must get govAuthz from the Capo (ref: charter token + govAuthz token)
-                    //   - must spend ReferenceScript datum (not back into the mint-delegate
-                    //   - must burn the mintDgt token?  or just as good possibly: put it into a replacement delegate script
-                }
+            const mintDelegate = await t.getMintDelegate();
+
+            const tcx2a = await t.tcxWithSeedUtxo(h.mkTcx());
+            const purposes = ["anything"];
+            const tcx2b = await t.txnMintingUuts(tcx2a, purposes, {
+                mintDelegateActivity:
+                    mintDelegate.activity.MintingActivities.mintingUuts(tcx2a, {
+                        purposes,
+                    }),
+            });
+
+            const spentDgtToken = tcx2b.inputs.find(
+                mintDelegate.mkAuthorityTokenPredicate()
+            );
+            const returnedToken = tcx2b.outputs.find(
+                mintDelegate.mkAuthorityTokenPredicate()
+            );
+            expect(spentDgtToken).toBeTruthy();
+            expect(returnedToken).toBeTruthy();
+            await expect(tcx2b.submit()).resolves.toBeTruthy();
+
+            // uses the reference script in the minting txn:
+            expect(
+                tcx2b.txRefInputs.find(
+                    (i) =>
+                        i.output.refScript?.toString() ==
+                        mintDelegate.compiledScript.toString()
+                )
+            ).toBeTruthy();
+        });
+
+        it.todo(
+            "can spend the ReferenceScript utxo and recover its minUtxo",
+            async (context: localTC) => {
+                // ... when the mintDgt token is retired, the ReferenceScript is also retired
+                // the ReferenceScript spend (Retiring) requires the mintDgt token to be spent
+                // ... the mintDgt token spend (Retiring) requires
+                //   - must get govAuthz from the Capo (ref: charter token + govAuthz token)
+                //   - must spend ReferenceScript datum (not back into the mint-delegate
+                //   - must burn the mintDgt token?  or just as good possibly: put it into a replacement delegate script
+            }
+        );
+
+        it("won't mint in a txn not including the mintDgt", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            const t = await h.bootstrap({
+                mintDelegateLink: {
+                    config: {},
+                },
+            });
+
+            const mintDelegate = await t.getMintDelegate();
+            vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(
+                async (tcx) => tcx
             );
 
-            it("won't mint in a txn not including the mintDgt", async (context: localTC) => {
-                // prettier-ignore
-                const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.bootstrap({
-                    mintDelegateLink: {
-                        config: {},
-                    },
-                });
+            const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
+            const purposes = ["anything"];
+            const tcx1b = await t.txnMintingUuts(tcx1a, purposes, {
+                mintDelegateActivity:
+                    mintDelegate.activity.MintingActivities.mintingUuts(tcx1a, {
+                        purposes,
+                    }),
+            });
+            await expect(tcx1b.submit(expectTxnError)).rejects.toThrow(
+                /missing .*mintDgt/
+            );
+        });
 
-                const mintDelegate = await t.getMintDelegate();
-                vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(
-                    async (tcx) => tcx
-                );
-
-                const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
-                const purpose = ["anything"];
-                const tcx1b = await t.txnMintingUuts(tcx1a, purpose, {
-                    mintDelegateActivity:
-                        mintDelegate.activityMintingUutsAppSpecific(
-                            tcx1a,
-                            purpose
-                        ),
-                });
-                await expect(tcx1b.submit(expectTxnError)).rejects.toThrow(
-                    /missing .*mintDgt/
-                );
+        it("requires that the mintDgt datum is unmodified", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            const capo = await h.bootstrap({
+                mintDelegateLink: {
+                    config: {},
+                },
             });
 
-            it("requires that the mintDgt datum is unmodified", async (context: localTC) => {
-                // prettier-ignore
-                const {h, h:{network, actors, delay, state} } = context;
-                const capo = await h.bootstrap({
-                    mintDelegateLink: {
-                        config: {},
-                    },
-                });
+            const mintDelegate = await capo.getMintDelegate();
+            const spy = vi
+                .spyOn(mintDelegate, "mkDelegationDatum")
+                .mockImplementation((...args) => {
+                    // const [dd, s] = args;
+                    const { capoAddr, mph, tn } = mintDelegate.configIn!;
 
-                const mintDelegate = await capo.getMintDelegate();
-                const spy = vi
-                    .spyOn(mintDelegate, "mkDelegationDatum")
-                    .mockImplementation((...args) => {
-                        // const [dd, s] = args;
-                        const { capoAddr, mph, tn } = mintDelegate.configIn!;
-                        const tn2 = [...tn];
-                        // replace the start of the token name
-                        // with bytes spelling "BOGUS!".
-                        tn2[0] = 66; // "B"
-                        tn2[1] = 79; // "O"
-                        tn2[2] = 71; // "G"
-                        tn2[3] = 85; // "U"
-                        tn2[4] = 83; // "S"
-                        tn2[5] = 33; // "!"
-
-                        return mintDelegate.mkDatumIsDelegation({
-                            capoAddr,
-                            mph,
-                            tn: tn2,
-                        });
+                    return mintDelegate.mkDatum.IsDelegation({
+                        capoAddr,
+                        mph,
+                        tn: textToBytes("BOGUS!"),
                     });
-                const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
-                const purpose = ["anything"];
-                const tcx1b = await capo.txnMintingUuts(tcx1a, purpose, {
-                    mintDelegateActivity:
-                        mintDelegate.activityMintingUutsAppSpecific(
-                            tcx1a,
-                            purpose
-                        ),
                 });
-                expect(spy).toHaveBeenCalled();
-                console.log(
-                    "------ submitting bogus txn with modified delegate datum"
-                );
-                const submitting = tcx1b.submit(expectTxnError);
-                // await submitting
-                await expect(submitting).rejects.toThrow(
-                    // /delegation datum must not be modified/
-                    /modified dgtDtm/
-                );
+            const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
+            const purposes = ["anything"];
+            const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
+                mintDelegateActivity:
+                    mintDelegate.activity.MintingActivities.mintingUuts(tcx1a, {
+                        purposes,
+                    }),
             });
+            expect(spy).toHaveBeenCalled();
+            console.log(
+                "------ submitting bogus txn with modified delegate datum"
+            );
+            const submitting = tcx1b.submit(expectTxnError);
+            // await submitting
+            await expect(submitting).rejects.toThrow(
+                // /delegation datum must not be modified/
+                /modified dgtDtm/
+            );
         });
     });
 });

@@ -162,7 +162,7 @@ func requiresMintDelegateApproval(
     mintDgtActivity.switch {
         CapoLifecycleActivities{CLA} => CLA.switch {
             CreatingDelegate => {
-                TODO( "make this obsolete: generic creatingDelegate (use queuePendingChange and committingPendingDgtChanges in sequence)");
+                TODO( "make this obsolete: generic creatingDelegate (use queuePendingChange and committingPendingChanges in sequence)");
                 // print("  -- minter wants mintDgt + CapoLifecycle (delegate-creation)\n");
 
                 mintDgtInput.requiresValidOutput() && 

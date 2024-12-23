@@ -31,6 +31,7 @@ import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
 import UnspecializedDelegateBundle from "../src/delegation/UnspecializedDelegate.hlbundle.js"
 import { CapoHeliosBundle } from "../src/CapoHeliosBundle.js";
+import UnspecializedDelegateBridge from "../src/delegation/UnspecializedDelegate.bridge.js";
 
 export class MyAppCapo extends CapoHeliosBundle {
     get modules() {
@@ -59,9 +60,7 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
             {
                 config: {},                
                 mintSetup: {                    
-                    mintDelegateActivity: mintDelegate.activityCreatingTestNamedDelegate(
-                        tcx1, purpose
-                    )
+                    mintDelegateActivity: mintDelegate.activity.CapoLifecycleActivities.CreatingDelegate(tcx1, {purpose})
                 }
             },
             tcx1
@@ -113,6 +112,7 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
 
 export class TestNamedDelegate extends ContractBasedDelegate {
     get delegateName() { return "myNamedDgt" }
+    dataBridgeClass = UnspecializedDelegateBridge
     scriptBundle() {
         return new UnspecializedDelegateBundle()
     }
