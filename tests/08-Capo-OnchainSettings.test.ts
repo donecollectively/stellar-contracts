@@ -271,36 +271,6 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
             await expect(updating2).rejects.toThrow(/missing .* spendDgt-/);
         });
 
-        xit("TODO: the minting delegate must validate the UpdatingSettings details", async (context: localTC) => {
-            // prettier-ignore
-            const {h, h:{network, actors, delay, state} } = context;
-
-            const capo = await h.bootstrap();
-            const updating = h.updateSettings(
-                {
-                    badSettingToMintDelegate: 1,
-                    badSettingToSpendDelegate: 0,
-                    meaning: 42,
-                },
-                expectTxnError
-            );
-
-            await expect(updating).rejects.toThrow(
-                /must not have badSettingToMintDelegate/
-            );
-
-            const mintDelegate = await capo.getMintDelegate();
-            console.log(
-                "  -- ⚗️🐞⚗️🐞 case 2 : throws an error if the mint delegate isn't included"
-            );
-            vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(
-                async (tcx) => tcx
-            );
-            await expect(
-                h.updateSettings(goodSettings, expectTxnError)
-            ).rejects.toThrow(/missing .* mintDgt/);
-        });
-
         it.todo(
             "TODO: all named delegates must validate the UpdatingSettings details",
             async (context: localTC) => {}

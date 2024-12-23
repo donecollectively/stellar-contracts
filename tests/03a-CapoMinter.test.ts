@@ -211,7 +211,7 @@ describe("Capo Minter", async () => {
             // ... mint the new delegated data record, and not finding
             // ... a workable policy for it.  So that's a good kind of failure.
             // We can make this test better and prove the positive use-case end-to-end.
-            const submitting = tcx1.submit({ expectError: true });
+            const submitting = tcx1a.submit({ expectError: true });
             await expect(submitting).rejects.toThrow(
                 /missing required data policy.*fooPurpose/
             );

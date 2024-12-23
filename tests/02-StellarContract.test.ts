@@ -17,7 +17,6 @@ import { ADA, addTestContext } from "../src/testing/";
 import { StellarTestContext } from "../src/testing/";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 
-import { hasAllUuts } from "../src/Capo";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { textToBytes } from "../src/HeliosPromotedTypes";
 import { makeValue, Value, Address } from "@helios-lang/ledger";

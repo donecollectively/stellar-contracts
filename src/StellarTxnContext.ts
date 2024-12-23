@@ -1148,6 +1148,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
             const effectiveTcx =
                 true === replacementTcx ? tcx : replacementTcx || tcx;
             // console.log("   -- submitTxns: -> txn: ", txName, description);
+            // console.log("   ----> effective tx", effectiveTcx);
+            if (!effectiveTcx) debugger
             await effectiveTcx.submit({
                 addlTxInfo, // just for its description.
             });
