@@ -71,7 +71,8 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      */
     @Activity.redeemer
     activityCreatingDelegatedData(seedFrom: hasSeed, uutPurpose: string) {
-        const seed = this.getSeed(seedFrom);
+        throw new Error(`deprecated: explicit activity helper`);
+        const seed = this.getSeed(seedFrom);        
         const redeemer = this.activityVariantToUplc("CreatingDelegatedData", {
             seed,
             dataType: uutPurpose,
@@ -97,6 +98,8 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      */
     @Activity.redeemer
     activityCreatingDataDelegate(seedFrom: hasSeed, uutPurpose: string) {
+        throw new Error(`deprecated: explicit activity helper`);
+
         const seed = this.getSeed(seedFrom);
         return this.mkCapoLifecycleActivity(
             "CreatingDelegate",

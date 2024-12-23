@@ -21,13 +21,14 @@ import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type { HeliosScriptBundle, readsUplcData } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegateBundle.js";
 import type { ContractDataBridge, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
-import type { AbstractNew, mustFindActivityType, mustFindConcreteContractBridgeType, mustFindDatumType, mustFindReadDatumType } from "../helios/dataBridge/BridgeTypeUtils.js";
+import type { AbstractNew, findActivityType, mustFindActivityType, mustFindConcreteContractBridgeType, mustFindDatumType, mustFindReadDatumType, possiblyAbstractContractBridgeType } from "../helios/dataBridge/BridgeTypeUtils.js";
 import type { GenericDelegateBridge, GenericDelegateBridgeClass, GenericDelegateDatum } from "./GenericDelegateBridge.js";
 import type { isActivity } from "../ActivityTypes.js";
 import {  makeTxInput, makeTxOutput } from "@helios-lang/ledger";
 import type { Value, TxOutputId, TxInput, ValidatorHash } from "@helios-lang/ledger";
 
 import { bytesToText, textToBytes } from "../HeliosPromotedTypes.js";
+import type { IFISNEVER } from "../helios/typeUtils.js";
 
 
 /**
@@ -81,6 +82,12 @@ export class ContractBasedDelegate extends StellarDelegate {
         return super.offchain as any;
     }
 
+    // get activity(): IFISNEVER<
+    //     mustFindActivityType<this>, 
+    //     IFISNEVER<findActivityType<this>, 
+    //         ContractDataBridge["activity"]
+    //     >
+    // > {
     get activity(): mustFindActivityType<this> {
         const bridge = this.onchain;
         return bridge.activity as any;
@@ -243,6 +250,7 @@ export class ContractBasedDelegate extends StellarDelegate {
             mph,
             tn,
         })
+
     }
 
     /**
@@ -260,28 +268,32 @@ export class ContractBasedDelegate extends StellarDelegate {
         seed,
         purpose,
     }: Omit<MintUutActivityArgs, "purposes"> & { purpose: string }) {
-        return this.mkDelegateLifecycleActivity("ReplacingMe", {
-            seed,
-            purpose,
-        });
+        throw new Error(`deprecated: explicit activity helper`)
+
+        // return this.mkDelegateLifecycleActivity("ReplacingMe", {
+        //     seed,
+        //     purpose,
+        // });
     }
 
     mkDelegateLifecycleActivity(
         delegateActivityName: "ReplacingMe" | "Retiring" | "ValidatingSettings",
         args?: Record<string, any>
     ): isActivity {
-        try {
-            return this.activityRedeemer("DelegateLifecycleActivities", {
-                activity: { [delegateActivityName]: args },
-            });
-        } catch (e: any) {
-            // warning emoji: "⚠️"
-            e.message =
-                "⚠️ ⚠️ ⚠️ error constructing delegate lifecycle activity.  You might need " +
-                "to format the args as UplcData if the enum doesn't recognize a valid off-chain type.\nDelegate lifecycle activity: " +
-                e.message;
-            throw e;
-        }
+        throw new Error(`deprecated: explicit activity helper`)
+
+        // try {
+        //     return this.activityRedeemer("DelegateLifecycleActivities", {
+        //         activity: { [delegateActivityName]: args },
+        //     });
+        // } catch (e: any) {
+        //     // warning emoji: "⚠️"
+        //     e.message =
+        //         "⚠️ ⚠️ ⚠️ error constructing delegate lifecycle activity.  You might need " +
+        //         "to format the args as UplcData if the enum doesn't recognize a valid off-chain type.\nDelegate lifecycle activity: " +
+        //         e.message;
+        //     throw e;
+        // }
     }
 
     mkCapoLifecycleActivity(
@@ -292,11 +304,13 @@ export class ContractBasedDelegate extends StellarDelegate {
             ...otherArgs
         }: Omit<MintUutActivityArgs, "purposes"> & { purpose?: string }
     ): isActivity {
-        return this.activityRedeemer("CapoLifecycleActivities", {
-            activity: {
-                [capoLifecycleActivityName]: { seed, purpose, ...otherArgs },
-            },
-        });
+        throw new Error(`deprecated: explicit activity helper`)
+
+        // return this.activityRedeemer("CapoLifecycleActivities", {
+        //     activity: {
+        //         [capoLifecycleActivityName]: { seed, purpose, ...otherArgs },
+        //     },
+        // });
     }
 
     /**
@@ -306,23 +320,24 @@ export class ContractBasedDelegate extends StellarDelegate {
         spendingActivityName: string,
         args: { id: string | number[] } & Record<string, any>
     ): isActivity {
-        try {
-            let { id } = args;
-            if ("string" == typeof id) {
-                id = textToBytes(id);
-            }
-            // TODO: require that the on-chain type have first field = 'id', not 'recId' or whatever
-            return this.activityRedeemer("SpendingActivities", {
-                activity: {
-                    [spendingActivityName]: { ...args, id },
-                },
-            });
-        } catch (e: any) {
-            // warning emoji: "⚠️"
-            e.message =
-                "⚠️ ⚠️ ⚠️ error constructing spending activity: " + e.message;
-            throw e;
-        }
+        throw new Error(`deprecated: explicit activity helper`)
+
+        // try {
+        //     let id : number[] = ("string" == typeof args.id) ?
+        //         textToBytes(args.id as string) : args.id as number[];
+
+        //         // TODO: require that the on-chain type have first field = 'id', not 'recId' or whatever
+        //     return this.activityRedeemer("SpendingActivities", {
+        //         activity: {
+        //             [spendingActivityName]: { ...args, id },
+        //         },
+        //     });
+        // } catch (e: any) {
+        //     // warning emoji: "⚠️"
+        //     e.message =
+        //         "⚠️ ⚠️ ⚠️ error constructing spending activity: " + e.message;
+        //     throw e;
+        // }
     }
 
     mkSeedlessMintingActivity(
@@ -334,38 +349,39 @@ export class ContractBasedDelegate extends StellarDelegate {
             MintingActivity,
             mintingActivityName
         );
-        debugger; // ??? vvv
-        //@ts-ignore !!!!
-        const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
-        const firstActivityField =
-            nestedVarSt.dataDefinition.fields[0].name.value;
-        if ("seed" === firstActivityField) {
-            throw new Error(
-                `Minting activity '${mintingActivityName}' requires a seed 🍉. \n` +
-                    `   ... therefore, you must use mkSeededMintingActivity() instead.`
-            );
-        }
-        if (args.seed) {
-            throw new Error(
-                `mkSeedlessMintingActivity: found unexpected 'seed' field in seedless MintingActivity variant!\n` +
-                    `  🍉 ... if this minting activity actually needs a seed, you'd need to adjust its on-chain type definition.` +
-                    `  ... a seed provides guaranteed uniqueness for minting e.g. a UUT. ` +
-                    `  ... e.g.minting only fungible tokens doesn't require a seed`
-            );
-        }
+        throw new Error(`mkSeedlessMintingActivity: deprecated`);
+        // debugger; // ??? vvv
+        // //@ts-ignore !!!!
+        // const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
+        // const firstActivityField =
+        //     nestedVarSt.dataDefinition.fields[0].name.value;
+        // if ("seed" === firstActivityField) {
+        //     throw new Error(
+        //         `Minting activity '${mintingActivityName}' requires a seed 🍉. \n` +
+        //             `   ... therefore, you must use mkSeededMintingActivity() instead.`
+        //     );
+        // }
+        // if (args.seed) {
+        //     throw new Error(
+        //         `mkSeedlessMintingActivity: found unexpected 'seed' field in seedless MintingActivity variant!\n` +
+        //             `  🍉 ... if this minting activity actually needs a seed, you'd need to adjust its on-chain type definition.` +
+        //             `  ... a seed provides guaranteed uniqueness for minting e.g. a UUT. ` +
+        //             `  ... e.g.minting only fungible tokens doesn't require a seed`
+        //     );
+        // }
 
-        try {
-            return this.activityRedeemer("MintingActivities", {
-                activity: { [mintingActivityName]: args },
-            });
-        } catch (e: any) {
-            // warning emoji: "⚠️"
-            e.message =
-                "⚠️ ⚠️ ⚠️ error constructing minting activity.  You might need " +
-                "to format the args as UplcData if the enum doesn't recognize a valid off-chain type.\nMinting activity: " +
-                e.message;
-            throw e;
-        }
+        // try {
+        //     return this.activityRedeemer("MintingActivities", {
+        //         activity: { [mintingActivityName]: args },
+        //     });
+        // } catch (e: any) {
+        //     // warning emoji: "⚠️"
+        //     e.message =
+        //         "⚠️ ⚠️ ⚠️ error constructing minting activity.  You might need " +
+        //         "to format the args as UplcData if the enum doesn't recognize a valid off-chain type.\nMinting activity: " +
+        //         e.message;
+        //     throw e;
+        // }
     }
 
     mkSeededMintingActivity(
@@ -377,42 +393,42 @@ export class ContractBasedDelegate extends StellarDelegate {
             MintingActivity,
             mintingActivityName
         )
-        console.warn(`mkSeededMintingActivity: deprecate?`);
-        if (!NestedVariant) {
-            throw new Error(
-                `mkSeededMintingActivity: missing MintingActivity variant '${mintingActivityName}'`
-            );
-        }
-        // const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
-        const firstActivityField = NestedVariant.fieldNames[0];
-        // nestedVarSt.dataDefinition.fields[0].name.value;
-        if ("seed" !== firstActivityField) {
-            throw new Error(
-                `Minting activity '${mintingActivityName}' is not a seeded activity.  \n` +
-                    `   ... therefore, you must use mkSeedlessMintingActivity() instead.  🍉`
-            );
-        }
-        if (!args.seed) {
-            throw new Error(
-                `mkSeedlessMintingActivity: missing required 'seed' field in MintingActivity variant!\n` +
-                    `  🍉 ... if this minting activity doesn't actually need a seed, you'd need to adjust its on-chain type definition.` +
-                    `  ... a seed provides guaranteed uniqueness for minting e.g. a UUT. ` +
-                    `  ... e.g., minting only fungible tokens doesn't require a seed`
-            );
-        }
+        throw new Error(`mkSeededMintingActivity: deprecated`);
+        // if (!NestedVariant) {
+        //     throw new Error(
+        //         `mkSeededMintingActivity: missing MintingActivity variant '${mintingActivityName}'`
+        //     );
+        // }
+        // // const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
+        // const firstActivityField = NestedVariant.fieldNames[0];
+        // // nestedVarSt.dataDefinition.fields[0].name.value;
+        // if ("seed" !== firstActivityField) {
+        //     throw new Error(
+        //         `Minting activity '${mintingActivityName}' is not a seeded activity.  \n` +
+        //             `   ... therefore, you must use mkSeedlessMintingActivity() instead.  🍉`
+        //     );
+        // }
+        // if (!args.seed) {
+        //     throw new Error(
+        //         `mkSeedlessMintingActivity: missing required 'seed' field in MintingActivity variant!\n` +
+        //             `  🍉 ... if this minting activity doesn't actually need a seed, you'd need to adjust its on-chain type definition.` +
+        //             `  ... a seed provides guaranteed uniqueness for minting e.g. a UUT. ` +
+        //             `  ... e.g., minting only fungible tokens doesn't require a seed`
+        //     );
+        // }
 
-        try {
-            return this.activityRedeemer("MintingActivities", {
-                activity: { [mintingActivityName]: args },
-            });
-        } catch (e: any) {
-            // warning emoji: "⚠️"
-            e.message =
-                "⚠️ ⚠️ ⚠️ error constructing minting activity.  You might need " +
-                "to format the args as UplcData if the enum doesn't recognize a valid off-chain type.\nMinting activity: " +
-                e.message;
-            throw e;
-        }
+        // try {
+        //     return this.activityRedeemer("MintingActivities", {
+        //         activity: { [mintingActivityName]: args },
+        //     });
+        // } catch (e: any) {
+        //     // warning emoji: "⚠️"
+        //     e.message =
+        //         "⚠️ ⚠️ ⚠️ error constructing minting activity.  You might need " +
+        //         "to format the args as UplcData if the enum doesn't recognize a valid off-chain type.\nMinting activity: " +
+        //         e.message;
+        //     throw e;
+        // }
     }
 
     /**
@@ -426,52 +442,57 @@ export class ContractBasedDelegate extends StellarDelegate {
      **/
     @Activity.redeemer
     activityRetiring() {
-        return this.mkDelegateLifecycleActivity("Retiring");
+        throw new Error(`deprecated: explicit activity helper`)
+
+        // return this.mkDelegateLifecycleActivity("Retiring");
     }
 
     @Activity.redeemer
     activityValidatingSettings() {
-        return this.mkDelegateLifecycleActivity("ValidatingSettings");
+        throw new Error(`deprecated: explicit activity helper`)
+
+        // return this.mkDelegateLifecycleActivity("ValidatingSettings");
     }
 
     // @Activity.redeemer
     activityMultipleDelegateActivities(
         ...activities: isActivity[]
     ): isActivity {
-        return this.activityRedeemer("MultipleDelegateActivities", {
-            // todo: allow the cast to take already-uplc'd data
-            activities: activities.map((a) => a.redeemer),
-        });
+        throw new Error(`deprecated: explicit activity helper`)
+        // return this.activityRedeemer("MultipleDelegateActivities", {
+        //     // todo: allow the cast to take already-uplc'd data
+        //     activities: activities.map((a) => a.redeemer),
+        // });
     }
 
 
-    /**
-     * A spend-delegate activity indicating that a delegated-data controller will be governing
-     * an update to a specific piece of delegated data.  No further redeemer details are needed here,
-     * but the data-delegate's controller-token may have additional details in ITS redeemer,
-     * which will be aligned with the one.
-     *
-     * May be present in the context of a nested MultipleDelegateActivities redeemer, in which
-     * case, multiple cases of the above scenario will be present in a single transaction.
-     */
-    @Activity.redeemer
-    activityUpdatingDelegatedData(
-        recId: string | number[]
-    ): isActivity {
-        const recIdBytes = Array.isArray(recId)
-            ? recId
-            : textToBytes(recId);
-        // const Activity = this.mustGetActivity("UpdatingDelegatedData");
+    // /**
+    //  * A spend-delegate activity indicating that a delegated-data controller will be governing
+    //  * an update to a specific piece of delegated data.  No further redeemer details are needed here,
+    //  * but the data-delegate's controller-token may have additional details in ITS redeemer,
+    //  * which will be aligned with the one.
+    //  *
+    //  * May be present in the context of a nested MultipleDelegateActivities redeemer, in which
+    //  * case, multiple cases of the above scenario will be present in a single transaction.
+    //  */
+    // @Activity.redeemer
+    // activityUpdatingDelegatedData(
+    //     recId: string | number[]
+    // ): isActivity {
+    //     const recIdBytes = Array.isArray(recId)
+    //         ? recId
+    //         : textToBytes(recId);
+    //     // const Activity = this.mustGetActivity("UpdatingDelegatedData");
 
-        // this.activity.DeletingDelegatedData
+    //     // this.activity.DeletingDelegatedData
 
-        return {
-            // redeemer: new Activity(uutPurpose, recIdBytes),
-            redeemer: this.activityVariantToUplc("UpdatingDelegatedData", {
-                recId: recIdBytes,
-            }),
-        };
-    }
+    //     return {
+    //         // redeemer: new Activity(uutPurpose, recIdBytes),
+    //         redeemer: this.activityVariantToUplc("UpdatingDelegatedData", {
+    //             recId: recIdBytes,
+    //         }),
+    //     };
+    // }
 
     /**
      * A mint-delegate activity indicating that a delegated-data controller will be governing
@@ -484,15 +505,17 @@ export class ContractBasedDelegate extends StellarDelegate {
     activityDeletingDelegatedData(
         recId: string | number[]
     ): isActivity {
-        const recIdBytes = Array.isArray(recId)
-            ? recId
-            : textToBytes(recId);
+        throw new Error(`deprecated: explicit activity helper`)
 
-            return {
-            redeemer: this.activityVariantToUplc("DeletingDelegatedData", {
-                recId: recIdBytes,
-            }),
-        };
+        // const recIdBytes = Array.isArray(recId)
+        //     ? recId
+        //     : textToBytes(recId);
+
+        //     return {
+        //     redeemer: this.activityVariantToUplc("DeletingDelegatedData", {
+        //         recId: recIdBytes,
+        //     }),
+        // };
     }
 
     /**
@@ -508,6 +531,7 @@ export class ContractBasedDelegate extends StellarDelegate {
     @datum
     mkDatumIsDelegation(dd: DelegationDetail) {
         const { DelegationDetail } = this.onChainTypes;
+        throw new Error(`deprecated: explicit datum helper`)
 
         // const schema = DelegationDetail.toSchema()
         // const cast = new Cast(schema, {
@@ -628,7 +652,7 @@ export class ContractBasedDelegate extends StellarDelegate {
 
         return tcx.addInput(
             makeTxInput(utxo.id, utxo.output),
-            this.activityRetiring()
+            this.activity.DelegateLifecycleActivities.Retiring
         ) as TCX;
     }
 }

@@ -2616,10 +2616,10 @@ export abstract class Capo<
             throw new Error("Cannot provide both id and predicate");
         }
         if (id) {
-            let idBytes : number[]
+            let idBytes: number[];
             if (Array.isArray(id)) {
-                idBytes = id
-            } else { 
+                idBytes = id;
+            } else {
                 idBytes = textToBytes(id.toString());
             }
             predicate = (utxo, datum) => {
@@ -2850,11 +2850,11 @@ export abstract class Capo<
                   withoutMintDelegate: {
                       omitMintDelegate: true,
                       specialMinterActivity:
-                          minter.activityForcingNewMintDelegate(tcxWithSeed),
+                          minter.activity.forcingNewMintDelegate(tcxWithSeed),
                   },
               } as DelegateSetupWithoutMintDelegate)
             : ({
-                  mintDelegateActivity: mintDelegate.activityReplacingMe({
+                  mintDelegateActivity: mintDelegate.activity.DelegateLifecycleActivities.ReplacingMe({
                       seed: tcxWithSeed.state.seedUtxo.id,
                       purpose: "mintDgt",
                   }),
@@ -2979,7 +2979,7 @@ export abstract class Capo<
             ? tcx2
             : await spendDelegate.txnGrantAuthority(
                   tcx2,
-                  spendDelegate.activityReplacingMe({
+                  spendDelegate.activity.DelegateLifecycleActivities.ReplacingMe({
                       seed: tcxWithSeed.state.seedUtxo.id,
                       purpose: "spendDgt",
                   }),
