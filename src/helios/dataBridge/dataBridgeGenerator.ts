@@ -904,7 +904,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             isActivity,
             "isNested"
         );
-        this.helperClasses[`${nestedEnumName}Nested`] = nestedHelper; // registers the nested helper class
+        
+        // registers the nested helper class
+        this.helperClasses[nestedHelperClassName] = nestedHelper; 
 
         // const nestedHelperTypeParams = `<\n        ${
         //     isActivity ? "isActivity" : "JustAnEnum"
@@ -972,7 +974,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                         `    } /* tagOnly variant accessor */`
                     );
                 } else if (fieldCount === 1) {
-                    return this.mkSIngleFieldVariantAccessor(
+                    return this.mkSingleFieldVariantAccessor(
                         enumDetails,
                         variantDetails,
                         variantName,
@@ -1154,7 +1156,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         );
     }
 
-    private mkSIngleFieldVariantAccessor(
+    private mkSingleFieldVariantAccessor(
         enumTypeDetails: fullEnumTypeDetails,
         variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
         variantName: string,
