@@ -495,6 +495,11 @@ export class StellarContract<
         // accesses its data-reader.
         return this.getOnchainBridge().reader;
     }
+    
+    get activity() : any  {
+        const bridge = this.onchain;
+        return bridge.activity as any;
+    }
 
     /**
      * Converts UPLC from an on-chain datum object to a typed off-chain datum object.

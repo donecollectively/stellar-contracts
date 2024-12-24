@@ -27,9 +27,10 @@ import type {
     HeliosBundleClass,
     HeliosScriptBundle,
 } from "../helios/HeliosScriptBundle.js";
-import CapoMinterDataBridge from "./CapoMinter.bridge.js";
+import CapoMinterDataBridge, { MinterActivityHelper } from "./CapoMinter.bridge.js";
 import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type {
+    findActivityType,
     mustFindActivityType,
     mustFindConcreteContractBridgeType,
 } from "../helios/dataBridge/BridgeTypeUtils.js";
@@ -91,7 +92,7 @@ export class CapoMinter
     //     return super.offchain as any;
     // }
 
-    get activity(): mustFindActivityType<CapoMinter> {
+    get activity(): MinterActivityHelper {
         const bridge = this.onchain;
         return bridge.activity as any;
     }
