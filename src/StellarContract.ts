@@ -1813,7 +1813,7 @@ export class StellarContract<
         console.log(`${name} with params:`, script.entryPoint.paramsDetails());
 
         this.compiledScript = await script.compileCached({
-            optimize: true,
+            optimize: false,
             // optimize: {
             //     keepTracing: true,
             //     factorizeCommon: false,
