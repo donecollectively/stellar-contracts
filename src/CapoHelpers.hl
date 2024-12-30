@@ -961,7 +961,10 @@ struct DgDataDetails {
     // }
 
     func inputData(self) -> Data {
-        self.input().datum.inline
+        self.input().datum.inline.switch {
+            ConstrData{_, fields} => fields.head,
+            _ => error("expected ConstrData{mStruct} for DgData input")
+        }
         // self.dataSrc.switch {
         //     Input{utxo} => utxo.datum.inline,
         //     Both{utxo, _} => utxo.datum.inline,
@@ -970,7 +973,11 @@ struct DgDataDetails {
     }
 
     func outputData(self) -> Data {
-        self.output().datum.inline
+        self.output().datum.inline.switch {
+            ConstrData{_, fields} => fields.head,
+            _ => error("expected ConstrData{mStruct} for DgData output")
+        }
+
         // self.dataSrc.switch {
         //     Output{txo} => txo.datum.inline,
         //     Both{_, txo} => txo.datum.inline,
@@ -1108,10 +1115,12 @@ struct CapoCtx {
     func getManifestedData(self, key: String,
         which : UtxoSource = UtxoSource::RefInput
     ) -> Data {
+        print("  -- finding manifest symbol "+ key);
         manifestEntry : CapoManifestEntry = self.mustFindManifestEntry(key);
         tokenName : ByteArray = manifestEntry.tokenName;
         manifestValue : Value = mkTv(mph: self.mph, tnBytes: tokenName);
-        print("  -- seeking input dgData utxo: "+ tokenName.decode_utf8()+"\n");
+        print("     ... with input dgData token name: "+ tokenName.decode_utf8());
+        // print("     with value: "+manifestValue.show()+"\n");
 
         inputs: []TxInput = which.switch {
             RefInput => tx.ref_inputs,
@@ -1135,7 +1144,20 @@ struct CapoCtx {
             }
         };
 
-        utxo.datum.inline
+        utxo.datum.inline.switch {
+            ConstrData{_, fields} => {
+                print("utxo: "+ utxo.output_id.show());
+                print("manifested data field = "+fields.length.show());
+                fields.head.switch {
+                    MapData => {
+                        print("mapData found");
+                        fields.head
+                    },
+                    _ => error("expected MapData for manifested data: "+ key)
+                }
+            },
+            _ => error("expected ConstrData{mStruct} for manifested data: "+ key)
+        }
     }
 
     func getNextManifestDatum[DATUM_TYPE](self, key: String) -> DATUM_TYPE {
@@ -1158,7 +1180,10 @@ struct CapoCtx {
             None => error("missing required '"+key+"' manifest entry in outputs")
         };
 
-        utxo.datum.inline
+        utxo.datum.inline.switch {
+            ConstrData{_, fields} => fields.head,
+            _ => error("expected ConstrData{mStruct} for manifested data: "+ key)
+        }
     }
 
     // func getRefSettingsUtxo(self) -> TxInput {
