@@ -1046,7 +1046,7 @@ struct CapoCtx {
         assert(
             validity.end - validity.start 
                 <= granularity,
-            "txn duration err"
+            "txn duration must be at most "+granularity.show() + "ms"
         );
         validity.start
     }
