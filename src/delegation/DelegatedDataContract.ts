@@ -552,7 +552,7 @@ export type CoreDgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> =
 
 export type DgDataUpdateOptions<TLike extends AnyDataTemplate<any, any>> = {
     activity: isActivity | UpdateActivity<any>;
-    updatedFields: minimalData<TLike>;
+    updatedFields: Partial<minimalData<TLike>>;
 
     addedUtxoValue?: Value;
     // beforeSave?(x: DTL): DTL;

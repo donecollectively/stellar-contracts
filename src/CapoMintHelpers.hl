@@ -300,13 +300,24 @@ func mkUutTnFactory(
 }
 
 func tnCip68nft222(tn : String) -> ByteArray{
-    #000de140 + tn.encode_utf8()
+     #000de140 + tn.encode_utf8()
 }
 
 func tnCip68ref100(tn : String) -> ByteArray {
     #000643b0 + tn.encode_utf8()
 }
 
+/**
+ * ensures that shorter token-names are mentioned before longer ones
+ * AND that lexographically smaller names are mentioned first.
+ */
+func sortPolicyValues(k1 : ByteArray, _v1 : Int, k2 : ByteArray, _v2: Int) -> Bool {
+    if (k1.length < k2.length) { 
+        true 
+    } else {
+        k1 < k2
+    }
+}
 
 // checks all of the following:
 //  - there's an approving delegate (or we're bootstrapping)
@@ -324,6 +335,7 @@ func validateUutMinting(
     checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported
 ) -> Bool {
     isBootstrapping : Bool = !( bootstrapCharter.is_zero() );
+
     delegateApproval : Bool = if ( isBootstrapping ) { 
         true 
     } else {
@@ -380,6 +392,7 @@ func validateUutMinting(
             }
         )
     );
+
     if (! valueMinted.contains_policy(mph) ) {
         print( "  -- no mint from our policy "+ 
             mph.show() +
@@ -390,20 +403,21 @@ func validateUutMinting(
 
     print("\n  -- uut-minting seed: " + seed.tx_id.show() + "🔹#"+seed.index.show() + "\n");
 
-    expectedValue.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
+
+    expectedValue.get_policy(mph).sort(sortPolicyValues).for_each( (b : ByteArray, i: Int) -> {
         print( "    ℹ️ 🐞 expected: "+ i.show() + "x " + b.decode_utf8() + "\n" )
     });
 
-    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
+    actualThisPolicyMint = valueMinted.get_policy(mph);
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
     if (true) {
-        actualMint.for_each( (b : ByteArray, i: Int) -> {
+        actualThisPolicyMint.for_each( (b : ByteArray, i: Int) -> {
             print( "    ℹ️ 🐞   actual: " + i.show() + "x " + b.decode_utf8() + "\n" )
         });
+        print("other policy values minted: \n");
         print(Value::from_map(valueMinted.to_map().filter( (b:MintingPolicyHash, _ /* Map[ByteArray]Int */ ) -> Bool {
             b != mph
-        })).show());
-        print("^ other policy values minted \n")        
+        })).show())
     };
 
     // _temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
@@ -416,13 +430,56 @@ func validateUutMinting(
     // }, []ByteArray{});
     // assert(true || (temp == temp), "prevent unused var");
 
-    expectationsMet : Bool = valueMinted == expectedValue;
+    
 
-    assert(expectationsMet, "mismatch in UUT mint");
+    REQT("Ensures the mint for this policy-id is exactly the expected value");
+    thisPolicyMintOK = actualThisPolicyMint == expectedValue.get_policy(mph).sort(sortPolicyValues);
+    assert(thisPolicyMintOK, "mismatch in UUT mint");
+    print("  -- this-policy mint ok");
     assert(hasSeedUtxo(tx, seed), "no seed"); //, "UUT "+purposes.join("+")
+    print("  -- ok: has seed and expected this-policy mint value");
+
+    otherPoliciesMintOk = if (!otherMintedValue.is_zero()) { true } else {
+        REQT("... with an additional mint-value indicated");
+
+        remainingExpectedMint = if (expectedValue.contains_policy(mph)) {
+            Value::from_map(
+                expectedValue.to_map().delete(mph)
+            )
+        } else { expectedValue };
+
+        if (remainingExpectedMint.is_zero()) { true } else {
+            REQT("...with other-policy values expected: ");
+            print( remainingExpectedMint.show() + "^ other-mint value expected");
+            REQT("It should mint exactly the indicated token names");
+            REQT("Doesn't constrain any mentioned policy's minting of any other tokens");
+            remainingExpectedMint.to_map().for_each( 
+                (otherMph: MintingPolicyHash, expectedTokensThisPolicy: Map[ByteArray]Int) -> {
+                    mintedThisPolicy : Map[ByteArray]Int = valueMinted.get_policy(otherMph);/* implicitly sorted already .sort(sortPolicyValues);*/
+
+                    expectedTokensThisPolicy.sort(sortPolicyValues).for_each( (tokenName: ByteArray, expectedCount: Int) -> {
+                        assert(
+                            mintedThisPolicy.get_safe(tokenName).switch {
+                                None => false,
+                                Some{actualCount} => actualCount == expectedCount
+                            }, 
+                            "   -- wrong mint for "+ otherMph.show() + ":" + tokenName.decode_utf8()
+                        )
+                    })
+                }
+            );
+            true
+        }
+        // ^^ any errors are thrown in here
+    };
+    assert(
+        otherPoliciesMintOk.trace("  -- other-expected-mints ok? "), 
+        "unreachable exception: otherPoliciesMintOk"
+    );
+
     print(" ✅ validateUutMinting:  ok!\n");
 
-    delegateApproval && expectationsMet     
+    delegateApproval && thisPolicyMintOK && otherPoliciesMintOk 
 }
 
 enum MinterActivity { 

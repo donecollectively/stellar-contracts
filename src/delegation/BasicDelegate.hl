@@ -1091,6 +1091,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     REQT("context: CreatingDelegatedData");
                     assert(isMintDelegate && cctx.nowActingAsMintDgt(), "<---- fails in there, not here");
 
+                    REQT("  -- ensures the data-controller is invoked with its minting activity for the indicated recId");
                     policyDelegateInput = cctx.
                         requiresDgDataPolicyInput(dataTypePurpose);
 

@@ -1,4 +1,8 @@
-import { bytesToHex, hexToBytes, type BytesLike } from "@helios-lang/codec-utils";
+import {
+    bytesToHex,
+    hexToBytes,
+    type BytesLike,
+} from "@helios-lang/codec-utils";
 import type { SimpleWallet, Wallet } from "@helios-lang/tx-utils";
 import {
     type Address,
@@ -195,26 +199,41 @@ export class UtxoHelper {
     ): tokenBearer | undefined {
         if (something.kind == "TxOutput")
             return (
-                (this.outputHasToken(something as TxOutput, value, tokenName, quantity) &&
+                (this.outputHasToken(
+                    something as TxOutput,
+                    value,
+                    tokenName,
+                    quantity
+                ) &&
                     something) ||
                 undefined
             );
 
         if (something.kind == "TxInput")
             return (
-                (this.utxoHasToken(something as TxInput, value, tokenName, quantity) &&
-                    something) ||
-                undefined
-            );
-            
-        if (something.kind == "Assets")
-            return (
-                (this.assetsHasToken(something as Assets, value, tokenName, quantity) &&
+                (this.utxoHasToken(
+                    something as TxInput,
+                    value,
+                    tokenName,
+                    quantity
+                ) &&
                     something) ||
                 undefined
             );
 
-        throw new Error("unexpected")
+        if (something.kind == "Assets")
+            return (
+                (this.assetsHasToken(
+                    something as Assets,
+                    value,
+                    tokenName,
+                    quantity
+                ) &&
+                    something) ||
+                undefined
+            );
+
+        throw new Error("unexpected");
         // //!!! todo: more explicit match for TxInput, which seems to be a type but not an 'instanceof'-testable thing.
         // return (
         //     (this.inputHasToken(something, value, tokenName, quantity) &&
@@ -248,7 +267,7 @@ export class UtxoHelper {
         quantity?: bigint
     ) {
         const v =
-            vOrMph.kind == "MintingPolicyHash" 
+            vOrMph.kind == "MintingPolicyHash"
                 ? this.mkAssetValue(vOrMph, tokenName!, quantity!)
                 : vOrMph;
 
@@ -261,7 +280,7 @@ export class UtxoHelper {
         tokenName?: string,
         quantity?: bigint
     ) {
-        const isValue = vOrMph.kind == "Value"
+        const isValue = vOrMph.kind == "Value";
         if (!isValue) {
             if (!tokenName || !quantity) {
                 throw new Error(
@@ -270,9 +289,7 @@ export class UtxoHelper {
             }
         }
 
-        const v = isValue
-            ? vOrMph
-            : this.mkAssetValue(vOrMph, tokenName!, quantity!);
+        const v = isValue ? vOrMph : makeValue(vOrMph, tokenName!, quantity!);
 
         return o.value.isGreaterOrEqual(v);
     }
@@ -296,7 +313,7 @@ export class UtxoHelper {
         //     [ mph, [ TL ] ]
         // ]);
         const v = makeValue(
-            mph, 
+            mph,
             tokenName,
             count
             // ...other mph / token-map pairs
@@ -397,7 +414,7 @@ export class UtxoHelper {
     ) {
         const v = makeValue(mph, tokenName, count);
         // uses a dummy address so it can be used even during bootstrap
-        const dummyAddr = makeDummyAddress(false)
+        const dummyAddr = makeDummyAddress(false);
         const txo = makeTxOutput(dummyAddr, v);
         txo.correctLovelace(this.networkParams);
         return txo.value;
@@ -474,7 +491,7 @@ export class UtxoHelper {
 
         //@ts-expect-error
         const isValue = specifier.kind == "Value";
-        
+
         const isTokenNameOnly =
             "string" === typeof specifier ||
             (Array.isArray(specifier) && "number" === typeof specifier[0]);
@@ -482,17 +499,27 @@ export class UtxoHelper {
         if (isValue) {
             const v = specifier as Value;
             // v = predicate.value = specifier;
-            const t = _tokenPredicate.bind(
-                this,
-                v
-            ) as tokenPredicate<any>;
+            const t = _tokenPredicate.bind(this, v) as tokenPredicate<any>;
             t.predicateValue = v;
             return t;
         } else if (isUut || isTokenNameOnly) {
             const tn = specifier as UutName | number[] | string;
             const quant = quantOrTokenName ? BigInt(quantOrTokenName) : 1n;
-            const tv = this.tokenAsValue(
-                tn,
+            //@ts-expect-error
+            const mph = this.strella.mph;
+            if (!mph) {
+                throw new Error(
+                    `this helper doesn't have a capo contract to resolve minting policy hash; specify the mph explicitly`
+                );
+            }
+            const tnBytes = isUut
+                ? textToBytes(tn.toString())
+                : Array.isArray(tn)
+                ? tn
+                : textToBytes(tn as string);
+            const tv = makeValue(
+                mph,
+                tnBytes,
                 quant // quantity if any
             );
             const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
@@ -528,9 +555,7 @@ export class UtxoHelper {
 
             // v = predicate.value = new Value(0n, [[specifier, quantity]]);
             // return predicate;
-            const tv = makeValue(0n, [
-                [mph, [[s.tokenName, quantity]]],
-            ]);
+            const tv = makeValue(0n, [[mph, [[s.tokenName, quantity]]]]);
             const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
             t.predicateValue = tv;
             return t;

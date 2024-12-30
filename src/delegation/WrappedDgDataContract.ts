@@ -104,7 +104,7 @@ export abstract class WrappedDgDataContract<
         options: DgDataUpdateOptions<TLike> & { updatedWrapped?: WRAPPER },
         tcx?: TCX
     ): Promise<TCX> {
-        const updatedFields : minimalData<TLike> = options.updatedFields
+        const updatedFields  = options.updatedFields
         return super.mkTxnUpdateRecord(txnName, item, {
             ...options,
             updatedFields: {
