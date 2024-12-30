@@ -23,7 +23,15 @@ export function mkCachedHeliosProgramFS(): typeof CachedHeliosProgram {
         static async ifCached(cacheKey: string): Promise<string | null> {
             if (existsSync(`${cacheStore}/${cacheKey}`)) {
                 const result = await readFile(`${cacheStore}/${cacheKey}`, "utf8");
-                console.log(`🐢${this.id}: compiler cache hit: ${cacheKey}: ${result.length} bytes`)
+                try {
+                    console.log(`🐢${this.id}: compiler cache entry: ${cacheKey}: ${result.length} bytes`)
+                    const parsed = JSON.parse(result)
+                    const {unoptimized, optimized} = parsed;
+                    console.log(`   unoptimized=${unoptimized?.length/2} bytes, optimized=${optimized?.length/2} bytes`)
+                } catch (e) {
+                    console.log(`🐢${this.id}: parse error -> cache miss: ${cacheKey}`);
+                    return null
+                }
                 return result
             }
             console.log(`🐢${this.id}: compiler cache miss: ${cacheKey}`)
