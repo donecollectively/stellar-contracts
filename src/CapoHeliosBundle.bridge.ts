@@ -100,7 +100,7 @@ export class CapoDataBridge extends ContractDataBridge {
      * for this contract script. 
      */
     datum: CapoDatumHelper
-     = new CapoDatumHelper(this.bundle, {})   // datumAccessor/enum
+     = new CapoDatumHelper({})   // datumAccessor/enum
 
     /**
      * this is the specific type of datum for the `Capo` script
@@ -115,7 +115,7 @@ export class CapoDataBridge extends ContractDataBridge {
     /**
      * generates UplcData for the activity type (***CapoActivity***) for the `Capo` script
      */
-    activity : CapoActivityHelper= new CapoActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
+    activity : CapoActivityHelper= new CapoActivityHelper({isActivity: true}); // activityAccessor/enum
         CapoActivity: CapoActivityHelper = this.activity;
 
     reader = new CapoDataBridgeReader(this);
@@ -128,35 +128,35 @@ export class CapoDataBridge extends ContractDataBridge {
       /**
        * generates UplcData for the enum type ***DelegateRole*** for the `Capo` script
        */
-        DelegateRole: new DelegateRoleHelper(this.bundle),
+        DelegateRole: new DelegateRoleHelper(),
       /**
        * generates UplcData for the enum type ***ManifestEntryType*** for the `Capo` script
        */
-        ManifestEntryType: new ManifestEntryTypeHelper(this.bundle),
+        ManifestEntryType: new ManifestEntryTypeHelper(),
       /**
        * generates UplcData for the enum type ***PendingDelegateAction*** for the `Capo` script
        */
-        PendingDelegateAction: new PendingDelegateActionHelper(this.bundle),
+        PendingDelegateAction: new PendingDelegateActionHelper(),
       /**
        * generates UplcData for the enum type ***PendingCharterChange*** for the `Capo` script
        */
-        PendingCharterChange: new PendingCharterChangeHelper(this.bundle),
+        PendingCharterChange: new PendingCharterChangeHelper(),
       /**
        * generates UplcData for the enum type ***CapoDatum*** for the `Capo` script
        */
-        CapoDatum: new CapoDatumHelper(this.bundle),
+        CapoDatum: new CapoDatumHelper(),
       /**
        * generates UplcData for the enum type ***ManifestActivity*** for the `Capo` script
        */
-        ManifestActivity: new ManifestActivityHelper(this.bundle),
+        ManifestActivity: new ManifestActivityHelper(),
       /**
        * generates UplcData for the enum type ***CapoLifecycleActivity*** for the `Capo` script
        */
-        CapoLifecycleActivity: new CapoLifecycleActivityHelper(this.bundle),
+        CapoLifecycleActivity: new CapoLifecycleActivityHelper(),
       /**
        * generates UplcData for the enum type ***CapoActivity*** for the `Capo` script
        */
-        CapoActivity: new CapoActivityHelper(this.bundle),
+        CapoActivity: new CapoActivityHelper(),
 
       /**
        * generates UplcData for the enum type ***RelativeDelegateLink*** for the `Capo` script
@@ -1380,8 +1380,8 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * access to different variants of the ***nested DelegateRole*** type needed for ***CapoLifecycleActivity:removePendingChange***.
      */
     get removePendingChange() {
-        const nestedAccessor = new DelegateRoleHelperNested(this.bundle,
-            {isNested: true, isActivity: false 
+        const nestedAccessor = new DelegateRoleHelperNested({
+            isNested: true, isActivity: false 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -1534,8 +1534,8 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * access to different variants of the ***nested ManifestActivity*** type needed for ***CapoLifecycleActivity:updatingManifest***.
      */
     get updatingManifest() {
-        const nestedAccessor = new ManifestActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: false 
+        const nestedAccessor = new ManifestActivityHelperNested({
+            isNested: true, isActivity: false 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -1754,8 +1754,8 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * access to different variants of the ***nested DelegateRole*** type needed for ***CapoLifecycleActivity:removePendingChange***.
      */
     get removePendingChange() {
-        const nestedAccessor = new ActivityDelegateRoleHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new ActivityDelegateRoleHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -1924,8 +1924,8 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * access to different variants of the ***nested ManifestActivity*** type needed for ***CapoLifecycleActivity:updatingManifest***.
      */
     get updatingManifest() {
-        const nestedAccessor = new ManifestActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new ManifestActivityHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -1955,8 +1955,8 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
      * access to different variants of the ***nested CapoLifecycleActivity*** type needed for ***CapoActivity:capoLifecycleActivity***.
      */
     get capoLifecycleActivity() {
-        const nestedAccessor = new CapoLifecycleActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new CapoLifecycleActivityHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(

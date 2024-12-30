@@ -114,7 +114,7 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
      * for this contract script. 
      */
     datum: DelegateDatumHelper
-     = new DelegateDatumHelper(this.bundle, {})   // datumAccessor/enum
+     = new DelegateDatumHelper({})   // datumAccessor/enum
 
     /**
      * this is the specific type of datum for the `BasicDelegate` script
@@ -129,7 +129,7 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
     /**
      * generates UplcData for the activity type (***DelegateActivity***) for the `BasicDelegate` script
      */
-    activity : DelegateActivityHelper= new DelegateActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
+    activity : DelegateActivityHelper= new DelegateActivityHelper({isActivity: true}); // activityAccessor/enum
         DelegateActivity: DelegateActivityHelper = this.activity;
 
     reader = new UnspecializedDelegateBridgeReader(this);
@@ -142,55 +142,55 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
       /**
        * generates UplcData for the enum type ***DelegateDatum*** for the `BasicDelegate` script
        */
-        DelegateDatum: new DelegateDatumHelper(this.bundle),
+        DelegateDatum: new DelegateDatumHelper(),
       /**
        * generates UplcData for the enum type ***DelegateRole*** for the `BasicDelegate` script
        */
-        DelegateRole: new DelegateRoleHelper(this.bundle),
+        DelegateRole: new DelegateRoleHelper(),
       /**
        * generates UplcData for the enum type ***ManifestActivity*** for the `BasicDelegate` script
        */
-        ManifestActivity: new ManifestActivityHelper(this.bundle),
+        ManifestActivity: new ManifestActivityHelper(),
       /**
        * generates UplcData for the enum type ***CapoLifecycleActivity*** for the `BasicDelegate` script
        */
-        CapoLifecycleActivity: new CapoLifecycleActivityHelper(this.bundle),
+        CapoLifecycleActivity: new CapoLifecycleActivityHelper(),
       /**
        * generates UplcData for the enum type ***DelegateLifecycleActivity*** for the `BasicDelegate` script
        */
-        DelegateLifecycleActivity: new DelegateLifecycleActivityHelper(this.bundle),
+        DelegateLifecycleActivity: new DelegateLifecycleActivityHelper(),
       /**
        * generates UplcData for the enum type ***SpendingActivity*** for the `BasicDelegate` script
        */
-        SpendingActivity: new SpendingActivityHelper(this.bundle),
+        SpendingActivity: new SpendingActivityHelper(),
       /**
        * generates UplcData for the enum type ***MintingActivity*** for the `BasicDelegate` script
        */
-        MintingActivity: new MintingActivityHelper(this.bundle),
+        MintingActivity: new MintingActivityHelper(),
       /**
        * generates UplcData for the enum type ***BurningActivity*** for the `BasicDelegate` script
        */
-        BurningActivity: new BurningActivityHelper(this.bundle),
+        BurningActivity: new BurningActivityHelper(),
       /**
        * generates UplcData for the enum type ***DelegateActivity*** for the `BasicDelegate` script
        */
-        DelegateActivity: new DelegateActivityHelper(this.bundle),
+        DelegateActivity: new DelegateActivityHelper(),
       /**
        * generates UplcData for the enum type ***PendingDelegateAction*** for the `BasicDelegate` script
        */
-        PendingDelegateAction: new PendingDelegateActionHelper(this.bundle),
+        PendingDelegateAction: new PendingDelegateActionHelper(),
       /**
        * generates UplcData for the enum type ***ManifestEntryType*** for the `BasicDelegate` script
        */
-        ManifestEntryType: new ManifestEntryTypeHelper(this.bundle),
+        ManifestEntryType: new ManifestEntryTypeHelper(),
       /**
        * generates UplcData for the enum type ***PendingCharterChange*** for the `BasicDelegate` script
        */
-        PendingCharterChange: new PendingCharterChangeHelper(this.bundle),
+        PendingCharterChange: new PendingCharterChangeHelper(),
       /**
        * generates UplcData for the enum type ***cctx_CharterInputType*** for the `BasicDelegate` script
        */
-        cctx_CharterInputType: new cctx_CharterInputTypeHelper(this.bundle),
+        cctx_CharterInputType: new cctx_CharterInputTypeHelper(),
 
       /**
        * generates UplcData for the enum type ***AnyData*** for the `BasicDelegate` script
@@ -1284,8 +1284,8 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * access to different variants of the ***nested DelegateRole*** type needed for ***CapoLifecycleActivity:removePendingChange***.
      */
     get removePendingChange() {
-        const nestedAccessor = new DelegateRoleHelperNested(this.bundle,
-            {isNested: true, isActivity: false 
+        const nestedAccessor = new DelegateRoleHelperNested({
+            isNested: true, isActivity: false 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -1438,8 +1438,8 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      * access to different variants of the ***nested ManifestActivity*** type needed for ***CapoLifecycleActivity:updatingManifest***.
      */
     get updatingManifest() {
-        const nestedAccessor = new ManifestActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: false 
+        const nestedAccessor = new ManifestActivityHelperNested({
+            isNested: true, isActivity: false 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -1867,8 +1867,8 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * access to different variants of the ***nested DelegateRole*** type needed for ***CapoLifecycleActivity:removePendingChange***.
      */
     get removePendingChange() {
-        const nestedAccessor = new ActivityDelegateRoleHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new ActivityDelegateRoleHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -2037,8 +2037,8 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      * access to different variants of the ***nested ManifestActivity*** type needed for ***CapoLifecycleActivity:updatingManifest***.
      */
     get updatingManifest() {
-        const nestedAccessor = new ManifestActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new ManifestActivityHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -2303,8 +2303,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      * access to different variants of the ***nested CapoLifecycleActivity*** type needed for ***DelegateActivity:CapoLifecycleActivities***.
      */
     get CapoLifecycleActivities() {
-        const nestedAccessor = new CapoLifecycleActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new CapoLifecycleActivityHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -2319,8 +2319,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      * access to different variants of the ***nested DelegateLifecycleActivity*** type needed for ***DelegateActivity:DelegateLifecycleActivities***.
      */
     get DelegateLifecycleActivities() {
-        const nestedAccessor = new DelegateLifecycleActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new DelegateLifecycleActivityHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -2335,8 +2335,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      * access to different variants of the ***nested SpendingActivity*** type needed for ***DelegateActivity:SpendingActivities***.
      */
     get SpendingActivities() {
-        const nestedAccessor = new SpendingActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new SpendingActivityHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -2351,8 +2351,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      * access to different variants of the ***nested MintingActivity*** type needed for ***DelegateActivity:MintingActivities***.
      */
     get MintingActivities() {
-        const nestedAccessor = new MintingActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new MintingActivityHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -2367,8 +2367,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      * access to different variants of the ***nested BurningActivity*** type needed for ***DelegateActivity:BurningActivities***.
      */
     get BurningActivities() {
-        const nestedAccessor = new BurningActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: true 
+        const nestedAccessor = new BurningActivityHelperNested({
+            isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(

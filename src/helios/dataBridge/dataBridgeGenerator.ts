@@ -394,7 +394,7 @@ ${this.includeStructReaders()}
                     `      /**\n` +
                     `       * generates UplcData for the enum type ***${typeName}*** for the \`${this.bundle.program.name}\` script\n` +
                     `       */\n` +
-                    `        ${typeName}: new ${helperClassName}(this.bundle),`
+                    `        ${typeName}: new ${helperClassName}(),`
                 );
             })
             .join("\n");
@@ -527,7 +527,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
     /**
      * generates UplcData for the activity type (***${activityTypeName}***) for the \`${this.bundle.program.name}\` script
      */
-    activity : ${helperClassName}= new ${helperClassName}(this.bundle, {isActivity: true}); // activityAccessor/enum
+    activity : ${helperClassName}= new ${helperClassName}({isActivity: true}); // activityAccessor/enum
         ${activityName}: ${helperClassName} = this.activity;\n`;
             // ---------------------------------
         } else if (activityDetails.typeSchema.kind === "struct") {
@@ -567,7 +567,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 }***\n` +
                 `     * ("redeemer" type) for this \`${this.bundle.program.name}\` contract script. ${moreTypeGuidance}\n` +
                 `     */\n` +
-                `    activity: ${helperClassType}\n     = new ${helperClassName}(this.bundle, {}) ${helperClassTypeCast} ` +
+                `    activity: ${helperClassType}\n     = new ${helperClassName}({}) ${helperClassTypeCast} ` +
                 accessorVarietyAnnotation
             );
         }
@@ -684,7 +684,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             }***\n` +
             `     * for this contract script. ${moreTypeGuidance}\n` +
             `     */\n` +
-            `    datum: ${helperClassType}\n     = new ${helperClassName}(this.bundle, {}) ${helperClassTypeCast} ` +
+            `    datum: ${helperClassType}\n     = new ${helperClassName}({}) ${helperClassTypeCast} ` +
             datumAccessorVarietyAnnotation +
             typeNameAccessor +
             `\n\n    readDatum : (d: UplcData) => Ergo${typeName} = (d) =>  {\n` +
@@ -904,7 +904,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             isActivity,
             "isNested"
         );
-        
+
         // registers the nested helper class
         this.helperClasses[nestedHelperClassName] = nestedHelper; 
 
@@ -918,8 +918,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `     * access to different variants of the ***nested ${nestedEnumName}*** type needed for ***${enumName}:${variantName}***.\n` +
             `     */\n` +
             `    get ${variantName}() {\n` +
-            `        const nestedAccessor = new ${nestedHelperClassName}(this.bundle,
-            {isNested: true, isActivity: ${isActivity ? "true" : "false"} 
+            `        const nestedAccessor = new ${nestedHelperClassName}({
+            isNested: true, isActivity: ${isActivity ? "true" : "false"} 
         });\n` +
             `        ${"//"}@ts-expect-error drilling through the protected accessor.  See more comments about that above\n` +
             `        nestedAccessor.mkDataVia(\n` +

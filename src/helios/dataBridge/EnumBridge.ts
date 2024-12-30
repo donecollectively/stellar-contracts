@@ -24,8 +24,8 @@ export class EnumBridge<
     uplcReturnType = //extends (isActivity extends TYPE ? { redeemer: UplcData } : UplcData) =
     isActivity extends TYPE ? { redeemer: UplcData } : UplcData
 > extends DataBridge {
-    constructor(bundle: HeliosScriptBundle, options : DataBridgeOptions={}) {
-        super(bundle, options);
+    constructor(options : DataBridgeOptions={}) {
+        super(options);
     }   
     // the uplcReturnType provides type clues, mainly for editor support
     // and compile-time type-checking.  

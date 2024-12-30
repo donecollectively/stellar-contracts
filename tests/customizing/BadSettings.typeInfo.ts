@@ -861,3 +861,434 @@ export type DelegateActivityLike = IntersectedEnum<
 			Array<UplcData>    /*minEnumVariant*/ }
 >
 
+export type PendingDelegateAction$Add = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ 
+}
+
+export type PendingDelegateAction$Ergo$Add = PendingDelegateAction$Add/*ergo like-canonical-this-variant*/
+export type PendingDelegateAction$AddLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ 
+}
+
+
+export type PendingDelegateAction$Replace = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
+    replacesDgt: AssetClass  /*minVariantField*/ 
+}
+
+export type PendingDelegateAction$Ergo$Replace = PendingDelegateAction$Replace/*ergo like-canonical-this-variant*/
+export type PendingDelegateAction$ReplaceLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
+    replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ 
+}
+
+
+export type PendingDelegateActionMeta = EnumTypeMeta<
+    {module: "CapoDelegateHelpers", enumName: "PendingDelegateAction"}, {
+        Add: singleEnumVariantMeta<PendingDelegateActionMeta, "Add",
+            "Constr#0", 
+            "fields", PendingDelegateAction$Add, "isSeededActivity"
+        >,
+        Remove: singleEnumVariantMeta<PendingDelegateActionMeta, "Remove",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        Replace: singleEnumVariantMeta<PendingDelegateActionMeta, "Replace",
+            "Constr#2", 
+            "fields", PendingDelegateAction$Replace, "isSeededActivity"
+        >
+    }
+>;
+
+
+/**
+ * PendingDelegateAction enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **3 variant(s)** of the PendingDelegateAction enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `PendingDelegateActionHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type PendingDelegateAction = 
+        | { Add: PendingDelegateAction$Add /*minEnumVariant*/ }
+        | { Remove: tagOnly /*minEnumVariant*/ }
+        | { Replace: PendingDelegateAction$Replace /*minEnumVariant*/ }
+
+export type ErgoPendingDelegateAction = IntersectedEnum<
+        | { Add: PendingDelegateAction$Ergo$Add /*minEnumVariant*/ }
+        | { Remove: tagOnly /*minEnumVariant*/ }
+        | { Replace: PendingDelegateAction$Ergo$Replace /*minEnumVariant*/ }
+>
+
+/**
+ * PendingDelegateAction enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structure
+ * for creating any of the **3 variant(s)** of the PendingDelegateAction enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `PendingDelegateActionHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type PendingDelegateActionLike = IntersectedEnum<
+        | { Add: PendingDelegateAction$AddLike /*minEnumVariant*/ }
+        | { Remove: tagOnly /*minEnumVariant*/ }
+        | { Replace: PendingDelegateAction$ReplaceLike /*minEnumVariant*/ }
+>
+
+export type RelativeDelegateLink = {
+    uutName: /*minStructField*/ string
+    delegateValidatorHash: /*minStructField*/ ValidatorHash | undefined
+    config: /*minStructField*/ number[]
+}
+
+export type ErgoRelativeDelegateLink = RelativeDelegateLink/*like canon-other*/
+export type RelativeDelegateLinkLike = {
+    uutName: /*minStructField*/ string
+    delegateValidatorHash: /*minStructField*/ ValidatorHash | string | number[] | undefined
+    config: /*minStructField*/ number[]
+}
+
+
+export type PendingDelegateChange = {
+    action: /*minStructField*/ PendingDelegateAction
+    role: /*minStructField*/ DelegateRole
+    dgtLink: /*minStructField*/ RelativeDelegateLink | undefined
+}
+
+export type ErgoPendingDelegateChange = {
+    action: /*minStructField*/ ErgoPendingDelegateAction
+    role: /*minStructField*/ ErgoDelegateRole
+    dgtLink: /*minStructField*/ ErgoRelativeDelegateLink | undefined
+}
+
+export type PendingDelegateChangeLike = {
+    action: /*minStructField*/ PendingDelegateActionLike
+    role: /*minStructField*/ DelegateRoleLike
+    dgtLink: /*minStructField*/ RelativeDelegateLinkLike | undefined
+}
+
+
+export type ManifestEntryType$DgDataPolicy = {
+    policyLink: RelativeDelegateLink  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
+    refCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestEntryType$Ergo$DgDataPolicy = {
+    policyLink: ErgoRelativeDelegateLink  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
+    refCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestEntryType$DgDataPolicyLike = {
+    policyLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
+    refCount: IntLike  /*minVariantField*/ 
+}
+
+
+export type ManifestEntryType$DelegateThreads = {
+    role: DelegateRole  /*minVariantField*/ ,
+    refCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestEntryType$Ergo$DelegateThreads = {
+    role: ErgoDelegateRole  /*minVariantField*/ ,
+    refCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestEntryType$DelegateThreadsLike = {
+    role: DelegateRoleLike  /*minVariantField*/ ,
+    refCount: IntLike  /*minVariantField*/ 
+}
+
+
+export type ManifestEntryTypeMeta = EnumTypeMeta<
+    {module: "CapoHelpers", enumName: "ManifestEntryType"}, {
+        NamedTokenRef: singleEnumVariantMeta<ManifestEntryTypeMeta, "NamedTokenRef",
+            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        DgDataPolicy: singleEnumVariantMeta<ManifestEntryTypeMeta, "DgDataPolicy",
+            "Constr#1", 
+            "fields", ManifestEntryType$DgDataPolicy, "noSpecialFlags"
+        >,
+        DelegateThreads: singleEnumVariantMeta<ManifestEntryTypeMeta, "DelegateThreads",
+            "Constr#2", 
+            "fields", ManifestEntryType$DelegateThreads, "noSpecialFlags"
+        >,
+        MerkleMembership: singleEnumVariantMeta<ManifestEntryTypeMeta, "MerkleMembership",
+            "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        MerkleStateRoot: singleEnumVariantMeta<ManifestEntryTypeMeta, "MerkleStateRoot",
+            "Constr#4", "tagOnly", tagOnly, "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * ManifestEntryType enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **5 variant(s)** of the ManifestEntryType enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `ManifestEntryTypeHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type ManifestEntryType = 
+        | { NamedTokenRef: tagOnly /*minEnumVariant*/ }
+        | { DgDataPolicy: ManifestEntryType$DgDataPolicy /*minEnumVariant*/ }
+        | { DelegateThreads: ManifestEntryType$DelegateThreads /*minEnumVariant*/ }
+        | { MerkleMembership: tagOnly /*minEnumVariant*/ }
+        | { MerkleStateRoot: tagOnly /*minEnumVariant*/ }
+
+export type ErgoManifestEntryType = IntersectedEnum<
+        | { NamedTokenRef: tagOnly /*minEnumVariant*/ }
+        | { DgDataPolicy: ManifestEntryType$Ergo$DgDataPolicy /*minEnumVariant*/ }
+        | { DelegateThreads: ManifestEntryType$Ergo$DelegateThreads /*minEnumVariant*/ }
+        | { MerkleMembership: tagOnly /*minEnumVariant*/ }
+        | { MerkleStateRoot: tagOnly /*minEnumVariant*/ }
+>
+
+/**
+ * ManifestEntryType enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structure
+ * for creating any of the **5 variant(s)** of the ManifestEntryType enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `ManifestEntryTypeHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type ManifestEntryTypeLike = IntersectedEnum<
+        | { NamedTokenRef: tagOnly /*minEnumVariant*/ }
+        | { DgDataPolicy: ManifestEntryType$DgDataPolicyLike /*minEnumVariant*/ }
+        | { DelegateThreads: ManifestEntryType$DelegateThreadsLike /*minEnumVariant*/ }
+        | { MerkleMembership: tagOnly /*minEnumVariant*/ }
+        | { MerkleStateRoot: tagOnly /*minEnumVariant*/ }
+>
+
+export type CapoManifestEntry = {
+    entryType: /*minStructField*/ ManifestEntryType
+    tokenName: /*minStructField*/ number[]
+    mph: /*minStructField*/ MintingPolicyHash | undefined
+}
+
+export type ErgoCapoManifestEntry = {
+    entryType: /*minStructField*/ ErgoManifestEntryType
+    tokenName: /*minStructField*/ number[]
+    mph: /*minStructField*/ MintingPolicyHash | undefined
+}
+
+export type CapoManifestEntryLike = {
+    entryType: /*minStructField*/ ManifestEntryTypeLike
+    tokenName: /*minStructField*/ number[]
+    mph: /*minStructField*/ MintingPolicyHash | string | number[] | undefined
+}
+
+
+export type PendingCharterChangeMeta = EnumTypeMeta<
+    {module: "CapoDelegateHelpers", enumName: "PendingCharterChange"}, {
+        delegateChange: singleEnumVariantMeta<PendingCharterChangeMeta, "delegateChange",
+            "Constr#0", "singletonField", /* implied wrapper { change: ... } for singleVariantField */ 
+			PendingDelegateChange   , "noSpecialFlags"
+        >,
+        otherManifestChange: singleEnumVariantMeta<PendingCharterChangeMeta, "otherManifestChange",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * PendingCharterChange enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **2 variant(s)** of the PendingCharterChange enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `PendingCharterChangeHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type PendingCharterChange = 
+        | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
+			PendingDelegateChange    /*minEnumVariant*/ }
+        | { otherManifestChange: tagOnly /*minEnumVariant*/ }
+
+export type ErgoPendingCharterChange = IntersectedEnum<
+        | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
+			ErgoPendingDelegateChange    /*minEnumVariant*/ }
+        | { otherManifestChange: tagOnly /*minEnumVariant*/ }
+>
+
+/**
+ * PendingCharterChange enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structure
+ * for creating any of the **2 variant(s)** of the PendingCharterChange enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `PendingCharterChangeHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type PendingCharterChangeLike = IntersectedEnum<
+        | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
+			PendingDelegateChangeLike    /*minEnumVariant*/ }
+        | { otherManifestChange: tagOnly /*minEnumVariant*/ }
+>
+
+export type CapoDatum$CharterData = {
+    spendDelegateLink: RelativeDelegateLink  /*minVariantField*/ ,
+    spendInvariants: Array<RelativeDelegateLink>  /*minVariantField*/ ,
+    otherNamedDelegates: Map<string, RelativeDelegateLink>  /*minVariantField*/ ,
+    mintDelegateLink: RelativeDelegateLink  /*minVariantField*/ ,
+    mintInvariants: Array<RelativeDelegateLink>  /*minVariantField*/ ,
+    govAuthorityLink: RelativeDelegateLink  /*minVariantField*/ ,
+    manifest: Map<string, CapoManifestEntry>  /*minVariantField*/ ,
+    pendingChanges: Array<PendingCharterChange>  /*minVariantField*/ 
+}
+
+export type CapoDatum$Ergo$CharterData = {
+    spendDelegateLink: ErgoRelativeDelegateLink  /*minVariantField*/ ,
+    spendInvariants: Array<ErgoRelativeDelegateLink>  /*minVariantField*/ ,
+    otherNamedDelegates: Map<string, ErgoRelativeDelegateLink>  /*minVariantField*/ ,
+    mintDelegateLink: ErgoRelativeDelegateLink  /*minVariantField*/ ,
+    mintInvariants: Array<ErgoRelativeDelegateLink>  /*minVariantField*/ ,
+    govAuthorityLink: ErgoRelativeDelegateLink  /*minVariantField*/ ,
+    manifest: Map<string, ErgoCapoManifestEntry>  /*minVariantField*/ ,
+    pendingChanges: Array<ErgoPendingCharterChange>  /*minVariantField*/ 
+}
+
+export type CapoDatum$CharterDataLike = {
+    spendDelegateLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
+    spendInvariants: Array<RelativeDelegateLinkLike>  /*minVariantField*/ ,
+    otherNamedDelegates: Map<string, RelativeDelegateLinkLike>  /*minVariantField*/ ,
+    mintDelegateLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
+    mintInvariants: Array<RelativeDelegateLinkLike>  /*minVariantField*/ ,
+    govAuthorityLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
+    manifest: Map<string, CapoManifestEntryLike>  /*minVariantField*/ ,
+    pendingChanges: Array<PendingCharterChangeLike>  /*minVariantField*/ 
+}
+
+
+export type cctx_CharterInputType$RefInput = {
+    datum: CapoDatum$CharterData  /*minVariantField*/ ,
+    utxo: TxInput  /*minVariantField*/ 
+}
+
+export type cctx_CharterInputType$Ergo$RefInput = {
+    datum: CapoDatum$Ergo$CharterData  /*minVariantField*/ ,
+    utxo: TxInput  /*minVariantField*/ 
+}
+
+export type cctx_CharterInputType$RefInputLike = {
+    datum: CapoDatum$CharterDataLike  /*minVariantField*/ ,
+    utxo: TxInput  /*minVariantField*/ 
+}
+
+
+export type cctx_CharterInputType$Input = {
+    datum: CapoDatum$CharterData  /*minVariantField*/ ,
+    utxo: TxInput  /*minVariantField*/ 
+}
+
+export type cctx_CharterInputType$Ergo$Input = {
+    datum: CapoDatum$Ergo$CharterData  /*minVariantField*/ ,
+    utxo: TxInput  /*minVariantField*/ 
+}
+
+export type cctx_CharterInputType$InputLike = {
+    datum: CapoDatum$CharterDataLike  /*minVariantField*/ ,
+    utxo: TxInput  /*minVariantField*/ 
+}
+
+
+export type cctx_CharterInputTypeMeta = EnumTypeMeta<
+    {module: "CapoHelpers", enumName: "cctx_CharterInputType"}, {
+        Unk: singleEnumVariantMeta<cctx_CharterInputTypeMeta, "Unk",
+            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        RefInput: singleEnumVariantMeta<cctx_CharterInputTypeMeta, "RefInput",
+            "Constr#1", 
+            "fields", cctx_CharterInputType$RefInput, "noSpecialFlags"
+        >,
+        Input: singleEnumVariantMeta<cctx_CharterInputTypeMeta, "Input",
+            "Constr#2", 
+            "fields", cctx_CharterInputType$Input, "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * cctx_CharterInputType enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **3 variant(s)** of the cctx_CharterInputType enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `cctx_CharterInputTypeHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type cctx_CharterInputType = 
+        | { Unk: tagOnly /*minEnumVariant*/ }
+        | { RefInput: cctx_CharterInputType$RefInput /*minEnumVariant*/ }
+        | { Input: cctx_CharterInputType$Input /*minEnumVariant*/ }
+
+export type Ergocctx_CharterInputType = IntersectedEnum<
+        | { Unk: tagOnly /*minEnumVariant*/ }
+        | { RefInput: cctx_CharterInputType$Ergo$RefInput /*minEnumVariant*/ }
+        | { Input: cctx_CharterInputType$Ergo$Input /*minEnumVariant*/ }
+>
+
+/**
+ * cctx_CharterInputType enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structure
+ * for creating any of the **3 variant(s)** of the cctx_CharterInputType enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `cctx_CharterInputTypeHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type cctx_CharterInputTypeLike = IntersectedEnum<
+        | { Unk: tagOnly /*minEnumVariant*/ }
+        | { RefInput: cctx_CharterInputType$RefInputLike /*minEnumVariant*/ }
+        | { Input: cctx_CharterInputType$InputLike /*minEnumVariant*/ }
+>
+
+export type CapoCtx = {
+    mph: /*minStructField*/ MintingPolicyHash
+    charter: /*minStructField*/ cctx_CharterInputType
+}
+
+export type ErgoCapoCtx = {
+    mph: /*minStructField*/ MintingPolicyHash
+    charter: /*minStructField*/ Ergocctx_CharterInputType
+}
+
+export type CapoCtxLike = {
+    mph: /*minStructField*/ MintingPolicyHash | string | number[]
+    charter: /*minStructField*/ cctx_CharterInputTypeLike
+}
+
+

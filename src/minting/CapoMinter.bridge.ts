@@ -79,7 +79,7 @@ datum = undefined // no datum type defined for this bundle (minter / rewards scr
     /**
      * generates UplcData for the activity type (***MinterActivity***) for the `CapoMinter` script
      */
-    activity : MinterActivityHelper= new MinterActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
+    activity : MinterActivityHelper= new MinterActivityHelper({isActivity: true}); // activityAccessor/enum
         MinterActivity: MinterActivityHelper = this.activity;
 
     reader = new CapoMinterDataBridgeReader(this);
@@ -92,7 +92,7 @@ datum = undefined // no datum type defined for this bundle (minter / rewards scr
       /**
        * generates UplcData for the enum type ***MinterActivity*** for the `CapoMinter` script
        */
-        MinterActivity: new MinterActivityHelper(this.bundle),
+        MinterActivity: new MinterActivityHelper(),
 
       /**
        * generates UplcData for the enum type ***RelativeDelegateLink*** for the `CapoMinter` script

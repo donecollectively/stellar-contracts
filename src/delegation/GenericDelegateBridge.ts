@@ -36,7 +36,6 @@ export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
     Pick<
         UnspecializedDelegateBridge,
         | "isAbstract"
-        | "bundle" 
         | "readData"
     > & {
         reader: SomeDgtBridgeReader;

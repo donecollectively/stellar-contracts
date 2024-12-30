@@ -256,7 +256,7 @@ describe("Capo", async () => {
 
             const mintDelegate = await capo.getMintDelegate();
             const tcx1a = await capo.tcxWithSeedUtxo(tcx1);
-            const purposes = ["foo", "bar"];
+            const purposes = ["bar", "foo"];
             const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
                 mintDelegateActivity:
                 mintDelegate.activity.MintingActivities.mintingUuts(tcx1a, {purposes}),
@@ -290,7 +290,7 @@ describe("Capo", async () => {
             const mintDelegate = await capo.getMintDelegate();
             const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
 
-            const purposes = ["foo", "bar"];
+            const purposes = ["bar", "foo"];
             const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
                 mintDelegateActivity:
                 mintDelegate.activity.MintingActivities.mintingUuts(tcx1a, {purposes}),

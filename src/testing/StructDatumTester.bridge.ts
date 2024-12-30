@@ -91,7 +91,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     field4: /*minStructField*/ SomeKindaEnumLike
 }
 , DatumStructHelper>
-     = new DatumStructHelper(this.bundle, {}) as any  // datumAccessor/struct
+     = new DatumStructHelper({}) as any  // datumAccessor/struct
 
 
     /**
@@ -118,7 +118,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
      * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \*\/)\n
      */
     activity: callWith<IntLike, OtherActivityTypeHelper>
-     = new OtherActivityTypeHelper(this.bundle, {}) as any  // activityAccessor/other
+     = new OtherActivityTypeHelper({}) as any  // activityAccessor/other
 
     reader = new StructDatumTesterDataBridgeReader(this);
 
@@ -130,7 +130,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
       /**
        * generates UplcData for the enum type ***SomeKindaEnum*** for the `StructDatumTester` script
        */
-        SomeKindaEnum: new SomeKindaEnumHelper(this.bundle),
+        SomeKindaEnum: new SomeKindaEnumHelper(),
 
       /**
        * generates UplcData for the enum type ***struct3*** for the `StructDatumTester` script

@@ -148,7 +148,7 @@ export class DataBridge extends (dataBridgeProxyBase as any) {
     readData: this["ᱺᱺcast"]["fromUplcData"] = 
         (x: any) => this.ᱺᱺcast.fromUplcData(x) 
 
-    constructor(protected bundle: HeliosScriptBundle, options: DataBridgeOptions = {}) {
+    constructor(options: DataBridgeOptions = {}) {
         super()
         // these start undefined, but are always forced into existence immediately
         // via getTypeSchema().  Any exceptions means this protocol wasn't followed 
@@ -219,8 +219,8 @@ export class ContractDataBridge {
     declare activity: DataBridge;
     declare readDatum : readsUplcData<any> | undefined
 
-    constructor(public bundle: HeliosScriptBundle) {
-        this.bundle = bundle;
+    constructor() {
+
     }
     readData(x: any) {
         if (!this.datum) throw new Error(`no datum on this dataBridge`)
@@ -235,8 +235,8 @@ export class ContractDataBridgeWithEnumDatum extends ContractDataBridge {
     declare datum: EnumBridge;
     declare readDatum : readsUplcData<unknown>
 
-    constructor(public bundle: HeliosScriptBundle) {
-        super(bundle);
+    constructor() {
+        super();
     }
 }
 
@@ -244,8 +244,8 @@ export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
     static isAbstract : (true | false) = true as const
     isAbstract : (true | false) = true as const
     // declare datum: (any) => UplcData;
-    constructor(public bundle: HeliosScriptBundle) {
-        super(bundle);
+    constructor() {
+        super();
     }
     declare readDatum : readsUplcData<unknown>
 
