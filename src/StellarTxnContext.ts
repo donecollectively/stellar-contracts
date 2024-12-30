@@ -141,6 +141,11 @@ type MintTokensParams = [
     MintUnsafeParams[1],
     { redeemer: MintUnsafeParams[2] }
 ];
+type SubmitCallbacks = {
+    beforeSubmit?: MultiTxnCallback;
+    onSubmitted?: MultiTxnCallback;
+};
+
 /**
  * Transaction-building context for Stellar Contract transactions
  * @remarks
@@ -164,12 +169,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
     outputs: TxOutput[] = [];
     feeLimit?: bigint;
     state: S;
-    actorContext: ActorContext<any>;
     neededSigners: Address[] = [];
     parentTcx?: StellarTxnContext<any>;
     childReservedUtxos: TxInput[] = [];
-    networkParams: NetworkParams;
-    setup: SetupDetails;
+    declare setup: SetupDetails;
     txb: TxBuilder;
     txnName: string = "";
     withName(name: string) {
@@ -184,16 +187,45 @@ export class StellarTxnContext<S extends anyState = anyState> {
     get uh() {
         return this.setup.uh;
     }
+
+    get networkParams() : NetworkParams {
+        return this.setup.networkParams;
+    }
+
+    get actorContext() : ActorContext<any>{
+        return this.setup.actorContext;
+    }
+    /**
+     * Provides a lightweight, NOT complete, serialization for presenting the transaction context
+     * @remarks
+     * Serves rendering of the transaction context in vitest
+     * @internal
+     */
+    toJSON() {
+        return {
+            kind: "StellarTxnContext",
+            state: !!this.state ? `{${Object.keys(this.state).join(", ")}}` : undefined,
+            inputs: `[${this.inputs.length} inputs]`,
+            outputs: `[${this.outputs.length} outputs]`,
+            isBuilt: !!this._builtTx,
+            hasParent: !!this.parentTcx,
+            //@ts-expect-error
+            addlTxns: this.state.addlTxns ? [
+                //@ts-expect-error
+                ...Object.keys(this.state.addlTxns || {}),
+            ] : undefined
+        };
+    }
+
     logger = new UplcConsoleLogger();
     constructor(
         setup: SetupDetails,
         state: Partial<S> = {},
         parentTcx?: StellarTxnContext<any>
     ) {
-        this.actorContext = setup.actorContext;
-        this.networkParams = setup.networkParams;
-        this.parentTcx = parentTcx;
-        this.setup = setup;
+        Object.defineProperty(this, "setup", { enumerable: false, value: setup });
+        Object.defineProperty(this, "_builtTx", { enumerable: false });
+
         this.txb = makeTxBuilder({ 
             isMainnet: this.setup.isMainnet || false,
         });
@@ -203,6 +235,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             ...state,
             uuts: state.uuts || { ...emptyUuts },
         };
+        this.parentTcx = parentTcx;
     }
     withParent(tcx: StellarTxnContext<any>) {
         this.parentTcx = tcx;

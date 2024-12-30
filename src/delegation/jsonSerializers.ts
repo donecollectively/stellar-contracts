@@ -3,7 +3,13 @@ import { encodeBech32 } from "@helios-lang/crypto";
 import { type Address } from "@helios-lang/ledger";
 import { decodeAddress, makeAddress, type MintingPolicyHash, type ScriptHash } from "@helios-lang/ledger";
 import { bytesToText } from "../HeliosPromotedTypes.js";
-import { txOutputIdAsString } from "../diagnostics.js";
+import { 
+    txOutputIdAsString, 
+    valueAsString,
+    assetsAsString,
+    policyIdAsString
+ } from "../diagnostics.js";
+import type { ByteArrayData, IntData } from "@helios-lang/uplc";
 
 /**
  * toJSON adapter for delegate links
@@ -37,7 +43,7 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
         return `big‹${value.toString()}n›`;
     } else if ("bytes" == key && Array.isArray(value)) {
         // return `‹bytes‹${value.length}›=${bytesToHex(value)}›`;
-        return `${abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 40)}`
+        return abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 40)
     } else if ("string" == typeof value) {
         return `'${value}'`// JSON.stringify(value, null, 4);
     } else if (value === null ) {
@@ -54,7 +60,7 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
             // .toHex())}›`;
     }  else if (value.kind == "MintingPolicyHash") {
         const v : MintingPolicyHash = value;
-        return `${abbreviatedDetailBytes("mph‹", v.bytes)}›`
+        return `mph‹${policyIdAsString(v)}›`
             // .toHex())}›`;
     } else if (value.kind == "TxOutputId") {
         return `‹txoid:${txOutputIdAsString(value,8)}›`;
@@ -62,7 +68,22 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
     if (value.rawData) {
         return uplcDataSerializer(key, value.rawData, Math.max(depth, 3));
     }
+    if (value.kind == "int") {
+        const v : IntData = value;
+        return `IntData‹${v.value}›`
+    }
+    if (value.kind == "bytes") {
+        const v = value as ByteArrayData;
+        return abbreviatedDetailBytes(`ByteArray‹${v.bytes.length}›`, v.bytes, 40)
+    }
+    if (value.kind == "Value") {
+        return valueAsString(value)
+    }
+    if (value.kind == "Assets") {
+        return `assets:‹${assetsAsString(value)}›`
+    }
     if(value.kind) console.log("info: no special handling for KIND = ", value.kind);
+
     if ("tn" == key && Array.isArray(value)) {
         return bytesToText(value);
     } else if ("number" == typeof value) {
@@ -92,8 +113,9 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
                 // console.log("length, hasNewline = ", s.length, hasNewline)
             }
             return s
-        }).join(", ${extraNewLine}");
+        }).join(`, ${extraNewLine}`);
         // console.log("array uses newline/outdent", {extraNewLine, usesOutdent});
+
         return `[ ${extraNewLine}${multiLine}${extraNewLine}${usesOutdent} ]`
     }
         

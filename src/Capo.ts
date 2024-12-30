@@ -2732,6 +2732,14 @@ export abstract class Capo<
                             datum,
                             dataWrapped:
                                 `Error: ${msg}, couldn't parse data` as any,
+                            toJSON() {
+                                return {
+                                    utxo: utxo.
+                                    datum,
+                                    data: `[error: couldn't parse]`,
+                                    dataWrapped: null,
+                                };
+                            }
                         };
                     }
 
@@ -2802,6 +2810,14 @@ export abstract class Capo<
                 datum,
                 data,
                 dataWrapped,
+                toJSON() {
+                    return {
+                        utxo: utxo.id,
+                        datum,
+                        data,
+                        dataWrapped: dataWrapped ? `[data wrapped  as ${dataWrapped?.constructor.name}]` : undefined
+                    };
+                }
             } as FoundDatumUtxo<any>;
         }
     }
