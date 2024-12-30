@@ -27,7 +27,7 @@ import {
     decodeAddress,
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
-import { textToBytes, type InlineDatum } from "./HeliosPromotedTypes.js";
+import { bytesToText, textToBytes, type InlineDatum } from "./HeliosPromotedTypes.js";
 
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
@@ -89,7 +89,7 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
     let cip68Tag = "";
     let cip68TagHex = "";
     let checksum = "";
-    let nameHex = "";
+    let tagBytes = "";
     let nameBytesHex = "";
     let nameBytesString = "";
     let isCip68 = false;
@@ -98,8 +98,10 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
         nameBytesHex = Buffer.from(textToBytes(nameBytesOrString)).toString(
             "hex"
         );
+        nameString = nameBytesOrString;
     } else {
         nameBytesHex = Buffer.from(nameBytesOrString).toString("hex");
+        nameString = stringToPrintableString(nameBytesOrString);
     }
     // check if the first 4 bytes are a cip-68 token name
     if (nameBytesHex.length >= 8) {
@@ -109,18 +111,19 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
             nameBytesHex.substring(7, 8) === "0"
         ) {
             // remove the first and last nibbles
-            nameHex = nameBytesHex.substring(2, 6);
-            cip68TagHex = nameHex.substring(0, 4);
-            checksum = nameHex.substring(4, 6);
+            cip68TagHex  = nameBytesHex.substring(1, 5);
+            checksum = nameBytesHex.substring(5, 7);
+
             // separate the cip-68 tag from the checksum
             cip68Tag = parseInt(cip68TagHex, 16).toString();
-            // TODO: check the crc-8 checksum of the tag
+            nameString = stringToPrintableString(nameBytesOrString.slice(4));
 
+            // TODO: check the crc-8 checksum of the tag
             isCip68 = true;
         }
     }
     if (isCip68) {
-        nameString = `‹cip68/${cip68Tag}›${nameBytesOrString.slice(4)}`;
+        nameString = `‹cip68/${cip68Tag}›${nameString}`;
     } else {
         nameString = stringToPrintableString(nameBytesOrString);
     }
@@ -349,7 +352,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                         x,
                         /* unicode blue arrow right -> */ "➡️  " + `@${1 + i} `,
                         i,
-                        display || "‹failed to find redeemer info›"
+                        display // || "‹failed to find redeemer info›"
                     );
                 })
                 .join("\n  ")}`;
@@ -510,7 +513,7 @@ export function txInputAsString(
     redeemer?: string
 ): string {
     const { output: oo } = x;
-    const redeemerInfo = redeemer ? `\n    r = ${redeemer}` : "";
+    const redeemerInfo = redeemer ? `\n    r = ${redeemer}` : " ‹no redeemer›";
     const datumInfo =
         oo.datum?.kind == "InlineTxOutputDatum" ? datumSummary(oo.datum) : "";
 
@@ -745,7 +748,12 @@ export function dumpAny(
                 "byte array:\n" + byteArrayListAsString(x as ByteArrayData[])
             );
         }
+
         if ("object" == typeof firstItem) {
+            debugger
+            if (firstItem instanceof Uint8Array) {
+                return "byte array: " + byteArrayAsString(firstItem);
+            }
             return `[` + x.map(
                 (item) => JSON.stringify(item, betterJsonSerializer) 
             ).join(", ") + `]`;
@@ -795,6 +803,14 @@ export function dumpAny(
         return policyIdAsString(xx);
     }
     if (forJson) return xx;
+
+    if ("object" == typeof x) {
+        return `{${
+            Object.entries(x).map(
+                ([k, v]) => `${k}: ${dumpAny(v as any, networkParams)}`
+            ).join(",\n")
+        }}`;
+    }
     debugger;
     return "dumpAny(): unsupported type or library mismatch";
 }
