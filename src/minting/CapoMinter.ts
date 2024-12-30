@@ -297,7 +297,9 @@ export class CapoMinter
         ];
         
         const activity = this.activity.mintingCharter(owner);
-        return (await this.attachScript(tcx, false)).mintTokens(
+        return tcx.addScriptProgram(
+            this.compiledScript
+        ).mintTokens(
             this.mintingPolicyHash!,
             values,
             activity
