@@ -610,6 +610,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
         );
     }
 
+    /**
+     * Adds a UPLC program to the transaction context, increasing the transaction size.
+     * @remarks
+     * Use the Capo's `txnAttachScriptOrRefScript()` method to use a referenceScript 
+     * when available. That method uses a fallback approach adding the script to the 
+     * transaction if needed.
+     */
     addScriptProgram(...args: Parameters<TxBuilder["attachUplcProgram"]>) {
         this.txb.attachUplcProgram(...args);
 
@@ -814,7 +821,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 // locate any lines like "<helios>@at <anonymous>, [mkTv=<fn>, tvCharter=<fn>, mustFindInputRedeemer=<fn>, fromCip68Wrapper=<fn>, RelativeDelegateLink::tvAuthorityToken=<fn>, RelativeDelegateLink::acAuthorityToken=<fn>, RelativeDelegateLink::validatesUpdatedSettings=<fn>, RelativeDelegateLink::hasDelegateInput=<fn>, RelativeDelegateLink::hasValidOutput=<fn>, DelegateInput::genericDelegateActivity=<fn>], src/CapoHelpers.hl:761:9:0"
                 // and transform it to a multi-line, indented function trace with the
                 // square-bracketed items indented to indicate the scope of the function they're provided to 
-                heliosStack = heliosStack.map((line : string) => {
+                heliosStack = heliosStack?.map((line : string) => {
                     if (line.match(/<helios>@at/)) {
                         line = line.
                             replace(/<helios>@at /, "   ... in helios function ").
@@ -834,7 +841,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         //@ts-expect-error
                         tx.hasValidationError.message || tx.hasValidationError 
                     }\n`+
-                    heliosStack?.join("\n")
+                    ( heliosStack?.join("\n") || "" )
                 );
                 logger.flush();
                 const ctxCbor = scriptContext?.toCbor();
@@ -1152,12 +1159,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
         });
     }
 
+    /**
+     * Submits a list of transactions, without executing any chained/nested txns.
+     * @remarks
+     * use submitTxnChain() to submit a list of txns with chaining
+     */
     async submitTxns(
         txns: TxDescription<any>[],
-        callbacks?: {
-            beforeSubmit?: MultiTxnCallback;
-            onSubmitted?: MultiTxnCallback;
-        }
+        callbacks?: SubmitCallbacks
     ) {
         for (const [txName, addlTxInfo] of Object.entries(txns) as [
             string,
@@ -1220,16 +1229,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
     /**
      * To add a script to the transaction context, use `attachScript`
      *
-     * @deprecated - invalid method name; use attachScript
+     * @deprecated - invalid method name; use `addScriptProgram()` or capo's `txnAttachScriptOrRefScript()` method
      **/
     addScript() {}
 
     async submitTxnChain(
         options: {
-            txns?: TxDescription<any>[];
-            beforeSubmit?: MultiTxnCallback;
-            onSubmitted?: MultiTxnCallback;
-        } = {
+            txns?: TxDescription<any>[]
+        } & SubmitCallbacks = {
             //@ts-expect-error because the type of this context doesn't
             //   guarantee the presence of addlTxns.  But it might be there!
             txns: this.state.addlTxns || [],
@@ -1240,30 +1247,42 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         const newTxns: TxDescription<any>[] = options.txns || addlTxns || [];
         let chainedTxns: TxDescription<any>[] = [];
-        const {
-            txns,
-            beforeSubmit = (txinfo) => {
-                // in regular execution environment, this is a no-op by default
-
+        const hookedCallbacks : SubmitCallbacks = {
+            // txns,  // see newTxns
+            beforeSubmit: (txinfo) => {
                 //@ts-expect-error triggering the test-network-emulator's tick
+                //   ... in regular execution environment, this is a no-op by default
+                this.setup.network.tick?.(1);
+                options.beforeSubmit?.(txinfo);
+            },
+            onSubmitted: (txinfo) => {                
+                const more : Record<string, TxDescription<any>> = txinfo.tcx?.state?.addlTxns || {};
+                console.log("  ✅ "+ txinfo.description);
+                const moreTxns = Object.values(more);
+                if (moreTxns.length) {
+                    chainedTxns.push(...moreTxns);
+                    console.log(" + chained txns: \n" + moreTxns.map(
+                        (t) => `   🟩 ${t.description}\n`
+                    ).join(""))
+                }
+                //@ts-expect-error triggering the test-network-emulator's tick
+                //   ... in regular execution environment, this is a no-op by default
                 this.setup.network.tick?.(1);
             },
-            onSubmitted = (txinfo) => {
-                // in regular execution environment, this is a no-op by default
+        };
 
-                //@ts-expect-error triggering the test-network-emulator's tick
-                this.setup.network.tick?.(1);
-            },
-        } = options;
-
+        let chainDepth = 0;
         const isolatedTcx = new StellarTxnContext(this.setup);
-        const t = isolatedTcx.submitTxns(newTxns, {
-            beforeSubmit,
-            onSubmitted,
-        });
+        console.log(
+            "at d=0: submitting addl txns: \n" + newTxns.map(
+                (t) => `  🟩 ${t.description}\n`
+            ).join("")
+        )
+        
+        const t = isolatedTcx.submitTxns(newTxns, hookedCallbacks);
 
         const allPromises = [] as Promise<any>[];
-        let chainDepth = 1;
+        chainDepth = 1;
         allPromises.push(t);
 
         await t;
@@ -1282,10 +1301,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 " 🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞\n" +
                     `submitting ${chainedTxns.length} transactions at depth ${chainDepth}`
             );
-            const t = isolatedTcx.submitTxns(chainedTxns, {
-                beforeSubmit,
-                onSubmitted,
-            });
+            console.log(chainedTxns.map((t) => `  🟩 ${t.description}\n`).join(""));
+            const t = isolatedTcx.submitTxns(chainedTxns, hookedCallbacks);
             allPromises.push(t);
             await t;
             console.log(

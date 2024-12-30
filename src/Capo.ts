@@ -2393,24 +2393,30 @@ export abstract class Capo<
             ? TCX
             : hasAddlTxns<TCX>
     >(tcx: TCX, scriptName: string, script: anyUplcProgram): Promise<RETURNS> {
-        const mkRefScript = () => {
-            const refScriptOut = makeTxOutput(
-                this.address,
-                makeValue(this.ADA(0n)),
-                this.mkDatumScriptReference(),
-                script
-            );
-            refScriptOut.correctLovelace(this.networkParams);
-            return this.mkTcx().withParent(tcx).addOutput(refScriptOut);
-        };
         const sn = scriptName[0].toUpperCase() + scriptName.slice(1);
 
         return tcx.includeAddlTxn(`refScript${sn}`, {
             description: `creates on-chain reference script for ${scriptName}`,
             moreInfo: "saves txn fees and txn space in future txns",
             optional: false,
-            tcx: mkRefScript,
+            tcx: this.mkRefScriptTxn(script),
         }) as RETURNS;
+    }
+
+    mkRefScriptTxn(
+        script: anyUplcProgram
+    ): StellarTxnContext {
+        const tcx = this.mkTcx();
+        const txo = makeTxOutput(
+                this.address,
+                makeValue(this.ADA(0n)),
+                this.mkDatumScriptReference(),
+                script
+        )
+        txo.correctLovelace(this.networkParams);
+        return tcx.addOutput(
+            txo
+        )
     }
 
     /**
@@ -2421,12 +2427,10 @@ export abstract class Capo<
      * it is used to attach the refScript to the transaction context.  Otherwise,
      * the script's bytes are added directly to the transaction.
      *
-     * The script name is expected to be found in the Capo's refScript datum.
-     * If a different name is found, a mismatch warning is emitted.
-     *
-     * If the given program is not found in the Capo's refScript datum, a
-     * missing-refScript warning is emitted, and the program is added directly
-     * to the transaction.  If this makes the transaction too big, the console
+     * The indicated script is expected to be found in one of the Capo's 
+     * refScript utxos.  Otherwise, a missing-refScript warning is emitted, 
+     * and the program is added directly to the transaction.  
+     * If this makes the transaction too big, the console
      * warning will be followed by a thrown error during the transaction's
      * wallet-submission sequence.
      * @param program - the UPLC program to attach to the script
@@ -2462,9 +2466,11 @@ export abstract class Capo<
         );
         if (!matchingScriptRefs) {
             console.warn(
-                `⚠️  missing refScript in Capo ${this.address.toString()} \n  ... for expected script hash ${bytesToHex(
-                    expectedVh
-                )}; adding script directly to txn`
+                new Error(
+                    `⚠️  missing refScript in Capo ${this.address.toString()} \n  ... for expected script hash ${bytesToHex(
+                        expectedVh
+                    )}; adding script directly to txn`
+                ).stack?.replace(/^Error/, "")
             );
             // console.log("------------------- NO REF SCRIPT")
             return tcx.addScriptProgram(program);
@@ -2868,10 +2874,13 @@ export abstract class Capo<
                   },
               } as DelegateSetupWithoutMintDelegate)
             : ({
-                  mintDelegateActivity: mintDelegate.activity.DelegateLifecycleActivities.ReplacingMe({
-                      seed: tcxWithSeed.state.seedUtxo.id,
-                      purpose: "mintDgt",
-                  }),
+                  mintDelegateActivity:
+                      mintDelegate.activity.DelegateLifecycleActivities.ReplacingMe(
+                          {
+                              seed: tcxWithSeed.state.seedUtxo.id,
+                              purpose: "mintDgt",
+                          }
+                      ),
                   additionalMintValues: this.mkValuesBurningDelegateUut(
                       currentDatum.mintDelegateLink
                   ),
@@ -2993,10 +3002,12 @@ export abstract class Capo<
             ? tcx2
             : await spendDelegate.txnGrantAuthority(
                   tcx2,
-                  spendDelegate.activity.DelegateLifecycleActivities.ReplacingMe({
-                      seed: tcxWithSeed.state.seedUtxo.id,
-                      purpose: "spendDgt",
-                  }),
+                  spendDelegate.activity.DelegateLifecycleActivities.ReplacingMe(
+                      {
+                          seed: tcxWithSeed.state.seedUtxo.id,
+                          purpose: "spendDgt",
+                      }
+                  ),
                   "skipDelegateReturn"
               );
         const tcx2b = await newSpendDelegate.delegate.txnReceiveAuthorityToken(
@@ -3270,6 +3281,8 @@ export abstract class Capo<
      * typically the full `typename` of a delegated-data-policy.
      *
      * The idPrefix refers to the short prefix used for UUT id's for this data-type.
+     * 
+     * An addlTxn for ref-script creation is included.
      */
     @txn
     async mkTxnInstallingPolicyDelegate<
@@ -3472,15 +3485,13 @@ export abstract class Capo<
                       },
                   };
 
-
         const tcx2 = await this.txnMintingUuts(
             tcx1,
             [purpose],
             {
                 usingSeedUtxo: tcx1.state.seedUtxo,
                 mintDelegateActivity:
-                    mintDgtActivity.CapoLifecycleActivities
-                        .queuePendingChange,
+                    mintDgtActivity.CapoLifecycleActivities.queuePendingChange,
                 // (
                 //     pendingDgtChange
                 // ),
@@ -3500,8 +3511,8 @@ export abstract class Capo<
                 role: { DgDataPolicy: policyName },
                 // idPrefix,
                 // dgtLink: tempOCDPLink,
-                dgtLink: delegateLink
-            }
+                dgtLink: delegateLink,
+            },
         };
 
         const tcx4 = await this.mkTxnUpdateCharter(
@@ -3551,8 +3562,7 @@ export abstract class Capo<
             {
                 usingSeedUtxo: seedUtxo,
                 mintDelegateActivity:
-                    mintDgtActivity.CapoLifecycleActivities
-                        .queuePendingChange,
+                    mintDgtActivity.CapoLifecycleActivities.queuePendingChange,
                 //     {
                 //         action: {
                 //             Add: {
@@ -3595,10 +3605,14 @@ export abstract class Capo<
         const newManifestEntries = new Map();
         for (const pendingChange of pendingChanges) {
             if (pendingChange.otherManifestChange) {
-                throw new Error(`otherManifestChange not yet supported`)
+                throw new Error(`otherManifestChange not yet supported`);
             }
-            const { action: thisAction, role, dgtLink } = pendingChange.delegateChange!;
-            const name = role.DgDataPolicy
+            const {
+                action: thisAction,
+                role,
+                dgtLink,
+            } = pendingChange.delegateChange!;
+            const name = role.DgDataPolicy;
             if (!name) {
                 throw new Error(
                     `only DgDataPolicy changes are currently supported here`
