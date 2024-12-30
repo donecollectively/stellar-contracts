@@ -77,7 +77,8 @@ import type {
     ManifestActivity$burningThreadToken, ManifestActivity$Ergo$burningThreadToken, ManifestActivity$burningThreadTokenLike,
     ManifestActivity, ErgoManifestActivity, ManifestActivityLike,
     CapoLifecycleActivity, ErgoCapoLifecycleActivity, CapoLifecycleActivityLike,
-    CapoActivity, ErgoCapoActivity, CapoActivityLike
+    CapoActivity, ErgoCapoActivity, CapoActivityLike,
+    AnyData, ErgoAnyData, AnyDataLike
 } from "./CapoHeliosBundle.typeInfo.js";
 
 export type * as types from "./CapoHeliosBundle.typeInfo.js";
@@ -189,6 +190,16 @@ export class CapoDataBridge extends ContractDataBridge {
 }
 ) => {
         return this.ᱺᱺPendingDelegateChangeCast.toUplcData(fields);
+    },
+      /**
+       * generates UplcData for the enum type ***AnyData*** for the `Capo` script
+       */
+        AnyData: (fields: AnyDataLike | {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+) => {
+        return this.ᱺᱺAnyDataCast.toUplcData(fields);
     },    }    
 
     /**
@@ -206,6 +217,11 @@ export class CapoDataBridge extends ContractDataBridge {
     ᱺᱺPendingDelegateChangeCast = makeErgoCast<
                 PendingDelegateChange, PendingDelegateChangeLike
             >(PendingDelegateChangeSchema, { isMainnet: true });
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺAnyDataCast = makeErgoCast<
+                AnyData, AnyDataLike
+            >(AnyDataSchema, { isMainnet: true });
 
 
 }
@@ -442,6 +458,25 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
     PendingDelegateChange(d: UplcData) {
         const cast = this.bridge.ᱺᱺPendingDelegateChangeCast;
         return cast.fromUplcData(d) //??? as ErgoPendingDelegateChange;
+    } /* structReader helper */
+
+    /**
+        * reads UplcData *known to fit the **AnyData*** struct type,
+        * for the Capo script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    AnyData(d: UplcData) {
+        const cast = this.bridge.ᱺᱺAnyDataCast;
+        return cast.fromUplcData(d) //??? as ErgoAnyData;
     } /* structReader helper */
 
 }
@@ -1982,6 +2017,31 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
         return uplc;
     } /* tagOnly variant accessor */
 }/*mkEnumHelperClass*/
+
+
+/**
+ * Helper class for generating UplcData for the struct ***AnyData*** type.
+ * @public
+ */
+export class AnyDataHelper extends DataBridge {
+    isCallable = true
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = makeErgoCast<
+        AnyData,
+        AnyDataLike
+    >(AnyDataSchema, { isMainnet: true });
+
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
+    // AnyData(fields: AnyDataLike) {
+    //    return this.ᱺᱺcast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
 
 
 export const RelativeDelegateLinkSchema : StructTypeSchema = {
@@ -4523,6 +4583,31 @@ export const CapoActivitySchema : EnumTypeSchema = {
             "id": "__module__CapoHelpers__CapoActivity[]__updatingCharter",
             "name": "updatingCharter",
             "fieldTypes": []
+        }
+    ]
+};
+
+export const AnyDataSchema : StructTypeSchema = {
+    "kind": "struct",
+    "format": "map",
+    "id": "__module__StellarHeliosHelpers__AnyData[]",
+    "name": "AnyData",
+    "fieldTypes": [
+        {
+            "name": "id",
+            "type": {
+                "kind": "internal",
+                "name": "ByteArray"
+            },
+            "key": "@id"
+        },
+        {
+            "name": "type",
+            "type": {
+                "kind": "internal",
+                "name": "String"
+            },
+            "key": "tpe"
         }
     ]
 };

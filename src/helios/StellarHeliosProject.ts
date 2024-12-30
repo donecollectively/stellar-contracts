@@ -202,9 +202,7 @@ export class StellarHeliosProject {
         if (!bundleEntry) {
             throw new Error(`bundle not found: ${fn}`);
         }
-
         this.writeTypeInfo(oneFile, bundleEntry);
-
         this.writeDataBridgeCode(
             oneFile.replace(/(\.hlbundle)?\.[tj]s$/, ".bridge.ts"),
             bundleEntry

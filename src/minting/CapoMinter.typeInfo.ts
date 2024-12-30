@@ -143,3 +143,17 @@ export type MinterActivityLike = IntersectedEnum<
         | { CreatingNewSpendDelegate: MinterActivity$CreatingNewSpendDelegateLike /*minEnumVariant*/ }
 >
 
+export type RelativeDelegateLink = {
+    uutName: /*minStructField*/ string
+    delegateValidatorHash: /*minStructField*/ ValidatorHash | undefined
+    config: /*minStructField*/ number[]
+}
+
+export type ErgoRelativeDelegateLink = RelativeDelegateLink/*like canon-other*/
+export type RelativeDelegateLinkLike = {
+    uutName: /*minStructField*/ string
+    delegateValidatorHash: /*minStructField*/ ValidatorHash | string | number[] | undefined
+    config: /*minStructField*/ number[]
+}
+
+

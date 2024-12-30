@@ -675,9 +675,41 @@ export abstract class HeliosScriptBundle {
     }
 
     getTopLevelTypes(): HeliosBundleTypes {
-        return {
+        const types = {
             datum: this.locateDatumType(),
             redeemer: this.locateRedeemerType(),
         };
+
+        const program = this.program;
+        const {userTypes} = program;
+        const {mainModule} = program.entryPoint;
+        const mainTypes = userTypes[mainModule.name.value];
+        for (const [typeName, type] of Object.entries(mainTypes)) {
+            const s = type.toSchema()
+            if (s.kind == "struct") {
+                types[typeName] = type;
+            }
+        }
+
+        if (userTypes.specializedDelegate) {
+            const specializationName = this.moduleName
+            const specializationTypes = userTypes[specializationName];
+            if (!specializationTypes) {
+                console.log("NOTE:  debugging breakpoint available for more troubleshooting")
+                debugger
+                console.log("NOTE: the module name for the delegate policy script must match bundle's moduleName");
+                throw new Error(`specialization types not found for ${
+                    this.moduleName
+                } in program ${program.name}`);
+            }
+            for (const [typeName, type] of Object.entries(specializationTypes)) {
+                const s = type.toSchema()
+                if (s.kind == "struct") {
+                    types[typeName] = type;
+                }
+            }
+        }
+
+        return types
     }
 }

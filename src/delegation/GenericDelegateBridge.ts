@@ -31,16 +31,13 @@ import type { IntLike } from "@helios-lang/codec-utils";
 import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
 
 export type GenericDelegateBridgeClass = AbstractNew<GenericDelegateBridge>;
+
 export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
-    Omit<
+    Pick<
         UnspecializedDelegateBridge,
-        | "reader"
-        | "types"
-        | "activity"
-        | "DelegateActivity"
-        | "datum"
-        | "readDatum"
-        | "DelegateDatum"
+        | "isAbstract"
+        | "bundle" 
+        | "readData"
     > & {
         reader: SomeDgtBridgeReader;
         activity: EnumBridge<isActivity> & SomeDgtActivityHelper;

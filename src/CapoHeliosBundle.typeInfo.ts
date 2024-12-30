@@ -843,3 +843,15 @@ export type CapoActivityLike = IntersectedEnum<
         | { updatingCharter: tagOnly /*minEnumVariant*/ }
 >
 
+export type AnyData = {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+
+export type ErgoAnyData = AnyData/*like canon-other*/
+export type AnyDataLike = {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+
+export type minimalAnyData = minimalData<AnyDataLike>

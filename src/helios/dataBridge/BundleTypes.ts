@@ -67,12 +67,20 @@ export class BundleTypes implements TypeGenHooks<undefined> {
     gatherTopLevelTypeDetails(
         dataTypes: HeliosBundleTypes
     ): HeliosBundleTypeDetails {
-        return {
-            datum: dataTypes.datum
-                ? this.gatherTypeDetails(dataTypes.datum)
+        const {datum, redeemer, ...others} = dataTypes;
+        const typeDetails = {
+            datum: datum
+                ? this.gatherTypeDetails(datum)
                 : undefined,
-            redeemer: this.gatherTypeDetails(dataTypes.redeemer),
+            redeemer: this.gatherTypeDetails(redeemer),
         };
+
+        for (const [typeName, dataType] of Object.entries(others)) {
+            debugger
+            this.gatherTypeDetails(dataType as DataType);
+        }
+
+        return typeDetails
     }
 
     gatherTypeDetails(
@@ -88,8 +96,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
     }
 
     /**
-     * type-gen interface: registers a named type in the context,
-     *   ... with any
+     * type-gen interface: registers a named type in the context
      */
     registerNamedType(details: anyTypeDetails) {
         const {
@@ -106,8 +113,14 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         }
     }
 
-    private extractModuleName(schema: EnumTypeSchema | VariantTypeSchema) {
-        return schema.id.replace(/__module__(\w+)?__.*$/, "$1");
+    private extractModuleName(id: string) {
+        return id.replace(/__module__(\w+)?__.*$/, "$1");
+    }
+
+    private extractVariantParentName(id: string) {
+        // given input "__module__CapoHelpers__CapoDatum[]__CharterData",
+        //   ... returns "CapoDatum", not "CapoHelpers"
+        return id.replace(/__module__(\w+)?__(\w+)?\[\]__.*/, "$2");
     }
 
     gatherOtherTypeDetails(
@@ -127,6 +140,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             typeName = schema.name;
         }
 
+        let parentNameMaybe : string | undefined = undefined;
         // gather nested types where applicable, so they are added to the context.
         switch (schema.kind) {
             case "internal":
@@ -158,16 +172,31 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                 }
                 break;
             case "variant":
-                console.log("How to register a variant's member DataTypes?");
-                debugger;
+                // we only hit this case when a nested variant is encountered
+                //   as a field of some other data structure, where only that specific variant-type
+                //   is expected.  When iterating the variants defined in an enum type,
+                //   gatherEnumDetails() calls gatherVariantDetails(), but when this path
+                //   is hit, we may need to gather those enum details separately.
+                // if (schema.name == "CharterData")
+                //     debugger;
+
+                const vType = dataType as EnumMemberType;
+                parentNameMaybe = vType.parentType.name;
+                return this.gatherVariantDetails(
+                    vType as any,
+                    { 
+                        module:  this.extractModuleName(schema.id),
+                        enumName: vType.parentType.name
+                    }
+                );
                 break;
             default:
                 //@ts-expect-error - when all cases are covered, schema is ‹never›
                 throw new Error(`Unsupported schema kind: ${schema.kind}`);
         }
 
-        const canonType = this.mkMinimalType("canonical", schema);
-        const ergoType = this.mkMinimalType("ergonomic", schema);
+        const canonType = this.mkMinimalType("canonical", schema, undefined, parentNameMaybe);
+        const ergoType = this.mkMinimalType("ergonomic", schema, undefined, parentNameMaybe);
         const details: typeDetails<any> = {
             typeSchema: schema,
             typeName,
@@ -179,14 +208,11 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                         ? `${typeName}/*like canon-other*/`
                         : ergoType
                     : ergoType,
-            permissiveType: this.mkMinimalType("permissive", schema),
+            permissiveType: this.mkMinimalType("permissive", schema, undefined, parentNameMaybe),
             moreInfo: undefined,
         };
         // if (schema.kind !== "internal") debugger
         // if (schema.kind === "struct") debugger
-        if (schema.kind == "variant") {
-            throw new Error(`yikes`);
-        }
         if (typeName) {
             details.canonicalTypeName = typeName;
             details.ergoCanonicalTypeName = `Ergo${typeName}`;
@@ -210,7 +236,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         // based on having those names registered in the context.
         const schema = enumType.toSchema();
         const enumName = schema.name;
-        const module = this.extractModuleName(schema);
+        const module = this.extractModuleName(schema.id);
         // at type-gen time, we don't need this to be a fully-typed VariantMap.
         //  ... a lookup record is fine.
         const variants: Record<string, variantTypeDetails> = {};
@@ -439,7 +465,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                 }
                 if (useTypeNamesAt) return nameLikeOrName as string;
 
-                const module = this.extractModuleName(schema);
+                const module = this.extractModuleName(schema.id);
                 const enumId: EnumId = { module, enumName: name! };
 
                 return schema.variantTypes
@@ -457,13 +483,13 @@ export class BundleTypes implements TypeGenHooks<undefined> {
 
             case "variant":
                 if (!parentName) {
-                    debugger;
-                    throw new Error("Variant types need a parent type-name");
+                    parentName = this.extractVariantParentName(schema.id);
                 }
 
                 const variantInfo = this.mkMinimalVariantType(
                     schema,
-                    typeVariety
+                    typeVariety,
+                    parentName
                 );
                 if (variantInfo === "tagOnly") return variantInfo;
                 if (Array.isArray(variantInfo)) {
@@ -503,7 +529,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
     mkMinimalEnumMetaType(typeVariety: TypeVariety, schema: EnumTypeSchema) {
         const name = schema.name;
 
-        const module = this.extractModuleName(schema);
+        const module = this.extractModuleName(schema.id);
         const enumId: EnumId = { module, enumName: name! };
         const $enumId = `{module: "${enumId.module}", enumName: "${enumId.enumName}"}`;
 
@@ -605,7 +631,8 @@ export class BundleTypes implements TypeGenHooks<undefined> {
 
     private mkMinimalVariantType(
         schema: VariantTypeSchema,
-        typeVariety: TypeVariety
+        typeVariety: TypeVariety,
+        parentName: string
     ): string | string[] {
         const $nlindent = "\n" + " ".repeat(4);
         // const $nlindentMore = "\n" + " ".repeat(16);

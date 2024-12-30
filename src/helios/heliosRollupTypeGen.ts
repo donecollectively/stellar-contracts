@@ -217,7 +217,8 @@ export function heliosRollupTypeGen(
                             { source: id }
                         );
                         debugger;
-                        filter(id);
+                        //no-op, but helpful for debugging:
+                        filter(id); // trace into here to see what's up with the filter
                     }
 
                     return null;
@@ -232,7 +233,6 @@ export function heliosRollupTypeGen(
                 //??? addWatchFile for all the .hl scripts in the bundle
                 // return null as LoadResult;
 
-                debugger
                 let bundle = new SomeBundleClass()
                 // compile the program seen in that bundle!
                 // ... to trigger helios syntax-checking:

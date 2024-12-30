@@ -55,7 +55,8 @@ export type TimeLike = IntLike;
 
 import type {
     MinterActivity$CreatingNewSpendDelegate, MinterActivity$Ergo$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,
-    MinterActivity, ErgoMinterActivity, MinterActivityLike
+    MinterActivity, ErgoMinterActivity, MinterActivityLike,
+    RelativeDelegateLink, ErgoRelativeDelegateLink, RelativeDelegateLinkLike
 } from "./CapoMinter.typeInfo.js";
 
 export type * as types from "./CapoMinter.typeInfo.js";
@@ -93,8 +94,23 @@ datum = undefined // no datum type defined for this bundle (minter / rewards scr
        */
         MinterActivity: new MinterActivityHelper(this.bundle),
 
-    }    
+      /**
+       * generates UplcData for the enum type ***RelativeDelegateLink*** for the `CapoMinter` script
+       */
+        RelativeDelegateLink: (fields: RelativeDelegateLinkLike | {
+    uutName: /*minStructField*/ string
+    delegateValidatorHash: /*minStructField*/ ValidatorHash | string | number[] | undefined
+    config: /*minStructField*/ number[]
+}
+) => {
+        return this.ᱺᱺRelativeDelegateLinkCast.toUplcData(fields);
+    },    }    
 
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺRelativeDelegateLinkCast = makeErgoCast<
+                RelativeDelegateLink, RelativeDelegateLinkLike
+            >(RelativeDelegateLinkSchema, { isMainnet: true });
 
 
 }
@@ -128,6 +144,24 @@ export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
         return cast.fromUplcData(d) as ErgoMinterActivity;        
     } /* enumReader helper */
 
+    /**
+        * reads UplcData *known to fit the **RelativeDelegateLink*** struct type,
+        * for the CapoMinter script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    RelativeDelegateLink(d: UplcData) {
+        const cast = this.bridge.ᱺᱺRelativeDelegateLinkCast;
+        return cast.fromUplcData(d) //??? as ErgoRelativeDelegateLink;
+    } /* structReader helper */
 
 }
 
@@ -355,6 +389,31 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
 }/*mkEnumHelperClass*/
 
 
+/**
+ * Helper class for generating UplcData for the struct ***RelativeDelegateLink*** type.
+ * @public
+ */
+export class RelativeDelegateLinkHelper extends DataBridge {
+    isCallable = true
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = makeErgoCast<
+        RelativeDelegateLink,
+        RelativeDelegateLinkLike
+    >(RelativeDelegateLinkSchema, { isMainnet: true });
+
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
+    // RelativeDelegateLink(fields: RelativeDelegateLinkLike) {
+    //    return this.ᱺᱺcast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
+
+
 export const MinterActivitySchema : EnumTypeSchema = {
     "kind": "enum",
     "name": "MinterActivity",
@@ -451,6 +510,39 @@ export const MinterActivitySchema : EnumTypeSchema = {
                     }
                 }
             ]
+        }
+    ]
+};
+
+export const RelativeDelegateLinkSchema : StructTypeSchema = {
+    "kind": "struct",
+    "format": "list",
+    "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+    "name": "RelativeDelegateLink",
+    "fieldTypes": [
+        {
+            "name": "uutName",
+            "type": {
+                "kind": "internal",
+                "name": "String"
+            }
+        },
+        {
+            "name": "delegateValidatorHash",
+            "type": {
+                "kind": "option",
+                "someType": {
+                    "kind": "internal",
+                    "name": "ValidatorHash"
+                }
+            }
+        },
+        {
+            "name": "config",
+            "type": {
+                "kind": "internal",
+                "name": "ByteArray"
+            }
         }
     ]
 };
