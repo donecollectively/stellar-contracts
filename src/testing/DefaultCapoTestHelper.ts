@@ -329,11 +329,21 @@ export class DefaultCapoTestHelper<
                         "settings"
                     );
 
-                    const initialSettings = settingsController.exampleData();
-
+                    let initialSettings = settingsController.exampleData();
+                    //@ts-expect-error on optional method not declared on the general data-controller type
+                    if (settingsController && !settingsController.initialSettingsData) {
+                        console.warn("Note: the Settings controller has no `async initialSettingsData()` method defined; using exampleData().\n"+
+                            "  Add this method to the settings policy if needed for deployment of the initial settings record.\n"+
+                            "  To suppress this warning, add `initiaiSettingsData() { return this.exampleData() }` to the settings policy."
+                        )
+                    } else {
+                        //@ts-expect-error on optional method not declared on the general data-controller type
+                        initialSettings = await settingsController.initialSettingsData();
+                    }
+                            
                     if (!initialSettings) {
                         throw new Error(
-                            "the settings policy must implement exampleData()"
+                            "the settings policy must implement exampleData() and/or async initialSettingsData() and return a valid settings record"
                         );
                     }
 
