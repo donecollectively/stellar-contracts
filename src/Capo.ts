@@ -77,7 +77,7 @@ import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
 // import contract from "./DefaultCapo.hl";
 // export { contract };
 
-import { errorMapAsString } from "./diagnostics.js";
+import { betterJsonSerializer, errorMapAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
 
 import { mkUutValuesEntries, mkValuesEntry } from "./utils.js";
@@ -1872,7 +1872,7 @@ export abstract class Capo<
         );
         console.log(
             "finding charter's govDelegate via link",
-            chD.govAuthorityLink
+            JSON.stringify(chD.govAuthorityLink, betterJsonSerializer)
         );
 
         return capoGovDelegate;
@@ -2507,7 +2507,7 @@ export abstract class Capo<
         activity: isActivity = this.activityUpdatingCharter(),
         tcx: TCX = this.mkTcx() as TCX
     ): Promise<StellarTxnContext> {
-        console.log("update charter", { activity });
+        console.log("update charter", JSON.stringify(activity, betterJsonSerializer));
         return this.txnUpdateCharterUtxo(tcx, activity, args);
     }
 
