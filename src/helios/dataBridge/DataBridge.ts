@@ -141,9 +141,7 @@ export class DataBridge extends (dataBridgeProxyBase as any) {
     ᱺᱺcast: Cast<any,any>
     isCallable = false
 
-    /**
-     *   uses unicode U+1c7a - sorts to the end */
-    ᱺᱺmkData: this["ᱺᱺcast"]["toUplcData"] = 
+    mkData: this["ᱺᱺcast"]["toUplcData"] = 
         (x: any) => this.ᱺᱺcast.toUplcData(x) 
     readData: this["ᱺᱺcast"]["fromUplcData"] = 
         (x: any) => this.ᱺᱺcast.fromUplcData(x) 
