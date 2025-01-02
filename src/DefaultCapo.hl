@@ -390,13 +390,14 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     oldSpendDelegate.delegateValidatorHash.switch{
                         Some{v} => v.show(), None => " (any addr)"
                 });
-                print("       + cfg " + oldSpendDelegate.config.decode_utf8());
+                oldSDConfigStr = oldSpendDelegate.config.decode_utf8();
+                print("       + cfg " + oldSDConfigStr);
                 print("  - new: "+ spendDelegate.uutName + " => "+ 
                     spendDelegate.delegateValidatorHash.switch{
                         Some{v} => v.show(), None => " (any addr)"
                 });
-                print("       + cfg " + spendDelegate.config.decode_utf8());
-                print("\n");
+                newSDConfigStr = spendDelegate.config.decode_utf8();
+                print("       + cfg " + newSDConfigStr);
                 // print(" - old: " + oldSpendDelegate.serialize().show());
                 // print(" - new: " + spendDelegate.serialize().show());
 
@@ -405,12 +406,14 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     oldMintDelegate.delegateValidatorHash.switch{
                         Some{v} => v.show(), None => " (any addr)"
                 });
-                print("       + cfg " + oldMintDelegate.config.decode_utf8());
+                oldMDConfigStr = oldMintDelegate.config.decode_utf8();
+                print("       + cfg " + oldMDConfigStr);
                 print("  - new: "+ mintDelegate.uutName + " => "+ 
                     mintDelegate.delegateValidatorHash.switch{
                         Some{v} => v.show(), None => " (any addr)"
                 });
-                print("       + cfg " + mintDelegate.config.decode_utf8());
+                newMDConfigStr = mintDelegate.config.decode_utf8();
+                print("       + cfg " + newMDConfigStr);
                 print("")
                 // print(" - old: " + oldMintDelegate.serialize().show());
                 // print(" - new: " + mintDelegate.serialize().show());

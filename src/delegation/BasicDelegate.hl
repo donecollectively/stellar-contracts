@@ -352,7 +352,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             BURNED
                         );
                     
-                        print("checking ReplacingMe on "+purpose + ": "+ dd.tn.decode_utf8());
+                        tnStr : String = dd.tn.decode_utf8();
+                        print("checking ReplacingMe on "+purpose + ": "+ tnStr);
                         REQT("needs the charter to be approving the the new mint-delegate");
                         TODO("  ^^^ should queue the new delegate in pendingChanges");
 
@@ -972,14 +973,16 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                                     },
                                                                     _ => {
                                                                         ManifestEntryType::DgDataPolicy{_ME_policyLink, _ME_recPrefix, refCount} = ME_type;
+                                                                        tnStr = tn.decode_utf8();
                                                                         burning.get_safe(tn).switch {
-                                                                            None => error("queued Remove/Replace failed: no burn, or double-burn: "+ tn.decode_utf8()),
+                                                                            None => error("queued Remove/Replace failed: no burn, or double-burn: "+ tnStr),
                                                                             Some{burningCount} => {
-                                                                                print("    -- ok: BURN 🔥"+ burningCount.show() + "×💴 "+ tn.decode_utf8());
-                                                                                assert(0 - refCount == burningCount, // negative = burning
-                                                                                    "queued Remove/Replace failed: expected burn of " + 
-                                                                                    refCount.show() + "×💴 "+ tn.decode_utf8() 
-                                                                                );
+                                                                                print("    -- ok: BURN 🔥"+ burningCount.show() + "×💴 "+ tnStr);
+                                                                                if (0 - refCount != burningCount) { // negative = burning
+                                                                                    error("queued Remove/Replace failed: expected burn of " + 
+                                                                                        refCount.show() + "×💴 "+ tnStr
+                                                                                    )
+                                                                                };
                                                                                 burning.delete(tn)
                                                                             } // burningCount
                                                                         } // check burn quantity
@@ -1213,8 +1216,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 );
                                 print( " <- ")
                             } else {
-                                print("  -- NOTE: updating "+ recId.decode_utf8()
-                                +", which isn't currentSettings="+curSettingsId.decode_utf8())
+                                recIdStr = recId.decode_utf8();
+                                curSettingsIdStr = curSettingsId.decode_utf8();
+                                print("  -- NOTE: updating "+ recIdStr +", which isn't currentSettings="+curSettingsIdStr)
                             }
                         }
                     };

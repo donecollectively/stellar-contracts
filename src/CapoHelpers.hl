@@ -448,14 +448,12 @@ struct DelegateInput {
         i : TxInput = self.input.unwrap();
         inputData : Data = mustFindInputRedeemer(i);
         inputData.switch {
-            ConstrData{index, fields} => {
+            ConstrData{index, _fields} => {
                 // ladybug emoji: "🐞"
                 print("    --🐞 generic delegate activity at index "+ index.show() );
-                print("    ---- from input id:" + i.output_id.tx_id.show() + "🔹#" + i.output_id.index.show());
-                print("       = "+i.value.show());
-
-                assert(index==index, "no way A"); // must use each destruct field
-                assert(fields.length >0, "no way B") // must use each destruct field
+                inpIdStr = i.output_id.tx_id.show() + "🔹#" + i.output_id.index.show();
+                valStr = i.value.show();
+                print("    ---- from input id:" + inpIdStr + " = "+valStr)
             } 
         };
         inputData
@@ -597,7 +595,6 @@ struct DelegateInput {
         REQT("withUniqueDDSpendingActivity: checks presence of delegated-data controller's spending activity for recId");
         strId : String = recId.decode_utf8();
         print("    -- recId: "+ strId);
-        print("\n");
 
         TODO("TEST THIS v");
         REQT("spendDgt must be acting on the matching record-id");
@@ -1119,7 +1116,8 @@ struct CapoCtx {
         manifestEntry : CapoManifestEntry = self.mustFindManifestEntry(key);
         tokenName : ByteArray = manifestEntry.tokenName;
         manifestValue : Value = mkTv(mph: self.mph, tnBytes: tokenName);
-        print("     ... with input dgData token name: "+ tokenName.decode_utf8());
+        tnStr = tokenName.decode_utf8();
+        print("     ... with input dgData token name: "+ tnStr);
         // print("     with value: "+manifestValue.show()+"\n");
 
         inputs: []TxInput = which.switch {
@@ -1371,12 +1369,11 @@ struct CapoCtx {
             id: recIdBytes
         );
 
-        print("  -- expecting refDD ");
-        print(recIdBytes.decode_utf8());
-        print("\n");
+        recIdStr = recIdBytes.decode_utf8();
+        print("  -- expecting refDD "+ recIdStr);
         tx.ref_inputs.find_safe(hasDD).switch {
             None => {
-                error("❌ 📎 ^ refDD: not found\n")
+                error("❌❌ 📎 ^ refDD: not found\n")
             },
             Some{txin} => {
                 print("✅ 📎 ^ refDD: ok\n");
@@ -1394,15 +1391,15 @@ struct CapoCtx {
             id: recIdBytes
         );
 
-        print("  -- expecting inDD ");
-        print(recIdBytes.decode_utf8());
-        print("\n");
+        recIdStr = recIdBytes.decode_utf8();
+        print("  -- expecting inDD " + recIdStr);
+
         tx.inputs.find_safe(hasDD).switch {
             None => {
-                error("❌ 📎 ^ inDD: not found\n")
+                error("❌❌ 📎 ^ inDD: not found\n")
             },
             Some{txin} => {
-                print("✅ 📎 ^ inDD: ok\n");
+                print("    ✅ 📎 ^ inDD: ok\n");
 
                 txin
             }
@@ -1437,7 +1434,6 @@ struct CapoCtx {
         capoAddr : Address = self.address();
         // print("capoAddr: "+ capoAddr.show());
         // print("seeking type "+ typeName);
-        // print("seeking id "+ id.decode_utf8());
         (txo : TxOutput) -> Bool {
             // print("txo.address: "+ txo.address.show());
             if(txo.address == capoAddr) {
@@ -1607,15 +1603,17 @@ struct CapoCtx {
         dgDatum.switch {
             DelegatedData => {
                 data : AnyData = AnyData::from_data(fromCip68Wrapper(dgData));
+                recIdStr = newDataId.decode_utf8();
                 if (data.id != newDataId) {
-                    print("expected id: "+newDataId.decode_utf8());
-                    error("❌ 📎 outDD: wrong id: "+data.id.decode_utf8())
+                    print("  -- expected id: "+recIdStr);
+                    actualIdStr = data.id.decode_utf8();
+                    error("❌❌ 📎 outDD: wrong id: "+actualIdStr)
                 } else {
                     if (data.type != dataTypePurpose) {
-                        print("expected type: "+ dataTypePurpose);
-                        error("❌ 📎 outDD: bad type: "+data.type)
+                        print("  -- expected type: "+ dataTypePurpose);
+                        error("❌❌ 📎 outDD: bad type: "+data.type)
                     } else {
-                        print("✅ 📎 outDD: ok: ^ outDD to Capo: "+newDataId.decode_utf8());
+                        print("✅ 📎 outDD: ok: ^ outDD to Capo: "+recIdStr);
                         true
                     }
                 }
@@ -1629,11 +1627,12 @@ struct CapoCtx {
     func delegatedTxOutput(self, 
         recId: ByteArray
     ) -> TxOutput {
-        print("  -- seeking delegated-data output for "+recId.decode_utf8()+"\n");
+        recIdStr = recId.decode_utf8();
+        print("  -- seeking delegated-data output for "+recIdStr);
         result : TxOutput = self.internalHasDelegatedDataOutput(
             mkTv(mph: self.mph, tnBytes: recId)
         );
-        print("✅ 📎 ^ outDD: found\n");
+        print("     ✅ 📎 ^ outDD: found\n");
         result
     }
 
@@ -1668,7 +1667,7 @@ struct CapoCtx {
     // func XXXmustFindDelegatedDatum[T](self, mph: MintingPolicyHash, tnBytes: ByteArray, inAddr: Address) -> outputAndDatum[T] {
     //     notFound = Option[outputAndDatum[T]]::None;
     //     idTokenValue = mkTv(mph: mph, tnBytes: tnBytes);
-    //     print( " ⬅️ 🔎 finding DelegatedData output: "+ tnbBytes.decode_utf8() + "\n");
+    //     print( " ⬅️ 🔎 finding DelegatedData output: "+ //xxx no decode in print! tnbBytes.decode_utf8() + "\n");
 
     //     foundDelegatedData: []outputAndDatum[T] = 
     //         tx.outputs.map_option[

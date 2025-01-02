@@ -404,15 +404,17 @@ func validateUutMinting(
     print("\n  -- uut-minting seed: " + seed.tx_id.show() + "🔹#"+seed.index.show() + "\n");
 
 
-    expectedValue.get_policy(mph).sort(sortPolicyValues).for_each( (b : ByteArray, i: Int) -> {
-        print( "    ℹ️ 🐞 expected: "+ i.show() + "x " + b.decode_utf8() + "\n" )
+    expectedValue.get_policy(mph).sort(sortPolicyValues).for_each( (tn : ByteArray, i: Int) -> {
+        tnStr = tn.decode_utf8();
+        print( "    ℹ️ 🐞 expected: "+ i.show() + "x " + tnStr )
     });
 
     actualThisPolicyMint = valueMinted.get_policy(mph);
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
     if (true) {
-        actualThisPolicyMint.for_each( (b : ByteArray, i: Int) -> {
-            print( "    ℹ️ 🐞   actual: " + i.show() + "x " + b.decode_utf8() + "\n" )
+        actualThisPolicyMint.for_each( (tn : ByteArray, i: Int) -> {
+            tnStr = tn.decode_utf8();
+            print( "    ℹ️ 🐞   actual: " + i.show() + "x " + tnStr )
         });
         print("other policy values minted: \n");
         print(Value::from_map(valueMinted.to_map().filter( (b:MintingPolicyHash, _ /* Map[ByteArray]Int */ ) -> Bool {
@@ -457,15 +459,21 @@ func validateUutMinting(
                 (otherMph: MintingPolicyHash, expectedTokensThisPolicy: Map[ByteArray]Int) -> {
                     mintedThisPolicy : Map[ByteArray]Int = valueMinted.get_policy(otherMph);/* implicitly sorted already .sort(sortPolicyValues);*/
 
-                    expectedTokensThisPolicy.sort(sortPolicyValues).for_each( (tokenName: ByteArray, expectedCount: Int) -> {
-                        assert(
-                            mintedThisPolicy.get_safe(tokenName).switch {
+                    expectedTokensThisPolicy. 
+                    sort(sortPolicyValues).
+                    for_each( (tokenName: ByteArray, expectedCount: Int) -> {
+                        if(! mintedThisPolicy.get_safe(tokenName).
+                            switch {
                                 None => false,
                                 Some{actualCount} => actualCount == expectedCount
-                            }, 
-                            "   -- wrong mint for "+ otherMph.show() + ":" + tokenName.decode_utf8()
-                        )
-                    })
+                            }
+                        ) {
+                            tnString = tokenName.decode_utf8();
+                            error(
+                                "❌❌ validateUutMinting(): wrong mint for "+ otherMph.show() + ":" + tnString
+                            )
+                        }}
+                    )
                 }
             );
             true
