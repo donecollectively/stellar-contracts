@@ -1871,8 +1871,7 @@ export abstract class Capo<
             chD.govAuthorityLink
         );
         console.log(
-            "finding charter's govDelegate via link",
-            JSON.stringify(chD.govAuthorityLink, betterJsonSerializer)
+            "finding charter's govDelegate via link"+ uplcDataSerializer("link", chD.govAuthorityLink)
         );
 
         return capoGovDelegate;
@@ -2507,7 +2506,7 @@ export abstract class Capo<
         activity: isActivity = this.activityUpdatingCharter(),
         tcx: TCX = this.mkTcx() as TCX
     ): Promise<StellarTxnContext> {
-        console.log("update charter", JSON.stringify(activity, betterJsonSerializer));
+        console.log("update charter"+ uplcDataSerializer("activity", activity));
         return this.txnUpdateCharterUtxo(tcx, activity, args);
     }
 

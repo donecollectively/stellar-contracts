@@ -38,6 +38,7 @@ import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
 import type { Expand } from "../testing/types.js";
 import type { IFISNEVER, TypeError } from "../helios/typeUtils.js";
 import type { WrappedDgDataType } from "./WrappedDgDataContract.js";
+import { uplcDataSerializer } from "./jsonSerializers.js";
 
 export type DgDataType<T extends DelegatedDataContract<any, any>> =
     T extends DelegatedDataContract<infer T, infer TLike> ? T : never;
@@ -324,8 +325,9 @@ export abstract class DelegatedDataContract<
             otherDetails: makeIntData(0),
         });
         console.log(
-            `🏒 creating ${newType} ->`,
-            JSON.parse(JSON.stringify(fullRecord, betterJsonSerializer, 2))
+            `🏒 creating ${newType} -> `+
+            uplcDataSerializer(newType, fullRecord, 1)
+
         );
         let tcx3 = tcx2;
         if (this.needsGovAuthority) {
@@ -469,7 +471,10 @@ export abstract class DelegatedDataContract<
         } = options;
         console.log(
             `🏒 updating ${recType} ->`,
-            JSON.parse(JSON.stringify(updatedRecord, betterJsonSerializer, 2))
+            uplcDataSerializer(recType,
+                JSON.parse(JSON.stringify(updatedRecord, betterJsonSerializer, 2)),
+                1
+            )
         );
 
         const tcx2 = await this.txnGrantAuthority(tcx, activity);

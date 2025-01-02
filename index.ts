@@ -32,6 +32,7 @@ export {
     dumpAny,
     betterJsonSerializer,
 } from "./src/diagnostics.js";
+export {uplcDataSerializer} from "./src/delegation/jsonSerializers.js";
 
 export { UutName } from "./src/delegation/UutName.js";
 export {
