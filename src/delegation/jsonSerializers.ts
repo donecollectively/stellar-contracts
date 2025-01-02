@@ -53,11 +53,10 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
     } else if (value.kind == "Address") {
         const a = value as Address;
         const cbor = a.toCbor();
-        const b = decodeAddress(cbor)
-        return `‹${abbrevAddress(value)}› = `+abbreviatedDetailBytes("‹cbor:", cbor, 99)+"›"
+        // const b = decodeAddress(cbor)
+        return `‹${abbrevAddress(value)}› = `+abbreviatedDetailBytes(`cbor‹${cbor.length}›:`, cbor, 99)
     }  else if (value.kind == "ValidatorHash") {
-        return `${abbreviatedDetailBytes("script‹", value.bytes)}›`
-            // .toHex())}›`;
+        return abbreviatedDetailBytes(`script‹${value.bytes.length}›`, value.bytes)
     }  else if (value.kind == "MintingPolicyHash") {
         const v : MintingPolicyHash = value;
         return `mph‹${policyIdAsString(v)}›`
@@ -95,7 +94,6 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
     } else if (Array.isArray(value) && value.length == 0) {
         return "[]";
     } else if (Array.isArray(value) && value.every((v) => typeof v === "number")) {
-        // return `bytes‹${value.length}›=${abbreviatedDetail(bytesToHex(value),14)}`;
         return `${abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 40)}`
     // } else if (value.toString) {
     //     return value.toString();
@@ -168,7 +166,7 @@ export function abbreviatedDetailBytes(prefix: string, value: number[], initLeng
     const hext = bytesToHex(value);
     const Len = value.length
     const text = isValidUtf8(value) ? 
-        ` (${Len})‹"${abbreviatedDetail(bytesToText(value), initLength)}"›` : ` (${Len} bytes)`;
+        ` ‹"${abbreviatedDetail(bytesToText(value), initLength)}"›` : ``;
 
     if (value.length <= initLength) return `${prefix}${hext}${text}`
     const checksumString = encodeBech32("_", value).slice(-4)
