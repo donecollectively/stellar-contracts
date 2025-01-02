@@ -247,7 +247,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         if (preProdParams.isFixedUp) return preProdParams;
 
         const txSize = preProdParams.maxTxSize;
-        const maxTxSize = Math.floor(txSize * 3.5);
+        //@ts-expect-error on our synthetic property
+        preProdParams.origMaxTxSize = txSize;
+        const maxTxSize = Math.floor(txSize * 4);
         console.log(
             "test env: 🔧🔧🔧 fixup max tx size",
             txSize,
@@ -257,12 +259,18 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         preProdParams.maxTxSize = maxTxSize;
 
         const mem = preProdParams.maxTxExMem;
-        const maxMem = Math.floor(mem * 5.5);
+        //@ts-expect-error on our synthetic property
+        preProdParams.origMaxTxExMem = mem;
+
+        const maxMem = Math.floor(mem * 7);
         console.log("test env: 🔧🔧🔧 fixup max memory", mem, " -> 🔧", maxMem);
         preProdParams.maxTxExMem = maxMem;
 
         const cpu = preProdParams.maxTxExCpu;
-        const maxCpu = Math.floor(cpu * 2.1);
+        //@ts-expect-error on our synthetic property
+        preProdParams.origMaxTxExCpu = cpu;
+        
+        const maxCpu = Math.floor(cpu * 3);
         console.log("test env: 🔧🔧🔧 fixup max cpu", cpu, " -> 🔧", maxCpu);
         preProdParams.maxTxExCpu = maxCpu;
 

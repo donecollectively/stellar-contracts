@@ -1,4 +1,9 @@
-import { dumpAny, lovelaceToAda, txAsString, utxosAsString } from "./diagnostics.js";
+import {
+    dumpAny,
+    lovelaceToAda,
+    txAsString,
+    utxosAsString,
+} from "./diagnostics.js";
 import type { hasUutContext } from "./CapoTypes.js";
 import { UutName } from "./delegation/UutName.js";
 import type { ActorContext, SetupDetails } from "./StellarContract.js";
@@ -188,11 +193,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this.setup.uh;
     }
 
-    get networkParams() : NetworkParams {
+    get networkParams(): NetworkParams {
         return this.setup.networkParams;
     }
 
-    get actorContext() : ActorContext<any>{
+    get actorContext(): ActorContext<any> {
         return this.setup.actorContext;
     }
     /**
@@ -204,16 +209,20 @@ export class StellarTxnContext<S extends anyState = anyState> {
     toJSON() {
         return {
             kind: "StellarTxnContext",
-            state: !!this.state ? `{${Object.keys(this.state).join(", ")}}` : undefined,
+            state: !!this.state
+                ? `{${Object.keys(this.state).join(", ")}}`
+                : undefined,
             inputs: `[${this.inputs.length} inputs]`,
             outputs: `[${this.outputs.length} outputs]`,
             isBuilt: !!this._builtTx,
             hasParent: !!this.parentTcx,
             //@ts-expect-error
-            addlTxns: this.state.addlTxns ? [
-                //@ts-expect-error
-                ...Object.keys(this.state.addlTxns || {}),
-            ] : undefined
+            addlTxns: this.state.addlTxns
+                ? [
+                      //@ts-expect-error
+                      ...Object.keys(this.state.addlTxns || {}),
+                  ]
+                : undefined,
         };
     }
 
@@ -223,10 +232,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
         state: Partial<S> = {},
         parentTcx?: StellarTxnContext<any>
     ) {
-        Object.defineProperty(this, "setup", { enumerable: false, value: setup });
+        Object.defineProperty(this, "setup", {
+            enumerable: false,
+            value: setup,
+        });
         Object.defineProperty(this, "_builtTx", { enumerable: false });
 
-        this.txb = makeTxBuilder({ 
+        this.txb = makeTxBuilder({
             isMainnet: this.setup.isMainnet || false,
         });
         // const { uuts = { ...emptyUuts }, ...moreState } = state;
@@ -562,7 +574,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             this.txb.spendUnsafe(input, r?.redeemer);
         } catch (e: any) {
             // console.log("failed adding input to txn: ", dumpAny(this));
-            debugger
+            debugger;
             throw new Error(
                 `addInput: ${e.message}` +
                     "\n   ...TODO: dump partial txn from txb above.  Failed TxInput:\n" +
@@ -573,10 +585,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this;
     }
 
-
     addOutput<TCX extends StellarTxnContext<S>>(
         this: TCX,
-        output: TxOutput 
+        output: TxOutput
     ): TCX {
         try {
             this.txb.addOutput(output);
@@ -613,8 +624,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
     /**
      * Adds a UPLC program to the transaction context, increasing the transaction size.
      * @remarks
-     * Use the Capo's `txnAttachScriptOrRefScript()` method to use a referenceScript 
-     * when available. That method uses a fallback approach adding the script to the 
+     * Use the Capo's `txnAttachScriptOrRefScript()` method to use a referenceScript
+     * when available. That method uses a fallback approach adding the script to the
      * transaction if needed.
      */
     addScriptProgram(...args: Parameters<TxBuilder["attachUplcProgram"]>) {
@@ -707,10 +718,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
         walletMustSign: boolean;
         wallet: Wallet;
         wHelper: WalletHelper<any>;
-        costs: { 
-            total: Cost,
-            [ key: string ] : Cost
-        }
+        costs: {
+            total: Cost;
+            [key: string]: Cost;
+        };
     }> {
         console.timeStamp?.(`submit() txn ${this.txnName}`);
         console.log("tcx build() @top");
@@ -759,7 +770,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 if (!walletMustSign) {
                     // if any inputs from the wallet were added as part of finalizing,
                     // add the wallet's signature to the txn
-                    const inputs = this.txb.inputs
+                    const inputs = this.txb.inputs;
                     if (!inputs) throw new Error(`no inputs in txn`);
                     for (const input of inputs) {
                         if (!(await wHelper.isOwnAddress(input.address)))
@@ -772,15 +783,15 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
                         if (pubKeyHash) {
                             this.txb.addSigners(pubKeyHash);
-                        }   
+                        }
                         break;
                     }
                 }
             }
-            let capturedCosts : {
-                total: Cost,
-                [ key: string ] : Cost
-            } = {total: { cpu: 0n, mem: 0n } };
+            let capturedCosts: {
+                total: Cost;
+                [key: string]: Cost;
+            } = { total: { cpu: 0n, mem: 0n } };
             try {
                 // the transaction can fail validation without throwing an error
                 tx = await this.txb.buildUnsafe({
@@ -793,55 +804,61 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         capturedCosts.total.cpu += costs.cpu;
                         capturedCosts.total.mem += costs.mem;
                         if ("minting" == purpose) purpose = "minting ";
-                        capturedCosts[`${purpose} @${1+index}`] = costs;
-                        return costs
-                    }
+                        capturedCosts[`${purpose} @${1 + index}`] = costs;
+                        return costs;
+                    },
                 });
-                this.txb.validToTime
+                this.txb.validToTime;
             } catch (e: any) {
                 // buildUnsafe shouldn't throw errors.
-                
+
                 logger.logError(`txn build failed: ${e.message}`);
                 if (tx!) logger.logPrint(dumpAny(tx!) as string);
 
-                logger.logError(`  (it shouldn't be possible for buildUnsafe to be throwing errors!)`);
+                logger.logError(
+                    `  (it shouldn't be possible for buildUnsafe to be throwing errors!)`
+                );
                 logger.flushError();
-                debugger
+                debugger;
                 throw e;
             }
             if (tx.hasValidationError) {
                 const e = tx.hasValidationError;
                 //@ts-expect-error accessing the stack of something that might be a string instead
-                let heliosStack = e.stack?.split("\n") || undefined
+                let heliosStack = e.stack?.split("\n") || undefined;
                 // locate the first TxImpl line in the stack trace.
-                // include it but remove remaining trace lines. 
+                // include it but remove remaining trace lines.
                 // heliosStack = heliosStack?.slice(
                 //     0, heliosStack.findIndex(l => l.match(/TxImpl/)) + 2
                 // ) || ""
                 // locate any lines like "<helios>@at <anonymous>, [mkTv=<fn>, tvCharter=<fn>, mustFindInputRedeemer=<fn>, fromCip68Wrapper=<fn>, RelativeDelegateLink::tvAuthorityToken=<fn>, RelativeDelegateLink::acAuthorityToken=<fn>, RelativeDelegateLink::validatesUpdatedSettings=<fn>, RelativeDelegateLink::hasDelegateInput=<fn>, RelativeDelegateLink::hasValidOutput=<fn>, DelegateInput::genericDelegateActivity=<fn>], src/CapoHelpers.hl:761:9:0"
                 // and transform it to a multi-line, indented function trace with the
-                // square-bracketed items indented to indicate the scope of the function they're provided to 
-                heliosStack = heliosStack?.map((line : string) => {
+                // square-bracketed items indented to indicate the scope of the function they're provided to
+                heliosStack = heliosStack?.map((line: string) => {
                     if (line.match(/<helios>@at/)) {
-                        line = line.
-                            replace(/<helios>@at /, "   ... in helios function ").
-                            replace(/, \[(.*)\],/, (_,bracketed) => ``
+                        line = line
+                            .replace(
+                                /<helios>@at /,
+                                "   ... in helios function "
+                            )
+                            .replace(
+                                /, \[(.*)\],/,
+                                (_, bracketed) => ``
                                 // ` with scope [\n        ${
                                 //     bracketed.replace(/, /g, ",\n        ")
                                 // }\n      ]`
-                            )
+                            );
                     }
-                    return line
-                })
-                debugger
+                    return line;
+                });
+                debugger;
                 const scriptContext =
                     "string" == typeof e ? undefined : e.scriptContext;
                 logger.logError(
                     `tx validation failure: \n  ${
                         //@ts-expect-error
-                        tx.hasValidationError.message || tx.hasValidationError 
-                    }\n`+
-                    ( heliosStack?.join("\n") || "" )
+                        tx.hasValidationError.message || tx.hasValidationError
+                    }\n` + (heliosStack?.join("\n") || "")
                 );
                 logger.flush();
                 const ctxCbor = scriptContext?.toCbor();
@@ -864,7 +881,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 walletMustSign,
                 wallet,
                 wHelper,
-                costs: capturedCosts
+                costs: capturedCosts,
             };
         } else {
             throw new Error("no 'actorContext.wallet'; can't make  a txn");
@@ -900,14 +917,20 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }: SubmitOptions = {}
     ) {
         const { logger } = this;
-        const { tx, willSign, walletMustSign, wallet, wHelper, costs = { 
-            total: {cpu: 0n, mem: 0n}
-        } } =
-            await this.build({
-                signers,
-                addlTxInfo,
-                beforeValidate,
-            });
+        const {
+            tx,
+            willSign,
+            walletMustSign,
+            wallet,
+            wHelper,
+            costs = {
+                total: { cpu: 0n, mem: 0n },
+            },
+        } = await this.build({
+            signers,
+            addlTxInfo,
+            beforeValidate,
+        });
         const { description } = addlTxInfo;
 
         const errMsg =
@@ -1035,56 +1058,87 @@ export class StellarTxnContext<S extends anyState = anyState> {
             return r;
         });
     }
-    emitCostDetails(tx: Tx, costs: { total: Cost, [ key: string ] : Cost }) {
-        const {logger} = this;
+    emitCostDetails(tx: Tx, costs: { total: Cost; [key: string]: Cost }) {
+        const { logger } = this;
         const {
             maxTxExCpu,
             maxTxExMem,
             maxTxSize,
+            //@ts-expect-error on our synthetic attributes
+            origMaxTxSize = maxTxSize,
+            //@ts-expect-error on our synthetic attributes
+            origMaxTxExMem = maxTxExMem,
+            //@ts-expect-error on our synthetic attributes
+            origMaxTxExCpu = maxTxExCpu,
             exCpuFeePerUnit,
             exMemFeePerUnit,
             txFeePerByte,
-            txFeeFixed
-        } = this.networkParams
-        const {total, ... otherCosts} = costs;
+            txFeeFixed,
+        } = this.networkParams;
+        const mtx = origMaxTxSize;
+        const mte = origMaxTxExMem;
+        const mtc = origMaxTxExCpu;
+
+        const { total, ...otherCosts } = costs;
         const txSize = tx.calcSize();
         const txFee = Number(tx.calcMinFee(this.networkParams));
         const cpuFee = Number(total.cpu) * exCpuFeePerUnit;
         const memFee = Number(total.mem) * exMemFeePerUnit;
         const sizeFee = txSize * txFeePerByte;
 
-        logger.logPrint("costs: " +
-            `\n  -- scripting costs`+
-            `\n    -- cpu units ${total.cpu}`+
-            ` = ${lovelaceToAda(cpuFee)}`+
-            ` (${
-                (Number(1000n * total.cpu / BigInt(maxTxExCpu)) / 10).toFixed(1)
-            }% of max)`+
-            `\n    -- memory units ${total.mem}`+
-            ` = ${lovelaceToAda(memFee)}`+
-            ` (${
-                (Number(1000n * total.mem / BigInt(maxTxExMem)) / 10).toFixed(1)
-            }% of max)`+
+        if (total.cpu > mtx ||
+            total.mem > mte ||
+            txSize > mtx 
+        ) {
+            logger.logPrint(
+                "🔥🔥🔥🔥  THIS TX EXCEEDS default (overridden in test env) limits on network params  🔥🔥🔥🔥"
+            );
+        }
+        const scriptBreakdown =
+            Object.keys(otherCosts).length > 0
+                ? `\n    -- per script (with % blame for actual costs):` +
+                  Object.entries(otherCosts)
+                      .map(
+                          ([key, { cpu, mem }]) =>
+                              `\n      -- ${key}: cpu ${lovelaceToAda(
+                                  Number(cpu) * exCpuFeePerUnit
+                              )} = ${(
+                                  (Number(cpu) / Number(total.cpu)) *
+                                  100
+                              ).toFixed(1)}%, mem ${lovelaceToAda(
+                                  Number(mem) * exMemFeePerUnit
+                              )} = ${(
+                                  (Number(mem) / Number(total.mem)) *
+                                  100
+                              ).toFixed(1)}%`
+                      )
+                      .join("")
+                : "";
 
-            `\n    -- per script (with % blame for actual costs):`+
-            Object.entries(otherCosts).map(([key, { cpu, mem }]) => 
-                `\n      -- ${key}: cpu ${lovelaceToAda(Number(cpu) * exCpuFeePerUnit)} = ${
-                    (Number(cpu) / Number(total.cpu) * 100).toFixed(1)
-                }%, mem ${lovelaceToAda(Number(mem) * exMemFeePerUnit)} = ${
-                    (Number(mem) / Number(total.mem) * 100).toFixed(1)
-                }%`
-            ).join("")+
-
-            `\n  -- tx size ${txSize}`+
-            ` (${
-                (Number(1000 * txSize / maxTxSize) / 10).toFixed(1)
-            }% of max)`+
-            ` = ${lovelaceToAda(sizeFee)}`+
-            `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}`+
-            `\n  -- remainder ${
-                lovelaceToAda(txFee - cpuFee - memFee - sizeFee - txFeeFixed)
-            } is for refScripts/etc`
-        )
+        logger.logPrint(
+            "costs: " +
+                `\n  -- scripting costs` +
+                `\n    -- cpu units ${total.cpu}` +
+                ` = ${lovelaceToAda(cpuFee)}` +
+                ` (${(Number((1000n * total.cpu) / BigInt(mtc)) / 10).toFixed(
+                    1
+                )}% of max CPU)` +
+                `\n    -- memory units ${total.mem}` +
+                ` = ${lovelaceToAda(memFee)}` +
+                ` (${(Number((1000n * total.mem) / BigInt(mte)) / 10).toFixed(
+                    1
+                )}% of max mem)` +
+                scriptBreakdown +
+                `\n  -- tx size ${txSize}` +
+                ` (${(Number((1000 * txSize) / mtx) / 10).toFixed(
+                    1
+                )}% of max tx size)` +
+                ` = ${lovelaceToAda(sizeFee)}` +
+                `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}` +
+                `\n  -- remainder ${lovelaceToAda(
+                    txFee - cpuFee - memFee - sizeFee - txFeeFixed
+                )} is for refScripts/etc`
+        );
     }
 
     get currentSlot() {
@@ -1098,9 +1152,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         function getAttr(x: string) {
             const qq = tx.body[x];
             if (!qq) {
-                throw new Error(
-                    `no ${x} in tx.body: `
-                );
+                throw new Error(`no ${x} in tx.body: `);
             }
             return qq;
         }
@@ -1164,22 +1216,19 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * @remarks
      * use submitTxnChain() to submit a list of txns with chaining
      */
-    async submitTxns(
-        txns: TxDescription<any>[],
-        callbacks?: SubmitCallbacks
-    ) {
+    async submitTxns(txns: TxDescription<any>[], callbacks?: SubmitCallbacks) {
         for (const [txName, addlTxInfo] of Object.entries(txns) as [
             string,
             TxDescription<any>
         ][]) {
             const { txName, description } = addlTxInfo;
-            console.log("  -- before: " + description)
+            console.log("  -- before: " + description);
             const tcx = (
                 "function" == typeof addlTxInfo.tcx
                     ? await addlTxInfo.tcx()
                     : addlTxInfo.tcx
             ) as StellarTxnContext;
-            if ("undefined"  == typeof tcx) {
+            if ("undefined" == typeof tcx) {
                 throw new Error(`no txn provided for addlTx ${txName}`);
             }
             addlTxInfo.tcx = tcx;
@@ -1214,7 +1263,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 true === replacementTcx ? tcx : replacementTcx || tcx;
             // console.log("   -- submitTxns: -> txn: ", txName, description);
             // console.log("   ----> effective tx", effectiveTcx);
-            if (!effectiveTcx) debugger
+            if (!effectiveTcx) debugger;
             await effectiveTcx.submit({
                 addlTxInfo, // just for its description.
             });
@@ -1235,7 +1284,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     async submitTxnChain(
         options: {
-            txns?: TxDescription<any>[]
+            txns?: TxDescription<any>[];
         } & SubmitCallbacks = {
             //@ts-expect-error because the type of this context doesn't
             //   guarantee the presence of addlTxns.  But it might be there!
@@ -1247,7 +1296,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         const newTxns: TxDescription<any>[] = options.txns || addlTxns || [];
         let chainedTxns: TxDescription<any>[] = [];
-        const hookedCallbacks : SubmitCallbacks = {
+        const hookedCallbacks: SubmitCallbacks = {
             // txns,  // see newTxns
             beforeSubmit: (txinfo) => {
                 //@ts-expect-error triggering the test-network-emulator's tick
@@ -1255,15 +1304,19 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 this.setup.network.tick?.(1);
                 options.beforeSubmit?.(txinfo);
             },
-            onSubmitted: (txinfo) => {                
-                const more : Record<string, TxDescription<any>> = txinfo.tcx?.state?.addlTxns || {};
-                console.log("  ✅ "+ txinfo.description);
+            onSubmitted: (txinfo) => {
+                const more: Record<string, TxDescription<any>> = txinfo.tcx
+                    ?.state?.addlTxns || {};
+                console.log("  ✅ " + txinfo.description);
                 const moreTxns = Object.values(more);
                 if (moreTxns.length) {
                     chainedTxns.push(...moreTxns);
-                    console.log(" + chained txns: \n" + moreTxns.map(
-                        (t) => `   🟩 ${t.description}\n`
-                    ).join(""))
+                    console.log(
+                        " + chained txns: \n" +
+                            moreTxns
+                                .map((t) => `   🟩 ${t.description}\n`)
+                                .join("")
+                    );
                 }
                 //@ts-expect-error triggering the test-network-emulator's tick
                 //   ... in regular execution environment, this is a no-op by default
@@ -1274,11 +1327,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
         let chainDepth = 0;
         const isolatedTcx = new StellarTxnContext(this.setup);
         console.log(
-            "at d=0: submitting addl txns: \n" + newTxns.map(
-                (t) => `  🟩 ${t.description}\n`
-            ).join("")
-        )
-        
+            "at d=0: submitting addl txns: \n" +
+                newTxns.map((t) => `  🟩 ${t.description}\n`).join("")
+        );
+
         const t = isolatedTcx.submitTxns(newTxns, hookedCallbacks);
 
         const allPromises = [] as Promise<any>[];
@@ -1301,7 +1353,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 " 🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞\n" +
                     `submitting ${chainedTxns.length} transactions at depth ${chainDepth}`
             );
-            console.log(chainedTxns.map((t) => `  🟩 ${t.description}\n`).join(""));
+            console.log(
+                chainedTxns.map((t) => `  🟩 ${t.description}\n`).join("")
+            );
             const t = isolatedTcx.submitTxns(chainedTxns, hookedCallbacks);
             allPromises.push(t);
             await t;
