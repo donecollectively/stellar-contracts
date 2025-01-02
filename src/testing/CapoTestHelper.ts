@@ -136,8 +136,10 @@ export abstract class CapoTestHelper<
      * Creates a new transaction-context with the helper's current or default actor
      * @public
      **/
-    mkTcx<T extends anyState=anyState>() : StellarTxnContext<T> {
-        return new StellarTxnContext(this.strella.setup)
+    mkTcx<T extends anyState=anyState>(txnName?: string) : StellarTxnContext<T> {
+        const tcx = new StellarTxnContext(this.strella.setup)
+        if (txnName) return tcx.withName(txnName) as any
+        return tcx as any;
     }
 
     loadSnapshot(snapName: string) {
