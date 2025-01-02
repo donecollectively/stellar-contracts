@@ -126,7 +126,7 @@ func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
         ).show() + " ADA";
         mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {
             []String{
-                c.show() + "×💴 " + tokenName.decode_utf8()
+                c.show(), "×💴 ", tokenName.decode_utf8()
             } + previous
         }, []String{}).join(" + ");
         // v.assets()
@@ -450,10 +450,11 @@ struct DelegateInput {
         inputData.switch {
             ConstrData{index, _fields} => {
                 // ladybug emoji: "🐞"
-                print("    --🐞 generic delegate activity at index "+ index.show() );
-                inpIdStr = i.output_id.tx_id.show() + "🔹#" + i.output_id.index.show();
-                valStr = i.value.show();
-                print("    ---- from input id:" + inpIdStr + " = "+valStr)
+                print("    --🐞 generic delegate activity at index "+ index.show() )
+                // doesn't get optimized out:
+                // inpIdStr = i.output_id.tx_id.show() + "🔹#" + i.output_id.index.show();
+                // valStr = i.value.show();
+                // print("    ---- from input id:" + inpIdStr + " = "+valStr)
             } 
         };
         inputData

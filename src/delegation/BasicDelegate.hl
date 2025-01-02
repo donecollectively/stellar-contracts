@@ -208,8 +208,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
         isD : IsDelegation{dd} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
             showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
-            print("  -- is spending dgTkn "+ showMyTokens(get_current_input().value ));
-            print("\n");
+            myDgTkn = showMyTokens(get_current_input().value);
+            print("  -- is spending dgTkn "+ myDgTkn);
 
             activity.switch {
                 MultipleDelegateActivities{activities} => {

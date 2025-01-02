@@ -394,15 +394,17 @@ func validateUutMinting(
     );
 
     if (! valueMinted.contains_policy(mph) ) {
-        print( "  -- no mint from our policy "+ 
-            mph.show() +
-            "value minted: \n"+ valueMinted.show() 
-        );
+        mphStr = mph.show();
+        valStr = valueMinted.show();
+        print( "  -- no mint from our policy "+ mphStr);
+        print(valStr);
+        print( "^^  value minted");
         error("❌❌ validateUutMinting(): no mint from our policy")
     };
 
-    print("\n  -- uut-minting seed: " + seed.tx_id.show() + "🔹#"+seed.index.show() + "\n");
-
+    // seedTxId = seed.tx_id.show();
+    // seedIdx = seed.index.show();
+    // print("\n  -- uut-minting seed: " + seedTxId + "🔹#"+seedIdx);
 
     expectedValue.get_policy(mph).sort(sortPolicyValues).for_each( (tn : ByteArray, i: Int) -> {
         tnStr = tn.decode_utf8();

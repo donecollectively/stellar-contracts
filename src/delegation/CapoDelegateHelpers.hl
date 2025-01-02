@@ -252,11 +252,12 @@ struct RelativeDelegateLink {
         mph: MintingPolicyHash,
         required: Bool = true
     ) -> Option[TxInput] {
+        uutName : String = self.uutName;
         self.delegateValidatorHash.switch{
             // when no special input is needed by the delegate, 
             None => {
                 if (required) {
-                    error("_❌ ➡️ 💁 missing required input with dgTkn " + self.uutName)
+                    error("❌❌ ➡️ 💁 missing required input with dgTkn " + uutName)
                 } else {
                     Option[TxInput]::None
                 }
@@ -266,8 +267,8 @@ struct RelativeDelegateLink {
                 // if we arrived here, then we have a delegate that's supposed to be at a specific address.
                 // if we can't find an input with that address, it's an error condition.
                 // we need an input with this address, having the expected UUT.
-                expectedUut : Value = mkTv(mph, self.uutName);
-                print("  -- seeking input dgTkn: "+ self.uutName+"\n");
+                expectedUut : Value = mkTv(mph, uutName);
+                print("  -- seeking input dgTkn: "+ uutName);
                 inputs.find_safe((i: TxInput) -> Bool {
                     i.address.credential == needsAddrWithCred &&
                     i.value.contains(expectedUut)
@@ -278,7 +279,7 @@ struct RelativeDelegateLink {
                     },
                     /* notFound: */ None => {
                         if (required) {
-                            error("_❌ ➡️  💁 missing req'd input dgTkn (at script addr) " + self.uutName)
+                            error("_❌ ➡️  💁 missing req'd input dgTkn (at script addr) " + uutName)
                         } else {
                             print (" <- 🚫 ➡️ 💁 no input with ^ dgTkn; not req'd; returning false\n");
                             Option[TxInput]::None
