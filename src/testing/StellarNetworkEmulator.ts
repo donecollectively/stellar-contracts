@@ -21,6 +21,8 @@ import {
     type StakingAddress,
     makeNetworkParamsHelper,
     makeAssets,
+    type ShelleyAddress,
+    type Value,
 } from "@helios-lang/ledger";
 
 import {
@@ -41,6 +43,7 @@ import {
     type RootPrivateKey,
     makeEmulatorGenesisTx,
     makeEmulatorRegularTx,
+    type SimpleWallet,
 } from "@helios-lang/tx-utils";
 import { DEFAULT_NETWORK_PARAMS } from "@helios-lang/ledger";
 import { type UplcLogger } from "@helios-lang/uplc";
@@ -198,8 +201,8 @@ export class SimpleWallet_stellar implements Wallet {
     spendingPrivateKey: Bip32PrivateKey;
     spendingPubKey: PubKey;
 
-    stakingPrivateKey?: Bip32PrivateKey;
-    stakingPubKey?: PubKey;
+    stakingPrivateKey: Bip32PrivateKey | undefined
+    stakingPubKey: PubKey | undefined;
 
     get cardanoClient() {
         return this.#networkCtx.network;
@@ -257,7 +260,7 @@ export class SimpleWallet_stellar implements Wallet {
         return this.stakingPubKey?.hash();
     }
 
-    get address(): Address {
+    get address(): ShelleyAddress<PubKeyHash> {
         return makeAddress(
             this.cardanoClient.isMainnet(),
             this.spendingPubKeyHash,
@@ -291,23 +294,23 @@ export class SimpleWallet_stellar implements Wallet {
     /**
      * Assumed wallet was initiated with at least 1 UTxO at the pubkeyhash address.
      */
-    get usedAddresses(): Promise<Address[]> {
+    get usedAddresses(): Promise<ShelleyAddress<PubKeyHash>[]> {
         return new Promise((resolve, _) => {
             resolve([this.address]);
         });
     }
-    get unusedAddresses(): Promise<Address[]> {
+    get unusedAddresses(): Promise<ShelleyAddress<PubKeyHash>[]> {
         return new Promise((resolve, _) => {
             resolve([]);
         });
     }
-    get utxos(): Promise<TxInput[]> {
+    get utxos(): Promise<TxInput<PubKeyHash>[]> {
         return new Promise((resolve, _) => {
-            resolve(this.cardanoClient.getUtxos(this.address));
+            resolve(this.cardanoClient.getUtxos(this.address) as any);
         });
     }
 
-    get collateral(): Promise<TxInput[]> {
+    get collateral(): Promise<TxInput<PubKeyHash>[]> {
         return new Promise((resolve, _) => {
             resolve([]);
         });
@@ -339,6 +342,7 @@ export class SimpleWallet_stellar implements Wallet {
 export type NetworkSnapshot = {
     seed: number;
     netNumber: number;
+    name: string;
     slot: number;
     genesis: EmulatorGenesisTx[];
     blocks: EmulatorTx[][];
@@ -365,29 +369,26 @@ export class StellarNetworkEmulator implements Emulator {
     /**
      * Cached map of all UTxOs ever created
      * @private
-     * @type {Record<string, TxInput>}
      */
-    _allUtxos;
+    _allUtxos: Record<string, TxInput>;
 
     /**
      * Cached set of all UTxOs ever consumed
      * @private
-     * @type {Set<string>}
      */
-    _consumedUtxos;
+    _consumedUtxos: Set<string>;
 
     /**
      * Cached map of UTxOs at addresses
      * @private
-     * @type {Record<string, TxInput[]>}
      */
-    _addressUtxos;
+    _addressUtxos: Record<string, TxInput[]>
 
     id: number;
     params: NetworkParams;
     /**
      * Instantiates a NetworkEmulator at slot 0.
-     * An optional seed number can be specified, from which all emulated randomness is derived.
+     * An optional seed number can be specified, from which all EMULATED RANDOMNESS is derived.
      */
     constructor(
         seed = 0,
@@ -436,7 +437,9 @@ export class StellarNetworkEmulator implements Emulator {
 
     // retains continuity for the seed and the RNG through one or more snapshots.
     mulberry32 = () => {
+        //!!mutates vvvvvvvvvv this.#seed
         let t = (this.#seed += 0x6d2b79f5);
+
         t = Math.imul(t ^ (t >>> 15), t | 1);
         t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -474,12 +477,14 @@ export class StellarNetworkEmulator implements Emulator {
         }
         console.log(
             "            📸 📸 📸   ████  📸 📸 📸  #" + this.id,
-            ` - snapshot ${snapName} at slot `,
+            ` - snapshot '${snapName}' at slot `,
             this.currentSlot.toString(),
             "height ",
             this.blocks.length
         );
+
         return {
+            name: snapName,
             seed: this.#seed,
             netNumber: this.id,
             slot: this.currentSlot,
@@ -487,23 +492,38 @@ export class StellarNetworkEmulator implements Emulator {
             blocks: [...this.blocks],
             allUtxos: { ...this._allUtxos },
             consumedUtxos: new Set(this._consumedUtxos),
-            addressUtxos: { ...this._addressUtxos },
+            addressUtxos: Object.fromEntries(
+                Object.entries(this._addressUtxos).map(([addr, utxoList]) => [
+                    addr,
+                    [...utxoList],
+                ])
+            ),
         };
     }
 
+
+    fromSnapshot = "";
     loadSnapshot(snapshot: NetworkSnapshot) {
         this.#seed = snapshot.seed;
         this.currentSlot = snapshot.slot;
         this.genesis = [...snapshot.genesis];
         this.blocks = [...snapshot.blocks];
+        this.fromSnapshot = snapshot.name;
+
         this._allUtxos = { ...snapshot.allUtxos };
         this._consumedUtxos = new Set(snapshot.consumedUtxos);
-        this._addressUtxos = { ...snapshot.addressUtxos };
+        // this._addressUtxos = { ...snapshot.addressUtxos };
+        this._addressUtxos = Object.fromEntries(
+            Object.entries(snapshot.addressUtxos).map(([addr, utxoList]) => [
+                addr,
+                [...utxoList],
+            ])
+        );
 
         this.initHelper();
         console.log(
             "            🌺🌺🌺 ████████  #" + this.id,
-            ` - restored snapshot from #${snapshot.netNumber} at slot `,
+            ` - restored snapshot '${snapshot.name}' from #${snapshot.netNumber} at slot `,
             this.currentSlot.toString(),
             "height ",
             this.blocks.length
@@ -535,7 +555,6 @@ export class StellarNetworkEmulator implements Emulator {
      * @deprecated - use TestHelper.createWallet instead, enabling wallets to be transported to
      *     different networks (e.g. ones that have loaded snapshots from the original network).
      */
-    //@ts-expect-error
     createWallet(lovelace = 0n, assets = makeAssets([])): SimpleWallet_stellar {
         throw new Error("use TestHelper.createWallet instead");
     }
@@ -546,7 +565,11 @@ export class StellarNetworkEmulator implements Emulator {
      * @param lovelace - the lovelace amount to create
      * @param assets - other assets to include in the utxo
      */
-    createUtxo(wallet, lovelace, assets = makeAssets([])): TxOutputId {
+    createUtxo(
+        wallet: SimpleWallet,
+        lovelace: bigint, 
+        assets : Assets = makeAssets([])
+    ): TxOutputId {
         if (lovelace != 0n || !assets.isZero()) {
             const tx = makeEmulatorGenesisTx(
                 this.genesis.length,

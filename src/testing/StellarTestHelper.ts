@@ -538,14 +538,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     createWallet(lovelace = 0n, assets = makeAssets([])): SimpleWallet_stellar {
         const wallet = SimpleWallet_stellar.fromRootPrivateKey(
             makeRootPrivateKey(generateBytes(this.network.mulberry32, 32)),
-            // the test helper is a network context, because it has a 'network'.  Ducky-typed as networkCtx
-            this
+            this.networkCtx
         );
 
-        new SimpleWallet_stellar(
-            this.networkCtx, // the test helper is a network context, because it has a 'network'.  Ducky-typed as networkCtx
-            makeRandomBip32PrivateKey(this.network.mulberry32)
-        );
 
         this.network.createUtxo(wallet, lovelace, assets);
 
