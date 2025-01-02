@@ -28,6 +28,7 @@ import {
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { bytesToText, textToBytes, type InlineDatum } from "./HeliosPromotedTypes.js";
+import type { UtxoDisplayCache } from "./StellarContract.js";
 
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
@@ -531,8 +532,12 @@ export function txInputAsString(
  * ... using {@link utxoAsString}
  * @public
  **/
-export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
-    return utxos.map((u) => utxoAsString(u, " 💵")).join(joiner);
+export function utxosAsString(
+    utxos: TxInput[], 
+    joiner = "\n", 
+    utxoDCache?: UtxoDisplayCache
+): string {
+    return utxos.map((u) => utxoAsString(u, " 💵", utxoDCache)).join(joiner);
 }
 /**
  * Converts a TxOutputId to printable form
@@ -565,10 +570,16 @@ export function txidAsString(x: TxId, length=8): string {
  * shows shortened output-id and the value being output, plus its datum
  * @internal
  **/
-export function utxoAsString(x: TxInput, prefix = "💵"): string {
+export function utxoAsString(
+    x: TxInput, 
+    prefix = "💵",
+    utxoDCache?: UtxoDisplayCache
+): string {
     return ` 📖 ${txOutputIdAsString(x.id)}: ${txOutputAsString(
         x.output,
-        prefix
+        prefix,
+        utxoDCache,
+        x.id
     )}`;
 }
 
@@ -632,10 +643,25 @@ export function showRefScript(rs?: UplcProgramV2 | null) {
  * including all its values, and shortened Address.
  * @public
  **/
-export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
-    return `${prefix} ${addrAsString(x.address)}${showRefScript(
+export function txOutputAsString(
+    x: TxOutput, 
+    prefix = "<-",
+    utxoDCache?: UtxoDisplayCache,
+    txoid?: TxOutputId
+): string {
+    if (utxoDCache && !txoid) {
+        throw new Error(`txOutputAsString: must provide txoid when using cache`);
+    }
+    let cache = utxoDCache?.get(txoid!);
+    if (cache) {
+        return `♻️ ${cache} (same as above)`;
+    }
+    cache = `${prefix} ${addrAsString(x.address)}${showRefScript(
         x.refScript as any
-    )} ${valueAsString(x.value)} ${datumSummary(x.datum)}`;
+    )} ${valueAsString(x.value)}`
+    utxoDCache?.set(txoid!, cache);
+
+    return `${cache} ${datumSummary(x.datum)}`;
 }
 
 /**

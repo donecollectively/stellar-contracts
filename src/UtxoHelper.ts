@@ -81,6 +81,9 @@ export class UtxoHelper {
 
     constructor(setup: SetupDetails, strella?: StellarContract<any>) {
         this.setup = setup;
+        if (!setup.uxtoDisplayCache) {
+            setup.uxtoDisplayCache = new Map();
+        }
         this.strella = strella;
     }
     get networkParams(): NetworkParams {
@@ -685,7 +688,7 @@ export class UtxoHelper {
 
         const found = filtered.find(predicate);
         if (found) {
-            console.log("   🎈found" + utxosAsString([found]));
+            console.log("   🎈found" + utxosAsString([found], undefined, this.setup.uxtoDisplayCache));
         } else {
             if (exceptInTcx) {
                 const alreadyInTcx = exceptInTcx.inputs.find(predicate);

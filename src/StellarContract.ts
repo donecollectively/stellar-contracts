@@ -309,6 +309,7 @@ export async function findInputsInWallets(
     );
 }
 
+export type UtxoDisplayCache = Map<TxOutputId, string>
 /**
  * standard setup for any Stellar Contract class
  * @public
@@ -321,6 +322,7 @@ export type SetupDetails = {
     isTest?: boolean;
     uh: UtxoHelper;
     optimize?: boolean;
+    uxtoDisplayCache?: UtxoDisplayCache;
 };
 
 /**
