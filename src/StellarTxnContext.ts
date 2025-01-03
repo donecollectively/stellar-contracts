@@ -1075,9 +1075,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
             txFeePerByte,
             txFeeFixed,
         } = this.networkParams;
-        const mtx = origMaxTxSize;
-        const mte = origMaxTxExMem;
-        const mtc = origMaxTxExCpu;
+        const oMaxSize : number = origMaxTxSize;
+        const oMaxMem : number = origMaxTxExMem;
+        const oMaxCpu : number = origMaxTxExCpu;
 
         const { total, ...otherCosts } = costs;
         const txSize = tx.calcSize();
@@ -1086,12 +1086,21 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const memFee = Number(total.mem) * exMemFeePerUnit;
         const sizeFee = txSize * txFeePerByte;
 
-        if (total.cpu > mtx ||
-            total.mem > mte ||
-            txSize > mtx 
-        ) {
+        const nCpu = Number(total.cpu);
+        const nMem = Number(total.mem);
+
+        if (nCpu > oMaxCpu || nMem > oMaxMem || txSize > oMaxSize) {
             logger.logPrint(
-                "🔥🔥🔥🔥  THIS TX EXCEEDS default (overridden in test env) limits on network params  🔥🔥🔥🔥"
+                "🔥🔥🔥🔥  THIS TX EXCEEDS default (overridden in test env) limits on network params  🔥🔥🔥🔥\n" +
+                    `  -- cpu ${nCpu} = ${
+                        (100 * nCpu / oMaxCpu ).toFixed(1)
+                    }% of ${oMaxCpu} (patched to ${maxTxExCpu})\n` +
+                    `  -- mem ${nMem} = ${
+                        (100 * nMem / oMaxMem).toFixed(1)
+                    }% of ${oMaxMem} (patched to ${maxTxExMem})\n` +
+                    `  -- tx size ${txSize} = ${
+                        (100 * txSize / oMaxSize).toFixed(1)
+                    }% of ${oMaxSize} (patched to ${maxTxSize})\n`
             );
         }
         const scriptBreakdown =
@@ -1120,19 +1129,19 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 `\n  -- scripting costs` +
                 `\n    -- cpu units ${total.cpu}` +
                 ` = ${lovelaceToAda(cpuFee)}` +
-                ` (${(Number((1000n * total.cpu) / BigInt(mtc)) / 10).toFixed(
-                    1
-                )}% of max CPU)` +
+                ` (${(
+                    Number((1000n * total.cpu) / BigInt(oMaxCpu)) / 10
+                ).toFixed(1)}% of cpu limit/tx)` +
                 `\n    -- memory units ${total.mem}` +
                 ` = ${lovelaceToAda(memFee)}` +
-                ` (${(Number((1000n * total.mem) / BigInt(mte)) / 10).toFixed(
-                    1
-                )}% of max mem)` +
+                ` (${(
+                    Number((1000n * total.mem) / BigInt(oMaxMem)) / 10
+                ).toFixed(1)}% of mem limit/tx)` +
                 scriptBreakdown +
                 `\n  -- tx size ${txSize}` +
-                ` (${(Number((1000 * txSize) / mtx) / 10).toFixed(
+                ` (${(Number((1000 * txSize) / oMaxSize) / 10).toFixed(
                     1
-                )}% of max tx size)` +
+                )}% of tx size limit)` +
                 ` = ${lovelaceToAda(sizeFee)}` +
                 `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}` +
                 `\n  -- remainder ${lovelaceToAda(
