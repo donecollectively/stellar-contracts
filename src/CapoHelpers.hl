@@ -1145,17 +1145,17 @@ struct CapoCtx {
 
         utxo.datum.inline.switch {
             ConstrData{_, fields} => {
-                print("utxo: "+ utxo.output_id.show());
-                print("manifested data field = "+fields.length.show());
+                // print("utxo: "+ utxo.output_id.show());
+                // print("manifested data fields = "+fields.length.show());
                 fields.head.switch {
                     MapData => {
-                        print("mapData found");
+                        // print("mapData found");
                         fields.head
                     },
                     _ => error("expected MapData for manifested data: "+ key)
                 }
             },
-            _ => error("expected ConstrData{mStruct} for manifested data: "+ key)
+            _ => error("expected ConstrData{‹any›, mStruct} for manifested data: "+ key)
         }
     }
 
@@ -1629,18 +1629,20 @@ struct CapoCtx {
         recId: ByteArray
     ) -> TxOutput {
         recIdStr = recId.decode_utf8();
-        print("  -- seeking delegated-data output for "+recIdStr);
         result : TxOutput = self.internalHasDelegatedDataOutput(
-            mkTv(mph: self.mph, tnBytes: recId)
+            mkTv(mph: self.mph, tnBytes: recId), 
+            Option[String]::Some{recIdStr}
         );
-        print("     ✅ 📎 ^ outDD: found\n");
+        print("     ✅ 📎 ^ outDD: found "+ recIdStr);
         result
     }
 
-    func internalHasDelegatedDataOutput(self, v : Value) -> TxOutput {
+    func internalHasDelegatedDataOutput(
+        self, v : Value, label: Option[String] = Option[String]::None
+    ) -> TxOutput {
         capoAddr : Address = self.address();
 
-        print("       -- seeking txOutput " + v.show());
+        // print("       -- seeking txOutput " + v.show());
         // print("@addr" + capoAddr.show());
 
         tx.outputs.find_safe(
@@ -1653,10 +1655,11 @@ struct CapoCtx {
             }
         ).switch{
             None => {
-                print( "   ... expected value: ");
-                print( v.show() );
-                print("\n");
-                error("^ no req'd delegated-data out")
+                print( "   ... expected: "+ label.switch {
+                    Some{lbl} => lbl,
+                    None => v.show()
+                });
+                error("❌❌ ^ no req'd delegated-data out")
             },
             Some{txout} => {
                 txout
