@@ -38,6 +38,7 @@ export class DataReader extends (dataReaderProxy as any) {
 
     getTypeSchema() {
         if (!this.schema) {
+            throw new Error("unreachable?")
             this.schema = this.typeDetails.dataType.toSchema();
             this.cast = makeCast(this.schema!, { isMainnet: true });
         }

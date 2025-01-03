@@ -350,6 +350,9 @@ export class DefaultCapoTestHelper<
                     return settingsController.mkTxnCreateRecord({
                         activity:
                             settingsController.activity.MintingActivities
+                                //@ts-expect-error becuase we don't yet have a sufficiently-specific
+                                // generic type for delegated data controllers that require the basic
+                                // seeded-creating-record activity
                                 .$seeded$CreatingRecord,
                         data: initialSettings,
                     });

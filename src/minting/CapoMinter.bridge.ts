@@ -5,7 +5,7 @@
 //
 // NOTE: this file is auto-generated; do not edit directly
 
-import { makeErgoCast, type Cast } from "@helios-lang/contract-utils"
+import { makeCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
@@ -108,9 +108,10 @@ datum = undefined // no datum type defined for this bundle (minter / rewards scr
 
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺRelativeDelegateLinkCast = makeErgoCast<
-                RelativeDelegateLink, RelativeDelegateLinkLike
-            >(RelativeDelegateLinkSchema, { isMainnet: true });
+    ᱺᱺRelativeDelegateLinkCast = makeCast<RelativeDelegateLink, RelativeDelegateLinkLike>(
+        RelativeDelegateLinkSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
 
 }
@@ -173,10 +174,10 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       MinterActivity,
-       MinterActivityLike
-   >(MinterActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<MinterActivity, MinterActivityLike>(
+        MinterActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.mintingCharter"***
@@ -397,10 +398,10 @@ export class RelativeDelegateLinkHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        RelativeDelegateLink,
-        RelativeDelegateLinkLike
-    >(RelativeDelegateLinkSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<RelativeDelegateLink, RelativeDelegateLinkLike>(
+        RelativeDelegateLinkSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.

@@ -157,6 +157,7 @@ export type SomeDgtActivityHelper = EnumBridge<isActivity> &
             isAbstract?: "NOTE: use a specific delegate to get concrete delegate activities";
         };
         MintingActivities: EnumBridge<isActivity> & {
+            // $seeded$CreatingRecord: isActivity,
             isAbstract?: "NOTE: use a specific delegate to get concrete delegate activities";
         };
         BurningActivities: EnumBridge<isActivity> & {

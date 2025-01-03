@@ -1,5 +1,5 @@
 import type { TypeSchema } from "@helios-lang/type-utils"
-import { type Cast, makeCast, makeErgoCast } from "@helios-lang/contract-utils"
+import { type Cast, makeCast } from "@helios-lang/contract-utils"
 import { type TxOutputId } from "@helios-lang/ledger"
 import type { UplcData } from "@helios-lang/uplc"
 
@@ -186,7 +186,10 @@ export class DataBridge extends (dataBridgeProxyBase as any) {
     protected getTypeSchema() {
         if (!this.ᱺᱺschema) {
             this.ᱺᱺschema = "placeholder" as any // this.__typeDetails.dataType.toSchema() 
-            this.ᱺᱺcast = makeErgoCast(this.ᱺᱺschema, {isMainnet: true})
+            this.ᱺᱺcast = makeCast(this.ᱺᱺschema, {
+                isMainnet: true,
+                unwrapSingleFieldEnumVariants: true
+            })
         }
         return this.ᱺᱺschema
     }

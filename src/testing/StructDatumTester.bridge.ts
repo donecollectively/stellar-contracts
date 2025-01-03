@@ -5,7 +5,7 @@
 //
 // NOTE: this file is auto-generated; do not edit directly
 
-import { makeErgoCast, type Cast } from "@helios-lang/contract-utils"
+import { makeCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
@@ -166,19 +166,22 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
 
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺstruct3Cast = makeErgoCast<
-                struct3, struct3Like
-            >(struct3Schema, { isMainnet: true });
+    ᱺᱺstruct3Cast = makeCast<struct3, struct3Like>(
+        struct3Schema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺOtherStructCast = makeErgoCast<
-                OtherStruct, OtherStructLike
-            >(OtherStructSchema, { isMainnet: true });
+    ᱺᱺOtherStructCast = makeCast<OtherStruct, OtherStructLike>(
+        OtherStructSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺDatumStructCast = makeErgoCast<
-                DatumStruct, DatumStructLike
-            >(DatumStructSchema, { isMainnet: true });
+    ᱺᱺDatumStructCast = makeCast<DatumStruct, DatumStructLike>(
+        DatumStructSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
 
 }
@@ -188,9 +191,12 @@ export class OtherActivityTypeHelper extends DataBridge {
     isCallable = true
         /**
         * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
+    ᱺᱺcast = makeCast<
         bigint, IntLike
-    >({"kind":"internal","name":"Int"}, { isMainnet: true }); // datumAccessorCast
+    >(
+        {"kind":"internal","name":"Int"}, 
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    ); // datumAccessorCast
 
     
     } // mkOtherDatumHelperClass
@@ -291,10 +297,10 @@ export class struct3Helper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        struct3,
-        struct3Like
-    >(struct3Schema, { isMainnet: true });
+    ᱺᱺcast = makeCast<struct3, struct3Like>(
+        struct3Schema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.
@@ -316,10 +322,10 @@ export class OtherStructHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        OtherStruct,
-        OtherStructLike
-    >(OtherStructSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<OtherStruct, OtherStructLike>(
+        OtherStructSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.
@@ -341,10 +347,10 @@ export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       SomeKindaEnum,
-       SomeKindaEnumLike
-   >(SomeKindaEnumSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<SomeKindaEnum, SomeKindaEnumLike>(
+        SomeKindaEnumSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
 /**
  * (property getter): UplcData for ***"StructDatumTester::SomeKindaEnum.case1"***
@@ -378,10 +384,10 @@ export class DatumStructHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        DatumStruct,
-        DatumStructLike
-    >(DatumStructSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DatumStruct, DatumStructLike>(
+        DatumStructSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.

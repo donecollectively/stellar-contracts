@@ -1215,6 +1215,7 @@ export class StellarContract<
         const schema = type.toSchema();
         const cast = makeCast(schema, {
             isMainnet: this.setup.isMainnet || false,
+            unwrapSingleFieldEnumVariants: true,
         });
         return cast.toUplcData(data, path);
     }

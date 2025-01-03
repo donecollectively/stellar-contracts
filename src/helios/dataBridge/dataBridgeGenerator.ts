@@ -105,9 +105,15 @@ export class dataBridgeGenerator
 
         return {
             castCode: `
-                 /*unused?*/ ${castMemberName}: Cast<${structName}Like, ${structName}> = makeErgoCast<${structName}Like, ${structName}>(this.schema.${structName}, { isMainnet: true });
+                 /*unused?*/ ${castMemberName}: Cast<${structName}Like, ${structName}> 
+                    = makeCast<${structName}Like, ${structName}>(
+                        this.schema.${structName}, 
+                        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+                    );
             `,
             accessorCode: `${structName}(fields: ${structName}Like}) {
+                throw new Error("hey, this isn't actually unused!");
+                
                 return this.${castMemberName}.toUplcData(fields);
             }`,
             helperClassName,
@@ -133,7 +139,7 @@ export class dataBridgeGenerator
         let imports =
             /*-----------------imports---------------*/
             `
-import { makeErgoCast, type Cast } from "@helios-lang/contract-utils"
+import { makeCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
@@ -426,9 +432,12 @@ ${this.includeStructReaders()}
                 this.additionalCastMemberDefs[castMemberName] =
                     `    /**
                 * uses unicode U+1c7a - sorts to the end */\n` +
-                    `    ${castMemberName} = makeErgoCast<
-                ${canonicalTypeName}, ${permissiveTypeName}
-            >(${typeName}Schema, { isMainnet: true });\n`;
+                    `    ${castMemberName} = makeCast<${
+                        canonicalTypeName}, ${permissiveTypeName
+                    }>(\n`+
+                    `        ${typeName}Schema,\n`+
+                    `        { isMainnet: true, unwrapSingleFieldEnumVariants: true }\n`+
+                    `    );\n`;
                 return (
                     `      /**\n` +
                     `       * generates UplcData for the enum type ***${typeName}*** for the \`${this.bundle.program.name}\` script\n` +
@@ -516,9 +525,12 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             activityDetails.permissiveType;
         const activityTypeName = activityDetails.canonicalTypeName!;
         const castDef = `
-    ᱺᱺactivityCast = makeErgoCast<
+    ᱺᱺactivityCast = makeCast<
         ${canonicalType}, ${permissiveType}
-    >(${schemaName}, { isMainnet: true }); // activityAccessorCast`;
+    >(${schemaName}, { 
+        isMainnet: true,
+        unwrapSingleFieldEnumVariants: true
+    }); // activityAccessorCast`;
 
         if (activityDetails.typeSchema.kind === "enum") {
             //  enum -------------------
@@ -715,11 +727,12 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const castDef =
             `    /**
         * uses unicode U+1c7a - sorts to the end */\n` +
-            `    ᱺᱺcast = makeErgoCast<
+            `    ᱺᱺcast = makeCast<
         ${canonicalType}, ${permissiveType}
-    >(${JSON.stringify(
-        typeSchema
-    )}, { isMainnet: true }); // datumAccessorCast\n`;
+    >(
+        ${JSON.stringify(typeSchema)}, 
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    ); // datumAccessorCast\n`;
 
         return `export class ${helperClassName} extends DataBridge {
     isCallable = true
@@ -818,11 +831,12 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `    isCallable = true\n` +
             `   /**
             * uses unicode U+1c7a - sorts to the end */\n` +
-            `    ᱺᱺcast = makeErgoCast<\n` +
-            `        ${typeDetails.canonicalTypeName},\n` +
-            `        ${typeDetails.permissiveTypeName}\n` +
-            `    >(${structName}Schema, { isMainnet: true });\n` +
-            `\n` +
+            `    ᱺᱺcast = makeCast<${
+                typeDetails.canonicalTypeName}, ${ typeDetails.permissiveTypeName                     
+            }>(\n`+
+            `        ${structName}Schema,\n`+
+            `        { isMainnet: true, unwrapSingleFieldEnumVariants: true }\n`+
+            `    );\n\n` +
             `    // You might expect a function as follows.  We provide this interface and result, \n` +
             `    // using a proxy in the inheritance chain.\n` +
             `    // see the callableDataBridge type on the 'datum' property in the contract bridge.\n` +
@@ -863,11 +877,13 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `    /*mkEnumHelperClass*/\n` +
             `    /**
             *  uses unicode U+1c7a - sorts to the end */\n` +
-            `    ᱺᱺcast = makeErgoCast<\n` +
-            `       ${typeDetails.canonicalTypeName},\n` +
-            `       ${typeDetails.permissiveTypeName}\n` +
-            `   >(${enumName}Schema, { isMainnet: true });\n` +
-            `\n` +
+            `    ᱺᱺcast = makeCast<${
+                typeDetails.canonicalTypeName}, ${typeDetails.permissiveTypeName
+            }>(\n`+
+            `        ${enumName}Schema,\n`+
+            `        { isMainnet: true, unwrapSingleFieldEnumVariants: true }\n`+
+            `    );\n\n` +
+
             this.mkEnumVariantAccessors(
                 typeDetails,
                 isDatum,

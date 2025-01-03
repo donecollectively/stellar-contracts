@@ -5,7 +5,7 @@
 //
 // NOTE: this file is auto-generated; do not edit directly
 
-import { makeErgoCast, type Cast } from "@helios-lang/contract-utils"
+import { makeCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
@@ -272,39 +272,46 @@ export class DelegateDatumTesterDataBridge extends ContractDataBridge {
 
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺAnyDataCast = makeErgoCast<
-                AnyData, AnyDataLike
-            >(AnyDataSchema, { isMainnet: true });
+    ᱺᱺAnyDataCast = makeCast<AnyData, AnyDataLike>(
+        AnyDataSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺDelegationDetailCast = makeErgoCast<
-                DelegationDetail, DelegationDetailLike
-            >(DelegationDetailSchema, { isMainnet: true });
+    ᱺᱺDelegationDetailCast = makeCast<DelegationDetail, DelegationDetailLike>(
+        DelegationDetailSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺDgDatumTestDataCast = makeErgoCast<
-                DgDatumTestData, DgDatumTestDataLike
-            >(DgDatumTestDataSchema, { isMainnet: true });
+    ᱺᱺDgDatumTestDataCast = makeCast<DgDatumTestData, DgDatumTestDataLike>(
+        DgDatumTestDataSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺRelativeDelegateLinkCast = makeErgoCast<
-                RelativeDelegateLink, RelativeDelegateLinkLike
-            >(RelativeDelegateLinkSchema, { isMainnet: true });
+    ᱺᱺRelativeDelegateLinkCast = makeCast<RelativeDelegateLink, RelativeDelegateLinkLike>(
+        RelativeDelegateLinkSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺPendingDelegateChangeCast = makeErgoCast<
-                PendingDelegateChange, PendingDelegateChangeLike
-            >(PendingDelegateChangeSchema, { isMainnet: true });
+    ᱺᱺPendingDelegateChangeCast = makeCast<PendingDelegateChange, PendingDelegateChangeLike>(
+        PendingDelegateChangeSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺCapoManifestEntryCast = makeErgoCast<
-                CapoManifestEntry, CapoManifestEntryLike
-            >(CapoManifestEntrySchema, { isMainnet: true });
+    ᱺᱺCapoManifestEntryCast = makeCast<CapoManifestEntry, CapoManifestEntryLike>(
+        CapoManifestEntrySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
     /**
                 * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺCapoCtxCast = makeErgoCast<
-                CapoCtx, CapoCtxLike
-            >(CapoCtxSchema, { isMainnet: true });
+    ᱺᱺCapoCtxCast = makeCast<CapoCtx, CapoCtxLike>(
+        CapoCtxSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
 
 }
@@ -734,10 +741,10 @@ export class AnyDataHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        AnyData,
-        AnyDataLike
-    >(AnyDataSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<AnyData, AnyDataLike>(
+        AnyDataSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.
@@ -759,10 +766,10 @@ export class DelegationDetailHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        DelegationDetail,
-        DelegationDetailLike
-    >(DelegationDetailSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DelegationDetail, DelegationDetailLike>(
+        DelegationDetailSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.
@@ -784,10 +791,10 @@ export class DgDatumTestDataHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        DgDatumTestData,
-        DgDatumTestDataLike
-    >(DgDatumTestDataSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DgDatumTestData, DgDatumTestDataLike>(
+        DgDatumTestDataSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.
@@ -809,10 +816,10 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       DelegateDatum,
-       DelegateDatumLike
-   >(DelegateDatumSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DelegateDatum, DelegateDatumLike>(
+        DelegateDatumSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates  InlineTxOutputDatum for ***"DelegateDatumTester::DelegateDatum.Cip68RefToken"***
@@ -871,10 +878,10 @@ export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       DelegateRole,
-       DelegateRoleLike
-   >(DelegateRoleSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DelegateRole, DelegateRoleLike>(
+        DelegateRoleSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
 /**
  * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintDgt"***
@@ -970,10 +977,10 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       ManifestActivity,
-       ManifestActivityLike
-   >(ManifestActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<ManifestActivity, ManifestActivityLike>(
+        ManifestActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.retiringEntry"***
@@ -1053,10 +1060,10 @@ export class DelegateRoleHelperNested extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       DelegateRole,
-       DelegateRoleLike
-   >(DelegateRoleSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DelegateRole, DelegateRoleLike>(
+        DelegateRoleSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
 /**
  * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintDgt"***
@@ -1160,10 +1167,10 @@ export class ManifestActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       ManifestActivity,
-       ManifestActivityLike
-   >(ManifestActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<ManifestActivity, ManifestActivityLike>(
+        ManifestActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.retiringEntry"***
@@ -1263,10 +1270,10 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       CapoLifecycleActivity,
-       CapoLifecycleActivityLike
-   >(CapoLifecycleActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<CapoLifecycleActivity, CapoLifecycleActivityLike>(
+        CapoLifecycleActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"***, 
@@ -1522,10 +1529,10 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       DelegateLifecycleActivity,
-       DelegateLifecycleActivityLike
-   >(DelegateLifecycleActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DelegateLifecycleActivity, DelegateLifecycleActivityLike>(
+        DelegateLifecycleActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe"***, 
@@ -1621,10 +1628,10 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       SpendingActivity,
-       SpendingActivityLike
-   >(SpendingActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<SpendingActivity, SpendingActivityLike>(
+        SpendingActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates  UplcData for ***"DelegateDatumTester::SpendingActivity.UpdatingTData"***
@@ -1648,10 +1655,10 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       MintingActivity,
-       MintingActivityLike
-   >(MintingActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<MintingActivity, MintingActivityLike>(
+        MintingActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
     * generates  UplcData for ***"DelegateDatumTester::MintingActivity.CreatingTData"***, 
@@ -1704,10 +1711,10 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       BurningActivity,
-       BurningActivityLike
-   >(BurningActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<BurningActivity, BurningActivityLike>(
+        BurningActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates  UplcData for ***"DelegateDatumTester::BurningActivity.NOOP"***
@@ -1731,10 +1738,10 @@ export class ActivityDelegateRoleHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       DelegateRole,
-       DelegateRoleLike
-   >(DelegateRoleSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DelegateRole, DelegateRoleLike>(
+        DelegateRoleSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
 /**
  * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintDgt"***
@@ -1838,10 +1845,10 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       CapoLifecycleActivity,
-       CapoLifecycleActivityLike
-   >(CapoLifecycleActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<CapoLifecycleActivity, CapoLifecycleActivityLike>(
+        CapoLifecycleActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"***, 
@@ -2121,10 +2128,10 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       DelegateLifecycleActivity,
-       DelegateLifecycleActivityLike
-   >(DelegateLifecycleActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DelegateLifecycleActivity, DelegateLifecycleActivityLike>(
+        DelegateLifecycleActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe"***, 
@@ -2228,10 +2235,10 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       SpendingActivity,
-       SpendingActivityLike
-   >(SpendingActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<SpendingActivity, SpendingActivityLike>(
+        SpendingActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::SpendingActivity.UpdatingTData"***
@@ -2259,10 +2266,10 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       MintingActivity,
-       MintingActivityLike
-   >(MintingActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<MintingActivity, MintingActivityLike>(
+        MintingActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
     * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::MintingActivity.CreatingTData"***, 
@@ -2325,10 +2332,10 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       BurningActivity,
-       BurningActivityLike
-   >(BurningActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<BurningActivity, BurningActivityLike>(
+        BurningActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::BurningActivity.NOOP"***
@@ -2356,10 +2363,10 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       DelegateActivity,
-       DelegateActivityLike
-   >(DelegateActivitySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<DelegateActivity, DelegateActivityLike>(
+        DelegateActivitySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * access to different variants of the ***nested CapoLifecycleActivity*** type needed for ***DelegateActivity:CapoLifecycleActivities***.
@@ -2555,10 +2562,10 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       PendingDelegateAction,
-       PendingDelegateActionLike
-   >(PendingDelegateActionSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<PendingDelegateAction, PendingDelegateActionLike>(
+        PendingDelegateActionSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Add"***, 
@@ -2720,10 +2727,10 @@ export class RelativeDelegateLinkHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        RelativeDelegateLink,
-        RelativeDelegateLinkLike
-    >(RelativeDelegateLinkSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<RelativeDelegateLink, RelativeDelegateLinkLike>(
+        RelativeDelegateLinkSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.
@@ -2745,10 +2752,10 @@ export class PendingDelegateChangeHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        PendingDelegateChange,
-        PendingDelegateChangeLike
-    >(PendingDelegateChangeSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<PendingDelegateChange, PendingDelegateChangeLike>(
+        PendingDelegateChangeSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.
@@ -2770,10 +2777,10 @@ export class ManifestEntryTypeHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       ManifestEntryType,
-       ManifestEntryTypeLike
-   >(ManifestEntryTypeSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<ManifestEntryType, ManifestEntryTypeLike>(
+        ManifestEntryTypeSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
 /**
  * (property getter): UplcData for ***"CapoHelpers::ManifestEntryType.NamedTokenRef"***
@@ -2844,10 +2851,10 @@ export class CapoManifestEntryHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        CapoManifestEntry,
-        CapoManifestEntryLike
-    >(CapoManifestEntrySchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<CapoManifestEntry, CapoManifestEntryLike>(
+        CapoManifestEntrySchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.
@@ -2869,10 +2876,10 @@ export class PendingCharterChangeHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       PendingCharterChange,
-       PendingCharterChangeLike
-   >(PendingCharterChangeSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<PendingCharterChange, PendingCharterChangeLike>(
+        PendingCharterChangeSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::PendingCharterChange.delegateChange"***
@@ -2911,10 +2918,10 @@ export class cctx_CharterInputTypeHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-       cctx_CharterInputType,
-       cctx_CharterInputTypeLike
-   >(cctx_CharterInputTypeSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<cctx_CharterInputType, cctx_CharterInputTypeLike>(
+        cctx_CharterInputTypeSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
 /**
  * (property getter): UplcData for ***"CapoHelpers::cctx_CharterInputType.Unk"***
@@ -2964,10 +2971,10 @@ export class CapoCtxHelper extends DataBridge {
     isCallable = true
    /**
             * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = makeErgoCast<
-        CapoCtx,
-        CapoCtxLike
-    >(CapoCtxSchema, { isMainnet: true });
+    ᱺᱺcast = makeCast<CapoCtx, CapoCtxLike>(
+        CapoCtxSchema,
+        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+    );
 
     // You might expect a function as follows.  We provide this interface and result, 
     // using a proxy in the inheritance chain.
