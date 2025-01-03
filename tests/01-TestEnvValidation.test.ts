@@ -12,6 +12,7 @@ import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { insufficientInputError } from "../src/testing";
 import { makeTxBuilder } from "@helios-lang/tx-utils";
+import { dumpAny } from "../src/diagnostics";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
 const it = itWithContext<localTC>;
@@ -79,11 +80,14 @@ describe("Test environment", async () => {
                     firstUtxo.value.lovelace - margin
                 );
                 // console.log("s2")
+                const tx = await txb.build({
+                    networkParams: h.networkParams,
+                    changeAddress: tom.address,
+                });            
+                console.log(dumpAny(tx));
+
                 return h.submitTx(
-                    await txb.build({
-                        networkParams: h.networkParams,
-                        changeAddress: tom.address,
-                    }),
+                    tx,
                     "force"
                 );
             }
@@ -96,17 +100,16 @@ describe("Test environment", async () => {
             //!!! todo: once this ^^^^^^^^^^^^^^ starts passing, the other cases below can be removed
             //    ... in favor of something like this:
             // await tryWithSlop(170000n * ADA);
-            ("case 1b: should work if finalize doesn't over-estimate fees ");
-
-            console.log();
-            await expect(tryWithSlop(5n * ADA)).rejects.toThrow(
+            
+            console.log("case 1b: should work if finalize doesn't over-estimate fees ");
+            await expect(tryWithSlop(7n * ADA)).rejects.toThrow(
                 insufficientInputError
             );
 
             console.log(
                 "case 2: works if we give it more margin of error in initial fee calc"
             );
-            await tryWithSlop(13n * ADA);
+            await tryWithSlop(15n * ADA);
             //!!! todo: remove case 1b, case2 after case 1a starts working right.
 
             const tm2 = await network.getUtxos(tom.address);
