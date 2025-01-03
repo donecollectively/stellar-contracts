@@ -12,6 +12,7 @@ import {
     type Value,
     makeMintingPolicyHash,
     makeInlineTxOutputDatum,
+    type TxOutputId,
  } from "@helios-lang/ledger";
 
  import type { CardanoClient, Emulator, Wallet } from "@helios-lang/tx-utils";
@@ -1782,6 +1783,7 @@ export class StellarContract<
     // }
 
     _cache: ComputedScriptProperties = {};
+    optimize: boolean = true;
 
     async compileWithScriptParams() {
         if (this.compiledScript) {
@@ -1815,7 +1817,7 @@ export class StellarContract<
         console.log(`${name} with params:`, script.entryPoint.paramsDetails());
 
         this.compiledScript = await script.compileCached({
-            optimize: false,
+            optimize: this.optimize,
             // optimize: {
             //     keepTracing: true,
             //     factorizeCommon: false,
