@@ -403,9 +403,7 @@ export class DefaultCapoTestHelper<
                 },
             });
 
-            return mkSetPolTxn.submit().then(async () => {
-                await mkSetPolTxn.submitAddlTxns();
-            });
+            return mkSetPolTxn.submitAll()
         }
     }
 

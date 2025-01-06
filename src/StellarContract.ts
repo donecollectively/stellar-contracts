@@ -321,7 +321,7 @@ export type SetupDetails = {
     isMainnet?: boolean;
     actorContext: ActorContext;
     isTest?: boolean;
-    uh: UtxoHelper;
+    uh?: UtxoHelper;
     optimize?: boolean;
     uxtoDisplayCache?: UtxoDisplayCache;
 };

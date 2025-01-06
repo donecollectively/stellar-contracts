@@ -28,6 +28,7 @@ import {
     type TxOutput,
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
+import type { UtxoHelper } from "./UtxoHelper.js";
 
 /**
  * A txn context having a seedUtxo in its state
@@ -133,11 +134,23 @@ type RedeemerArg = {
 };
 
 export type SubmitOptions = {
+    /**
+     * indicates additional signers expected for the transaction
+     */
     signers?: Address[];
     addlTxInfo?: Pick<TxDescription<any>, "description">;
+    /**
+     * useful most for test environment, so that a txn failure can be me marked
+     * as "failing as expected".  Not normally needed for production code.
+     */
     expectError?: true;
+    /**
+     * Called when there is a detected error, before logging.  Probably only needed in test.
+     */
     beforeError?: (tx: Tx) => Promise<any> | any;
     beforeValidate?: (tx: Tx) => Promise<any> | any;
+    beforeSubmit?: MultiTxnCallback;
+    onSubmitted?: MultiTxnCallback;
 };
 
 type MintUnsafeParams = Parameters<TxBuilder["mintPolicyTokensUnsafe"]>;
@@ -189,8 +202,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this.setup.actorContext.wallet!;
     }
 
-    get uh() {
-        return this.setup.uh;
+    get uh() : UtxoHelper{
+        return this.setup.uh!;
     }
 
     get networkParams(): NetworkParams {
@@ -904,6 +917,40 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this;
     }
 
+    /**
+     * Submits the current transaction and any additional transactions in the context.
+     * @remarks
+     * To submit only the current transaction, use the `submit()` method.
+     * 
+     * The signers array can be used to add additional signers to the transaction, and 
+     * is passed through to the submit() for the current txn only; it is not used for
+     * any additional transactions.
+     * 
+     * The beforeSubmit, onSubmitted callbacks are used for each additional transaction.
+     * 
+     * beforeSubmit can be used to notify the user of the transaction about to be submitted,
+     * and can also be used to add additional signers to the transaction or otherwise modify 
+     * it (by returning the modified transaction).
+     * 
+     * onSubmitted can be used to notify the user that the transaction has been submitted,
+     * or for logging or any other post-submission processing.
+     */
+    async submitAll(
+        this: StellarTxnContext<any>,
+        options: SubmitOptions = {}
+    ) {
+        return this.submit(options).then(() => {
+            if (this.state.addlTxns) {
+                return this.submitAddlTxns()
+            }
+        })                
+    }
+
+    /**
+     * Submits only the current transaction.  
+     * @remarks
+     * To also submit additional transactions, use the `submitAll()` method.
+     */
     async submit(
         this: StellarTxnContext<any>,
         {
