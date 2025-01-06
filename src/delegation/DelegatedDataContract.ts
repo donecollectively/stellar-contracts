@@ -469,6 +469,12 @@ export abstract class DelegatedDataContract<
             activity,
             updatedFields: updatedRecord,
         } = options;
+
+        const fullUpdatedRecord: TLike = {
+            ...(item.data as TLike),
+            ...updatedRecord,
+        }
+
         console.log(
             `🏒 updating ${recType} ->`,
             uplcDataSerializer(recType,
@@ -486,12 +492,22 @@ export abstract class DelegatedDataContract<
             "    -- addedUtxoValue in dgData utxo:",
             dumpAny(addedUtxoValue)
         );
-        return tcx2.addOutput(
+        return this.returnUpdatedRecord(
+            tcx, 
+            item.utxo.value.add(addedUtxoValue), // .add(this.mkMinTv(this.capo.mph, id))
+            fullUpdatedRecord
+        );
+    }
+    getReturnAddress() {
+        return this.capo.address;
+    }
+    returnUpdatedRecord<
+        TCX extends StellarTxnContext & hasCharterRef
+    >(tcx: TCX, returnedValue: Value, updatedRecord: TLike): TCX {
+        return tcx.addOutput(
             makeTxOutput(
-                this.capo.address,
-                item.utxo.value
-                    // .add(this.mkMinTv(this.capo.mph, id))
-                    .add(addedUtxoValue),
+                this.getReturnAddress(),
+                returnedValue,
                 this.mkDatum.capoStoredData({
                     data: updatedRecord,
                     version: 2n,
@@ -500,7 +516,7 @@ export abstract class DelegatedDataContract<
 
                 // this.mkDatumDelegatedDataRecord(beforeSave(record))
             )
-        ) as TCX & typeof tcx2;
+        )
     }
 }
 
