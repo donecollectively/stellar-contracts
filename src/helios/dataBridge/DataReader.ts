@@ -24,9 +24,9 @@ const rawDataReaderProxy = new Proxy(
 function dataReaderProxy() {}
 dataReaderProxy.prototype = rawDataReaderProxy;
 
-export class DataReader extends (dataReaderProxy as any) {
+export class DataReader extends (dataReaderProxy as typeof Object) {
     schema?: TypeSchema;
-    cast?: Cast<any, any>;
+    ᱺᱺcast?: Cast<any, any>;
     constructor(public typeDetails: anyTypeDetails) {
         super();
         this.schema = undefined;
@@ -40,7 +40,10 @@ export class DataReader extends (dataReaderProxy as any) {
         if (!this.schema) {
             throw new Error("unreachable?")
             this.schema = this.typeDetails.dataType.toSchema();
-            this.cast = makeCast(this.schema!, { isMainnet: true });
+            this.ᱺᱺcast = makeCast(this.schema!, { 
+                isMainnet: true,
+                unwrapSingleFieldEnumVariants: true
+            });
         }
         return this.schema;
     }
