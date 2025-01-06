@@ -6,6 +6,10 @@
     "main": "./dist/stellar-contracts.mjs",
     "module": "./dist/stellar-contracts.mjs",
     "types": "./dist/stellar-contracts.d.ts",
+    "engines": {
+        "node": ">=20",
+        "pnpm": ">=8"
+    },
     "exports": {
         ".": {
             "typescriptNative": "./index.ts",
