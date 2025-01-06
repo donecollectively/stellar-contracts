@@ -38,7 +38,6 @@ export { UutName } from "./src/delegation/UutName.js";
 export {
     Capo
 } from "./src/Capo.js";
-
 export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
 
 export type {
@@ -59,7 +58,7 @@ export type {
     MinimalDelegateLink,
     dgtStateKey,
     hasNamedDelegate,
-    
+    MinimalCharterDataArgs
 } from "./src/CapoTypes.js";
 export {
     mkDgtStateKey
