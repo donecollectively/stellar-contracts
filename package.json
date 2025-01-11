@@ -27,6 +27,9 @@
             "import": "./dist/testing.mjs",
             "XXXrequire": "./dist/testing.cjs",
             "default": "./dist/testing.mjs"
+        },
+        "./rollup": {
+            "import": "./dist/index-rollup.mjs"
         }
     },
     "type": "module",
@@ -50,6 +53,9 @@
         "@types/proper-lockfile": "^4.1.4",
         "proper-lockfile": "^4.1.2",
         "semver": ">=7.5.2"
+    },
+    "peerDependencies": {
+        "rollup-plugin-esbuild": "^6.1.0"
     },
     "devDependencies": {
         "@helios-lang/codec-utils": "link:../helios/codec-utils",

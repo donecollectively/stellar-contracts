@@ -22,7 +22,6 @@ import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
 import {
     loadCompilerLib,
 } from "@helios-lang/contract-utils";
-import { genTypes } from "@helios-lang/contract-utils";
 import { StellarHeliosProject } from "./StellarHeliosProject.js";
 import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
@@ -51,7 +50,11 @@ type TypeGenPluginState = {
  * @public
  **/
 export function heliosRollupTypeGen(
-    opts: { include?: string; exclude?: string[]; project?: string } = {}
+    opts: { 
+        include?: string; 
+        exclude?: string[]; 
+        project?: string,
+    } = {}
 ) {
     const options = {
         ...{
@@ -405,7 +408,7 @@ export function heliosRollupTypeGen(
             throw new Error(`unexpected: bundle should have one output`);
         }
         const compiled = result.output[0].code;
-        const buildTime = Date.now() - buildStartTime;
+        let buildTime = Date.now() - buildStartTime;
 
         let needsWrite = true
         // if the file is not changed, skip write of the compiled file
@@ -424,6 +427,7 @@ export function heliosRollupTypeGen(
                 // sourcemap: true,  // ?? how to get this to work properly?  debugging goes to wrong site
                 format: "es",
             });
+            buildTime = Date.now() - buildStartTime;
             console.log(
                 `📦 StellarHeliosProject: wrote compiled bundle (${buildTime}ms): ${outputFile}`
             );

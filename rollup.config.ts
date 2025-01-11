@@ -20,7 +20,9 @@ const name = packageJson.main.replace(/\.m?js$/, "");
 const serverBundledModules : string[] = [
 
 ];
-const forcedServerExternals : string[] = [];
+const forcedServerExternals : string[] = [
+    "rollup-plugin-esbuild", "esbuild",
+];
 
 const notified = {}
 
@@ -54,6 +56,23 @@ const codeBundle = (config) => {
 
 // console.log(JSON.stringify(browserRollupConfig, null, 2))
 export default [
+    codeBundle({
+        input: "./index-rollup.ts",
+        plugins: [
+            esbuild({
+                tsconfig: "./tsconfig.json",
+                target: ["node18" ],
+                sourceMap: true,
+            }),
+        ],
+        output: [
+            {
+                file: `./dist/index-rollup.mjs`,
+                sourcemap: true,
+                format: "es",
+            }
+        ]
+    }),
     codeBundle({
         input: "./index.ts",
         plugins: [

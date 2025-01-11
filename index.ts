@@ -1,6 +1,5 @@
 import type { CharterDataLike } from "./src/CapoTypes.js";
 
-export { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
 export {
     mkValuesEntry,
     mkUutValuesEntries,

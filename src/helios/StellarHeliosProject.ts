@@ -1,9 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
-import * as rollup from "rollup";
-import { heliosRollupLoader } from "./heliosRollupLoader.js";
-import esbuild from "rollup-plugin-esbuild";
 import type { UplcData } from "@helios-lang/uplc";
 import { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
 import { dataBridgeGenerator } from "./dataBridge/dataBridgeGenerator.js";
@@ -119,7 +116,7 @@ export class StellarHeliosProject {
             if (this.capoBundle) {
                 throw new Error(`only one CapoBundle is currently supported`);
             }
-            console.log(`Project: loading CapoBundle ${bundleClassName}`);
+            // console.log(`Project: loading CapoBundle ${bundleClassName}`);
             this.capoBundle = new (bundleClass as any)();
             if (this.bundleEntries.size > 0) {
                 throw new Error(`register capo first!! ??`);
@@ -240,6 +237,8 @@ export class StellarHeliosProject {
                 `cannot generate data bridge for ${fn} with status ${status}`
             );
         }
+        const ts1 = Date.now();
+        // console.log("writing data bridge code: ", bundle.moduleName);
         const bridgeGenerator = dataBridgeGenerator.create(bundle);
         if (this.isStellarContracts()) bridgeGenerator._isInStellarContractsLib(true)
         const bridgeSourceCode = this.isStellarContracts()
@@ -251,6 +250,9 @@ export class StellarHeliosProject {
             this.writeIfUnchanged( dataBridgeFn, bridgeSourceCode);
         // console.log(`NOT writing data bridge code to ${dataBridgeFn}:${bridgeSourceCode}`);
         writeFileSync(dataBridgeFn, bridgeSourceCode);
+        console.log(`📦 ${bundle.moduleName}: generated data bridge: ${
+            Date.now() - ts1            
+        }ms`);
     }
 
     writeIfUnchanged(filename: string, source: string) {
