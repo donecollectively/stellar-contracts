@@ -362,6 +362,7 @@ export function heliosRollupTypeGen(
 
         // throw new Error(inputFile);
         console.log(`📦 StellarHeliosProject: loading ${inputFile}`);
+        let didWarn = false;
         const bundle = await rollup({
             input: inputFile,
             external(id) {
@@ -370,14 +371,20 @@ export function heliosRollupTypeGen(
             onwarn( warning, warn ) {
                 if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
                 if (warning.code === 'CIRCULAR_DEPENDENCY') {
-                    if (warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts") {
-                        return
-                        // console.log("   --- suppressed circular dependency warning");
+                    if (
+                        warning.message == "Circular dependency: src/StellarTxnContext.ts -> src/diagnostics.ts -> src/StellarTxnContext.ts" 
+                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
+                        || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts"
+                        || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts"
+                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/diagnostics.ts"                
+                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
+                    ) {
+                        if (didWarn) return;
+                        didWarn = true
+                        // warn("    ... all the usual Circular dependencies...")
+                        return;
                     }
-                    if (warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts") {
-                        return
                     }
-                }
 
                 warn(warning);
             },
@@ -451,6 +458,7 @@ export function heliosRollupTypeGen(
         const outputFile = path.join(tempDir, "CapoHeliosBundle.mjs");
         console.log(`📦 StellarHeliosProject: making CapoHeliosBundle: ${outputFile}`);
         const buildStartTime = Date.now();
+        let didWarn = false;
         const bundle = await rollup({
             input: path.join("src/CapoHeliosBundle.ts"),
             external(id) {
@@ -458,16 +466,23 @@ export function heliosRollupTypeGen(
             },
             onwarn( warning, warn ) {
                 if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
-                if (warning.code === 'CIRCULAR_DEPENDENCY') {
-                    if (warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts") {
-                        return
-                        // console.log("   --- suppressed circular dependency warning");
+                if (warning.code === "CIRCULAR_DEPENDENCY") {
+                    if (
+                        warning.message == "Circular dependency: src/StellarTxnContext.ts -> src/diagnostics.ts -> src/StellarTxnContext.ts" 
+                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
+                        || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts"
+                        || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts"
+                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/diagnostics.ts"
+                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
+                    ) {
+                        if (didWarn) return;
+                        didWarn = true
+                        // warn("    ... all the usual Circular dependencies...")
+                        return;
                     }
-                    if (warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts") {
-                        return
-                    }
+                    console.warn("circular: ", warning)
                 }
-
+    
                 warn(warning);
             },
             plugins: [

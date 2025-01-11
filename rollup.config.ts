@@ -32,9 +32,28 @@ const notified = {}
 const codeBundle = (config) => {
     if (!config.input) throw new Error(`missing required entry module 'input'`);
 
+    let didWarn = false;
     return {
         ...config,
-
+        onwarn(warning: any, warn: (s: string) => void) {
+            if (warning.code === "CIRCULAR_DEPENDENCY") {
+                if (
+                    warning.message == "Circular dependency: src/StellarTxnContext.ts -> src/diagnostics.ts -> src/StellarTxnContext.ts" 
+                    || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
+                    || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts"
+                    || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts"
+                    || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/diagnostics.ts"
+                    || warning.message == "Circular dependency: src/diagnostics.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
+                ) {
+                    if (didWarn) return;
+                    didWarn = true
+                    warn("    ... some known circular dependencies...")
+                    return;
+                }
+                console.warn("circular: ", warning)
+            }
+            warn(warning)
+        },
         external: (id) => {
             // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ext check")
             if (serverBundledModules.includes(id)) {
