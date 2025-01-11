@@ -1,5 +1,5 @@
 import type { TypeSchema } from "@helios-lang/type-utils";
-import type { anyTypeDetails } from "../HeliosScriptBundle.js";
+import type { anyTypeDetails } from "../HeliosMetaTypes.js";
 import { type Cast, makeCast } from "@helios-lang/contract-utils";
 
 // reads the same type of data used

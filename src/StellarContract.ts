@@ -38,8 +38,8 @@ import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
 // import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
 import {
     HeliosScriptBundle,
-    type HeliosBundleClass,
 } from "./helios/HeliosScriptBundle.js";
+import { type HeliosBundleClass } from "./helios/HeliosMetaTypes.js";
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 import {
     DataBridge,

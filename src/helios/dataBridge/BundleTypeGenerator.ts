@@ -3,18 +3,19 @@ import {
 } from "@helios-lang/contract-utils";
 
 import type {
+    HeliosScriptBundle,
+} from "../HeliosScriptBundle.js";
+import type {
     anyTypeDetails,
     EnumId,
     EnumTypeMeta,
     enumTypeDetails,
     HeliosBundleTypeDetails,
-    HeliosBundleTypes,
-    HeliosScriptBundle,
-    makesUplcActivityEnumData,
+    HeliosBundleTypes, makesUplcActivityEnumData,
     singleEnumVariantMeta,
     typeDetails,
-    variantTypeDetails,
-} from "../HeliosScriptBundle.js";
+    variantTypeDetails
+} from "../HeliosMetaTypes.js";
 import type {
     EnumTypeSchema,
     TypeSchema,
@@ -55,11 +56,17 @@ import type {
 
         if (this._isSC) {
             stellarImports = `
-import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, 
-    type singleEnumVariantMeta
-} from "${this.mkRelativeImport(
+import {HeliosScriptBundle} from "${this.mkRelativeImport(
                 inputFile,
                 "src/helios/HeliosScriptBundle.js"
+            )}"
+import type { 
+    tagOnly, 
+    EnumTypeMeta, 
+    singleEnumVariantMeta
+} from "${this.mkRelativeImport(
+                inputFile,
+                "src/helios/HeliosMetaTypes.js"
             )}"
 import type { minimalData } from "${this.mkRelativeImport(
             inputFile,

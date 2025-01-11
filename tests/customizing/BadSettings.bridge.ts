@@ -43,7 +43,7 @@ import {
     EnumBridge,
     type JustAnEnum,
 } from "../../src/helios/dataBridge/EnumBridge.js"
-import type { tagOnly } from "../../src/helios/HeliosScriptBundle.js"
+import type { tagOnly } from "../../src/helios/HeliosMetaTypes.js"
 import type { IntersectedEnum } from "../../src/helios/typeUtils.js"
 import { 
     impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 

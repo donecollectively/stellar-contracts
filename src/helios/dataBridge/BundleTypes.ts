@@ -1,19 +1,21 @@
 import { genTypes } from "@helios-lang/contract-utils";
 import type {
+    HeliosScriptBundle,
+} from "../HeliosScriptBundle.js";
+import type {
     anyTypeDetails,
     EnumId,
     EnumTypeMeta,
     enumTypeDetails,
     HeliosBundleTypeDetails,
-    HeliosBundleTypes,
-    HeliosScriptBundle,
+    HeliosBundleTypes, 
     makesUplcActivityEnumData,
     singleEnumVariantMeta,
     typeDetails,
     TypeVariety,
     VariantFlavor,
-    variantTypeDetails,
-} from "../HeliosScriptBundle.js";
+    variantTypeDetails
+} from "../HeliosMetaTypes.js";
 import type {
     EnumTypeSchema,
     VariantTypeSchema,
@@ -76,7 +78,6 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         };
 
         for (const [typeName, dataType] of Object.entries(others)) {
-            debugger
             this.gatherTypeDetails(dataType as DataType);
         }
 

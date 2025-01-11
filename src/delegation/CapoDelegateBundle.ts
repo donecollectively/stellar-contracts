@@ -3,10 +3,12 @@ import type { Capo } from "../Capo.js";
 import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import {
     HeliosScriptBundle,
+} from "../helios/HeliosScriptBundle.js";
+import {
     type CapoBundleClass,
     type Constructor,
-    type EmptyConstructor,
-} from "../helios/HeliosScriptBundle.js";
+    type EmptyConstructor
+} from "../helios/HeliosMetaTypes.js";
 import type { stellarSubclass } from "../StellarContract.js";
 import BasicDelegate from "./BasicDelegate.hl";
 

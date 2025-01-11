@@ -18,7 +18,8 @@ import type {
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { dumpAny } from "../diagnostics.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-import type { HeliosScriptBundle, readsUplcData } from "../helios/HeliosScriptBundle.js";
+import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import type { readsUplcData } from "src/helios/HeliosMetaTypes.js";
 import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegateBundle.js";
 import type { ContractDataBridge, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { AbstractNew, findActivityType, mustFindActivityType, mustFindConcreteContractBridgeType, mustFindDatumType, mustFindReadDatumType, possiblyAbstractContractBridgeType } from "../helios/dataBridge/BridgeTypeUtils.js";

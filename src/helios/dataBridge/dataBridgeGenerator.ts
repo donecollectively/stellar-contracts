@@ -1,24 +1,16 @@
 import path from "path";
-import { BundleTypes, type TypeGenHooks } from "./BundleTypes.js";
+import { type TypeGenHooks } from "./BundleTypes.js";
 import type {
     anyTypeDetails,
-    EnumId,
     enumTypeDetails,
-    HeliosScriptBundle,
     typeDetails,
-    variantTypeDetails,
-} from "../HeliosScriptBundle.js";
+    variantTypeDetails
+} from "../HeliosMetaTypes.js";
 import type {
     EnumTypeSchema,
     TypeSchema,
-    VariantTypeSchema,
 } from "@helios-lang/type-utils";
-import type { 
-    DataType,
-    EnumMemberType
-} from "@helios-lang/compiler";
 import { BundleBasedGenerator } from "./BundleBasedGenerator.js";
-import { makeInlineTxOutputDatum, type InlineTxOutputDatum, type TxOutputDatum } from "@helios-lang/ledger";
 
 type dataBridgeTypeInfo = {
     accessorCode: string;
@@ -202,7 +194,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                 )}"\n` +
                 `import type { tagOnly } from "${this.mkRelativeImport(
                     inputFile,
-                    "src/helios/HeliosScriptBundle.js"
+                    "src/helios/HeliosMetaTypes.js"
                 )}"\n` +
                 `import type { IntersectedEnum } from "${this.mkRelativeImport(
                     inputFile,

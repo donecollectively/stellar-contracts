@@ -3,11 +3,7 @@ import { type Cast, makeCast } from "@helios-lang/contract-utils"
 import { type TxOutputId } from "@helios-lang/ledger"
 import type { UplcData } from "@helios-lang/uplc"
 
-import type { 
-    HeliosScriptBundle,
-    readsUplcData,
-} from "../HeliosScriptBundle.js"
-import { StellarTxnContext } from "../../StellarTxnContext.js"
+import type { readsUplcData } from "../HeliosMetaTypes.js"
 import type { EnumBridge } from "./EnumBridge.js"
 import type { readsUplcTo } from "./BridgeTypeUtils.js"
 import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js"
