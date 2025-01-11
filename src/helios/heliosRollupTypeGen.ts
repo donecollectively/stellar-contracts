@@ -18,7 +18,6 @@ import esbuild from "rollup-plugin-esbuild";
 // use design details for Copilot:
 // import design from "./typegen-approach2.md" with { type: "markdown" };
 
-// import CapoBundle from "../Capo.hlbundle.js";
 import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
 import {
     loadCompilerLib,
@@ -56,7 +55,7 @@ export function heliosRollupTypeGen(
 ) {
     const options = {
         ...{
-            include: /.*\.hlbundle\.[jt]s$/,
+            include: /.*\.hlb\.[jt]s$/,
             exclude: [],
             project: "",
         },
@@ -166,9 +165,9 @@ export function heliosRollupTypeGen(
             order: "pre",
             async handler(this: PluginContext, source, importer, options) {
                 // console.log("heliosTypeGen: resolveId", { source, importer });
-                // if (source.match(/\.hlbundle/)) {
+                // if (source.match(/\.hlb/)) {
                 //     throw new Error(
-                //         `first hlbundle is being loaded by ${importer}`
+                //         `first .hlb file is being loaded by ${importer}`
                 //     );
                 // }
                 const {project} = state;
@@ -211,7 +210,7 @@ export function heliosRollupTypeGen(
 
                 const {project} = state;
                 if (!filter(id)) {
-                    if (id.match(/hlbundle/)) {
+                    if (id.match(/hlb/)) {
                         console.log(
                             `typeGen resolve: skipping due to filter mismatch`,
                             { source: id }
@@ -227,7 +226,7 @@ export function heliosRollupTypeGen(
                 // todo: load an existing bundle if it's already compiled, and ask that class to
                 //   check its sources for changes, so we can skip rollup and recompilation if
                 //   things are already up-to-date.
-                const SomeBundleClass = await rollupSingleBundleToBundleClass(id);
+                const SomeBundleClass = await rollupMakeBundledScriptClass(id);
                 const relativeFilename = path.relative(projectRoot, id);
                 this.warn(`👁️ checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`)
                 //??? addWatchFile for all the .hl scripts in the bundle
@@ -293,7 +292,7 @@ export function heliosRollupTypeGen(
                         // state.project.loadBundleWithClass(id, SomeBundleClass);
                         // state.project.generateBundleTypes(id);
                     }
-                    this.warn(` 👁️ checking (Capo) helios bundle ${SomeBundleClass.name}`)
+                    console.log(` 👁️ checking (Capo) helios bundle ${SomeBundleClass.name}`)
                     if (!skipInstallingThisOne) {
                         state.capoBundle = bundle;
                         state.project.loadBundleWithClass(id, SomeBundleClass);
@@ -302,7 +301,8 @@ export function heliosRollupTypeGen(
                 } else {
                     state.hasOtherBundles = true;
                     if (state.project.bundleEntries.size === 0 ) {
-                        // just-in-time load of default capoBundle
+                        console.log("looks like you're using the default Capo bundle. ok!\n");
+
                         const capoName = bundle.capoBundle.constructor.name;
                         if (capoName == "CapoHeliosBundle" && !state.capoBundle) {
                             state.project.loadBundleWithClass(
@@ -345,11 +345,11 @@ export function heliosRollupTypeGen(
         },
     };
     
-    async function rollupSingleBundleToBundleClass(inputFile: string) {
-        // writes the output file next to the input file as *.hlbundle.compiled.mjs
+    async function rollupMakeBundledScriptClass(inputFile: string) {
+        // writes the output file next to the input file as *.hlb.bundled.mjs
         const outputFile = inputFile.replace(
-            /\.hlbundle\.[tj]s$/,
-            ".hlbundle.compiled.mjs"
+            /\.hlb\.[tj]s$/,
+            ".hlb.bundled.mjs" // ??? move to dist/ or .hltemp/?  hlbundle
         );
         if (inputFile == outputFile) {
             throw new Error(`inputFile cannot be the same as outputFile`);

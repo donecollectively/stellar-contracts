@@ -2,12 +2,12 @@ import {
     defineRole,
     delegateRoles
 } from "../src/delegation/RolesAndDelegates";
-// import CapoBundleWithGenericUuts from "./CapoWithGenericUuts.hlbundle.js";
+// import CapoBundleWithGenericUuts from "./CapoWithGenericUuts.hlb.js";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
 import { CapoHeliosBundle } from "../src/CapoHeliosBundle.js";
-import StructDatumTester from "../src/testing/StructDatumTester.hlbundle.js";
+import StructDatumTester from "../src/testing/StructDatumTester.hlb.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {

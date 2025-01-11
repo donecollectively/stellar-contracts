@@ -138,7 +138,7 @@ export abstract class DelegatedDataContract<
                     `First, ensure you have derived a subclass for the controller, with a scriptBundle() method.\n` +
                     `\nThat method should \`return new YourConcreteBundle()\`\n` +
                     `\n  ... where YourConcreteBundle is a subclass of CapoDelegateBundle that you've created.\n` +
-                    `\nA concrete bundle class should be defined in \`${this.delegateName}.concrete.hlbundle.js\`\n` +
+                    `\nA concrete bundle class should be defined in \`${this.delegateName}.concrete.hlb.ts\`\n` +
                     `  ... in the same directory as your derived controller class:\n\n` +
                     `    import {YourAppCapo} from "./YourAppCapo.js";\n` +
                     `    import {${this.abstractBundleClass.name}} from ...\n` +
@@ -150,15 +150,16 @@ export abstract class DelegatedDataContract<
 
         throw new Error(
             `${this.constructor.name}: missing required implementation of abstractBundleClass()\n` +
-                `\nDefined in a \`*.hlbundle.js\` file, it should have at minimum:\n` +
+                `\nDefined in a \`*.hlb.ts\` file, it should have at minimum:\n` +
                 `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
                 `    import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";\n\n` +
                 `    export default class SomeDelegateBundle extends CapoHeliosBundle {\n` +
                 `        get specializedDelegateModule() { return SomeSpecializedDelegate; }\n` +
                 `    }\n\n` +
-                `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
+                `We'll generate types in a .typeInfo.ts file, based on the types in your Helios sources,\n` +
+                `  ... and a .bridge.ts file having data-conversion classes for your on-chain types.`+
                 `\nWhen your delegated-data controller is used within your Capo, your bundle will\n` +
-                `have access via import {...} to any helios modules provided by that Capo. `
+                `have access via import {...} to any helios modules provided by that Capo's .hlb.ts. `
         );
 
         return null as unknown as CapoDelegateBundle;

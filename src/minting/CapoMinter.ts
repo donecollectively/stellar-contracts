@@ -1,17 +1,16 @@
 import {
-    type Assets,
     type Address,
     type MintingPolicyHash,
     makeAssets,
 } from "@helios-lang/ledger";
 import { makeValue } from "@helios-lang/ledger";
 
-import { Activity, StellarContract, partialTxn } from "../StellarContract.js";
+import { Activity, StellarContract } from "../StellarContract.js";
 import type { UplcRecord, configBaseWithRev } from "../StellarContract.js";
 
 import { StellarTxnContext, type anyState } from "../StellarTxnContext.js";
 import type { Capo } from "../Capo.js";
-import type { MintUutActivityArgs, MinterBaseMethods } from "src/CapoTypes.js";
+import type { MinterBaseMethods } from "src/CapoTypes.js";
 import type { SeedTxnScriptParams } from "../SeedTxnScriptParams.js";
 import type { valuesEntry } from "../HeliosPromotedTypes.js";
 import { UutName } from "../delegation/UutName.js";
@@ -20,15 +19,8 @@ import { mkValuesEntry } from "../utils.js";
 
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
 // imports the Capo bundle before anything, so the minter bundle can use it
-import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-import CapoMinterBundle from "./CapoMinter.hlbundle.js";
-import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
-import type {
-    HeliosBundleClass,
-    HeliosScriptBundle,
-} from "../helios/HeliosScriptBundle.js";
+import CapoMinterBundle from "./CapoMinter.hlb.js";
 import CapoMinterDataBridge from "./CapoMinter.bridge.js";
-import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type {
     mustFindActivityType,
     mustFindConcreteContractBridgeType,

@@ -183,15 +183,16 @@ import { mkDgtStateKey } from "./CapoTypes.js";
  * functional logic to serve in any given role, thus providing flexibility and extensibility.
  *
  * Capo provides roles for govAuthority and mintDelegate, and methods to facilitate
- * the lifecycle of charter creation & update.   To add custom roles, override initDelegateRoles(), extending the returned
- * roles from super.initDelegateRoles().  Advanced versions of the govAuthority, mintDelegate and spendDelegate roles
- * can created by extending specific role types found in the base initDelegateRoles() method.
- * You may wish to use the `basicRoles()` helper function to easily access any of the default 
+ * the lifecycle of charter creation & update.   Define a delegateRoles data structure using
+ * the standalone helper function of that name, use its type in your `extends Capo<...>` clause,
+ * and return that delegate map from the `delegateRoles()` method in your subclass.
+ *
+ * You may wish to use the `basicRoles()` helper function to easily access any of the default
  * mint/ spend/ authority delegate definitions, and the defineRole() method to make additional
  * roles for your application's data types.
  *
  * ### The Delegation Pattern and UUTs
- * 
+ *
  * The delegation pattern uses UUTs, which are non-fungible / ***unique utility tokens***.  This is
  * equivalent to a "thread token" - a provable source of self-authority or legitimacy for contract
  * UTxOs.  Without the UUT, a contract UTxO is just a piece of untrusted data; with the UUT, it
@@ -230,6 +231,9 @@ export abstract class Capo<
 > extends StellarContract<CapoConfig> {
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
+    static async currentConfig() {
+        
+    }
     dataBridgeClass = CapoDataBridge;
 
     get onchain(): mustFindConcreteContractBridgeType<this> {
@@ -282,7 +286,7 @@ export abstract class Capo<
     scriptBundle(): CapoHeliosBundle {
         console.warn(
             `${this.constructor.name}: each Capo will need to provide a scriptBundle() method.\n` +
-                `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n` +
+                `It should return an instance of a class defined in a *.hlb.ts file.  At minimum:\n\n` +
                 `    export default class MyAppCapo extends CapoHeliosBundle {\n` +
                 `       get modules() { \n` +
                 `           return [\n` +
@@ -291,7 +295,6 @@ export abstract class Capo<
                 `           ];\n` +
                 `       }\n` +
                 `    }\n\n` +
-                `! NOTE: make it a .js file, even if you're a typescript user!\n\n` +
                 `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
                 `Your scriptBundle() method can \`return new MyAppCapo();\`\n\n` +
                 `We suggest naming your Capo bundle class with your application's name.\n`

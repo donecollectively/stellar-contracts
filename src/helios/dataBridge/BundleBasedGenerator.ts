@@ -51,7 +51,7 @@ export class BundleBasedGenerator {
     }
 
     /**
-     * internal use for modifying imports for hlbundles part of the stellar contracts library
+     * internal use for modifying imports for .hlb*.[tj]s that are part of the stellar contracts library
      * if it is true, then the imports will be expressed in a way relative to the stellar contracts 
      * repository.  Otherwise, all the stellar contracts types will be imported from the
      * @donecollectively/stellar-contracts package.

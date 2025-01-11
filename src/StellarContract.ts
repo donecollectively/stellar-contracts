@@ -420,8 +420,8 @@ export class StellarContract<
     /** each StellarContracts subclass needs to provide a scriptBundle class.
      * @remarks
      * Your script bundle MUST be defined in a separate file using a convention of
-     * `‹scriptName›.hlbundle.ts`, and exported as a default class.  It should inherit
-     * from HeliosScriptBundle or one of its subclasses.  Stellar contracts processes
+     * `‹scriptName›.hlb.ts`, and exported as a default class.  It should inherit
+     * from HeliosScriptBundle or one of its subclasses.  Stellar Contracts processes
      * this file, analyzes the on-chain types defined in your Helios sources, and generates
      * Typescript types and a data-bridging class for your script.
      *
@@ -432,7 +432,7 @@ export class StellarContract<
         throw new Error(
             `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
                 `...each Stellar Contract must provide a scriptBundle() method. \n` +
-                `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n` +
+                `It should return an instance of a class defined in a *.hlb.js file.  At minimum:\n\n` +
                 `    export default class MyScriptBundle extends HeliosScriptBundle {\n\n    }\n\n` +
                 `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
                 `Your scriptBundle() method can \`return new MyScriptBundle();\``
@@ -571,8 +571,8 @@ export class StellarContract<
      * details to resolve ambiguity so the validator easily acts on the correct items.
      *
      * ### Setup and Type generation
-     * #### Step 1: create your script **`.hlbundle.ts`**
-     * With a defined script bundle, `import YourScriptNameBundle from "./YourBundleName.hlbundle.js"`
+     * #### Step 1: create your script **`.hlb.ts`**
+     * With a defined script bundle, `import YourScriptNameBundle from "./YourBundleName.hlb.js"`
      * to your StellarContracts class module, and define a `scriptBundle() { return new YourScriptNameBundle() }` or
      * similar method in that class.
      *
@@ -591,7 +591,7 @@ export class StellarContract<
      *
      * The activity types should be available through type-safe auto-complete in your editor.  If not,
      * you may need to install and configure the Stellar Contracts rollup plugins for importing .hl
-     * files and generating .d.ts for your .hlbundle.js files.  See the Stellar Contracts development
+     * files and generating .d.ts for your .hlb.ts files.  See the Stellar Contracts development
      * guide for additional details.
      *
      */

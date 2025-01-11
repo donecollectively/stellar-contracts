@@ -29,7 +29,7 @@ import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/
 import { ContractBasedDelegate } from "../src/delegation/ContractBasedDelegate";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
-import UnspecializedDelegateBundle from "../src/delegation/UnspecializedDelegate.hlbundle.js"
+import UnspecializedDelegateBundle from "../src/delegation/UnspecializedDelegate.hlb.js"
 import { CapoHeliosBundle } from "../src/CapoHeliosBundle.js";
 import UnspecializedDelegateBridge from "../src/delegation/UnspecializedDelegate.bridge.js";
 

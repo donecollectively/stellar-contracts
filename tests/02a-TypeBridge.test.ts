@@ -30,13 +30,14 @@ import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/
 import { expanded, tagOnly } from "../src/helios/HeliosScriptBundle.js";
 import { SomeEnum } from "../src/testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
 
-import CapoMinterBundle from "../src/minting/CapoMinter.hlbundle.js";
-import BadSettingsBundle from "./customizing/BadSettings.hlbundle.js";
-import ReqtsConcreteBundle from "../src/reqts/Reqts.concrete.hlbundle.js";
-import StructDatumTesterBundle from "../src/testing/StructDatumTester.hlbundle.js";
-import DelegatedDatumTesterBundle from "../src/testing/DelegatedDatumTester.hlbundle.js";
-import UnspecializedDgtBundle from "../src/delegation/UnspecializedDelegate.hlbundle.js";
-import BundleMintDelegateWithGenericUuts from "../src/testing/specialMintDelegate/uutMintingMintDelegate.hlbundle.js";
+import CapoMinterBundle from "../src/minting/CapoMinter.hlb.js";
+import BadSettingsBundle from "./customizing/BadSettings.hlb.js";
+import ReqtsConcreteBundle from "../src/reqts/Reqts.concrete.hlb.js";
+import StructDatumTesterBundle from "../src/testing/StructDatumTester.hlb.js";
+import DelegatedDatumTesterBundle from "../src/testing/DelegatedDatumTester.hlb.js";
+import UnspecializedDgtBundle from "../src/delegation/UnspecializedDelegate.hlb.js";
+import BundleMintDelegateWithGenericUuts from "../src/testing/specialMintDelegate/uutMintingMintDelegate.hlb.js";
+import { decodePubKeyHash, decodeStakingCredential, makeAddress, makePubKey, makePubKeyHash } from "@helios-lang/ledger";
 
 
 type localTC = StellarTestContext<

@@ -1,4 +1,3 @@
-
 declare module "*.hl" {
     import type { Source } from "@helios-lang/compiler-utils";
 

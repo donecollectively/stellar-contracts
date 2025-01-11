@@ -1,7 +1,7 @@
 import { CapoHeliosBundle } from "../../src/CapoHeliosBundle.js";
 import { DelegatedDataContract } from "../../src/delegation/DelegatedDataContract.js";
 import { hasReqts } from "../../src/Requirements";
-import BadSettingsBundle from "./BadSettings.hlbundle.js";
+import BadSettingsBundle from "./BadSettings.hlb.js";
  import {
     SpendingActivity,
     SpendingActivityLike,

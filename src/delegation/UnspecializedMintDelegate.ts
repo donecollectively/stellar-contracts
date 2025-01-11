@@ -2,7 +2,7 @@ import { Activity } from "../StellarContract.js";
 import { type hasSeedUtxo } from "../StellarTxnContext.js";
 import { BasicMintDelegate } from "../minting/BasicMintDelegate.js";
 
-import UnspecializedDelegateBundle from "./UnspecializedDelegate.hlbundle.js";
+import UnspecializedDelegateBundle from "./UnspecializedDelegate.hlb.js";
 import {UnspecializedDelegateBridge} from "./UnspecializedDelegate.bridge.js"
 import type { hasSeed } from "../ActivityTypes.js";
 

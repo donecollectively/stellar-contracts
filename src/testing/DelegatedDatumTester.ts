@@ -21,7 +21,7 @@ import type {
     minimalDgDatumTestData
 } from "./DelegatedDatumTester.typeInfo.js"
 
-import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlbundle.js"
+import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlb.js"
 import { textToBytes } from "../HeliosPromotedTypes.js";
 import { makeTxOutput } from "@helios-lang/ledger";
 

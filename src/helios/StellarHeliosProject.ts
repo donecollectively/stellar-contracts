@@ -28,7 +28,7 @@ export function isUplcData(x: any): x is UplcData {
 }
 
 /**
- * Gathers `*.hlbundle.js` files along with their status and attributes.
+ * Gathers `*.hlb.[tj]s` files along with their status and attributes.
  * @public
  * @remarks
  * For script bundles that have previously been loaded, the project will
@@ -204,12 +204,12 @@ export class StellarHeliosProject {
         }
         this.writeTypeInfo(oneFile, bundleEntry);
         this.writeDataBridgeCode(
-            oneFile.replace(/(\.hlbundle)?\.[tj]s$/, ".bridge.ts"),
+            oneFile.replace(/(\.hlb)?\.[tj]s$/, ".bridge.ts"),
             bundleEntry
         );
 
         // this.writeReadDatabridge(
-        //     oneFile.replace(/\.hlbundle\.[tj]s$/, ".readData.ts"),
+        //     oneFile.replace(/\.hlb\.[tj]s$/, ".readData.ts"),
         //     bundleEntry
         // );
 
@@ -225,7 +225,7 @@ export class StellarHeliosProject {
     // uses the dataBridgeGenerator class to generate a *.bridge.ts file
     writeDataBridgeCode(oneFilename: string, bundleEntry: BundleStatusEntry) {
         const fn = this.normalizeFilePath(oneFilename);
-        const dataBridgeFn = fn.replace(/\.hlbundle\.[jt]s$/, ".bridge.ts");
+        const dataBridgeFn = fn.replace(/\.hlb\.[jt]s$/, ".bridge.ts");
 
         const bundle = bundleEntry.bundle;
         const status = bundleEntry.status;
@@ -293,7 +293,7 @@ export class StellarHeliosProject {
         }
 
         let typeFilename = filename.replace(
-            /(\.hlbundle)?\.[jt]s$/,
+            /(\.hlb)?\.[jt]s$/,
             ".typeInfo.ts"
         );
         const { bundleClassName, parentClassName } = bundleEntry;

@@ -4,4 +4,4 @@ node_modules
 /z/
 /zz_junk
 vite.config.js.timestamp*
-**/*.hlbundle.compiled.mjs
+**/*.hlb.bundled.mjs

@@ -22,7 +22,7 @@ When developers use these tools (including direct `rollup --watch` live bundling
 get a very fluid experience with off-chain types kept nicely in-sync with on-chain definitions.
 
 This approach uses a generational technique, in which the results of running the full Rollup 
-sequence produces useful Javascript artifacts representing the full set of Helios contract 
+sequence produces useful JS/TS artifacts representing the full set of Helios contract 
 scripts.  This is easily loaded into Rollup during the next run with a simple import.  In the first 
 generation, an empty Project is generated, representing "no known scripts".  In subsequent
 generations, the known scripts are part of the Project (see below for how it is used).
@@ -34,23 +34,24 @@ and validators.
 #### multi-phase rollup build
 
 The rollup build is segmented into three phases: the first, a normal typescript project build that 
-includes the Helios type-gen plugin that identifies any `*.hlbundle.js` files used by various contract 
-scripts in the dApp's typescript code.  In the second phase of the build, the registered .hlbundle files 
+includes the Helios type-gen plugin that identifies any 
+ `*.hlb(undle).[jt]s` files used by various contract 
+scripts in the dApp's typescript code.  In the second phase of the build, the registered .hlb(undle) files 
 are used to form a "just the contract scripts" package including type-generation code. 
 
 In the third build phase, that type-generation code is triggered, writing (if needed) the detected types 
-to `.d.ts` files next to each `.hlbundle.js`.
+to `.d.ts` files next to each `.hlb.*` file.
 
 #### building at Generation 1
 
-As a result of running (all three build phases in) Generation 1, types for each `*.hlbundle.js` are written, 
+As a result of running (all three build phases in) Generation 1, types for each `*.hlb.*` are written, 
 representing the off-chain types Helios can use for converting to (and from) on-chain form; these are 
 immediately used by vscode.
 
 #### building at Generation 2
 
 Starting in Generation 2, the Project is available within the Rollup process.  More importantly,
-`hlbundle.d.ts` files are ready in the filesystem for use by vscode, `vitest`, `rollup`, and any other 
+`hlb(undle).d.ts` files are ready in the filesystem for use by vscode, `vitest`, `rollup`, and any other 
 typescript tooling.
 
 There's an implication that the Helios artifacts used by Generation 2 are identical to the INPUT artifacts 
@@ -63,8 +64,7 @@ off-chain types are needed.
 
 #### building at Generation 3
 
-Generation 3 is triggered when some Helios scripts have changed (the **types** found in those files
-might not have any changes).
+Generation 3 is triggered when some Helios scripts have changed (the **types** found in those files might not have any changes).
 
 The Project's structure is crafted such that the Helios script files (`*.hl`) are read synchronously, 
 with their up-to-the-moment contents.  As a result, ***any compilation problems introduced 
@@ -74,7 +74,7 @@ the presence of javascript problems.  Meanwhile, the previous generation of `.d.
 continue to be active - for better or worse.  
 
 Given successful parsing of any changes, the Rollup plugin uses the Project's interface to write any updated 
-types to each `.hlbundle.d.ts` file, just in time for them to be used for detailed type information during that 
+types to each `.hlb(undle).d.ts` file, just in time for them to be used for detailed type information during that 
 same build.  Beyond use by Rollup, ***this step is crucial for realtime type updates***, which we want to 
 see right away in VSCode.  Thus, failing to run `rollup --watch` or `vitest watch` (or a workable alternative) will 
 mean that on-chain types can get out of sync with the last-generated "off-chain" types, so Typescript and vscode 
@@ -86,21 +86,21 @@ During initialization, the Helios type-gen plugin checks for a `hlproject.js` in
 an empty Project object is 
 created ("Generation 1" is implied).
 
-Advanced: It loads the `hlproject.js` file from the project root, parsing for the .hlbundles mentioned in the project 
+Advanced: It loads the `hlproject.js` file from the project root, parsing for the .hlb(undles) mentioned in the project 
 file, verifying that they exist; any not existing are reported as warnings, and commented out of the project file.
 
-Each `.hlbundle.js` seen in the Project is iterated, and its current types are generated (in a `.d.ts` file next to the
-`*.hlbundle.js` file).   The text of those generated types is compared to the text of any current `.d.ts` file.  If they
+Each `.hlb(undle).*js*` seen in the Project is iterated, and its current types are generated (in a `.d.ts` file next to the
+`*.hlb(undle).j*s*` file).   The text of those generated types is compared to the text of any current `.d.ts` file.  If they
 differ, an updated .d.ts file is written.
 
-### Stage 2: Resolution of `*.hlbundle.js` files
+### Stage 2: Resolution of `*.hlb(undle).[tj]s` files
 
 During stage 2 of the Rollup
 
 During
-this first build, each encountered .hlbundle.ts file is registered by the Helios type-gen plugin.  
+this first build, each encountered .hlb(undle.ts file is registered by the Helios type-gen plugin.  
 In the second phase of the build, a `hlproject.ts` file is created (or updated), to include all the 
-`*.hlbundle.ts` modules.
+`*.hlb(undle).ts` modules.
 
 In the second, smaller phase of the build, Rollup is instructed to take the generated .hlproject.ts as 
 input, transpiling and bundling `dist/hlproject.mjs` (the artifact mentioned above).  
@@ -123,7 +123,7 @@ input, transpiling and bundling `dist/hlproject.mjs` (the artifact mentioned abo
     // The types generated are then written to a .d.ts file, and that file is resolved as the answer to the
     // resolveId query.
 
-    // During (load or) transformation, it registers each used .hlbundle.js file, and when the build is complete,
+    // During (load or) transformation, it registers each used .hlb(undle).js file, and when the build is complete,
     // it writes an updated .hlproject.js file with the list of all bundles used in the build.
     // Finally, it dynamically imports the updated project file, initializing the next version of the project and
     // generates types for each bundle.  If any of these are changed (e.g. vs the 'any' types generated for new bundles),

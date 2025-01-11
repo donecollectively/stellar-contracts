@@ -3,7 +3,7 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
  
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
-import UnspecializedDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
+import UnspecializedDelegateBundle from "../delegation/UnspecializedDelegate.hlb.js";
 import dataBridgeClass, { UnspecializedDelegateBridge } from "../delegation/UnspecializedDelegate.bridge.js";
 import type { ContractDataBridgeWithEnumDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";

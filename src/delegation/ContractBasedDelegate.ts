@@ -131,13 +131,15 @@ export class ContractBasedDelegate extends StellarDelegate {
         throw new Error(
             `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
                 `\nEach contract-based delegate must provide a scriptBundle() method.\n` +
-                `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n` +
+                `It should return an instance of a class defined in a *.hlb.ts file.  At minimum:\n\n` +
                 `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
                 `    import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";\n\n` +
                 `    export default class SomeDelegateBundle extends CapoDelegateBundle.using(YourAppCapo) {\n` +
                 `        get specializedDelegateModule() { return SomeSpecializedDelegate; }\n` +
                 `    }\n\n` +
-                `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
+                `We'll generate an additional .typeInfo.ts, based on the types in your Helios sources,\n` +
+                `  ... and a .bridge.ts with generated data-conversion code for bridging between off-chain`+
+                `  ... and on-chain data encoding.`+
                 `Your scriptBundle() method can \`return new SomeDelegateBundle()\``
         );
     }
