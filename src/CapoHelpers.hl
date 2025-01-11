@@ -12,9 +12,9 @@ import {
 } from StellarHeliosHelpers
 
 import {tx, get_current_input} from ScriptContext
-import {
-    TypeMap
-} from TypeMapMetadata
+// import {
+//     TypeMap
+// } from TypeMapMetadata
 
 import { 
     RelativeDelegateLink,
@@ -1569,37 +1569,12 @@ struct CapoCtx {
     //     result
     // }
 
-
-    func delegatedOutputData(self, 
-        recId: ByteArray
-    ) -> Data {
-        self.internalHasDelegatedDataOutput(
-            mkTv(mph: self.mph, tnBytes: recId)
-        ).datum.inline
-    }
     func mustOutputDelegatedData(self, newDataId : ByteArray, dataTypePurpose : String) -> Bool{
         REQT("   -- validates that the new record is stored in the Capo address");
-        dgData : Data = self.internalHasDelegatedDataOutput(
-            mkTv(mph: self.mph, tnBytes: newDataId)
-        ).datum.inline;
-        // dgData.switch {
-        //     ConstrData{index, f} => {
-        //         print("found index "+index.show());
-        //         print("field count =" + f.length.show());
-        //         f.head.switch {
-        //             MapData{m} => {
-        //                 print("found map data" + m.length.show())
-        //             },
-        //             _ => error("yuck")
-        //         }
-        //     },
-        //     _ => {
-        //         error("not constr data")
-        //     }
-        // };
 
+        dgData : Data = self.delegatedTxOutput(newDataId).datum.inline;
         dgDatum : CapoDatum = CapoDatum::from_data(dgData);
-        // ndid: ByteArray = newDataId.encode_utf8();
+
         REQT("   -- validates that the new record matches the type-name indicated in the dgDataPolicy manifest");
         dgDatum.switch {
             DelegatedData => {
@@ -1625,21 +1600,32 @@ struct CapoCtx {
         }
     }        
 
+    // func delegatedOutputData(self, 
+    //     recId: ByteArray
+    // ) -> Data {
+    //     self.delegatedTxOutput(recId).datum.inline
+    // }
+
     func delegatedTxOutput(self, 
         recId: ByteArray
     ) -> TxOutput {
         recIdStr = recId.decode_utf8();
-        result : TxOutput = self.internalHasDelegatedDataOutput(
-            mkTv(mph: self.mph, tnBytes: recId), 
-            Option[String]::Some{recIdStr}
-        );
-        print("     ✅ 📎 ^ outDD: found "+ recIdStr);
-        result
+        self.internalHasDelegatedDataOutput(
+            mkTv(mph: self.mph, tnBytes: recId)
+        ).switch{
+            None => {
+                error("❌❌ 📎 ^ outDD: not found: " + recIdStr)
+            },
+            Some{txout} => {
+                print("     ✅ 📎 ^ outDD: found "+ recIdStr);
+                txout
+            }
+        }
     }
 
     func internalHasDelegatedDataOutput(
-        self, v : Value, label: Option[String] = Option[String]::None
-    ) -> TxOutput {
+        self, v : Value
+    ) -> Option[TxOutput] {
         capoAddr : Address = self.address();
 
         // print("       -- seeking txOutput " + v.show());
@@ -1650,21 +1636,12 @@ struct CapoCtx {
                 // print("?? txOut" + txout.value.show());
                 // print("@addr" + txout.address.show());
                 true
-                && txout.address == capoAddr
                 && txout.value.contains(v)
+                    .trace("  -- output has value? ")
+                && (txout.address == capoAddr)
+                    .trace("     -- found output... is it at the right capoAddr? ")
             }
-        ).switch{
-            None => {
-                print( "   ... expected: "+ label.switch {
-                    Some{lbl} => lbl,
-                    None => v.show()
-                });
-                error("❌❌ ^ no req'd delegated-data out")
-            },
-            Some{txout} => {
-                txout
-            }
-        }
+        )
     }
 
 
