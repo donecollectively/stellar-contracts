@@ -1,9 +1,6 @@
-import type { UplcProgram } from "@helios-lang/uplc";
 import type { DataType, Program } from "@helios-lang/compiler";
 import type { Source } from "@helios-lang/compiler-utils";
 
-import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
-import { DataReader } from "./dataBridge/DataReader.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type {
     configBaseWithRev,

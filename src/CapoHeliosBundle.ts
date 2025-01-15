@@ -4,9 +4,6 @@ import StellarHeliosHelpers from "./StellarHeliosHelpers.hl";
 import CapoHelpers from "./CapoHelpers.hl";
 import TypeMapMetadata from "./TypeMapMetadata.hl";
 
-import PriceValidator from "./PriceValidator.hl";
-import BasicDelegate from "./delegation/BasicDelegate.hl";
-
 import mainContract from "./DefaultCapo.hl";
 import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
 

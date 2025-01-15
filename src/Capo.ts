@@ -30,7 +30,6 @@ import type {
     configBaseWithRev,
     stellarSubclass,
     ConfigFor,
-    anyDatumProps,
     UplcRecord,
 } from "./StellarContract.js";
 import type { anyUplcProgram } from "./HeliosPromotedTypes.js";
@@ -66,7 +65,6 @@ import type {
     DelegationDetail,
     delegateConfigValidation,
     capoDelegateConfig,
-    DelegateMap,
 } from "./delegation/RolesAndDelegates.js";
 
 import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
@@ -77,7 +75,7 @@ import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
 // import contract from "./DefaultCapo.hl";
 // export { contract };
 
-import { betterJsonSerializer, errorMapAsString } from "./diagnostics.js";
+import { errorMapAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
 
 import { mkUutValuesEntries, mkValuesEntry } from "./utils.js";
@@ -85,26 +83,18 @@ import { StellarDelegate } from "./delegation/StellarDelegate.js";
 
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
-import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
+import { dumpAny } from "./diagnostics.js";
 // import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
-import CapoHelpers from "./CapoHelpers.hl";
 import { type NamedPolicyCreationOptions } from "./delegation/ContractBasedDelegate.js";
 
-import UncustomCapoSettings from "./UncustomCapoSettings.hl";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import type {
     AnyDataTemplate,
-    hasAnyDataTemplate,
 } from "./delegation/DelegatedData.js";
 import type { tokenPredicate } from "./UtxoHelper.js";
-import type { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
-import BasicDelegateScript from "./delegation/BasicDelegate.hl";
-import CapoDataBridge, {
-    type types as CapoTypes,
-} from "./CapoHeliosBundle.bridge.js";
+import CapoDataBridge from "./CapoHeliosBundle.bridge.js";
 import type {
-    findActivityType,
     mustFindActivityType,
     mustFindConcreteContractBridgeType,
     mustFindDatumType,
@@ -115,30 +105,21 @@ import type {
     CapoDatumLike,
     ErgoRelativeDelegateLink,
     RelativeDelegateLinkLike,
-    RelativeDelegateLink,
-    ManifestEntryType$DgDataPolicyLike,
     PendingDelegateActionLike,
-    PendingDelegateChangeLike,
     PendingDelegateAction$AddLike,
-    ManifestEntryTypeLike,
-    CapoDatum$Ergo$DelegatedData,
     PendingCharterChangeLike,
 } from "./CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
 import type {
-    GenericDelegateDatum,
     SomeDgtActivityHelper,
 } from "./delegation/GenericDelegateBridge.js";
 import type {
     DelegatedDataContract,
-    DgDataType,
 } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
 import type { isActivity } from "./ActivityTypes.js";
 import type {
-    AnyData,
     DelegateDatum$capoStoredDataLike,
-    DelegateDatumLike,
 } from "./delegation/UnspecializedDelegate.typeInfo.js";
 import type {
     CapoConfig,
@@ -154,7 +135,6 @@ import type {
     MinimalDelegateUpdateLink,
     NormalDelegateSetup,
     PreconfiguredDelegate,
-    SettingsDataContext,
     UutCreationAttrsWithSeed,
     basicDelegateMap,
     hasBootstrappedCapoConfig,
