@@ -75,12 +75,33 @@ const heliosLoader = heliosRollupLoader({
 });
 const heliosTypeGen = heliosRollupTypeGen();
 
+const dualPlatformEntryPoints = {
+};
+const nodeOnlyEntryPoints = {
+    "testing": "./src/testing/index.ts",
+}
+const browserOnlyEntryPoints = {
+}
+const platformIndependentEntryPoints = {
+    "ContractBasedDelegate": "./src/delegation/ContractBasedDelegate.ts",
+    "HeliosBundle": "./src/helios/HeliosScriptBundle.ts",
+    "CapoHeliosBundle": "./src/CapoHeliosBundle.ts",
+    "CapoDelegateHeliosBundle": "./src/delegation/CapoDelegateBundle.ts",
+    "DelegatedDataContract": "./src/delegation/DelegatedDataContract.ts",
+    // "capo": "./src/Capo.ts",
+    "stellar-contracts": "./index.ts",
+};
+
+// !restore the codeBundle() call below for this when needed
+const browserTargetedEntryPoints = {
+    ...dualPlatformEntryPoints,
+    ...browserOnlyEntryPoints
+};
 export default [
     codeBundle({
         input: {
-            "stellar-contracts-node.mjs": "./index.ts",
-            "capo-node.mjs": "./src/Capo.ts",
-            "testing-node.mjs": "./src/testing/index.ts",
+            ...dualPlatformEntryPoints,
+            ...nodeOnlyEntryPoints
         },
         plugins: [
             // externals(),
@@ -104,7 +125,8 @@ export default [
             {
                 dir: "./dist/",
                 sourcemap: true,
-                entryFileNames: "[name]",
+                entryFileNames: "[name]-node.mjs",
+                chunkFileNames: "[name]-node.mjs",
                 format: "es",
                 // tells Chrome devtools to automatically omit these files from the stack presentation 
                 // sourcemapIgnoreList: (relativeSourcePath, sourcemapPath) => {
@@ -123,34 +145,58 @@ export default [
             },
         ],
     }),
+    // codeBundle({
+    //     input: browserTargetedEntryPoints,
+    //     plugins: [
+    //         // externals(),
+    //         heliosLoader, 
+    //         heliosTypeGen,
+    //         json(),
+    //         resolve({
+    //             // ...platformModulePaths("browser"),
+    //             exportConditions: ["browser"],
+    //             extensions: [".json", ".ts", ".js"],
+    //         }),
+    //         // sourcemaps(),
+    //         esbuildPlugin({
+    //             tsconfig: "./tsconfig.json",
+    //             target: ["node18" ],
+    //             dropLabels: [ "__NODEJS_ONLY__" ],
+    //             sourceMap: false,                                
+    //         })
+    //     ],
+    //     output: [
+    //         {
+    //             dir: `./dist/`,
+    //             entryFileNames: "[name]-browser.mjs",
+    //              chunkFileNames: "[name]-browser.mjs",
+    //             sourcemap: true,
+    //             format: "es",
+    //         }
+    //     ]
+    // }),
     codeBundle({
-        input: {
-            "stellar-contracts-browser.mjs": "./index.ts",
-            "capo-browser.mjs": "./src/Capo.ts",
-            "testing-browser.mjs": "./src/testing/index.ts",            
-        },
+        input: platformIndependentEntryPoints,
         plugins: [
             // externals(),
             heliosLoader, 
             heliosTypeGen,
             json(),
             resolve({
-                // ...platformModulePaths("browser"),
-                exportConditions: ["browser"],
                 extensions: [".json", ".ts", ".js"],
             }),
             // sourcemaps(),
             esbuildPlugin({
                 tsconfig: "./tsconfig.json",
                 target: ["node18" ],
-                dropLabels: [ "__NODEJS_ONLY__" ],
                 sourceMap: false,                                
             })
         ],
         output: [
             {
                 dir: `./dist/`,
-                entryFileNames: "[name]",
+                entryFileNames: "[name].mjs",
+                chunkFileNames: "[name].mjs",
                 sourcemap: true,
                 format: "es",
             }

@@ -11,10 +11,12 @@ playSound() {
     fi
 }
 
+WITHDOCS=${DOCS:-1}
 hasProblem=$(mktemp /tmp/stellar-contracts.XXXXXX.hasProblem.txt)
+TF="%E seconds"
 
 ESBUILD="esbuild --format=esm --bundle --sourcemap --packages=external"
-
+startTime=$(date)
 # limits the window in which background jobs can stomp
 # on each others' output and mess up the terminal
 inBackground() {
@@ -26,7 +28,9 @@ inBackground() {
     DESCR=$1
     shift
     echo "  -- in background: $DESCR"
-    $* > $outFile 2> $errFile &
+    export TIMEFORMAT="  -- ${DESCR}: ${TF}" 
+    time $* > $outFile 2> $errFile &
+
     local pid=$!
     MAYBE_WITH_ERRORS=""
     wait $pid || {
@@ -50,13 +54,17 @@ ESBUILD_EXTERNALS=$(cat <<EOF
 --external:@helios-lang
 EOF
 )
+withDocs() {
+    [[ $WITHDOCS -eq 0 ]] || $*
+}
 
 rollupPluginDTS() {
     # stage 1: raw DTS to be fed to api-extractor
     tsc -p ./tsconfig.rollupPlugins.dts.json  &&
     # .d.ts only for now (do we need separate docs?)
     # stage 2: api extractor brings it all together
-    api-extractor run --local -c api-extractor.rollupPlugins.json 
+    # only if WITHDOCS isn't 0
+    withDocs api-extractor run --local -c api-extractor.rollupPlugins.json 
 }
 
 makeRollupPlugin() {
@@ -72,7 +80,7 @@ makeRollupPlugin() {
 
 programDTS() {
     tsc -p ./tsconfig.programWithCacheAPI.dts.json &&
-    api-extractor run --local  -c api-extractor.programWithCacheAPI.json 
+    withDocs api-extractor run --local  -c api-extractor.programWithCacheAPI.json 
 }
 
 makeHeliosProgramWithCacheAPI() {
@@ -91,7 +99,7 @@ makeHeliosProgramWithCacheAPI() {
 
 testingDTS() {
     tsc -p ./tsconfig.testing.dts.json &&
-    api-extractor run --local -c api-extractor.testing.json 
+    withDocs api-extractor run --local -c api-extractor.testing.json 
 }
 
 playSound swing &
@@ -133,7 +141,7 @@ if [ -s $hasProblem ]; then
 fi
 
 {
-    inBackground "main .d.ts & docs" \
+    withDocs inBackground "main .d.ts & docs" \
         api-extractor run --local  &
 
     inBackground "testing.d.ts" \
@@ -157,9 +165,10 @@ else
     playSound string &
     sleep 0.1 
     playSound string pitch 407 &
-    playSound string pitch 1018 
+    playSound string pitch -182
 fi
 
+echo "build started at  $startTime"
 echo "build finished at $(date)"
 # api-extractor run --local --verbose
 

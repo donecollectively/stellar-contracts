@@ -7,7 +7,6 @@
 import { Address } from '@helios-lang/ledger';
 import { anyState as anyState_2 } from './StellarTxnContext.js';
 import { anyState as anyState_3 } from '../StellarTxnContext.js';
-import { anyTypeDetails as anyTypeDetails_2 } from '../HeliosMetaTypes.js';
 import { AssetClass } from '@helios-lang/ledger';
 import { Assets } from '@helios-lang/ledger';
 import { BasicMintDelegate as BasicMintDelegate_2 } from './minting/BasicMintDelegate.js';
@@ -15,45 +14,28 @@ import { Bip32PrivateKey } from '@helios-lang/tx-utils';
 import { ByteArrayData } from '@helios-lang/uplc';
 import { BytesLike } from '@helios-lang/codec-utils';
 import { decodeUtf8 as bytesToText } from '@helios-lang/codec-utils';
-import type { CapoConfig as CapoConfig_2 } from 'src/CapoTypes.js';
 import { CardanoClient } from '@helios-lang/tx-utils';
 import { Cast } from '@helios-lang/contract-utils';
-import type { CharterDataLike as CharterDataLike_2 } from 'src/CapoTypes.js';
 import { Constructor as Constructor_2 } from '../helios/HeliosMetaTypes.js';
 import { ContractBasedDelegate as ContractBasedDelegate_2 } from './delegation/ContractBasedDelegate.js';
 import type { Cost } from '@helios-lang/uplc';
 import type { DataType } from '@helios-lang/compiler';
-import { DataType as DataType_2 } from 'node_modules/@helios-lang/compiler/types/typecheck/common.js';
 import { DelegateSetup as DelegateSetup_2 } from './delegation/RolesAndDelegates.js';
-import type { DelegateSetupWithoutMintDelegate } from 'src/CapoTypes.js';
 import { EmptyConstructor as EmptyConstructor_2 } from '../helios/HeliosMetaTypes.js';
 import { Emulator } from '@helios-lang/tx-utils';
 import { EmulatorGenesisTx } from '@helios-lang/tx-utils';
 import { EmulatorTx } from '@helios-lang/tx-utils';
-import { EnumMemberType } from 'node_modules/@helios-lang/compiler/types/typecheck/common.js';
-import type { EnumMemberType as EnumMemberType_2 } from '@helios-lang/compiler';
-import type { EnumTypeSchema } from '@helios-lang/type-utils';
-import type { FoundDatumUtxo as FoundDatumUtxo_2 } from 'src/CapoTypes.js';
-import { hasAddlTxns as hasAddlTxns_2 } from '../StellarTxnContext.js';
-import type { hasBootstrappedCapoConfig } from 'src/CapoTypes.js';
-import type { hasCharterRef as hasCharterRef_2 } from 'src/CapoTypes.js';
-import { hasSeedUtxo as hasSeedUtxo_2 } from '../StellarTxnContext.js';
-import type { hasSettingsRef as hasSettingsRef_2 } from 'src/CapoTypes.js';
-import type { hasUutContext as hasUutContext_2 } from 'src/CapoTypes.js';
+import type { EnumMemberType } from '@helios-lang/compiler';
 import { HeliosBundleClassWithCapo as HeliosBundleClassWithCapo_2 } from '../helios/HeliosMetaTypes.js';
-import { HeliosBundleTypeDetails as HeliosBundleTypeDetails_2 } from '../HeliosMetaTypes.js';
+import { HeliosProgramWithCacheAPI } from '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import { InlineTxOutputDatum } from '@helios-lang/ledger';
 import { IntData } from '@helios-lang/uplc';
 import { IntLike } from '@helios-lang/codec-utils';
 import { isActivity as isActivity_2 } from '../ActivityTypes.js';
-import type { MinimalCharterDataArgs as MinimalCharterDataArgs_2 } from 'src/CapoTypes.js';
-import type { MinimalDelegateLink as MinimalDelegateLink_2 } from 'src/CapoTypes.js';
-import type { MinterBaseMethods } from 'src/CapoTypes.js';
 import { MintingPolicyHash } from '@helios-lang/ledger';
-import type { MintUutActivityArgs as MintUutActivityArgs_2 } from 'src/CapoTypes.js';
+import type { MintingPolicyHashLike } from '@helios-lang/ledger';
 import { NetworkParams } from '@helios-lang/ledger';
 import { NetworkParamsHelper } from '@helios-lang/ledger';
-import type { NormalDelegateSetup } from 'src/CapoTypes.js';
 import type { Program } from '@helios-lang/compiler';
 import { PubKey } from '@helios-lang/ledger';
 import { PubKeyHash } from '@helios-lang/ledger';
@@ -67,7 +49,6 @@ import type { Site } from '@helios-lang/compiler-utils';
 import { Source } from '@helios-lang/compiler-utils';
 import { StakingAddress } from '@helios-lang/ledger';
 import { StellarDelegate as StellarDelegate_2 } from './delegation/StellarDelegate.js';
-import type { TestContext } from 'vitest';
 import { encodeUtf8 as textToBytes } from '@helios-lang/codec-utils';
 import { tokenPredicate as tokenPredicate_2 } from '../UtxoHelper.js';
 import { Tx } from '@helios-lang/ledger';
@@ -86,7 +67,6 @@ import { UplcRecord as UplcRecord_2 } from '../StellarContract.js';
 import { ValidatorHash } from '@helios-lang/ledger';
 import { Value } from '@helios-lang/ledger';
 import { valuesEntry as valuesEntry_2 } from './HeliosPromotedTypes.js';
-import type { VariantTypeSchema } from '@helios-lang/type-utils';
 import { Wallet } from '@helios-lang/tx-utils';
 import { WalletHelper } from '@helios-lang/tx-utils';
 
@@ -98,15 +78,7 @@ export const Activity: {
 };
 
 // @public
-export const ADA = 1000000n;
-
-// @public
 export function addrAsString(address: Address): string;
-
-// Warning: (ae-forgotten-export) The symbol "stellarTestHelperSubclass" needs to be exported by the entry point index.d.ts
-//
-// @public
-export function addTestContext<SC extends StellarContract<any>, ST_CONFIG extends configBase & ConfigFor<SC> = ConfigFor<SC>>(context: StellarTestContext<any, SC>, TestHelperClass: stellarTestHelperSubclass<SC>, stConfig?: ST_CONFIG, helperState?: TestHelperState<SC>): Promise<void>;
 
 // @public
 export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
@@ -190,24 +162,6 @@ export type BasicMinterParams = configBase & SeedTxnScriptParams & {
 // @public (undocumented)
 export const betterJsonSerializer: (key: any, value: any) => any;
 
-// Warning: (ae-forgotten-export) The symbol "BundleBasedGenerator" needs to be exported by the entry point index.d.ts
-//
-// @public
-export class BundleTypeGenerator extends BundleBasedGenerator {
-    // (undocumented)
-    createAllTypesSource(className: string, parentClassName: string, inputFile: string): string;
-    // Warning: (ae-forgotten-export) The symbol "enumTypeDetails" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    generateEnumTypeSource(name: string, typeInfo: enumTypeDetails): string;
-    // (undocumented)
-    generateNamedDependencyTypes(): string;
-    // Warning: (ae-forgotten-export) The symbol "typeDetails" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    generateOtherNamedTypeSource(name: string, typeInfo: typeDetails): string;
-}
-
 // @public
 export function byteArrayAsString(ba: ByteArrayData): string;
 
@@ -216,7 +170,9 @@ export function byteArrayListAsString(items: ByteArrayData[], joiner?: string): 
 
 export { bytesToText }
 
-// @public (undocumented)
+// Warning: (ae-internal-missing-underscore) The name "callWith" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal (undocumented)
 export type callWith<ARGS, T extends DataBridge> = T & ((x: ARGS) => ReturnType<T["ᱺᱺcast"]["toUplcData"]>);
 
 // @public
@@ -457,9 +413,9 @@ export abstract class Capo<SELF extends Capo<any>> extends StellarContract<CapoC
     txnCreateOffchainDelegateLink<RoLabel extends string & keyof SELF["_delegateRoles"], DT extends StellarDelegate = ContractBasedDelegate>(tcx: hasUutContext<RoLabel>, roleLabel: RoLabel, delegateInfo: OffchainPartialDelegateLink): Promise<ConfiguredDelegate<DT> & Required<OffchainPartialDelegateLink>>;
     // (undocumented)
     txnKeepCharterToken<TCX extends StellarTxnContext>(tcx: TCX, datum: TxOutputDatum): TCX;
-    // Warning: (ae-forgotten-export) The symbol "NormalDelegateSetup_2" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-forgotten-export) The symbol "DelegateSetupWithoutMintDelegate_2" needs to be exported by the entry point index.d.ts
-    txnMintingUuts<const purposes extends string, existingTcx extends hasSeedUtxo, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], options: NormalDelegateSetup_2 | DelegateSetupWithoutMintDelegate_2, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    // Warning: (ae-forgotten-export) The symbol "NormalDelegateSetup" needs to be exported by the entry point index.d.ts
+    // Warning: (ae-forgotten-export) The symbol "DelegateSetupWithoutMintDelegate" needs to be exported by the entry point index.d.ts
+    txnMintingUuts<const purposes extends string, existingTcx extends hasSeedUtxo, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], options: NormalDelegateSetup | DelegateSetupWithoutMintDelegate, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     // Warning: (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
     txnMkAddlRefScriptTxn<TCX extends StellarTxnContext<anyState>, RETURNS extends hasAddlTxns<TCX> = TCX extends hasAddlTxns<any> ? TCX : hasAddlTxns<TCX>>(tcx: TCX, scriptName: string, script: anyUplcProgram): Promise<RETURNS>;
     txnMustGetSeedUtxo(tcx: StellarTxnContext, purpose: string, tokenNames: string[]): Promise<TxInput | never>;
@@ -527,7 +483,7 @@ export type capoDelegateConfig = configBase & {
     addrHint: Address[];
 };
 
-// @public (undocumented)
+// @public
 export class CapoHeliosBundle extends HeliosScriptBundle {
     // (undocumented)
     get bridgeClassName(): string;
@@ -545,6 +501,8 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     scripts?: any;
 }
 
+// Warning: (ae-forgotten-export) The symbol "MinterBaseMethods" needs to be exported by the entry point index.d.ts
+//
 // @public
 export class CapoMinter extends StellarContract<BasicMinterParams> implements MinterBaseMethods {
     // (undocumented)
@@ -595,47 +553,6 @@ export class CapoMinter extends StellarContract<BasicMinterParams> implements Mi
     txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[], mintDelegate: BasicMintDelegate, mintDgtRedeemer: isActivity, skipReturningDelegate?: "skipDelegateReturn"): Promise<TCX>;
 }
 
-// @public
-export abstract class CapoTestHelper<SC extends Capo<any>> extends StellarTestHelper<SC> {
-    // Warning: (ae-forgotten-export) The symbol "SubmitOptions" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    bootstrap(args?: Partial<MinimalCharterDataArgs_2>, submitOptions?: SubmitOptions): Promise<SC>;
-    // (undocumented)
-    abstract bootstrapSettings(): Promise<any>;
-    // (undocumented)
-    get capo(): SC;
-    // (undocumented)
-    checkDelegateScripts(args?: Partial<MinimalCharterDataArgs_2>): Promise<void>;
-    // (undocumented)
-    extraBootstrapping(args?: Partial<MinimalCharterDataArgs_2>): Promise<SC>;
-    // (undocumented)
-    findOrCreateSnapshot(snapshotName: string, actorName: string, contentBuilder: () => Promise<StellarTxnContext<any>>): Promise<SC>;
-    // (undocumented)
-    static hasNamedSnapshot(snapshotName: string, actorName: string): (target: any, propertyKey: string, descriptor: PropertyDescriptor) => PropertyDescriptor;
-    // (undocumented)
-    hasSnapshot(snapshotName: string): boolean;
-    // (undocumented)
-    initialize({ randomSeed, }?: {
-        randomSeed?: number;
-    }, args?: Partial<MinimalCharterDataArgs_2>): Promise<SC>;
-    // (undocumented)
-    loadSnapshot(snapName: string): void;
-    // (undocumented)
-    abstract mintCharterToken(args?: Partial<MinimalCharterDataArgs_2>, submitOptions?: SubmitOptions): Promise<hasUutContext_2<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedCapoConfig & hasAddlTxns<any>>;
-    // (undocumented)
-    abstract mkDefaultCharterArgs(): Partial<MinimalCharterDataArgs_2>;
-    mkTcx<T extends anyState = anyState>(txnName?: string): StellarTxnContext<T>;
-    // (undocumented)
-    get ready(): boolean;
-    // (undocumented)
-    restoreFrom(snapshotName: string): Promise<SC>;
-    // (undocumented)
-    reusableBootstrap(snap?: string): Promise<any>;
-    // (undocumented)
-    snapshot(snapshotName: string): void;
-}
-
 // Warning: (ae-internal-missing-underscore) The name "CapoWithoutSettings" should be prefixed with an underscore because the declaration is marked as @internal
 //
 // @internal (undocumented)
@@ -677,7 +594,7 @@ export type ConfiguredDelegate<DT extends StellarDelegate> = {
     delegateClass: stellarSubclass<DT>;
     delegate: DT;
     roleName: string;
-    fullCapoDgtConfig: Partial<CapoConfig_2> & capoDelegateConfig;
+    fullCapoDgtConfig: Partial<CapoConfig> & capoDelegateConfig;
 } & OffchainPartialDelegateLink;
 
 // @public
@@ -687,7 +604,7 @@ export class ContractBasedDelegate extends StellarDelegate {
     activityDeletingDelegatedData(recId: string | number[]): isActivity;
     // (undocumented)
     activityMultipleDelegateActivities(...activities: isActivity[]): isActivity;
-    activityReplacingMe({ seed, purpose, }: Omit<MintUutActivityArgs_2, "purposes"> & {
+    activityReplacingMe({ seed, purpose, }: Omit<MintUutActivityArgs, "purposes"> & {
         purpose: string;
     }): void;
     activityRetiring(): void;
@@ -715,7 +632,7 @@ export class ContractBasedDelegate extends StellarDelegate {
     getContractScriptParamsUplc(config: capoDelegateConfig): UplcRecord_2<capoDelegateConfig>;
     get isSpendDelegate(): boolean;
     // (undocumented)
-    mkCapoLifecycleActivity(capoLifecycleActivityName: "CreatingDelegate" | "ActivatingDelegate", { seed, purpose, ...otherArgs }: Omit<MintUutActivityArgs_2, "purposes"> & {
+    mkCapoLifecycleActivity(capoLifecycleActivityName: "CreatingDelegate" | "ActivatingDelegate", { seed, purpose, ...otherArgs }: Omit<MintUutActivityArgs, "purposes"> & {
         purpose?: string;
     }): isActivity;
     // (undocumented)
@@ -751,15 +668,19 @@ export class ContractBasedDelegate extends StellarDelegate {
     // (undocumented)
     get scriptDatumName(): string;
     // (undocumented)
-    tcxWithCharterRef<TCX extends StellarTxnContext | hasCharterRef_2>(tcx: TCX): Promise<TCX & hasCharterRef_2>;
+    tcxWithCharterRef<TCX extends StellarTxnContext | hasCharterRef>(tcx: TCX): Promise<TCX & hasCharterRef>;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
 }
 
 // @public (undocumented)
 export class ContractDataBridge {
     constructor();
+    // Warning: (ae-incompatible-release-tags) The symbol "activity" is marked as @public, but its signature references "DataBridge" which is marked as @internal
+    //
     // (undocumented)
     activity: DataBridge;
+    // Warning: (ae-incompatible-release-tags) The symbol "datum" is marked as @public, but its signature references "DataBridge" which is marked as @internal
+    //
     // (undocumented)
     datum: DataBridge | undefined;
     // (undocumented)
@@ -774,6 +695,8 @@ export class ContractDataBridge {
     readDatum: readsUplcData<any> | undefined;
     // (undocumented)
     reader: DataBridgeReaderClass | undefined;
+    // Warning: (ae-incompatible-release-tags) The symbol "types" is marked as @public, but its signature references "DataBridge" which is marked as @internal
+    //
     // (undocumented)
     types: Record<string, DataBridge | ((x: any) => UplcData)>;
 }
@@ -803,8 +726,9 @@ export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
 }
 
 // Warning: (ae-forgotten-export) The symbol "DataBridge_base" needs to be exported by the entry point index.d.ts
+// Warning: (ae-internal-missing-underscore) The name "DataBridge" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @public (undocumented)
+// @internal (undocumented)
 export class DataBridge extends DataBridge_base {
     constructor(options?: DataBridgeOptions);
     // (undocumented)
@@ -833,84 +757,9 @@ export class DataBridge extends DataBridge_base {
     protected ᱺᱺschema: TypeSchema;
 }
 
-// Warning: (ae-forgotten-export) The symbol "TypeGenHooks" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "dataBridgeTypeInfo" needs to be exported by the entry point index.d.ts
+// Warning: (ae-internal-missing-underscore) The name "DataBridgeOptions" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @public
-export class dataBridgeGenerator extends BundleBasedGenerator implements TypeGenHooks<dataBridgeTypeInfo> {
-    // (undocumented)
-    additionalCastMemberDefs: Record<string, string>;
-    // (undocumented)
-    gatherHelperClasses(): string;
-    // (undocumented)
-    generateDataBridge(inputFile: string, projectName?: string): string;
-    // (undocumented)
-    generateDataReaderClass(className: string): string;
-    // (undocumented)
-    getEnumPathExpr(variantDetails: variantTypeDetails<any>, quoted?: boolean): string;
-    // (undocumented)
-    getMoreEnumInfo?(typeDetails: enumTypeDetails): dataBridgeTypeInfo;
-    // (undocumented)
-    getMoreStructInfo?(typeDetails: typeDetails): dataBridgeTypeInfo;
-    // (undocumented)
-    getMoreTypeInfo?(details: typeDetails): dataBridgeTypeInfo;
-    // Warning: (ae-forgotten-export) The symbol "variantTypeDetails" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    getMoreVariantInfo?(details: variantTypeDetails): dataBridgeTypeInfo;
-    // (undocumented)
-    helperClasses: Record<string, string>;
-    // (undocumented)
-    includeActivityCreator(): string;
-    // (undocumented)
-    includeAllHelperClasses(): string;
-    // (undocumented)
-    includeCastMemberInitializers(): string;
-    // (undocumented)
-    includeDataReaderHelper(): string;
-    // (undocumented)
-    includeDatumAccessors(): string;
-    // (undocumented)
-    includeEnumReaders(): string;
-    // (undocumented)
-    includeEnumTypeAccessors(): string;
-    // (undocumented)
-    includeNamedSchemas(): string;
-    // (undocumented)
-    includeScriptNamedTypes(inputFile: string): string;
-    // (undocumented)
-    includeStructReaders(): string;
-    // (undocumented)
-    includeStructTypeAccessors(): string;
-    // (undocumented)
-    includeTypeAccessors(): string;
-    // (undocumented)
-    includeUtilityFunctions(): string;
-    // (undocumented)
-    mkEnumHelperClass(typeDetails: fullEnumTypeDetails, isActivity?: boolean, isNested?: "isNested"): string;
-    // (undocumented)
-    mkEnumVariantAccessors(enumDetails: fullEnumTypeDetails, isDatum: boolean, isActivity: boolean, isNested?: "isNested"): string;
-    // Warning: (ae-forgotten-export) The symbol "anyTypeDetails" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    mkNestedEnumAccessor(enumTypeDetails: fullEnumTypeDetails, variantDetails: variantTypeDetails<dataBridgeTypeInfo>, variantName: string, fieldName: string, oneField: anyTypeDetails<dataBridgeTypeInfo>, isInActivity?: boolean): string;
-    // Warning: (ae-forgotten-export) The symbol "fullTypeDetails" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    mkOtherDataHelperClass(helperClassName: string, details: fullTypeDetails): string;
-    // (undocumented)
-    mkStructHelperClass(typeDetails: fullTypeDetails): string;
-    // (undocumented)
-    namedSchemas: Record<string, TypeSchema>;
-    // Warning: (ae-forgotten-export) The symbol "fullEnumTypeDetails" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    nestedHelperClassName(typeDetails: fullEnumTypeDetails, isActivity: boolean): string;
-    // (undocumented)
-    get redeemerTypeName(): string;
-}
-
-// @public (undocumented)
+// @internal (undocumented)
 export type DataBridgeOptions = {
     isActivity?: boolean;
     isNested?: boolean;
@@ -935,42 +784,14 @@ export function datumSummary(d: TxOutputDatum | null | undefined): string;
 // @internal
 export function debugMath<T extends number>(callback: () => T): T;
 
-// Warning: (ae-incompatible-release-tags) The symbol "DefaultCapoTestHelper" is marked as @public, but its signature references "CapoWithoutSettings" which is marked as @internal
-//
-// @public
-export class DefaultCapoTestHelper<CAPO extends Capo<any> = CapoWithoutSettings> extends CapoTestHelper<CAPO> {
-    // (undocumented)
-    bootstrapSettings(): Promise<any[] | undefined>;
-    // (undocumented)
-    checkDelegateScripts(args?: Partial<MinimalCharterDataArgs_2>): Promise<void>;
-    static forCapoClass<CAPO extends Capo<any>>(s: stellarSubclass<CAPO>): DefaultCapoTestHelperClass<CAPO>;
-    // (undocumented)
-    mintCharterToken(args?: Partial<MinimalCharterDataArgs_2>, submitOptions?: SubmitOptions): Promise<hasBootstrappedCapoConfig & hasAddlTxns_2<hasBootstrappedCapoConfig> & hasUutContext_2<"mintDelegate" | "capoGov" | "govAuthority" | "mintDgt" | "setting"> & hasUutContext_2<"mintDelegate" | "capoGov" | "spendDelegate" | "govAuthority" | "mintDgt" | "spendDgt"> & hasSeedUtxo_2>;
-    // (undocumented)
-    mkCharterSpendTx(): Promise<StellarTxnContext>;
-    // (undocumented)
-    mkDefaultCharterArgs(): MinimalCharterDataArgs_2;
-    // (undocumented)
-    setDefaultActor(): Promise<void>;
-    // (undocumented)
-    setupActors(): Promise<void>;
-    // (undocumented)
-    get stellarClass(): stellarSubclass<CAPO>;
-    // (undocumented)
-    updateCharter(args: CharterDataLike_2, submitSettings?: SubmitOptions): Promise<StellarTxnContext>;
-}
-
-// Warning: (ae-forgotten-export) The symbol "canHaveRandomSeed" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export type DefaultCapoTestHelperClass<SC extends Capo<any>> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC>;
-
 // Warning: (ae-internal-missing-underscore) The name "DefaultCharterDatumArgs" should be prefixed with an underscore because the declaration is marked as @internal
 //
 // @internal @deprecated (undocumented)
 export type DefaultCharterDatumArgs = CharterDataLike;
 
-// @public (undocumented)
+// Warning: (ae-internal-missing-underscore) The name "defaultNoDefinedModuleName" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal (undocumented)
 export const defaultNoDefinedModuleName = "\u2039default-needs-override\u203A";
 
 // Warning: (ae-forgotten-export) The symbol "DelegateTypes" needs to be exported by the entry point index.d.ts
@@ -1012,7 +833,7 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     abstract exampleData(): minimalData<TLike>;
     findRecords<THIS extends DelegatedDataContract<any, any>, ID extends undefined | string | UutName | number[]>(this: THIS, options?: {
         id?: T;
-    }): Promise<ID extends undefined ? FoundDatumUtxo_2<T, TLike>[] : FoundDatumUtxo_2<T, TLike>>;
+    }): Promise<ID extends undefined ? FoundDatumUtxo<T, TLike>[] : FoundDatumUtxo<T, TLike>>;
     // (undocumented)
     getReturnAddress(): Address;
     // (undocumented)
@@ -1022,26 +843,28 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     // Warning: (ae-forgotten-export) The symbol "DgDataCreationOptions" needs to be exported by the entry point index.d.ts
     mkTxnCreateRecord<TCX extends StellarTxnContext>(options: DgDataCreationOptions<TLike>, tcx?: TCX): Promise<TCX>;
     // Warning: (ae-forgotten-export) The symbol "DgDataUpdateOptions" needs to be exported by the entry point index.d.ts
-    mkTxnUpdateRecord<TCX extends StellarTxnContext>(this: DelegatedDataContract<any, any>, txnName: string, item: FoundDatumUtxo_2<T, any>, options: DgDataUpdateOptions<TLike>, tcx?: TCX): Promise<TCX>;
+    mkTxnUpdateRecord<TCX extends StellarTxnContext>(this: DelegatedDataContract<any, any>, txnName: string, item: FoundDatumUtxo<T, any>, options: DgDataUpdateOptions<TLike>, tcx?: TCX): Promise<TCX>;
     needsGovAuthority: boolean;
     // (undocumented)
     abstract get recordTypeName(): string;
     // (undocumented)
     abstract requirements(): ReqtsMap<any, any> | ReqtsMap<any, never>;
     // (undocumented)
-    returnUpdatedRecord<TCX extends StellarTxnContext & hasCharterRef_2>(tcx: TCX, returnedValue: Value, updatedRecord: TLike): TCX;
+    returnUpdatedRecord<TCX extends StellarTxnContext & hasCharterRef>(tcx: TCX, returnedValue: Value, updatedRecord: TLike): TCX;
     // (undocumented)
     scriptBundle(): CapoDelegateBundle;
     // Warning: (ae-forgotten-export) The symbol "DelegatedDatumIdPrefix" needs to be exported by the entry point index.d.ts
     // Warning: (ae-forgotten-export) The symbol "CoreDgDataCreationOptions" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    txnCreatingRecord<TCX extends StellarTxnContext & hasCharterRef_2 & hasSeedUtxo & hasUutContext_2<DelegatedDatumIdPrefix<this>>>(tcx: TCX, options: CoreDgDataCreationOptions<TLike>): Promise<TCX>;
+    txnCreatingRecord<TCX extends StellarTxnContext & hasCharterRef & hasSeedUtxo & hasUutContext<DelegatedDatumIdPrefix<this>>>(tcx: TCX, options: CoreDgDataCreationOptions<TLike>): Promise<TCX>;
     // Warning: (ae-forgotten-export) The symbol "hasRecId" needs to be exported by the entry point index.d.ts
     // Warning: (ae-forgotten-export) The symbol "CoreDgDataUpdateOptions" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    txnUpdatingRecord<TCX extends StellarTxnContext & hasCharterRef_2>(tcx: TCX, id: hasRecId, item: FoundDatumUtxo_2<T, any>, options: CoreDgDataUpdateOptions<TLike>): Promise<TCX>;
+    txnUpdatingRecord<TCX extends StellarTxnContext & hasCharterRef>(tcx: TCX, id: hasRecId, item: FoundDatumUtxo<T, any>, options: CoreDgDataUpdateOptions<TLike>): Promise<TCX>;
+    // Warning: (ae-incompatible-release-tags) The symbol "usesSeedActivity" is marked as @public, but its signature references "SeedActivityArg" which is marked as @internal
+    //
     // @deprecated
     usesSeedActivity<SA extends seedActivityFunc<any, any>>(a: SA, seedPlaceholder: "...seed", ...args: SeedActivityArg<SA>): void;
     // Warning: (ae-forgotten-export) The symbol "UpdateActivityArgs" needs to be exported by the entry point index.d.ts
@@ -1078,7 +901,9 @@ export type DelegateSetup<DT extends DelegateTypes, SC extends (DT extends "dgDa
 // @public @deprecated (undocumented)
 export type DgDataCreationAttrs<T extends DelegatedDataContract<any, any>> = Omit<DgDataTypeLike<T>, "id" | "type">;
 
-// @public (undocumented)
+// Warning: (ae-internal-missing-underscore) The name "dgtStateKey" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal (undocumented)
 export type dgtStateKey<N extends string, PREFIX extends string = "dgPol"> = `${PREFIX}${Capitalize<N>}`;
 
 // @public
@@ -1088,11 +913,13 @@ export function displayTokenName(nameBytesOrString: string | number[]): string;
 export function dumpAny(x: undefined | Tx | StellarTxnContext | Address | MintingPolicyHash | Value | TxOutputId | TxOutput | TxOutput[] | TxInput | TxInput[] | TxId | number[] | ByteArrayData | ByteArrayData[], networkParams?: NetworkParams, forJson?: boolean): any;
 
 // Warning: (ae-forgotten-export) The symbol "isDatum" needs to be exported by the entry point index.d.ts
+// Warning: (ae-incompatible-release-tags) The symbol "EnumBridge" is marked as @public, but its signature references "DataBridge" which is marked as @internal
 //
 // @public
 export class EnumBridge<TYPE extends isActivity | isDatum | JustAnEnum = JustAnEnum, uplcReturnType = isActivity extends TYPE ? {
     redeemer: UplcData;
 } : UplcData> extends DataBridge {
+    // Warning: (ae-incompatible-release-tags) The symbol "__constructor" is marked as @public, but its signature references "DataBridgeOptions" which is marked as @internal
     constructor(options?: DataBridgeOptions);
     // (undocumented)
     protected mkUplcData(value: any, enumPathExpr: string): uplcReturnType;
@@ -1120,8 +947,9 @@ export type FoundUut = {
 
 // Warning: (ae-forgotten-export) The symbol "IFISNEVER" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "NeedsSingleArgError" needs to be exported by the entry point index.d.ts
+// Warning: (ae-internal-missing-underscore) The name "funcWithImpliedSeed" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @public (undocumented)
+// @internal (undocumented)
 export type funcWithImpliedSeed<FACTORY_FUNC extends seedActivityFunc<any, any>> = IFISNEVER<SeedActivityArg<FACTORY_FUNC>, () => SeedActivity<FACTORY_FUNC>, SeedActivityArg<FACTORY_FUNC> extends NeedsSingleArgError ? never : (fields: SeedActivityArg<FACTORY_FUNC>) => SeedActivity<FACTORY_FUNC>>;
 
 // Warning: (ae-forgotten-export) The symbol "UnspecializedDelegateBridge" needs to be exported by the entry point index.d.ts
@@ -1159,7 +987,7 @@ export type GenericDelegateDatum = Pick<ErgoDelegateDatum, "Cip68RefToken" | "Is
     };
 };
 
-// @public (undocumented)
+// @public
 export function getSeed(arg: hasSeed | TxOutputId): TxOutputId;
 
 // @public
@@ -1191,6 +1019,8 @@ export type hasCharterRef = StellarTxnContext<{
     charterData: CharterData;
 } & anyState>;
 
+// Warning: (ae-incompatible-release-tags) The symbol "hasNamedDelegate" is marked as @public, but its signature references "dgtStateKey" which is marked as @internal
+//
 // @public (undocumented)
 export type hasNamedDelegate<DT extends StellarDelegate, N extends string, PREFIX extends string = "namedDelegate"> = StellarTxnContext<anyState & {
     [k in dgtStateKey<N, PREFIX>]: ConfiguredDelegate<DT> & ErgoRelativeDelegateLink;
@@ -1221,7 +1051,7 @@ export type hasSettingsRef<SETTINGS_TYPE extends AnyDataTemplate<any, any> = Any
 // @public
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<hasAllUuts<uutEntries>>;
 
-// @public (undocumented)
+// @public
 export abstract class HeliosScriptBundle {
     constructor();
     // (undocumented)
@@ -1262,7 +1092,7 @@ export abstract class HeliosScriptBundle {
     // (undocumented)
     get program(): Program;
     // (undocumented)
-    _program?: Program;
+    _program?: HeliosProgramWithCacheAPI;
     redeemerTypeName?: string;
     // Warning: (ae-forgotten-export) The symbol "HeliosBundleClassWithCapo" needs to be exported by the entry point index.d.ts
     static usingCapoBundleClass<CB extends CapoBundleClass>(c: CB): HeliosBundleClassWithCapo;
@@ -1277,18 +1107,15 @@ export type HeliosScriptSettings<ConfigType extends configBase> = {
 // @public
 export function hexToPrintableString(hexStr: string): string;
 
-// @public (undocumented)
+// Warning: (ae-internal-missing-underscore) The name "impliedSeedActivityMaker" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal (undocumented)
 export function impliedSeedActivityMaker<FACTORY_FUNC extends seedActivityFunc<any, any>, IMPLIED_SEED_FUNC extends funcWithImpliedSeed<FACTORY_FUNC> = funcWithImpliedSeed<FACTORY_FUNC>, ARG extends SeedActivityArg<FACTORY_FUNC> = SeedActivityArg<FACTORY_FUNC>>(host: {
     getSeed(x: hasSeed): TxOutputId;
 }, factoryFunc: FACTORY_FUNC): IMPLIED_SEED_FUNC;
 
 // @public (undocumented)
 export type InlineDatum = InlineTxOutputDatum;
-
-// Warning: (ae-internal-missing-underscore) The name "insufficientInputError" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal (undocumented)
-export const insufficientInputError: RegExp;
 
 // Warning: (ae-forgotten-export) The symbol "intersectedElements" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "EachUnionElement" needs to be exported by the entry point index.d.ts
@@ -1333,7 +1160,7 @@ export interface MinimalCharterDataArgs extends configBase {
     spendInvariants: OffchainPartialDelegateLink[];
 }
 
-// @public (undocumented)
+// @public
 export type minimalData<T extends AnyDataTemplate<any, anyDatumProps>> = Omit<T, "id" | "type">;
 
 // @public
@@ -1345,7 +1172,9 @@ export type MintUutActivityArgs = {
     purposes: string[];
 };
 
-// @public (undocumented)
+// Warning: (ae-internal-missing-underscore) The name "mkDgtStateKey" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal (undocumented)
 export function mkDgtStateKey<const N extends string, const PREFIX extends string = "dgPoi">(n: N, p?: PREFIX): dgtStateKey<N, PREFIX>;
 
 // @public
@@ -1371,19 +1200,6 @@ export type NamedPolicyCreationOptions<thisType extends Capo<any>, DT extends St
 //
 // @public (undocumented)
 export type Nested = typeof Nested_2;
-
-// @alpha
-export type NetworkSnapshot = {
-    seed: number;
-    netNumber: number;
-    name: string;
-    slot: number;
-    genesis: EmulatorGenesisTx[];
-    blocks: EmulatorTx[][];
-    allUtxos: Record<string, TxInput>;
-    consumedUtxos: Set<string>;
-    addressUtxos: Record<string, TxInput[]>;
-};
 
 // Warning: (ae-forgotten-export) The symbol "NotNested_2" needs to be exported by the entry point index.d.ts
 //
@@ -1428,9 +1244,12 @@ export type RequirementEntry<reqtName extends string, reqts extends string, inhe
 
 // @public (undocumented)
 export class SeedActivity<FactoryFunc extends seedActivityFunc<any, any>> {
+    // Warning: (ae-incompatible-release-tags) The symbol "__constructor" is marked as @public, but its signature references "SeedActivityArg" which is marked as @internal
     constructor(host: {
         getSeed(x: hasSeed): TxOutputId;
     }, factoryFunc: FactoryFunc, arg: SeedActivityArg<FactoryFunc>);
+    // Warning: (ae-incompatible-release-tags) The symbol "arg" is marked as @public, but its signature references "SeedActivityArg" which is marked as @internal
+    //
     // (undocumented)
     arg: SeedActivityArg<FactoryFunc>;
     // (undocumented)
@@ -1438,8 +1257,9 @@ export class SeedActivity<FactoryFunc extends seedActivityFunc<any, any>> {
 }
 
 // Warning: (ae-forgotten-export) The symbol "seedFunc" needs to be exported by the entry point index.d.ts
+// Warning: (ae-internal-missing-underscore) The name "SeedActivityArg" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @public (undocumented)
+// @internal (undocumented)
 export type SeedActivityArg<SA extends seedFunc<any, any>> = SA extends seedFunc<SA, infer ARG, infer RV> ? ARG : never;
 
 // Warning: (ae-forgotten-export) The symbol "TypeError_2" needs to be exported by the entry point index.d.ts
@@ -1461,7 +1281,7 @@ export type SeedTxnScriptParams = {
 
 // Warning: (ae-forgotten-export) The symbol "DelegateActivityHelper" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export type SomeDgtActivityHelper = EnumBridge<isActivity> & Pick<DelegateActivityHelper, "CapoLifecycleActivities" | "DelegateLifecycleActivities" | "CreatingDelegatedData" | "UpdatingDelegatedData" | "DeletingDelegatedData" | "MultipleDelegateActivities"> & {
     SpendingActivities: EnumBridge<isActivity> & {
         isAbstract?: "NOTE: use a specific delegate to get concrete delegate activities";
@@ -1536,7 +1356,7 @@ export class StellarContract<ConfigType extends configBase> {
     _dataBridge?: ContractDataBridge;
     dataBridgeClass: AbstractNew<ContractDataBridge> | undefined;
     // (undocumented)
-    get datumType(): DataType_2;
+    get datumType(): DataType;
     // (undocumented)
     static get defaultParams(): {};
     // (undocumented)
@@ -1582,7 +1402,7 @@ export class StellarContract<ConfigType extends configBase> {
     get offchain(): possiblyAbstractContractBridgeType<this>["reader"];
     // Warning: (ae-forgotten-export) The symbol "possiblyAbstractContractBridgeType" needs to be exported by the entry point index.d.ts
     get onchain(): possiblyAbstractContractBridgeType<this>;
-    get onChainActivitiesType(): DataType_2;
+    get onChainActivitiesType(): DataType;
     get onChainDatumType(): DataType;
     get onChainTypes(): Program["userTypes"][string];
     // (undocumented)
@@ -1669,237 +1489,11 @@ export type StellarFactoryArgs<CT extends configBase> = {
 };
 
 // @public
-export class StellarHeliosProject {
-    constructor();
-    // Warning: (ae-forgotten-export) The symbol "BundleStatusEntry" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    bundleEntries: Map<string, BundleStatusEntry>;
-    // (undocumented)
-    capoBundle: HeliosScriptBundle | undefined;
-    // (undocumented)
-    static findProjectRoot(): string;
-    // (undocumented)
-    generateBundleTypes(oneFile: string): void;
-    // (undocumented)
-    hasBundleClass(filename: string): any;
-    // (undocumented)
-    _isSC: boolean | undefined;
-    // (undocumented)
-    isStellarContracts(): boolean;
-    // (undocumented)
-    loadBundleWithClass(absoluteFilename: string, bundleClass: typeof HeliosScriptBundle, harmlessSecondCapo?: boolean): void;
-    // (undocumented)
-    normalizeFilePath(filename: string): string;
-    // (undocumented)
-    projectRoot: string;
-    // (undocumented)
-    replaceWithNewCapo(absoluteFilename: string, newCapoClass: typeof HeliosScriptBundle): StellarHeliosProject;
-    // (undocumented)
-    static root: string;
-    // (undocumented)
-    writeDataBridgeCode(oneFilename: string, bundleEntry: BundleStatusEntry): void;
-    // (undocumented)
-    writeIfUnchanged(filename: string, source: string): string | undefined;
-    // (undocumented)
-    writeTypeInfo(filename: string, bundleEntry: BundleStatusEntry): void;
-}
-
-// @alpha
-export class StellarNetworkEmulator implements Emulator {
-    constructor(seed?: number, { params }?: {
-        params: NetworkParams;
-    });
-    _addressUtxos: Record<string, TxInput[]>;
-    _allUtxos: Record<string, TxInput>;
-    // (undocumented)
-    blocks: EmulatorTx[][];
-    _consumedUtxos: Set<string>;
-    createUtxo(wallet: SimpleWallet, lovelace: bigint, assets?: Assets): TxOutputId;
-    // Warning: (ae-forgotten-export) The symbol "SimpleWallet_stellar" needs to be exported by the entry point index.d.ts
-    //
-    // @deprecated
-    createWallet(lovelace?: bigint, assets?: Assets): SimpleWallet_stellar;
-    // (undocumented)
-    currentSlot: number;
-    // (undocumented)
-    dump(): void;
-    // (undocumented)
-    fromSnapshot: string;
-    // (undocumented)
-    genesis: EmulatorGenesisTx[];
-    getUtxo(id: TxOutputId): Promise<TxInput>;
-    // (undocumented)
-    getUtxos(address: Address): Promise<TxInput[]>;
-    // (undocumented)
-    id: number;
-    // (undocumented)
-    initHelper(): NetworkParamsHelper;
-    // (undocumented)
-    isConsumed(utxo: any): boolean;
-    // (undocumented)
-    isMainnet(): boolean;
-    // (undocumented)
-    loadSnapshot(snapshot: NetworkSnapshot): void;
-    // (undocumented)
-    mempool: EmulatorTx[];
-    // (undocumented)
-    mulberry32: () => number;
-    // (undocumented)
-    netPHelper: NetworkParamsHelper;
-    get now(): number;
-    // (undocumented)
-    get parameters(): Promise<NetworkParams>;
-    // (undocumented)
-    get parametersSync(): {
-        refTipSlot: number;
-        refTipTime: number;
-        txFeeFixed: number;
-        txFeePerByte: number;
-        exMemFeePerUnit: number;
-        exCpuFeePerUnit: number;
-        utxoDepositPerByte: number;
-        refScriptsFeePerByte: number;
-        collateralPercentage: number;
-        maxCollateralInputs: number;
-        maxTxExMem: number;
-        maxTxExCpu: number;
-        maxTxSize: number;
-        secondsPerSlot: number;
-        stakeAddrDeposit: number;
-        costModelParamsV1: number[];
-        costModelParamsV2: number[];
-        costModelParamsV3: number[];
-    };
-    // (undocumented)
-    params: NetworkParams;
-    // (undocumented)
-    pushBlock(txs: EmulatorTx[]): void;
-    // (undocumented)
-    snapshot(snapName: string): NetworkSnapshot;
-    // (undocumented)
-    submitTx(tx: Tx, logger?: UplcLogger): Promise<TxId>;
-    tick(nSlots: IntLike): void;
-    get txIds(): TxId[];
-    // (undocumented)
-    utxoTotals(utxos: TxInput[]): Value;
-    // (undocumented)
-    warnMempool(): void;
-}
-
-// @public
 export type stellarSubclass<S extends StellarContract<any>> = (new (setup: SetupDetails, ...args: any[]) => S) & {
     defaultParams: Partial<ConfigFor<S>>;
     createWith(args: StellarFactoryArgs<ConfigFor<S>>): Promise<S>;
     parseConfig(rawJsonConfig: any): any;
 };
-
-// @public
-export interface StellarTestContext<HTH extends StellarTestHelper<SC>, SC extends StellarContract<any> = HTH extends StellarTestHelper<infer iSC> ? iSC : never> extends canHaveRandomSeed, TestContext {
-    // (undocumented)
-    h: HTH;
-    // Warning: (ae-forgotten-export) The symbol "canSkipSetup" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    initHelper(config: Partial<ConfigFor<SC>> & canHaveRandomSeed & canSkipSetup, helperState?: TestHelperState<SC>): Promise<StellarTestHelper<SC>>;
-    // (undocumented)
-    get strella(): SC;
-}
-
-// @public
-export abstract class StellarTestHelper<SC extends StellarContract<any>> {
-    constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup, helperState?: TestHelperState<SC>);
-    // (undocumented)
-    actorContext: ActorContext<SimpleWallet_stellar>;
-    // (undocumented)
-    get actorName(): string;
-    // (undocumented)
-    protected _actorName: string;
-    // Warning: (ae-forgotten-export) The symbol "actorMap" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    actors: actorMap;
-    addActor(roleName: string, walletBalance: bigint, ...moreUtxos: bigint[]): Wallet;
-    // (undocumented)
-    address?: Address;
-    // (undocumented)
-    addrRegistry: Record<string, string>;
-    // (undocumented)
-    advanceNetworkTimeForTx(tcx: StellarTxnContext, futureDate?: Date): Promise<void>;
-    // (undocumented)
-    config?: ConfigFor<SC> & canHaveRandomSeed;
-    createWallet(lovelace?: bigint, assets?: Assets): SimpleWallet_stellar;
-    // (undocumented)
-    currentSlot(): number;
-    // (undocumented)
-    defaultActor?: string;
-    // (undocumented)
-    delay(ms: any): Promise<unknown>;
-    // (undocumented)
-    fixupParams(preProdParams: NetworkParams): NetworkParams;
-    // (undocumented)
-    helperState?: TestHelperState<SC>;
-    // (undocumented)
-    initialize({ randomSeed, }?: {
-        randomSeed?: number;
-    }): Promise<SC>;
-    // (undocumented)
-    initStellarClass(config?: (ConfigFor<SC> & canHaveRandomSeed) | undefined): Promise<SC>;
-    // (undocumented)
-    initStrella(TargetClass: stellarSubclass<SC>, config?: ConfigFor<SC>): Promise<SC>;
-    // Warning: (ae-incompatible-release-tags) The symbol "mkNetwork" is marked as @public, but its signature references "StellarNetworkEmulator" which is marked as @alpha
-    //
-    // (undocumented)
-    mkNetwork(params: NetworkParams): [StellarNetworkEmulator, NetworkParamsHelper];
-    // (undocumented)
-    mkRandomBytes(length: number): number[];
-    // (undocumented)
-    mkSeedUtxo(seedIndex?: bigint): Promise<TxId>;
-    // (undocumented)
-    netPHelper: NetworkParamsHelper;
-    // Warning: (ae-incompatible-release-tags) The symbol "network" is marked as @public, but its signature references "StellarNetworkEmulator" which is marked as @alpha
-    //
-    // (undocumented)
-    get network(): StellarNetworkEmulator;
-    // Warning: (ae-forgotten-export) The symbol "NetworkContext" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-incompatible-release-tags) The symbol "networkCtx" is marked as @public, but its signature references "StellarNetworkEmulator" which is marked as @alpha
-    //
-    // (undocumented)
-    networkCtx: NetworkContext<StellarNetworkEmulator>;
-    // (undocumented)
-    get networkParams(): NetworkParams;
-    // (undocumented)
-    optimize: boolean;
-    // (undocumented)
-    rand?: () => number;
-    // (undocumented)
-    randomSeed?: number;
-    // (undocumented)
-    setActor(actorName: string): Promise<void>;
-    // (undocumented)
-    setDefaultActor(): Promise<void>;
-    // (undocumented)
-    setupActors(): Promise<void>;
-    // (undocumented)
-    setupPending?: Promise<any>;
-    // (undocumented)
-    slotToTime(s: bigint): number | Date;
-    // (undocumented)
-    state: Record<string, any>;
-    // (undocumented)
-    abstract get stellarClass(): stellarSubclass<SC>;
-    // (undocumented)
-    strella: SC;
-    // (undocumented)
-    submitTx(tx: Tx, force?: "force"): Promise<TxId>;
-    // (undocumented)
-    submitTxnWithBlock(tcx: StellarTxnContext | Promise<StellarTxnContext>, options?: SubmitOptions & {
-        futureDate?: Date;
-    }): Promise<StellarTxnContext<anyState_3>>;
-    // (undocumented)
-    waitUntil(time: Date): number;
-    get wallet(): SimpleWallet_stellar;
-}
 
 // @public
 export class StellarTxnContext<S extends anyState = anyState> {
@@ -2017,6 +1611,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         beforeSubmit?: MultiTxnCallback;
         onSubmitted?: MultiTxnCallback;
     }): Promise<any[] | undefined>;
+    // Warning: (ae-forgotten-export) The symbol "SubmitOptions" needs to be exported by the entry point index.d.ts
     submitAll(this: StellarTxnContext<any>, options?: SubmitOptions): Promise<any[] | undefined>;
     // (undocumented)
     submitTxnChain(options?: {
@@ -2110,7 +1705,7 @@ export function txOutputIdAsString(x: TxOutputId, length?: number): string;
 // @public (undocumented)
 export type updateActivityFunc<ARGS extends [...any]> = (recId: hasRecId, ...args: ARGS) => isActivity;
 
-// @public (undocumented)
+// @public
 export function uplcDataSerializer(key: string, value: any, depth?: number): any;
 
 // Warning: (ae-internal-missing-underscore) The name "utxoAsString" should be prefixed with an underscore because the declaration is marked as @internal
@@ -2190,7 +1785,7 @@ export class UtxoHelper {
     // Warning: (ae-forgotten-export) The symbol "utxoSortInfo" needs to be exported by the entry point index.d.ts
     //
     // @internal
-    utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoSortInfo, { free: free2, minAdaAmount: r2 }: utxoSortInfo): 1 | 0 | -1;
+    utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoSortInfo, { free: free2, minAdaAmount: r2 }: utxoSortInfo): 0 | 1 | -1;
     // (undocumented)
     get wallet(): Wallet;
 }
@@ -2226,7 +1821,7 @@ export type valuesEntry = [number[], bigint];
 
 // Warning: (ae-forgotten-export) The symbol "someDataWrapper" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export abstract class WrappedDgDataContract<T extends AnyDataTemplate<any, any>, TLike extends AnyDataTemplate<any, any>, WRAPPER extends someDataWrapper<TLike>> extends DelegatedDataContract<T, TLike> {
     abstract mkDataWrapper(d: TLike): WRAPPER;
     // (undocumented)
@@ -2234,7 +1829,7 @@ export abstract class WrappedDgDataContract<T extends AnyDataTemplate<any, any>,
     mkTxnCreateRecord<TCX extends StellarTxnContext>(options: DgDataCreationOptions<TLike> & {
         wrapped?: WRAPPER;
     }): Promise<TCX>;
-    mkTxnUpdateRecord<TCX extends StellarTxnContext>(txnName: string, item: FoundDatumUtxo_2<T, WRAPPER>, options: DgDataUpdateOptions<TLike> & {
+    mkTxnUpdateRecord<TCX extends StellarTxnContext>(txnName: string, item: FoundDatumUtxo<T, WRAPPER>, options: DgDataUpdateOptions<TLike> & {
         updatedWrapped?: WRAPPER;
     }, tcx?: TCX): Promise<TCX>;
     // (undocumented)
@@ -2247,7 +1842,8 @@ export type WrappedDgDataType<WDDC extends WrappedDgDataContract<any, any, any>>
 
 // Warnings were encountered during analysis:
 //
-// src/testing/types.ts:42:5 - (ae-incompatible-release-tags) The symbol "snapshots" is marked as @public, but its signature references "NetworkSnapshot" which is marked as @alpha
+// src/testing/types.ts:57:5 - (ae-forgotten-export) The symbol "NetworkSnapshot" needs to be exported by the entry point index.d.ts
+// src/testing/types.ts:58:5 - (ae-forgotten-export) The symbol "StellarTestHelper" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
