@@ -57,7 +57,7 @@ type NeedsSingleArgError =
     TypeError<"expected at most one arg for seeded activity func">;
 
 /**
- * @private
+ * @internal
  */
 export type SeedActivityArg<
     SA extends seedFunc<any, any>
@@ -101,7 +101,9 @@ export class SeedActivity<
         return this.factoryFunc.call(this.host, seedFrom, this.arg);
     }
 }
-
+/**
+ * @internal
+ */
 //prettier-ignore
 export type funcWithImpliedSeed<
     // FACTORY_FUNC extends (...args: [ hasSeed, ... ARGS ]) => any,
@@ -129,6 +131,9 @@ export type funcWithImpliedSeed<
 
 const x: [any] extends [] ? true : false = false;
 
+/**
+ * @internal
+ */
 //prettier-ignore
 export function impliedSeedActivityMaker<
     FACTORY_FUNC extends seedActivityFunc<any, any>,
@@ -151,6 +156,11 @@ export function impliedSeedActivityMaker<
     return makesActivityWithImplicitSeedAndArgs
 }
 
+/**
+ * extracts a tx output id from a "has-seed" type of object, for use in
+ * on-chain uniqueness assurances
+ * @public
+ */
 export function getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
     //@ts-expect-error on this type probe
     if (arg.kind == "TxOutputId") return arg;

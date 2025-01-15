@@ -1,3 +1,4 @@
+import type { NetworkParams } from "@helios-lang/ledger";
 import type {
     ConfigFor,
     StellarContract,
@@ -8,15 +9,23 @@ import type { StellarTestContext } from "./StellarTestContext.js";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
 import type { Capo } from "../Capo.js";
-import type { CapoConfig } from "src/CapoTypes.js";
-import type { NetworkSnapshot, SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
-import type { NetworkParams } from "@helios-lang/ledger";
+import type {
+    NetworkSnapshot,
+    SimpleWallet_stellar as emulatedWallet,
+} from "./StellarNetworkEmulator.js";
 
+/**
+ * @public
+ */
 export type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;
 };
+/**
+ * @public
+ */
 export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
-    stConfig: ConfigFor<SC> & canHaveRandomSeed, helperState: any
+    stConfig: ConfigFor<SC> & canHaveRandomSeed,
+    helperState: any
 ) => StellarTestHelper<SC>;
 
 /**
@@ -24,11 +33,17 @@ export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
  */
 export type DefaultCapoTestHelperClass<SC extends Capo<any>> = new (
     config: ConfigFor<SC> & canHaveRandomSeed
-) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC> 
+) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC>;
 
+/**
+ * @public
+ */
 export type canHaveRandomSeed = {
     randomSeed?: number;
 };
+/**
+ * @public
+ */
 export type canSkipSetup = {
     skipSetup?: true;
 };
@@ -41,7 +56,7 @@ export type TestHelperState<SC extends StellarContract<any>> = {
     bootstrappedStrella?: SC;
     snapshots: Record<string, NetworkSnapshot>;
     previousHelper: StellarTestHelper<any>;
-}
+};
 
 /**
  * Adds a test helper class to a `vitest` testing context.
@@ -103,6 +118,9 @@ export async function addTestContext<
     }
 }
 
+/**
+ * @public
+ */
 export type actorMap = Record<string, emulatedWallet>;
 
 /**
@@ -112,16 +130,27 @@ export type actorMap = Record<string, emulatedWallet>;
  *    const three = 3n * ADA
  *    const four = Bigint(4) * ADA
  **/
+/**
+ * @public
+ */
 export const ADA = 1_000_000n; // lovelace
 
-// type debugging - typeinfo
+/**
+ * type debugging - typeinfo
+ * @public
+ */
 export type Expand<T> = T extends (...args: infer A) => infer R
-  ? (...args: Expand<A>) => Expand<R>
-  : T extends infer O
-  ? { [K in keyof O]: O[K] }
-  : never;
+    ? (...args: Expand<A>) => Expand<R>
+    : T extends infer O
+    ? { [K in keyof O]: O[K] }
+    : never;
 
-
+/**
+ * Recursively expand all types in a type
+ * @public
+ */
 export type ExpandRecursively<T> = T extends object
-  ? T extends infer O ? { [K in keyof O]: ExpandRecursively<O[K]> } : never
-  : T;
+    ? T extends infer O
+        ? { [K in keyof O]: ExpandRecursively<O[K]> }
+        : never
+    : T;

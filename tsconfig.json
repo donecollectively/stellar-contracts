@@ -39,12 +39,14 @@
         "noErrorTruncation": true,
 
         "paths": {
+            "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI": ["./dist/programWIthFakeCacheAPI.mjs"],
             "@donecollectively/stellar-contracts": ["./src/index.ts"],
             "src/*": ["./src/*"]
         }
         // "typeRoots": ["./node_modules/@types", "./src/@types"],
     },
-    "files": [ "index.ts", 
+    "files": [
+         "index.ts", 
      //"src/helios/HeliosScriptBundle.js" 
      ],
     "include": [

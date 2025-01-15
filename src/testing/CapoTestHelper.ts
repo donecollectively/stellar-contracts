@@ -1,11 +1,9 @@
 import { Capo } from "../Capo.js";
 import type {
     hasBootstrappedCapoConfig,
-    hasUutContext
-} from "src/CapoTypes.js";
-import type {
+    hasUutContext,
     MinimalCharterDataArgs
-} from "src/CapoTypes.js";
+} from "../CapoTypes.js";
 
 import { StellarTxnContext, type anyState, type hasAddlTxns, type SubmitOptions } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";

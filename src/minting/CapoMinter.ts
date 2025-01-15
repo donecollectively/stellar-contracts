@@ -10,7 +10,7 @@ import type { UplcRecord, configBaseWithRev } from "../StellarContract.js";
 
 import { StellarTxnContext, type anyState } from "../StellarTxnContext.js";
 import type { Capo } from "../Capo.js";
-import type { MinterBaseMethods } from "src/CapoTypes.js";
+import type { MinterBaseMethods } from "../CapoTypes.js";
 import type { SeedTxnScriptParams } from "../SeedTxnScriptParams.js";
 import type { valuesEntry } from "../HeliosPromotedTypes.js";
 import { UutName } from "../delegation/UutName.js";

@@ -1,22 +1,44 @@
-import { existsSync, readFileSync, statSync } from "fs";
-
-import type { UplcData } from "@helios-lang/uplc";
-import type { DataType } from "@helios-lang/compiler";
+import type { UplcProgram } from "@helios-lang/uplc";
+import type { DataType, Program } from "@helios-lang/compiler";
 import type { Source } from "@helios-lang/compiler-utils";
 
 import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
-
 import { DataReader } from "./dataBridge/DataReader.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type {
+    configBaseWithRev,
+    UplcRecord,
+} from "../StellarContract.js";
+import type { anyUplcProgram } from "../HeliosPromotedTypes.js";
+import type {
     CapoBundleClass,
     HeliosBundleClassWithCapo,
-    defaultNoDefinedModuleName,
     HeliosBundleTypes,
 } from "./HeliosMetaTypes.js";
+import {
+    HeliosProgramWithCacheAPI
+} from "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI"
 
+/**
+ * @internal
+ */
+export const defaultNoDefinedModuleName = "‹default-needs-override›";
+
+/**
+ * @public
+ */
+export type HeliosScriptSettings<ConfigType extends configBaseWithRev> = {
+    config: ConfigType;
+    optimize?: boolean;
 };
 
+/**
+ * Base class for any Helios script bundle
+ * @remarks
+ * See also {@link CapoHeliosBundle} and {@link CapoDelegateBundle} for 
+ * specialized bundle types
+ * @public
+ */
 export abstract class HeliosScriptBundle {
     static isCapoBundle = false;
     capoBundle?: CapoHeliosBundle;
@@ -41,7 +63,9 @@ export abstract class HeliosScriptBundle {
     //     * XXX - enabling lower-overhead instantiation and re-use across
     //     * XXX - various bundles used within a single Capo,
     //     */
-    static usingCapoBundleClass<CB extends CapoBundleClass>(c: CB) : HeliosBundleClassWithCapo {
+    static usingCapoBundleClass<CB extends CapoBundleClass>(
+        c: CB
+    ): HeliosBundleClassWithCapo {
         const cb = new c();
         const newClass = class aCapoBoundBundle extends HeliosScriptBundle {
             capoBundle = cb;
@@ -50,7 +74,7 @@ export abstract class HeliosScriptBundle {
             }
 
             isConcrete = true;
-        } as HeliosBundleClassWithCapo & typeof newClass
+        } as HeliosBundleClassWithCapo & typeof newClass;
 
         return newClass;
     }
@@ -125,17 +149,84 @@ export abstract class HeliosScriptBundle {
             .replace(/Helios/, "");
         defaultNoDefinedModuleName; // overridden in subclasses where relevant
     }
+    config?: HeliosScriptSettings<any> = undefined;
+    artifacts = null;
+    async compiledScript(params: UplcRecord<any>): Promise<anyUplcProgram> {
+        if (this.artifacts) {
+            // todo
+        }
 
-    get program(): CachedHeliosProgram {
+        const script = this.program;
+        // if (!this.program) {
+        //     console.warn(
+        //         "compileWithScriptParams() called without loaded program"
+        //     );
+        //     debugger;
+        //     throw new Error(`missing required scriptProgram`);
+        // }
+        // debugger
+        console.log(`
+
+
+        // pre-config: okay, should have what's needed
+        // when already deployed, we shouldn't ever need to get here because
+        // we should have the CBOR-encoded script instead.
+        ...at ${this.constructor.name}::compileWithScriptParams()`);
+
+        const t = new Date().getTime();
+        for (const [p, v] of Object.entries(params)) {
+            script.changeParam(p, v);
+        }
+
+        console.log(
+            `${this.moduleName} with params:`,
+            script.entryPoint.paramsDetails()
+        );
+
+        const uplcProgram = this.program.compile({
+            optimize: ( this.config ?? {} ).optimize ?? true,
+        });
+        //     // optimize: {
+        //     //     keepTracing: true,
+        //     //     factorizeCommon: false,
+        //     //     inlineSimpleExprs: false,
+        //     //     flattenNestedFuncExprs: false,
+        //     //     removeUnusedArgs: false,
+        //     //     replaceUncalledArgsWithUnit: false,
+        //     //     inlineErrorFreeSingleUserCallExprs: false,
+        //     //     inlineSingleUseFuncExprs: false,
+        //     // },
+        //     withAlt: true,
+        // });
+
+        console.log(`compiled in ${new Date().getTime() - t}ms`);
+        return uplcProgram;
+    }
+
+    _program?: HeliosProgramWithCacheAPI
+    // _pct: number = 0
+    get program(): Program {
+        if (this._program) {
+            return this._program;
+        }
+        const ts1 = Date.now();
         let mName = this.moduleName;
         if (mName === defaultNoDefinedModuleName) {
             mName = "";
         }
         try {
-            return CachedHeliosProgram.forCurrentPlatform(this.main, {
-                moduleSources: this.modules,
+            const p = new HeliosProgramWithCacheAPI(this.main, {
+                moduleSources: this.modules,                
                 name: mName, // it will fall back to the program name if this is empty
             });
+            this._program = p;
+            console.log(
+                `📦 ${mName}: loaded & parsed: ${Date.now() - ts1}ms`
+                // Hi!  Are you investigating a duplicate load of the same module?  🔥🔥🔥
+                //   thanks! you're saving people 100ms at a time!
+                // new Error("stack").stack
+            );
+            return p;
         } catch (e: any) {
             // !!! probably this stuff needs to move to compileWithScriptParams()
             if (e.message.match(/invalid parameter name/)) {
@@ -171,7 +262,7 @@ export abstract class HeliosScriptBundle {
                     //  reminder: ensure "pause on caught exceptions" is enabled
                     //  before playing this next line to dig deeper into the error.
 
-                    const try2 = CachedHeliosProgram.forCurrentPlatform(
+                    const try2 = new HeliosProgramWithCacheAPI(
                         this.main,
                         {
                             moduleSources: this.modules,
@@ -202,7 +293,7 @@ export abstract class HeliosScriptBundle {
                 e.message.match(/module '(.*)' not found/) || [];
             if (notFoundModule) {
                 console.log(
-                    "module not found; included modules:\n" +
+                    `${this.constructor.name} module '${notFoundModule}' not found; included modules:\n` +
                         this.modules
                             .map((m) => {
                                 const pInfo = m.project
@@ -235,8 +326,13 @@ export abstract class HeliosScriptBundle {
                 moreInfo,
             } = errorModule || {};
             let errorInfo: string = "";
+            // search this repo for esbuild's dropLabels configuration
             try {
-                statSync(srcFilename).isFile();
+                import("fs").then(
+                    ({statSync}) => {
+                        return statSync(srcFilename).isFile();
+                    }
+                )
             } catch (e) {
                 const indent = " ".repeat(6);
                 errorInfo = project
@@ -368,35 +464,41 @@ export abstract class HeliosScriptBundle {
         };
 
         const program = this.program;
-        const {userTypes} = program;
-        const {mainModule} = program.entryPoint;
+        const { userTypes } = program;
+        const { mainModule } = program.entryPoint;
         const mainTypes = userTypes[mainModule.name.value];
         for (const [typeName, type] of Object.entries(mainTypes)) {
-            const s = type.toSchema()
+            const s = type.toSchema();
             if (s.kind == "struct") {
                 types[typeName] = type;
             }
         }
 
         if (userTypes.specializedDelegate) {
-            const specializationName = this.moduleName
+            const specializationName = this.moduleName;
             const specializationTypes = userTypes[specializationName];
             if (!specializationTypes) {
-                console.log("NOTE:  debugging breakpoint available for more troubleshooting")
-                debugger
-                console.log("NOTE: the module name for the delegate policy script must match bundle's moduleName");
-                throw new Error(`specialization types not found for ${
-                    this.moduleName
-                } in program ${program.name}`);
+                console.log(
+                    "NOTE:  debugging breakpoint available for more troubleshooting"
+                );
+                debugger;
+                console.log(
+                    "NOTE: the module name for the delegate policy script must match bundle's moduleName"
+                );
+                throw new Error(
+                    `specialization types not found for ${this.moduleName} in program ${program.name}`
+                );
             }
-            for (const [typeName, type] of Object.entries(specializationTypes)) {
-                const s = type.toSchema()
+            for (const [typeName, type] of Object.entries(
+                specializationTypes
+            )) {
+                const s = type.toSchema();
                 if (s.kind == "struct") {
                     types[typeName] = type;
                 }
             }
         }
 
-        return types
+        return types;
     }
 }

@@ -1260,6 +1260,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
     ) {
         const { addlTxns } = this.state;
+        if (!addlTxns) return;
+
         // return this.submitTxns(Object.values(addlTxns), callback);
         return this.submitTxnChain({
             ...callbacks,

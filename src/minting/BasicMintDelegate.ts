@@ -4,11 +4,7 @@ import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
  
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import UnspecializedDelegateBundle from "../delegation/UnspecializedDelegate.hlb.js";
-import dataBridgeClass, { UnspecializedDelegateBridge } from "../delegation/UnspecializedDelegate.bridge.js";
-import type { ContractDataBridgeWithEnumDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
-import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
-import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
-import type { GenericDelegateBridge, GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
+import type { GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
 import type { hasSeed, isActivity } from "../ActivityTypes.js";
 
 /**
@@ -65,9 +61,8 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     /**
      * A mint-delegate activity indicating that a delegated-data controller will be governing
      * creation of a specific piece of delegated data.  No further redeemer details are needed here,
-     * but the data-delegate's controller-token may have additional details in ITS redeemer,
-     * which will be aligned with the one, as described in {@link BasicMintDelegate.activityUpdatingDelegatedData}.
-     * See that topic for more details including multi-activity scenarios.
+     * but the data-delegate's controller-token may have additional details in ITS redeemer.
+     * @public
      */
     @Activity.redeemer
     activityCreatingDelegatedData(seedFrom: hasSeed, uutPurpose: string) {

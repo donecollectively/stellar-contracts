@@ -7,9 +7,6 @@ import { dataBridgeGenerator } from "./dataBridge/dataBridgeGenerator.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 
 const startTime = Date.now();
-const writeDelay: number = process?.env?.BUILD_LATENCY
-    ? parseInt(process?.env?.BUILD_LATENCY)
-    : 2500;
 
 type BundleStatusEntry = {
     filename: string;
@@ -49,7 +46,7 @@ export class StellarHeliosProject {
         this.projectRoot = StellarHeliosProject.findProjectRoot();
     }
 
-    _isSC: boolean | undefined;    
+    _isSC: boolean | undefined;
 
     isStellarContracts() {
         if (this._isSC == undefined) {
@@ -67,17 +64,20 @@ export class StellarHeliosProject {
         return this._isSC;
     }
 
-    replaceWithNewCapo(absoluteFilename: string, newCapoClass: typeof HeliosScriptBundle) {
+    replaceWithNewCapo(
+        absoluteFilename: string,
+        newCapoClass: typeof HeliosScriptBundle
+    ) {
         const replacement = new StellarHeliosProject();
         replacement.loadBundleWithClass(absoluteFilename, newCapoClass);
         replacement.generateBundleTypes(absoluteFilename);
         for (const [filename, entry] of this.bundleEntries.entries()) {
             if (!entry.bundleClass?.isCapoBundle) {
                 replacement.loadBundleWithClass(filename, entry.bundleClass!);
-                replacement.generateBundleTypes( filename );
+                replacement.generateBundleTypes(filename);
             }
         }
-        return replacement
+        return replacement;
     }
 
     // call from code-generated hlproject.mjs with instantiated bundle
@@ -144,12 +144,14 @@ export class StellarHeliosProject {
                 bundle: this.capoBundle,
                 bundleClassName: bundleClassName,
                 parentClassName,
-                bundleClass
+                bundleClass,
             });
         } else if (isCapoBundle && harmlessSecondCapo) {
             console.log(`Project: loading CapoBundle ${bundleClassName}`);
-            console.log(`  (replaces existing capo ${this.capoBundle?.constructor.name})`);
-            debugger
+            console.log(
+                `  (replaces existing capo ${this.capoBundle?.constructor.name})`
+            );
+            debugger;
             this.bundleEntries.set(filename, {
                 filename,
                 status: "loaded",
@@ -167,15 +169,14 @@ export class StellarHeliosProject {
                 parentClassName,
             };
             // if we have the CapoBundle, we can use it to instantiate this bundle now.
-                bundle = new (bundleClass as any)(this.capoBundle);
-                bundleEntry.bundle = bundle;
-                bundleEntry.status = "loaded";
+            bundle = new (bundleClass as any)(this.capoBundle);
+            bundleEntry.bundle = bundle;
+            bundleEntry.status = "loaded";
             this.bundleEntries.set(filename, bundleEntry);
         }
 
         // this.bundleEntries.set(filename, { filename, bundle, types, importName });
     }
-
 
     hasBundleClass(filename: string) {
         if (this.bundleEntries.has(filename)) {
@@ -240,23 +241,23 @@ export class StellarHeliosProject {
         const ts1 = Date.now();
         // console.log("writing data bridge code: ", bundle.moduleName);
         const bridgeGenerator = dataBridgeGenerator.create(bundle);
-        if (this.isStellarContracts()) bridgeGenerator._isInStellarContractsLib(true)
+        if (this.isStellarContracts())
+            bridgeGenerator._isInStellarContractsLib(true);
         const bridgeSourceCode = this.isStellarContracts()
-            ? bridgeGenerator.generateDataBridge(
-                fn,
-                  "stellar-contracts"
-              )
+            ? bridgeGenerator.generateDataBridge(fn, "stellar-contracts")
             : bridgeGenerator.generateDataBridge(fn);
-            this.writeIfUnchanged( dataBridgeFn, bridgeSourceCode);
+        this.writeIfUnchanged(dataBridgeFn, bridgeSourceCode);
         // console.log(`NOT writing data bridge code to ${dataBridgeFn}:${bridgeSourceCode}`);
         writeFileSync(dataBridgeFn, bridgeSourceCode);
-        console.log(`📦 ${bundle.moduleName}: generated data bridge: ${
-            Date.now() - ts1            
-        }ms`);
+        console.log(
+            `📦 ${bundle.moduleName}: generated data bridge: ${
+                Date.now() - ts1
+            }ms`
+        );
     }
 
     writeIfUnchanged(filename: string, source: string) {
-        if( existsSync( filename ) ) {
+        if (existsSync(filename)) {
             const existingSource = readFileSync(filename, "utf-8");
             if (existingSource === source) {
                 // console.log(`   -- unchanged: ${filename}`);
@@ -264,7 +265,7 @@ export class StellarHeliosProject {
             }
         }
         writeFileSync(filename, source);
-        return source
+        return source;
     }
 
     normalizeFilePath(filename: string) {
@@ -294,10 +295,7 @@ export class StellarHeliosProject {
             );
         }
 
-        let typeFilename = filename.replace(
-            /(\.hlb)?\.[jt]s$/,
-            ".typeInfo.ts"
-        );
+        let typeFilename = filename.replace(/(\.hlb)?\.[jt]s$/, ".typeInfo.ts");
         const { bundleClassName, parentClassName } = bundleEntry;
 
         if (!parentClassName) {
@@ -306,7 +304,8 @@ export class StellarHeliosProject {
 
         const ts1 = Date.now();
         const typeContext = BundleTypeGenerator.create(bundle);
-        if (this.isStellarContracts()) typeContext._isInStellarContractsLib(true)
+        if (this.isStellarContracts())
+            typeContext._isInStellarContractsLib(true);
 
         const typesSource = typeContext.createAllTypesSource(
             bundleClassName,

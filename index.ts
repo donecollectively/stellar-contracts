@@ -53,6 +53,7 @@ export type {
     hasCharterRef,
     hasSettingsRef,
     hasUutContext,
+    CapoConfig,
     CapoConfig as CapoBaseConfig,
     MinimalDelegateLink,
     dgtStateKey,
@@ -213,11 +214,7 @@ export type {
 //     StakeAddress,
 // } from "./src/HeliosPromotedTypes.js";
 
-export {
-    StellarNetworkEmulator,
-    type NetworkSnapshot,
-} from "./src/testing/StellarNetworkEmulator.js";
 
-export * from "./src/testing/index.js";
+// export * from "./src/testing/index.js";
 
 export type { TestHelperState } from "./src/testing/types.js";

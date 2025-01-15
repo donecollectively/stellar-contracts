@@ -8,12 +8,10 @@ import type {
 import { CapoTestHelper } from "./CapoTestHelper.js";
 import type { ConfigFor, stellarSubclass } from "../StellarContract.js";
 import { Capo } from "../Capo.js";
-import type {
-    CapoConfig,
-    hasBootstrappedCapoConfig,
-    hasUutContext,
-} from "src/CapoTypes.js";
-import type { CharterDataLike, MinimalCharterDataArgs } from "src/CapoTypes.js";
+import type { 
+    CharterDataLike, 
+    MinimalCharterDataArgs 
+} from "../CapoTypes.js";
 // import { CapoMinter } from "../minting/CapoMinter.js";
 
 import type { expect as expectType } from "vitest";

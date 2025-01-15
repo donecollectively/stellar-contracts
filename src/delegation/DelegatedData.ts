@@ -12,6 +12,11 @@ export type AnyDataTemplate<TYPENAME extends string, others extends anyDatumProp
             others[key]
 } // & anyDatumProps 
 
+/**
+ * for a delegated-data record type, omits the id and type fields to indicate
+ * the minimal fields needed for records of that type
+ * @public
+ */
 export type minimalData<
     T extends AnyDataTemplate<any, anyDatumProps>
 > = Omit<T, "id" | "type">

@@ -15,13 +15,6 @@ import {
 } from "rollup";
 import esbuild from "rollup-plugin-esbuild";
 
-// use design details for Copilot:
-// import design from "./typegen-approach2.md" with { type: "markdown" };
-
-import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
-import {
-    loadCompilerLib,
-} from "@helios-lang/contract-utils";
 import { StellarHeliosProject } from "./StellarHeliosProject.js";
 import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
@@ -36,7 +29,7 @@ type TypeGenPluginState = {
 
 /**
  * Rollup loader for generating typescript types from Helios source files
- * @summary
+ * @remarks
  * This rollup plugin is designed to be used in a rollup configuration
  * to generate typescript types from Helios source files.
  *
@@ -44,7 +37,6 @@ type TypeGenPluginState = {
  * which compiles the helios source files into javascript.
  *
  * The following Rollup build hooks are used to make it all happen:
- * - buildStart: in this hook, any existing hlproject.mjs file is loaded, or a fresh project is created.
  * - resolveId: this hook is used to intercept the import of the helios bundle files, and use the
  *   project to generate updated types if needed and available.
  * @public
@@ -77,13 +69,8 @@ export function heliosRollupTypeGen(
     const filter = createFilter(options.include, options.exclude);
     // const project = options.project ? `${options.project}` : "";
 
-    const lib = loadCompilerLib();
-
     const projectRoot = StellarHeliosProject.findProjectRoot();
     //read package.json from project root, parse and check its package name
-    const packageJsonPath = path.join(projectRoot, "package.json");
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
-    const isStellarContracts = "@donecollectively/stellar-contracts" === packageJson.name;
 
     const state : TypeGenPluginState = {
         capoBundle: null, // new CapoHeliosBundle(),
@@ -95,66 +82,6 @@ export function heliosRollupTypeGen(
     const isJavascript = /\.js$/;
     return {
         name: "helios-type-gen",
-        async buildStart(
-            this: PluginContext,
-            options: InputOptions
-        ): Promise<void> {
-            console.log("heliosTypeGen: buildStart WITHOUT StellarHeliosProject");
-            return;
-
-            if (isStellarContracts) {
-                this.warn("building in stellar-contracts project");
-                const existingBuildFile = `${projectRoot}/dist/stellar-contracts.mjs`;
-                let CapoBundleClass;
-                // if the build is present, that doesn't mean it's not obsolete,
-                // so instead of using it, we will make a minimal build of the
-                // CapoHeliosBundle, knowing it will always be up-to-date.
-
-                // if (existsSync(existingBuildFile)) {
-                //     await import(existingBuildFile).then((module) => {
-                //         const {CapoHeliosBundle} = module
-                //         CapoBundleClass = CapoHeliosBundle;
-                //     }).catch( (e: any) => {
-                //         this.warn("couldn't import existing stellar-contracts build: " + e.message)
-                //     })
-                // } else {
-                //     this.warn(`no existing stellar-contracts build in ${existingBuildFile}`);
-                // }
-                
-                if (CapoBundleClass) {
-                    // this is the implicit Capo bundle
-                    state.capoBundle = new CapoBundleClass();
-                    // we might get an explicit bundle added later.
-                    // state.hasExplicitCapoBundle = true;
-                } else {
-                    // this.warn("stellar-contracts: NOT validating helios scripts during build");
-                    // this.warn("  -- make sure you run the bootstrap build (NOT vitest) ");
-                    // this.warn("  -- ... to enable script validation and type generation");
-                    // this.warn("  -- ... (maybe that's happening right now :)");
-
-                    // console.log("making minimal rollup of CapoHeliosBundle");
-                    // const CapoBundleClass = await makeCapoHeliosBundle();
-                    // state.capoBundle = new CapoBundleClass();
-                    // load the program
-                    // const program = state.capoBundle.program;
-                    // 
-                    // program.entryPoint.mainArgTypes;
-                    console.log("NO minimal CapoHeliosBundle rollup");
-                }
-            } else {
-                //!!! verify this works
-                const ourProject = "@donecollectively/stellar-contracts"
-                import(ourProject).then(({CapoHeliosBundle}) => {
-                    console.log("finished loading CapoHeliosBundle");
-                    state.capoBundle = new CapoHeliosBundle();
-                }).catch((e) => {
-                    throw new Error(`couldn't import CapoHeliosBundle: ${e.message}`);
-                })
-                console.log("finished initializing CapoHeliosBundle");
-            }
-        
-            state.project = new StellarHeliosProject();
-        },
         buildEnd: {
             order: "pre",
             handler(this: PluginContext, error?: Error) {
@@ -272,6 +199,7 @@ export function heliosRollupTypeGen(
                         const digestNew = shortHash(JSON.stringify(SomeBundleClass.prototype.modules));
 
                         if (digestExisting !== digestNew) {
+                            throw new Error(`unreachable code path`)
                             console.log(`existing = ${digestExisting}`, state.capoBundle.modules.map(x => (JSON.stringify({name: x.name, content: shortHash(x.content)}))))
                             console.log(`late arrival: ${digestNew}`, SomeBundleClass.prototype.modules.map( x => (JSON.stringify({name: x.name, content: shortHash(x.content)}))))
                             console.log("  ^^^^ from", id)
@@ -384,8 +312,7 @@ export function heliosRollupTypeGen(
                         // warn("    ... all the usual Circular dependencies...")
                         return;
                     }
-                    }
-
+                }
                 warn(warning);
             },
             plugins: [
@@ -480,9 +407,7 @@ export function heliosRollupTypeGen(
                         // warn("    ... all the usual Circular dependencies...")
                         return;
                     }
-                    console.warn("circular: ", warning)
-                }
-    
+                }    
                 warn(warning);
             },
             plugins: [

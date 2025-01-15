@@ -1,6 +1,6 @@
 import type { Value } from "@helios-lang/ledger";
 import type { isActivity, SeedActivity } from "../ActivityTypes.js";
-import type { FoundDatumUtxo } from "src/CapoTypes.js";
+import type { FoundDatumUtxo } from "../CapoTypes.js";
 import type { InlineDatum } from "../HeliosPromotedTypes.js";
 import type { StellarTxnContext } from "../StellarTxnContext.js";
 import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
@@ -26,6 +26,13 @@ export type WrappedDgDataType<
 > = 
     WDDC extends WrappedDgDataContract<any, any, infer WRAPPER> ? WRAPPER : never;
 
+/**
+ * For a delegate-data contract using an off-chain data structure 
+ * @remarks
+ * ...with additional logic beyond the data itself (e.g. a class with methods 
+ * wrapping the underlying data details)
+ * @public
+ */
 export abstract class WrappedDgDataContract<
     T extends AnyDataTemplate<any,any>,
     TLike extends AnyDataTemplate<any,any>,
@@ -36,6 +43,7 @@ export abstract class WrappedDgDataContract<
      * Transforms the on-chain data structure into a higher-level
      * application-specific class representation.  That class should
      * provide an unwrapData() method to get back to the on-chain data.
+     * @public
      */
     abstract mkDataWrapper(
         d: TLike
@@ -68,11 +76,11 @@ export abstract class WrappedDgDataContract<
     /**
      * builds a txn creating a record of this type in the data store
      * @remarks
-     * The {activity} option can be a {@link SeedActivity} object provided by
+     * The \{activity\} option can be a {@link SeedActivity} object provided by
      * `this.activity.MintingActivities.$seeded$‹activityName›` accessors/methods,
      * which creates a record id based on the (unique) spend of a seed value.
+     * @public
      */
-
     async mkTxnCreateRecord<
         TCX extends StellarTxnContext
         // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,

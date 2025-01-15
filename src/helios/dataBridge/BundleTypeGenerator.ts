@@ -1,10 +1,4 @@
-import { 
-    genTypes
-} from "@helios-lang/contract-utils";
 
-import type {
-    HeliosScriptBundle,
-} from "../HeliosScriptBundle.js";
 import type {
     anyTypeDetails,
     EnumId,
@@ -22,7 +16,7 @@ import type {
     VariantTypeSchema,
 } from "@helios-lang/type-utils";
 
-import { BundleTypes } from "./BundleTypes.js";
+// import { BundleTypes } from "./BundleTypes.js";
 import { BundleBasedGenerator } from "./BundleBasedGenerator.js";
 
 /**
@@ -34,6 +28,7 @@ import { BundleBasedGenerator } from "./BundleBasedGenerator.js";
  * As each type is encountered (as a **nested field** within a datum or redeemer), any named types encountered
  * are added to the context, with any recursive expansions generated and added to the context, depth-first,
  * ... then the named type is used for the **nested field** where it was encountered.
+ * @public
  */
 export class BundleTypeGenerator extends BundleBasedGenerator {
     createAllTypesSource(

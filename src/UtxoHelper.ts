@@ -1,6 +1,4 @@
 import {
-    bytesToHex,
-    hexToBytes,
     type BytesLike,
 } from "@helios-lang/codec-utils";
 import type { SimpleWallet, Wallet } from "@helios-lang/tx-utils";
@@ -17,7 +15,6 @@ import {
     makeValue,
     makeAssetClass,
     makeAddress,
-    decodeShelleyAddress,
     makeDummyAddress,
 } from "@helios-lang/ledger";
 

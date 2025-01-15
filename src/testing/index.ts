@@ -1,12 +1,10 @@
 // declare module "@donecollectively/stellar-contracts/testing";
 
 export { CapoTestHelper } from "./CapoTestHelper.js";
-
-export { ADA, addTestContext } from "./types.js";
-export type { DefaultCapoTestHelperClass } from "./types.js";
+export * from "./types.js";
 
 /**
- * @internal
+ * @public
  */
 export const insufficientInputError =
     /(need .* lovelace, but only have|transaction doesn't have enough inputs)/;
@@ -28,3 +26,8 @@ export { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
  * @public
  */
 export { StellarTestHelper } from "./StellarTestHelper.js";
+
+
+export {
+    StellarNetworkEmulator,
+} from "./StellarNetworkEmulator.js";

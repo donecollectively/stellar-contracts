@@ -12,6 +12,16 @@ import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
 
 export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
 
+/**
+ * A set of Helios scripts that are used to define a Capo contract.
+ * @remarks
+ * This class is intended to be extended to provide a specific Capo contract.
+ * 
+ * You can inherit & augment `get modules()` to make additional modules available
+ * for use in related contract scripts.  Other bundles can include these modules only 
+ * by naming them in their own `includes` property.
+ * @public
+ */
 export class CapoHeliosBundle extends HeliosScriptBundle {
     get main() {
         return mainContract

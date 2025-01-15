@@ -5,18 +5,31 @@ import type { isActivity } from "../../ActivityTypes.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 
 const JustAnEnum = Symbol("JustAnEnum");
+/**
+ * @public
+ */
 export type JustAnEnum = typeof JustAnEnum;
 const Nested = Symbol("Nested");
+/**
+ * @public
+ */
 export type Nested = typeof Nested;5
 const NotNested = Symbol("NotNested");
+/**
+ * @public
+ */
 export type NotNested = typeof NotNested;
 
 const isDatum = Symbol("isDatum");
+/**
+ * @public
+ */
 export type isDatum = typeof isDatum;
 
 /**
- * EnumMaker provides a way to create UplcData for enums.  It optionally includes an activity wrapper { redeemer: UplcData }
+ * EnumMaker provides a way to create UplcData for enums.  It optionally includes an activity wrapper \{ redeemer: UplcData \}
  * ... and honors a nested context to inject (instead of UPLC-ing) typed, nested data into a parent context for uplc formatting.
+ * @public
  */
 export class EnumBridge<
     TYPE extends isActivity | isDatum | JustAnEnum = JustAnEnum,

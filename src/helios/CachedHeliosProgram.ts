@@ -2,7 +2,6 @@ import {
     Program,
     type CompileOptions,
     type ProgramProps,
-
 } from "@helios-lang/compiler";
 import type { Source } from "@helios-lang/compiler-utils";
 import {
@@ -11,13 +10,12 @@ import {
     type UplcProgramV2,
     type UplcSourceMapJsonSafe,
 } from "@helios-lang/uplc";
-import { mkCachedHeliosProgramFS } from "./CachedHeliosProgramFs.js";
-import { mkCachedHeliosProgramWeb } from "./CachedHeliosProgramWeb.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { blake2b } from "@helios-lang/crypto";
-import { existsSync } from "fs";
 import { extractName } from "@helios-lang/compiler";
+
 import { textToBytes } from "../HeliosPromotedTypes.js";
+import type { CompileOptionsForCachedHeliosProgram } from "../HeliosPromotedTypes.js";
 
 export type CacheableProgramProps = ProgramProps & {
     /**
@@ -25,10 +23,6 @@ export type CacheableProgramProps = ProgramProps & {
      * If there is no source code, the cacheKey is required
      */
     cacheKey?: string;
-    /**
-     * If specified, the cache must contain the compiled program with the indicated cacheKey
-     */
-    cacheRequired?: true;
     /**
      * The timeout, in milliseconds for waiting for another instance to finish compiling.
      * The default timeout is 30 seconds.
@@ -40,18 +34,10 @@ export type CacheableProgramProps = ProgramProps & {
      */
     expectedScriptHash?: string;
     /**
-     * name of the script, which may be different from the name of the script's entry-point 
+     * name of the script, which may be different from the name of the script's entry-point
      * / main module
      */
-    name? : string
-};
-
-export type CompileOptionsForCachedHeliosProgram = CompileOptions & {
-    /**
-     * The timeout for waiting for another instance to finish compiling.
-     * Defaults to 30 seconds.
-     */
-    timeout?: number;
+    name?: string;
 };
 
 type OptimizeOptions =
@@ -65,8 +51,8 @@ export type HeliosProgramCacheEntry = {
     createdBy: string;
     programElements: Record<string, string | Object>;
     optimizeOptions: OptimizeOptions;
-    optimized?: UplcProgramV2 // | UplcProgramV3I;
-    unoptimized?: UplcProgramV2 //| UplcProgramV3I;
+    optimized?: UplcProgramV2; // | UplcProgramV3I;
+    unoptimized?: UplcProgramV2; //| UplcProgramV3I;
     optimizedIR?: string;
     unoptimizedIR?: string;
     optimizedSmap?: UplcSourceMapJsonSafe;
@@ -101,29 +87,13 @@ const redirecToCorrectConstructor =
 /**
  * A Helios program that caches its compiled UPLC program.
  * @remarks
- * Use the {@link CachedHeliosProgram.forCurrentPlatform | forCurrentPlatform()} constructor
- * to get an instance of the correct subclass for the current platform.
+ * Only available in the node.js environment for now, by importing
+ * HeliosProgramWithCacheAPI from the @stellar-contracts/HeliosProgramWithCacheAPI module.
+ *
+ * ### Feedback please?
+ * Probably nobody ever sees this doc?  If you do, please let us know!
  */
 export class CachedHeliosProgram extends Program {
-    /**
-     * Public constructor for creating a new CachedHeliosProgram.
-     * @remarks
-     * Detects the current platform and returns an instance of the correct subclass.
-     *
-     * Expects the same arguments as the Helios {@link Program} constructor.
-     *
-     * Returns a Program subclass that also conforms to the CachedHeliosProgram interface.
-     *
-     * Use the {@link CachedHeliosProgram.compileCached | compileCached()} method to compile the program.
-     */
-    static forCurrentPlatform(
-        mainSource: string | Source,
-        props?: CacheableProgramProps
-    ): CachedHeliosProgram {
-        const ChosenSubclass = this.choosePlatformSubclass();
-        return new ChosenSubclass(mainSource, props);
-    }
-
     // static memoryCache = new Map<string, UplcProgramV2 | UplcProgramV3>();
     props: CacheableProgramProps;
     locks: Map<string, lockInfo<any>> = new Map();
@@ -133,6 +103,17 @@ export class CachedHeliosProgram extends Program {
     static id: string =
         global?.id || Math.floor(Math.random() * 1000).toString();
     id: string;
+
+    /**
+     * Creates a new CachedHeliosProgram.
+     * @remarks
+     * Expects the same arguments as the Helios {@link Program} constructor.
+     *
+     * Returns a Program subclass that also conforms to the CachedHeliosProgram interface.
+     *
+     * Use the {@link compileCached | compileCached()} method to compile the program.
+     * @public
+     */
     constructor(mainSource: string | Source, props?: CacheableProgramProps) {
         super(mainSource, props);
         this.sources = [mainSource, ...(props?.moduleSources || [])];
@@ -200,13 +181,21 @@ export class CachedHeliosProgram extends Program {
 
     static programFromCacheEntry(
         fromCache: StringifiedCacheEntry
-    ): UplcProgramV2 { //  | UplcProgramV3 {
+    ): UplcProgramV2 {
+        //  | UplcProgramV3 {
         // the program is a hex-string, accepted by both UplcProgramV2 and UplcProgramV3
-        const { optimized, optimizedIR, unoptimized, unoptimizedIR, version, optimizedSmap, unoptimizedSmap } =
-            fromCache;
-        if (version !== "PlutusV2" ) throw new Error(`pv3supportpending`)
-            // TargetClass = version == "PlutusV2" ? UplcProgramV2 : UplcProgramV3;
-        
+        const {
+            optimized,
+            optimizedIR,
+            unoptimized,
+            unoptimizedIR,
+            version,
+            optimizedSmap,
+            unoptimizedSmap,
+        } = fromCache;
+        if (version !== "PlutusV2") throw new Error(`pv3supportpending`);
+        // TargetClass = version == "PlutusV2" ? UplcProgramV2 : UplcProgramV3;
+
         const o = optimized
             ? decodeUplcProgramV2FromCbor(optimized, {
                   ir: optimizedIR,
@@ -216,21 +205,21 @@ export class CachedHeliosProgram extends Program {
         const u = unoptimized
             ? decodeUplcProgramV2FromCbor(unoptimized, {
                   ir: unoptimizedIR,
-                    sourceMap: unoptimizedSmap,
+                  sourceMap: unoptimizedSmap,
               })
             : undefined;
         if (o) {
             if (u) {
-                return o.withAlt(u) // | UplcProgramV3;
+                return o.withAlt(u); // | UplcProgramV3;
             }
-            return o 
+            return o;
         }
         if (!u) {
             throw new Error(
                 `🐢${this.id}: No optimized or unoptimized program in cache entry: ${fromCache}`
             );
         }
-        return u 
+        return u;
     }
 
     static serializeCacheEntry(entry: HeliosProgramCacheEntry): string {
@@ -409,19 +398,17 @@ export class CachedHeliosProgram extends Program {
         let optimize = this.optimizeOptions(options);
         if (false == optimize) return "unoptimized";
         type justOptions = Exclude<OptimizeOptions, false>;
-        let o : justOptions = optimize as any
+        let o: justOptions = optimize as any;
         return this.objectToText(
-                  // sort the keys in optimize.
-                  Object.fromEntries(
-                      Object.entries(o).sort(([a], [b]) =>
-                          a.localeCompare(b)
-                      )
-                  ) as justOptions
-              );
+            // sort the keys in optimize.
+            Object.fromEntries(
+                Object.entries(o).sort(([a], [b]) => a.localeCompare(b))
+            ) as justOptions
+        );
     }
-    
+
     get preferredProgramName(): string {
-        return this.props.name || this.name
+        return this.props.name || this.name;
     }
 
     getCacheKey(options: CompileOptionsForCachedHeliosProgram): string {
@@ -474,12 +461,14 @@ export class CachedHeliosProgram extends Program {
      *
      * See Helios' {@link Program.compile} for more information about compiling Helios programs.
      *
-     * Use WebCachedHeliosProgram or FSCachedHeliosProgram depending on the platform
-     * you are running on.
+     * import from stellar-contracts/CacheableProgramAPI in a node.js environment
+     * to access this method.  In the web environment, that import returns a different
+     * class with the same interface.
      */
     async compileCached(
         optimizeOrOptions: boolean | CompileOptionsForCachedHeliosProgram
-    ): Promise<UplcProgramV2> { // Promise<UplcProgramV2 | UplcProgramV3> {
+    ): Promise<UplcProgramV2> {
+        // Promise<UplcProgramV2 | UplcProgramV3> {
         const options: CompileOptionsForCachedHeliosProgram =
             typeof optimizeOrOptions === "boolean"
                 ? { optimize: optimizeOrOptions }
@@ -530,38 +519,42 @@ export class CachedHeliosProgram extends Program {
                 `🐢${this.id}: compiling program with cacheKey: ${cacheKey}`
             );
             // slow!
-            const program = this.compile(options);
+            const uplcProgram = this.compile(options);
             const cacheEntry: HeliosProgramCacheEntry = {
                 version: "PlutusV2",
                 createdBy: this.id,
                 optimizeOptions: optimize,
                 programElements,
             };
-            
-            if (program.alt) {
-                cacheEntry.unoptimized = program.alt;
-                cacheEntry.unoptimizedIR = program.alt.ir;
-                cacheEntry.unoptimizedSmap = makeUplcSourceMap({ term: program.alt.root }).toJsonSafe();
 
-                cacheEntry.optimized = program;
-                cacheEntry.optimizedIR = program.ir;
-                cacheEntry.optimizedSmap = makeUplcSourceMap({ term: program.root }).toJsonSafe()
+            if (uplcProgram.alt) {
+                cacheEntry.unoptimized = uplcProgram.alt;
+                cacheEntry.unoptimizedIR = uplcProgram.alt.ir;
+                cacheEntry.unoptimizedSmap = makeUplcSourceMap({
+                    term: uplcProgram.alt.root,
+                }).toJsonSafe();
+
+                cacheEntry.optimized = uplcProgram;
+                cacheEntry.optimizedIR = uplcProgram.ir;
+                cacheEntry.optimizedSmap = makeUplcSourceMap({
+                    term: uplcProgram.root,
+                }).toJsonSafe();
             } else {
-                const sourceMap = makeUplcSourceMap({ term: program.root })
+                const sourceMap = makeUplcSourceMap({ term: uplcProgram.root });
                 if (false == options.optimize) {
-                    cacheEntry.unoptimized = program;
-                    cacheEntry.unoptimizedIR = program.ir;
+                    cacheEntry.unoptimized = uplcProgram;
+                    cacheEntry.unoptimizedIR = uplcProgram.ir;
                     cacheEntry.unoptimizedSmap = sourceMap.toJsonSafe();
                 } else {
-                    cacheEntry.optimized = program;
-                    cacheEntry.optimizedIR = program.ir;
+                    cacheEntry.optimized = uplcProgram;
+                    cacheEntry.optimizedIR = uplcProgram.ir;
                     cacheEntry.optimizedSmap = sourceMap.toJsonSafe();
                 }
             }
             this.storeInCache(cacheKey, cacheEntry);
-            return program;
+            return uplcProgram;
         } catch (e: any) {
-            debugger
+            debugger;
             console.log(
                 `🐢${this.id}: compiler cache: throwing compile error: ${e.message} (not caching)`
             );
@@ -606,15 +599,6 @@ export class CachedHeliosProgram extends Program {
 
     get subclass(): typeof CachedHeliosProgram {
         return this.constructor as typeof CachedHeliosProgram;
-    }
-
-    static _pssc: typeof CachedHeliosProgram | null = null;
-    static choosePlatformSubclass(): typeof CachedHeliosProgram {
-        if (this._pssc) return this._pssc;
-        if (this.checkPlatform() === "nodejs") {
-            return (this._pssc = mkCachedHeliosProgramFS());
-        }
-        return (this._pssc = mkCachedHeliosProgramWeb());
     }
 
     static checkPlatform(): "web" | "nodejs" {
@@ -760,9 +744,8 @@ export class CachedHeliosProgram extends Program {
             throw new Error(`releaseLock: no lock found for ${cacheKey}`);
         }
     }
-    programFromCacheEntry(
-        fromCache: StringifiedCacheEntry
-    ): UplcProgramV2 { // | UplcProgramV3 {
+    programFromCacheEntry(fromCache: StringifiedCacheEntry): UplcProgramV2 {
+        // | UplcProgramV3 {
         return this.subclass.programFromCacheEntry(fromCache);
     }
 }

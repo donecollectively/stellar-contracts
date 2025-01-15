@@ -24,7 +24,6 @@ import {
     type TxRedeemer,
     type TxOutputDatum,
     makeAddress,
-    decodeAddress,
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { bytesToText, textToBytes, type InlineDatum } from "./HeliosPromotedTypes.js";

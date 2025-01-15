@@ -49,7 +49,6 @@ import {
 } from "./StellarNetworkEmulator.js";
 import type { StellarTxnContext, SubmitOptions } from "../StellarTxnContext.js";
 import {
-    makeRandomBip32PrivateKey,
     makeRootPrivateKey,
     makeTxBuilder,
     type Wallet,

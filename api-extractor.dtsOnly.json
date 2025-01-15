@@ -1,0 +1,33 @@
+/**
+ * Config file for API Extractor.  For more info, please visit: https://api-extractor.com
+ */
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+    "extends": "./api-extractor.json",
+    "compiler": {
+        "tsconfigFilePath": "<projectFolder>/tsconfig.dts.json"
+    },
+    "apiReport": { "enabled": false },
+    "docModel": { "enabled": false },
+    "dtsRollup": {
+        "enabled": true,
+        // arranges a default that writes a funky filename.  Configs inheriting this file must override.
+        "untrimmedFilePath": "<projectFolder>/dist/dtsOnlyUntrimmedPath_NOT_OVERRIDDEN_CORRECTLY.d.ts",
+
+        "alphaTrimmedFilePath": "",
+        "betaTrimmedFilePath": "",
+        "publicTrimmedFilePath": ""
+    },
+
+    /**
+     * Configures how the tsdoc-metadata.json file will be generated.
+     */
+    "tsdocMetadata": {
+        /**
+         * Whether to generate the tsdoc-metadata.json file.
+         *
+         * DEFAULT VALUE: true
+         */
+        "enabled": false
+    }
+}

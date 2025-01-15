@@ -14,22 +14,21 @@
         ".": {
             "typescriptNative": "./index.ts",
             "types": "./dist/stellar-contracts.d.ts",
-            "import": "./dist/stellar-contracts.mjs",
-            "XXXrequire": "./dist/stellar-contracts.cjs",
-            "default": "./dist/stellar-contracts.mjs",
-            "dev": {
-                "types": "./src/index.ts",
-                "import": "./src/index.js"
-            }
+            "node": "./dist/stellar-contracts-node.mjs",
+            "import": "./dist/stellar-contracts-browser.mjs"
         },
-        "./XXXXtesting": {
+        "./testing": {
             "types": "./dist/testing.d.ts",
-            "import": "./dist/testing.mjs",
-            "XXXrequire": "./dist/testing.cjs",
-            "default": "./dist/testing.mjs"
+            "node": "./dist/testing-node.mjs",
+            "import": "./dist/testing-browser.mjs"
         },
-        "./rollup": {
-            "import": "./dist/index-rollup.mjs"
+        "./rollupPlugins": {
+            "import": "./dist/rollupPlugins.mjs"
+        },
+        "./HeliosProgramWithCacheAPI": {
+            "types": "./dist/HeliosProgramWithCacheAPI.d.ts",
+            "node": "./dist/HeliosProgramWithFSCache.mjs",
+            "import": "./dist/HeliosProgramWithMockCacheAPI.mjs"
         }
     },
     "type": "module",

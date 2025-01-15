@@ -66,6 +66,7 @@ type fullTypeDetails = typeDetails<dataBridgeTypeInfo>;
  * types encountered are added to the context, with any recursive expansions generated and
  * added to the context, depth-first... then the named type is used for the **nested field**
  * where it was encountered.
+ * @public
  */
 export class dataBridgeGenerator
     extends BundleBasedGenerator
@@ -1060,7 +1061,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `     * @remarks\n` +
                 `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass \n` +
                 `     * to create a context satisfying \`hasSeed\`.\n` +
-                `     * See the {@link $seeded$${variantName}} accessor for use in a context\n` +
+                `     * See \`$seeded$${variantName}}\` for use in a context\n` +
                 `     * providing an implicit seed utxo. \n` +
                 (isNested
                     ? `    * ### Nested activity: \n` +
@@ -1103,7 +1104,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    /**\n` +
                 activitySummary +
                 `     * @param fields - \\{ ` +
-                filteredFields(0, undefined, ", ").replace(/([<>])/g, "\\$1") +
+                filteredFields(0, undefined, ", ").replace(/([<{}>])/g, "\\$1") +
                 ` \\}\n` +
                 `     * @remarks\n` +
                 `    * ### Seeded activity\n` +
@@ -1210,7 +1211,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    *    see the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.\n` +
                 `    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.\n` +
                 `    *  - in a context providing an implicit seed utxo, use \n` +
-                `    *    the {@link $seeded$${variantName}} variant of this activity instead\n` +
+                `    *    the \`$seeded$${variantName}}\` variant of this activity instead\n` +
                 `    *\n ` +
                 (isNested
                     ? `    * ## Nested activity: \n` +

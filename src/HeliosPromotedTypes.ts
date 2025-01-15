@@ -1,5 +1,23 @@
+import type { CompileOptions } from "@helios-lang/compiler";
 import type { InlineTxOutputDatum } from "@helios-lang/ledger";
-import { makeCardanoClientHelper } from "@helios-lang/tx-utils";
+import type { UplcProgramV2 } from "@helios-lang/uplc";
+
+/**
+ * @public
+ */
+export type CompileOptionsForCachedHeliosProgram = CompileOptions & {
+    /**
+     * The timeout for waiting for another instance to finish compiling.
+     * Defaults to 30 seconds.
+     */
+    timeout?: number;
+};
+
+/**
+ * @public
+ */
+export type anyUplcProgram = UplcProgramV2;
+// | UplcProgramV3;
 
 export { 
     encodeUtf8 as textToBytes,
@@ -17,5 +35,8 @@ export type tokenNamesOrValuesEntry = [string | number[], bigint];
  **/
 export type valuesEntry = [number[], bigint];
 
+/**
+ * @public
+ */
 export type InlineDatum = InlineTxOutputDatum
 

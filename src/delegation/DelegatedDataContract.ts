@@ -5,8 +5,8 @@ import type {
     FoundDatumUtxo,
     hasCharterRef,
     hasUutContext,
-} from "src/CapoTypes.js";
-import type { hasSettingsRef } from "src/CapoTypes.js";
+} from "../CapoTypes.js";
+import type { hasSettingsRef } from "../CapoTypes.js";
 import type { ReqtsMap } from "../Requirements.js";
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
@@ -30,14 +30,7 @@ import type {
     CapoHeliosBundleClass,
 } from "../CapoHeliosBundle.js";
 import type { CapoDelegateBundle } from "./CapoDelegateBundle.js";
-import type {
-    SomeDgtDatumHelper,
-    SomeDgtDatumReader,
-} from "./GenericDelegateBridge.js";
 import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
-import type { Expand } from "../testing/types.js";
-import type { IFISNEVER, TypeError } from "../helios/typeUtils.js";
-import type { WrappedDgDataType } from "./WrappedDgDataContract.js";
 import { uplcDataSerializer } from "./jsonSerializers.js";
 
 export type DgDataType<T extends DelegatedDataContract<any, any>> =
@@ -236,7 +229,7 @@ export abstract class DelegatedDataContract<
     /**
      * builds a txn creating a record of this type in the data store
      * @remarks
-     * The {activity} option can be a {@link SeedActivity} object provided by
+     * The \{activity\} option can be a {@link SeedActivity} object provided by
      * `this.activity.MintingActivities.$seeded$‹activityName›` accessors/methods,
      * which creates a record id based on the (unique) spend of a seed value.
      */

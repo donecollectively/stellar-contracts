@@ -1,0 +1,12 @@
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+    "extends": "./api-extractor.dtsOnly.json",
+    "mainEntryPointFilePath": "<projectFolder>/.api-extractor-temp/src/helios/HeliosProgramWithMockCacheAPI.d.ts",
+    "compiler": {
+        "tsconfigFilePath": "<projectFolder>/tsconfig.programWithCacheAPI.dts.json"
+    },
+    "dtsRollup": {
+        "enabled": true,
+        "untrimmedFilePath": "<projectFolder>/dist/HeliosProgramWithCacheAPI.d.ts"
+    }
+}

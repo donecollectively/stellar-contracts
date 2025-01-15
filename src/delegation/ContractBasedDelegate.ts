@@ -7,8 +7,8 @@ import type {
     MintUutActivityArgs,
     NormalDelegateSetup,
     hasCharterRef
-} from "src/CapoTypes.js";
-import type { hasSettingsRef } from "src/CapoTypes.js";
+} from "../CapoTypes.js";
+// import type { hasSettingsRef } from "../CapoTypes.js";
 import { Activity, datum } from "../StellarContract.js";
 import { StellarDelegate } from "./StellarDelegate.js";
 import type {
@@ -16,12 +16,12 @@ import type {
     capoDelegateConfig,
 } from "./RolesAndDelegates.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { dumpAny } from "../diagnostics.js";
-import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
-import type { readsUplcData } from "src/helios/HeliosMetaTypes.js";
+// import { dumpAny } from "../diagnostics.js";
+// import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+// import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+// import type { readsUplcData } from "../helios/HeliosMetaTypes.js";
 import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegateBundle.js";
-import type { ContractDataBridge, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
+// import type { ContractDataBridge, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { AbstractNew, findActivityType, mustFindActivityType, mustFindConcreteContractBridgeType, mustFindDatumType, mustFindReadDatumType, possiblyAbstractContractBridgeType } from "../helios/dataBridge/BridgeTypeUtils.js";
 import type { GenericDelegateBridge, GenericDelegateBridgeClass, GenericDelegateDatum } from "./GenericDelegateBridge.js";
 import type { isActivity } from "../ActivityTypes.js";
@@ -169,8 +169,9 @@ export class ContractBasedDelegate extends StellarDelegate {
         //     delegateName: this.delegateName,
         // };
 
-        const { 
-            capoAddr, mph, tn, capo, ...otherConfig } = config;
+        const {
+            capoAddr, mph, tn, capo, ...otherConfig 
+        } = config;
 
         return this.paramsToUplc({
             ...otherConfig,
@@ -501,8 +502,6 @@ export class ContractBasedDelegate extends StellarDelegate {
      * A mint-delegate activity indicating that a delegated-data controller will be governing
      * a deletion (burning its UUT) of a specific piece of delegated data.  No further redeemer details are needed here,
      * but the data-delegate's controller-token may have additional details in ITS redeemer,
-     * as described in {@link BasicMintDelegate.activityUpdatingDelegatedData}.  See that topic for more details
-     * including multi-activity scenarios.
      */
     @Activity.redeemer
     activityDeletingDelegatedData(

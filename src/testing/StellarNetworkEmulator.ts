@@ -26,8 +26,6 @@ import {
 } from "@helios-lang/ledger";
 
 import {
-    encodeIntBE,
-    equalsBytes,
     type IntLike,
 } from "@helios-lang/codec-utils";
 import {
@@ -356,7 +354,7 @@ let i = 1;
  * A simple emulated Network.
  * This can be used to do integration tests of whole dApps.
  * Staking is not yet supported.
- * @alpha
+ * @public
  */
 export class StellarNetworkEmulator implements Emulator {
     declare currentSlot: number;
@@ -368,19 +366,19 @@ export class StellarNetworkEmulator implements Emulator {
 
     /**
      * Cached map of all UTxOs ever created
-     * @private
+     * @internal
      */
     _allUtxos: Record<string, TxInput>;
 
     /**
      * Cached set of all UTxOs ever consumed
-     * @private
+     * @internal
      */
     _consumedUtxos: Set<string>;
 
     /**
      * Cached map of UTxOs at addresses
-     * @private
+     * @internal
      */
     _addressUtxos: Record<string, TxInput[]>
 
@@ -435,7 +433,10 @@ export class StellarNetworkEmulator implements Emulator {
         };
     }
 
-    // retains continuity for the seed and the RNG through one or more snapshots.
+    /**
+     * retains continuity for the seed and the RNG through one or more snapshots.
+     * @internal
+     */
     mulberry32 = () => {
         //!!mutates vvvvvvvvvv this.#seed
         let t = (this.#seed += 0x6d2b79f5);
@@ -453,9 +454,8 @@ export class StellarNetworkEmulator implements Emulator {
 
     /**
      * Ignores the genesis txs
-     * @type {TxId[]}
      */
-    get txIds() {
+    get txIds() : TxId[]{
         const res : TxId[] = []
 
         // TODO: the current approach is very slow, use a snapshot
@@ -701,7 +701,7 @@ export class StellarNetworkEmulator implements Emulator {
      */
     tick(nSlots: IntLike) {
         const n = BigInt(nSlots);
-        assert(n > 0, `nSlots must be > 0, got ${n.toString()}`);
+        if (n < 1) throw new Error(`nSlots must be > 0, got ${n.toString()}`);
 
         const count = this.mempool.length;
         const height = this.blocks.length;
@@ -735,7 +735,7 @@ export class StellarNetworkEmulator implements Emulator {
 
 
     /**
-     * @private
+     * @internal
      */
     pushBlock(txs: EmulatorTx[]) {
         this.blocks.push(txs)

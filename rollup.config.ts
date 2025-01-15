@@ -3,25 +3,23 @@
 import externals from "rollup-plugin-node-externals";
 import { platformModulePaths } from "./rollup.lib.js";
 
-import esbuild from "rollup-plugin-esbuild";
+import esbuildPlugin from "rollup-plugin-esbuild";
 import resolve from "@rollup/plugin-node-resolve";
 import json from "@rollup/plugin-json";
-import execute from "rollup-plugin-shell";
 import sourcemaps from "rollup-plugin-sourcemaps";
 
 // const packageJson = await import("./package.json", { assert: { type: "json" } });
 
 import packageJson from "./package.json" with { type: "json" };
-import { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
-import {heliosRollupTypeGen} from "./src/helios/heliosRollupTypeGen.js";
+import { 
+    heliosRollupLoader, 
+    heliosRollupTypeGen
+} from "./dist/rollupPlugins.mjs";
 
 const name = packageJson.main.replace(/\.m?js$/, "");
-
-const serverBundledModules : string[] = [
-
-];
+const serverBundledModules : string[] = [];
 const forcedServerExternals : string[] = [
-    "rollup-plugin-esbuild", "esbuild",
+    "rollup-plugin-esbuild", "esbuild"
 ];
 
 const notified = {}
@@ -50,7 +48,7 @@ const codeBundle = (config) => {
                     warn("    ... some known circular dependencies...")
                     return;
                 }
-                console.warn("circular: ", warning)
+                // console.warn("circular: ", warning)
             }
             warn(warning)
         },
@@ -72,63 +70,41 @@ const codeBundle = (config) => {
         },
     };
 };
+const heliosLoader = heliosRollupLoader({
+    project: "stellar-contracts"
+});
+const heliosTypeGen = heliosRollupTypeGen();
 
-// console.log(JSON.stringify(browserRollupConfig, null, 2))
 export default [
     codeBundle({
-        input: "./index-rollup.ts",
-        plugins: [
-            esbuild({
-                tsconfig: "./tsconfig.json",
-                target: ["node18" ],
-                sourceMap: true,
-            }),
-        ],
-        output: [
-            {
-                file: `./dist/index-rollup.mjs`,
-                sourcemap: true,
-                format: "es",
-            }
-        ]
-    }),
-    codeBundle({
-        input: "./index.ts",
+        input: {
+            "stellar-contracts-node.mjs": "./index.ts",
+            "capo-node.mjs": "./src/Capo.ts",
+            "testing-node.mjs": "./src/testing/index.ts",
+        },
         plugins: [
             // externals(),
-            heliosRollupLoader({
-                project: "stellar-contracts"
-            }),
-            heliosRollupTypeGen(),
+            heliosLoader, 
+            heliosTypeGen,
             json(),
             resolve({
-                ...platformModulePaths("server"),
-                exportConditions: ["dev"],
+                // ...platformModulePaths("server"),
+                exportConditions: ["node"],
                 extensions: [".json", ".ts", ".js"],
             }),
             // sourcemaps(),
-            esbuild({
+            esbuildPlugin({
                 tsconfig: "./tsconfig.json",
                 target: ["node18" ],
-                
-                sourceMap: false,
-            }),
-            execute({
-                sync: true,
-                commands: [
-                    "./scripts/smokeBuild"
-                    // "set -e ; tsc & \n p=$! ; if [ \"$SMOKE\" != \"\" ] ; \nthen \n pnpm smoke:test & \n api-extractor run --local --verbose & fi  ;\n  if ! wait $p ; then { echo '---------- TYPESCRIPT ERRORS --------- ' ; tsc ; } else { api-extractor run --local --verbose ; } fi "
-                    // "tsc -p ./tsconfig.dts.json &&  api-extractor run --local --verbose"
-                ]
+                dropLabels: [ "__BROWSER_ONLY__" ],
+                sourceMap: false,                
             })
-            // apiExtractor({
-            //     configFile: "./api-extractor.json",
-            //   }),        
         ],
         output: [
             {
-                file: `${name}.mjs`,
-                sourcemap: false,
+                dir: "./dist/",
+                sourcemap: true,
+                entryFileNames: "[name]",
                 format: "es",
                 // tells Chrome devtools to automatically omit these files from the stack presentation 
                 // sourcemapIgnoreList: (relativeSourcePath, sourcemapPath) => {
@@ -146,6 +122,39 @@ export default [
     
             },
         ],
+    }),
+    codeBundle({
+        input: {
+            "stellar-contracts-browser.mjs": "./index.ts",
+            "capo-browser.mjs": "./src/Capo.ts",
+            "testing-browser.mjs": "./src/testing/index.ts",            
+        },
+        plugins: [
+            // externals(),
+            heliosLoader, 
+            heliosTypeGen,
+            json(),
+            resolve({
+                // ...platformModulePaths("browser"),
+                exportConditions: ["browser"],
+                extensions: [".json", ".ts", ".js"],
+            }),
+            // sourcemaps(),
+            esbuildPlugin({
+                tsconfig: "./tsconfig.json",
+                target: ["node18" ],
+                dropLabels: [ "__NODEJS_ONLY__" ],
+                sourceMap: false,                                
+            })
+        ],
+        output: [
+            {
+                dir: `./dist/`,
+                entryFileNames: "[name]",
+                sourcemap: true,
+                format: "es",
+            }
+        ]
     }),
     // codeBundle({
     //     input: "./src/testing/index.ts",
@@ -182,4 +191,4 @@ export default [
     //         format: "es",
     //     },
     // }),
-];
+]

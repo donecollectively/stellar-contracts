@@ -30,8 +30,14 @@ import type { InlineTxOutputDatum } from "@helios-lang/ledger";
 import type { IntLike } from "@helios-lang/codec-utils";
 import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
 
+/**
+ * @public
+ */
 export type GenericDelegateBridgeClass = AbstractNew<GenericDelegateBridge>;
 
+/**
+ * @public
+ */
 export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
     Pick<
         UnspecializedDelegateBridge,
@@ -83,6 +89,9 @@ type AbstractStoredDataLike = DelegateDatum$capoStoredDataLike;
     //     capoStoredData?: unknown;
     // };
     
+/**
+ * @public
+ */
 export type GenericDelegateDatum = Pick<
     ErgoDelegateDatum,
     "Cip68RefToken" | "IsDelegation"
@@ -104,6 +113,9 @@ export type SomeDgtDatumReader = SomeDgtBridgeReader & {
 type x = DelegateDatumHelper
 type t = Pick<DelegateDatumHelper, "Cip68RefToken" | "IsDelegation">
 
+/**
+ * @public
+ */
 export type SomeDgtDatumHelper<T extends AnyDataTemplate<any,any>> = 
     EnumBridge<JustAnEnum> &
     Pick<DelegateDatumHelper, "Cip68RefToken" | "IsDelegation"> & {
@@ -117,6 +129,9 @@ export type SomeDgtDatumHelper<T extends AnyDataTemplate<any,any>> =
 // DelegateDatumHelper;
 
 // Omit<..., "SpendingActivity" | "MintingActivity" | "BurningActivity" | "ᱺᱺcast">
+/**
+ * @public
+ */
 type PartialReader = Pick<
     UnspecializedDelegateBridgeReader,
     // "PendingDelegateAction" |
@@ -127,6 +142,9 @@ type PartialReader = Pick<
     | "DelegationDetail"
 >;
 
+/**
+ * @public
+ */
 export type SomeDgtBridgeReader = DataBridgeReaderClass &
     PartialReader & {
         bridge: GenericDelegateBridge;
@@ -139,6 +157,10 @@ export type SomeDgtBridgeReader = DataBridgeReaderClass &
         // ᱺᱺcast: Cast<unknown, unknown>;
     };
 
+/**
+ * abstract interface for activity-helpers
+ * @public
+ */
 export type SomeDgtActivityHelper = EnumBridge<isActivity> &
     // Omit<
     //     DelegateActivityHelper,

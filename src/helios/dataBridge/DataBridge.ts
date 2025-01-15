@@ -103,6 +103,9 @@ import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js"
 //     }
 // )
 
+/**
+ * @internal
+ */
 const rawDataBridgeProxy = new Proxy({}, {
     apply(_, THIS: DataBridge, [x]: any[]) {
         // typescript protects against this code-path being allowed by types, but
@@ -116,19 +119,32 @@ const rawDataBridgeProxy = new Proxy({}, {
     }
 })
 
+/**
+ * @internal
+ */
 function dataBridgeProxyBase() {}
 dataBridgeProxyBase.prototype = rawDataBridgeProxy
 
+/**
+ * @internal
+ */
 export type DataBridgeOptions = {
     isActivity?: boolean;
     isNested?: boolean;
 };
+
+/**
+ * @internal
+ */
 export type callWith<ARGS, T extends DataBridge> 
     = T & ( 
         (x: ARGS) => ReturnType<T["ᱺᱺcast"]["toUplcData"]> 
     )
 
-export class DataBridge extends (dataBridgeProxyBase as any) {
+/**
+ * @internal
+ */
+export class DataBridge extends (dataBridgeProxyBase as typeof Object) {
     protected ᱺᱺschema : TypeSchema 
     protected isActivity: boolean;
     protected isNested: boolean;
@@ -207,6 +223,9 @@ export class DataBridge extends (dataBridgeProxyBase as any) {
     // }
 }
 
+/**
+ * @public
+ */
 export class ContractDataBridge {
     static isAbstract : (true | false) = true as const
     isAbstract : (true | false) = true as const
@@ -226,6 +245,9 @@ export class ContractDataBridge {
     }
 }
 
+/**
+ * @public
+ */
 export class ContractDataBridgeWithEnumDatum extends ContractDataBridge {    
     static isAbstract : (true | false) = true as const
     isAbstract : (true | false) = true as const
@@ -237,6 +259,9 @@ export class ContractDataBridgeWithEnumDatum extends ContractDataBridge {
     }
 }
 
+/**
+ * @public
+ */
 export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
     static isAbstract : (true | false) = true as const
     isAbstract : (true | false) = true as const
@@ -250,6 +275,10 @@ export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
 // type DataBridgeReader = DataBridgeReaderClass & {
 //     [key: string]: (x : UplcData) => any
 // }
+
+/**
+ * @public
+ */
 export class DataBridgeReaderClass {
     declare datum: readsUplcTo<unknown> | undefined
 }

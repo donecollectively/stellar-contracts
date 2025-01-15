@@ -1,22 +1,166 @@
 #!/bin/bash
-
-set -e # exit on error
+# set -x # debug mode
+#set -e # exit on error
 #//! EXPECTS to be run in context of `pnpm exec`
 
-tsc & 
-rollup \
-  --config rollup.config.ts \
-  --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
-  $*
+playSound() {
+    f=$1
+    shift
+    if [ -f /usr/share/sounds/gnome/default/alerts/$f.ogg ]; then
+        play /usr/share/sounds/gnome/default/alerts/$f.ogg $* > /dev/null 2>&1
+    fi
+}
 
-wait -n
-if [ $? -ne 0 ]; then
-  echo "build failed"
-  exit 1
+hasProblem=$(mktemp /tmp/stellar-contracts.XXXXXX.hasProblem.txt)
+
+ESBUILD="esbuild --format=esm --bundle --sourcemap --packages=external"
+
+# limits the window in which background jobs can stomp
+# on each others' output and mess up the terminal
+inBackground() {
+    # creates two tempfiles (stdout/stderr), and runs the command in the background.
+    # when the background job finishes, the content is emitted and 
+    # the tempfiles are removed.
+    local outFile=$(mktemp /tmp/stellar-contracts.XXXXXX.stdout.txt)
+    local errFile=$(mktemp /tmp/stellar-contracts.XXXXXX.stderr.txt)
+    DESCR=$1
+    shift
+    echo "  -- in background: $DESCR"
+    $* > $outFile 2> $errFile &
+    local pid=$!
+    MAYBE_WITH_ERRORS=""
+    wait $pid || {
+        MAYBE_WITH_ERRORS=" with error code $?"
+        echo "$DESCR" >> $hasProblem
+    }
+    cat $outFile
+    cat $errFile >&2
+    rm $outFile $errFile
+    [[ -z $MAYBE_WITH_ERRORS ]] && {
+        playSound click phaser 0.6 0.66 2 0.4 2 -t & 
+    }
+    echo "  -- done${MAYBE_WITH_ERRORS}: $DESCR"
+}
+
+ESBUILD_EXTERNALS=$(cat <<EOF
+--external:esbuild 
+--external:rollup 
+--external:rollup-plugin-esbuild 
+--external:rollup-pluginutils 
+--external:@helios-lang
+EOF
+)
+
+rollupPluginDTS() {
+    # stage 1: raw DTS to be fed to api-extractor
+    tsc -p ./tsconfig.rollupPlugins.dts.json  &&
+    # .d.ts only for now (do we need separate docs?)
+    # stage 2: api extractor brings it all together
+    api-extractor run --local -c api-extractor.rollupPlugins.json 
+}
+
+makeRollupPlugin() {
+    $ESBUILD --platform=node $ESBUILD_EXTERNALS \
+        --drop-labels=__BROWSER_ONLY__ \
+        --outfile=dist/rollupPlugins.mjs \
+        index-rollup-plugins.ts
+
+    # raw DTS to be fed to api-extractor 
+    inBackground "updating rollupPlugin.d.ts..." \
+        rollupPluginDTS &
+} 
+
+programDTS() {
+    tsc -p ./tsconfig.programWithCacheAPI.dts.json &&
+    api-extractor run --local  -c api-extractor.programWithCacheAPI.json 
+}
+
+makeHeliosProgramWithCacheAPI() {
+    inBackground "-- cacheable program .d.ts" \
+        programDTS
+
+    $ESBUILD --platform=node $ESBUILD_EXTERNALS \
+        --drop-labels=__BROWSER_ONLY__ \
+        --outfile=dist/HeliosProgramWithFSCache.mjs \
+        src/helios/HeliosProgramWithFSCache.ts
+    $ESBUILD $ESBUILD_EXTERNALS \
+        --drop-labels=__NODEJS_ONLY__ \
+        --outfile=dist/HeliosProgramWithMockCacheAPI.mjs \
+        src/helios/HeliosProgramWithMockCacheAPI.ts    
+}
+
+testingDTS() {
+    tsc -p ./tsconfig.testing.dts.json &&
+    api-extractor run --local -c api-extractor.testing.json 
+}
+
+playSound swing &
+{
+    # raw DTS to be fed to api-extractor
+    inBackground "make dist/HeliosProgramWithCacheAPI" \
+        makeHeliosProgramWithCacheAPI &
+        # ... has nested background jobs.
+        # ... needed for the rollup plugin
+
+    wait  # for stuff above to finish
+    inBackground "build rollupPlugin" \
+        makeRollupPlugin &
+    inBackground "typecheck all, prep for doc-gen & main .d.ts" \
+        tsc -p ./tsconfig.all.dts.json  &
+
+}  
+
+inBackground "rollup main code bundle" \
+    rollup --config rollup.config.ts \
+  --configPlugin 'esbuild={loaders:{".json":"json"},target:"esnext",tsconfig:"./tsconfig.rollupconfig.json"}' \
+  $* &
+
+sleep 0.5
+echo "------------------------------ waiting ------------------------------"
+wait
+
+if [ -s $hasProblem ]; then
+    # audio indication of failure, and exit
+    playSound hum vol 0.5 &
+    # playSound click &
+    # sleep 0.25
+    # playSound click phaser 0.6 0.66 2 0.4 2 -t & 
+    echo "build failed in jobs:" >&2
+        cat $hasProblem | while read line; do
+        echo "  $line" >&2
+    done
+    exit
 fi
 
-echo -n "build finished at "
-date
+{
+    inBackground "main .d.ts & docs" \
+        api-extractor run --local  &
+
+    inBackground "testing.d.ts" \
+        testingDTS
+}
+
+wait
+
+if [ -s $hasProblem ]; then
+    # audio indication of failure, and exit
+    playSound hum vol 0.5 &
+    # playSound click &
+    # sleep 0.25
+    echo "build failed in jobs:" >&2
+    cat $hasProblem | while read line; do
+        echo "  $line" >&2
+    done
+    exit
+else
+    # audio indication of success
+    playSound string &
+    sleep 0.1 
+    playSound string pitch 407 &
+    playSound string pitch 1018 
+fi
+
+echo "build finished at $(date)"
 # api-extractor run --local --verbose
 
 # to debug rollup plugins:

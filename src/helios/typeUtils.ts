@@ -85,6 +85,10 @@ export const _oneOf_ = Symbol("[oneOf]");
 export type _oneOf_ = typeof _oneOf_;
 export type note = "Note: only one the following keys can be present";
 
+
+/**
+ * @public
+ */
 export type IntersectedEnum<
     T,
     intersected = intersectedElements<EachUnionElement<T>>,

@@ -17,13 +17,10 @@ import {
 
  import type { CardanoClient, Emulator, Wallet } from "@helios-lang/tx-utils";
 import type {
-    UplcProgramV2,
     UplcProgramV3,
     UplcData,
 } from "@helios-lang/uplc";
 import type { DataType, Program, EnumMemberType } from "@helios-lang/compiler";
-export type anyUplcProgram = UplcProgramV2;
-// | UplcProgramV3;
 
 import {
     StellarTxnContext,
@@ -31,7 +28,7 @@ import {
     type hasSeedUtxo,
 } from "./StellarTxnContext.js";
 import { betterJsonSerializer } from "./diagnostics.js";
-import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
+import type { anyUplcProgram, InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { Capo } from "./Capo.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
 // import { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
@@ -40,7 +37,6 @@ import {
     HeliosScriptBundle,
 } from "./helios/HeliosScriptBundle.js";
 import { type HeliosBundleClass } from "./helios/HeliosMetaTypes.js";
-import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 import {
     DataBridge,
     ContractDataBridge,
@@ -362,7 +358,7 @@ type ComputedScriptProperties = Partial<{
     vh: ValidatorHash;
     addr: Address;
     mph: MintingPolicyHash;
-    program: CachedHeliosProgram;
+    program: Program;
     identity: string;
 }>;
 
@@ -823,6 +819,24 @@ export class StellarContract<
             this.actorContext = actorContext;
         }
 
+        // the config comes from...
+        //      - Capo minter's seed-txn/mph/rev
+        //          - seed txn == a utxo in Stellar SaaS contract
+        //      - Capo's mph/rev & script hash 
+        //      - each delegate's {rev, delegateName, isMint/Spend/DataPolicy} details
+        //          - a script hash for the delegate's script, can be cross-checked with the on-chain version
+        //          - possibly an "upgrade from ... " {rev} for strong signals of need to update
+        //      - materialized in code bundle and/or dApp's localStorage/indexedDB
+        //          - with CBOR scripts ready to use
+        //  - (temporary) a similar configuration structure included with the dApp, where supported
+        //  - (temporary) a null configuration for testnet deployment
+        //      - the dApp will generate a config structure to be deployed
+        //      - ... using a seed txn selected from the creator's wallet (for a Capo Minter in testnet)
+        //  - low-level bootstrap details for emulator & automated-testing
+        //      - using a seed txn from emulated environment's wallet
+        //      - the minter MPH (for a Capo)
+        //      - derived details for delegates
+
         const { config, partialConfig } = args;
         if (config) {
             this.configIn = config;
@@ -858,7 +872,7 @@ export class StellarContract<
     compiledScript!: anyUplcProgram; // initialized in loadProgramScript
     usesContractScript: boolean = true;
 
-    get datumType() {
+    get datumType() : DataType {
         return this.onChainDatumType;
     }
 
@@ -1104,7 +1118,7 @@ export class StellarContract<
      * override `get onChainActivitiesName()` if needed to match your contract script.
      * @public
      **/
-    get onChainActivitiesType() {
+    get onChainActivitiesType() : DataType {
         const { scriptActivitiesName: onChainActivitiesName } = this;
         if (!this._bundle) throw new Error(`no scriptProgram`);
         const scriptNamespace = this.program.name;
@@ -1126,7 +1140,7 @@ export class StellarContract<
      * @param activityName - the name of the requested activity
      * @public
      **/
-    mustGetActivity(activityName: string) {
+    mustGetActivity(activityName: string) : EnumMemberType | null {
         const ocat = this.onChainActivitiesType;
         return this.mustGetEnumVariant(ocat, activityName);
     }
@@ -1136,7 +1150,7 @@ export class StellarContract<
      * @remarks
      * The activity name is expected to be found in the script's redeemer enum
      */
-    mustHaveActivity(activityName: string) {
+    mustHaveActivity(activityName: string) : EnumMemberType | null{
         const ocat = this.onChainActivitiesType;
         if (!(activityName in ocat.typeMembers)) {
             throw new Error(
@@ -1164,7 +1178,10 @@ export class StellarContract<
         });
     }
 
-    mustGetEnumVariant(enumType: DataType, variantName: string) {
+    mustGetEnumVariant(
+        enumType: DataType, 
+        variantName: string
+    ) : EnumMemberType | null {
         const { [variantName]: variantType } = enumType.typeMembers;
 
         if (!variantType) {
@@ -1285,6 +1302,7 @@ export class StellarContract<
     }
 
     get program() {
+        // avoid re-creating the Program object (from CBOR or source):
         if (this._cache.program) return this._cache.program;
 
         const program = this.getBundle()!.program;
@@ -1794,52 +1812,15 @@ export class StellarContract<
             debugger;
         }
         if (!this.usesContractScript) return;
-
         if (!this.contractParams) {
             throw new Error(`contractParams not set`);
         }
-
-        const script = this.program;
-        if (!script) {
-            console.warn(
-                "compileWithScriptParams() called without loaded script"
-            );
-            debugger;
-            throw new Error(`missing required scriptProgram`);
-        }
-
-        const t = new Date().getTime();
-        for (const [p, v] of Object.entries(this.contractParams)) {
-            script.changeParam(p, v);
-        }
-
         const bundle = this.getBundle();
-        const name = bundle.moduleName;
-        console.log(`${name} with params:`, script.entryPoint.paramsDetails());
 
-        this.compiledScript = await script.compileCached({
-            optimize: this.optimize,
-            // optimize: {
-            //     keepTracing: true,
-            //     factorizeCommon: false,
-            //     inlineSimpleExprs: false,
-            //     flattenNestedFuncExprs: false,
-            //     removeUnusedArgs: false,
-            //     replaceUncalledArgsWithUnit: false,
-            //     inlineErrorFreeSingleUserCallExprs: false,
-            //     inlineSingleUseFuncExprs: false,
-            // },
-            withAlt: true,
-        });
+        this.compiledScript = await bundle.compiledScript(this.contractParams)
 
-        console.log(`       ✅ ${this.constructor.name}`);
+        console.log(`       ✅ ${this.constructor.name} ready`);
         this._cache = {};
-        const t2 = new Date().getTime();
-
-        // Result: ~80ms cold-start or (much) faster on additional compiles
-        console.log("::::::::::::::::::::::::compile time " + (t2 - t) + "ms");
-        // console.profileEnd?.("compile");
-        // if (console.profileEnd) debugger;
     }
 
     // XXXloadBundle(

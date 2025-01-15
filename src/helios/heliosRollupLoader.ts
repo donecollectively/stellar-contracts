@@ -1,7 +1,8 @@
 import { readFileSync } from "fs";
 import path from "path";
+
 import { createFilter } from "rollup-pluginutils";
-import { type LoadResult, type ResolveIdResult } from "rollup";
+import type { LoadResult, ResolveIdResult } from "rollup";
 
 /**
  * Rollup loader for Helios source files

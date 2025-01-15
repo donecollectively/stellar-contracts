@@ -31,9 +31,9 @@ import type {
     stellarSubclass,
     ConfigFor,
     anyDatumProps,
-    anyUplcProgram,
     UplcRecord,
 } from "./StellarContract.js";
+import type { anyUplcProgram } from "./HeliosPromotedTypes.js";
 import {
     bytesToText,
     textToBytes,
@@ -3699,7 +3699,7 @@ export abstract class Capo<
      * Constructs UUTs with the indicated purposes, and adds them to the contract state.
      * This is a useful generic capability to support any application-specific purpose.
      *
-     * The provided transaction context must have a seedUtxo - use {@link Capo.tcxWithSeedUtxo | tcxWithSeedUtxo()} to add one
+     * The provided transaction context must have a seedUtxo - use {@link StellarContract.tcxWithSeedUtxo | tcxWithSeedUtxo()} to add one
      * from the current user's wallet. The seed utxo is consumed, so it can never be used again; its
      * value will be returned to the user wallet.  All the uuts named in the uutPurposes argument will
      * be minted from the same seedUtxo, and will share the same suffix, because it is derived from the

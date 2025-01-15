@@ -211,7 +211,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
     * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
     *  - in a context providing an implicit seed utxo, use 
-    *    the {@link $seeded$addingMintInvariant} variant of this activity instead
+    *    the `$seeded$addingMintInvariant}` variant of this activity instead
     *
      */
     addingMintInvariant(thingWithSeed: hasSeed | TxOutputId | string) 
@@ -252,7 +252,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
     * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
     *  - in a context providing an implicit seed utxo, use 
-    *    the {@link $seeded$addingSpendInvariant} variant of this activity instead
+    *    the `$seeded$addingSpendInvariant}` variant of this activity instead
     *
      */
     addingSpendInvariant(thingWithSeed: hasSeed | TxOutputId | string) 
@@ -293,7 +293,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
     * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
     *  - in a context providing an implicit seed utxo, use 
-    *    the {@link $seeded$forcingNewMintDelegate} variant of this activity instead
+    *    the `$seeded$forcingNewMintDelegate}` variant of this activity instead
     *
      */
     forcingNewMintDelegate(thingWithSeed: hasSeed | TxOutputId | string) 
@@ -330,7 +330,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
-     * See the {@link $seeded$CreatingNewSpendDelegate} accessor for use in a context
+     * See `$seeded$CreatingNewSpendDelegate}` for use in a context
      * providing an implicit seed utxo. 
      */
     CreatingNewSpendDelegate(value: hasSeed, fields: { 

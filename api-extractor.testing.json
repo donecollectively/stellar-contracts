@@ -1,0 +1,13 @@
+
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+    "extends": "./api-extractor.dtsOnly.json",
+    "mainEntryPointFilePath": "<projectFolder>/.api-extractor-temp/src/testing/index.d.ts",
+    "compiler": {
+        "tsconfigFilePath": "<projectFolder>/tsconfig.testing.dts.json"
+    },
+    "dtsRollup": {
+        "enabled": true,
+        "untrimmedFilePath": "<projectFolder>/dist/testing.d.ts"
+    }
+}

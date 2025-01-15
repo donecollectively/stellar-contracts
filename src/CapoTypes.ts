@@ -1,10 +1,31 @@
-import type { Address, MintingPolicyHash, MintingPolicyHashLike, TxInput, TxOutputId, ValidatorHash } from "@helios-lang/ledger";
+import type {
+    Address,
+    MintingPolicyHash,
+    MintingPolicyHashLike,
+    TxInput,
+    TxOutputId,
+    ValidatorHash,
+} from "@helios-lang/ledger";
 import type { Capo } from "./Capo.js";
-import type { ErgoCapoDatum, CapoDatum$Ergo$CharterData, CapoDatum$CharterDataLike, ErgoRelativeDelegateLink, CapoManifestEntryLike } from "./CapoHeliosBundle.typeInfo.js";
-import type { OffchainPartialDelegateLink, ConfiguredDelegate, DelegateSetup } from "./delegation/RolesAndDelegates.js";
+import type {
+    ErgoCapoDatum,
+    CapoDatum$Ergo$CharterData,
+    CapoDatum$CharterDataLike,
+    ErgoRelativeDelegateLink,
+    CapoManifestEntryLike,
+} from "./CapoHeliosBundle.typeInfo.js";
+import type {
+    OffchainPartialDelegateLink,
+    ConfiguredDelegate,
+    DelegateSetup,
+} from "./delegation/RolesAndDelegates.js";
 import type { StellarDelegate } from "./delegation/StellarDelegate.js";
 import type { configBaseWithRev } from "./StellarContract.js";
-import type { StellarTxnContext, anyState, uutMap } from "./StellarTxnContext.js";
+import type {
+    StellarTxnContext,
+    anyState,
+    uutMap,
+} from "./StellarTxnContext.js";
 import type { AnyDataTemplate } from "./delegation/DelegatedData.js";
 import type { isActivity } from "./ActivityTypes.js";
 import type { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
@@ -14,9 +35,17 @@ import type { valuesEntry, InlineDatum } from "./HeliosPromotedTypes.js";
 import type { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
 
-
+/**
+ * @public
+ */
 export type CapoDatum = ErgoCapoDatum;
+/**
+ * @public
+ */
 export type CharterData = CapoDatum$Ergo$CharterData;
+/**
+ * @public
+ */
 export type CharterDataLike = CapoDatum$CharterDataLike;
 /**
  * Schema for initial setup of Charter Datum - state stored in the Leader contract
@@ -24,7 +53,6 @@ export type CharterDataLike = CapoDatum$CharterDataLike;
  * to the on-chain form during mkTxnMintCharterToken().
  * @public
  **/
-
 export interface MinimalCharterDataArgs extends configBaseWithRev {
     spendDelegateLink: OffchainPartialDelegateLink;
     spendInvariants: OffchainPartialDelegateLink[];
@@ -36,20 +64,30 @@ export interface MinimalCharterDataArgs extends configBaseWithRev {
     manifest: Map<string, OffchainPartialDelegateLink>;
 }
 
+/**
+ * @internal
+ */
 export function mkDgtStateKey<
     const N extends string,
     const PREFIX extends string = "dgPoi"
 >(n: N, p: PREFIX = "dgPol" as PREFIX) {
     return `${p}${n.slice(0, 1).toUpperCase()}${n.slice(1)}` as dgtStateKey<
-        N, PREFIX
+        N,
+        PREFIX
     >;
 }
 
+/**
+ * @internal
+ */
 export type dgtStateKey<
     N extends string,
     PREFIX extends string = "dgPol"
 > = `${PREFIX}${Capitalize<N>}`;
 
+/**
+ * @public
+ */
 export type hasNamedDelegate<
     DT extends StellarDelegate,
     N extends string,
@@ -57,25 +95,31 @@ export type hasNamedDelegate<
 > = StellarTxnContext<
     anyState & {
         [k in dgtStateKey<N, PREFIX>]: ConfiguredDelegate<DT> &
-        ErgoRelativeDelegateLink;
+            ErgoRelativeDelegateLink;
     }
 >;
 
 /**
  * @public
  */
-
 export type DelegatedDataPredicate<
     DATUM_TYPE extends AnyDataTemplate<any, any>
 > = (utxo: TxInput, data: DATUM_TYPE) => boolean;
+/**
+ * @public
+ */
 export type ManifestEntryTokenRef = Omit<CapoManifestEntryLike, "entryType"> & {
     entryType: Pick<CapoManifestEntryLike["entryType"], "NamedTokenRef">;
 };
+/**
+ * @public
+ */
 export type SettingsDataContext = {
     settingsUtxo?: TxInput;
     tcx?: hasCharterRef;
     charterUtxo?: TxInput;
 };
+
 /**
  * Includes key details needed to create a delegate link
  * @remarks
@@ -88,47 +132,49 @@ export type SettingsDataContext = {
  *
  * @public
  **/
-
 export type MinimalDelegateLink = Partial<OffchainPartialDelegateLink>;
 //     Omit<RelativeDelegateLinkLike, "uutName">
 // >;
 // const spendDelegate = await this.txnCreateOffchainDelegateLink(
 //     spendDelegateLink: this.mkOnchainRelativeDelegateLink(govAuthority),
+
 /**
  * Delegate updates can, in an "escape hatch" scenario, be forced by sole authority
  * of the Capo's govAuthority.  While the normal path of update involves the existing
  * mint/spend delegate's involvement, a forced update can be used to bypass that route.
  * This provides that signal.
+ * @public
  */
 export type MinimalDelegateUpdateLink = Omit<
-    OffchainPartialDelegateLink, "uutName"
+    OffchainPartialDelegateLink,
+    "uutName"
 > & {
     forcedUpdate?: true;
 };
+
 /**
  * represents a UUT found in a user-wallet, for use in authorizing a transaction
  * @public
  */
+export type FoundUut = { utxo: TxInput; uut: UutName };
 
-export type FoundUut = { utxo: TxInput; uut: UutName; };
 /**
  * strongly-typed map of purpose-names to Uut objects
  *
  * @public
  */
-
 export type uutPurposeMap<unionPurpose extends string> = {
     [purpose in unionPurpose]: UutName;
 };
 // export type hasSomeUuts<uutEntries extends string> = {
 //     uuts: Partial<uutPurposeMap<uutEntries>>;
 // };
+
 /**
  * used for transaction-context state having specific uut-purposes
  *
  * @public
  */
-
 export type hasAllUuts<uutEntries extends string> = {
     uuts: uutPurposeMap<uutEntries>;
 };
@@ -138,22 +184,28 @@ type useRawMinterSetup = Omit<NormalDelegateSetup, "mintDelegateActivity"> & {
     mintDelegateActivity?: undefined;
 };
 
+/**
+ * @public
+ */
 export type DelegateSetupWithoutMintDelegate = {
     withoutMintDelegate: useRawMinterSetup;
 };
 
+/**
+ * @public
+ */
 export type NormalDelegateSetup = {
     usingSeedUtxo?: TxInput | undefined;
     additionalMintValues?: valuesEntry[];
     skipDelegateReturn?: true;
     mintDelegateActivity: isActivity;
 };
+
 /**
  * Pre-parsed results of finding and matching contract-held UTxOs
  * with datum details.
  * @public
  */
-
 export type FoundDatumUtxo<
     DelegatedDatumType extends AnyDataTemplate<any, any>,
     WRAPPED_DatumType extends any = any
@@ -164,19 +216,23 @@ export type FoundDatumUtxo<
     dataWrapped?: WRAPPED_DatumType;
 };
 
+/**
+ * @public
+ */
 export type UutCreationAttrsWithSeed = {
     usingSeedUtxo: TxInput;
 };
+
 /**
  * UUT minting should always use these settings to guard for uniqueness
  *
  * @public
  */
-
 export type MintUutActivityArgs = {
     seed: TxOutputId;
     purposes: string[];
 };
+
 /**
  * A txn context having specifically-purposed UUTs in its state
  * @public
@@ -184,12 +240,11 @@ export type MintUutActivityArgs = {
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<
     hasAllUuts<uutEntries>
 >;
+
 /**
  * charter-minting interface
- *
  * @public
  */
-
 export interface MinterBaseMethods {
     get mintingPolicyHash(): MintingPolicyHashLike;
     txnMintingCharter<TCX extends StellarTxnContext>(
@@ -208,14 +263,17 @@ export interface MinterBaseMethods {
     ): Promise<TCX>;
 }
 
+/**
+ * @public
+ */
 export type rootCapoConfig = {
     rootCapoScriptHash?: ValidatorHash;
 };
+
 /**
  * Configuration details for a Capo
  * @public
  */
-
 export type CapoConfig = configBaseWithRev &
     rootCapoConfig &
     SeedTxnScriptParams & {
@@ -223,6 +281,7 @@ export type CapoConfig = configBaseWithRev &
         rev: bigint;
         bootstrapping?: true;
     };
+
 /**
  * StellarTransactionContext exposing a bootstrapped Capo configuration
  * @remarks
@@ -235,16 +294,23 @@ export type CapoConfig = configBaseWithRev &
  * of this type, with `state.bootstrappedConfig`;
  * @public
  **/
-
 export type hasBootstrappedCapoConfig = StellarTxnContext<{
     bsc: CapoConfig;
     uuts: uutMap;
     bootstrappedConfig: any;
 }>;
+
+/**
+ * @public
+ */
 export type PreconfiguredDelegate<T extends StellarDelegate> = Omit<
-    ConfiguredDelegate<T>, "delegate" | "delegateValidatorHash"
+    ConfiguredDelegate<T>,
+    "delegate" | "delegateValidatorHash"
 >;
 
+/**
+ * @public
+ */
 export type basicDelegateMap<
     anyOtherRoles extends {
         [k: string]: DelegateSetup<any, StellarDelegate, any>;
@@ -255,19 +321,24 @@ export type basicDelegateMap<
         spendDelegate: DelegateSetup<"spendDgt", ContractBasedDelegate, any>;
     }
 > = {
-        [k in keyof anyOtherRoles |
-        keyof defaultRoles]: k extends keyof anyOtherRoles ? anyOtherRoles[k] : k extends keyof defaultRoles ? defaultRoles[k] : never;
-    };
+    [k in
+        | keyof anyOtherRoles
+        | keyof defaultRoles]: k extends keyof anyOtherRoles
+        ? anyOtherRoles[k]
+        : k extends keyof defaultRoles
+        ? defaultRoles[k]
+        : never;
+};
 
 /**
- * A transaction context having a reference to the Capo's charter 
- * @public
- * The transaction will have a refInput pointing to the charter, for 
+ * A transaction context having a reference to the Capo's charter
+ * @remarks
+ * The transaction will have a refInput pointing to the charter, for
  * on-chain delegate scripts' use
- * 
- * The transaction context will have {charterData, charterRef} in its state
+*
+* The transaction context will have \{charterData, charterRef\} in its state
+ * @public
  */
-
 export type hasCharterRef = StellarTxnContext<
     {
         charterRef: TxInput;
@@ -277,34 +348,39 @@ export type hasCharterRef = StellarTxnContext<
 
 /**
  * A transaction context having a reference to the Capo's settings
- * @public
+ * @remarks
  * The transaction will have a refInput pointing to the settings record,
  * for any on-chain delegate scripts' use
- * 
- * The transaction context will have {settingsRef, settingsUtxo} in its state.
- * 
- * For more specific typing of the contents of the utxo's {data, dataWrapped},
- * you may add a type parameter to this type.
+*
+* The transaction context will have \{settingsRef, settingsUtxo\} in its state.
+*
+* For more specific typing of the contents of the utxo's \{data, dataWrapped\},
+* you may add a type parameter to this type.
+ * @public
  */
 export type hasSettingsRef<
-    SETTINGS_TYPE extends AnyDataTemplate<any,any>=AnyDataTemplate<any,any>, 
-    WRAPPED_SETTINGS=any
+    SETTINGS_TYPE extends AnyDataTemplate<any, any> = AnyDataTemplate<any, any>,
+    WRAPPED_SETTINGS = any
 > = StellarTxnContext<
     {
         settingsInfo: FoundDatumUtxo<SETTINGS_TYPE, WRAPPED_SETTINGS>;
     } & anyState
 >;
 
-
+/**
+ * @public
+ */
 export type hasSpendDelegate = StellarTxnContext<
     anyState & {
         spendDelegate: ContractBasedDelegate;
     }
 >;
 
+/**
+ * @public
+ */
 export type hasGovAuthority = StellarTxnContext<
     anyState & {
         govAuthority: AuthorityPolicy;
     }
 >;
-

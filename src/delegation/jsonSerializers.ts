@@ -1,7 +1,7 @@
 import { bytesToHex, isValidUtf8 } from "@helios-lang/codec-utils";
 import { encodeBech32 } from "@helios-lang/crypto";
 import { type Address } from "@helios-lang/ledger";
-import { decodeAddress, makeAddress, type MintingPolicyHash, type ScriptHash } from "@helios-lang/ledger";
+import { type MintingPolicyHash } from "@helios-lang/ledger";
 import { bytesToText } from "../HeliosPromotedTypes.js";
 import { 
     txOutputIdAsString, 
@@ -13,11 +13,11 @@ import type { ByteArrayData, IntData } from "@helios-lang/uplc";
 
 /**
  * toJSON adapter for delegate links
+ * @remarks
+ * used for on-chain serialization of contract config details
  * @internal
  **/
-
 export function delegateLinkSerializer(key: string, value: any) {
-    
     if (typeof value === "bigint") {
         return value.toString();
     } else if ("bytes" == key && Array.isArray(value)) {
@@ -34,7 +34,10 @@ export function delegateLinkSerializer(key: string, value: any) {
     return value; // return everything else unchanged
 }
 
-// this is NOT a jsonifier, but it emits nice-looking info onscreen when used with JSON.stringify (in arg2)
+/**
+ *  this is NOT a jsonifier, but it emits nice-looking info onscreen when used with JSON.stringify (in arg2)
+ * @public  
+ */
 export function uplcDataSerializer(key: string, value: any, depth=0) {
     const indent = "    ".repeat(depth);
     const outdent = "    ".repeat(Math.max(0, depth-1));
@@ -159,9 +162,18 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
     if (key) return `{${extraNewLine}${s}}`
     return `\n${s}`
 }
+/**
+ * short version of address for compact display
+ * @public  
+ */
 export function abbrevAddress(address: Address) {
     return abbreviatedDetail(address.toString(), 12, false);
 }
+
+/**
+ * short representation of bytes for compact display
+ * @public  
+ */
 export function abbreviatedDetailBytes(prefix: string, value: number[], initLength=8) {    
     const hext = bytesToHex(value);
     const Len = value.length
@@ -172,6 +184,11 @@ export function abbreviatedDetailBytes(prefix: string, value: number[], initLeng
     const checksumString = encodeBech32("_", value).slice(-4)
     return `${prefix}${hext.slice(0, initLength)}… ‹${checksumString}›${text}`;
 }
+
+/**
+ * short version of hex string for compact display
+ * @internal
+ */
 export function abbreviatedDetail(hext: string, initLength = 8, countOmitted: boolean = false) {
     if (process?.env?.EXPAND_DETAIL) {
         return hext;

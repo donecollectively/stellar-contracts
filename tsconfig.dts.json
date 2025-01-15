@@ -2,7 +2,7 @@
     "$schema": "http://json.schemastore.org/tsconfig",
     "compilerOptions": {
         "strict": true,
-        "noEmit": true,
+        // "noEmit": true,
         "declaration": true,
         "emitDeclarationOnly": true,
         "declarationMap": true,
@@ -10,14 +10,15 @@
         "allowJs": true,
         "allowSyntheticDefaultImports": true,
         "allowArbitraryExtensions": true,
-        // "skipLibCheck": false,
+        "skipLibCheck": true,
 
         "target": "ESNext",
          // "lib": ‹defaut›
-        "module": "ES2022",
-        "esModuleInterop": true,
+        //  "module": "ESNext",
+         "module": "nodenext",
+         "esModuleInterop": true,
         "types": ["node"],
-        "verbatimModuleSyntax": true,
+        // "verbatimModuleSyntax": true,
 
         "moduleResolution": "nodenext",
         "customConditions": ["dev"],
@@ -27,9 +28,10 @@
         // "isolatedModules": false,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
+        // "traceResolution": true,
         
-        "outDir": "./.api-extractor-temp",        
-        "outFile": ".api-extractor-temp/stellar-contracts-raw.d.ts",
+        "outDir": "./.api-extractor-temp",
+        // "outFile": ".api-extractor-temp/stellar-contracts-raw.d.ts",
         // "importHelpers": true,
         "rootDir": ".",
         
@@ -38,19 +40,18 @@
         // "noErrorTruncation": true,
 
         "paths": {
-            "@donecollectively/stellar-contracts": ["./src/index.ts"],
-            "src/*": ["./src/*"]
+            // "@donecollectively/stellar-contracts": ["./src/index.ts"],
+            "src/*": ["./src/*"],
         }
     },
-    "files": [ 
-        "index.ts",
-        "src/@types/heliosModule.d.ts",
+    "files": [
+        "src/@types/heliosModule.d.ts"
     ],
     "include": [
-        // "lib/**/*.json", 
-        // "src/**/*.hl",
-        // "lib/**/*.ts", 
-        // "lib/**/*.js", 
+        // "./src/@types/heliosModule.d.ts",
+        // "./src/**/*.hl",
+        // "./src/**/*.ts", 
+        // "./src/**/*.js",
     ],
     "exclude": [
         "node_modules",
