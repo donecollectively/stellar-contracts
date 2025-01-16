@@ -70,11 +70,11 @@ rollupPluginDTS() {
 makeRollupPlugin() {
     $ESBUILD --platform=node $ESBUILD_EXTERNALS \
         --drop-labels=__BROWSER_ONLY__ \
-        --outfile=dist/rollupPlugins.mjs \
+        --outfile=dist/rollup-plugins.mjs \
         index-rollup-plugins.ts
 
     # raw DTS to be fed to api-extractor 
-    inBackground "updating rollupPlugin.d.ts..." \
+    inBackground "updating rollup-plugin.d.ts..." \
         rollupPluginDTS &
 } 
 
@@ -113,15 +113,13 @@ playSound swing &
     wait  # for stuff above to finish
     inBackground "build rollupPlugin" \
         makeRollupPlugin &
-    inBackground "typecheck all, prep for doc-gen & main .d.ts" \
+    inBackground "typecheck all, prep for doc-gen and main .d.ts" \
         tsc -p ./tsconfig.all.dts.json  &
 
 }  
 
 inBackground "rollup main code bundle" \
-    rollup --config rollup.config.ts \
-  --configPlugin 'esbuild={loaders:{".json":"json"},target:"esnext",tsconfig:"./tsconfig.rollupconfig.json"}' \
-  $* &
+    ./scripts/rollup &
 
 sleep 0.5
 echo "------------------------------ waiting ------------------------------"
@@ -141,8 +139,8 @@ if [ -s $hasProblem ]; then
 fi
 
 {
-    withDocs inBackground "main .d.ts & docs" \
-        api-extractor run --local  &
+    inBackground "main .d.ts and docs" \
+        withDocs api-extractor run --local  &
 
     inBackground "testing.d.ts" \
         testingDTS

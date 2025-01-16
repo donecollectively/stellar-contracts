@@ -14,7 +14,7 @@ import packageJson from "./package.json" with { type: "json" };
 import { 
     heliosRollupLoader, 
     heliosRollupTypeGen
-} from "./dist/rollupPlugins.mjs";
+} from "./dist/rollup-plugins.mjs";
 
 const name = packageJson.main.replace(/\.m?js$/, "");
 const serverBundledModules : string[] = [];
@@ -78,6 +78,7 @@ const heliosTypeGen = heliosRollupTypeGen();
 const dualPlatformEntryPoints = {
 };
 const nodeOnlyEntryPoints = {
+    // "ContractBasedDelegate": "./src/delegation/ContractBasedDelegate.ts",
     "testing": "./src/testing/index.ts",
 }
 const browserOnlyEntryPoints = {
@@ -88,7 +89,6 @@ const platformIndependentEntryPoints = {
     "CapoHeliosBundle": "./src/CapoHeliosBundle.ts",
     "CapoDelegateHeliosBundle": "./src/delegation/CapoDelegateBundle.ts",
     "DelegatedDataContract": "./src/delegation/DelegatedDataContract.ts",
-    // "capo": "./src/Capo.ts",
     "stellar-contracts": "./index.ts",
 };
 
@@ -98,7 +98,7 @@ const browserTargetedEntryPoints = {
     ...browserOnlyEntryPoints
 };
 export default [
-    codeBundle({
+    false && codeBundle({
         input: {
             ...dualPlatformEntryPoints,
             ...nodeOnlyEntryPoints
@@ -237,4 +237,4 @@ export default [
     //         format: "es",
     //     },
     // }),
-]
+].filter((x) => !!x);

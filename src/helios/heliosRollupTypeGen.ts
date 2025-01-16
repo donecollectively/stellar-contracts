@@ -12,6 +12,7 @@ import {
     type LoadHook,
     type CustomPluginOptions,
     rollup,
+    type ResolvedId,
 } from "rollup";
 import esbuild from "rollup-plugin-esbuild";
 
@@ -49,12 +50,12 @@ export function heliosRollupTypeGen(
     } = {}
 ) {
     const options = {
+        ...opts,
         ...{
             include: /.*\.hlb\.[jt]s$/,
             exclude: [],
             project: "",
         },
-        ...opts,
     };
 
     // creates a temporary directory for dynamic loading,
@@ -66,17 +67,23 @@ export function heliosRollupTypeGen(
     }
     // console.log(`heliosTypeGen: using tempDir: ${tempDir}`);
 
-    const filter = createFilter(options.include, options.exclude);
+    const filterHLB = createFilter(options.include, options.exclude);
+    const filterHlbForEmit = createFilter(/.*\.hlb\.[jt]s\?forEmit/);
     // const project = options.project ? `${options.project}` : "";
 
+    // const lib = loadCompilerLib();
     const projectRoot = StellarHeliosProject.findProjectRoot();
-    //read package.json from project root, parse and check its package name
 
-    const state : TypeGenPluginState = {
+    //read package.json from project root, parse and check its package name
+    // const packageJsonPath = path.join(projectRoot, "package.json");
+    // const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+    // const isStellarContracts = "@donecollectively/stellar-contracts" === packageJson.name;
+
+    const state: TypeGenPluginState = {
         capoBundle: null, // new CapoHeliosBundle(),
         hasExplicitCapoBundle: false,
         hasOtherBundles: false,
-        project: new StellarHeliosProject()
+        project: new StellarHeliosProject(),
     };
 
     const isJavascript = /\.js$/;
@@ -100,16 +107,21 @@ export function heliosRollupTypeGen(
                 //         `first .hlb file is being loaded by ${importer}`
                 //     );
                 // }
-                const {project} = state;
+                const { project } = state;
+                const {
+                    isEntry
+                } = options
+                let resolved: ResolvedId | null = null;
                 if (
                     importer?.match(isJavascript) &&
                     source?.match(isJavascript) &&
                     importer?.indexOf(project.projectRoot) === 0
                 ) {
+                    console.log("patching up a vitest resolution");
                     // work around vitest not resolving .ts files from .js using
                     // the correct rules...
                     const sourceWithTs = source.replace(/\.js$/, ".ts");
-                    const resolved = await this.resolve(
+                    resolved = await this.resolve(
                         source,
                         importer.replace(/\.js$/, ".ts"),
                         {
@@ -126,20 +138,59 @@ export function heliosRollupTypeGen(
                             //     resolved,
                             // }
                         );
-                        return resolved;
                     }
+                } 
+                if (isEntry && !importer) {
+                    return resolved
                 }
-            },
-        },
-        load: {
-            order: "pre",
-            handler: async function (this: PluginContext, id: string): Promise<LoadResult> {
-                // the source is a relative path name
-                // the importer is an a fully resolved id of the imported module
-                // console.log("heliosTypeGen: load");
+                // let other resolvers resolve to an absolute filename
+                const r = await this.resolve(source, importer, {
+                    ... options,
+                    skipSelf: true
+                });
+                if (r) resolved = r;
+                const id = resolved?.id || source;
+                if (resolved && id && filterHLB(id)) {
+                    // console.log("resolved absolute HLB id "+id);
 
-                const {project} = state;
-                if (!filter(id)) {
+                    // id is now an absolute filename of a (TS or JS) helios-bundle definition.
+                    // before proceeding with returning a resolution for that file, let's
+                    // try to push it through a depth-first compile, load it and generate types.
+                    const name = resolved.id.replace(
+                        /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
+                        "$1"
+                    );
+
+                    // immediately starts resolving the file-for-emit, and returns
+                    // the OUTPUT id of the emitted chunk.  The importer of the .hlb.ts file
+                    // will get that output id in its import statement, and the emitFile acts
+                    // like a fork, with the processing of the emitted file happening on a separate track,
+                    // and the id used in place of normal load/transform processing of the separate chunk
+                    const outputId = this.emitFile({
+                        type: "chunk",
+                        id: `${id}?forEmit`,
+                        name: `contracts/${name}.hlbundled`,
+                        importer,
+                    });
+                    return outputId;
+                } else if (filterHlbForEmit(id)) {
+                    // console.log("resolveId: got HLB for emit: "+id);
+
+                    // resolving the file-to-be-emitted - it's the same file, but as a
+                    // dynamic entry-point.  We resolve it like any file, minus the ?forEmit suffix,
+                    // then load & transform as seen below.
+
+                    // this call doesn't hit the path above, or cause an infinite loop,
+                    //  because this.resolve() skips using this plugin's resolveId hook.
+                    return this.resolve(
+                        id.replace(/\?forEmit$/, ""),
+                        importer,
+                        { 
+                            ...options,                            
+                            skipSelf: true
+                        }
+                    );
+                } else {
                     if (id.match(/hlb/)) {
                         console.log(
                             `typeGen resolve: skipping due to filter mismatch`,
@@ -147,56 +198,92 @@ export function heliosRollupTypeGen(
                         );
                         debugger;
                         //no-op, but helpful for debugging:
-                        filter(id); // trace into here to see what's up with the filter
+                        filterHLB(id); // trace into here to see what's up with the filter
+                    }
+                }
+                return resolved;
+            },
+        },
+        load: {
+            order: "pre",
+            handler: async function (
+                this: PluginContext,
+                id: string
+            ): Promise<LoadResult> {
+                // the source is a relative path name
+                // the importer is an a fully resolved id of the imported module
+                // console.log("heliosTypeGen: load");
+
+                const { project } = state;
+                if (!filterHLB(id)) {
+                    if (id.match(/hlb/)) {
+                        console.log(
+                            `typeGen resolve: skipping due to filter mismatch`,
+                            { source: id }
+                        );
+                        debugger;
+                        //no-op, but helpful for debugging:
+                        filterHLB(id); // trace into here to see what's up with the filter
                     }
 
                     return null;
                 }
+                console.log(`heliosTypeGen: loading ${id}`);
 
                 // todo: load an existing bundle if it's already compiled, and ask that class to
                 //   check its sources for changes, so we can skip rollup and recompilation if
                 //   things are already up-to-date.
                 const SomeBundleClass = await rollupMakeBundledScriptClass(id);
                 const relativeFilename = path.relative(projectRoot, id);
-                this.warn(`👁️ checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`)
+                this.warn(
+                    `👁️ checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`
+                );
                 //??? addWatchFile for all the .hl scripts in the bundle
                 // return null as LoadResult;
 
-                let bundle = new SomeBundleClass()
+                let bundle = new SomeBundleClass();
                 // compile the program seen in that bundle!
                 // ... to trigger helios syntax-checking:
                 let program = bundle.program;
+
+                let replacedCapo = false;
  
-                let replacedCapo = false
                 if (SomeBundleClass.isCapoBundle) {
-                    let skipInstallingThisOne = false; 
+                    let skipInstallingThisOne = false;
                     if (state.hasExplicitCapoBundle) {
-                            let existingBundleProtoChainNames : string[]= [];
-                            // if the new class is just a base class for a more specific one, that's ok
-                            // we will still return it, without installing it as "the" Capo bundle
-                            let existingBundleProto = state.capoBundle.constructor;
-                            while (existingBundleProto) {
-                                existingBundleProtoChainNames.push(existingBundleProto.name);
-                                existingBundleProto = Object.getPrototypeOf(existingBundleProto);
-                            }
-                            if (existingBundleProtoChainNames.includes(SomeBundleClass.name)) {
-                                skipInstallingThisOne = true
-                                console.log(
-                                    `Helios project-loader: not adopting ${SomeBundleClass.name} as the project Capo\n`+
-                                    `  ... because it looks like a base class of already-loaded ${
-                                        state.capoBundle.constructor.name
-                                    }`
-                                )
-                            } else {
-                                // console.log({id, x, y})
-                                debugger
-                            }
-
-
-                    } 
+                        let existingBundleProtoChainNames: string[] = [];
+                        // if the new class is just a base class for a more specific one, that's ok
+                        // we will still return it, without installing it as "the" Capo bundle
+                        let existingBundleProto = state.capoBundle.constructor;
+                        while (existingBundleProto) {
+                            existingBundleProtoChainNames.push(
+                                existingBundleProto.name
+                            );
+                            existingBundleProto =
+                                Object.getPrototypeOf(existingBundleProto);
+                        }
+                        if (
+                            existingBundleProtoChainNames.includes(
+                                SomeBundleClass.name
+                            )
+                        ) {
+                            skipInstallingThisOne = true;
+                            console.log(
+                                `Helios project-loader: not adopting ${SomeBundleClass.name} as the project Capo\n` +
+                                    `  ... because it looks like a base class of already-loaded ${state.capoBundle.constructor.name}`
+                            );
+                        } else {
+                            // console.log({id, x, y})
+                            debugger;
+                        }
+                    }
                     if (state.hasOtherBundles && !skipInstallingThisOne) {
-                        const digestExisting = shortHash(JSON.stringify(state.capoBundle.modules));
-                        const digestNew = shortHash(JSON.stringify(SomeBundleClass.prototype.modules));
+                        const digestExisting = shortHash(
+                            JSON.stringify(state.capoBundle.modules)
+                        );
+                        const digestNew = shortHash(
+                            JSON.stringify(SomeBundleClass.prototype.modules)
+                        );
 
                         if (digestExisting !== digestNew) {
                             throw new Error(`unreachable code path`)
@@ -218,12 +305,14 @@ export function heliosRollupTypeGen(
                     }
                     state.hasExplicitCapoBundle = true;
 
-                    bundle =  new SomeBundleClass();
+                    bundle = new SomeBundleClass();
                     if (!replacedCapo) {
                         // state.project.loadBundleWithClass(id, SomeBundleClass);
                         // state.project.generateBundleTypes(id);
                     }
-                    console.log(` 👁️ checking (Capo) helios bundle ${SomeBundleClass.name}`)
+                    console.log(
+                        ` 👁️ checking (Capo) helios bundle ${SomeBundleClass.name}`
+                    );
                     if (!skipInstallingThisOne) {
                         state.capoBundle = bundle;
                         state.project.loadBundleWithClass(id, SomeBundleClass);
@@ -231,13 +320,18 @@ export function heliosRollupTypeGen(
                     }
                 } else {
                     state.hasOtherBundles = true;
-                    if (state.project.bundleEntries.size === 0 ) {
-                        console.log("looks like you're using the default Capo bundle. ok!\n");
+                    if (state.project.bundleEntries.size === 0) {
+                        console.log(
+                            "looks like you're using the default Capo bundle. ok!\n"
+                        );
 
                         const capoName = bundle.capoBundle.constructor.name;
-                        if (capoName == "CapoHeliosBundle" && !state.capoBundle) {
+                        if (
+                            capoName == "CapoHeliosBundle" &&
+                            !state.capoBundle
+                        ) {
                             state.project.loadBundleWithClass(
-                                "src/CapoHeliosBundle.ts", 
+                                "src/CapoHeliosBundle.ts",
                                 bundle.capoBundle.constructor
                             );
                             state.project.generateBundleTypes(
@@ -253,20 +347,26 @@ export function heliosRollupTypeGen(
                     // }
                     state.project.loadBundleWithClass(id, SomeBundleClass);
                     try {
-                        state.project.generateBundleTypes(id)
-                    } catch(e:any) {
+                        state.project.generateBundleTypes(id);
+                    } catch (e: any) {
                         if (e.message.match("compilerError")) {
                             console.error(e);
-                            throw new Error(`Error in Helios script (see above)`);
+                            throw new Error(
+                                `Error in Helios script (see above)`
+                            );
                         }
                         console.error(`Error generating types for ${id}:\n`, e);
                         return new Promise((resolve, reject) => {
                             setTimeout(() => {
-                                reject(new Error(`type-generation error (see above)`));
-                            }, 5000)
-                        })
+                                reject(
+                                    new Error(
+                                        `type-generation error (see above)`
+                                    )
+                                );
+                            }, 5000);
+                        });
                     }
-                    this.warn("ok")
+                    this.warn("ok");
                 }
                 return null as LoadResult;
                 //     id: source,
@@ -296,19 +396,26 @@ export function heliosRollupTypeGen(
             external(id) {
                 return !/^[./]/.test(id);
             },
-            onwarn( warning, warn ) {
-                if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
-                if (warning.code === 'CIRCULAR_DEPENDENCY') {
+
+            onwarn(warning, warn) {
+                if (warning.code === "UNUSED_EXTERNAL_IMPORT") return;
+                if (warning.code === "CIRCULAR_DEPENDENCY") {
                     if (
-                        warning.message == "Circular dependency: src/StellarTxnContext.ts -> src/diagnostics.ts -> src/StellarTxnContext.ts" 
-                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
-                        || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts"
-                        || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts"
-                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/diagnostics.ts"                
-                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
+                        warning.message ==
+                            "Circular dependency: src/StellarTxnContext.ts -> src/diagnostics.ts -> src/StellarTxnContext.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/diagnostics.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/diagnostics.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
                     ) {
                         if (didWarn) return;
-                        didWarn = true
+                        didWarn = true;
                         // warn("    ... all the usual Circular dependencies...")
                         return;
                     }
@@ -344,7 +451,7 @@ export function heliosRollupTypeGen(
         const compiled = result.output[0].code;
         let buildTime = Date.now() - buildStartTime;
 
-        let needsWrite = true
+        let needsWrite = true;
         // if the file is not changed, skip write of the compiled file
         if (existsSync(outputFile)) {
             const existing = readFileSync(outputFile, "utf-8");
@@ -352,7 +459,7 @@ export function heliosRollupTypeGen(
                 console.log(
                     `📦 StellarHeliosProject: unchanged bundle (${buildTime}ms): ${outputFile}`
                 );
-                needsWrite = false
+                needsWrite = false;
             }
         }
         if (needsWrite) {
@@ -370,7 +477,7 @@ export function heliosRollupTypeGen(
         return import(outputFile).then((mod) => {
             if (mod.default) {
                 const BundleClass = mod.default;
-                return BundleClass
+                return BundleClass;
             } else {
                 throw new Error(`no default export in ${outputFile}`);
             }
@@ -383,7 +490,9 @@ export function heliosRollupTypeGen(
         throw new Error(`not implemented2`);
 
         const outputFile = path.join(tempDir, "CapoHeliosBundle.mjs");
-        console.log(`📦 StellarHeliosProject: making CapoHeliosBundle: ${outputFile}`);
+        console.log(
+            `📦 StellarHeliosProject: making CapoHeliosBundle: ${outputFile}`
+        );
         const buildStartTime = Date.now();
         let didWarn = false;
         const bundle = await rollup({
@@ -391,23 +500,29 @@ export function heliosRollupTypeGen(
             external(id) {
                 return !/^[./]/.test(id);
             },
-            onwarn( warning, warn ) {
-                if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
+            onwarn(warning, warn) {
+                if (warning.code === "UNUSED_EXTERNAL_IMPORT") return;
                 if (warning.code === "CIRCULAR_DEPENDENCY") {
                     if (
-                        warning.message == "Circular dependency: src/StellarTxnContext.ts -> src/diagnostics.ts -> src/StellarTxnContext.ts" 
-                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
-                        || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts"
-                        || warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts"
-                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/diagnostics.ts"
-                        || warning.message == "Circular dependency: src/diagnostics.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
+                        warning.message ==
+                            "Circular dependency: src/StellarTxnContext.ts -> src/diagnostics.ts -> src/StellarTxnContext.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/diagnostics.ts" ||
+                        warning.message ==
+                            "Circular dependency: src/diagnostics.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
                     ) {
                         if (didWarn) return;
-                        didWarn = true
+                        didWarn = true;
                         // warn("    ... all the usual Circular dependencies...")
                         return;
                     }
-                }    
+                }
                 warn(warning);
             },
             plugins: [
@@ -427,7 +542,9 @@ export function heliosRollupTypeGen(
         const result = await bundle.generate({ format: "es" });
         const compiled = result.output[0].code;
         const buildTime = Date.now() - buildStartTime;
-        console.log(`📦 CapoHeliosBundle: generated temporary bundle (${buildTime}ms): ${outputFile}`);
+        console.log(
+            `📦 CapoHeliosBundle: generated temporary bundle (${buildTime}ms): ${outputFile}`
+        );
         let needsWrite = true;
         // if the file is not changed, skip write of the compiled file
         if (existsSync(outputFile)) {
@@ -454,10 +571,9 @@ export function heliosRollupTypeGen(
         return import(outputFile).then((mod) => {
             console.log("CapoHeliosBundle loaded", outputFile);
             return mod.CapoHeliosBundle;
-        })
+        });
     }
 }
-
 
 function shortHash(str: string) {
     return bytesToHex(blake2b(textToBytes(str)).slice(0, 5));

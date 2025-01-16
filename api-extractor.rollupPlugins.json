@@ -8,6 +8,6 @@
     },
     "dtsRollup": {
         "enabled": true,
-        "untrimmedFilePath": "<projectFolder>/dist/rollupPlugins.d.ts"
+        "untrimmedFilePath": "<projectFolder>/dist/rollup-plugins.d.ts"
     }
 }

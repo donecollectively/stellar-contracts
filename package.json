@@ -22,8 +22,9 @@
             "node": "./dist/testing-node.mjs",
             "import": "./dist/testing-browser.mjs"
         },
-        "./rollupPlugins": {
-            "import": "./dist/rollupPlugins.mjs"
+        "./rollup-plugins": {
+            "types": "./dist/rollup-plugins.d.ts",
+            "import": "./dist/rollup-plugins.mjs"
         },
         "./HeliosProgramWithCacheAPI": {
             "types": "./dist/HeliosProgramWithCacheAPI.d.ts",
