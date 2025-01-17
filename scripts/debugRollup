@@ -1,0 +1,24 @@
+#!/bin/bash
+
+echo "debugging rollup config & plugins"
+echo ""
+echo "  ---- use package.json 'build' script for regular build"
+echo ""
+
+node node_modules/rollup/dist/bin/rollup --config rollup.config.ts \
+  --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
+  $@
+
+# NOTE: when debugging, you may benefit from patching rollup's treatment 
+# ... of early-deleting its self-bundled config:
+# at  node_modules/rollup/dist/shared/loadConfigFile.js
+# ... around line 528, with:
+#
+#        finally {
+#            process.on('beforeExit', (code) => {    
+#                promises.unlink(bundledFileName).catch(e => {});
+#            })
+#        }
+#
+# ...this way we'll be able to debug, but still clean up the temp file
+

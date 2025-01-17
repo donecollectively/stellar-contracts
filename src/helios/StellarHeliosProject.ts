@@ -36,32 +36,35 @@ export function isUplcData(x: any): x is UplcData {
  * do the above.
  */
 export class StellarHeliosProject {
-    static root: string;
+    static details: {
+        projectRoot: string;
+        packageJSON: {
+            name: string,
+            version: string,
+            dependencies: Record<string, string>,
+            devDependencies: Record<string, string>,
+        };
+    };
 
     bundleEntries: Map<string, BundleStatusEntry>;
     capoBundle: HeliosScriptBundle | undefined = undefined;
-    projectRoot: string;
     constructor() {
         this.bundleEntries = new Map();
-        this.projectRoot = StellarHeliosProject.findProjectRoot();
+        const {
+            projectRoot,
+            packageJSON,
+        } = StellarHeliosProject.findProjectDetails();
+
+        this._isSC = packageJSON.name === "@donecollectively/stellar-contracts";
     }
 
     _isSC: boolean | undefined;
 
     isStellarContracts() {
-        if (this._isSC == undefined) {
-            const packageJsonPath = path.join(this.projectRoot, "package.json");
-            if (!existsSync(packageJsonPath)) {
-                throw new Error(`package.json not found at ${packageJsonPath}`);
-            }
-            const packageJson = JSON.parse(
-                readFileSync(packageJsonPath, "utf-8")
-            );
-
-            this._isSC =
-                packageJson.name === "@donecollectively/stellar-contracts";
-        }
         return this._isSC;
+    }
+    get projectRoot() {
+        return StellarHeliosProject.details.projectRoot;
     }
 
     replaceWithNewCapo(
@@ -118,8 +121,18 @@ export class StellarHeliosProject {
             }
             // console.log(`Project: loading CapoBundle ${bundleClassName}`);
             this.capoBundle = new (bundleClass as any)();
+            const registeredCapoName = bundleClass.name;
             if (this.bundleEntries.size > 0) {
-                throw new Error(`register capo first!! ??`);
+                debugger
+                for (const [filename, entry] of this.bundleEntries.entries()) {
+                    const thatCapoName = entry.bundle?.capoBundle?.constructor.name;
+                    if (thatCapoName !== registeredCapoName) {
+                        console.log("new capo bundle is "+registeredCapoName);
+                        console.log("pre-registered bundle uses capo "+thatCapoName);
+                        throw new Error(`mismatched capo bundle for ${filename} (see details above)`);
+                    }
+                }
+                // throw new Error(`register capo first!! ??`);
                 // update any pending bundles with an instantiated
                 // bundle including the newly-discovered CapoBundle
                 // for (const filename of this.bundleEntries.keys()) {
@@ -187,7 +200,7 @@ export class StellarHeliosProject {
             return this.hasBundleClass("./" + relativeFilename);
         }
         console.log(
-            `heliosTypeGen: no bundle yet for ${filename}\n` +
+            `helios project: no bundle yet for ${filename}\n` +
                 `${[...this.bundleEntries.keys()]
                     .map((k) => `  - ${k}`)
                     .join("\n")}`
@@ -325,22 +338,18 @@ export class StellarHeliosProject {
         }
     }
 
-    static findProjectRoot() {
-        // starting in the current working directory,
-        // look for package.json
-        // if not found, go up a directory and try again
-        // repeat until found or at root
-        // throw error if not found
-        // returns the full path to the project root
-
-        if (this.root) return this.root;
+    static findProjectDetails() {
+        if (this.details) return this.details;
 
         const cwd = process.cwd();
         let dir = cwd;
         let found = false;
+        let packageJSON = {} as any
         while (!found) {
-            if (existsSync(path.join(dir, "package.json"))) {
+            const fileName = path.join(dir, "package.json");
+            if (existsSync(fileName)) {
                 found = true;
+                packageJSON = JSON.parse(readFileSync(fileName, "utf-8"));
             } else {
                 const parent = path.dirname(dir);
                 if (parent === dir) {
@@ -351,9 +360,12 @@ export class StellarHeliosProject {
                 dir = parent;
             }
         }
-        console.log(`📦 StellarHeliosProject: found project root at ${dir}`);
-        this.root = dir;
-        return dir;
+        console.log(`📦 StellarHeliosProject: found project root at ${dir}: ${packageJSON.name}`);
+        this.details = {
+            packageJSON,
+            projectRoot: dir,
+        }
+        return this.details;
     }
 }
 

@@ -36,6 +36,6 @@ extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
     }
 
     get specializedDelegateModule() {
-                    return UnspecializedDelegateScript;
+        return UnspecializedDelegateScript;
     }
 }

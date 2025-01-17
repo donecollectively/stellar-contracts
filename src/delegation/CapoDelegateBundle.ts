@@ -96,51 +96,19 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         return specialDgt.moduleName;
     }
 
-    /**
-     * A list of modules always available for import in the delegate policy script
-     */
-    private implicitIncludedModules() {
-        return [
-            "CapoMintHelpers",
-            "CapoDelegateHelpers",
-            "StellarHeliosHelpers",
-            "CapoHelpers",
-        ];
-    }
-
-    /**
-     * specifies a list module names to be included in the build for this delegate
-     * @remarks
-     * Each of these modules MUST be
-     * provided by the CapoHeliosBundle (`get modules()`) used to create this delegate.
-     * By default, CapoMintHelpers, CapoDelegateHelpers, StellarHeliosHelpers and CapoHelpers
-     * are available for import to the delegate policy script.  
-     * 
-     * For Capos with augmented module-lists, this method is used to make any of those additional
-     * modules available to the delegate policy bundle.
-     * 
-     */
-    includeFromCapoModules() : string[]{
-        return [
-        ];
-    }
-
-    get modules() {
+    getEffectiveModuleList() {
         const specialDgt = this.specializedDelegateModule;
         const delegateWrapper = this.mkDelegateWrapper(specialDgt.moduleName);
 
-        const includeList = [
-            ...this.implicitIncludedModules(),
-            ...this.includeFromCapoModules(),
-        ];
-        const capoIncludedModules = 
-            this.capoBundle.modules.filter(x => includeList.includes(x.moduleName!));
-
         return [
-            ...capoIncludedModules,
+            ... super.getEffectiveModuleList(),
             delegateWrapper,
             this.specializedDelegateModule,
-        ];
+        ]
+    }
+
+    get modules(): Source[] {
+        return []
     }
 
     mkDelegateWrapper(moduleName) {

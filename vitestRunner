@@ -1,9 +1,0 @@
-#!/bin/bash
-
-if [[ -z $DEBUG ]] ; then {
-    # no debug
-    node node_modules/vitest/vitest.mjs  $@
-} else {
-    # with debugging
-    node --inspect-brk node_modules/vitest/vitest.mjs --poolOptions.forks.singleFork  $@
-} fi

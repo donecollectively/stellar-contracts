@@ -17,7 +17,15 @@ export type TypeVariety = "canonical" | "permissive" | "ergonomic";
 export type VariantFlavor = "tagOnly" | "fields" | "singletonField";
 export type SpecialActivityFlags = "isSeededActivity" | "noSpecialFlags";
 
+/**
+ * Type of enum variant having no fields (only the variant-tag)
+ * @public
+ */
 export type tagOnly = Record<string, never>;
+/**
+ * An empty object, satisfying the data-bridge for a tag-only enum variant having no fields.
+ * @public
+ */
 export const tagOnly: tagOnly = Object.freeze({});
 // external-facing types for reading and writing data for use in contract scripts.
 // 1. create data for Datum or other non-Activity scenarios
@@ -123,8 +131,8 @@ export type EnumId = {
  *
  * This type is used as an intermediate representation of an enum,
  * for generating the types for reading and writing data conforming to the type.
+ * @public
  */
-
 export type EnumTypeMeta<
     EID extends EnumId,
     enumVariants extends VariantMap
@@ -144,8 +152,8 @@ export type EnumTypeMeta<
  * for generating the types of utilities that read and write the enum data.
  * See the mkEnum<EnumType> factory function, the ‹tbd› reader function
  * and the ‹tbd› readable type
+ * @public
  */
-
 export type singleEnumVariantMeta<
     ET extends EnumTypeMeta<any, any>,
     VNAME extends keyof ET["variants"],

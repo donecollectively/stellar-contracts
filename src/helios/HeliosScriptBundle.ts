@@ -2,19 +2,14 @@ import type { DataType, Program } from "@helios-lang/compiler";
 import type { Source } from "@helios-lang/compiler-utils";
 
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-import type {
-    configBaseWithRev,
-    UplcRecord,
-} from "../StellarContract.js";
+import type { configBaseWithRev, UplcRecord } from "../StellarContract.js";
 import type { anyUplcProgram } from "../HeliosPromotedTypes.js";
 import type {
     CapoBundleClass,
     HeliosBundleClassWithCapo,
     HeliosBundleTypes,
 } from "./HeliosMetaTypes.js";
-import {
-    HeliosProgramWithCacheAPI
-} from "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI"
+import { HeliosProgramWithCacheAPI } from "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI";
 
 /**
  * @internal
@@ -32,7 +27,7 @@ export type HeliosScriptSettings<ConfigType extends configBaseWithRev> = {
 /**
  * Base class for any Helios script bundle
  * @remarks
- * See also {@link CapoHeliosBundle} and {@link CapoDelegateBundle} for 
+ * See also {@link CapoHeliosBundle} and {@link CapoDelegateBundle} for
  * specialized bundle types
  * @public
  */
@@ -131,12 +126,136 @@ export abstract class HeliosScriptBundle {
         );
     }
 
+    /**
+     * A list of modules always available for import to Capo-hosted policy scripts
+     * @public
+     */
+    protected implicitIncludedCapoModules() {
+        return [
+            "CapoMintHelpers",
+            "CapoDelegateHelpers",
+            "StellarHeliosHelpers",
+            "CapoHelpers",
+        ];
+    }
+
+    /**
+     * specifies a list module names to be included in the compilation of this script
+     * @remarks
+     * Only used in bundles created with `HeliosScriptBundle.usingCapoBundleClass()` or
+     * `CapoDelegateBundle.usingCapoBundleClass()`.
+     *
+     * Each of these module-names MUST be provided by the CapoHeliosBundle used for
+     * this script bundle (in its `get modules()`).  CapoMintHelpers, CapoDelegateHelpers,
+     * StellarHeliosHelpers and CapoHelpers are always available for import to the
+     * policy script, and the module names you list here will be added to that list.
+     *
+     * These module names will then be available for `import { ... }` statements in your helios script.
+     *
+     * ### Beware of Shifting Sands
+     * If you include any modules provided by other scripts in your project, you should
+     * be aware that ANY changes to those scripts will change your delegate's validator, resulting
+     * in a need to deploy new script contracts.  This is why it's important to only include
+     * modules that are relatively stable, or whose changes SHOULD trigger a new deployment
+     * for this script.
+     *
+     * When you can use isolation techniques including abstract data definitions and/or granular
+     * code-modularization, you can reduce the incidence of such changes while ensuring that needed
+     * upgrades are easy to manage.
+     * @public
+     */
+    includeFromCapoModules(): string[] {
+        return [];
+    }
+
+    /**
+     * Computes a list of modules to be provided to the Helios compiler
+     * @remarks
+     * includes any explicit `modules` from your script bundle, along with any
+     * modules, provided by your Capo and listed by name in your
+     * `includeFromCapoModules()` method.
+     * @public
+     */
+    getEffectiveModuleList() {
+        if (!this.capoBundle) {
+            return [...this.modules];
+        }
+
+        return [...this.resolveCapoIncludedModules(), ...this.modules];
+    }
+
+    resolveCapoIncludedModules() {
+        const includeList = [
+            ...this.implicitIncludedCapoModules(),
+            ...this.includeFromCapoModules(),
+        ];
+
+        const unsatisfiedIncludes = new Set(includeList);
+        const capoIncludedModules = this.capoBundle!.modules.filter((x) => {
+            const mName = x.moduleName!;
+            const found = includeList.includes(mName);
+            unsatisfiedIncludes.delete(mName);
+            return found;
+        });
+
+        if (unsatisfiedIncludes.size) {
+            throw new Error(
+                `${
+                    this.displayName
+                }: includeFromCapoModules() includes modules not provided by the Capo:\n ${
+                    Array.from(
+                        unsatisfiedIncludes
+                    )
+                    .map((m) => `   • ${m}\n`)
+                    .join("\n")
+                }`
+            );
+        }
+
+        return capoIncludedModules;
+    }
+
+    logModuleDetails() {
+        const capoIncludedModules = this.resolveCapoIncludedModules();
+
+        function moduleDetails(m: Source) {
+            const pInfo = m.project ? ` [in ${m.project}]/` : "";
+            return `    • ${m.moduleName}${pInfo}${m.name} (${m.content.length} chars)`;
+        }
+
+        console.log(
+            `\nModules in ${this.displayName}:\n` +
+            ` • includeFromCapoModules(): ${this.includeFromCapoModules().join(", ")}\n` +
+            ` • implicit Capo modules:    ${this.implicitIncludedCapoModules().join(", ")}\n` +
+            ` • modules from Capo: \n${capoIncludedModules
+                .map(moduleDetails)
+                .join("\n")}\n`+
+            ` • get modules() (${this.modules.length}): \n${this.modules
+                    .map(moduleDetails)
+                    .join("\n")}` 
+        );
+    }
+
+    /**
+     * lists any helios modules owned by & needed for this script bundle.
+     * @remarks
+     * Modules listed here should (imported from their .hl files as helios Source objects.
+     *
+     * Any modules shared ***from other script bundles in your project*** should instead be
+     * added to your Capo's `modules`, and named in your `includeFromCapoModules()` method.
+     *
+     * Any of these modules needed by ***other script bundles*** in your project may also be
+     * listed in your Capo's `modules`.
+     */
     get modules(): Source[] {
         return [];
     }
 
+    get displayName() {
+        return this.moduleName || this.program.name;
+    }
     get bridgeClassName() {
-        const mName = this.moduleName || this.program.name;
+        const mName = this.displayName;
         return `${mName}DataBridge`;
     }
 
@@ -180,8 +299,9 @@ export abstract class HeliosScriptBundle {
             script.entryPoint.paramsDetails()
         );
 
-        const uplcProgram = this.program.compile({
-            optimize: ( this.config ?? {} ).optimize ?? true,
+        debugger
+        const uplcProgram = await this.program.compileWithCache({
+            optimize: (this.config ?? {}).optimize ?? true,
         });
         //     // optimize: {
         //     //     keepTracing: true,
@@ -200,9 +320,9 @@ export abstract class HeliosScriptBundle {
         return uplcProgram;
     }
 
-    _program?: HeliosProgramWithCacheAPI
+    _program?: HeliosProgramWithCacheAPI;
     // _pct: number = 0
-    get program(): Program {
+    get program(): HeliosProgramWithCacheAPI {
         if (this._program) {
             return this._program;
         }
@@ -211,9 +331,11 @@ export abstract class HeliosScriptBundle {
         if (mName === defaultNoDefinedModuleName) {
             mName = "";
         }
+        const moduleSources = this.getEffectiveModuleList();
+        
         try {
             const p = new HeliosProgramWithCacheAPI(this.main, {
-                moduleSources: this.modules,                
+                moduleSources,
                 name: mName, // it will fall back to the program name if this is empty
             });
             this._program = p;
@@ -259,13 +381,10 @@ export abstract class HeliosScriptBundle {
                     //  reminder: ensure "pause on caught exceptions" is enabled
                     //  before playing this next line to dig deeper into the error.
 
-                    const try2 = new HeliosProgramWithCacheAPI(
-                        this.main,
-                        {
-                            moduleSources: this.modules,
-                            name: mName, // it will fall back to the program name if this is empty
-                        }
-                    );
+                    const try2 = new HeliosProgramWithCacheAPI(this.main, {
+                        moduleSources,
+                        name: mName, // it will fall back to the program name if this is empty
+                    });
 
                     // const script2 = new Program(codeModule, {
                     //     moduleSources: modules,
@@ -289,16 +408,9 @@ export abstract class HeliosScriptBundle {
             const [_, notFoundModule] =
                 e.message.match(/module '(.*)' not found/) || [];
             if (notFoundModule) {
+                this.logModuleDetails();
                 console.log(
-                    `${this.constructor.name} module '${notFoundModule}' not found; included modules:\n` +
-                        this.modules
-                            .map((m) => {
-                                const pInfo = m.project
-                                    ? ` [in ${m.project}]/`
-                                    : "";
-                                return ` • ${m.moduleName}${pInfo}${m.name} (${m.content.length} bytes)`;
-                            })
-                            .join("\n")
+                    `${this.constructor.name} module '${notFoundModule}' not found; see module details above`
                 );
             }
             if (!e.site) {
@@ -308,7 +420,7 @@ export abstract class HeliosScriptBundle {
                 throw e;
             }
             const moduleName2 = e.site.file; // moduleName? & filename ? :pray:
-            const errorModule = [this.main, ...this.modules].find(
+            const errorModule = [this.main, ...moduleSources].find(
                 (m) => m.name == moduleName2
             );
 
@@ -323,24 +435,22 @@ export abstract class HeliosScriptBundle {
                 moreInfo,
             } = errorModule || {};
             let errorInfo: string = "";
-            // search this repo for esbuild's dropLabels configuration
-            try {
-                import("fs").then(
-                    ({statSync}) => {
-                        return statSync(srcFilename).isFile();
-                    }
-                )
-            } catch (e) {
-                const indent = " ".repeat(6);
-                errorInfo = project
-                    ? `\n${indent}Error found in project ${project}:${srcFilename}\n` +
-                      `${indent}- in module ${moduleName}:\n${moreInfo}\n` +
-                      `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
-                      `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
-                    : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
-                      `${indent}  ... this can be caused if your module definition doesn't include a correct path to your helios file\n` +
-                      `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFilename}"\n${indent})\n`;
-            }
+
+            import("fs")
+                .then(({ statSync }) => {
+                    return statSync(srcFilename).isFile();
+                })
+                .catch((e: any) => {
+                    const indent = " ".repeat(6);
+                    errorInfo = project
+                        ? `\n${indent}Error found in project ${project}:${srcFilename}\n` +
+                          `${indent}- in module ${moduleName}:\n${moreInfo}\n` +
+                          `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
+                          `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
+                        : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
+                          `${indent}  ... this can be caused if your module definition doesn't include a correct path to your helios file\n` +
+                          `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFilename}"\n${indent})\n`;
+                });
 
             const { startLine, startColumn } = e.site;
             const t = new Error(errorInfo);

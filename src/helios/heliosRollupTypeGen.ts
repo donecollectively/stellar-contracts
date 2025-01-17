@@ -1,3 +1,4 @@
+import { inspect } from "util";
 import { blake2b } from "@helios-lang/crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
@@ -21,12 +22,12 @@ import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { textToBytes } from "../HeliosPromotedTypes.js";
 
-type TypeGenPluginState = {
+type HeliosBundlerPluginState = {
     capoBundle: any; // CapoHeliosBundle;
     hasExplicitCapoBundle: boolean;
     hasOtherBundles: boolean;
     project: StellarHeliosProject;
-}
+};
 
 /**
  * Rollup loader for generating typescript types from Helios source files
@@ -42,50 +43,65 @@ type TypeGenPluginState = {
  *   project to generate updated types if needed and available.
  * @public
  **/
-export function heliosRollupTypeGen(
-    opts: { 
-        include?: string; 
-        exclude?: string[]; 
-        project?: string,
+export function heliosRollupBundler(
+    opts: {
+        include?: string;
+        exclude?: string[];
+        project?: string;
+        vite?: boolean;
+        emitBundled?: boolean;
+        compile?: boolean;
     } = {}
 ) {
-    const options = {
+    const pluginOptions = {
+        vite: false,
+        project: "",
+        compile: false,
         ...opts,
         ...{
             include: /.*\.hlb\.[jt]s$/,
             exclude: [],
-            project: "",
         },
     };
 
     // creates a temporary directory for dynamic loading,
     // in the project-root's .temp directory
-    const tempDir = path.join(process.cwd(), ".hltemp", "typeGen");
+    const tempDir = path.join(process.cwd(), ".hltemp", "heliosBundler");
     // create the tempdir if needed
     if (!existsSync(tempDir)) {
         mkdirSync(tempDir, { recursive: true });
     }
-    // console.log(`heliosTypeGen: using tempDir: ${tempDir}`);
+    // console.log(`heliosBundler: using tempDir: ${tempDir}`);
 
-    const filterHLB = createFilter(options.include, options.exclude);
-    const filterHlbForEmit = createFilter(/.*\.hlb\.[jt]s\?forEmit/);
+    const filterHLB = createFilter(
+        pluginOptions.include,
+        pluginOptions.exclude
+    );
+    const filterHlbundledImportName = createFilter(/.*\.hlb\.[jt]s\?bundled/);
     // const project = options.project ? `${options.project}` : "";
 
     // const lib = loadCompilerLib();
-    const projectRoot = StellarHeliosProject.findProjectRoot();
+    const { projectRoot, packageJSON } =
+        StellarHeliosProject.findProjectDetails();
 
+    const thisPackageName = packageJSON.name;
     //read package.json from project root, parse and check its package name
     // const packageJsonPath = path.join(projectRoot, "package.json");
     // const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     // const isStellarContracts = "@donecollectively/stellar-contracts" === packageJson.name;
 
-    const state: TypeGenPluginState = {
+    const state: HeliosBundlerPluginState = {
         capoBundle: null, // new CapoHeliosBundle(),
         hasExplicitCapoBundle: false,
         hasOtherBundles: false,
         project: new StellarHeliosProject(),
     };
 
+    const firstImportFrom: Record<string, string> = {};
+
+    function relativePath(id: string) {
+        return id.replace(`${projectRoot}/`, "");
+    }
     const isJavascript = /\.js$/;
     return {
         name: "helios-type-gen",
@@ -94,30 +110,34 @@ export function heliosRollupTypeGen(
             handler(this: PluginContext, error?: Error) {
                 // write the project file after the build, skipping any
                 // pending delay from calls to `deferredWriteProjectFile()`
-                console.log("heliosTypeGen: buildEnd: " + error ? "error: " : "" + error?.message);
+                console.log(
+                    "heliosBundler: buildEnd: " + error
+                        ? "error: "
+                        : "" + error?.message
+                );
                 // return state.project.writeProjectFile();
             },
         },
         resolveId: {
             order: "pre",
             async handler(this: PluginContext, source, importer, options) {
-                // console.log("heliosTypeGen: resolveId", { source, importer });
-                // if (source.match(/\.hlb/)) {
-                //     throw new Error(
-                //         `first .hlb file is being loaded by ${importer}`
-                //     );
-                // }
+                const interesting = !!source.match(/CapoMinter\.hlb\./);
+
                 const { project } = state;
-                const {
-                    isEntry
-                } = options
+                const { isEntry } = options;
                 let resolved: ResolvedId | null = null;
+
+                const importerIsJS = !!importer?.match(isJavascript);
+                const resolutionTargetIsJS = !!source?.match(isJavascript);
+                const importerIsInThisProject =
+                    importer?.indexOf(project.projectRoot) === 0;
                 if (
-                    importer?.match(isJavascript) &&
-                    source?.match(isJavascript) &&
-                    importer?.indexOf(project.projectRoot) === 0
+                    pluginOptions.vite &&
+                    importerIsJS &&
+                    resolutionTargetIsJS &&
+                    importerIsInThisProject
                 ) {
-                    console.log("patching up a vitest resolution");
+                    this.warn("patching up a vitest resolution");
                     // work around vitest not resolving .ts files from .js using
                     // the correct rules...
                     const sourceWithTs = source.replace(/\.js$/, ".ts");
@@ -131,7 +151,7 @@ export function heliosRollupTypeGen(
                     );
                     if (resolved) {
                         console.log(
-                            `heliosTypeGen: in vitest: resolving ${source} as ${sourceWithTs} for ${importer}`
+                            `heliosBundler: in vitest: resolving ${source} as ${sourceWithTs} for ${importer}`
                             // {
                             //     source,
                             //     importer,
@@ -139,61 +159,105 @@ export function heliosRollupTypeGen(
                             // }
                         );
                     }
-                } 
+                }
                 if (isEntry && !importer) {
-                    return resolved
+                    return resolved;
                 }
                 // let other resolvers resolve to an absolute filename
                 const r = await this.resolve(source, importer, {
-                    ... options,
-                    skipSelf: true
+                    ...options,
+                    skipSelf: true,
                 });
                 if (r) resolved = r;
                 const id = resolved?.id || source;
+                const p = relativePath(id);
+                firstImportFrom[p] =
+                    firstImportFrom[p] || relativePath(importer);
                 if (resolved && id && filterHLB(id)) {
-                    // console.log("resolved absolute HLB id "+id);
+                    if (interesting) {
+                        console.log("resolved absolute HLB id " + id, options);
+                    }
+                    if (pluginOptions.vite) {
+                        // in vite, we allow resolution and loading to proceed without
+                        // forking a separate compile-and-load sequence for an emitted chunk.
+                        // Vite(st) uses in-memory techniques, so it doesn't support emitFile().
+                        // nonetheless, our type-generation will create the appropriate
+                        // typeInfo & bridge files for any .hlb.ts file loaded in vite/vitest.
+                        return resolved;
+                    } else {
+                        // id is now an absolute filename of a (TS or JS) helios-bundle definition.
+                        // before proceeding with returning a resolution for that file, let's
+                        // try to push it through a depth-first compile, load it and generate types.
+                        // const name = resolved.id.replace(
+                        //     /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
+                        //     "$1"
+                        // );
+                        const bundledId = `${id}?bundled`;
 
-                    // id is now an absolute filename of a (TS or JS) helios-bundle definition.
-                    // before proceeding with returning a resolution for that file, let's
-                    // try to push it through a depth-first compile, load it and generate types.
-                    const name = resolved.id.replace(
-                        /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
-                        "$1"
-                    );
-
-                    // immediately starts resolving the file-for-emit, and returns
-                    // the OUTPUT id of the emitted chunk.  The importer of the .hlb.ts file
-                    // will get that output id in its import statement, and the emitFile acts
-                    // like a fork, with the processing of the emitted file happening on a separate track,
-                    // and the id used in place of normal load/transform processing of the separate chunk
-                    const outputId = this.emitFile({
-                        type: "chunk",
-                        id: `${id}?forEmit`,
-                        name: `contracts/${name}.hlbundled`,
-                        importer,
-                    });
-                    return outputId;
-                } else if (filterHlbForEmit(id)) {
-                    // console.log("resolveId: got HLB for emit: "+id);
-
+                        const name = resolved.id.replace(
+                            /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
+                            "$1"
+                        );
+                        const packageRelativeName = `contracts/${name}.hlb`;
+                        const bundledExportName = `${thisPackageName}/${packageRelativeName}`;
+                        //This arranges a convention for emitting a predictable 
+                        // exported file, used to connect the importer with emitted code
+                        // using an expected import name
+                        // Note: this requires subpath patterns for contracts/*.hlb
+                        // to be part of the package.json exports field:
+                        // ```
+                        //   "exports": {
+                        //       ".": { /* types, import, ...etc */ }
+                        //       "./contracts/*.hlb": "./dist/contracts/*.hlb.mjs",
+                        //      [...]
+                        //   }
+                        // ```
+                        if (pluginOptions.emitBundled) {                                
+                            // immediately starts resolving the file-for-emit, and returns a
+                            // PACKAGE-RELATIVE name for the artifact.  The importer of 
+                            // the .hlb.ts file will get that translated import statement, and 
+                            // the emitFile acts like a fork, with the processing of the emitted 
+                            // file happening on a separate track.
+                            // and the package-relative import name used in place of normal 
+                            // load/transform processing of the separate chunk.
+                            console.log(
+                                `  -- heliosBundler: emitting ${bundledExportName}`
+                            );
+                            const outputId = this.emitFile({
+                                type: "chunk",
+                                id: bundledId,
+                                name: packageRelativeName,
+                                importer,
+                                // only valid for emitted assets, not chunks:
+                                // originalFileName: resolved.id,
+                            });
+                        }
+                        return bundledExportName
+                    }
+                } else if (filterHlbundledImportName(id)) {
+                    if (interesting) {
+                        console.log("resolveId: got HLBundled: " + id, options);
+                    }
                     // resolving the file-to-be-emitted - it's the same file, but as a
-                    // dynamic entry-point.  We resolve it like any file, minus the ?forEmit suffix,
+                    // dynamic entry-point.  We resolve it like any file, minus the ?bundled suffix,
                     // then load & transform as seen below.
 
                     // this call doesn't hit the path above, or cause an infinite loop,
-                    //  because this.resolve() skips using this plugin's resolveId hook.
-                    return this.resolve(
-                        id.replace(/\?forEmit$/, ""),
+                    //  because this.resolve() skips using this plugin's own resolveId hook.
+                    const result = await this.resolve(
+                        id.replace(/\?bundled$/, ""),
                         importer,
-                        { 
-                            ...options,                            
-                            skipSelf: true
+                        {
+                            ...options,
+                            skipSelf: true,
                         }
                     );
+                    debugger;
+                    return result;
                 } else {
-                    if (id.match(/hlb/)) {
+                    if (id.match(/hlb/) && !id.match(/hlbundled/)) {
                         console.log(
-                            `typeGen resolve: skipping due to filter mismatch`,
+                            `HeliosBundler resolve: skipping due to filter mismatch`,
                             { source: id }
                         );
                         debugger;
@@ -212,13 +276,50 @@ export function heliosRollupTypeGen(
             ): Promise<LoadResult> {
                 // the source is a relative path name
                 // the importer is an a fully resolved id of the imported module
-                // console.log("heliosTypeGen: load");
+                // console.log("heliosBundler: load");
 
+                const interesting = !!id.match(/\.hlb\./);
                 const { project } = state;
+                if (filterHlbundledImportName(id)) {
+                    console.log("    ---- heliosBundler: load", { id });
+                    const indirectBundleId = id;
+                    const referenceId = indirectBundleId.replace(
+                        /\?bundled$/,
+                        ""
+                    );
+                    const name = referenceId.replace(
+                        /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
+                        "$1"
+                    );
+                    console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXX emitFile chunk", indirectBundleId);
+                    throw new Error(`unused code path for broken emitFile in load `);
+
+                    //XXX emits meta information for an OUTPUT chunk, indirectly
+                    //XXX resolving it to a separate output file.  This miniature chunk
+                    //XXX of code ends up being transparently removed from the output,
+                    //XXX with the indirectBundleId that was resolved above being replaced
+                    //XXX with the output-file indicated in the import.meta... expression.
+
+                    // doesn't work as expected - the emitted file simply references
+                    // its own filename, not the bundled content.  see emitFile() above,
+                    // in which a convention for emitting a predictable exported file
+                    // is used to connect the importer with emitted code.
+                    const outputId = this.emitFile({
+                        type: "chunk",
+                        id: indirectBundleId,
+                        name: `contracts/${name}.hlbundled`,
+                        // only valid for emitted assets, not chunks:
+                        // originalFileName: resolved.id,
+                    });
+                    if (interesting) {
+                        console.log("   ---- emitted chunkId", outputId);
+                    }
+                    return `export default import.meta.ROLLUP_FILE_URL_${outputId};`;
+                }
                 if (!filterHLB(id)) {
-                    if (id.match(/hlb/)) {
+                    if (id.match(/hlb/) && !id.match(/hlbundled/)) {
                         console.log(
-                            `typeGen resolve: skipping due to filter mismatch`,
+                            `HeliosBundler resolve: skipping due to filter mismatch`,
                             { source: id }
                         );
                         debugger;
@@ -228,15 +329,17 @@ export function heliosRollupTypeGen(
 
                     return null;
                 }
-                console.log(`heliosTypeGen: loading ${id}`);
+                if (interesting) {
+                    console.log("    ---- heliosBundler: load", { id });
+                }
 
-                // todo: load an existing bundle if it's already compiled, and ask that class to
-                //   check its sources for changes, so we can skip rollup and recompilation if
-                //   things are already up-to-date.
+                // ->  todo: load an existing bundle if it's already compiled, and ask that class to
+                // ->   check its sources for changes, so we can skip rollup and recompilation if
+                // ->   things are already up-to-date.
                 const SomeBundleClass = await rollupMakeBundledScriptClass(id);
                 const relativeFilename = path.relative(projectRoot, id);
-                this.warn(
-                    `👁️ checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`
+                console.log(
+                    `   👁️  checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`
                 );
                 //??? addWatchFile for all the .hl scripts in the bundle
                 // return null as LoadResult;
@@ -247,7 +350,6 @@ export function heliosRollupTypeGen(
                 let program = bundle.program;
 
                 let replacedCapo = false;
- 
                 if (SomeBundleClass.isCapoBundle) {
                     let skipInstallingThisOne = false;
                     if (state.hasExplicitCapoBundle) {
@@ -277,30 +379,60 @@ export function heliosRollupTypeGen(
                             debugger;
                         }
                     }
-                    if (state.hasOtherBundles && !skipInstallingThisOne) {
-                        const digestExisting = shortHash(
-                            JSON.stringify(state.capoBundle.modules)
-                        );
-                        const digestNew = shortHash(
-                            JSON.stringify(SomeBundleClass.prototype.modules)
-                        );
+                    if (!state.capoBundle) {
+                        console.log("\nTroubleshooting first .hlb.ts imports?");
 
-                        if (digestExisting !== digestNew) {
-                            throw new Error(`unreachable code path`)
-                            console.log(`existing = ${digestExisting}`, state.capoBundle.modules.map(x => (JSON.stringify({name: x.name, content: shortHash(x.content)}))))
-                            console.log(`late arrival: ${digestNew}`, SomeBundleClass.prototype.modules.map( x => (JSON.stringify({name: x.name, content: shortHash(x.content)}))))
-                            console.log("  ^^^^ from", id)
-                            console.log("  ---- Late-arriving Capo.  Reinitializing project with updated dependencies...");
-                            const ts1 = Date.now();
-                            state.project = state.project.replaceWithNewCapo(id, SomeBundleClass);
-                            console.log("  ---- Reinitialized project in", Date.now() - ts1, "ms");
-                            replacedCapo = true;
-                        } else {
-                            console.log("  ---- warning: second capo discovered, though its modules aren't different from default. Generatings its types, but otherwise, Ignoring.")
-                            // make a new project, add the new Capo bundle to it, generate types.
-                            const newProject = new StellarHeliosProject();
-                            newProject.loadBundleWithClass(id, SomeBundleClass);
-                            newProject.generateBundleTypes(id);
+                        for (const existing of state.project.bundleEntries.keys()) {
+                            console.log(`    • ${traceImportPath(existing)}`);
+                        }
+                        console.log("");
+                        // throw new Error(
+                        //     `heliosBundler: Capo bundle not loaded, but there are already other bundles in the state (see import trace above)`
+                        // );
+                    } else {
+                        if (state.hasOtherBundles && !skipInstallingThisOne) {
+                            let dCur = shortHash(
+                                JSON.stringify(state.capoBundle.modules)
+                            );
+                            let dNew = shortHash(
+                                JSON.stringify(
+                                    SomeBundleClass.prototype.modules
+                                )
+                            );
+
+                            if (dCur !== dNew) {
+                                throw new Error(`unreachable code path`);
+                                logCapoBundleDifferences(
+                                    dCur,
+                                    state,
+                                    dNew,
+                                    SomeBundleClass,
+                                    id
+                                );
+                                const ts1 = Date.now();
+                                state.project =
+                                    state.project.replaceWithNewCapo(
+                                        id,
+                                        SomeBundleClass
+                                    );
+                                console.log(
+                                    "  ---- Reinitialized project in",
+                                    Date.now() - ts1,
+                                    "ms"
+                                );
+                                replacedCapo = true;
+                            } else {
+                                console.log(
+                                    "  ---- warning: second capo discovered, though its modules aren't different from default. Generatings its types, but otherwise, Ignoring."
+                                );
+                                // make a new project, add the new Capo bundle to it, generate types.
+                                const newProject = new StellarHeliosProject();
+                                newProject.loadBundleWithClass(
+                                    id,
+                                    SomeBundleClass
+                                );
+                                newProject.generateBundleTypes(id);
+                            }
                         }
                     }
                     state.hasExplicitCapoBundle = true;
@@ -311,7 +443,7 @@ export function heliosRollupTypeGen(
                         // state.project.generateBundleTypes(id);
                     }
                     console.log(
-                        ` 👁️ checking (Capo) helios bundle ${SomeBundleClass.name}`
+                        `   👁️  checking (Capo) helios bundle ${SomeBundleClass.name}`
                     );
                     if (!skipInstallingThisOne) {
                         state.capoBundle = bundle;
@@ -375,7 +507,16 @@ export function heliosRollupTypeGen(
             },
         },
     };
-    
+
+    function traceImportPath(existing: string) {
+        let trace: string[] = [];
+        for (let p = existing; p; p = firstImportFrom[p]) {
+            trace.push(p);
+        }
+        const importTrace = trace.join("\n      imported by ");
+        return importTrace;
+    }
+
     async function rollupMakeBundledScriptClass(inputFile: string) {
         // writes the output file next to the input file as *.hlb.bundled.mjs
         const outputFile = inputFile.replace(
@@ -426,13 +567,22 @@ export function heliosRollupTypeGen(
                 heliosRollupLoader({
                     // todo make this right for the context
                     project: "stellar-contracts",
+                    // onLoadHeliosFile: (filename) => {
+                    //   remember this list of files
+                    // }
                 }),
+                // !!! figure out how to make the bundle include the compiled & optimized
+                //   program, when options.compile is true.
                 esbuild({
                     tsconfig: "./tsconfig.json",
                     target: ["node18"],
 
                     sourceMap: false,
                 }),
+                // after the build is finished, append the list of input files
+                // in a way making it quick and easy to load an existing compiled
+                // file and let it check its own input files for changes.  Then
+                // we can save time and avoid this build step if everything is already good.
             ],
             // output: {
             //     file: this.compiledProjectFilename,
@@ -573,6 +723,37 @@ export function heliosRollupTypeGen(
             return mod.CapoHeliosBundle;
         });
     }
+}
+
+function logCapoBundleDifferences(
+    digestExisting: string,
+    state: HeliosBundlerPluginState,
+    digestNew: string,
+    SomeBundleClass: any,
+    id: string
+) {
+    console.log(
+        `existing = ${digestExisting}`,
+        state.capoBundle.modules.map((x) =>
+            JSON.stringify({
+                name: x.name,
+                content: shortHash(x.content),
+            })
+        )
+    );
+    console.log(
+        `late arrival: ${digestNew}`,
+        SomeBundleClass.prototype.modules.map((x) =>
+            JSON.stringify({
+                name: x.name,
+                content: shortHash(x.content),
+            })
+        )
+    );
+    console.log("  ^^^^ from", id);
+    console.log(
+        "  ---- Late-arriving Capo.  Reinitializing project with updated dependencies..."
+    );
 }
 
 function shortHash(str: string) {

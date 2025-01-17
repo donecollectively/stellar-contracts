@@ -118,11 +118,15 @@ playSound swing &
 
 }  
 
-inBackground "rollup main code bundle" \
-    ./scripts/rollup &
+echo "In foreground: rollup main code bundle" 
+./scripts/rollup
 
 sleep 0.5
 echo "------------------------------ waiting ------------------------------"
+wait
+playSound string tempo 1.4 &
+sleep 0.18
+playSound string pitch 407 tempo 2.8 &
 wait
 
 if [ -s $hasProblem ]; then

@@ -465,7 +465,7 @@ export class CachedHeliosProgram extends Program {
      * to access this method.  In the web environment, that import returns a different
      * class with the same interface.
      */
-    async compileCached(
+    async compileWithCache(
         optimizeOrOptions: boolean | CompileOptionsForCachedHeliosProgram
     ): Promise<UplcProgramV2> {
         // Promise<UplcProgramV2 | UplcProgramV3> {

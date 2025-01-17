@@ -1,5 +1,7 @@
 // declare module "@donecollectively/stellar-contracts/testing";
 
+export type { NetworkSnapshot } from "./StellarNetworkEmulator.js";
+
 export { CapoTestHelper } from "./CapoTestHelper.js";
 export * from "./types.js";
 
@@ -31,3 +33,4 @@ export { StellarTestHelper } from "./StellarTestHelper.js";
 export {
     StellarNetworkEmulator,
 } from "./StellarNetworkEmulator.js";
+

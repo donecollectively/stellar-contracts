@@ -31,9 +31,10 @@ HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
 
     get main() {
         return CapoMinterScript;
-    }
+    }    
 
-    get modules() {
-        return [...this.capoBundle.modules];
-    }
+    // automatically-included modules from Capo don't need to be specified
+    // get modules() {
+    //     return [...this.capoBundle.modules];
+    // }
 }

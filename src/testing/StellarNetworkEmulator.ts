@@ -335,7 +335,7 @@ export class SimpleWallet_stellar implements Wallet {
 
 /**
  * Captures details from emulated network, to be used for quickly restoring a network state.
- * @alpha
+ * @public
  */
 export type NetworkSnapshot = {
     seed: number;

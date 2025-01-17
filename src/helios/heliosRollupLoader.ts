@@ -85,7 +85,7 @@ export function heliosRollupLoader(
                     throw new Error(`Bad format for helios file ${id}`);
 
                 const code =
-                    `const heliosModule = {\n` +
+                    `const ${moduleName}_hl = {\n` +
                     `  content: ${JSON.stringify(content)},\n` +
                     // `  srcFile: ${JSON.stringify(relPath)},\n`+
                     `  project: ${JSON.stringify(project)},\n` +
@@ -95,7 +95,7 @@ export function heliosRollupLoader(
                     )}, // source filename\n` +
                     `  moduleName:  ${JSON.stringify(moduleName)},\n` +
                     `}\n` +
-                    `\nexport default heliosModule\n`;
+                    `\nexport default ${moduleName}_hl\n`;
                 return {
                     code: code,
                     // id: `${id}‹generated›.ts`,

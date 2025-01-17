@@ -8,11 +8,13 @@ extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle) {
     get specializedDelegateModule() {
         return BadSettingsPolicy
     }
+
     get modules() {
         return [
-            ...super.modules,
-            BadProtocolSettings, // already provided by Capo's modules
+            BadProtocolSettings, 
         ];
+
+        // ... along with automatic-includes from Capo
     }
 }
 

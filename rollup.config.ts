@@ -6,14 +6,13 @@ import { platformModulePaths } from "./rollup.lib.js";
 import esbuildPlugin from "rollup-plugin-esbuild";
 import resolve from "@rollup/plugin-node-resolve";
 import json from "@rollup/plugin-json";
-import sourcemaps from "rollup-plugin-sourcemaps";
 
 // const packageJson = await import("./package.json", { assert: { type: "json" } });
 
 import packageJson from "./package.json" with { type: "json" };
 import { 
     heliosRollupLoader, 
-    heliosRollupTypeGen
+    heliosRollupBundler
 } from "./dist/rollup-plugins.mjs";
 
 const name = packageJson.main.replace(/\.m?js$/, "");
@@ -73,7 +72,6 @@ const codeBundle = (config) => {
 const heliosLoader = heliosRollupLoader({
     project: "stellar-contracts"
 });
-const heliosTypeGen = heliosRollupTypeGen();
 
 const dualPlatformEntryPoints = {
 };
@@ -97,16 +95,19 @@ const browserTargetedEntryPoints = {
     ...dualPlatformEntryPoints,
     ...browserOnlyEntryPoints
 };
+
+const nodeTargetedEntryPoints = {
+    ...dualPlatformEntryPoints,
+    ...nodeOnlyEntryPoints
+};
+
 export default [
-    false && codeBundle({
-        input: {
-            ...dualPlatformEntryPoints,
-            ...nodeOnlyEntryPoints
-        },
+    (Object.keys(nodeTargetedEntryPoints).length > 0) && codeBundle({
+        input: nodeTargetedEntryPoints,
         plugins: [
             // externals(),
             heliosLoader, 
-            heliosTypeGen,
+            heliosRollupBundler(),
             json(),
             resolve({
                 // ...platformModulePaths("server"),
@@ -118,7 +119,7 @@ export default [
                 tsconfig: "./tsconfig.json",
                 target: ["node18" ],
                 dropLabels: [ "__BROWSER_ONLY__" ],
-                sourceMap: false,                
+                sourceMap: true,
             })
         ],
         output: [
@@ -145,42 +146,44 @@ export default [
             },
         ],
     }),
-    // codeBundle({
-    //     input: browserTargetedEntryPoints,
-    //     plugins: [
-    //         // externals(),
-    //         heliosLoader, 
-    //         heliosTypeGen,
-    //         json(),
-    //         resolve({
-    //             // ...platformModulePaths("browser"),
-    //             exportConditions: ["browser"],
-    //             extensions: [".json", ".ts", ".js"],
-    //         }),
-    //         // sourcemaps(),
-    //         esbuildPlugin({
-    //             tsconfig: "./tsconfig.json",
-    //             target: ["node18" ],
-    //             dropLabels: [ "__NODEJS_ONLY__" ],
-    //             sourceMap: false,                                
-    //         })
-    //     ],
-    //     output: [
-    //         {
-    //             dir: `./dist/`,
-    //             entryFileNames: "[name]-browser.mjs",
-    //              chunkFileNames: "[name]-browser.mjs",
-    //             sourcemap: true,
-    //             format: "es",
-    //         }
-    //     ]
-    // }),
-    codeBundle({
+    (Object.keys(browserTargetedEntryPoints).length > 0) && codeBundle({
+        input: browserTargetedEntryPoints,
+        plugins: [
+            // externals(),
+            heliosLoader, 
+            heliosRollupBundler(),
+            json(),
+            resolve({
+                // ...platformModulePaths("browser"),
+                exportConditions: ["browser"],
+                extensions: [".json", ".ts", ".js"],
+            }),
+            // sourcemaps(),
+            esbuildPlugin({
+                tsconfig: "./tsconfig.json",
+                target: ["node18" ],
+                dropLabels: [ "__NODEJS_ONLY__" ],
+                sourceMap: true,
+            })
+        ],
+        output: [
+            {
+                dir: `./dist/`,
+                entryFileNames: "[name]-browser.mjs",
+                 chunkFileNames: "[name]-browser.mjs",
+                sourcemap: true,
+                format: "es",
+            }
+        ]
+    }),
+    (Object.keys(platformIndependentEntryPoints).length > 0) && codeBundle({
         input: platformIndependentEntryPoints,
         plugins: [
             // externals(),
             heliosLoader, 
-            heliosTypeGen,
+            heliosRollupBundler({
+                emitBundled: true,
+            }),
             json(),
             resolve({
                 extensions: [".json", ".ts", ".js"],
@@ -188,8 +191,8 @@ export default [
             // sourcemaps(),
             esbuildPlugin({
                 tsconfig: "./tsconfig.json",
-                target: ["node18" ],
-                sourceMap: false,                                
+                target: ["node20" ],
+                sourceMap: true,
             })
         ],
         output: [
@@ -215,7 +218,7 @@ export default [
     //         }),
     //         esbuild({
     //             tsconfig: "./tsconfig.json",
-    //             target: ["node18" ],
+    //             target: ["node22" ],
     //         }),
     //     ],
     //     output: [

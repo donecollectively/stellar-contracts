@@ -4,8 +4,6 @@
     "description": "Smart contract fusion for Cardano",
     "license": "SEE LICENSE IN LICENSE.TXT",
     "main": "./dist/stellar-contracts.mjs",
-    "module": "./dist/stellar-contracts.mjs",
-    "types": "./dist/stellar-contracts.d.ts",
     "engines": {
         "node": ">=20",
         "pnpm": ">=8"
@@ -14,9 +12,9 @@
         ".": {
             "typescriptNative": "./index.ts",
             "types": "./dist/stellar-contracts.d.ts",
-            "node": "./dist/stellar-contracts-node.mjs",
-            "import": "./dist/stellar-contracts-browser.mjs"
+            "import": "./dist/stellar-contracts.mjs"
         },
+        "./contracts/*.hlb": "./dist/contracts/*.hlb.mjs",
         "./testing": {
             "types": "./dist/testing.d.ts",
             "node": "./dist/testing-node.mjs",
@@ -38,8 +36,7 @@
     },
     "scripts": {
         "build": "scripts/build",
-        "build:watch": "scripts/build --watch",
-        "dev": "scripts/build --watch",
+        "dev": "scripts/rollup --watch",
         "smoke:test": "SMOKE=1 vitest run 02 04",
         "smoke:testing": "SMOKE=1 vitest --inspect --poolOptions.forks.singleFork watch 02 04",
         "test": "vitest run ",
@@ -73,19 +70,18 @@
         "@rollup/pluginutils": "^5.0.2",
         "@types/node": "^20.2.5",
         "esbuild": "^0.19.4",
-        "rollup": "^3.23.1",
+        "rollup": "^4.30.1",
         "rollup-plugin-api-extractor": "^0.2.5",
         "rollup-plugin-esbuild": "^6.1.0",
         "rollup-plugin-node-externals": "^6.1.1",
         "rollup-plugin-shell": "^1.0.9",
-        "rollup-plugin-sourcemaps": "^0.6.3",
         "rollup-plugin-string": "^3.0.0",
         "rollup-plugin-ts": "^3.2.0",
         "rollup-pluginutils": "^2.8.2",
         "semver": ">=7.5.2",
         "tslib": "^2.5.3",
         "typescript": "5.6.2",
-        "vite": "^4.4.11",
-        "vitest": "^2.1.8"
+        "vite": "^6.0.7",
+        "vitest": "^3.0.2"
     }
 }

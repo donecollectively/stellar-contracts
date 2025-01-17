@@ -1,4 +1,8 @@
 import type { CharterDataLike } from "./src/CapoTypes.js";
+export type { 
+    tagOnly,
+    EnumTypeMeta, singleEnumVariantMeta, 
+} from "./src/helios/HeliosMetaTypes.js";
 
 export {
     mkValuesEntry,
