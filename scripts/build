@@ -3,48 +3,13 @@
 #set -e # exit on error
 #//! EXPECTS to be run in context of `pnpm exec`
 
-playSound() {
-    f=$1
-    shift
-    if [ -f /usr/share/sounds/gnome/default/alerts/$f.ogg ]; then
-        play /usr/share/sounds/gnome/default/alerts/$f.ogg $* > /dev/null 2>&1
-    fi
-}
+srcDir=$(dirname $0)
+STC_PROJECT_PITCH=0
+. $srcDir/support.sh
 
 WITHDOCS=${DOCS:-1}
-hasProblem=$(mktemp /tmp/stellar-contracts.XXXXXX.hasProblem.txt)
-TF="%E seconds"
-
 ESBUILD="esbuild --format=esm --bundle --sourcemap --packages=external"
 startTime=$(date)
-# limits the window in which background jobs can stomp
-# on each others' output and mess up the terminal
-inBackground() {
-    # creates two tempfiles (stdout/stderr), and runs the command in the background.
-    # when the background job finishes, the content is emitted and 
-    # the tempfiles are removed.
-    local outFile=$(mktemp /tmp/stellar-contracts.XXXXXX.stdout.txt)
-    local errFile=$(mktemp /tmp/stellar-contracts.XXXXXX.stderr.txt)
-    DESCR=$1
-    shift
-    echo "  -- in background: $DESCR"
-    export TIMEFORMAT="  -- ${DESCR}: ${TF}" 
-    time $* > $outFile 2> $errFile &
-
-    local pid=$!
-    MAYBE_WITH_ERRORS=""
-    wait $pid || {
-        MAYBE_WITH_ERRORS=" with error code $?"
-        echo "$DESCR" >> $hasProblem
-    }
-    cat $outFile
-    cat $errFile >&2
-    rm $outFile $errFile
-    [[ -z $MAYBE_WITH_ERRORS ]] && {
-        playSound click phaser 0.6 0.66 2 0.4 2 -t & 
-    }
-    echo "  -- done${MAYBE_WITH_ERRORS}: $DESCR"
-}
 
 ESBUILD_EXTERNALS=$(cat <<EOF
 --external:esbuild 
@@ -102,7 +67,7 @@ testingDTS() {
     withDocs api-extractor run --local -c api-extractor.testing.json 
 }
 
-playSound swing &
+playStartSound &
 {
     # raw DTS to be fed to api-extractor
     inBackground "make dist/HeliosProgramWithCacheAPI" \
@@ -124,23 +89,9 @@ echo "In foreground: rollup main code bundle"
 sleep 0.5
 echo "------------------------------ waiting ------------------------------"
 wait
-playSound string tempo 1.4 &
-sleep 0.18
-playSound string pitch 407 tempo 2.8 &
-wait
 
-if [ -s $hasProblem ]; then
-    # audio indication of failure, and exit
-    playSound hum vol 0.5 &
-    # playSound click &
-    # sleep 0.25
-    # playSound click phaser 0.6 0.66 2 0.4 2 -t & 
-    echo "build failed in jobs:" >&2
-        cat $hasProblem | while read line; do
-        echo "  $line" >&2
-    done
-    exit
-fi
+exitIfError
+playCheckpointSound
 
 {
     inBackground "main .d.ts and docs" \
@@ -152,26 +103,13 @@ fi
 
 wait
 
-if [ -s $hasProblem ]; then
-    # audio indication of failure, and exit
-    playSound hum vol 0.5 &
-    # playSound click &
-    # sleep 0.25
-    echo "build failed in jobs:" >&2
-    cat $hasProblem | while read line; do
-        echo "  $line" >&2
-    done
-    exit
-else
-    # audio indication of success
-    playSound string &
-    sleep 0.1 
-    playSound string pitch 407 &
-    playSound string pitch -182
-fi
-
+exitIfError
 echo "build started at  $startTime"
 echo "build finished at $(date)"
+
+playSuccessSound 
+wait
+
 # api-extractor run --local --verbose
 
 # to debug rollup plugins:
