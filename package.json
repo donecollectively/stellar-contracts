@@ -47,14 +47,13 @@
     },
     "author": "Done Collectively LCA",
     "dependencies": {
-        "@types/proper-lockfile": "^4.1.4",
-        "proper-lockfile": "^4.1.2",
-        "semver": ">=7.5.2"
     },
     "peerDependencies": {
         "rollup-plugin-esbuild": "^6.1.0"
     },
     "devDependencies": {
+        "@types/proper-lockfile": "^4.1.4",
+        "proper-lockfile": "^4.1.2",
         "@helios-lang/codec-utils": "link:../helios/codec-utils",
         "@helios-lang/compiler": "link:../helios/compiler",
         "@helios-lang/compiler-utils": "link:../helios/compiler-utils",
