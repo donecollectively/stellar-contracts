@@ -362,8 +362,6 @@ type ComputedScriptProperties = Partial<{
     identity: string;
 }>;
 
-const isInternalConstructor = Symbol("internalConstructor");
-
 export type ActorContext<WTP extends Wallet = Wallet> = {
     wallet?: WTP;
 };
@@ -765,7 +763,7 @@ export class StellarContract<
     ): Promise<StellarContract<configType> & InstanceType<typeof this>> {
         const Class = this;
         const { setup, config, partialConfig } = args;
-        const c = new Class(setup, isInternalConstructor);
+        const c = new Class(setup);
 
         // now all internal property assignments have been triggered,
         //  (e.g. class-level currentRev = .... declarations)
@@ -777,14 +775,10 @@ export class StellarContract<
      *
      * @public
      **/
-    constructor(setup: SetupDetails, internal: typeof isInternalConstructor) {
+    constructor(setup: SetupDetails) {
         this.setup = setup;
         this._utxoHelper = new UtxoHelper(this.setup, this);
-        if (internal !== isInternalConstructor) {
-            throw new Error(
-                `StellarContract: use createWith() factory function`
-            );
-        }
+
         // console.log(new Error(`\n  in ${this.constructor.name}`).stack!.split("\n").slice(1).join("\n"));
 
         const { network, networkParams, isTest, isMainnet, actorContext } =

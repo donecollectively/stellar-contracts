@@ -85,16 +85,17 @@ export function heliosRollupLoader(
                     throw new Error(`Bad format for helios file ${id}`);
 
                 const code =
-                    `const ${moduleName}_hl = {\n` +
-                    `  content: ${JSON.stringify(content)},\n` +
+                    `import { makeSource } from "@helios-lang/compiler-utils";\n`+
+                    `const ${moduleName}_hl = makeSource(\n` +
+                    `  ${JSON.stringify(content)}, {\n` +
                     // `  srcFile: ${JSON.stringify(relPath)},\n`+
-                    `  project: ${JSON.stringify(project)},\n` +
-                    `  purpose: ${JSON.stringify(purpose)},\n` +
-                    `  name:  ${JSON.stringify(
+                    `    project: ${JSON.stringify(project)},\n` +
+                    `    purpose: ${JSON.stringify(purpose)},\n` +
+                    `    name:  ${JSON.stringify(
                         relPath
                     )}, // source filename\n` +
-                    `  moduleName:  ${JSON.stringify(moduleName)},\n` +
-                    `}\n` +
+                    `    moduleName:  ${JSON.stringify(moduleName)},\n` +
+                    `})\n` +
                     `\nexport default ${moduleName}_hl\n`;
                 return {
                     code: code,

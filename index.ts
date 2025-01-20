@@ -202,6 +202,9 @@ export type {
     tokenNamesOrValuesEntry,
     InlineDatum,
     valuesEntry,
+} from "./src/HeliosPromotedTypes.js";
+
+export {
     bytesToText,
     textToBytes,
 } from "./src/HeliosPromotedTypes.js";

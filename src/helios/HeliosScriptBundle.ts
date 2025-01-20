@@ -202,13 +202,11 @@ export abstract class HeliosScriptBundle {
             throw new Error(
                 `${
                     this.displayName
-                }: includeFromCapoModules() includes modules not provided by the Capo:\n ${
-                    Array.from(
-                        unsatisfiedIncludes
-                    )
+                }: includeFromCapoModules() includes modules not provided by the Capo:\n ${Array.from(
+                    unsatisfiedIncludes
+                )
                     .map((m) => `   • ${m}\n`)
-                    .join("\n")
-                }`
+                    .join("\n")}`
             );
         }
 
@@ -225,14 +223,18 @@ export abstract class HeliosScriptBundle {
 
         console.log(
             `\nModules in ${this.displayName}:\n` +
-            ` • includeFromCapoModules(): ${this.includeFromCapoModules().join(", ")}\n` +
-            ` • implicit Capo modules:    ${this.implicitIncludedCapoModules().join(", ")}\n` +
-            ` • modules from Capo: \n${capoIncludedModules
-                .map(moduleDetails)
-                .join("\n")}\n`+
-            ` • get modules() (${this.modules.length}): \n${this.modules
+                ` • includeFromCapoModules(): ${this.includeFromCapoModules().join(
+                    ", "
+                )}\n` +
+                ` • implicit Capo modules:    ${this.implicitIncludedCapoModules().join(
+                    ", "
+                )}\n` +
+                ` • modules from Capo: \n${capoIncludedModules
                     .map(moduleDetails)
-                    .join("\n")}` 
+                    .join("\n")}\n` +
+                ` • get modules() (${this.modules.length}): \n${this.modules
+                    .map(moduleDetails)
+                    .join("\n")}`
         );
     }
 
@@ -436,21 +438,17 @@ export abstract class HeliosScriptBundle {
             } = errorModule || {};
             let errorInfo: string = "";
 
-            import("fs")
-                .then(({ statSync }) => {
-                    return statSync(srcFilename).isFile();
-                })
-                .catch((e: any) => {
-                    const indent = " ".repeat(6);
-                    errorInfo = project
-                        ? `\n${indent}Error found in project ${project}:${srcFilename}\n` +
-                          `${indent}- in module ${moduleName}:\n${moreInfo}\n` +
-                          `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
-                          `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
-                        : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
-                          `${indent}  ... this can be caused if your module definition doesn't include a correct path to your helios file\n` +
-                          `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFilename}"\n${indent})\n`;
-                });
+            if (!HeliosProgramWithCacheAPI.checkFile(srcFilename)) {
+                const indent = " ".repeat(6);
+                errorInfo = project
+                    ? `\n${indent}Error found in project ${project}:${srcFilename}\n` +
+                      `${indent}- in module ${moduleName}:\n${moreInfo}\n` +
+                      `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
+                      `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
+                    : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
+                      `${indent}  ... this can be caused if your module definition doesn't include a correct path to your helios file\n` +
+                      `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFilename}"\n${indent})\n`;
+            }
 
             const { startLine, startColumn } = e.site;
             const t = new Error(errorInfo);

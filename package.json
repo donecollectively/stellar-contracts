@@ -14,7 +14,7 @@
             "types": "./dist/stellar-contracts.d.ts",
             "import": "./dist/stellar-contracts.mjs"
         },
-        "./contracts/*.hlb": "./dist/contracts/*.hlb.mjs",
+        "./contracts/*.hlb": "./dist/contracts/*.hlb.mjs",        
         "./testing": {
             "types": "./dist/testing.d.ts",
             "node": "./dist/testing-node.mjs",

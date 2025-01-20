@@ -1,5 +1,6 @@
 import * as lockfile from "proper-lockfile";
 import { readFile, writeFile } from "fs/promises";
+import { existsSync, mkdirSync } from "fs";
 
 import {
     CachedHeliosProgram,
@@ -9,7 +10,6 @@ import {
     type LockInfoForStrat,
     type StringifiedCacheEntry,
 } from "./CachedHeliosProgram.js";
-import { existsSync, mkdirSync } from "fs";
 import type { Source } from "@helios-lang/compiler-utils";
 
 const cacheStore = ".hltemp/cache";
@@ -26,6 +26,10 @@ export class CachedHeliosProgramFS extends CachedHeliosProgram {
         super(mainSource, props);
     }
     
+    static checkFile(srcFilename: string): boolean | null {
+        return existsSync(srcFilename);
+    }
+
     static async ifCached(cacheKey: string): Promise<string | null> {
         if (existsSync(`${cacheStore}/${cacheKey}`)) {
             const result = await readFile(`${cacheStore}/${cacheKey}`, "utf8");

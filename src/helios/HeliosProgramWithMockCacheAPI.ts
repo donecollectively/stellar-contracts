@@ -27,6 +27,10 @@ export class HeliosProgramWithCacheAPI extends Program {
     constructor(mainSource: string | Source, props?: CacheableProgramProps) {
         super(mainSource, props);
     }
+    static checkFile(srcFilename: string) : boolean | null {
+        return null
+    }
+
     async compileWithCache(
         optimizeOrOptions: boolean | CompileOptionsForCachedHeliosProgram
     ) : Promise<anyUplcProgram> {
