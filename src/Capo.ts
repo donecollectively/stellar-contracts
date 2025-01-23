@@ -257,12 +257,6 @@ export abstract class Capo<
         return this.verifyCoreDelegates();
     }
 
-    get isConfigured(): Promise<boolean> {
-        if (!this.configIn) return Promise.resolve(false);
-        // if (this._verifyingConfigs) return this._verifyingConfigs;
-        return Promise.resolve(true);
-    }
-
     scriptBundle(): CapoHeliosBundle {
         console.warn(
             `${this.constructor.name}: each Capo will need to provide a scriptBundle() method.\n` +
@@ -566,7 +560,7 @@ export abstract class Capo<
     async mustFindCharterUtxo() {
         const predicate = this.uh.mkTokenPredicate(this.tvCharter());
 
-        return this.mustFindMyUtxo("charter", predicate, "has it been minted?");
+        return this.mustFindMyUtxo("charter", predicate, "is the charter-mint done & already confirmed?");
     }
 
     //     /**

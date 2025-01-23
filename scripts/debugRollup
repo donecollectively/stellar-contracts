@@ -5,7 +5,7 @@ echo ""
 echo "  ---- use package.json 'build' script for regular build"
 echo ""
 
-node node_modules/rollup/dist/bin/rollup --config rollup.config.ts \
+DEBUG=1 node --inspect-brk node_modules/rollup/dist/bin/rollup --config rollup.config.ts \
   --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
   $@
 

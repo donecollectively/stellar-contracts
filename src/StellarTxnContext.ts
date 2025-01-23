@@ -202,7 +202,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this.setup.actorContext.wallet!;
     }
 
-    get uh() : UtxoHelper{
+    get uh(): UtxoHelper {
         return this.setup.uh!;
     }
 
@@ -531,6 +531,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
             console.warn("suppressing second add of refInput");
             return this;
         }
+        if (this.inputs.find((v) => v.id.isEqual(input.id))) {
+            console.warn(
+                "suppressing add of refInput that is already an input"
+            );
+            return this;
+        }
         this.txRefInputs.push(input);
 
         // if (moreArgs.length) {
@@ -800,6 +806,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         break;
                     }
                 }
+            } else {
+                console.warn(
+                    "txn build: no wallet/helper available for txn signining (debugging breakpoint available)"
+                );
+                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
             }
             let capturedCosts: {
                 total: Cost;
@@ -832,7 +843,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     `  (it shouldn't be possible for buildUnsafe to be throwing errors!)`
                 );
                 logger.flushError();
-                debugger;
+                console.warn(
+                    "^^^^ txn build failed (debugging breakpoint avaialble)"
+                );
+                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
                 throw e;
             }
             if (tx.hasValidationError) {
@@ -864,11 +878,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     }
                     return line;
                 });
-                debugger;
+                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
                 const scriptContext =
                     "string" == typeof e ? undefined : e.scriptContext;
                 logger.logError(
-                    `tx validation failure: \n  ${
+                    `tx validation failure: \n  ❌ ${
                         //@ts-expect-error
                         tx.hasValidationError.message || tx.hasValidationError
                     }\n` + (heliosStack?.join("\n") || "")
@@ -884,7 +898,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         : "",
                     "------------------- failed tx as cbor-hex -------------------\n" +
                         bytesToHex(tx.toCbor()),
-                    "\n------------------^ failed tx details ^------------------"
+                    "\n------------------^ failed tx details ^------------------\n" +
+                        "(debugging breakpoint available)"
                 );
             }
 
@@ -921,29 +936,26 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * Submits the current transaction and any additional transactions in the context.
      * @remarks
      * To submit only the current transaction, use the `submit()` method.
-     * 
-     * The signers array can be used to add additional signers to the transaction, and 
+     *
+     * The signers array can be used to add additional signers to the transaction, and
      * is passed through to the submit() for the current txn only; it is not used for
      * any additional transactions.
-     * 
+     *
      * The beforeSubmit, onSubmitted callbacks are used for each additional transaction.
-     * 
+     *
      * beforeSubmit can be used to notify the user of the transaction about to be submitted,
-     * and can also be used to add additional signers to the transaction or otherwise modify 
+     * and can also be used to add additional signers to the transaction or otherwise modify
      * it (by returning the modified transaction).
-     * 
+     *
      * onSubmitted can be used to notify the user that the transaction has been submitted,
      * or for logging or any other post-submission processing.
      */
-    async submitAll(
-        this: StellarTxnContext<any>,
-        options: SubmitOptions = {}
-    ) {
+    async submitAll(this: StellarTxnContext<any>, options: SubmitOptions = {}) {
         return this.submit(options).then(() => {
             if (this.state.addlTxns) {
-                return this.submitAddlTxns()
+                return this.submitAddlTxns();
             }
-        })                
+        });
     }
 
     /**
@@ -1122,9 +1134,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
             txFeePerByte,
             txFeeFixed,
         } = this.networkParams;
-        const oMaxSize : number = origMaxTxSize;
-        const oMaxMem : number = origMaxTxExMem;
-        const oMaxCpu : number = origMaxTxExCpu;
+        const oMaxSize: number = origMaxTxSize;
+        const oMaxMem: number = origMaxTxExMem;
+        const oMaxCpu: number = origMaxTxExCpu;
 
         const { total, ...otherCosts } = costs;
         const txSize = tx.calcSize();
@@ -1317,7 +1329,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
             // if the callback returns true or void, we execute the txn as already resolved.
             // if it returns an alternative txn, we use that instead.
-            const effectiveTcx =
+            const effectiveTcx: StellarTxnContext =
                 true === replacementTcx ? tcx : replacementTcx || tcx;
             // console.log("   -- submitTxns: -> txn: ", txName, description);
             // console.log("   ----> effective tx", effectiveTcx);

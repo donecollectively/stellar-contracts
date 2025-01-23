@@ -426,10 +426,11 @@ export class StellarContract<
         throw new Error(
             `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
                 `...each Stellar Contract must provide a scriptBundle() method. \n` +
-                `It should return an instance of a class defined in a *.hlb.js file.  At minimum:\n\n` +
-                `    export default class MyScriptBundle extends HeliosScriptBundle {\n\n    }\n\n` +
-                `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
-                `Your scriptBundle() method can \`return new MyScriptBundle();\``
+                `It should return an instance of a class defined in a *.hlb.ts file.  At minimum:\n\n` +
+                `    export default class MyScriptBundle extends HeliosScriptBundle { ... }\n` +
+                ` or export default CapoDelegateBundle.usingCapoBundleClass(SomeCapoBundleClass) { ... }\n\n`+
+                `We'll generate TS types and other utilities for connecting to the data-types in your Helios sources.\n` +
+                `Your scriptBundle() method can return \`new MyScriptBundle();\``
         );
     }
 
@@ -690,8 +691,8 @@ export class StellarContract<
                 `${this.constructor.name}: this contract script doesn't have a dataBridgeClass defined`
             );
         }
-        //@ts-expect-error the type shoudl be fine, given the above logic.  The type is for the interface,
-        // and it's not worth hoop-jumping to make TS perfectly happy with how the sausage is made.
+        //@ts-expect-error - the type we show externally is fine, given the above logic.  
+        // It's not worth hoop-jumping to make TS perfectly happy with how the sausage is made.
         return this._dataBridge;
     }
 
@@ -703,8 +704,12 @@ export class StellarContract<
         return bn;
     }
 
+    get isConfigured(): boolean {
+        return !!this.configIn;
+    }
+
     get isConnected() {
-        return !!this.wallet;
+        return (this.isConfigured && !! this.wallet);
     }
 
     /**

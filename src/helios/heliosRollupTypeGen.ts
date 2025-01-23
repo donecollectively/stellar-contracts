@@ -111,9 +111,8 @@ export function heliosRollupBundler(
                 // write the project file after the build, skipping any
                 // pending delay from calls to `deferredWriteProjectFile()`
                 console.log(
-                    "heliosBundler: buildEnd: " + error
-                        ? "error: "
-                        : "" + error?.message
+                    "heliosBundler: buildEnd: " +
+                        (error ? "error: " + error?.message : "")
                 );
                 // return state.project.writeProjectFile();
             },
@@ -137,7 +136,7 @@ export function heliosRollupBundler(
                     resolutionTargetIsJS &&
                     importerIsInThisProject
                 ) {
-                    this.warn("patching up a vitest resolution");
+                    this.warn(`patching up a vitest resolution: ${importer} imported ${source}`);
                     // work around vitest not resolving .ts files from .js using
                     // the correct rules...
                     const sourceWithTs = source.replace(/\.js$/, ".ts");
@@ -174,7 +173,7 @@ export function heliosRollupBundler(
                 firstImportFrom[p] =
                     firstImportFrom[p] || relativePath(importer);
                 if (resolved && id && filterHLB(id)) {
-                    if (interesting) {
+                    if (interesting && process.env.DEBUG) {
                         console.log("resolved absolute HLB id " + id, options);
                     }
                     if (pluginOptions.vite) {
@@ -200,7 +199,7 @@ export function heliosRollupBundler(
                         );
                         const packageRelativeName = `contracts/${name}.hlb`;
                         const bundledExportName = `${thisPackageName}/${packageRelativeName}`;
-                        //This arranges a convention for emitting a predictable 
+                        //This arranges a convention for emitting a predictable
                         // exported file, used to connect the importer with emitted code
                         // using an expected import name
                         // Note: this requires subpath patterns for contracts/*.hlb
@@ -212,13 +211,13 @@ export function heliosRollupBundler(
                         //      [...]
                         //   }
                         // ```
-                        if (pluginOptions.emitBundled) {                                
+                        if (pluginOptions.emitBundled) {
                             // immediately starts resolving the file-for-emit, and returns a
-                            // PACKAGE-RELATIVE name for the artifact.  The importer of 
-                            // the .hlb.ts file will get that translated import statement, and 
-                            // the emitFile acts like a fork, with the processing of the emitted 
+                            // PACKAGE-RELATIVE name for the artifact.  The importer of
+                            // the .hlb.ts file will get that translated import statement, and
+                            // the emitFile acts like a fork, with the processing of the emitted
                             // file happening on a separate track.
-                            // and the package-relative import name used in place of normal 
+                            // and the package-relative import name used in place of normal
                             // load/transform processing of the separate chunk.
                             console.log(
                                 `  -- heliosBundler: emitting ${bundledExportName}`
@@ -232,10 +231,10 @@ export function heliosRollupBundler(
                                 // originalFileName: resolved.id,
                             });
                         }
-                        return bundledExportName
+                        return bundledExportName;
                     }
                 } else if (filterHlbundledImportName(id)) {
-                    if (interesting) {
+                    if (interesting && process.env.DEBUG) {
                         console.log("resolveId: got HLBundled: " + id, options);
                     }
                     // resolving the file-to-be-emitted - it's the same file, but as a
@@ -281,7 +280,7 @@ export function heliosRollupBundler(
                 const interesting = !!id.match(/\.hlb\./);
                 const { project } = state;
                 if (filterHlbundledImportName(id)) {
-                    console.log("    ---- heliosBundler: load", { id });
+                    if (process.env.DEBUG) console.log("    ---- heliosBundler: load", { id });
                     const indirectBundleId = id;
                     const referenceId = indirectBundleId.replace(
                         /\?bundled$/,
@@ -291,8 +290,13 @@ export function heliosRollupBundler(
                         /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
                         "$1"
                     );
-                    console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXX emitFile chunk", indirectBundleId);
-                    throw new Error(`unused code path for broken emitFile in load `);
+                    console.log(
+                        "XXXXXXXXXXXXXXXXXXXXXXXXXXXXX emitFile chunk",
+                        indirectBundleId
+                    );
+                    throw new Error(
+                        `unused code path for broken emitFile in load `
+                    );
 
                     //XXX emits meta information for an OUTPUT chunk, indirectly
                     //XXX resolving it to a separate output file.  This miniature chunk
@@ -329,7 +333,7 @@ export function heliosRollupBundler(
 
                     return null;
                 }
-                if (interesting) {
+                if (interesting && process.env.DEBUG) {
                     console.log("    ---- heliosBundler: load", { id });
                 }
 
@@ -498,7 +502,9 @@ export function heliosRollupBundler(
                             }, 5000);
                         });
                     }
-                    this.warn("ok");
+                    if (process.env.DEBUG) {
+                        this.warn("  ---- heliosRollupBundler: load: ok");
+                    }
                 }
                 return null as LoadResult;
                 //     id: source,
@@ -699,7 +705,7 @@ export function heliosRollupBundler(
         // if the file is not changed, skip write of the compiled file
         if (existsSync(outputFile)) {
             const existing = readFileSync(outputFile, "utf-8");
-            if (existing === compiled) {
+            if (existing === compiled ) {
                 console.log(
                     `📦 CapoHeliosBundle: unchanged bundle (${buildTime}ms): ${outputFile}`
                 );

@@ -806,7 +806,7 @@ export class UtxoHelper {
         walletAddresses?: Address | Address[]
     ): string {
         const where = searchScope.address
-            ? `searched in address ${searchScope.address.toString()}\n`
+            ? `\n -- searched in address ${searchScope.address.toString()}`
             : ``;
         const wAddrs: Address[] = Array.isArray(walletAddresses)
             ? walletAddresses
@@ -827,7 +827,7 @@ export class UtxoHelper {
             this.constructor.name
         }: '${semanticName}' utxo not found ${more}  ... ${
             extraErrorHint || "sorry, no extra clues available"
-        }${where}\n  ... see further logged details above`;
+        }${where}\n  ... see more details in log`;
     }
 
     toUtxoId(u: TxInput) {
