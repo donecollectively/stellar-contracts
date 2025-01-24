@@ -23,6 +23,8 @@ import type {
 } from "../delegation/RolesAndDelegates.js";
 import type { UutName } from "../delegation/UutName.js";
 import type { Address } from "@helios-lang/ledger";
+// import { parseCapoJSONConfig } from "../configuration/DeployedScriptConfigs.js";
+import { parseCapoJSONConfig } from "@donecollectively/stellar-contracts";
 
 declare namespace NodeJS {
     interface Global {
@@ -239,7 +241,6 @@ export class DefaultCapoTestHelper<
             ...this.mkDefaultCharterArgs(),
             ...(args || {}),
         } as MinimalCharterDataArgs;
-        // debugger
 
         const tcx = await capo.mkTxnMintCharterToken(goodArgs);
         const rawConfig =
@@ -247,7 +248,7 @@ export class DefaultCapoTestHelper<
             this.state.config =
                 tcx.state.bootstrappedConfig);
 
-        this.state.parsedConfig = this.stellarClass.parseConfig(rawConfig);
+        this.state.parsedConfig = parseCapoJSONConfig(rawConfig);
 
         expect(capo.network).toBe(this.network);
 

@@ -4,6 +4,12 @@ export type {
     EnumTypeMeta, singleEnumVariantMeta, 
 } from "./src/helios/HeliosMetaTypes.js";
 
+export { 
+    mkDeployedScriptConfigs,
+    mkCapoDeploymentJSON,
+    parseCapoJSONConfig
+} from "./src/configuration/DeployedScriptConfigs.js";
+
 export {
     mkValuesEntry,
     mkUutValuesEntries,
@@ -144,7 +150,7 @@ export type {
     stellarSubclass,
     anyDatumProps,
     configBaseWithRev as configBase, // as paramsBase,
-    StellarFactoryArgs,
+    StellarSetupDetails as StellarFactoryArgs,
     ConfigFor,
 } from "./src/StellarContract.js";
 

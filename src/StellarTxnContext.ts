@@ -6,7 +6,7 @@ import {
 } from "./diagnostics.js";
 import type { hasUutContext } from "./CapoTypes.js";
 import { UutName } from "./delegation/UutName.js";
-import type { ActorContext, SetupDetails } from "./StellarContract.js";
+import type { ActorContext, SetupInfo } from "./StellarContract.js";
 import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";
 import type { Cost, UplcData } from "@helios-lang/uplc";
 import { UplcConsoleLogger } from "./UplcConsoleLogger.js";
@@ -24,6 +24,7 @@ import {
     type NetworkParams,
     type PubKeyHash,
     type Tx,
+    type TxId,
     type TxInput,
     type TxOutput,
 } from "@helios-lang/ledger";
@@ -190,7 +191,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     neededSigners: Address[] = [];
     parentTcx?: StellarTxnContext<any>;
     childReservedUtxos: TxInput[] = [];
-    declare setup: SetupDetails;
+    declare setup: SetupInfo;
     txb: TxBuilder;
     txnName: string = "";
     withName(name: string) {
@@ -241,7 +242,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     logger = new UplcConsoleLogger();
     constructor(
-        setup: SetupDetails,
+        setup: SetupInfo,
         state: Partial<S> = {},
         parentTcx?: StellarTxnContext<any>
     ) {

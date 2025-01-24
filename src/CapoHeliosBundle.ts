@@ -7,6 +7,8 @@ import TypeMapMetadata from "./TypeMapMetadata.hl";
 import mainContract from "./DefaultCapo.hl";
 import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
 import type { Source } from "@helios-lang/compiler-utils";
+import type { AllDeployedScriptConfigs, CapoDeployedDetails } from "./configuration/DeployedScriptConfigs.js";
+import type { StellarSetupUplc } from "./StellarContract.js";
 
 export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
 
@@ -22,6 +24,13 @@ export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
  * @public
  */
 export class CapoHeliosBundle extends HeliosScriptBundle {
+    constructor(setupDetails?: StellarSetupUplc<any>) {
+        // if we have deployed details, use that.
+        // otherwise, require setupDetails
+        super(setupDetails);
+        this.deployedScriptDetails = this.deployedDetails?.capo
+            || (setupDetails?.deployedDetails ?? undefined);
+    }
     get main() {
         return mainContract
     }
@@ -29,6 +38,14 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     datumTypeName = "CapoDatum"
     capoBundle = this // ???
 
+    // todo: make types for these 
+    // config? : any
+    deployedDetails?: CapoDeployedDetails
+
+    // scriptConfigs? : AllDeployedScriptConfigs
+    get scriptConfigs() {
+        return this.deployedDetails?.scripts
+    }
     get bridgeClassName(): string {
         if (this.constructor === CapoHeliosBundle) {
             return "CapoDataBridge";

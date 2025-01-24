@@ -22,7 +22,7 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 import type { SimpleWallet_stellar } from "./testing/StellarNetworkEmulator.js";
 import { dumpAny, utxosAsString } from "./diagnostics.js";
 import { UutName } from "./delegation/UutName.js";
-import type { SetupDetails, StellarContract } from "./StellarContract.js";
+import type { SetupInfo, StellarContract } from "./StellarContract.js";
 import { textToBytes } from "./HeliosPromotedTypes.js";
 
 export type utxoSortInfo = {
@@ -74,9 +74,9 @@ export type UtxoSearchScopeWithUtxos = UtxoSearchScope & {
  */
 export class UtxoHelper {
     strella?: StellarContract<any>;
-    setup: SetupDetails;
+    setup: SetupInfo;
 
-    constructor(setup: SetupDetails, strella?: StellarContract<any>) {
+    constructor(setup: SetupInfo, strella?: StellarContract<any>) {
         this.setup = setup;
         if (!setup.uxtoDisplayCache) {
             setup.uxtoDisplayCache = new Map();

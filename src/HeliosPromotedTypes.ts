@@ -1,6 +1,6 @@
 import type { CompileOptions } from "@helios-lang/compiler";
 import type { InlineTxOutputDatum } from "@helios-lang/ledger";
-import type { UplcProgramV2 } from "@helios-lang/uplc";
+import type { UplcProgramV2, UplcProgramV3 } from "@helios-lang/uplc";
 
 /**
  * @public
@@ -16,8 +16,7 @@ export type CompileOptionsForCachedHeliosProgram = CompileOptions & {
 /**
  * @public
  */
-export type anyUplcProgram = UplcProgramV2;
-// | UplcProgramV3;
+export type anyUplcProgram = UplcProgramV2 //| UplcProgramV3;
 
 export { 
     encodeUtf8 as textToBytes,

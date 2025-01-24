@@ -1,28 +1,34 @@
 import type { DataType, Program } from "@helios-lang/compiler";
 import type { Source } from "@helios-lang/compiler-utils";
+import {
+    type UplcProgramV2,
+    type UplcProgramV3,
+    type UplcSourceMapJsonSafe,
+} from "@helios-lang/uplc";
+import { decodeUplcProgramV2FromCbor } from "@helios-lang/uplc";
+// import { decodeUplcProgramV3FromCbor } from "@helios-lang/uplc";
+
+import { HeliosProgramWithCacheAPI } from "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI";
 
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-import type { configBaseWithRev, UplcRecord } from "../StellarContract.js";
+import type {
+    SetupInfo,
+    StellarSetupUplc,
+    UplcRecord,
+} from "../StellarContract.js";
 import type { anyUplcProgram } from "../HeliosPromotedTypes.js";
 import type {
     CapoBundleClass,
     HeliosBundleClassWithCapo,
     HeliosBundleTypes,
 } from "./HeliosMetaTypes.js";
-import { HeliosProgramWithCacheAPI } from "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI";
+import type { StringifiedHeliosCacheEntry } from "./CachedHeliosProgram.js";
+import type { DeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
 
 /**
  * @internal
  */
 export const defaultNoDefinedModuleName = "‹default-needs-override›";
-
-/**
- * @public
- */
-export type HeliosScriptSettings<ConfigType extends configBaseWithRev> = {
-    config: ConfigType;
-    optimize?: boolean;
-};
 
 /**
  * Base class for any Helios script bundle
@@ -33,8 +39,6 @@ export type HeliosScriptSettings<ConfigType extends configBaseWithRev> = {
  */
 export abstract class HeliosScriptBundle {
     static isCapoBundle = false;
-    capoBundle?: CapoHeliosBundle;
-    isConcrete = false;
 
     /**
      * Constructs a base class for any Helios script bundle,
@@ -61,8 +65,8 @@ export abstract class HeliosScriptBundle {
         const cb = new c();
         const newClass = class aCapoBoundBundle extends HeliosScriptBundle {
             capoBundle = cb;
-            constructor() {
-                super();
+            constructor(setupDetails: StellarSetupUplc<any>) {
+                super(setupDetails);
             }
 
             isConcrete = true;
@@ -70,6 +74,10 @@ export abstract class HeliosScriptBundle {
 
         return newClass;
     }
+
+    capoBundle?: CapoHeliosBundle;
+    isConcrete = false;
+
     /**
      * optional attribute explicitly naming a type for the datum
      * @remarks
@@ -87,9 +95,35 @@ export abstract class HeliosScriptBundle {
      * instead of inferring the type from the entry point.
      */
     redeemerTypeName?: string;
+    _program?: HeliosProgramWithCacheAPI;
+    _progHasDeploymentDetails = false;
+    setup?: SetupInfo;
+    params?: UplcRecord<any>;
+    deployedScriptDetails?: DeployedScriptDetails;
 
-    constructor() {
+    constructor(setupDetails?: StellarSetupUplc<any>) {
         // this.devReloadModules()
+        // if (setupDetails) debugger;
+        this.setup = setupDetails?.setup;
+        if (setupDetails?.params) {
+            this.params = setupDetails.params;
+            // } else if (args?.partialConfig) {
+            //     this._partialConfig = args.partialConfig;
+        }
+        if (setupDetails?.deployedDetails) {
+            this.deployedScriptDetails = setupDetails.deployedDetails;
+        }
+    }
+
+    get hasDeploymentDetails() {
+        return !!this.deployedScriptDetails;
+    }
+    withSetupDetails(details: StellarSetupUplc<any>) {
+        if (this.setup) {
+            throw new Error(`setup already present`)
+        }
+        //@ts-expect-error with dynamic creation
+        return new this.constructor(details);
     }
 
     // these should be unnecessary if we arrange the rollup plugin
@@ -153,9 +187,10 @@ export abstract class HeliosScriptBundle {
      * These module names will then be available for `import { ... }` statements in your helios script.
      *
      * ### Beware of Shifting Sands
+     *
      * If you include any modules provided by other scripts in your project, you should
-     * be aware that ANY changes to those scripts will change your delegate's validator, resulting
-     * in a need to deploy new script contracts.  This is why it's important to only include
+     * be aware that any material changes to those scripts will change your delegate's validator,
+     * resulting in a need to deploy new script contracts.  This is why it's important to only include
      * modules that are relatively stable, or whose changes SHOULD trigger a new deployment
      * for this script.
      *
@@ -261,49 +296,125 @@ export abstract class HeliosScriptBundle {
         return `${mName}DataBridge`;
     }
 
+    /**
+     * indicates whether the script should be optimized.
+     * @remarks
+     * Defaults to the general optimize setting provided by the factoryArgs.
+     * Override to force optimization on or off.
+     */
+    get optimize() {
+        return this.setup!.optimize;
+    }
+
     get moduleName() {
         return this.constructor.name
             .replace(/Bundle/, "")
             .replace(/Helios/, "");
         defaultNoDefinedModuleName; // overridden in subclasses where relevant
     }
-    config?: HeliosScriptSettings<any> = undefined;
-    artifacts = null;
-    async compiledScript(params: UplcRecord<any>): Promise<anyUplcProgram> {
-        if (this.artifacts) {
-            // todo
+
+    /**
+     * resolves the compiled script for this class with its provided
+     * configuration details
+     * @remarks
+     * The configuration details may come through the Capo bundle's
+     * `deployedDetails` or by compiling the script with the provided
+     * params.
+     */
+    async compiledScript(): Promise<anyUplcProgram> {
+        const { params, setup, program } = this;
+        if (!params || !setup) {
+            debugger // eslint-disable-line no-debugger - keep for downstream troubleshooting   
+            // theoretically only here for type-narrowing
+            throw new Error(
+                `(unreachable?): missing required params or setup for compiledScript() (debugging breakpoint available)`
+            );
         }
 
-        const script = this.program;
-        // if (!this.program) {
-        //     console.warn(
-        //         "compileWithScriptParams() called without loaded program"
-        //     );
-        //     debugger;
-        //     throw new Error(`missing required scriptProgram`);
-        // }
-        // debugger
-        console.log(`
+        if (this.deployedScriptDetails?.programBundle) {
+            const {
+                optimized,
+                unoptimized,
+                // optimizedIR, // omitted
+                // unoptimizedIR, // omitted
+                optimizedSmap,
+                unoptimizedSmap,
+                version,
+            } = this.deployedScriptDetails.programBundle;
+            if (!unoptimized) {
+                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+                throw new Error(
+                    `${this.constructor.name}: missing unoptimized program in serialized program cache\n` +
+                        `  (debugging breakpoint available)`
+                );
+            }
+            if (/* !unoptimizedIR || */ !unoptimizedSmap) {
+                console.error({
+                    // unoptimizedIR,
+                    unoptimizedSmap,
+                });
+                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+                throw new Error(
+                    `${this.constructor.name}: missing expected ` +
+                        /*unoptimizedIR or */ `sourcemap in serialized program cache\n` +
+                        `  (debugging breakpoint available)`
+                );
+            }
+            const altProgram = this.decodeAnyPlutusUplcProgram(
+                version,
+                unoptimized,
+                // unoptimizedIR,
+                unoptimizedSmap
+            );
+            if (this.optimize) {
+                if (!optimized) {
+                    debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+                    throw new Error(
+                        `${this.constructor.name}: missing optimized program in serialized program cache, with optimization enabled\n` +
+                            `  (debugging breakpoint available)`
+                    );
+                }
+                if (/* !optimizedIR || */ !optimizedSmap) {
+                    console.error({
+                        // optimizedIR,
+                        optimizedSmap,
+                    });
+                    throw new Error(
+                        `${this.constructor.name}: missing expected optimizedIR or sourcemap in serialized program cache, with optimization enabled\n` +
+                            `  (debugging breakpoint available)`
+                    );
+                }
+                return this.decodeAnyPlutusUplcProgram(
+                    version,
+                    optimized,
+                    // optimizedIR,
+                    optimizedSmap,
+                    altProgram
+                );
+            }
+            return altProgram;
+        }
 
-
-        // pre-config: okay, should have what's needed
-        // when already deployed, we shouldn't ever need to get here because
-        // we should have the CBOR-encoded script instead.
-        ...at ${this.constructor.name}::compileWithScriptParams()`);
-
+        // falls back to actually compiling the program.
+        // on server side, this comes with caching for performance.
+        // on the browser, there's not (currently) a cache.  It's intended
+        // that the deployedScriptDetails will usually be available, so
+        // the cases where this is needed on the browser side should be rare.
+        console.warn("compiling helios script.  This could take 30s or so... ")
         const t = new Date().getTime();
         for (const [p, v] of Object.entries(params)) {
-            script.changeParam(p, v);
+            program.changeParam(p, v);
         }
 
+        const net = setup.isMainnet ? "mainnet" : "testnet";
         console.log(
-            `${this.moduleName} with params:`,
-            script.entryPoint.paramsDetails()
+            `(${net}) ${this.moduleName} with params:`,
+            program.entryPoint.paramsDetails()
         );
 
-        debugger
-        const uplcProgram = await this.program.compileWithCache({
-            optimize: (this.config ?? {}).optimize ?? true,
+        // debugger;
+        const uplcProgram = await program.compileWithCache({
+            optimize: this.optimize,
         });
         //     // optimize: {
         //     //     keepTracing: true,
@@ -322,27 +433,70 @@ export abstract class HeliosScriptBundle {
         return uplcProgram;
     }
 
-    _program?: HeliosProgramWithCacheAPI;
+    decodeAnyPlutusUplcProgram(
+        version: "PlutusV2" | "PlutusV3",
+        cborHex: string,
+        // ir: string,
+        sourceMap: UplcSourceMapJsonSafe,
+        alt?: anyUplcProgram
+    ) {
+        if (version === "PlutusV2") {
+            if (alt && alt.plutusVersion != "PlutusScriptV2") {
+                throw new Error(
+                    `expected alt script to have matching Plutus V2, not ${alt.plutusVersion}`
+                );
+            }
+            return decodeUplcProgramV2FromCbor(cborHex, {
+                // ir: ir,
+                sourceMap: sourceMap,
+                alt: alt as UplcProgramV2,
+            });
+        } else if (version === "PlutusV3") {
+            throw new Error(`Plutus V3 not yet supported`);
+            // if (alt && alt.plutusVersion != "PlutusScriptV3") {
+            //     throw new Error(`expected alt script to have matching Plutus V3, not ${alt.plutusVersion}`);
+            // }
+            // return decodeUplcProgramV3FromCbor(cborHex, {
+            //     ir: ir,
+            //     sourceMap: sourceMap,
+            //     alt: alt as UplcProgramV3
+            // });
+        } else {
+            throw new Error(`unexpected Plutus version ${version}`);
+        }
+    }
+
     // _pct: number = 0
     get program(): HeliosProgramWithCacheAPI {
         if (this._program) {
-            return this._program;
+            if (this.hasDeploymentDetails != this._progHasDeploymentDetails) {
+                this._program = undefined;
+            } else {
+                return this._program;
+            }
         }
+        
+        const isTestnet = this.setup?.isMainnet ?? true;
+
         const ts1 = Date.now();
         let mName = this.moduleName;
         if (mName === defaultNoDefinedModuleName) {
             mName = "";
         }
         const moduleSources = this.getEffectiveModuleList();
-        
+
         try {
             const p = new HeliosProgramWithCacheAPI(this.main, {
+                isTestnet,
                 moduleSources,
                 name: mName, // it will fall back to the program name if this is empty
             });
             this._program = p;
+            this._progHasDeploymentDetails = this.hasDeploymentDetails;
             console.log(
-                `📦 ${mName}: loaded & parsed: ${Date.now() - ts1}ms`
+                `📦 ${mName}: loaded & parsed ${
+                    this.hasDeploymentDetails ? "with" : "without"
+                } setup: ${Date.now() - ts1}ms`
                 // Hi!  Are you investigating a duplicate load of the same module?  🔥🔥🔥
                 //   thanks! you're saving people 100ms at a time!
                 // new Error("stack").stack
@@ -371,8 +525,7 @@ export abstract class HeliosScriptBundle {
                 console.error(
                     `unexpected error while compiling helios program (or its imported module) \n` +
                         `> ${e.message}\n` +
-                        `Suggested: connect with debugger (we provided a debugging point already)\n` +
-                        `  ... and use 'break on caught exceptions' to analyze the error \n` +
+                        `(debugging breakpoint available)\n` +
                         `This likely indicates a problem in Helios' error reporting - \n` +
                         `   ... please provide a minimal reproducer as an issue report for repair!\n\n` +
                         e.stack.split("\n").slice(1).join("\n")
@@ -384,6 +537,7 @@ export abstract class HeliosScriptBundle {
                     //  before playing this next line to dig deeper into the error.
 
                     const try2 = new HeliosProgramWithCacheAPI(this.main, {
+                        isTestnet,
                         moduleSources,
                         name: mName, // it will fall back to the program name if this is empty
                     });
@@ -584,14 +738,11 @@ export abstract class HeliosScriptBundle {
             const specializationTypes = userTypes[specializationName];
             if (!specializationTypes) {
                 console.log(
-                    "NOTE:  debugging breakpoint available for more troubleshooting"
-                );
-                debugger;
-                console.log(
                     "NOTE: the module name for the delegate policy script must match bundle's moduleName"
                 );
+                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
                 throw new Error(
-                    `specialization types not found for ${this.moduleName} in program ${program.name}`
+                    `specialization types not found for ${this.moduleName} in program ${program.name} (debugging breakpoint available)`
                 );
             }
             for (const [typeName, type] of Object.entries(

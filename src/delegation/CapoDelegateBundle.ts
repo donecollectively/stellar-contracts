@@ -9,8 +9,9 @@ import {
     type Constructor,
     type EmptyConstructor
 } from "../helios/HeliosMetaTypes.js";
-import type { stellarSubclass } from "../StellarContract.js";
+import type { configBaseWithRev, StellarSetupUplc, stellarSubclass } from "../StellarContract.js";
 import BasicDelegate from "./BasicDelegate.hl";
+import type { capoDelegateConfig } from "./RolesAndDelegates.js";
 
 export type CapoDelegateBundleClass = new () => CapoDelegateBundle;
 
@@ -39,7 +40,6 @@ type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle &
  *  concrete specialization
  * @public
  **/
-//x@ts-expect-error "static using(): cannot assign abstract constructor type to non-abstract class"
 export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     abstract get specializedDelegateModule(): Source;
     declare capoBundle: CapoHeliosBundle;
@@ -57,25 +57,14 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         // of the abstract members; hopefully the subclass will error if they're missing
         const newClass = class aCapoBoundBundle extends this {
             capoBundle = cb;
-            constructor() {
-                super(USING_EXTENSION);
+            constructor(setupDetails: StellarSetupUplc<any>) {
+                super(setupDetails);
             }
             isConcrete = true;
         } as ConcreteCapoDelegateBundle & typeof newClass
         // as typeof CapoDelegateBundle & CapoDelegateBundleClass // & CB
 
         return newClass
-    }
-
-    constructor(isUsingExtension: typeof USING_EXTENSION) {
-        if (!isUsingExtension) {
-            throw new Error(
-                "CapoDelegateBundle is abstract; create your base class like this:\n" +
-                    " class ‹YourBundle› extends CapoDelegateBundle.usingCapoBundleClass(‹some CapoHeliosBundleClass ›) {\n     ... \n}"
-            );
-        }
-
-        super();
     }
 
     // constructor(public capoBundle: CapoHeliosBundle) {

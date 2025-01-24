@@ -26,7 +26,7 @@ import {
 } from "./StellarContract.js";
 
 import type {
-    StellarFactoryArgs,
+    StellarSetupDetails as StellarSetupDetails,
     configBaseWithRev,
     stellarSubclass,
     ConfigFor,
@@ -147,6 +147,7 @@ import type {
     uutPurposeMap,
 } from "./CapoTypes.js";
 import { mkDgtStateKey } from "./CapoTypes.js";
+import type { CapoConfigJSON, DeployedScriptDetails } from "./configuration/DeployedScriptConfigs.js";
 
 /**
  * Base class for leader contracts, with predefined roles for cooperating/delegated policies
@@ -237,6 +238,11 @@ export abstract class Capo<
         return this.onchain.datum;
     }
 
+    get canPartialConfig() {
+        return true
+    }
+
+
     get newReadDatum(): mustFindReadDatumType<this> {
         // & ( (d: UplcData) => CapoDatumLike ) {
         const bridge = this.getOnchainBridge();
@@ -255,6 +261,10 @@ export abstract class Capo<
 
     verifyConfigs(): Promise<any> {
         return this.verifyCoreDelegates();
+    }
+
+    getBundle() {
+        return super.getBundle() as CapoHeliosBundle;
     }
 
     scriptBundle(): CapoHeliosBundle {
@@ -296,28 +306,44 @@ export abstract class Capo<
     //     Record<string, someDataWrapper<any>>
     // >;
 
-    static parseConfig(rawJsonConfig: {
-        mph: { bytes: string };
-        rev: bigint;
-        seedTxn?: { bytes: string };
-        seedIndex: bigint;
-        rootCapoScriptHash: { bytes: string };
-    }) {
-        const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } =
-            rawJsonConfig;
+    /**
+     * Does a lookup of the preconfigured / deployed script configuration details
+     * @remarks
+     * Expects a "singleton" name if arg2 is not provided.
+     * 
+     * Returns undefined if there is no preconfiguration for the given role
+     * 
+     * Throws an error if the requested role doesn't have a matching deployed name
+     */
+    deployedScriptDetails(
+        role: string, 
+        config: configBaseWithRev,
+        deployedName="singleton"
+    ) : DeployedScriptDetails | undefined{
+        const preconfigs = this.getBundle().scriptConfigs?.[role];
+        if (!preconfigs) return undefined;
 
-        const outputConfig: any = {};
-        if (mph) outputConfig.mph = makeMintingPolicyHash(mph.bytes);
+        const preconf = preconfigs[deployedName] as DeployedScriptDetails;
+        if (!preconf) {
+            console.warn(role, "config from capo:", preconfigs );
+            if ("singleton" == deployedName) {
+                throw new Error(`role: ${role}: delegate roles must have only singleton configurations`);
+            }
+            throw new Error(`role: ${role}: no deployment named ${deployedName}`);
+        }
 
-        if (rev) outputConfig.rev = BigInt(rev);
-        if (seedTxn) outputConfig.seedTxn = makeTxId(seedTxn.bytes);
-        if (seedIndex) outputConfig.seedIndex = BigInt(seedIndex);
-        if (rootCapoScriptHash)
-            outputConfig.rootCapoScriptHash = makeValidatorHash(
-                rootCapoScriptHash.bytes
-            );
+        const errors: string[] = []
+        for (const [k,v] of Object.entries(preconf.config)) {
+            if (config[k] !== v) {
+                errors.push(`role: ${role}: capo bundle's deployedDetails.${k}=${v} doesn't match computed config.${k}=${config[k]}`);
+            }
+        }
+        if (errors.length) {
+            throw new Error(errors.join("\n"));
+        }
 
-        return outputConfig;
+        preconf
+        return preconf;
     }
 
     get scriptDatumName() {
@@ -365,7 +391,7 @@ export abstract class Capo<
         return this.paramsToUplc(params) as any;
     }
 
-    async init(args: StellarFactoryArgs<CapoConfig>) {
+    async init(args: StellarSetupDetails<CapoConfig>) {
         await super.init(args);
 
         const {
@@ -422,7 +448,7 @@ export abstract class Capo<
         return this;
     }
 
-    static bootstrapWith(args: StellarFactoryArgs<CapoConfig>) {
+    static bootstrapWith(args: StellarSetupDetails<CapoConfig>) {
         const { setup, config } = args;
         const Class = this;
         //@ts-expect-error this is just Javascript.  Sorry, typescript!
@@ -991,6 +1017,27 @@ export abstract class Capo<
         }).then((xs) => this.singleItem(xs));
     }
 
+    /**
+     * 
+     */
+    async addStrellaWithConfig<
+        SC extends StellarContract<any>
+        // P = SC extends StellarContract<infer P> ? P : never
+    >(
+        TargetClass: stellarSubclass<SC>,
+        config: SC extends StellarContract<infer iCT> ? iCT : never,
+        maybeDeployed?: DeployedScriptDetails
+    ) {
+        const args: StellarSetupDetails<ConfigFor<SC>> = {
+            config,
+            setup: this.setup,
+            deployedDetails: maybeDeployed,
+        };
+
+        const strella = await TargetClass.createWith(args);
+        return strella;
+    }
+
     async connectMintingScript(
         params: SeedTxnScriptParams
     ): Promise<CapoMinter> {
@@ -1003,12 +1050,14 @@ export abstract class Capo<
             ...(this.constructor as typeof Capo).defaultParams,
         };
 
-        const minter = await this.addStrellaWithConfig(minterClass, {
+        const config = {
             rev,
             seedTxn,
             seedIndex,
             capo: this,
-        });
+        };
+        const maybeDeployed = this.deployedScriptDetails("minter", config);
+        const minter = await this.addStrellaWithConfig(minterClass, config, maybeDeployed);
 
         if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
             throw new Error(
@@ -1098,7 +1147,7 @@ export abstract class Capo<
     /**
      * Creates a new delegate link, given a delegation role and and strategy-selection details
      * @param tcx - A transaction-context having state.uuts[roleName] matching the roleName
-     * @param roleLabel - the role of the delegate, matched with the `delegateRoles()` of `this`
+     * @param role - the role of the delegate, matched with the `delegateRoles()` of `this`
      * @param delegateInfo - partial detail of the delegation with any
      *     details required by the particular role.  Its delegate type may be a subclass of the type
      *     indicated by the `roleName`.
@@ -1134,21 +1183,21 @@ export abstract class Capo<
      *   ... The later properties in this sequence take precedence.
      **/
     async txnCreateOffchainDelegateLink<
-        RoLabel extends string & keyof SELF["_delegateRoles"],
+        RN extends string & keyof SELF["_delegateRoles"],
         DT extends StellarDelegate = ContractBasedDelegate
     >(
-        tcx: hasUutContext<RoLabel>,
-        roleLabel: RoLabel,
+        tcx: hasUutContext<RN>,
+        role: RN,
         delegateInfo: OffchainPartialDelegateLink
     ): Promise<ConfiguredDelegate<DT> & Required<OffchainPartialDelegateLink>> {
         const configured = await this.txnCreateConfiguredDelegate(
             tcx,
-            roleLabel,
+            role,
             delegateInfo
         );
         await configured.delegate.txnReceiveAuthorityToken(
             tcx,
-            this.uh.mkMinTv(this.mph, tcx.state.uuts[roleLabel])
+            this.uh.mkMinTv(this.mph, tcx.state.uuts[role])
         );
 
         const delegateLink = this.extractDelegateLinkDetails(configured);
@@ -1157,9 +1206,9 @@ export abstract class Capo<
             delegateLinkSerializer
             // 4 // indent 4 spaces
         );
-        console.log("offchainDgtLink cache key", roleLabel, cacheKey);
-        this.#_delegateCache[roleLabel] = this.#_delegateCache[roleLabel] || {};
-        this.#_delegateCache[roleLabel][cacheKey] = configured;
+        console.log("offchainDgtLink cache key", role, cacheKey);
+        this.#_delegateCache[role] = this.#_delegateCache[role] || {};
+        this.#_delegateCache[role][cacheKey] = configured;
         //@ts-expect-error "could be instantiated with a different type" - TS2352
         return configured as ConfiguredDelegate<DT>;
     }
@@ -1276,7 +1325,7 @@ export abstract class Capo<
         DT extends StellarDelegate = ContractBasedDelegate
     >(
         tcx: hasUutContext<RN>,
-        roleName: RN,
+        role: RN,
         delegateInfo: OffchainPartialDelegateLink
     ): Promise<ConfiguredDelegate<DT>> {
         const {
@@ -1285,20 +1334,20 @@ export abstract class Capo<
         } = delegateInfo;
 
         const { delegateRoles } = this;
-        const uut = tcx.state.uuts[roleName];
+        const uut = tcx.state.uuts[role];
         if (!uut) {
             console.warn(
-                `missing required UUT for role '${roleName}' in transaction context:`,
+                `missing required UUT for role '${role}' in transaction context:`,
                 tcx.state.uuts
             );
             throw new Error(
-                `missing required UUT for role '${roleName}' (see logged details)`
+                `missing required UUT for role '${role}' (see logged details)`
             );
         }
         const impliedDelegationDetails = this.mkImpliedDelegationDetails(uut);
 
         const selectedDgt =
-            delegateRoles[roleName] as SELF["_delegateRoles"][RN] //prettier-ignore
+            delegateRoles[role] as SELF["_delegateRoles"][RN] //prettier-ignore
         // if (!foundStrategies) {
         //     throw new Error(`no delegateRoles entry for role '${roleName}'`);
         // }
@@ -1306,17 +1355,18 @@ export abstract class Capo<
         //     strategyName
         // ] as DelegateSelection<StellarDelegate>;
         if (!selectedDgt) {
-            let msg = `invalid dgt role requested: '${roleName}'`;
+            let msg = `invalid dgt role requested: '${role}'`;
             // if (strategyName == "default") {
             //     msg = `no selected or default delegate for role '${roleName}'.  Specify strategyName`;
             // }
             debugger;
             const e = new DelegateConfigNeeded(msg, {
-                errorRole: roleName,
+                errorRole: role,
                 availableDgtNames: Object.keys(delegateRoles),
             });
             throw e;
         }
+        
         const {
             delegateClass,
             config: { validateConfig, partialConfig: paramsFromRole = {} },
@@ -1334,12 +1384,14 @@ export abstract class Capo<
             capo: this,
         } /*as unknown*/ as ConfigFor<StellarDelegate>;
 
+        const maybeDeployed = this.deployedScriptDetails(role, fullCapoDgtConfig);
+
         //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined =
             (validateConfig && validateConfig(fullCapoDgtConfig)) || undefined;
         if (errors) {
             throw new DelegateConfigNeeded(
-                `validation errors in delegateInfo.config for ${roleName}:\n` +
+                `validation errors in delegateInfo.config for ${role}:\n` +
                     errorMapAsString(errors),
                 { errors }
             );
@@ -1352,7 +1404,7 @@ export abstract class Capo<
         try {
             delegateSettings = {
                 ...delegateInfo,
-                roleName,
+                roleName: role,
                 //@ts-expect-error "could be instantiated with a different type" - TS2352
                 //  ... typescript doesn't see the connection between the input settings and this variable
                 delegateClass: delegateClass as DT,
@@ -1360,15 +1412,18 @@ export abstract class Capo<
                 fullCapoDgtConfig,
                 config: configForOnchainRelativeDelegateLink,
             };
-            delegate = await this.mustGetDelegate<DT>(delegateSettings);
+            delegate = await this.mustGetDelegate<DT>(
+                role,
+                delegateSettings,
+            );
         } catch (e: any) {
             console.log("error: unable to create delegate: ", e.stack);
-            debugger;
-            this.mustGetDelegate<DT>(delegateSettings).catch(
+            debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+            this.mustGetDelegate<DT>(role, delegateSettings).catch(
                 (sameErrorIgnored) => undefined
             );
 
-            e.message = `${e.message} (see logged details and/or debugging breakpoint)`;
+            e.message = `${e.message} (see logged details; debugging breakpoint available)`;
             throw e;
         }
 
@@ -1420,11 +1475,11 @@ export abstract class Capo<
         RN extends string & keyof SELF["_delegateRoles"],
         DT extends StellarDelegate = ContractBasedDelegate // StellarDelegate
     >(
-        roleLabel: RN,
+        role: RN,
         //!!! OK: using Ergo because the links are from charterData
         delegateLink: RelativeDelegateLinkLike // | OffchainRelativeDelegateLink |
     ): Promise<DT> {
-        const role = this.delegateRoles[roleLabel] as DelegateSetup<
+        const foundRole = this.delegateRoles[role] as DelegateSetup<
             any,
             DT,
             any
@@ -1434,7 +1489,7 @@ export abstract class Capo<
         const onchainDgtLink = this.reader.RelativeDelegateLink(
             this.onchain.types.RelativeDelegateLink(delegateLink)
         );
-        const selectedDgt = role.delegateClass;
+        const selectedDgt = foundRole.delegateClass;
 
         const cache = this.#_delegateCache;
         const cacheKey = JSON.stringify(
@@ -1443,8 +1498,8 @@ export abstract class Capo<
             delegateLinkSerializer
         );
 
-        if (!cache[roleLabel]) cache[roleLabel] = {};
-        const roleCache = cache[roleLabel];
+        if (!cache[role]) cache[role] = {};
+        const roleCache = cache[role];
         // console.log(
         //     "connectDgtWithOnchainRDLink cache key",
         //     roleLabel,
@@ -1459,7 +1514,7 @@ export abstract class Capo<
             // console.log(`  ✅ 💁 ${roleLabel} - from cache `);
             return delegate as DT;
         }
-        console.log(`   🔎delegate 💁 ${roleLabel}`);
+        console.log(`   🔎delegate 💁 ${role}`);
         // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
 
         const {
@@ -1476,17 +1531,17 @@ export abstract class Capo<
         //     strategyName
         /* ]as unknown */ if (!selectedDgt) {
             throw new Error(
-                `no selected dgt for role '${roleLabel}'\n` +
+                `no selected dgt for role '${role}'\n` +
                     `link details: ${this.showDelegateLink(delegateLink)}`
             );
         }
         const {
             delegateClass,
             config: { partialConfig: dgtMapSettings },
-        } = role;
+        } = foundRole;
         const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
         const impliedDelegationDetails = this.mkImpliedDelegationDetails(
-            new UutName(roleLabel, uutName)
+            new UutName(role, uutName)
         );
 
         const effectiveConfig = {
@@ -1511,7 +1566,7 @@ export abstract class Capo<
         );
         if (serializedCfg1 !== serializedCfg2) {
             console.warn(
-                `mismatched or modified delegate configuration for role '${roleLabel}'\n` +
+                `mismatched or modified delegate configuration for role '${role}'\n` +
                     `  ...expected: ${serializedCfg1}\n` +
                     `  ...got: ${serializedCfg2}`
             );
@@ -1541,10 +1596,10 @@ export abstract class Capo<
         //      reqdAddress?: Address;
         //      addrHint?: Address[];
 
-        const delegate = await this.mustGetDelegate({
+        const delegate = await this.mustGetDelegate(role, {
             delegateClass,
             fullCapoDgtConfig,
-            roleName: roleLabel,
+            roleName: role,
             uutName,
             // strategyName,
             config: parsedConfigFromLink,
@@ -1558,11 +1613,11 @@ export abstract class Capo<
             throw new Error(
                 `${
                     this.constructor.name
-                }: ${roleLabel}: mismatched or modified delegate: expected validator ${expectedDvh?.toHex()}, got ${dvh.toHex()}`
+                }: ${role}: mismatched or modified delegate: expected validator ${expectedDvh?.toHex()}, got ${dvh.toHex()}`
             );
         }
         console.log(
-            `   ✅ 💁 ${roleLabel}  (now cached) ` // +Debug info: +` @ key = ${cacheKey}`
+            `   ✅ 💁 ${role}  (now cached) ` // +Debug info: +` @ key = ${cacheKey}`
         );
         roleCache[cacheKey] = {
             delegate,
@@ -1575,15 +1630,38 @@ export abstract class Capo<
         return JSON.stringify(delegateLink, null, 2);
     }
 
+    /**
+     * Given a role name and configuration details, 
+     * finds and creates the class for the delegate in that role.
+     * @remarks
+     * Uses the deployedDetails from the Capo's bundle
+     * for the compiled on-chain script, if available.
+     * 
+     * If the indicated script role is not deployed as a singleton,
+     * the deployedName is required, and matched against those
+     * instances of the script seen in the bundle's deployedDetails.
+     * 
+     * If the script role has no deployedDetails, the configuredDelegate
+     * details are used to compile the script for on-chain use, after
+     * which the resulting details should be used to update the bundle's
+     * deployedDetails.  Normally this should be done during the build
+     * of a new version of the package, resulting in a bundle having
+     * "deployedDetails" for a script that is actually created on-chain
+     * after the package is installed.
+     */
     async mustGetDelegate<T extends StellarDelegate>(
-        configuredDelegate: PreconfiguredDelegate<T>
+        scriptRole: string,
+        configuredDelegate: PreconfiguredDelegate<T>,
+        deployedName?: string
     ): Promise<T> {
         const { delegateClass, fullCapoDgtConfig: config } = configuredDelegate;
+        const maybeDeployed = this.deployedScriptDetails(scriptRole, config, deployedName);
         try {
             // delegate
             const configured = await this.addStrellaWithConfig(
                 delegateClass,
-                config as any
+                config as any,
+                maybeDeployed
             );
             return configured as T;
         } catch (e: any) {
@@ -2103,10 +2181,14 @@ export abstract class Capo<
             console.log(`  🏃 dry-run mode for charter setup`);
         }
         type hasBsc = hasBootstrappedCapoConfig;
+        
         //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
         const initialTcx: TCX2 & hasBsc =
             existingTcx || (this.mkTcx("mint charter token") as hasBsc);
 
+        // debugger
+        const t = initialTcx.uh;
+        t;
         const tcxWithSeed = !!dry.seedUtxo
             ? await this.tcxWithSeedUtxo(
                   initialTcx.addInput(dry.seedUtxo),
@@ -2138,11 +2220,9 @@ export abstract class Capo<
             }; // as configType;
             // this.scriptProgram = this.loadProgramScript({ ...csp, mph });
             this.contractParams = this.getContractScriptParamsUplc(bsc);
-            const fullScriptParams = (this.contractParams =
-                this.contractParams);
 
             // this.scriptProgram = this.loadProgramScript();
-            await this.compileWithScriptParams();
+            await this.compileWithScriptParams(this.contractParams);
             bsc.rootCapoScriptHash = makeValidatorHash(
                 this.compiledScript.hash()
             );
@@ -2249,13 +2329,6 @@ export abstract class Capo<
             spendDelegate: uuts.spendDelegate,
             // settingsUut: uuts.set,
         });
-
-        // const settings =
-        //     (await this.mkInitialSettings()) as unknown as CapoOffchainSettingsType<this>;
-        // const tcxWithSettings = await this.txnAddSettingsOutput(
-        //     tcxWithMint,
-        //     settings
-        // );
 
         // creates an addl txn that stores a refScript in the delegate;
         //   that refScript could be stored somewhere else instead (e.g. the Capo)

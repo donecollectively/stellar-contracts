@@ -22,10 +22,10 @@ import { StellarContract, findInputsInWallets } from "../StellarContract.js";
 import type {
     stellarSubclass,
     ConfigFor,
-    StellarFactoryArgs,
+    StellarSetupDetails,
     ActorContext,
     NetworkContext,
-    SetupDetails,
+    SetupInfo,
 } from "../StellarContract.js";
 
 import {
@@ -489,7 +489,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         TargetClass: stellarSubclass<SC>,
         config?: ConfigFor<SC>
     ) {
-        const setup: SetupDetails = {
+        const setup: SetupInfo = {
             network: this.network,
             actorContext: this.actorContext,
             networkParams: this.networkParams,
@@ -499,7 +499,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         };
         setup.uh = new UtxoHelper(setup);
 
-        let cfg: StellarFactoryArgs<ConfigFor<SC>> = {
+        let cfg: StellarSetupDetails<ConfigFor<SC>> = {
             setup,
             config: config!,
         };

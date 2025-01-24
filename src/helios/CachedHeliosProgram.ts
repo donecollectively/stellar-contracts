@@ -18,6 +18,7 @@ import { textToBytes } from "../HeliosPromotedTypes.js";
 import type { CompileOptionsForCachedHeliosProgram } from "../HeliosPromotedTypes.js";
 
 export type CacheableProgramProps = ProgramProps & {
+    isTestnet: boolean; // non-optional
     /**
      * The cache key for the program. Defaults to the hash of the source code.
      * If there is no source code, the cacheKey is required
@@ -59,7 +60,7 @@ export type HeliosProgramCacheEntry = {
     unoptimizedSmap?: UplcSourceMapJsonSafe;
 };
 
-export type StringifiedCacheEntry = {
+export type StringifiedHeliosCacheEntry = {
     version: "PlutusV2" | "PlutusV3";
     createdBy: string;
     programElements: Record<string, string | Object>;
@@ -71,6 +72,17 @@ export type StringifiedCacheEntry = {
     optimizedSmap?: UplcSourceMapJsonSafe;
     unoptimizedSmap?: UplcSourceMapJsonSafe;
 };
+
+export type DeployedProgramBundle = Pick<
+    StringifiedHeliosCacheEntry,
+    | "version"
+    | "createdBy"
+    | "programElements"
+    | "optimized"
+    | "optimizedSmap"
+    | "unoptimized"
+    | "unoptimizedSmap"
+>;
 
 export type lockInfo<T> = {
     lock: T;
@@ -114,7 +126,7 @@ export class CachedHeliosProgram extends Program {
      * Use the {@link compileCached | compileCached()} method to compile the program.
      * @public
      */
-    constructor(mainSource: string | Source, props?: CacheableProgramProps) {
+    constructor(mainSource: string | Source, props: CacheableProgramProps) {
         super(mainSource, props);
         this.sources = [mainSource, ...(props?.moduleSources || [])];
         this.programElements = {};
@@ -180,7 +192,7 @@ export class CachedHeliosProgram extends Program {
     }
 
     static programFromCacheEntry(
-        fromCache: StringifiedCacheEntry
+        fromCache: StringifiedHeliosCacheEntry
     ): UplcProgramV2 {
         //  | UplcProgramV3 {
         // the program is a hex-string, accepted by both UplcProgramV2 and UplcProgramV3
@@ -240,7 +252,7 @@ export class CachedHeliosProgram extends Program {
     }
 
     static async initCacheFromBundle(
-        cacheEntries: Record<string, string | StringifiedCacheEntry>
+        cacheEntries: Record<string, string | StringifiedHeliosCacheEntry>
     ): Promise<void> {
         //!!! todo work on this more
         for (const [key, value] of Object.entries(cacheEntries)) {
@@ -284,7 +296,7 @@ export class CachedHeliosProgram extends Program {
     }
 
     static toHeliosProgramCacheEntry(
-        value: StringifiedCacheEntry
+        value: StringifiedHeliosCacheEntry
     ): HeliosProgramCacheEntry {
         throw new Error("todo");
     }
@@ -563,7 +575,9 @@ export class CachedHeliosProgram extends Program {
         }
     }
 
-    async waitForCaching(cacheKey: string): Promise<StringifiedCacheEntry> {
+    async waitForCaching(
+        cacheKey: string
+    ): Promise<StringifiedHeliosCacheEntry> {
         // we won't get the lock very quickly, but it should come through as
         // soon as the other process finishes.
         return this.acquireLock(cacheKey).then(async (lock) => {
@@ -661,11 +675,13 @@ export class CachedHeliosProgram extends Program {
      */
     async __vvv_______instanceToStatic() {}
 
-    async ifCached(cacheKey: string): Promise<StringifiedCacheEntry | null> {
+    async ifCached(
+        cacheKey: string
+    ): Promise<StringifiedHeliosCacheEntry | null> {
         const string = await this.subclass.ifCached(cacheKey);
         if (string) {
             try {
-                return JSON.parse(string) as StringifiedCacheEntry;
+                return JSON.parse(string) as StringifiedHeliosCacheEntry;
             } catch (e: any) {
                 console.log(
                     `  -- 🐢${this.id}: cleaning up invalid cache entry for ${cacheKey}: ${e.message}`
@@ -744,7 +760,9 @@ export class CachedHeliosProgram extends Program {
             throw new Error(`releaseLock: no lock found for ${cacheKey}`);
         }
     }
-    programFromCacheEntry(fromCache: StringifiedCacheEntry): UplcProgramV2 {
+    programFromCacheEntry(
+        fromCache: StringifiedHeliosCacheEntry
+    ): UplcProgramV2 {
         // | UplcProgramV3 {
         return this.subclass.programFromCacheEntry(fromCache);
     }

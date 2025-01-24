@@ -524,10 +524,10 @@ export function heliosRollupBundler(
     }
 
     async function rollupMakeBundledScriptClass(inputFile: string) {
-        // writes the output file next to the input file as *.hlb.bundled.mjs
+        // writes the output file next to the input file as *.hlBundled.mjs
         const outputFile = inputFile.replace(
             /\.hlb\.[tj]s$/,
-            ".hlb.bundled.mjs" // ??? move to dist/ or .hltemp/?  hlbundle
+            ".hlBundled.mjs" // ??? move to dist/ or .hltemp/?  hlbundle
         );
         if (inputFile == outputFile) {
             throw new Error(`inputFile cannot be the same as outputFile`);

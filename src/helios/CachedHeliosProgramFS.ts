@@ -8,14 +8,14 @@ import {
     type HeliosProgramCacheEntry,
     type lockInfo,
     type LockInfoForStrat,
-    type StringifiedCacheEntry,
+    type StringifiedHeliosCacheEntry,
 } from "./CachedHeliosProgram.js";
 import type { Source } from "@helios-lang/compiler-utils";
 
 const cacheStore = ".hltemp/cache";
 
 export class CachedHeliosProgramFS extends CachedHeliosProgram {
-    constructor(mainSource: string | Source, props?: CacheableProgramProps) {
+    constructor(mainSource: string | Source, props: CacheableProgramProps) {
         // if the cacheStore directory doesn't exist, create it.
         if (!existsSync(cacheStore)) {
             console.log(

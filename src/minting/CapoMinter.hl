@@ -63,7 +63,7 @@ func main(r : MinterActivity) -> Bool {
             //   (actually byte-wise, but ~same diff)
             // settingsTnBase: String = "set";
             authTnBase : String = "capoGov";
-            mintDgtTnBase : String = "mintDgt";  
+            mintDgtTnBase : String = "mintDgt";
             spendDgtTnBase: String = "spendDgt";
             purposes = []String{
                 // settingsTnBase,

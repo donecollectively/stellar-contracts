@@ -4,6 +4,7 @@ import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
 import type { UplcData } from "@helios-lang/uplc";
 import { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
 import { dataBridgeGenerator } from "./dataBridge/dataBridgeGenerator.js";
+import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 
 const startTime = Date.now();
@@ -47,7 +48,7 @@ export class StellarHeliosProject {
     };
 
     bundleEntries: Map<string, BundleStatusEntry>;
-    capoBundle: HeliosScriptBundle | undefined = undefined;
+    capoBundle: CapoHeliosBundle | undefined = undefined;
     constructor() {
         this.bundleEntries = new Map();
         const {
@@ -181,8 +182,7 @@ export class StellarHeliosProject {
                 bundleClassName: bundleClassName,
                 parentClassName,
             };
-            // if we have the CapoBundle, we can use it to instantiate this bundle now.
-            bundle = new (bundleClass as any)(this.capoBundle);
+            bundle = new (bundleClass as any)();
             bundleEntry.bundle = bundle;
             bundleEntry.status = "loaded";
             this.bundleEntries.set(filename, bundleEntry);

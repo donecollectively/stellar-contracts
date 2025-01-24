@@ -24,7 +24,7 @@ export type { anyUplcProgram } from "../HeliosPromotedTypes.js";
  * @public
  */
 export class HeliosProgramWithCacheAPI extends Program {
-    constructor(mainSource: string | Source, props?: CacheableProgramProps) {
+    constructor(mainSource: string | Source, props: CacheableProgramProps) {
         super(mainSource, props);
     }
     static checkFile(srcFilename: string) : boolean | null {
