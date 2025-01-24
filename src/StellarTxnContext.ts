@@ -960,7 +960,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     /**
-     * Submits only the current transaction.  
+     * Submits only the current transaction.
      * @remarks
      * To also submit additional transactions, use the `submitAll()` method.
      */
@@ -1069,54 +1069,78 @@ export class StellarTxnContext<S extends anyState = anyState> {
         logger.flush();
 
         console.timeStamp?.(`submit(): to net/wallet`);
-        const promises = [
-            //@ts-expect-error on non-standard submitTx() in emulator
-            this.setup.network.submitTx(tx, logger).catch((e) => {
-                if (
-                    "currentSlot" in this.setup.network &&
-                    e.message.match(/or slot out of range/)
-                ) {
-                    this.checkTxValidityDetails(tx);
-                }
-                console.warn(
-                    "⚠️  submitting via helios Network failed: ",
-                    e.message
-                );
-                debugger;
-                throw e;
-            }),
-        ];
+
+        let txId : TxId | undefined 
+        let walletPromise: Promise<TxId> | undefined;
         if (wallet) {
             if (!this.setup.isTest) {
                 // submit via wallet in addition to the network, may allow for faster confirmation
-                promises.push(
-                    wallet.submitTx(tx).catch((e) => {
+                walletPromise = wallet.submitTx(tx).then(
+                    (walletTxId) => {
+                        console.log("submitTx() success via wallet: ", walletTxId);
+                        return walletTxId;
+                    },
+                    (e) => {
                         console.log(
-                            "⚠️  submitting via wallet failed: ",
+                            "⚠️  submitting via wallet failed (debugging breakpoint available): ",
                             e.message
                         );
-                        debugger;
+                        debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
                         throw e;
-                    })
+                    }
                 );
             }
         }
-        const anySuccess = Promise.any(promises);
+        
         try {
-            await anySuccess;
+            //@ts-expect-error on non-standard submitTx() in emulator
+            const networkSubmitPending = this.setup.network.submitTx(tx, logger).then(
+                async (netTxId) => {
+                    console.log("submitTx() success via network: ", netTxId);
+                    const walletTxId = await walletPromise;  // resolves txId
+                    if (walletTxId && netTxId !== walletTxId) {
+                        console.error("network submit and wallet submit disagree on the txid!",
+                            { walletSaid: txId, networkSaid: netTxId }
+                        );
+                    }
+                    return netTxId;
+                },
+                (e) => {
+                    if (
+                        "currentSlot" in this.setup.network &&
+                        e.message.match(/or slot out of range/)
+                    ) {
+                        this.checkTxValidityDetails(tx);
+                    }
+                    console.warn(
+                        "⚠️  submitting via helios CardanoClient failed: ",
+                        e.message
+                    );
+                    debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+                    throw e;
+                }
+            );
+            await walletPromise; // no-op in test; 
+            txId = await networkSubmitPending;
         } catch (e: any) {
             logger.logError(
-                `submitting tx failed: ${description}: ${e.message}`
+                `submitting tx failed: ${description}: ❌ ${e.message}`
             );
             logger.flushError();
+            console.warn(
+                "------------------- failed tx as cbor-hex -------------------\n" +
+                bytesToHex(tx.toCbor()),
+                "\n------------------^ failed tx details ^------------------\n" +
+                // note, the debugging breakpoint mentioned is actually one or more of
+                // multiple breakpoints above.
+                "(debugging breakpoint available)"
+            )
         }
-        return anySuccess.then((r) => {
-            console.timeStamp?.(`submit(): success`);
-            logger.logPrint(`\n\n\n🎉🎉 tx submitted: ${description} 🎉🎉`);
 
-            logger.finish();
-            return r;
-        });
+        console.timeStamp?.(`submit(): success`);
+        logger.logPrint(`\n\n\n🎉🎉 tx submitted: ${description} 🎉🎉`);
+        logger.finish();
+        return txId;
     }
     emitCostDetails(tx: Tx, costs: { total: Cost; [key: string]: Cost }) {
         const { logger } = this;
@@ -1152,15 +1176,16 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (nCpu > oMaxCpu || nMem > oMaxMem || txSize > oMaxSize) {
             logger.logPrint(
                 "🔥🔥🔥🔥  THIS TX EXCEEDS default (overridden in test env) limits on network params  🔥🔥🔥🔥\n" +
-                    `  -- cpu ${nCpu} = ${
-                        (100 * nCpu / oMaxCpu ).toFixed(1)
-                    }% of ${oMaxCpu} (patched to ${maxTxExCpu})\n` +
-                    `  -- mem ${nMem} = ${
-                        (100 * nMem / oMaxMem).toFixed(1)
-                    }% of ${oMaxMem} (patched to ${maxTxExMem})\n` +
-                    `  -- tx size ${txSize} = ${
-                        (100 * txSize / oMaxSize).toFixed(1)
-                    }% of ${oMaxSize} (patched to ${maxTxSize})\n`
+                    `  -- cpu ${nCpu} = ${((100 * nCpu) / oMaxCpu).toFixed(
+                        1
+                    )}% of ${oMaxCpu} (patched to ${maxTxExCpu})\n` +
+                    `  -- mem ${nMem} = ${((100 * nMem) / oMaxMem).toFixed(
+                        1
+                    )}% of ${oMaxMem} (patched to ${maxTxExMem})\n` +
+                    `  -- tx size ${txSize} = ${(
+                        (100 * txSize) /
+                        oMaxSize
+                    ).toFixed(1)}% of ${oMaxSize} (patched to ${maxTxSize})\n`
             );
         }
         const scriptBreakdown =
