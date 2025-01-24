@@ -210,7 +210,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             );
         }
         this.helperState = helperState;
-        const { skipSetup, ...cfg } = config || {};
+        const cfg = config || {}
         if (Object.keys(cfg).length) {
             console.log(
                 "XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config",
@@ -232,10 +232,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         this.actors = {};
         const now = new Date();
         this.waitUntil(now);
-        if (skipSetup) {
-            throw new Error(`obsolete skipSetup: just don't call initialze()`);
-            return;
-        }
+
         console.log(" + StellarTestHelper");
         //xx@ts-expect-error - can serve no-params case or params case
         // this.setupPending = this.initialize();
