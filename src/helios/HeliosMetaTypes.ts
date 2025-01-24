@@ -1,6 +1,10 @@
 import type { DataType } from "@helios-lang/compiler";
 import type { TxOutputId } from "@helios-lang/ledger";
-import type { TypeSchema, VariantTypeSchema, EnumTypeSchema } from "@helios-lang/type-utils";
+import type {
+    TypeSchema,
+    VariantTypeSchema,
+    EnumTypeSchema,
+} from "@helios-lang/type-utils";
 import type { UplcData } from "@helios-lang/uplc";
 import type { isActivity, hasSeed, SeedAttrs } from "../ActivityTypes.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
@@ -36,7 +40,9 @@ export type uplcDataBridge<permissiveType> =
 // 2. read data from Datum.  Can also be used for returned results
 //  ... of utility functions defined in Helios code.
 
-export type readsSomeUplcData<T> = T extends EnumTypeMeta<any, any> ? readsUplcEnumData<T> : readsUplcData<T>;
+export type readsSomeUplcData<T> = T extends EnumTypeMeta<any, any>
+    ? readsUplcEnumData<T>
+    : readsUplcData<T>;
 
 export type readsUplcEnumData<T extends EnumTypeMeta<any, any>> = {
     read(x: UplcData): T;
@@ -44,9 +50,13 @@ export type readsUplcEnumData<T extends EnumTypeMeta<any, any>> = {
 
 export type readsUplcData<canonicalType> = (x: UplcData) => canonicalType;
 
-export type makesUplcActivityData<permissiveType> = (arg: permissiveType) => isActivity & { redeemer: UplcData; };
+export type makesUplcActivityData<permissiveType> = (
+    arg: permissiveType
+) => isActivity & { redeemer: UplcData };
 
-export type makesSomeActivityData<T> = T extends EnumTypeMeta<any, any> ? makesUplcActivityEnumData<any, any> : makesUplcActivityData<any>;
+export type makesSomeActivityData<T> = T extends EnumTypeMeta<any, any>
+    ? makesUplcActivityEnumData<any, any>
+    : makesUplcActivityData<any>;
 // export type AnyHeliosTypeInfo = TypeSchema | anyTypeDetails;
 
 export type anyTypeDetails<T = undefined> = typeDetails<T> | enumTypeDetails<T>;
@@ -177,7 +187,12 @@ export type singleEnumVariantMeta<
 };
 // utility types for transforming an EnumType into interfaces for reading/writing data of that type
 type anySingleEnumVariantMeta = singleEnumVariantMeta<
-    any, any, any, any, any, any
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
 >;
 if (false) {
     type test = "x" | "y" extends "x" ? true : false; // false
@@ -195,27 +210,42 @@ type _variantFieldArity<V extends anySingleEnumVariantMeta> = V["variantKind"];
 // -------------------- Activity Variant Creator Types --------------------
 
 export type anySeededActivity = singleEnumVariantMeta<
-    any, any, any, any, { seed: TxOutputId | string; }, "isSeededActivity"
+    any,
+    any,
+    any,
+    any,
+    { seed: TxOutputId | string },
+    "isSeededActivity"
 >;
 type _singletonFieldActivityVariantCreator<
     V extends anySingleEnumVariantMeta,
     rawArgType = V["data"],
     RESULT_TYPE = EnumUplcActivityResult<V>,
     rawFuncType = (field: rawArgType) => RESULT_TYPE
-> = V extends anySeededActivity ? (seedOrSeedArg: hasSeed | rawArgType) => RESULT_TYPE : rawFuncType;
+> = V extends anySeededActivity
+    ? (seedOrSeedArg: hasSeed | rawArgType) => RESULT_TYPE
+    : rawFuncType;
 type _multiFieldActivityVariantCreator<
     V extends anySingleEnumVariantMeta,
     RESULT_TYPE = EnumUplcActivityResult<V>,
-    rawFuncType = (
-        fields: _expandInputFields<V>
-    ) => RESULT_TYPE
-> = V extends anySeededActivity ? makesMultiFieldSeededData<V, RESULT_TYPE> : rawFuncType;
+    rawFuncType = (fields: _expandInputFields<V>) => RESULT_TYPE
+> = V extends anySeededActivity
+    ? makesMultiFieldSeededData<V, RESULT_TYPE>
+    : rawFuncType;
 
 export type ActivityEnumVariantCreator<
     VARIANT extends anySingleEnumVariantMeta,
     RESULT_TYPE = EnumUplcActivityResult<VARIANT>,
     ARITY = _variantFieldArity<VARIANT>
-> = ARITY extends "tagOnly" ? RESULT_TYPE : ARITY extends "singletonField" ? VARIANT["data"] extends EnumTypeMeta<any, any> ? _noRedeemerWrappers<makesUplcActivityEnumData<VARIANT["data"]>> : _singletonFieldActivityVariantCreator<VARIANT> : ARITY extends "fields" ? _multiFieldActivityVariantCreator<VARIANT, RESULT_TYPE> : never;
+> = ARITY extends "tagOnly"
+    ? RESULT_TYPE
+    : ARITY extends "singletonField"
+    ? VARIANT["data"] extends EnumTypeMeta<any, any>
+        ? _noRedeemerWrappers<makesUplcActivityEnumData<VARIANT["data"]>>
+        : _singletonFieldActivityVariantCreator<VARIANT>
+    : ARITY extends "fields"
+    ? _multiFieldActivityVariantCreator<VARIANT, RESULT_TYPE>
+    : never;
 
 export type _noRedeemerWrappers<T extends makesUplcActivityEnumData<any>> = {
     [k in keyof T]: _noRedeemerWrapper<T[k]>;
@@ -223,7 +253,9 @@ export type _noRedeemerWrappers<T extends makesUplcActivityEnumData<any>> = {
 
 export type _noRedeemerWrapper<T> = T extends (...args: infer A) => {
     redeemer: infer R;
-} ? (...args: A) => R : T;
+}
+    ? (...args: A) => R
+    : T;
 
 export type EnumUplcActivityResult<
     V extends anySingleEnumVariantMeta,
@@ -232,7 +264,7 @@ export type EnumUplcActivityResult<
         variantName: V["variantName"];
         enumId: V["enumId"];
     }
-> = { redeemer: hasData; };
+> = { redeemer: hasData };
 // utilities for representing an enum variant-creator having a seed, with 2 possible signatures
 type makesMultiFieldSeededData<V extends anySeededActivity, RESULT_TYPE> = (
     ...args: [hasSeedUtxo | SeedAttrs, _nonSeededFieldsType<V>] | [V["data"]]
@@ -246,10 +278,12 @@ type _nonSeededFieldsType<V extends anySeededActivity> = remainingFields<{
 
 export type makesUplcActivityEnumData<
     ET extends EnumTypeMeta<any, any>,
-    VARIANTS extends VariantMap = ET extends EnumTypeMeta<any, infer VARIANTS> ? VARIANTS : never
+    VARIANTS extends VariantMap = ET extends EnumTypeMeta<any, infer VARIANTS>
+        ? VARIANTS
+        : never
 > = {
-        [k in keyof VARIANTS]: ActivityEnumVariantCreator<VARIANTS[k]>;
-    };
+    [k in keyof VARIANTS]: ActivityEnumVariantCreator<VARIANTS[k]>;
+};
 /**
  * General type information for the datum and redeemer types in a helios script
  * bundle.  Not exactly the same as the types generated for api access
