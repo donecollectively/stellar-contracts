@@ -19,6 +19,7 @@ import {
     makeWalletHelper,
 } from "@helios-lang/tx-utils";
 import {
+    decodeTx,
     makeNetworkParamsHelper,
     type Address,
     type NetworkParams,
@@ -476,9 +477,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     get txnTime() {
         if (this._txnTime) return this._txnTime;
+        const now = Date.now();
+        const recent = now - 180_000
         const d = new Date(
             Number(
-                this.slotToTime(this.timeToSlot(BigInt(new Date().getTime())))
+                this.slotToTime(this.timeToSlot(BigInt(recent)))
             )
         );
         // time emoji: ⏰
@@ -502,19 +505,15 @@ export class StellarTxnContext<S extends anyState = anyState> {
         durationMs: number
     ): TCX {
         const startMoment = this.txnTime.getTime();
-        if (this.txb.validFromTime) {
-            this.txb
-                .validFromTime(new Date(startMoment))
-                .validToTime(new Date(startMoment + durationMs));
-        } else {
-            this.txb
-                //@ts-expect-error
-                .validFrom(new Date(startMoment))
-                .validTo(new Date(startMoment + durationMs));
-        }
+
+        this._validityPeriodSet = true
+        this.txb
+            .validFromTime(new Date(startMoment))
+            .validToTime(new Date(startMoment + durationMs));
+
         return this;
     }
-
+    _validityPeriodSet = false
     txRefInputs: TxInput[] = [];
     /**
      * adds a reference input to the transaction context
@@ -748,6 +747,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
         console.timeStamp?.(`submit() txn ${this.txnName}`);
         console.log("tcx build() @top");
 
+        if (!this._validityPeriodSet) {
+            this.validFor(12 * 60 * 1000); // 12 minutes
+        }
         let { description } = addlTxInfo;
         if (description && !description.match(/^:/)) {
             description = ": " + description;
