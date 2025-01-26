@@ -303,7 +303,7 @@ export abstract class HeliosScriptBundle {
      * Override to force optimization on or off.
      */
     get optimize() {
-        return this.setup!.optimize;
+        return this.setup!.optimize ?? true;
     }
 
     get moduleName() {

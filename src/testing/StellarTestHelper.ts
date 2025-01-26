@@ -492,7 +492,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             networkParams: this.networkParams,
             uh: undefined as any,
             isTest: true,
-            optimize: this.optimize,
+            optimize: process.env.OPTIMIZE ? true : this.optimize,
         };
         setup.uh = new UtxoHelper(setup);
 
