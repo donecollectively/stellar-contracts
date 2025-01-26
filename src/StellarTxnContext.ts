@@ -56,13 +56,15 @@ export type TxDescription<T extends StellarTxnContext> = {
 /**
  * @public
  */
-export type MultiTxnCallback =
-    | ((futTx: TxDescription<any>) => void)
-    | ((futTx: TxDescription<any>) => Promise<void>)
-    // | ((futTx: TxDescription<any>) => StellarTxnContext<any>)
-    // | ((futTx: TxDescription<any>) => Promise<StellarTxnContext<any>>)
-    | ((futTx: TxDescription<any>) => StellarTxnContext<any> | false)
-    | ((futTx: TxDescription<any>) => Promise<StellarTxnContext<any> | false>);
+export type MultiTxnCallback<
+    T extends undefined | StellarTxnContext<any> 
+    = StellarTxnContext<any>,
+    TXINFO extends Tx | TxDescription<any> = TxDescription<any>
+> =
+    | ((tx: TXINFO) => void)
+    | ((tx: TXINFO) => Promise<void>)
+    | ((tx: TXINFO) => T | false)
+    | ((tx: TXINFO) => Promise<T | false>);
 
 /**
  * A transaction context that includes additional transactions in its state for later execution
@@ -148,11 +150,9 @@ export type SubmitOptions = {
     /**
      * Called when there is a detected error, before logging.  Probably only needed in test.
      */
-    beforeError?: (tx: Tx) => Promise<any> | any;
-    beforeValidate?: (tx: Tx) => Promise<any> | any;
-    beforeSubmit?: MultiTxnCallback;
-    onSubmitted?: MultiTxnCallback;
-};
+    beforeError?: (tx: Tx) => MultiTxnCallback<any>
+    beforeValidate?: (tx: Tx) => MultiTxnCallback<any>
+} & SubmitCallbacks;
 
 type MintUnsafeParams = Parameters<TxBuilder["mintPolicyTokensUnsafe"]>;
 type MintTokensParams = [
@@ -163,7 +163,9 @@ type MintTokensParams = [
 type SubmitCallbacks = {
     beforeSubmit?: MultiTxnCallback;
     onSubmitted?: MultiTxnCallback;
+    onSubmitError?: MultiTxnCallback<any, Tx>;
 };
+
 
 /**
  * Transaction-building context for Stellar Contract transactions
@@ -974,6 +976,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
             expectError,
             beforeError,
             beforeValidate,
+            beforeSubmit,
+            onSubmitError,
+            onSubmitted
         }: SubmitOptions = {}
     ) {
         const { logger } = this;
@@ -1072,6 +1077,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         let txId : TxId | undefined 
         let walletPromise: Promise<TxId> | undefined;
+        let didHaveError = false;
         if (wallet) {
             if (!this.setup.isTest) {
                 // submit via wallet in addition to the network, may allow for faster confirmation
@@ -1081,6 +1087,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         return walletTxId;
                     },
                     (e) => {
+                        didHaveError = true
+                        debugger
+                        onSubmitError?.(tx)
                         console.log(
                             "⚠️  submitting via wallet failed (debugging breakpoint available): ",
                             e.message
@@ -1112,6 +1121,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     ) {
                         this.checkTxValidityDetails(tx);
                     }
+                    debugger
+                    didHaveError = true
+                    onSubmitError?.(tx)
                     console.warn(
                         "⚠️  submitting via helios CardanoClient failed: ",
                         e.message
@@ -1127,9 +1139,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 `submitting tx failed: ${description}: ❌ ${e.message}`
             );
             logger.flushError();
+            
+            const asHex = bytesToHex(tx.toCbor());
+            const t2 = decodeTx(asHex);
+            debugger
             console.warn(
                 "------------------- failed tx as cbor-hex -------------------\n" +
-                bytesToHex(tx.toCbor()),
+                asHex,
                 "\n------------------^ failed tx details ^------------------\n" +
                 // note, the debugging breakpoint mentioned is actually one or more of
                 // multiple breakpoints above.
@@ -1292,10 +1308,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      **/
     async submitAddlTxns(
         this: hasAddlTxns<any, any>,
-        callbacks?: {
-            beforeSubmit?: MultiTxnCallback;
-            onSubmitted?: MultiTxnCallback;
-        }
+        callbacks?: SubmitCallbacks
     ) {
         const { addlTxns } = this.state;
         if (!addlTxns) return;
