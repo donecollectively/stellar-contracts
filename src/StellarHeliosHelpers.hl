@@ -28,6 +28,15 @@ func TODO(task: String) -> () {
     print("  🟥  😳💦  TODO: " + task + "\n")
 }
 
+func canError(s: String) -> String {
+    #.decode_utf8()+s
+}
+
+func TRACE(id: String, message: String) -> () {
+    print(canError(id));
+    print(message)
+}
+
 func REQT(reqt: String, assertion : Bool=true) -> () {
     // ❗red exclamation mark
     print("❗ "+ reqt);
