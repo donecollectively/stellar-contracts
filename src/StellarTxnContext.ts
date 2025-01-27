@@ -255,8 +255,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
         });
         Object.defineProperty(this, "_builtTx", { enumerable: false });
 
+        const isMainnet = setup.isMainnet
+        if ("undefined" == typeof isMainnet) {
+            throw new Error(
+                "StellarTxnContext: setup.isMainnet must be defined"
+            );
+        }
         this.txb = makeTxBuilder({
-            isMainnet: this.setup.isMainnet || false,
+            isMainnet
         });
         // const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error

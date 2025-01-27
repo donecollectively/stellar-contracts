@@ -367,6 +367,144 @@ export type PendingDelegateChangeLike = {
 }
 
 
+export type ManifestActivity$updatingEntry = {
+    key: string  /*minVariantField*/ ,
+    tokenName: number[]  /*minVariantField*/ 
+}
+
+export type ManifestActivity$Ergo$updatingEntry = ManifestActivity$updatingEntry/*ergo like-canonical-this-variant*/
+export type ManifestActivity$updatingEntryLike = {
+    key: string  /*minVariantField*/ ,
+    tokenName: number[]  /*minVariantField*/ 
+}
+
+
+export type ManifestActivity$addingEntry = {
+    key: string  /*minVariantField*/ ,
+    tokenName: number[]  /*minVariantField*/ 
+}
+
+export type ManifestActivity$Ergo$addingEntry = ManifestActivity$addingEntry/*ergo like-canonical-this-variant*/
+export type ManifestActivity$addingEntryLike = {
+    key: string  /*minVariantField*/ ,
+    tokenName: number[]  /*minVariantField*/ 
+}
+
+
+export type ManifestActivity$forkingThreadToken = {
+    key: string  /*minVariantField*/ ,
+    newThreadCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestActivity$Ergo$forkingThreadToken = ManifestActivity$forkingThreadToken/*ergo like-canonical-this-variant*/
+export type ManifestActivity$forkingThreadTokenLike = {
+    key: string  /*minVariantField*/ ,
+    newThreadCount: IntLike  /*minVariantField*/ 
+}
+
+
+export type ManifestActivity$burningThreadToken = {
+    key: string  /*minVariantField*/ ,
+    burnedThreadCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestActivity$Ergo$burningThreadToken = ManifestActivity$burningThreadToken/*ergo like-canonical-this-variant*/
+export type ManifestActivity$burningThreadTokenLike = {
+    key: string  /*minVariantField*/ ,
+    burnedThreadCount: IntLike  /*minVariantField*/ 
+}
+
+
+export type ManifestActivityMeta = EnumTypeMeta<
+    {module: "CapoDelegateHelpers", enumName: "ManifestActivity"}, {
+        retiringEntry: singleEnumVariantMeta<ManifestActivityMeta, "retiringEntry",
+            "Constr#0", "singletonField", /* implied wrapper { key: ... } for singleVariantField */ 
+			string   , "noSpecialFlags"
+        >,
+        updatingEntry: singleEnumVariantMeta<ManifestActivityMeta, "updatingEntry",
+            "Constr#1", 
+            "fields", ManifestActivity$updatingEntry, "noSpecialFlags"
+        >,
+        addingEntry: singleEnumVariantMeta<ManifestActivityMeta, "addingEntry",
+            "Constr#2", 
+            "fields", ManifestActivity$addingEntry, "noSpecialFlags"
+        >,
+        forkingThreadToken: singleEnumVariantMeta<ManifestActivityMeta, "forkingThreadToken",
+            "Constr#3", 
+            "fields", ManifestActivity$forkingThreadToken, "noSpecialFlags"
+        >,
+        burningThreadToken: singleEnumVariantMeta<ManifestActivityMeta, "burningThreadToken",
+            "Constr#4", 
+            "fields", ManifestActivity$burningThreadToken, "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * ManifestActivity enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **5 variant(s)** of the ManifestActivity enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `ManifestActivityHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type ManifestActivity = 
+        | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
+        | { updatingEntry: ManifestActivity$updatingEntry /*minEnumVariant*/ }
+        | { addingEntry: ManifestActivity$addingEntry /*minEnumVariant*/ }
+        | { forkingThreadToken: ManifestActivity$forkingThreadToken /*minEnumVariant*/ }
+        | { burningThreadToken: ManifestActivity$burningThreadToken /*minEnumVariant*/ }
+
+export type ErgoManifestActivity = IntersectedEnum<
+        | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
+        | { updatingEntry: ManifestActivity$Ergo$updatingEntry /*minEnumVariant*/ }
+        | { addingEntry: ManifestActivity$Ergo$addingEntry /*minEnumVariant*/ }
+        | { forkingThreadToken: ManifestActivity$Ergo$forkingThreadToken /*minEnumVariant*/ }
+        | { burningThreadToken: ManifestActivity$Ergo$burningThreadToken /*minEnumVariant*/ }
+>
+
+/**
+ * ManifestActivity enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structure
+ * for creating any of the **5 variant(s)** of the ManifestActivity enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `ManifestActivityHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type ManifestActivityLike = IntersectedEnum<
+        | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
+        | { updatingEntry: ManifestActivity$updatingEntryLike /*minEnumVariant*/ }
+        | { addingEntry: ManifestActivity$addingEntryLike /*minEnumVariant*/ }
+        | { forkingThreadToken: ManifestActivity$forkingThreadTokenLike /*minEnumVariant*/ }
+        | { burningThreadToken: ManifestActivity$burningThreadTokenLike /*minEnumVariant*/ }
+>
+
+export type PendingCharterChange$otherManifestChange = {
+    activity: ManifestActivity  /*minVariantField*/ ,
+    remainingDelegateValidations: Array<DelegateRole>  /*minVariantField*/ 
+}
+
+export type PendingCharterChange$Ergo$otherManifestChange = {
+    activity: ErgoManifestActivity  /*minVariantField*/ ,
+    remainingDelegateValidations: Array<ErgoDelegateRole>  /*minVariantField*/ 
+}
+
+export type PendingCharterChange$otherManifestChangeLike = {
+    activity: ManifestActivityLike  /*minVariantField*/ ,
+    remainingDelegateValidations: Array<DelegateRoleLike>  /*minVariantField*/ 
+}
+
+
 export type PendingCharterChangeMeta = EnumTypeMeta<
     {module: "CapoDelegateHelpers", enumName: "PendingCharterChange"}, {
         delegateChange: singleEnumVariantMeta<PendingCharterChangeMeta, "delegateChange",
@@ -374,7 +512,8 @@ export type PendingCharterChangeMeta = EnumTypeMeta<
 			PendingDelegateChange   , "noSpecialFlags"
         >,
         otherManifestChange: singleEnumVariantMeta<PendingCharterChangeMeta, "otherManifestChange",
-            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
+            "Constr#1", 
+            "fields", PendingCharterChange$otherManifestChange, "noSpecialFlags"
         >
     }
 >;
@@ -392,12 +531,12 @@ export type PendingCharterChangeMeta = EnumTypeMeta<
 export type PendingCharterChange = 
         | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
 			PendingDelegateChange    /*minEnumVariant*/ }
-        | { otherManifestChange: tagOnly /*minEnumVariant*/ }
+        | { otherManifestChange: PendingCharterChange$otherManifestChange /*minEnumVariant*/ }
 
 export type ErgoPendingCharterChange = IntersectedEnum<
         | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
 			ErgoPendingDelegateChange    /*minEnumVariant*/ }
-        | { otherManifestChange: tagOnly /*minEnumVariant*/ }
+        | { otherManifestChange: PendingCharterChange$Ergo$otherManifestChange /*minEnumVariant*/ }
 >
 
 /**
@@ -416,7 +555,7 @@ export type ErgoPendingCharterChange = IntersectedEnum<
 export type PendingCharterChangeLike = IntersectedEnum<
         | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
 			PendingDelegateChangeLike    /*minEnumVariant*/ }
-        | { otherManifestChange: tagOnly /*minEnumVariant*/ }
+        | { otherManifestChange: PendingCharterChange$otherManifestChangeLike /*minEnumVariant*/ }
 >
 
 export type CapoDatum$CharterData = {
@@ -558,128 +697,6 @@ export type CapoLifecycleActivity$forcingNewMintDelegateLike = {
     purpose: string  /*minVariantField*/ 
 }
 
-
-export type ManifestActivity$updatingEntry = {
-    key: string  /*minVariantField*/ ,
-    tokenName: number[]  /*minVariantField*/ 
-}
-
-export type ManifestActivity$Ergo$updatingEntry = ManifestActivity$updatingEntry/*ergo like-canonical-this-variant*/
-export type ManifestActivity$updatingEntryLike = {
-    key: string  /*minVariantField*/ ,
-    tokenName: number[]  /*minVariantField*/ 
-}
-
-
-export type ManifestActivity$addingEntry = {
-    key: string  /*minVariantField*/ ,
-    tokenName: number[]  /*minVariantField*/ 
-}
-
-export type ManifestActivity$Ergo$addingEntry = ManifestActivity$addingEntry/*ergo like-canonical-this-variant*/
-export type ManifestActivity$addingEntryLike = {
-    key: string  /*minVariantField*/ ,
-    tokenName: number[]  /*minVariantField*/ 
-}
-
-
-export type ManifestActivity$forkingThreadToken = {
-    key: string  /*minVariantField*/ ,
-    newThreadCount: bigint  /*minVariantField*/ 
-}
-
-export type ManifestActivity$Ergo$forkingThreadToken = ManifestActivity$forkingThreadToken/*ergo like-canonical-this-variant*/
-export type ManifestActivity$forkingThreadTokenLike = {
-    key: string  /*minVariantField*/ ,
-    newThreadCount: IntLike  /*minVariantField*/ 
-}
-
-
-export type ManifestActivity$burningThreadToken = {
-    key: string  /*minVariantField*/ ,
-    burnedThreadCount: bigint  /*minVariantField*/ 
-}
-
-export type ManifestActivity$Ergo$burningThreadToken = ManifestActivity$burningThreadToken/*ergo like-canonical-this-variant*/
-export type ManifestActivity$burningThreadTokenLike = {
-    key: string  /*minVariantField*/ ,
-    burnedThreadCount: IntLike  /*minVariantField*/ 
-}
-
-
-export type ManifestActivityMeta = EnumTypeMeta<
-    {module: "CapoDelegateHelpers", enumName: "ManifestActivity"}, {
-        retiringEntry: singleEnumVariantMeta<ManifestActivityMeta, "retiringEntry",
-            "Constr#0", "singletonField", /* implied wrapper { key: ... } for singleVariantField */ 
-			string   , "noSpecialFlags"
-        >,
-        updatingEntry: singleEnumVariantMeta<ManifestActivityMeta, "updatingEntry",
-            "Constr#1", 
-            "fields", ManifestActivity$updatingEntry, "noSpecialFlags"
-        >,
-        addingEntry: singleEnumVariantMeta<ManifestActivityMeta, "addingEntry",
-            "Constr#2", 
-            "fields", ManifestActivity$addingEntry, "noSpecialFlags"
-        >,
-        forkingThreadToken: singleEnumVariantMeta<ManifestActivityMeta, "forkingThreadToken",
-            "Constr#3", 
-            "fields", ManifestActivity$forkingThreadToken, "noSpecialFlags"
-        >,
-        burningThreadToken: singleEnumVariantMeta<ManifestActivityMeta, "burningThreadToken",
-            "Constr#4", 
-            "fields", ManifestActivity$burningThreadToken, "noSpecialFlags"
-        >
-    }
->;
-
-
-/**
- * ManifestActivity enum variants
- * 
- * @remarks - expresses the essential raw data structures
- * supporting the **5 variant(s)** of the ManifestActivity enum type
- * 
- * - **Note**: Stellar Contracts provides a higher-level `ManifestActivityHelper` class
- *     for generating UPLC data for this enum type
- */
-export type ManifestActivity = 
-        | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
-			string    /*minEnumVariant*/ }
-        | { updatingEntry: ManifestActivity$updatingEntry /*minEnumVariant*/ }
-        | { addingEntry: ManifestActivity$addingEntry /*minEnumVariant*/ }
-        | { forkingThreadToken: ManifestActivity$forkingThreadToken /*minEnumVariant*/ }
-        | { burningThreadToken: ManifestActivity$burningThreadToken /*minEnumVariant*/ }
-
-export type ErgoManifestActivity = IntersectedEnum<
-        | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
-			string    /*minEnumVariant*/ }
-        | { updatingEntry: ManifestActivity$Ergo$updatingEntry /*minEnumVariant*/ }
-        | { addingEntry: ManifestActivity$Ergo$addingEntry /*minEnumVariant*/ }
-        | { forkingThreadToken: ManifestActivity$Ergo$forkingThreadToken /*minEnumVariant*/ }
-        | { burningThreadToken: ManifestActivity$Ergo$burningThreadToken /*minEnumVariant*/ }
->
-
-/**
- * ManifestActivity enum variants (permissive)
- * 
- * @remarks - expresses the allowable data structure
- * for creating any of the **5 variant(s)** of the ManifestActivity enum type
- * 
- * - **Note**: Stellar Contracts provides a higher-level `ManifestActivityHelper` class
- *     for generating UPLC data for this enum type
- *
- * ### Permissive Type
- * This is a permissive type that allows additional input data types, which are 
- * converted by convention to the canonical types used in the on-chain context.
- */
-export type ManifestActivityLike = IntersectedEnum<
-        | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
-			string    /*minEnumVariant*/ }
-        | { updatingEntry: ManifestActivity$updatingEntryLike /*minEnumVariant*/ }
-        | { addingEntry: ManifestActivity$addingEntryLike /*minEnumVariant*/ }
-        | { forkingThreadToken: ManifestActivity$forkingThreadTokenLike /*minEnumVariant*/ }
-        | { burningThreadToken: ManifestActivity$burningThreadTokenLike /*minEnumVariant*/ }
->
 
 export type CapoLifecycleActivityMeta = EnumTypeMeta<
     {module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivity"}, {

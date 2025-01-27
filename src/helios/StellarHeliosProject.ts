@@ -121,7 +121,7 @@ export class StellarHeliosProject {
                 throw new Error(`only one CapoBundle is currently supported`);
             }
             // console.log(`Project: loading CapoBundle ${bundleClassName}`);
-            this.capoBundle = new (bundleClass as any)();
+            this.capoBundle = new (bundleClass as any)({setup: {isMainnet: false}});
             const registeredCapoName = bundleClass.name;
             if (this.bundleEntries.size > 0) {
                 debugger
@@ -169,7 +169,7 @@ export class StellarHeliosProject {
             this.bundleEntries.set(filename, {
                 filename,
                 status: "loaded",
-                bundle: new (bundleClass as any)(), // harmless second capo
+                bundle: new (bundleClass as any)({setup: {isMainnet: false}}), // harmless second capo
                 bundleClassName: bundleClassName,
                 parentClassName,
                 bundleClass,
@@ -182,7 +182,7 @@ export class StellarHeliosProject {
                 bundleClassName: bundleClassName,
                 parentClassName,
             };
-            bundle = new (bundleClass as any)();
+            bundle = new (bundleClass as any)({setup: {isMainnet: false}});
             bundleEntry.bundle = bundle;
             bundleEntry.status = "loaded";
             this.bundleEntries.set(filename, bundleEntry);

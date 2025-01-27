@@ -142,7 +142,7 @@ enum MintingActivity {
         seed: TxOutputId
         purposes: []String
     }
-    mockOtherActivity: {
+    mockOtherActivity {
         // for testing type-generation
         QQ: SomeEnum
     }

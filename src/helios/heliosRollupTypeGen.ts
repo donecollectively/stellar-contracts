@@ -256,8 +256,8 @@ export function heliosRollupBundler(
                 } else {
                     if (id.match(/hlb/) && !id.match(/hlbundled/)) {
                         console.log(
-                            `HeliosBundler resolve: skipping due to filter mismatch`,
-                            { source: id }
+                            `HeliosBundler resolve: skipping due to filter mismatch (debugging breakpoint available)`,
+                            { id, importer }
                         );
                         debugger;
                         //no-op, but helpful for debugging:
@@ -323,8 +323,8 @@ export function heliosRollupBundler(
                 if (!filterHLB(id)) {
                     if (id.match(/hlb/) && !id.match(/hlbundled/)) {
                         console.log(
-                            `HeliosBundler resolve: skipping due to filter mismatch`,
-                            { source: id }
+                            `HeliosBundler load: skipping due to filter mismatch (debugging breakpoint available)`,
+                            { id }
                         );
                         debugger;
                         //no-op, but helpful for debugging:
@@ -348,7 +348,7 @@ export function heliosRollupBundler(
                 //??? addWatchFile for all the .hl scripts in the bundle
                 // return null as LoadResult;
 
-                let bundle = new SomeBundleClass();
+                let bundle = new SomeBundleClass({setup: {isMainnet:false}});
                 // compile the program seen in that bundle!
                 // ... to trigger helios syntax-checking:
                 let program = bundle.program;
@@ -441,7 +441,7 @@ export function heliosRollupBundler(
                     }
                     state.hasExplicitCapoBundle = true;
 
-                    bundle = new SomeBundleClass();
+                    bundle = new SomeBundleClass({setup: {isMainnet:false}});
                     if (!replacedCapo) {
                         // state.project.loadBundleWithClass(id, SomeBundleClass);
                         // state.project.generateBundleTypes(id);

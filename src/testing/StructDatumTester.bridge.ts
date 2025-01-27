@@ -91,7 +91,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     field4: /*minStructField*/ SomeKindaEnumLike
 }
 , DatumStructHelper>
-     = new DatumStructHelper({}) as any  // datumAccessor/struct
+     = new DatumStructHelper({isMainnet: this.isMainnet}) as any  // datumAccessor/struct
 
 
     /**
@@ -120,7 +120,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     activity: callWith<IntLike, OtherActivityTypeHelper>
      = new OtherActivityTypeHelper({}) as any  // activityAccessor/other
 
-    reader = new StructDatumTesterDataBridgeReader(this);
+    reader = new StructDatumTesterDataBridgeReader(this, this.isMainnet);
 
     /**
      * accessors for all the types defined in the `StructDatumTester` script
@@ -130,7 +130,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
       /**
        * generates UplcData for the enum type ***SomeKindaEnum*** for the `StructDatumTester` script
        */
-        SomeKindaEnum: new SomeKindaEnumHelper(),
+        SomeKindaEnum: new SomeKindaEnumHelper({isMainnet: this.isMainnet}),
 
       /**
        * generates UplcData for the enum type ***struct3*** for the `StructDatumTester` script
@@ -195,7 +195,7 @@ export class OtherActivityTypeHelper extends DataBridge {
         bigint, IntLike
     >(
         {"kind":"internal","name":"Int"}, 
-        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     ); // datumAccessorCast
 
     
@@ -205,7 +205,7 @@ export class OtherActivityTypeHelper extends DataBridge {
  * @public
  */
 export class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
-    constructor(public bridge: StructDatumTesterDataBridge) {
+    constructor(public bridge: StructDatumTesterDataBridge, isMainnet: boolean) {
         super();
     }
     /**
@@ -299,7 +299,7 @@ export class struct3Helper extends DataBridge {
             * uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<struct3, struct3Like>(
         struct3Schema,
-        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     );
 
     // You might expect a function as follows.  We provide this interface and result, 
@@ -324,7 +324,7 @@ export class OtherStructHelper extends DataBridge {
             * uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<OtherStruct, OtherStructLike>(
         OtherStructSchema,
-        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     );
 
     // You might expect a function as follows.  We provide this interface and result, 
@@ -349,7 +349,7 @@ export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
             *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<SomeKindaEnum, SomeKindaEnumLike>(
         SomeKindaEnumSchema,
-        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     );
 
 /**
@@ -386,7 +386,7 @@ export class DatumStructHelper extends DataBridge {
             * uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<DatumStruct, DatumStructLike>(
         DatumStructSchema,
-        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     );
 
     // You might expect a function as follows.  We provide this interface and result, 

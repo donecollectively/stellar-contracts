@@ -24,6 +24,7 @@ import type {
 } from "./HeliosMetaTypes.js";
 import type { StringifiedHeliosCacheEntry } from "./CachedHeliosProgram.js";
 import type { DeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
+import { bytesToHex } from "@helios-lang/codec-utils";
 
 /**
  * @internal
@@ -95,6 +96,7 @@ export abstract class HeliosScriptBundle {
      * instead of inferring the type from the entry point.
      */
     redeemerTypeName?: string;
+    isMainnet?: boolean;
     _program?: HeliosProgramWithCacheAPI;
     _progHasDeploymentDetails = false;
     setup?: SetupInfo;
@@ -104,20 +106,22 @@ export abstract class HeliosScriptBundle {
     constructor(setupDetails?: StellarSetupUplc<any>) {
         // this.devReloadModules()
         // if (setupDetails) debugger;
+        this._program = undefined
         this.setup = setupDetails?.setup;
-        if (setupDetails?.params) {
-            this.params = setupDetails.params;
-            // } else if (args?.partialConfig) {
-            //     this._partialConfig = args.partialConfig;
+        this.isMainnet = this.setup?.isMainnet
+        if (this.setup && "undefined" === typeof this.isMainnet) {
+            throw new Error(
+                `${this.constructor.name}: setup.isMainnet must be defined`
+            );
         }
-        if (setupDetails?.deployedDetails) {
-            this.deployedScriptDetails = setupDetails.deployedDetails;
-        }
+        this.params = setupDetails?.params;
+        this.deployedScriptDetails = setupDetails?.deployedDetails;
     }
 
     get hasDeploymentDetails() {
         return !!this.deployedScriptDetails;
     }
+
     withSetupDetails(details: StellarSetupUplc<any>) {
         if (this.setup) {
             throw new Error(`setup already present`)
@@ -412,7 +416,7 @@ export abstract class HeliosScriptBundle {
             program.entryPoint.paramsDetails()
         );
 
-        // debugger;
+        debugger;
         const uplcProgram = await program.compileWithCache({
             optimize: this.optimize,
         });
@@ -430,6 +434,12 @@ export abstract class HeliosScriptBundle {
         // });
 
         console.log(`compiled in ${new Date().getTime() - t}ms`);
+        if (globalThis.document) {
+            console.log({
+                uplcProgram,
+                cbor: bytesToHex(uplcProgram.toCbor()),
+            })
+        }
         return uplcProgram;
     }
 
@@ -466,17 +476,28 @@ export abstract class HeliosScriptBundle {
         }
     }
 
+    /**
+     * provides a temporary indicator of mainnet-ness, while not 
+     * requiring the question to be permanently resolved.
+     */
+    isDefinitelyMainnet() {
+        return this.isMainnet ?? false
+    }
+
     // _pct: number = 0
     get program(): HeliosProgramWithCacheAPI {
         if (this._program) {
-            if (this.hasDeploymentDetails != this._progHasDeploymentDetails) {
+            if (
+                this.hasDeploymentDetails != this._progHasDeploymentDetails ||
+                this.setup?.isMainnet !== this.isMainnet
+            ) {
                 this._program = undefined;
             } else {
                 return this._program;
             }
         }
-        
-        const isTestnet = this.setup?.isMainnet ?? true;
+        const isMainnet = this.setup?.isMainnet ?? false;
+        const isTestnet = !isMainnet;
 
         const ts1 = Date.now();
         let mName = this.moduleName;
@@ -485,6 +506,9 @@ export abstract class HeliosScriptBundle {
         }
         const moduleSources = this.getEffectiveModuleList();
 
+        if (!isTestnet) {
+            debugger
+        }
         try {
             const p = new HeliosProgramWithCacheAPI(this.main, {
                 isTestnet,

@@ -1,12 +1,12 @@
-import type { TypeSchema } from "@helios-lang/type-utils"
-import { type Cast, makeCast } from "@helios-lang/contract-utils"
-import { type TxOutputId } from "@helios-lang/ledger"
-import type { UplcData } from "@helios-lang/uplc"
+import type { TypeSchema } from "@helios-lang/type-utils";
+import { type Cast, makeCast } from "@helios-lang/contract-utils";
+import { type TxOutputId } from "@helios-lang/ledger";
+import type { UplcData } from "@helios-lang/uplc";
 
-import type { readsUplcData } from "../HeliosMetaTypes.js"
-import type { EnumBridge } from "./EnumBridge.js"
-import type { readsUplcTo } from "./BridgeTypeUtils.js"
-import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js"
+import type { readsUplcData } from "../HeliosMetaTypes.js";
+import type { EnumBridge } from "./EnumBridge.js";
+import type { readsUplcTo } from "./BridgeTypeUtils.js";
+import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js";
 
 // const rawDataMakerProxy = new Proxy(
 //     {},
@@ -16,13 +16,13 @@ import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js"
 //         //     -> instantiate the right constrData through the cast(   { variantName:{} )
 //         // 2. type is an enum, accessor is a singletonField
 //         //   2a. nested field is an enum
-//         //      -> returns a proxy for the nested enum type, 
+//         //      -> returns a proxy for the nested enum type,
 //         //           ... with seed semantics and NO {redeemer: } wrapper
 //         //   2b. nested field not an enum
 //         //     -> returns a function that takes the field value and calls cast ( { variantName: { fieldName: value } } )
 //         // 3. type is an enum, accessor has fields
 //         //    -> returns a function that takes the fields and calls cast ( { variantName: { ...fields } } )
-//         // 4. type is not an enum.  
+//         // 4. type is not an enum.
 //         //   -> the apply() trap is called with the arg(s) for filling that data type
 
 //         // if it is an activity, wrap it in a {redeemer: } object
@@ -41,14 +41,14 @@ import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js"
 //                 if (typeName == Symbol.for("toString")) {
 //                     return () => `dataMaker ${THIS.constructor.name} for ${THIS.name}`;
 //                 }
-                
+
 //                 // add any special handling for symbols above.
 //                 throw new Error(`dataMaker ${THIS.constructor.name}: GET(${typeName}) -> null`)
 //                 return null
 //             }
 
 //             switch (schema.kind) {
-//                 case "enum": 
+//                 case "enum":
 //                     const enumSchema = schema
 //                     const variant = enumSchema.variantTypes.find(variant => variant.name === typeName);
 //                     // variants[typeName as keyof typeof enumSchema.variants];
@@ -83,8 +83,8 @@ import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js"
 //             }
 
 //         },
-//         apply(_, 
-//             THIS : DataBridge, 
+//         apply(_,
+//             THIS : DataBridge,
 //             args : any
 //         ) {
 //             debugger
@@ -106,29 +106,36 @@ import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js"
 /**
  * @internal
  */
-const rawDataBridgeProxy = new Proxy({}, {
-    apply(_, THIS: DataBridge, [x]: any[]) {
-        // typescript protects against this code-path being allowed by types, but
-        // this serves javascript-based callers and other run-time scenarios where the type-checking
-        // may not be enforced (SWC and vitest, notably)
-        if (!THIS.isCallable) throw new Error(`dataBridge ${THIS.constructor.name} is not callable`)
+const rawDataBridgeProxy = new Proxy(
+    {},
+    {
+        apply(_, THIS: DataBridge, [x]: any[]) {
+            // typescript protects against this code-path being allowed by types, but
+            // this serves javascript-based callers and other run-time scenarios where the type-checking
+            // may not be enforced (SWC and vitest, notably)
+            if (!THIS.isCallable)
+                throw new Error(
+                    `dataBridge ${THIS.constructor.name} is not callable`
+                );
 
-        //x@ts-expect-error drilling through the 'protected' attribute - TS can't know about
-        //x  the relationship between this object and the DataBridge class
-        return THIS.ᱺᱺcast.toUplcData(x);
+            //x@ts-expect-error drilling through the 'protected' attribute - TS can't know about
+            //x  the relationship between this object and the DataBridge class
+            return THIS.ᱺᱺcast.toUplcData(x);
+        },
     }
-})
+);
 
 /**
  * @internal
  */
 function dataBridgeProxyBase() {}
-dataBridgeProxyBase.prototype = rawDataBridgeProxy
+dataBridgeProxyBase.prototype = rawDataBridgeProxy;
 
 /**
  * @internal
  */
 export type DataBridgeOptions = {
+    isMainnet: boolean;
     isActivity?: boolean;
     isNested?: boolean;
 };
@@ -136,43 +143,43 @@ export type DataBridgeOptions = {
 /**
  * @internal
  */
-export type callWith<ARGS, T extends DataBridge> 
-    = T & ( 
-        (x: ARGS) => ReturnType<T["ᱺᱺcast"]["toUplcData"]> 
-    )
+export type callWith<ARGS, T extends DataBridge> = T &
+    ((x: ARGS) => ReturnType<T["ᱺᱺcast"]["toUplcData"]>);
 
 /**
  * @internal
  */
 export class DataBridge extends (dataBridgeProxyBase as typeof Object) {
-    protected ᱺᱺschema : TypeSchema 
+    protected ᱺᱺschema: TypeSchema;
+    protected isMainnet: boolean;
     protected isActivity: boolean;
     protected isNested: boolean;
     // relaxed protected so that GenericDelegateBridge and specific bridges don't have to
     //   use an inheritance relationship.  Can add that kind of inheritance and make this protected again.
-    ᱺᱺcast: Cast<any,any>
-    isCallable = false
+    ᱺᱺcast: Cast<any, any>;
+    isCallable = false;
 
-    mkData: this["ᱺᱺcast"]["toUplcData"] = 
-        (x: any) => this.ᱺᱺcast.toUplcData(x) 
-    readData: this["ᱺᱺcast"]["fromUplcData"] = 
-        (x: any) => this.ᱺᱺcast.fromUplcData(x) 
+    mkData: this["ᱺᱺcast"]["toUplcData"] = (x: any) =>
+        this.ᱺᱺcast.toUplcData(x);
+    readData: this["ᱺᱺcast"]["fromUplcData"] = (x: any) =>
+        this.ᱺᱺcast.fromUplcData(x);
 
-    constructor(options: DataBridgeOptions = {}) {
-        super()
+    constructor(options: DataBridgeOptions) {
+        super();
         // these start undefined, but are always forced into existence immediately
-        // via getTypeSchema().  Any exceptions means this protocol wasn't followed 
+        // via getTypeSchema().  Any exceptions means this protocol wasn't followed
         // correctly.
         // uses U+1c7a - sorts to the end
-        this.ᱺᱺschema = undefined as any
-        this.ᱺᱺcast = undefined as any
+        this.ᱺᱺschema = undefined as any;
+        this.ᱺᱺcast = undefined as any;
 
-        const { isActivity, isNested } = options
+        const { isMainnet, isActivity, isNested } = options;
+        this.isMainnet = isMainnet;
         this.isActivity = isActivity || false;
         this.isNested = isNested || false;
     }
-    
-    // 
+
+    //
     // declare activity: DataBridge | ((...args:any) => UplcData)
 
     // declare  datum: DataBridge | ((...args:any) => UplcData)
@@ -180,30 +187,32 @@ export class DataBridge extends (dataBridgeProxyBase as typeof Object) {
     // //     throw new Error(`each dataBridge makes its own datum`)
     // // }
 
-    getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
-        return getSeed(arg)
+    getSeed(arg: hasSeed | TxOutputId): TxOutputId {
+        return getSeed(arg);
     }
 
     protected redirectTo?: (value: any) => void;
     protected mkDataVia(redirectionCallback: (value: any) => void) {
         if (!this.isNested) {
-            throw new Error(`dataMaker ${this.constructor.name}: redirectTo is only valid for nested enums`)
+            throw new Error(
+                `dataMaker ${this.constructor.name}: redirectTo is only valid for nested enums`
+            );
         }
-        this.redirectTo = redirectionCallback;        
+        this.redirectTo = redirectionCallback;
     }
 
     protected get isEnum() {
-        return "enum" === this.ᱺᱺschema!.kind
+        return "enum" === this.ᱺᱺschema!.kind;
     }
     protected getTypeSchema() {
         if (!this.ᱺᱺschema) {
-            this.ᱺᱺschema = "placeholder" as any // this.__typeDetails.dataType.toSchema() 
+            this.ᱺᱺschema = "placeholder" as any; // this.__typeDetails.dataType.toSchema()
             this.ᱺᱺcast = makeCast(this.ᱺᱺschema, {
-                isMainnet: true,
-                unwrapSingleFieldEnumVariants: true
-            })
+                isMainnet: this.isMainnet,
+                unwrapSingleFieldEnumVariants: true,
+            });
         }
-        return this.ᱺᱺschema
+        return this.ᱺᱺschema;
     }
     // usesRedeemerWrapper : boolean = false
 
@@ -227,50 +236,52 @@ export class DataBridge extends (dataBridgeProxyBase as typeof Object) {
  * @public
  */
 export class ContractDataBridge {
-    static isAbstract : (true | false) = true as const
-    isAbstract : (true | false) = true as const
-    declare types: Record<string, DataBridge | ((x: any) => UplcData)>
+    static isAbstract: true | false = true as const;
+    isAbstract: true | false = true as const;
+    isMainnet: boolean;
+    declare types: Record<string, DataBridge | ((x: any) => UplcData)>;
     declare reader: DataBridgeReaderClass | undefined;
     declare datum: DataBridge | undefined;
     declare activity: DataBridge;
-    declare readDatum : readsUplcData<any> | undefined
+    declare readDatum: readsUplcData<any> | undefined;
 
-    constructor() {
-
+    constructor(isMainnet: boolean) {
+        if (true !== isMainnet && false !== isMainnet)
+            throw new Error(`isMainnet signal must be provided (boolean)`);
+        this.isMainnet = isMainnet;
     }
     readData(x: any) {
-        if (!this.datum) throw new Error(`no datum on this dataBridge`)
+        if (!this.datum) throw new Error(`no datum on this dataBridge`);
 
-        return this.datum.readData(x)
+        return this.datum.readData(x);
     }
 }
 
 /**
  * @public
  */
-export class ContractDataBridgeWithEnumDatum extends ContractDataBridge {    
-    static isAbstract : (true | false) = true as const
-    isAbstract : (true | false) = true as const
+export class ContractDataBridgeWithEnumDatum extends ContractDataBridge {
+    static isAbstract: true | false = true as const;
+    isAbstract: true | false = true as const;
     declare datum: EnumBridge;
-    declare readDatum : readsUplcData<unknown>
+    declare readDatum: readsUplcData<unknown>;
 
-    constructor() {
-        super();
-    }
+    // constructor(isMainnet : boolean) {
+    //     super(isMainnet);
+    // }
 }
 
 /**
  * @public
  */
 export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
-    static isAbstract : (true | false) = true as const
-    isAbstract : (true | false) = true as const
+    static isAbstract: true | false = true as const;
+    isAbstract: true | false = true as const;
     // declare datum: (any) => UplcData;
-    constructor() {
-        super();
-    }
-    declare readDatum : readsUplcData<unknown>
-
+    // constructor() {
+    //     super();
+    // }
+    declare readDatum: readsUplcData<unknown>;
 }
 // type DataBridgeReader = DataBridgeReaderClass & {
 //     [key: string]: (x : UplcData) => any
@@ -280,5 +291,5 @@ export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
  * @public
  */
 export class DataBridgeReaderClass {
-    declare datum: readsUplcTo<unknown> | undefined
+    declare datum: readsUplcTo<unknown> | undefined;
 }

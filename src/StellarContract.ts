@@ -323,7 +323,7 @@ export type SetupInfo = {
     networkParams: NetworkParams;
     /** false for any testnet.  todo: how to express L2? */
     isMainnet?: boolean;
-    /** wallet-wrapping envelope, allows wallet-changing without reinitialize anything using that envelope */
+    /** wallet-wrapping envelope, allows wallet-changing without reinitializing anything using that envelope */
     actorContext: ActorContext;
     /** testing environment? */
     isTest?: boolean;
@@ -554,6 +554,7 @@ export class StellarContract<
             this._bundle = this.scriptBundle();
             // this._bundle.checkDevReload()
         }
+        
         return this._bundle;
     }
 
@@ -676,36 +677,41 @@ export class StellarContract<
                     return null;
                 }
             }
+
             const datumType = this.getBundle().locateDatumType();
+            const isMainnet = this.setup.isMainnet
+            let newBridge : any
             try {
-                this._dataBridge = new (dataBridgeClass as any)(
-                    this.getBundle()
+                newBridge = new (dataBridgeClass as any)(
+                    isMainnet ?? false
                 ) as any;
             } catch (e) {
                 console.error(e);
                 debugger;
             }
             if (datumType) {
+                // verifies that the dataBridge ALSO has a datum-type
                 console.log(
                     `${this.constructor.name} dataBridgeClass = `,
                     dataBridgeClass.name
                 );
-                //@ts-expect-error probing for presence
-                if (!this._dataBridge.datum) {
+                if (!newBridge.datum) {
                     console.warn(
                         `${this.constructor.name}: dataBridgeClass must define a datum accessor.  This is likely a code-generation problem.`
                     );
                 }
             }
-            //@ts-expect-error probing for presence
-            if (!this._dataBridge.activity) {
+            // verifies that every dataBridge has an activity-type
+            if (!newBridge.activity) {
                 console.warn(
                     `${this.constructor.name}: dataBridgeClass must define an activity accessor.  This is likely a code-generation problem.`
                 );
             }
-            // if the code above did its job right, the dataBridge matches the expected type.
-            // ... cast it, rather than jumping through hoops to make TS happy
-            return this._dataBridge as any;
+            if ("undefined" == typeof isMainnet) {
+                return newBridge;
+            }
+
+            return this._dataBridge = newBridge;
         }
 
         if (!this._dataBridge) {
@@ -839,7 +845,7 @@ export class StellarContract<
     async init(args: StellarSetupDetails<ConfigType>) {
         const { isMainnet, actorContext } = this.setup;
         const chosenNetwork = isMainnet ? "mainnet" : "testnet";
-        const isTestnet = !isMainnet;
+
         if ("undefined" !== typeof configuredNetwork) {
             if (configuredNetwork != chosenNetwork) {
                 console.warn(
@@ -850,8 +856,8 @@ export class StellarContract<
         }
         configuredNetwork = chosenNetwork;
         if (actorContext.wallet) {
-            const isMain = await actorContext.wallet.isMainnet();
-            const foundNetwork = isMain ? "mainnet" : "testnet";
+            const isMainnet = await actorContext.wallet.isMainnet();
+            const foundNetwork = isMainnet ? "mainnet" : "testnet";
             if (foundNetwork !== chosenNetwork) {
                 throw new Error(
                     `wallet on ${foundNetwork} doesn't match network from setup`
@@ -975,8 +981,14 @@ export class StellarContract<
             "TODO TODO TODO - ensure each contract can indicate the right stake part of its address"
         );
         console.log("and that the onchain part also supports it");
+        const isMainnet = this.setup.isMainnet
+        if ("undefined" == typeof isMainnet) {
+            throw new Error(
+                `${this.constructor.name}: isMainnet must be defined in the setup`
+            );
+        }        
         const nAddr = makeAddress(
-            this.setup.isMainnet || false,
+            isMainnet,
             this.validatorHash
         );
         // this.validatorHash);
@@ -1035,7 +1047,7 @@ export class StellarContract<
 
     //! searches the network for utxos stored in the contract,
     //  returning those whose datum hash is the same as the input datum
-    async outputsSentToDatum(datum: InlineDatum) {
+    async outputsSentToDatum(datum: InlineDatum) : Promise<any> /*unused*/{
         const myUtxos = await this.network.getUtxos(this.address);
         throw new Error(`unused`);
         // const dump = utxosAsString(myUtxos)
@@ -1276,10 +1288,32 @@ export class StellarContract<
         );
     }
 
+    /**
+     * provides a temporary indicator of mainnet-ness, while not 
+     * requiring the question to be permanently resolved.
+     * @remarks
+     * Allows other methods to proceed prior to the final determination of mainnet status.
+     * 
+     * Any code using this path should avoid caching a negative result.  If you need to 
+     * determine the actual network being used, getBundle().isMainnet, if present, provides
+     * the definitive answer.  If that attribute is not yet present, then the mainnet status
+     * has not yet been materialized.
+     * @public
+     */
+    isDefinitelyMainnet() {
+        return this.getBundle().isDefinitelyMainnet()
+    }
+
     typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
         const schema = type.toSchema();
+        const isMainnet = this.setup.isMainnet
+        if ("undefined" == typeof isMainnet) {
+            throw new Error(
+                `${this.constructor.name}: isMainnet must be defined in the setup`
+            );
+        }
         const cast = makeCast(schema, {
-            isMainnet: this.setup.isMainnet || false,
+            isMainnet,
             unwrapSingleFieldEnumVariants: true,
         });
         return cast.toUplcData(data, path);
@@ -1350,12 +1384,7 @@ export class StellarContract<
     }
 
     get program() {
-        // avoid re-creating the Program object (from CBOR or source):
-        if (this._cache.program) return this._cache.program;
-
-        const program = this.getBundle()!.program;
-
-        return (this._cache.program = program);
+        return  this.getBundle()!.program;
     }
 
     // async readDatum<
@@ -1863,26 +1892,27 @@ export class StellarContract<
             throw new Error(`avoid this call to begin with?`)
             return;
         }
+        if (!params) {
+            throw new Error(`contractParams not set`);
+        }
+
         let bundle = this.getBundle();
         if (bundle.hasDeploymentDetails) {
             debugger;
             throw new Error(`deployed script shouldn't need to compile`);
-        } else {
-            // const params = this.contractParams;
-            if (!params) {
-                throw new Error(`contractParams not set`);
-            }
+        }
+        if (!this.setup) {
+            console.warn(
+                `compileWithScriptParams() called before setup is available`
+            );
+            debugger
+        }
 
-            
-            if (!bundle.setup) {
-                if (!this.setup) debugger
-                bundle = bundle.withSetupDetails({
-                    params,
-                    setup: this.setup,
-                });
-                if (!bundle.setup) debugger
-                this._bundle = bundle;
-            }
+        if (!bundle.setup) {
+            bundle = this._bundle = bundle.withSetupDetails({
+                params,
+                setup: this.setup,
+            });
         }
         this.compiledScript = await bundle.compiledScript();
 

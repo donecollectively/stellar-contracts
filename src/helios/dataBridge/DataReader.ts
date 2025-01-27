@@ -25,11 +25,16 @@ function dataReaderProxy() {}
 dataReaderProxy.prototype = rawDataReaderProxy;
 
 export class DataReader extends (dataReaderProxy as typeof Object) {
+    isMainnet: boolean;
     schema?: TypeSchema;
     ᱺᱺcast?: Cast<any, any>;
-    constructor(public typeDetails: anyTypeDetails) {
+    constructor(public typeDetails: anyTypeDetails, isMainnet: boolean) {
         super();
         this.schema = undefined;
+        if ("undefined" == typeof isMainnet) {
+            throw new Error("isMainnet is required");
+        }
+        this.isMainnet = isMainnet;
     }
 
     read(uplcData): any {
@@ -41,7 +46,7 @@ export class DataReader extends (dataReaderProxy as typeof Object) {
             throw new Error("unreachable?")
             this.schema = this.typeDetails.dataType.toSchema();
             this.ᱺᱺcast = makeCast(this.schema!, { 
-                isMainnet: true,
+                isMainnet: this.isMainnet,
                 unwrapSingleFieldEnumVariants: true
             });
         }

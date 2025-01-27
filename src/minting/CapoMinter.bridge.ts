@@ -79,10 +79,10 @@ datum = undefined // no datum type defined for this bundle (minter / rewards scr
     /**
      * generates UplcData for the activity type (***MinterActivity***) for the `CapoMinter` script
      */
-    activity : MinterActivityHelper= new MinterActivityHelper({isActivity: true}); // activityAccessor/enum
+    activity : MinterActivityHelper= new MinterActivityHelper({isMainnet: this.isMainnet, isActivity: true}); // activityAccessor/enum
         MinterActivity: MinterActivityHelper = this.activity;
 
-    reader = new CapoMinterDataBridgeReader(this);
+    reader = new CapoMinterDataBridgeReader(this, this.isMainnet);
 
     /**
      * accessors for all the types defined in the `CapoMinter` script
@@ -92,7 +92,7 @@ datum = undefined // no datum type defined for this bundle (minter / rewards scr
       /**
        * generates UplcData for the enum type ***MinterActivity*** for the `CapoMinter` script
        */
-        MinterActivity: new MinterActivityHelper(),
+        MinterActivity: new MinterActivityHelper({isMainnet: this.isMainnet}),
 
       /**
        * generates UplcData for the enum type ***RelativeDelegateLink*** for the `CapoMinter` script
@@ -121,7 +121,7 @@ export default CapoMinterDataBridge;
  * @public
  */
 export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
-    constructor(public bridge: CapoMinterDataBridge) {
+    constructor(public bridge: CapoMinterDataBridge, isMainnet: boolean) {
         super();
     }
     /**
@@ -176,7 +176,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
             *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<MinterActivity, MinterActivityLike>(
         MinterActivitySchema,
-        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     );
 
     /**
@@ -400,7 +400,7 @@ export class RelativeDelegateLinkHelper extends DataBridge {
             * uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<RelativeDelegateLink, RelativeDelegateLinkLike>(
         RelativeDelegateLinkSchema,
-        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     );
 
     // You might expect a function as follows.  We provide this interface and result, 

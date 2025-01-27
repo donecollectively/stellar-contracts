@@ -4,12 +4,9 @@ import type {
     anyTypeDetails,
     enumTypeDetails,
     typeDetails,
-    variantTypeDetails
+    variantTypeDetails,
 } from "../HeliosMetaTypes.js";
-import type {
-    EnumTypeSchema,
-    TypeSchema,
-} from "@helios-lang/type-utils";
+import type { EnumTypeSchema, TypeSchema } from "@helios-lang/type-utils";
 import { BundleBasedGenerator } from "./BundleBasedGenerator.js";
 
 type dataBridgeTypeInfo = {
@@ -101,7 +98,7 @@ export class dataBridgeGenerator
                  /*unused?*/ ${castMemberName}: Cast<${structName}Like, ${structName}> 
                     = makeCast<${structName}Like, ${structName}>(
                         this.schema.${structName}, 
-                        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+                        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
                     );
             `,
             accessorCode: `${structName}(fields: ${structName}Like}) {
@@ -259,7 +256,7 @@ ${this.includeNamedSchemas()}
         const readerClassName = `${this.bundle.bridgeClassName}Reader`;
         this.helperClasses[readerClassName] =
             this.generateDataReaderClass(readerClassName);
-        return `    reader = new ${readerClassName}(this);\n`;
+        return `    reader = new ${readerClassName}(this, this.isMainnet);\n`;
     }
 
     generateDataReaderClass(className: string) {
@@ -267,7 +264,7 @@ ${this.includeNamedSchemas()}
  * @public
  */
 export class ${className} extends DataBridgeReaderClass {
-    constructor(public bridge: ${this.bundle.bridgeClassName}) {
+    constructor(public bridge: ${this.bundle.bridgeClassName}, isMainnet: boolean) {
         super();
     }
 ${this.includeEnumReaders()}
@@ -393,7 +390,7 @@ ${this.includeStructReaders()}
                     `      /**\n` +
                     `       * generates UplcData for the enum type ***${typeName}*** for the \`${this.bundle.program.name}\` script\n` +
                     `       */\n` +
-                    `        ${typeName}: new ${helperClassName}(),`
+                    `        ${typeName}: new ${helperClassName}({isMainnet: this.isMainnet}),`
                 );
             })
             .join("\n");
@@ -425,11 +422,9 @@ ${this.includeStructReaders()}
                 this.additionalCastMemberDefs[castMemberName] =
                     `    /**
                 * uses unicode U+1c7a - sorts to the end */\n` +
-                    `    ${castMemberName} = makeCast<${
-                        canonicalTypeName}, ${permissiveTypeName
-                    }>(\n`+
-                    `        ${typeName}Schema,\n`+
-                    `        { isMainnet: true, unwrapSingleFieldEnumVariants: true }\n`+
+                    `    ${castMemberName} = makeCast<${canonicalTypeName}, ${permissiveTypeName}>(\n` +
+                    `        ${typeName}Schema,\n` +
+                    `        { isMainnet: true, unwrapSingleFieldEnumVariants: true }\n` +
                     `    );\n`;
                 return (
                     `      /**\n` +
@@ -521,7 +516,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
     ᱺᱺactivityCast = makeCast<
         ${canonicalType}, ${permissiveType}
     >(${schemaName}, { 
-        isMainnet: true,
+        isMainnet: this.isMainnet,
         unwrapSingleFieldEnumVariants: true
     }); // activityAccessorCast`;
 
@@ -532,7 +527,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
     /**
      * generates UplcData for the activity type (***${activityTypeName}***) for the \`${this.bundle.program.name}\` script
      */
-    activity : ${helperClassName}= new ${helperClassName}({isActivity: true}); // activityAccessor/enum
+    activity : ${helperClassName}= new ${helperClassName}({isMainnet: this.isMainnet, isActivity: true}); // activityAccessor/enum
         ${activityName}: ${helperClassName} = this.activity;\n`;
             // ---------------------------------
         } else if (activityDetails.typeSchema.kind === "struct") {
@@ -689,7 +684,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             }***\n` +
             `     * for this contract script. ${moreTypeGuidance}\n` +
             `     */\n` +
-            `    datum: ${helperClassType}\n     = new ${helperClassName}({}) ${helperClassTypeCast} ` +
+            `    datum: ${helperClassType}\n     = new ${helperClassName}({isMainnet: this.isMainnet}) ${helperClassTypeCast} ` +
             datumAccessorVarietyAnnotation +
             typeNameAccessor +
             `\n\n    readDatum : (d: UplcData) => Ergo${typeName} = (d) =>  {\n` +
@@ -724,7 +719,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         ${canonicalType}, ${permissiveType}
     >(
         ${JSON.stringify(typeSchema)}, 
-        { isMainnet: true, unwrapSingleFieldEnumVariants: true }
+        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     ); // datumAccessorCast\n`;
 
         return `export class ${helperClassName} extends DataBridge {
@@ -818,17 +813,15 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         return (
             `/**\n` +
             ` * Helper class for generating UplcData for the struct ***${structName}*** type.\n` +
-            ` * @public\n`+
+            ` * @public\n` +
             ` */\n` +
             `export class ${structName}Helper extends DataBridge {\n` +
             `    isCallable = true\n` +
             `   /**
             * uses unicode U+1c7a - sorts to the end */\n` +
-            `    ᱺᱺcast = makeCast<${
-                typeDetails.canonicalTypeName}, ${ typeDetails.permissiveTypeName                     
-            }>(\n`+
-            `        ${structName}Schema,\n`+
-            `        { isMainnet: true, unwrapSingleFieldEnumVariants: true }\n`+
+            `    ᱺᱺcast = makeCast<${typeDetails.canonicalTypeName}, ${typeDetails.permissiveTypeName}>(\n` +
+            `        ${structName}Schema,\n` +
+            `        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }\n` +
             `    );\n\n` +
             `    // You might expect a function as follows.  We provide this interface and result, \n` +
             `    // using a proxy in the inheritance chain.\n` +
@@ -870,13 +863,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `    /*mkEnumHelperClass*/\n` +
             `    /**
             *  uses unicode U+1c7a - sorts to the end */\n` +
-            `    ᱺᱺcast = makeCast<${
-                typeDetails.canonicalTypeName}, ${typeDetails.permissiveTypeName
-            }>(\n`+
-            `        ${enumName}Schema,\n`+
-            `        { isMainnet: true, unwrapSingleFieldEnumVariants: true }\n`+
+            `    ᱺᱺcast = makeCast<${typeDetails.canonicalTypeName}, ${typeDetails.permissiveTypeName}>(\n` +
+            `        ${enumName}Schema,\n` +
+            `        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }\n` +
             `    );\n\n` +
-
             this.mkEnumVariantAccessors(
                 typeDetails,
                 isDatum,
@@ -915,7 +905,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         );
 
         // registers the nested helper class
-        this.helperClasses[nestedHelperClassName] = nestedHelper; 
+        this.helperClasses[nestedHelperClassName] = nestedHelper;
 
         // const nestedHelperTypeParams = `<\n        ${
         //     isActivity ? "isActivity" : "JustAnEnum"
@@ -928,7 +918,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `     */\n` +
             `    get ${variantName}() {\n` +
             `        const nestedAccessor = new ${nestedHelperClassName}({
-            isNested: true, isActivity: ${isActivity ? "true" : "false"} 
+            isMainnet: this.isMainnet, isNested: true, isActivity: ${
+                isActivity ? "true" : "false"
+            } 
         });\n` +
             `        ${"//"}@ts-expect-error drilling through the protected accessor.  See more comments about that above\n` +
             `        nestedAccessor.mkDataVia(\n` +
@@ -1104,7 +1096,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    /**\n` +
                 activitySummary +
                 `     * @param fields - \\{ ` +
-                filteredFields(0, undefined, ", ").replace(/([<{}>])/g, "\\$1") +
+                filteredFields(0, undefined, ", ").replace(
+                    /([<{}>])/g,
+                    "\\$1"
+                ) +
                 ` \\}\n` +
                 `     * @remarks\n` +
                 `    * ### Seeded activity\n` +
@@ -1253,7 +1248,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                       `    * a complete wrapper for this inner activity detail.\n`
                     : "") +
                 `     */\n` +
-                `    get $seeded$${variantName}() {\n`+
+                `    get $seeded$${variantName}() {\n` +
                 `        return impliedSeedActivityMaker(this,this.${variantName})() // called with no args needed\n` +
                 `    } /* coda: seeded helper in same singleField/seeded enum variant*/\n`
             );

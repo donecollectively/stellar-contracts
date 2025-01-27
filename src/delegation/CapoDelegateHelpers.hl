@@ -381,7 +381,7 @@ enum PendingCharterChange {
         change: PendingDelegateChange
     }
     otherManifestChange {
-        activity: ManifestActivity,
+        activity: ManifestActivity
         /**
          * indicates delegates that are needed to validate a pending change
          * @remarks

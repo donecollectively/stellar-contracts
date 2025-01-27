@@ -832,7 +832,8 @@ export type MintingActivityMeta = EnumTypeMeta<
             "fields", MintingActivity$mintingUuts, "isSeededActivity"
         >,
         mockOtherActivity: singleEnumVariantMeta<MintingActivityMeta, "mockOtherActivity",
-            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
+            "Constr#1", "singletonField", /* implied wrapper { QQ: ... } for singleVariantField */ 
+			SomeEnum   , "noSpecialFlags"
         >
     }
 >;
@@ -849,11 +850,13 @@ export type MintingActivityMeta = EnumTypeMeta<
  */
 export type MintingActivity = 
         | { mintingUuts: MintingActivity$mintingUuts /*minEnumVariant*/ }
-        | { mockOtherActivity: tagOnly /*minEnumVariant*/ }
+        | { mockOtherActivity: /* implied wrapper { QQ: ... } for singleVariantField */ 
+			SomeEnum    /*minEnumVariant*/ }
 
 export type ErgoMintingActivity = IntersectedEnum<
         | { mintingUuts: MintingActivity$Ergo$mintingUuts /*minEnumVariant*/ }
-        | { mockOtherActivity: tagOnly /*minEnumVariant*/ }
+        | { mockOtherActivity: /* implied wrapper { QQ: ... } for singleVariantField */ 
+			ErgoSomeEnum    /*minEnumVariant*/ }
 >
 
 /**
@@ -871,7 +874,8 @@ export type ErgoMintingActivity = IntersectedEnum<
  */
 export type MintingActivityLike = IntersectedEnum<
         | { mintingUuts: MintingActivity$mintingUutsLike /*minEnumVariant*/ }
-        | { mockOtherActivity: tagOnly /*minEnumVariant*/ }
+        | { mockOtherActivity: /* implied wrapper { QQ: ... } for singleVariantField */ 
+			SomeEnumLike    /*minEnumVariant*/ }
 >
 
 export type BurningActivityMeta = EnumTypeMeta<
@@ -1311,6 +1315,22 @@ export type CapoManifestEntryLike = {
 }
 
 
+export type PendingCharterChange$otherManifestChange = {
+    activity: ManifestActivity  /*minVariantField*/ ,
+    remainingDelegateValidations: Array<DelegateRole>  /*minVariantField*/ 
+}
+
+export type PendingCharterChange$Ergo$otherManifestChange = {
+    activity: ErgoManifestActivity  /*minVariantField*/ ,
+    remainingDelegateValidations: Array<ErgoDelegateRole>  /*minVariantField*/ 
+}
+
+export type PendingCharterChange$otherManifestChangeLike = {
+    activity: ManifestActivityLike  /*minVariantField*/ ,
+    remainingDelegateValidations: Array<DelegateRoleLike>  /*minVariantField*/ 
+}
+
+
 export type PendingCharterChangeMeta = EnumTypeMeta<
     {module: "CapoDelegateHelpers", enumName: "PendingCharterChange"}, {
         delegateChange: singleEnumVariantMeta<PendingCharterChangeMeta, "delegateChange",
@@ -1318,7 +1338,8 @@ export type PendingCharterChangeMeta = EnumTypeMeta<
 			PendingDelegateChange   , "noSpecialFlags"
         >,
         otherManifestChange: singleEnumVariantMeta<PendingCharterChangeMeta, "otherManifestChange",
-            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
+            "Constr#1", 
+            "fields", PendingCharterChange$otherManifestChange, "noSpecialFlags"
         >
     }
 >;
@@ -1336,12 +1357,12 @@ export type PendingCharterChangeMeta = EnumTypeMeta<
 export type PendingCharterChange = 
         | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
 			PendingDelegateChange    /*minEnumVariant*/ }
-        | { otherManifestChange: tagOnly /*minEnumVariant*/ }
+        | { otherManifestChange: PendingCharterChange$otherManifestChange /*minEnumVariant*/ }
 
 export type ErgoPendingCharterChange = IntersectedEnum<
         | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
 			ErgoPendingDelegateChange    /*minEnumVariant*/ }
-        | { otherManifestChange: tagOnly /*minEnumVariant*/ }
+        | { otherManifestChange: PendingCharterChange$Ergo$otherManifestChange /*minEnumVariant*/ }
 >
 
 /**
@@ -1360,7 +1381,7 @@ export type ErgoPendingCharterChange = IntersectedEnum<
 export type PendingCharterChangeLike = IntersectedEnum<
         | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
 			PendingDelegateChangeLike    /*minEnumVariant*/ }
-        | { otherManifestChange: tagOnly /*minEnumVariant*/ }
+        | { otherManifestChange: PendingCharterChange$otherManifestChangeLike /*minEnumVariant*/ }
 >
 
 export type CapoDatum$CharterData = {
