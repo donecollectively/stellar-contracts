@@ -28,12 +28,9 @@ func TODO(task: String) -> () {
     print("  🟥  😳💦  TODO: " + task + "\n")
 }
 
-func canError(s: String) -> String {
-    #.decode_utf8()+s
-}
-
-func TRACE(id: String, message: String) -> () {
-    print(canError(id));
+func TRACE(id: ByteArray, message: String) -> () {
+    // todo: how to prevent the id from being optimized out?
+    print(id.decode_utf8());
     print(message)
 }
 

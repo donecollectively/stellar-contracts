@@ -54,7 +54,7 @@ func main(r : MinterActivity) -> Bool {
     value_minted: Value = tx.minted;
     assert(true || (/* never evaluated */ rev.serialize() == rev.serialize()), "no");
     assert(true || (/* never evaluated */ seedTxn.serialize() == seedTxn.serialize()), "no");
-    TRACE("cm1", " 🚥❓ Capo minter");
+    TRACE("cm1".encode_utf8(), " 🚥❓ Capo minter");
     print("  -- minter policy id: " + get_current_minting_policy_hash().show());
 
     ok : Bool = r.switch {
@@ -76,7 +76,7 @@ func main(r : MinterActivity) -> Bool {
             // settingsDgtTnBase: String = "settingsDgt"
             // if (charter.withSettings) purposes = purposes + []String{ settingsDgtTnBase, "settings" }
 
-            TRACE("cm2", "  -- creating Capo charter");
+            TRACE("cm2".encode_utf8(), "  -- creating Capo charter");
             REQT("must mint the charter token");
             assert(value_minted >= charterVal,
                 "charter token not minted");
@@ -86,7 +86,7 @@ func main(r : MinterActivity) -> Bool {
             mkUutName: (String) -> String = mkUutTnFactory(
                 minterSeed  
             );
-            TRACE("cm3", "validateUutMinting");
+            TRACE("cm3".encode_utf8(), "validateUutMinting");
             REQT("must mint uuts for mintDgt, spendDgt, and govAuth using the same seed");
             mintsUuts: Bool = validateUutMinting(
                 mph: mph,
@@ -95,7 +95,7 @@ func main(r : MinterActivity) -> Bool {
                 mkTokenName: mkUutName,
                 bootstrapCharter: charterVal
             );
-            TRACE("cm4", "output to expected address");
+            TRACE("cm4".encode_utf8(), "output to expected address");
             REQT("must deposit the charter token to the new Capo address");
             charterOutput: TxOutput = tx.outputs.find( (output: TxOutput) -> Bool {
                 output.address == charter.owner &&
@@ -124,7 +124,7 @@ func main(r : MinterActivity) -> Bool {
             // but much less than the special status they had when Settings
             // were a separate datum type.
 
-            TRACE("cm5", "validate charter data");
+            TRACE("cm5".encode_utf8(), "validate charter data");
             REQT("the new charter must not have any mint invariants, spend invariants, manifest entry or pending-delegate-actions");
             // once we have burned down the test backlog a bit, we can add these in:
             assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");
@@ -133,7 +133,7 @@ func main(r : MinterActivity) -> Bool {
             assert(pendingDelegates.length == 0, "no pending delegates allowed at charter creation");
 
             REQT("the new charter must have mintDgt, spendDgt, and authDgt tokens, each deposited to their separate script addresses");
-            TRACE("cm6", "  -- checking for required delegates\n");
+            TRACE("cm6".encode_utf8(), "  -- checking for required delegates\n");
             hasGoodDelegates : Bool = true &&
                 authDgt.hasValidOutput(mph, true, DgTkn::Created) &&
                 mintDgt.hasValidOutput(mph, true, DgTkn::Created) &&
@@ -174,10 +174,10 @@ func main(r : MinterActivity) -> Bool {
                 //     true
                 //  };
 
-            TRACE("cm7", "");
+            TRACE("cm7".encode_utf8(), "");
             assert(namedDelegates.length == 0, "no named delegates allowed at charter creation");
 
-            TRACE("cm8", "finishing");
+            TRACE("cm8".encode_utf8(), "finishing");
             print("\n  -- hasSeed: " + hasSeed.show());
             print("\n  -- mintsUuts: " + mintsUuts.show());
             print("\n  -- hasGoodDelegates: " + hasGoodDelegates.show());
