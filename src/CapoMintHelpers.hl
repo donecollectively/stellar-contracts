@@ -216,7 +216,7 @@ func requiresMintDelegateApproval(
         MultipleDelegateActivities{ma} => {
             // assert(false && ma.length > 0, "empty MultipleDelegateActivities");
             mintDgtInput.requiresValidOutput()
-            && ma.map(AbstractDelegateActivitiesEnum::from_data). all(
+            && ma.map(AbstractDelegateActivitiesEnum::from_data).all(
                 (mintDgtActivity: AbstractDelegateActivitiesEnum) -> Bool {
                     mintDgtActivity.switch {
                         CreatingDelegatedData => true, // short version of recursing the full check
@@ -308,12 +308,27 @@ func tnCip68ref100(tn : String) -> ByteArray {
 }
 
 /**
- * ensures that shorter token-names are mentioned before longer ones
- * AND that lexographically smaller names are mentioned first.
+ * ensures that minted- and expected-token-names are both
+ * sorted in the same way.  The on-chain format requires shorter-first,
+ * but we re-sort them (both) because the node doesn't always present them in
+ * script-context in that required order.  
+ *
  */
-func sortPolicyValues(k1 : ByteArray, _v1 : Int, k2 : ByteArray, _v2: Int) -> Bool {
+ func sortPolicyValuesPredictably(k1 : ByteArray, _v1 : Int, k2 : ByteArray, _v2: Int) -> Bool {
+     k1 < k2
+ }
+
+ /*
+ * ensures that shorter token-names are mentioned before longer ones
+ * AND that lexographically smaller names are mentioned first.  This is
+ * the canonical ordering and is required for hardware wallets to work.
+ */
+
+func sortPolicyValuesShortestFirst(k1 : ByteArray, _v1 : Int, k2 : ByteArray, _v2: Int) -> Bool {
     if (k1.length < k2.length) { 
-        true 
+        true
+    } else if (k1.length > k2.length) {
+        false
     } else {
         k1 < k2
     }
@@ -353,7 +368,6 @@ func validateUutMinting(
 
         if (needsMintDelegateApproval) {
             //!!! todo: add explicit activity details in authorization
-                                    //!todo change this one
             requiresDelegateAuthorizingMint(
                 delegateLink: mintDgt, 
                 mph: mph, 
@@ -385,7 +399,7 @@ func validateUutMinting(
 
     // print(" purposes: " + purposes.join(", "));
     expectedValue : Value = bootstrapCharter + otherMintedValue + Value::sum(
-        purposes.sort((a:String, b:String) -> Bool { a != b }).map(
+        purposes.map(
             (purpose: String) -> Value {
                 // print("purpose: " + purpose);
                 mkTv(mph, mkTokenName(purpose) /*, quantity=1 */)
@@ -406,15 +420,20 @@ func validateUutMinting(
     // seedIdx = seed.index.show();
     // print("\n  -- uut-minting seed: " + seedTxId + "🔹#"+seedIdx);
 
-    expectedValue.get_policy(mph).sort(sortPolicyValues).for_each( (tn : ByteArray, i: Int) -> {
+    expectedValuesSorted = expectedValue.
+        get_policy(mph).
+        sort(sortPolicyValuesPredictably);
+    expectedValuesSorted.for_each( (tn : ByteArray, i: Int) -> {
         tnStr = tn.decode_utf8();
         print( "    ℹ️ 🐞 expected: "+ i.show() + "x " + tnStr )
     });
 
     actualThisPolicyMint = valueMinted.get_policy(mph);
+    actualThisPolicyMintSorted = actualThisPolicyMint.
+        sort(sortPolicyValuesPredictably);
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
     if (true) {
-        actualThisPolicyMint.for_each( (tn : ByteArray, i: Int) -> {
+        actualThisPolicyMintSorted.for_each( (tn : ByteArray, i: Int) -> {
             tnStr = tn.decode_utf8();
             print( "    ℹ️ 🐞   actual: " + i.show() + "x " + tnStr )
         });
@@ -437,7 +456,7 @@ func validateUutMinting(
     
 
     REQT("Ensures the mint for this policy-id is exactly the expected value");
-    thisPolicyMintOK = actualThisPolicyMint == expectedValue.get_policy(mph).sort(sortPolicyValues);
+    thisPolicyMintOK = actualThisPolicyMintSorted == expectedValuesSorted;
     assert(thisPolicyMintOK, "mismatch in UUT mint");
     print("  -- this-policy mint ok");
     assert(hasSeedUtxo(tx, seed), "no seed"); //, "UUT "+purposes.join("+")
@@ -459,10 +478,9 @@ func validateUutMinting(
             REQT("Doesn't constrain any mentioned policy's minting of any other tokens");
             remainingExpectedMint.to_map().for_each( 
                 (otherMph: MintingPolicyHash, expectedTokensThisPolicy: Map[ByteArray]Int) -> {
-                    mintedThisPolicy : Map[ByteArray]Int = valueMinted.get_policy(otherMph);/* implicitly sorted already .sort(sortPolicyValues);*/
+                    mintedThisPolicy : Map[ByteArray]Int = valueMinted.get_policy(otherMph);
 
                     expectedTokensThisPolicy. 
-                    sort(sortPolicyValues).
                     for_each( (tokenName: ByteArray, expectedCount: Int) -> {
                         if(! mintedThisPolicy.get_safe(tokenName).
                             switch {

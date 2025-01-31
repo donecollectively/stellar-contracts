@@ -24,6 +24,7 @@ import {
     type TxRedeemer,
     type TxOutputDatum,
     makeAddress,
+    makeNetworkParamsHelper,
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { bytesToText, textToBytes, type InlineDatum } from "./HeliosPromotedTypes.js";
@@ -276,6 +277,9 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         );
     }
 
+    const networkParamsHelper = networkParams ? 
+        makeNetworkParamsHelper(networkParams) : undefined;
+
     // const d = tx.dump();
     const seenRedeemers = new Set();
 
@@ -390,6 +394,20 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                 )
                 .join("\n  ")}`;
         }
+        if ("firstValidSlot" == x || "lastValidSlot" == x) {
+            if (networkParamsHelper) {
+                const slotTime = new Date(networkParamsHelper.slotToTime(item));
+                const timeDiff = ( Date.now() - slotTime.getTime()) / 1000;
+                // format timeDiff with explicit plus or minus sign:
+                const sign = timeDiff > 0 ? "+" : "-";
+                const timeDiffString = sign + Math.abs(timeDiff).toFixed(1) + "s";
+
+                item = `${item} ${slotTime.toLocaleDateString()} ${
+                    slotTime.toLocaleTimeString()
+                } (now ${timeDiffString})`;
+            }
+        }
+
         if ("signers" == x) {
             item = item.map((x) => {
                 const hex = x.toHex();
