@@ -59,7 +59,7 @@ export type {
     uutPurposeMap,
     DelegatedDataPredicate,
     hasAllUuts,
-    hasBootstrappedCapoConfig as hasBootstrappedConfig,
+    hasBootstrappedCapoConfig,
     hasCharterRef,
     hasSettingsRef,
     hasUutContext,
@@ -102,6 +102,7 @@ export {
     txn,
     partialTxn,
     datum,
+    findInputsInWallets
 } from "./src/StellarContract.js";
 
 export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
@@ -132,6 +133,7 @@ export {
     type hasAddlTxns,
     type TxDescription,
     type MultiTxnCallback,
+    type SubmitOptions,
 } from "./src/StellarTxnContext.js";
 
 export {
@@ -151,6 +153,10 @@ export type {
     anyDatumProps,
     configBaseWithRev as configBase, // as paramsBase,
     StellarSetupDetails as StellarFactoryArgs,
+    StellarSetupDetails,
+    ActorContext,
+    NetworkContext,
+    SetupInfo,
     ConfigFor,
 } from "./src/StellarContract.js";
 
@@ -164,12 +170,20 @@ export {
     type DgDataCreationAttrs,
     type DelegatedDatumTypeName,
     type updateActivityFunc,
+    type DgDataType,
+    type DgDataTypeLike,
+    type minimalDgDataTypeLike,
+    type DgDataCreationOptions,
+    type DgDataUpdateOptions,    
     DelegatedDataContract,
 } from "./src/delegation/DelegatedDataContract.js";
+
 export {
     WrappedDgDataContract,
     type WrappedDgDataType,
 } from "./src/delegation/WrappedDgDataContract.js";
+
+export * from "./src/helios/dataBridge/BridgeTypes.js";
 
 export { CapoHeliosBundle } from "./src/CapoHeliosBundle.js";
 export {
@@ -181,7 +195,17 @@ export {
     type DataBridgeOptions,
     type callWith,
 } from "./src/helios/dataBridge/DataBridge.js";
-export type { IntersectedEnum } from "./src/helios/typeUtils.js";
+export type { 
+    IntersectedEnum,
+    AbstractNew,
+    Expand,
+    IF,
+    IFISNEVER,
+    IF_ISANY,
+    ISNEVER,
+    NEVERIF,
+    OR,
+ } from "./src/helios/typeUtils.js";
 export {
     EnumBridge,
     type JustAnEnum,
@@ -230,4 +254,4 @@ export {
 
 // export * from "./src/testing/index.js";
 
-export type { TestHelperState } from "./src/testing/types.js";
+// export type { TestHelperState } from "./src/testing/types.js";

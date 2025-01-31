@@ -1,12 +1,13 @@
 import {
+    CapoWithoutSettings,
+    CapoHeliosBundle,
     defineRole,
     delegateRoles
-} from "../src/delegation/RolesAndDelegates";
+} from "@donecollectively/stellar-contracts";
+
 // import CapoBundleWithGenericUuts from "./CapoWithGenericUuts.hlb.js";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
-import { CapoHeliosBundle } from "../src/CapoHeliosBundle.js";
 import StructDatumTester from "../src/testing/StructDatumTester.hlb.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {

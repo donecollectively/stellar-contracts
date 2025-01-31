@@ -32,5 +32,5 @@ export { StellarTestHelper } from "./StellarTestHelper.js";
 
 export {
     StellarNetworkEmulator,
+    SimpleWallet_stellar
 } from "./StellarNetworkEmulator.js";
-

@@ -77,7 +77,7 @@ const dualPlatformEntryPoints = {
 };
 const nodeOnlyEntryPoints = {
     // "ContractBasedDelegate": "./src/delegation/ContractBasedDelegate.ts",
-    "testing": "./src/testing/index.ts",
+   "testing": "./src/testing/index.ts",
 }
 const browserOnlyEntryPoints = {
 }

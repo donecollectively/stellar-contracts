@@ -1,13 +1,18 @@
+import type { Source } from "@helios-lang/compiler-utils";
+
+import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
+
 import CapoMintHelpers from "./CapoMintHelpers.hl";
 import CapoDelegateHelpers from "./delegation/CapoDelegateHelpers.hl";
 import StellarHeliosHelpers from "./StellarHeliosHelpers.hl";
 import CapoHelpers from "./CapoHelpers.hl";
 import TypeMapMetadata from "./TypeMapMetadata.hl";
-
 import mainContract from "./DefaultCapo.hl";
-import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
-import type { Source } from "@helios-lang/compiler-utils";
-import type { AllDeployedScriptConfigs, CapoDeployedDetails } from "./configuration/DeployedScriptConfigs.js";
+
+import type {
+    AllDeployedScriptConfigs,
+    CapoDeployedDetails,
+} from "./configuration/DeployedScriptConfigs.js";
 import type { StellarSetupUplc } from "./StellarContract.js";
 
 export type CapoHeliosBundleClass = new () => CapoHeliosBundle;

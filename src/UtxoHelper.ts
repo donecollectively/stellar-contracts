@@ -19,7 +19,7 @@ import {
 } from "@helios-lang/ledger";
 
 import { StellarTxnContext } from "./StellarTxnContext.js";
-import type { SimpleWallet_stellar } from "./testing/StellarNetworkEmulator.js";
+// import type { SimpleWallet_stellar } from "./testing/StellarNetworkEmulator.js";
 import { dumpAny, utxosAsString } from "./diagnostics.js";
 import { UutName } from "./delegation/UutName.js";
 import type { SetupInfo, StellarContract } from "./StellarContract.js";
@@ -54,7 +54,7 @@ export type utxoPredicate = (
 
 export type UtxoSearchScope = {
     address?: Address;
-    wallet?: Wallet | SimpleWallet | SimpleWallet_stellar;
+    wallet?: Wallet | SimpleWallet //| SimpleWallet_stellar;
     exceptInTcx?: StellarTxnContext;
     // utxos : TxInput[]
 };

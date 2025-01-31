@@ -1,9 +1,10 @@
+import type { InlineTxOutputDatum } from "@helios-lang/ledger";
+import type { IntLike } from "@helios-lang/codec-utils";
 import type { UplcData } from "@helios-lang/uplc";
 
 import type { isActivity } from "../ActivityTypes.js";
 import type {
     ContractDataBridgeWithEnumDatum,
-    DataBridge,
     DataBridgeReaderClass,
 } from "../helios/dataBridge/DataBridge.js";
 import type {
@@ -11,7 +12,7 @@ import type {
     JustAnEnum,
 } from "../helios/dataBridge/EnumBridge.js";
 
-import type { AbstractNew } from "../helios/dataBridge/BridgeTypeUtils.js";
+import type { AbstractNew } from "../helios/typeUtils.js";
 
 import UnspecializedDelegateBridge, {
     DelegateActivityHelper,
@@ -26,8 +27,6 @@ import type {
     ErgoDelegateDatum,
     minimalAnyData,
 } from "./UnspecializedDelegate.typeInfo.js";
-import type { InlineTxOutputDatum } from "@helios-lang/ledger";
-import type { IntLike } from "@helios-lang/codec-utils";
 import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
 
 /**

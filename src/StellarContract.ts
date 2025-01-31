@@ -43,14 +43,10 @@ import {
     ContractDataBridgeWithOtherDatum,
     ContractDataBridgeWithEnumDatum,
 } from "./helios/dataBridge/DataBridge.js";
-import type {
-    mustFindConcreteContractBridgeType,
-    findActivityType,
-    findDatumType,
-    findReadDatumType,
-    possiblyAbstractContractBridgeType,
-    AbstractNew,
-} from "./helios/dataBridge/BridgeTypeUtils.js";
+import type { possiblyAbstractContractBridgeType } from "./helios/dataBridge/BridgeTypes.js";
+import type { findReadDatumType } from "./helios/dataBridge/BridgeTypes.js";
+import type { mustFindConcreteContractBridgeType } from "./helios/dataBridge/BridgeTypes.js";
+import type { AbstractNew } from "./helios/typeUtils.js";
 import { getSeed, type hasSeed, type SeedAttrs } from "./ActivityTypes.js";
 import { makeCast } from "@helios-lang/contract-utils";
 import type {
@@ -62,10 +58,16 @@ import type { DeployedScriptDetails } from "./configuration/DeployedScriptConfig
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
 
+/**
+ * @public
+ */
 export function isUplcData(x: any): x is UplcData {
     return "kind" in x && "toCbor" in x;
 }
 
+/**
+ * @public
+ */
 type WalletsAndAddresses = {
     wallets: Wallet[];
     addresses?: Address[];
@@ -83,9 +85,7 @@ type WalletsAndAddresses = {
  * @public
  **/
 export type stellarSubclass<S extends StellarContract<any>> = (new (
-    setup: SetupInfo,
-    ...args: any[]
-) => S) & {
+    setup: SetupInfo ) => S) & {
     // & StellarContract<CT>
     defaultParams: Partial<ConfigFor<S>>;
     createWith(args: StellarSetupDetails<ConfigFor<S>>): Promise<S>;
@@ -105,6 +105,9 @@ export interface configBaseWithRev {
     rev: bigint;
 }
 
+/**
+ * @public
+ */
 export type UplcRecord<CT extends configBaseWithRev> = {
     [key in keyof CT]: UplcData;
 };
@@ -256,6 +259,9 @@ export function partialTxn(proto, thingName, descriptor) {
     return descriptor;
 }
 
+/**
+ * @public
+ */
 export async function findInputsInWallets(
     v: Value,
     searchIn: WalletsAndAddresses,
@@ -383,9 +389,15 @@ type ComputedScriptProperties = Partial<{
     identity: string;
 }>;
 
+/**
+ * @public
+ */
 export type ActorContext<WTP extends Wallet = Wallet> = {
     wallet?: WTP;
 };
+/**
+ * @public
+ */
 export type NetworkContext<NWT extends CardanoClient = CardanoClient> = {
     network: NWT;
 };

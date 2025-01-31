@@ -33,16 +33,17 @@ import type {
 
  type TimeLike = IntLike;
  
-
-import {HeliosScriptBundle} from "../helios/HeliosScriptBundle.js"
-import type { 
-    tagOnly, 
-    EnumTypeMeta, 
-    singleEnumVariantMeta
-} from "../helios/HeliosMetaTypes.js"
-import type { minimalData } from "../delegation/DelegatedData.js"
-import type { IntersectedEnum } from "../helios/typeUtils.js"
-                
+        
+import type {
+    CapoHeliosBundle,
+    CapoDelegateBundle,
+    minimalData,
+    HeliosScriptBundle,
+    EnumTypeMeta,
+    singleEnumVariantMeta,
+    tagOnly,
+    IntersectedEnum
+} from "@donecollectively/stellar-contracts"
 
 
 export type AnyData = {

@@ -43,14 +43,14 @@ import {
     makeEmulatorRegularTx,
     type SimpleWallet,
 } from "@helios-lang/tx-utils";
+import type { NumberGenerator } from "@helios-lang/crypto";
 import { DEFAULT_NETWORK_PARAMS } from "@helios-lang/ledger";
 import { type UplcLogger } from "@helios-lang/uplc";
 
-import { dumpAny } from "../diagnostics.js";
-import type { NetworkContext } from "../StellarContract.js";
-import type { NumberGenerator } from "@helios-lang/crypto";
-
-const isInternal = Symbol("isInternal");
+import { 
+    dumpAny, 
+    type NetworkContext 
+} from "@donecollectively/stellar-contracts";
 
 // class GenesisTx implements EmulatorGenesisTx {
 //     #id: number;
@@ -192,10 +192,12 @@ const isInternal = Symbol("isInternal");
 // }
 
 /**
- * This wallet only has a single private/public key, which isn't rotated. Staking is not yet supported.
+ * This wallet only has a single private/public key, which isn't rotated. 
+ * Staking is not yet supported.
+ * @public
  */
 export class SimpleWallet_stellar implements Wallet {
-    #networkCtx: NetworkContext;
+    networkCtx: NetworkContext;
     spendingPrivateKey: Bip32PrivateKey;
     spendingPubKey: PubKey;
 
@@ -203,7 +205,7 @@ export class SimpleWallet_stellar implements Wallet {
     stakingPubKey: PubKey | undefined;
 
     get cardanoClient() {
-        return this.#networkCtx.network;
+        return this.networkCtx.network;
     }
 
     static fromPhrase(
@@ -232,7 +234,7 @@ export class SimpleWallet_stellar implements Wallet {
         spendingPrivateKey: Bip32PrivateKey,
         stakingPrivateKey: Bip32PrivateKey | undefined = undefined
     ) {
-        this.#networkCtx = networkCtx;
+        this.networkCtx = networkCtx;
         this.spendingPrivateKey = spendingPrivateKey;
         this.spendingPubKey = this.spendingPrivateKey.derivePubKey();
 
@@ -286,7 +288,7 @@ export class SimpleWallet_stellar implements Wallet {
     }
 
     async isMainnet(): Promise<boolean> {
-        return this.#networkCtx.network.isMainnet();
+        return this.networkCtx.network.isMainnet();
     }
 
     /**

@@ -1,7 +1,14 @@
 import type { TestContext } from "vitest";
-import type { ConfigFor, StellarContract, configBaseWithRev } from "../StellarContract.js";
-import type { TestHelperState, canHaveRandomSeed, canSkipSetup } from "./types.js";
+import type {
+    ConfigFor,
+    StellarContract,
+} from "@donecollectively/stellar-contracts";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
+import type {
+    canHaveRandomSeed,
+    canSkipSetup,
+    TestHelperState,
+} from "./types.js";
 
 /**
  * Interface augmenting the generic vitest testing context with a convention for testing contracts created with Stellar Contracts.

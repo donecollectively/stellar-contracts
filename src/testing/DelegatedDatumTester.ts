@@ -1,28 +1,28 @@
-import type {
-    Capo,
-} from "../Capo.js";
+import { makeTxOutput } from "@helios-lang/ledger";
+import { 
+    StellarTxnContext,
+    DelegatedDataContract,
+    hasReqts,
+    dumpAny,
+} from "@donecollectively/stellar-contracts";
 import type {
     hasUutContext,
-    hasSettingsRef
-} from "../CapoTypes.js";
+    hasSeedUtxo,
+    hasSettingsRef,
+    DgDataTypeLike,
+} from "@donecollectively/stellar-contracts";
 
-import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
-import { dumpAny } from "../diagnostics.js";
-import { hasReqts } from "../Requirements.js";
-import { DelegatedDataContract, type DgDataTypeLike } from "../delegation/DelegatedDataContract.js";
 import {
     DelegateDatumTesterDataBridge
 } from "./DelegatedDatumTester.bridge.js"
 import type {
     DgDatumTestData,
     DgDatumTestDataLike,
-    ErgoDgDatumTestData,    
     minimalDgDatumTestData
 } from "./DelegatedDatumTester.typeInfo.js"
 
 import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlb.js"
 import { textToBytes } from "../HeliosPromotedTypes.js";
-import { makeTxOutput } from "@helios-lang/ledger";
 
 export class DelegatedDatumTester extends DelegatedDataContract<
     DgDatumTestData,

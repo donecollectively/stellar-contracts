@@ -1,13 +1,17 @@
-import { Capo } from "../Capo.js";
+import { 
+    Capo,
+    StellarTxnContext,
+} from "@donecollectively/stellar-contracts";
 import type {
     hasBootstrappedCapoConfig,
     hasUutContext,
-    MinimalCharterDataArgs
-} from "../CapoTypes.js";
+    MinimalCharterDataArgs,
+    anyState,
+    hasAddlTxns,
+    SubmitOptions,
+} from "@donecollectively/stellar-contracts";
 
-import { StellarTxnContext, type anyState, type hasAddlTxns, type SubmitOptions } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
-import { CapoMinter } from "../minting/CapoMinter.js";
 
 const ACTORS_ALREADY_MOVED =
     "NONE! all actors were moved from a different network via snapshot";
@@ -26,14 +30,12 @@ export abstract class CapoTestHelper<
     SC extends Capo<any>
 > extends StellarTestHelper<SC> {
     get capo() {
-        return this.strella
+        return this.strella;
     }
-    async initialize({
-        randomSeed = 42,
-    }: { randomSeed?: number } = {},
-    args?: Partial<MinimalCharterDataArgs>
-)
-    : Promise<SC> {
+    async initialize(
+        { randomSeed = 42 }: { randomSeed?: number } = {},
+        args?: Partial<MinimalCharterDataArgs>
+    ): Promise<SC> {
         // Note: This method diverges from the base class impl, due to type difficulties.
         // Patches welcome.
 
@@ -91,14 +93,12 @@ export abstract class CapoTestHelper<
             const ts2 = Date.now();
             console.log(
                 // stopwatch emoji: ⏱️
-                `  -- ⏱️ initialized Capo: ${ts2-ts1}ms`
-            );                
+                `  -- ⏱️ initialized Capo: ${ts2 - ts1}ms`
+            );
             console.log("checking delegate scripts...");
             return this.checkDelegateScripts(args).then(() => {
                 const ts3 = Date.now();
-                console.log(
-                    `  -- ⏱️ checked delegate scripts: ${ts3-ts2}ms`
-                )
+                console.log(`  -- ⏱️ checked delegate scripts: ${ts3 - ts2}ms`);
                 return this.strella;
             });
         }
@@ -119,14 +119,18 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
-    async checkDelegateScripts(args: Partial<MinimalCharterDataArgs>={}): Promise<void> {
-        throw new Error(`doesn't fail, because it's implemented by DefaultCapoTestHelper`);
+    async checkDelegateScripts(
+        args: Partial<MinimalCharterDataArgs> = {}
+    ): Promise<void> {
+        throw new Error(
+            `doesn't fail, because it's implemented by DefaultCapoTestHelper`
+        );
     }
 
     get ready() {
         return !!(
-            (this.strella.configIn && !this.strella.didDryRun.configIn) 
-            || this.state.parsedConfig
+            (this.strella.configIn && !this.strella.didDryRun.configIn) ||
+            this.state.parsedConfig
         );
     }
 
@@ -134,9 +138,11 @@ export abstract class CapoTestHelper<
      * Creates a new transaction-context with the helper's current or default actor
      * @public
      **/
-    mkTcx<T extends anyState=anyState>(txnName?: string) : StellarTxnContext<T> {
-        const tcx = new StellarTxnContext(this.strella.setup)
-        if (txnName) return tcx.withName(txnName) as any
+    mkTcx<T extends anyState = anyState>(
+        txnName?: string
+    ): StellarTxnContext<T> {
+        const tcx = new StellarTxnContext(this.strella.setup);
+        if (txnName) return tcx.withName(txnName) as any;
         return tcx as any;
     }
 
@@ -398,9 +404,7 @@ export abstract class CapoTestHelper<
         args?: Partial<MinimalCharterDataArgs>,
         submitOptions?: SubmitOptions
     ): Promise<
-        hasUutContext<
-            "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" 
-        > &
+        hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> &
             hasBootstrappedCapoConfig &
             hasAddlTxns<any>
     >;

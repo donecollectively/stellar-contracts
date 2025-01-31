@@ -21,10 +21,10 @@ import type { BasicMintDelegate } from "./BasicMintDelegate.js";
 // imports the Capo bundle before anything, so the minter bundle can use it
 import CapoMinterBundle from "./CapoMinter.hlb.js";
 import CapoMinterDataBridge from "./CapoMinter.bridge.js";
-import type {
+import type { 
     mustFindActivityType,
     mustFindConcreteContractBridgeType,
-} from "../helios/dataBridge/BridgeTypeUtils.js";
+} from "../helios/dataBridge/BridgeTypes.js";
 import type { hasSeed, isActivity } from "../ActivityTypes.js";
 
 type MintCharterActivityArgs<T = {}> = T & {

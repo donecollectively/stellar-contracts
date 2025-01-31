@@ -7,10 +7,11 @@
         // "declarationMap": true,
         // "sourceMap": true,
         // "outFile": "./.api-extractor-temp/cacheableProgram.d.ts",
+        "skipLibCheck": true,
+        "rootDir": "/home/san/dev/stellar-contracts/dist",
     },
     "include": [],
     "files": [ 
-        "./src/testing/index.ts",
-        "src/@types/heliosModule.d.ts",
+        "./src/@types/heliosModule.d.ts"
     ]
 }

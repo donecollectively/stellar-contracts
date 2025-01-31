@@ -94,12 +94,10 @@ import type {
 } from "./delegation/DelegatedData.js";
 import type { tokenPredicate } from "./UtxoHelper.js";
 import CapoDataBridge from "./CapoHeliosBundle.bridge.js";
-import type {
-    mustFindActivityType,
-    mustFindConcreteContractBridgeType,
-    mustFindDatumType,
-    mustFindReadDatumType,
-} from "./helios/dataBridge/BridgeTypeUtils.js";
+import type { mustFindActivityType } from "./helios/dataBridge/BridgeTypes.js";
+import type { mustFindConcreteContractBridgeType } from "./helios/dataBridge/BridgeTypes.js";
+import type { mustFindReadDatumType } from "./helios/dataBridge/BridgeTypes.js";
+import type { mustFindDatumType } from "./helios/dataBridge/BridgeTypes.js";
 import type {
     CapoDatum$Ergo$CharterData,
     CapoDatumLike,
@@ -1207,8 +1205,8 @@ export abstract class Capo<
             // 4 // indent 4 spaces
         );
         console.log("offchainDgtLink cache key", role, cacheKey);
-        this.#_delegateCache[role] = this.#_delegateCache[role] || {};
-        this.#_delegateCache[role][cacheKey] = configured;
+        this._delegateCache[role] = this._delegateCache[role] || {};
+        this._delegateCache[role][cacheKey] = configured;
         //@ts-expect-error "could be instantiated with a different type" - TS2352
         return configured as ConfiguredDelegate<DT>;
     }
@@ -1461,7 +1459,7 @@ export abstract class Capo<
         };
     }
 
-    #_delegateCache: {
+    _delegateCache: {
         [roleName: string]: {
             [delegateLink: string]: {
                 // strategyName: string;
@@ -1491,7 +1489,7 @@ export abstract class Capo<
         );
         const selectedDgt = foundRole.delegateClass;
 
-        const cache = this.#_delegateCache;
+        const cache = this._delegateCache;
         const cacheKey = JSON.stringify(
             onchainDgtLink,
             // this.parseDgtConfig(delegateLink),
@@ -1626,7 +1624,7 @@ export abstract class Capo<
         return delegate as DT;
     }
 
-    private showDelegateLink(delegateLink: RelativeDelegateLinkLike) {
+    showDelegateLink(delegateLink: RelativeDelegateLinkLike) {
         return JSON.stringify(delegateLink, null, 2);
     }
 

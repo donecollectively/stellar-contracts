@@ -1,18 +1,24 @@
 import type { NetworkParams } from "@helios-lang/ledger";
 import type {
-    ConfigFor,
+    Capo,
     StellarContract,
-    configBaseWithRev,
-    stellarSubclass,
-} from "../StellarContract.js";
-import type { StellarTestContext } from "./StellarTestContext.js";
+    ConfigFor,
+    configBase,
+} from "@donecollectively/stellar-contracts";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
-import type { Capo } from "../Capo.js";
-import type {
-    NetworkSnapshot,
+import { 
     SimpleWallet_stellar as emulatedWallet,
+    type NetworkSnapshot 
 } from "./StellarNetworkEmulator.js";
+import type { StellarTestContext } from "./StellarTestContext.js";
+// import type {
+//     StellarTestContext,
+//     StellarTestHelper,
+//     DefaultCapoTestHelper,
+//     NetworkSnapshot,
+//     SimpleWallet_stellar as emulatedWallet,
+// } from "@donecollectively/stellar-contracts/testing";
 
 /**
  * @public
@@ -69,7 +75,7 @@ export type TestHelperState<SC extends StellarContract<any>> = {
  **/
 export async function addTestContext<
     SC extends StellarContract<any>,
-    ST_CONFIG extends configBaseWithRev & ConfigFor<SC> = ConfigFor<SC>
+    ST_CONFIG extends configBase & ConfigFor<SC> = ConfigFor<SC>
 >(
     context: StellarTestContext<any, SC>,
     TestHelperClass: stellarTestHelperSubclass<SC>,
@@ -134,16 +140,6 @@ export type actorMap = Record<string, emulatedWallet>;
  * @public
  */
 export const ADA = 1_000_000n; // lovelace
-
-/**
- * type debugging - typeinfo
- * @public
- */
-export type Expand<T> = T extends (...args: infer A) => infer R
-    ? (...args: Expand<A>) => Expand<R>
-    : T extends infer O
-    ? { [K in keyof O]: O[K] }
-    : never;
 
 /**
  * Recursively expand all types in a type

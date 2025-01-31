@@ -5,7 +5,7 @@ import type { UplcData } from "@helios-lang/uplc";
 
 import type { readsUplcData } from "../HeliosMetaTypes.js";
 import type { EnumBridge } from "./EnumBridge.js";
-import type { readsUplcTo } from "./BridgeTypeUtils.js";
+import type { readsUplcTo } from "./BridgeTypes.js";
 import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js";
 
 // const rawDataMakerProxy = new Proxy(

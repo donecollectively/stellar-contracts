@@ -1,4 +1,21 @@
-import { StellarTxnContext, type SubmitOptions } from "../StellarTxnContext.js";
+import type { expect as expectType } from "vitest";
+import type { Address } from "@helios-lang/ledger";
+import type {
+    ConfigFor,
+    stellarSubclass,
+    CharterDataLike,
+    MinimalCharterDataArgs,
+    DelegateConfigDetails,
+    DelegateSetup,
+    UutName,
+    SubmitOptions,
+} from "@donecollectively/stellar-contracts";
+import {
+    Capo,
+    StellarTxnContext,
+    parseCapoJSONConfig,
+    CapoWithoutSettings,
+} from "@donecollectively/stellar-contracts";
 import { ADA } from "./types.js";
 import type {
     DefaultCapoTestHelperClass,
@@ -6,25 +23,6 @@ import type {
     stellarTestHelperSubclass,
 } from "./types.js";
 import { CapoTestHelper } from "./CapoTestHelper.js";
-import type { ConfigFor, stellarSubclass } from "../StellarContract.js";
-import { Capo } from "../Capo.js";
-import type { 
-    CharterDataLike, 
-    MinimalCharterDataArgs 
-} from "../CapoTypes.js";
-// import { CapoMinter } from "../minting/CapoMinter.js";
-
-import type { expect as expectType } from "vitest";
-// import type { CapoOffchainSettingsType } from "../CapoSettingsTypes.js";
-import { CapoWithoutSettings } from "../CapoWithoutSettings.js";
-import type {
-    DelegateConfigDetails,
-    DelegateSetup,
-} from "../delegation/RolesAndDelegates.js";
-import type { UutName } from "../delegation/UutName.js";
-import type { Address } from "@helios-lang/ledger";
-// import { parseCapoJSONConfig } from "../configuration/DeployedScriptConfigs.js";
-import { parseCapoJSONConfig } from "@donecollectively/stellar-contracts";
 
 declare namespace NodeJS {
     interface Global {
@@ -329,30 +327,36 @@ export class DefaultCapoTestHelper<
                     );
 
                     let initialSettings = settingsController.exampleData();
-                    //@ts-expect-error on optional method not declared on the general data-controller type
-                    if (settingsController && !settingsController.initialSettingsData) {
-                        console.warn("Note: the Settings controller has no `async initialSettingsData()` method defined; using exampleData().\n"+
-                            "  Add this method to the settings policy if needed for deployment of the initial settings record.\n"+
-                            "  To suppress this warning, add `initiaiSettingsData() { return this.exampleData() }` to the settings policy."
-                        )
-                    } else {
+                    if (
+                        settingsController &&
                         //@ts-expect-error on optional method not declared on the general data-controller type
-                        initialSettings = await settingsController.initialSettingsData();
+                        !settingsController.initialSettingsData
+                    ) {
+                        console.warn(
+                            "Note: the Settings controller has no `async initialSettingsData()` method defined; using exampleData().\n" +
+                                "  Add this method to the settings policy if needed for deployment of the initial settings record.\n" +
+                                "  To suppress this warning, add `initiaiSettingsData() { return this.exampleData() }` to the settings policy."
+                        );
+                    } else {
+                        initialSettings =
+                            //@ts-expect-error on optional method not declared on the general data-controller type
+                            await settingsController.initialSettingsData();
                     }
-                            
+
                     if (!initialSettings) {
                         throw new Error(
                             "the settings policy must implement exampleData() and/or async initialSettingsData() and return a valid settings record"
                         );
                     }
 
+                    const ma = settingsController.activity.MintingActivities;
+                    //@ts-expect-error because we don't yet have a sufficiently-specific
+                    // generic type for delegated data controllers that require the basic
+                    // seeded-creating-record activity
+                    const activity = ma.$seeded$CreatingRecord;
+
                     return settingsController.mkTxnCreateRecord({
-                        activity:
-                            settingsController.activity.MintingActivities
-                                //@ts-expect-error becuase we don't yet have a sufficiently-specific
-                                // generic type for delegated data controllers that require the basic
-                                // seeded-creating-record activity
-                                .$seeded$CreatingRecord,
+                        activity,
                         data: initialSettings,
                     });
                 },
@@ -402,7 +406,7 @@ export class DefaultCapoTestHelper<
                 },
             });
 
-            return mkSetPolTxn.submitAll()
+            return mkSetPolTxn.submitAll();
         }
     }
 

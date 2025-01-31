@@ -1,17 +1,31 @@
-import type { UplcData } from "@helios-lang/uplc";
-import type { Capo } from "../../Capo.js";
 import CapoDataBridge, {
     CapoActivityHelper,
-    type types as CapoTypes,
     CapoDatumHelper,
 } from "../../CapoHeliosBundle.bridge.js";
-import { ContractBasedDelegate } from "../../delegation/ContractBasedDelegate.js";
-import { BasicMintDelegate } from "../../minting/BasicMintDelegate.js";
-import type { CapoMinter } from "../../minting/CapoMinter.js";
+
 import {
     StellarContract,
-    type stellarSubclass,
-} from "../../StellarContract.js";
+    ContractBasedDelegate,
+    BasicMintDelegate,
+} from "@donecollectively/stellar-contracts";
+
+import type {
+    Capo,
+    CapoMinter,
+    stellarSubclass,
+    AnySC,
+    canHaveDataBridge,
+    CANNOT_ERROR,
+    findActivityType,
+    findReadDatumType,
+    mustFindConcreteContractBridgeType,
+    mustFindDatumType,
+    possiblyAbstractContractBridgeType,
+    readsUplcTo,
+    someContractBridgeClass,
+    someContractBridgeType,
+    AbstractNew
+} from "@donecollectively/stellar-contracts";
 
 import type { MintDelegateWithGenericUuts } from "../../testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import MDWGU_Bridge, * as MDWGU from "../../testing/specialMintDelegate/uutMintingMintDelegate.bridge.js";
@@ -66,36 +80,15 @@ import {
     type minimalDgDataTypeLike,
 } from "../../delegation/DelegatedDataContract.js";
 import type { DgDatumTestData } from "../../testing/DelegatedDatumTester.typeInfo.js";
-import type { Expand } from "../../testing/types.js";
+import type { Expand } from "../typeUtils.js";
 import type { AnyDataTemplate } from "../../delegation/DelegatedData.js";
-type canHaveDataBridge = { dataBridgeClass?: AbstractNew<ContractDataBridge> };
-type someContractBridgeClass = //typeof ContractDataBridge &
-    AbstractNew<ContractDataBridge>;
-type abstractContractBridgeClass = typeof ContractDataBridge & {
-    isAbstract: true;
-};
 type concreteContractBridgeClass = typeof ContractDataBridge & {
     isAbstract: false;
 };
 type abstractContractBridgeType = ContractDataBridge & { isAbstract: true };
 type concreteContractBridgeType = ContractDataBridge & { isAbstract: false };
-type someContractBridgeType = ContractDataBridge;
-
-export type AbstractNew<T = any> = abstract new (...args: any) => T;
-
 type someDataBridgeClass = typeof DataBridge & AbstractNew<DataBridge>;
 
-export type mustFindConcreteContractBridgeType<
-    T extends canHaveDataBridge,
-    bridgeClassMaybe extends someContractBridgeClass = T["dataBridgeClass"] extends someContractBridgeClass
-        ? T["dataBridgeClass"]
-        : never,
-    instanceMaybe extends InstanceType<bridgeClassMaybe> = InstanceType<bridgeClassMaybe> extends ContractDataBridge
-        ? InstanceType<bridgeClassMaybe>
-        : StellarContract<any> extends T
-        ? any
-        : never
-> = instanceMaybe;
 // > = InstanceType<bridgeClassMaybe> extends Option<ContractDataBridge>
 //          ? InstanceType<bridgeClassMaybe>
 //          : never
@@ -103,19 +96,6 @@ export type mustFindConcreteContractBridgeType<
 const h1: null extends null ? true : false = true;
 const h2: never extends null ? true : false = true;
 const h3: null extends never ? true : false = false;
-
-export type possiblyAbstractContractBridgeType<
-    T extends canHaveDataBridge,
-    bridgeClassMaybe extends someContractBridgeClass = T["dataBridgeClass"] extends someContractBridgeClass
-        ? T["dataBridgeClass"]
-        : T["dataBridgeClass"] extends undefined
-        ? never
-        : abstractContractBridgeClass,
-    instanceMaybe extends InstanceType<bridgeClassMaybe> = InstanceType<bridgeClassMaybe> extends ContractDataBridge
-        ? InstanceType<bridgeClassMaybe>
-        : //???                                  vvvvvvvvv
-          ContractDataBridge & InstanceType<bridgeClassMaybe>
-> = instanceMaybe;
 
 type debugContractBridgeType<
     T extends canHaveDataBridge,
@@ -150,15 +130,6 @@ export type findDatumType<
               CANNOT_ERROR
           >
 > = DT;
-// T extends DataMaker ?
-//     T extends { datum : infer D } ? D : "can't infer required datum!?!"
-//     : never;
-
-export type mustFindDatumType<
-    T extends canHaveDataBridge,
-    CBT extends someContractBridgeType = mustFindConcreteContractBridgeType<T>
-> = CBT["datum"];
-
 const x: never extends any ? true : false = true;
 const x2: any extends never ? true : false = true; // or false!!
 
@@ -169,40 +140,6 @@ export type debugDatumType<
         : never
     // DETAILS = DT extends findDatumType<T, infer CBT, infer DT> ? { inspected: T, bridgeType: CBT, datumType: DT } : never
 > = DETAILS;
-// T extends canHaveDataBridge ? (
-//     DT extends findDatumType<T> ? DETAILS :
-//     TypeError<"NO 'datum' in bridgeType for contractClass", {contractClass:T}>
-// )
-// : TypeError<"NO 'dataBridgeClass' in contractClass", {contractClass: T}>;
-
-export type mustFindReadDatumType<
-    T extends canHaveDataBridge,
-    CBT extends someContractBridgeType = mustFindConcreteContractBridgeType<T>
-    // BI extends bridgeInspector<T> = bridgeInspector<T>
-> = undefined extends CBT["datum"]
-    ? /**??? */ never
-    : undefined extends CBT["readDatum"]
-    ? never
-    : CBT["readDatum"];
-
-export type findReadDatumType<
-    T extends canHaveDataBridge,
-    CBT extends someContractBridgeType = possiblyAbstractContractBridgeType<T>
-    // BI extends bridgeInspector<T> = bridgeInspector<T>
-> = IF<
-    CBT["isAbstract"],
-    readsUplcTo<any>,
-    undefined extends CBT["datum"]
-        ? /**??? */ never
-        : undefined extends CBT["readDatum"]
-        ? never
-        : CBT["readDatum"]
-    // : CBT["reader"] extends DataBridge
-    // ? CBT["reader"]["datum"]
-    // : never
-    // CBT["datum"]["readData"]
->;
-
 export type findActivityTypeOld<
     T extends canHaveDataBridge,
     BI extends bridgeInspector<T> = bridgeInspector<T>
@@ -227,25 +164,6 @@ const fATo_test6: MDWGU.DelegateActivityHelper extends findActivityTypeOld<MintD
     ? true
     : false = true;
 
-export type findActivityType<
-    T extends canHaveDataBridge,
-    isSCBaseClass extends AnySC extends T ? true : false = AnySC extends T
-        ? true
-        : false,
-    CBT extends someContractBridgeType = possiblyAbstractContractBridgeType<T>,
-    activityHelper = CBT extends { activity: infer A } ? A : never
-> = IF<
-    IF<
-        CBT["isAbstract"],
-        true,
-        IF<isSCBaseClass, true, false, CANNOT_ERROR>,
-        CANNOT_ERROR
-    >,
-    DataBridge,
-    activityHelper, // CBT extends { activity: infer A } ? CBT["activity"] : never, //    activityHelper,
-    CANNOT_ERROR /* suppresses unreachable error alternative, given good Bool input to IF */
->;
-
 const fAT_test1: SomeDgtActivityHelper extends findActivityType<BasicMintDelegate>
     ? true
     : false = true;
@@ -264,11 +182,6 @@ const fAT_test5: CapoActivityHelper extends findActivityType<Capo<any>>
 const fAT_test6: MDWGU.DelegateActivityHelper extends findActivityType<MintDelegateWithGenericUuts>
     ? true
     : false = true;
-
-export type mustFindActivityType<
-    T extends canHaveDataBridge,
-    CBT extends someContractBridgeType = mustFindConcreteContractBridgeType<T>
-> = CBT["activity"];
 
 {
     // high-level checks
@@ -333,10 +246,7 @@ type definesContractBridge<T> = T extends { dataBridgeClass: infer DBC }
     : never;
 type baseDelegateDataBridge = definesContractBridge<ContractBasedDelegate>;
 type capoDataBridge = definesContractBridge<Capo<any>>;
-type AnySC = StellarContract<any>;
 type abstractDataBridge = definesContractBridge<AnySC>;
-
-type CANNOT_ERROR = never;
 
 type bridgeInspector<
     // SC: the StellarContract or delegate class being inspected
@@ -686,8 +596,7 @@ if (testing) {
             ? IF_ISANY<BI_CBD["readsDatumUplcAs"], false, true>
             : false = true;
 
-
-        type datumType = Expand<mustFindDatumType<ContractBasedDelegate>>
+        type datumType = Expand<mustFindDatumType<ContractBasedDelegate>>;
 
         const bools: BridgeBools = {
             isAnyMintDgt: false,
@@ -1193,5 +1102,3 @@ type BridgeBooleanEntries_int<T extends anyBridgeInspector> = {
 type BridgeBooleanEntries<T extends anyBridgeInspector> = {
     [k in keyof BridgeBooleanEntries_int<T>]: BridgeBooleanEntries_int<T>[k];
 };
-
-export type readsUplcTo<T> = (d: UplcData) => T;

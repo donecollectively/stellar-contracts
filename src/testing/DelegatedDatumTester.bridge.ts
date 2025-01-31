@@ -33,22 +33,21 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { 
+import {
+    ContractDataBridge,
     DataBridge, 
-    ContractDataBridge, 
-    DataBridgeReaderClass,
-    type callWith,
-} from "../helios/dataBridge/DataBridge.js"
-import { 
+    DataBridgeReaderClass ,
     EnumBridge,
+    impliedSeedActivityMaker,
+    type tagOnly, 
+    type hasSeed, 
+    type isActivity, 
+    type funcWithImpliedSeed,
+    type SeedAttrs,
     type JustAnEnum,
-} from "../helios/dataBridge/EnumBridge.js"
-import type { tagOnly } from "../helios/HeliosMetaTypes.js"
-import type { IntersectedEnum } from "../helios/typeUtils.js"
-import { 
-    impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 
-    type funcWithImpliedSeed, type SeedAttrs
-} from "../ActivityTypes.js"
+    type callWith,
+    type IntersectedEnum,
+} from "@donecollectively/stellar-contracts"
 
 export type TimeLike = IntLike;
 

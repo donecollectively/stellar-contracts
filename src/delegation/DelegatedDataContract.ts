@@ -33,16 +33,22 @@ import type { CapoDelegateBundle } from "./CapoDelegateBundle.js";
 import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
 import { uplcDataSerializer } from "./jsonSerializers.js";
 
+/**
+ * @public
+ */
 export type DgDataType<T extends DelegatedDataContract<any, any>> =
     T extends DelegatedDataContract<infer T, infer TLike> ? T : never;
 
-
+/**
+ * @public
+ */
 export type DgDataTypeLike<T extends DelegatedDataContract<any, any>> =
     T extends DelegatedDataContract<infer T, infer TLike> ? TLike : never;
 
 /**
  * use for new or updated record data, where id and type can
  * be implied instead of explicitly provided
+ * @public
  */
 export type minimalDgDataTypeLike<T extends DelegatedDataContract<any, any>> =
     minimalData<DgDataTypeLike<T>>;
@@ -548,6 +554,9 @@ export class UpdateActivity<
 
 type hasRecId = string | number[] | UutName;
 
+/**
+ * @public
+ */
 export type DgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> = {
     activity: isActivity | SeedActivity<any>;
     data: minimalData<TLike>;
@@ -565,6 +574,9 @@ export type CoreDgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> =
         addedUtxoValue?: Value;
     };
 
+/**
+ * @public
+ */
 export type DgDataUpdateOptions<TLike extends AnyDataTemplate<any, any>> = {
     activity: isActivity | UpdateActivity<any>;
     updatedFields: Partial<minimalData<TLike>>;

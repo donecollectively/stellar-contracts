@@ -1,14 +1,30 @@
+import { makeTxInput, makeTxOutput } from "@helios-lang/ledger";
 import type {
-    Capo,
-} from "../Capo.js";
+    Value,
+    TxOutputId,
+    TxInput,
+    ValidatorHash,
+} from "@helios-lang/ledger";
+import type { Capo } from "../Capo.js";
 import type {
     DelegateSetupWithoutMintDelegate,
     MinimalDelegateLink,
     MintUutActivityArgs,
     NormalDelegateSetup,
-    hasCharterRef
+    hasCharterRef,
 } from "../CapoTypes.js";
-// import type { hasSettingsRef } from "../CapoTypes.js";
+import type {
+    mustFindActivityType,
+    mustFindConcreteContractBridgeType,
+    mustFindDatumType,
+    mustFindReadDatumType,
+} from "../helios/dataBridge/BridgeTypes.js";
+import type {
+    GenericDelegateBridge,
+    GenericDelegateBridgeClass,
+    GenericDelegateDatum,
+} from "./GenericDelegateBridge.js";
+
 import { Activity, datum } from "../StellarContract.js";
 import { StellarDelegate } from "./StellarDelegate.js";
 import type {
@@ -16,21 +32,11 @@ import type {
     capoDelegateConfig,
 } from "./RolesAndDelegates.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-// import { dumpAny } from "../diagnostics.js";
-// import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-// import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
-// import type { readsUplcData } from "../helios/HeliosMetaTypes.js";
-import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegateBundle.js";
-// import type { ContractDataBridge, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
-import type { AbstractNew, findActivityType, mustFindActivityType, mustFindConcreteContractBridgeType, mustFindDatumType, mustFindReadDatumType, possiblyAbstractContractBridgeType } from "../helios/dataBridge/BridgeTypeUtils.js";
-import type { GenericDelegateBridge, GenericDelegateBridgeClass, GenericDelegateDatum } from "./GenericDelegateBridge.js";
+import type { CapoDelegateBundle } from "./CapoDelegateBundle.js";
 import type { isActivity } from "../ActivityTypes.js";
-import {  makeTxInput, makeTxOutput } from "@helios-lang/ledger";
-import type { Value, TxOutputId, TxInput, ValidatorHash } from "@helios-lang/ledger";
 
 import { bytesToText, textToBytes } from "../HeliosPromotedTypes.js";
 import type { IFISNEVER } from "../helios/typeUtils.js";
-
 
 /**
  * Base class for delegates controlled by a smart contract, as opposed
@@ -43,7 +49,7 @@ export class ContractBasedDelegate extends StellarDelegate {
      * Each contract-based delegate must define its own dataBridgeClass, but they all
      * use the same essential template for the outer layer of their activity & datum interface.
      */
-    declare dataBridgeClass : GenericDelegateBridgeClass;
+    declare dataBridgeClass: GenericDelegateBridgeClass;
     declare _dataBridge: GenericDelegateBridge;
     static currentRev = 1n;
 
@@ -84,8 +90,8 @@ export class ContractBasedDelegate extends StellarDelegate {
     }
 
     // get activity(): IFISNEVER<
-    //     mustFindActivityType<this>, 
-    //     IFISNEVER<findActivityType<this>, 
+    //     mustFindActivityType<this>,
+    //     IFISNEVER<findActivityType<this>,
     //         ContractDataBridge["activity"]
     //     >
     // > {
@@ -111,7 +117,7 @@ export class ContractBasedDelegate extends StellarDelegate {
             );
         }
 
-        return readDatum as any
+        return readDatum as any;
     }
 
     get capo(): Capo<any> {
@@ -139,8 +145,8 @@ export class ContractBasedDelegate extends StellarDelegate {
                 `        get specializedDelegateModule() { return SomeSpecializedDelegate; }\n` +
                 `    }\n\n` +
                 `We'll generate an additional .typeInfo.ts, based on the types in your Helios sources,\n` +
-                `  ... and a .bridge.ts with generated data-conversion code for bridging between off-chain`+
-                `  ... and on-chain data encoding.`+
+                `  ... and a .bridge.ts with generated data-conversion code for bridging between off-chain` +
+                `  ... and on-chain data encoding.` +
                 `Your scriptBundle() method can \`return new SomeDelegateBundle()\``
         );
     }
@@ -169,9 +175,7 @@ export class ContractBasedDelegate extends StellarDelegate {
         //     delegateName: this.delegateName,
         // };
 
-        const {
-            capoAddr, mph, tn, capo, ...otherConfig 
-        } = config;
+        const { capoAddr, mph, tn, capo, ...otherConfig } = config;
 
         return this.paramsToUplc({
             ...otherConfig,
@@ -232,7 +236,7 @@ export class ContractBasedDelegate extends StellarDelegate {
         fromFoundUtxo?: TxInput
     ): Promise<TCX> {
         const datum = this.mkDelegationDatum(fromFoundUtxo);
-        
+
         const newOutput = makeTxOutput(this.address, tokenValue, datum);
         // const separator = `     -----`;
         // console.log(
@@ -253,8 +257,7 @@ export class ContractBasedDelegate extends StellarDelegate {
             capoAddr,
             mph,
             tn,
-        })
-
+        });
     }
 
     /**
@@ -272,7 +275,7 @@ export class ContractBasedDelegate extends StellarDelegate {
         seed,
         purpose,
     }: Omit<MintUutActivityArgs, "purposes"> & { purpose: string }) {
-        throw new Error(`deprecated: explicit activity helper`)
+        throw new Error(`deprecated: explicit activity helper`);
 
         // return this.mkDelegateLifecycleActivity("ReplacingMe", {
         //     seed,
@@ -284,7 +287,7 @@ export class ContractBasedDelegate extends StellarDelegate {
         delegateActivityName: "ReplacingMe" | "Retiring" | "ValidatingSettings",
         args?: Record<string, any>
     ): isActivity {
-        throw new Error(`deprecated: explicit activity helper`)
+        throw new Error(`deprecated: explicit activity helper`);
 
         // try {
         //     return this.activityRedeemer("DelegateLifecycleActivities", {
@@ -308,7 +311,7 @@ export class ContractBasedDelegate extends StellarDelegate {
             ...otherArgs
         }: Omit<MintUutActivityArgs, "purposes"> & { purpose?: string }
     ): isActivity {
-        throw new Error(`deprecated: explicit activity helper`)
+        throw new Error(`deprecated: explicit activity helper`);
 
         // return this.activityRedeemer("CapoLifecycleActivities", {
         //     activity: {
@@ -324,7 +327,7 @@ export class ContractBasedDelegate extends StellarDelegate {
         spendingActivityName: string,
         args: { id: string | number[] } & Record<string, any>
     ): isActivity {
-        throw new Error(`deprecated: explicit activity helper`)
+        throw new Error(`deprecated: explicit activity helper`);
 
         // try {
         //     let id : number[] = ("string" == typeof args.id) ?
@@ -396,7 +399,7 @@ export class ContractBasedDelegate extends StellarDelegate {
         const NestedVariant = this.mustGetEnumVariant(
             MintingActivity,
             mintingActivityName
-        )
+        );
         throw new Error(`mkSeededMintingActivity: deprecated`);
         // if (!NestedVariant) {
         //     throw new Error(
@@ -446,14 +449,14 @@ export class ContractBasedDelegate extends StellarDelegate {
      **/
     @Activity.redeemer
     activityRetiring() {
-        throw new Error(`deprecated: explicit activity helper`)
+        throw new Error(`deprecated: explicit activity helper`);
 
         // return this.mkDelegateLifecycleActivity("Retiring");
     }
 
     @Activity.redeemer
     activityValidatingSettings() {
-        throw new Error(`deprecated: explicit activity helper`)
+        throw new Error(`deprecated: explicit activity helper`);
 
         // return this.mkDelegateLifecycleActivity("ValidatingSettings");
     }
@@ -462,13 +465,12 @@ export class ContractBasedDelegate extends StellarDelegate {
     activityMultipleDelegateActivities(
         ...activities: isActivity[]
     ): isActivity {
-        throw new Error(`deprecated: explicit activity helper`)
+        throw new Error(`deprecated: explicit activity helper`);
         // return this.activityRedeemer("MultipleDelegateActivities", {
         //     // todo: allow the cast to take already-uplc'd data
         //     activities: activities.map((a) => a.redeemer),
         // });
     }
-
 
     // /**
     //  * A spend-delegate activity indicating that a delegated-data controller will be governing
@@ -504,10 +506,8 @@ export class ContractBasedDelegate extends StellarDelegate {
      * but the data-delegate's controller-token may have additional details in ITS redeemer,
      */
     @Activity.redeemer
-    activityDeletingDelegatedData(
-        recId: string | number[]
-    ): isActivity {
-        throw new Error(`deprecated: explicit activity helper`)
+    activityDeletingDelegatedData(recId: string | number[]): isActivity {
+        throw new Error(`deprecated: explicit activity helper`);
 
         // const recIdBytes = Array.isArray(recId)
         //     ? recId
@@ -533,7 +533,7 @@ export class ContractBasedDelegate extends StellarDelegate {
     @datum
     mkDatumIsDelegation(dd: DelegationDetail) {
         const { DelegationDetail } = this.onChainTypes;
-        throw new Error(`deprecated: explicit datum helper`)
+        throw new Error(`deprecated: explicit datum helper`);
 
         // const schema = DelegationDetail.toSchema()
         // const cast = new Cast(schema, {

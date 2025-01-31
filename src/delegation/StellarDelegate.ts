@@ -1,17 +1,19 @@
+import type { TxInput, ValidatorHash } from "@helios-lang/ledger";
+import type { Value } from "@helios-lang/ledger";
+
 import { StellarContract, type configBaseWithRev } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
+import type { capoDelegateConfig } from "./RolesAndDelegates.js";
 import type {
-    capoDelegateConfig,
-} from "./RolesAndDelegates.js";
-import type { ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum } from "../helios/dataBridge/DataBridge.js";
-import type { AbstractNew } from "../helios/dataBridge/BridgeTypeUtils.js";
+    ContractDataBridgeWithEnumDatum,
+    ContractDataBridgeWithOtherDatum,
+} from "../helios/dataBridge/DataBridge.js";
+import type { AbstractNew } from "../helios/typeUtils.js";
 
 import type { isActivity } from "../ActivityTypes.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
 import { mkTv } from "../utils.js";
-import type { TxInput, ValidatorHash } from "@helios-lang/ledger";
-import type { Value } from "@helios-lang/ledger";
 
 /**
  * Base class for modules that can serve as Capo delegates
@@ -28,7 +30,9 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
     }
     // not required except for Contract-based delegates.  A subclass can represent a delegation
     // relationship without an on-chain contract, resulting in there being no relevant data-bridge.
-    declare dataBridgeClass : AbstractNew<ContractDataBridgeWithEnumDatum> | undefined;
+    declare dataBridgeClass:
+        | AbstractNew<ContractDataBridgeWithEnumDatum>
+        | undefined;
 
     /**
      * Finds and adds the delegate's authority token to the transaction
@@ -146,7 +150,6 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
         return undefined;
     }
 
-
     /**
      * Finds the delegate authority token, normally in the delegate's contract address
      * @public
@@ -171,13 +174,12 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
      * Given a delegate already configured by a Capo, this method implements
      * transaction-building logic needed to include the UUT into the `tcx`.
      * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
-    **/
+     **/
     abstract DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         uutxo: TxInput,
         redeemer?: isActivity
     ): Promise<TCX>;
-
 
     /**
      * Adds any important transaction elemements supporting the authority token being retired, closing the delegate contracts' utxo.

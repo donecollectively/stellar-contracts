@@ -105,17 +105,39 @@ export type IntersectedEnum<
 > = Partial<merged>;
 
 
-
+/**
+ * @public
+ */
 export type ISNEVER<T, ELSE = never> = [T] extends [never] ? true : ELSE;
+
+/**
+ * @public
+ */
 export type IFISNEVER<T, IFNEVER, ELSE = never> = [T] extends [never] ? IFNEVER : ELSE;
+
+/**
+ * @public
+ */
 export type IF_ISANY<T, IFANY, ELSE = never> = [0] extends [1 & T] ? IFANY : ELSE;
+
+/**
+ * @public
+ */
 export type ISSOME<T, ELSE = never> = [T] extends [never] ? ELSE : true;
+
+/**
+ * @public
+ */
 export type NEVERIF<T extends boolean | never, ELSE, ifError = unknown> = IF<
     T,
     never,
     ELSE,
     ifError
 >;
+
+/**
+ * @public
+ */
 export  type OR<T1, T2> = [T1] extends [never] ? T2 : T1;
 
 const ISNEVER_TEST: IF<ISNEVER<never>, true> = true;
@@ -150,6 +172,10 @@ const IfNeedsConstBool =
     'the IF<...> type only detects constant-typed boolean inputs (such as "true}" as const';
 type needsConstBool = TypeError<typeof IfNeedsConstBool>;
 const lacksConstBool: needsConstBool = typeError(IfNeedsConstBool);
+
+/**
+ * @public
+ */
 export type IF<T1 extends boolean | never, T2, ELSE = never, ERR_TYPE = unknown> = [
     true | false
 ] extends [T1]
@@ -202,10 +228,18 @@ const IF_TEST4cStatic: IF<
 
 const TYPE_ERROR = Symbol("TYPE_ERROR");
 type TYPE_ERROR = typeof TYPE_ERROR;
+
+/**
+ * @public
+ */
 export type TypeError<T extends string, moreInfo extends Object = {}> = {
     [TYPE_ERROR]: T;
     moreInfo: moreInfo;
 };
+
+/**
+ * @public
+ */
 export function typeError<T extends string, moreInfo extends Object = {}>(
     msg: T,
     moreInfo?: moreInfo
@@ -234,3 +268,16 @@ type UnkConstStringNo = unknown extends "MyCONST STRING" ? "yes" : "no";
 type UnkFooNo = unknown extends { foo: string } ? "yes" : "no";
 type ConstStringUnkYES = "MyCONST STRING" extends unknown ? "yes" : "no";
 type FooUnkYES = { foo: string } extends unknown ? "yes" : "no";
+/**
+ * type debugging - typeinfo
+ * @public
+ */
+export type Expand<T> = T extends (...args: infer A) => infer R ? (...args: Expand<A>) => Expand<R> : T extends infer O ? {
+    [K in keyof O]: O[K];
+} : never;
+
+/**
+ * @public
+ */
+export type AbstractNew<T = any> = abstract new (...args: any) => T; // T extends DataMaker ?
+
