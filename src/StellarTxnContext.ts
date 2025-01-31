@@ -31,6 +31,8 @@ import {
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import type { UtxoHelper } from "./UtxoHelper.js";
+import type { IF_ISANY } from "./helios/typeUtils.js";
+import type { Expand } from "./helios/typeUtils.js";
 
 /**
  * A txn context having a seedUtxo in its state
@@ -42,25 +44,33 @@ export type hasSeedUtxo = StellarTxnContext<
     }
 >;
 
+export type txBuiltOrSubmitted = "built" | "submitted";
+export type resolvedOrBetter = "resolved" | txBuiltOrSubmitted;
 /**
  * @public
  */
-export type TxDescription<T extends StellarTxnContext> = {
-    tcx: T | (() => T) | (() => Promise<T>);
-
+export type TxDescription<
+    T extends StellarTxnContext,
+    PROGRESS extends "buildLater!" | "resolved" | "built" | "submitted",
+    TCX extends StellarTxnContext = IF_ISANY<T, StellarTxnContext<anyState>, T>
+> = {
+    tcx: PROGRESS extends resolvedOrBetter ?TCX : (() => TCX) | (() => Promise<TCX>);
     description: string;
-    moreInfo: string;
-    optional: boolean;
+    moreInfo?: string;
+    optional?: boolean;
     txName?: string;
-};
+} & (PROGRESS extends txBuiltOrSubmitted ? { tx: Tx, txId?: TxId } : {}) &
+    (PROGRESS extends "submitted" ? { txId: TxId } : {});
 
 /**
  * @public
  */
 export type MultiTxnCallback<
-    T extends undefined | StellarTxnContext<any> 
-    = StellarTxnContext<any>,
-    TXINFO extends Tx | TxDescription<any> = TxDescription<any>
+    T extends undefined | StellarTxnContext<any> = StellarTxnContext<any>,
+    TXINFO extends TxDescription<any, resolvedOrBetter> = TxDescription<
+        any,
+        "resolved"
+    >
 > =
     | ((tx: TXINFO) => void)
     | ((tx: TXINFO) => Promise<void>)
@@ -85,7 +95,7 @@ export type hasAddlTxns<
     existingStateType extends anyState = TCX["state"]
 > = StellarTxnContext<
     existingStateType & {
-        addlTxns: Record<string, TxDescription<any>>;
+        addlTxns: Record<string, TxDescription<any, "buildLater!">>;
     }
 >;
 
@@ -137,12 +147,18 @@ type RedeemerArg = {
     redeemer?: UplcData;
 };
 
-export type SubmitOptions = {
+/**
+ * @public
+ */
+export type SubmitOptions = TxSubmitCallbacks & TxPipelineOptions & {
     /**
      * indicates additional signers expected for the transaction
      */
     signers?: Address[];
-    addlTxInfo?: Pick<TxDescription<any>, "description">;
+    addlTxInfo?: Partial<
+        Omit<TxDescription<any, "submitted">, "description">
+    > & { description: string };
+    paramsOverride?: Partial<NetworkParams>;
     /**
      * useful most for test environment, so that a txn failure can be me marked
      * as "failing as expected".  Not normally needed for production code.
@@ -151,9 +167,12 @@ export type SubmitOptions = {
     /**
      * Called when there is a detected error, before logging.  Probably only needed in test.
      */
-    beforeError?: (tx: Tx) => MultiTxnCallback<any>
-    beforeValidate?: (tx: Tx) => MultiTxnCallback<any>
-} & SubmitCallbacks;
+    beforeError?: (tx: Tx) => MultiTxnCallback<any>;
+    /**
+     * Passed into the Helios TxBuilder's build()/buildUnsafe()
+     */
+    beforeValidate?: (tx: Tx) => MultiTxnCallback<any>;
+}
 
 type MintUnsafeParams = Parameters<TxBuilder["mintPolicyTokensUnsafe"]>;
 type MintTokensParams = [
@@ -161,12 +180,31 @@ type MintTokensParams = [
     MintUnsafeParams[1],
     { redeemer: MintUnsafeParams[2] }
 ];
-type SubmitCallbacks = {
-    beforeSubmit?: MultiTxnCallback;
-    onSubmitted?: MultiTxnCallback;
-    onSubmitError?: MultiTxnCallback<any, Tx>;
+/**
+ * Provides notifications for various stages of transaction submission
+ */
+type TxPipelineOptions = Expand<TxSubmitCallbacks & {
+    fixupBeforeSubmit?: MultiTxnCallback;
+    submitVia?: "buffer" | "submit";
+    whenQueued?: MultiTxnCallback<any, TxDescription<any, "built">>;
+}>;
+
+type TxSubmitCallbacks = {
+    onSubmitError?: MultiTxnCallback<any, TxDescription<any, "built">>;
+    onSubmitted?: MultiTxnCallback<any, TxDescription<any, "submitted">>;
 };
 
+type BuiltTcx = {
+    tx: Tx;
+    willSign: PubKeyHash[];
+    walletMustSign: boolean;
+    wallet: Wallet;
+    wHelper: WalletHelper<any>;
+    costs: {
+        total: Cost;
+        [key: string]: Cost;
+    };
+};
 
 /**
  * Transaction-building context for Stellar Contract transactions
@@ -255,14 +293,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
         });
         Object.defineProperty(this, "_builtTx", { enumerable: false });
 
-        const isMainnet = setup.isMainnet
+        const isMainnet = setup.isMainnet;
         if ("undefined" == typeof isMainnet) {
             throw new Error(
                 "StellarTxnContext: setup.isMainnet must be defined"
             );
         }
         this.txb = makeTxBuilder({
-            isMainnet
+            isMainnet,
         });
         // const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error
@@ -298,7 +336,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
         RETURNS extends hasAddlTxns<TCX> = TCX extends hasAddlTxns<any>
             ? TCX
             : hasAddlTxns<TCX>
-    >(this: TCX, txnName: string, txInfo: TxDescription<any>): RETURNS {
+    >(
+        this: TCX,
+        txnName: string,
+        txInfo: TxDescription<any, "buildLater!">
+    ): RETURNS {
         const thisWithMoreType: RETURNS = this as any;
         if (thisWithMoreType.state.addlTxns?.[txnName]) {
             throw new Error(
@@ -484,11 +526,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
     get txnTime() {
         if (this._txnTime) return this._txnTime;
         const now = Date.now();
-        const recent = now - 180_000
+        const recent = now - 180_000;
         const d = new Date(
-            Number(
-                this.slotToTime(this.timeToSlot(BigInt(recent)))
-            )
+            Number(this.slotToTime(this.timeToSlot(BigInt(recent))))
         );
         // time emoji: ⏰
         console.log("⏰⏰setting txnTime to ", d.toString());
@@ -512,14 +552,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
     ): TCX {
         const startMoment = this.txnTime.getTime();
 
-        this._validityPeriodSet = true
+        this._validityPeriodSet = true;
         this.txb
             .validFromTime(new Date(startMoment))
             .validToTime(new Date(startMoment + durationMs));
 
         return this;
     }
-    _validityPeriodSet = false
+    _validityPeriodSet = false;
     txRefInputs: TxInput[] = [];
     /**
      * adds a reference input to the transaction context
@@ -734,22 +774,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 description: this.txnName ? ": " + this.txnName : "",
             },
             beforeValidate,
+            paramsOverride,
         }: {
             signers?: Address[];
-            addlTxInfo?: Pick<TxDescription<any>, "description">;
+            addlTxInfo?: Pick<TxDescription<any, "buildLater!">, "description">;
             beforeValidate?: (tx: Tx) => Promise<any> | any;
+            paramsOverride?: Partial<NetworkParams>;
         } = {}
-    ): Promise<{
-        tx: Tx;
-        willSign: PubKeyHash[];
-        walletMustSign: boolean;
-        wallet: Wallet;
-        wHelper: WalletHelper<any>;
-        costs: {
-            total: Cost;
-            [key: string]: Cost;
-        };
-    }> {
+    ): Promise<BuiltTcx> {
         console.timeStamp?.(`submit() txn ${this.txnName}`);
         console.log("tcx build() @top");
 
@@ -832,7 +864,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 tx = await this.txb.buildUnsafe({
                     changeAddress,
                     spareUtxos: spares,
-                    networkParams: this.networkParams,
+                    networkParams: {
+                        ...this.networkParams,
+                        ...paramsOverride,
+                    },
                     logOptions: logger,
                     beforeValidate,
                     modifyExBudget: (txi, purpose, index, costs) => {
@@ -860,8 +895,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
                 throw e;
             }
+
             if (tx.hasValidationError) {
                 const e = tx.hasValidationError;
+
                 //@ts-expect-error accessing the stack of something that might be a string instead
                 let heliosStack = e.stack?.split("\n") || undefined;
                 // locate the first TxImpl line in the stack trace.
@@ -979,15 +1016,21 @@ export class StellarTxnContext<S extends anyState = anyState> {
         {
             signers = [],
             addlTxInfo = {
-                description: this.txnName ? ": " + this.txnName : "",
+                description: this.txnName
+                    ? ": " + this.txnName
+                    : "‹unnamed tx›",
+                tcx: this,
             },
+            paramsOverride,
             expectError,
             beforeError,
             beforeValidate,
-            beforeSubmit,
+            whenQueued,
+            submitVia,
+            fixupBeforeSubmit: beforeSubmit,
             onSubmitError,
-            onSubmitted
-        }: SubmitOptions = {}
+            onSubmitted,
+        }: SubmitOptions & TxSubmitCallbacks = {}
     ) {
         const { logger } = this;
         const {
@@ -1001,6 +1044,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             },
         } = await this.build({
             signers,
+            paramsOverride,
             addlTxInfo,
             beforeValidate,
         });
@@ -1073,6 +1117,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 //   (sig verification is ~2x the cost of signing)
                 tx.addSignatures(sigs, false);
             } else {
+                onSubmitError?.({
+                    ...addlTxInfo,
+                    tcx: this,
+                    tx,
+
+                });
                 throw new Error(`wallet signing failed`);
             }
         }
@@ -1083,7 +1133,19 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         console.timeStamp?.(`submit(): to net/wallet`);
 
-        let txId : TxId | undefined 
+        if (submitVia == "buffer") {
+            //@ts-expect-error - with() is only present on TxBuilderChain kinds of network
+            if (this.uh.network.with?.(tx)) {
+                await whenQueued?.({ 
+                    ...addlTxInfo, 
+                    tcx: this,
+                    tx,
+                    txId: tx.id()
+                });
+                return 
+            }
+        }
+        let txId: TxId | undefined;
         let walletPromise: Promise<TxId> | undefined;
         let didHaveError = false;
         if (wallet) {
@@ -1091,13 +1153,20 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 // submit via wallet in addition to the network, may allow for faster confirmation
                 walletPromise = wallet.submitTx(tx).then(
                     (walletTxId) => {
-                        console.log("submitTx() success via wallet: ", walletTxId);
+                        console.log(
+                            "submitTx() success via wallet: ",
+                            walletTxId
+                        );
                         return walletTxId;
                     },
                     (e) => {
-                        didHaveError = true
-                        debugger
-                        onSubmitError?.(tx)
+                        didHaveError = true;
+                        debugger;
+                        onSubmitError?.({
+                            ...addlTxInfo,
+                            tx,
+                            tcx: this,                            
+                        });
                         console.log(
                             "⚠️  submitting via wallet failed (debugging breakpoint available): ",
                             e.message
@@ -1108,59 +1177,77 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 );
             }
         }
-        
+
         try {
-            //@ts-expect-error on non-standard submitTx() in emulator
-            const networkSubmitPending = this.setup.network.submitTx(tx, logger).then(
-                async (netTxId) => {
-                    console.log("submitTx() success via network: ", netTxId);
-                    const walletTxId = await walletPromise;  // resolves txId
-                    if (walletTxId && netTxId !== walletTxId) {
-                        console.error("network submit and wallet submit disagree on the txid!",
-                            { walletSaid: txId, networkSaid: netTxId }
+            const networkSubmitPending = this.setup.network
+                //@ts-expect-error on non-standard submitTx() in emulator
+                .submitTx(tx, logger)
+                .then(
+                    async (netTxId) => {
+                        console.log(
+                            "submitTx() success via network: ",
+                            netTxId
                         );
+                        const walletTxId = await walletPromise; // resolves txId
+                        if (walletTxId && !netTxId.isEqual(walletTxId)) {
+                            console.error(
+                                "network submit and wallet submit disagree on the txid!",
+                                { walletSaid: walletTxId, networkSaid: netTxId }
+                            );
+                        }
+                        return netTxId;
+                    },
+                    (e) => {
+                        if (
+                            "currentSlot" in this.setup.network &&
+                            e.message.match(/or slot out of range/)
+                        ) {
+                            this.checkTxValidityDetails(tx);
+                        }
+                        debugger;
+                        didHaveError = true;
+                        onSubmitError?.({
+                            ...addlTxInfo,
+                            tx,
+                            tcx: this,
+                        });
+                        console.warn(
+                            "⚠️  submitting via helios CardanoClient failed: ",
+                            e.message
+                        );
+                        debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+                        throw e;
                     }
-                    return netTxId;
-                },
-                (e) => {
-                    if (
-                        "currentSlot" in this.setup.network &&
-                        e.message.match(/or slot out of range/)
-                    ) {
-                        this.checkTxValidityDetails(tx);
-                    }
-                    debugger
-                    didHaveError = true
-                    onSubmitError?.(tx)
-                    console.warn(
-                        "⚠️  submitting via helios CardanoClient failed: ",
-                        e.message
-                    );
-                    debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
-                    throw e;
-                }
-            );
-            await walletPromise; // no-op in test; 
+                );
+            await walletPromise; // no-op in test;
             txId = await networkSubmitPending;
         } catch (e: any) {
             logger.logError(
                 `submitting tx failed: ${description}: ❌ ${e.message}`
             );
             logger.flushError();
-            
+
             const asHex = bytesToHex(tx.toCbor());
             const t2 = decodeTx(asHex);
-            debugger
+            debugger;
             console.warn(
                 "------------------- failed tx as cbor-hex -------------------\n" +
-                asHex,
+                    asHex,
                 "\n------------------^ failed tx details ^------------------\n" +
-                // note, the debugging breakpoint mentioned is actually one or more of
-                // multiple breakpoints above.
-                "(debugging breakpoint available)"
-            )
+                    // note, the debugging breakpoint mentioned is actually one or more of
+                    // multiple breakpoints above.
+                    "(debugging breakpoint available)"
+            );
         }
 
+        onSubmitted?.(
+            {
+                ...addlTxInfo,
+                tcx: this,
+                tx,
+                txId: txId!,
+            } /* todo? txId */
+        );
         console.timeStamp?.(`submit(): success`);
         logger.logPrint(`\n\n\n🎉🎉 tx submitted: ${description} 🎉🎉`);
         logger.finish();
@@ -1314,41 +1401,71 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * @param callback - an optional async callback that you can use to notify a user, or to log the results of the additional txns
      * @public
      **/
-    async submitAddlTxns(
-        this: hasAddlTxns<any, any>,
-        callbacks?: SubmitCallbacks
-    ) {
+    async submitAddlTxns(this: hasAddlTxns<any>, pipelineOptions?: TxPipelineOptions) {
         const { addlTxns } = this.state;
         if (!addlTxns) return;
 
+        debugger;
         // return this.submitTxns(Object.values(addlTxns), callback);
         return this.submitTxnChain({
-            ...callbacks,
+            ...pipelineOptions,
             txns: Object.values(addlTxns),
         });
     }
 
     /**
-     * Submits a list of transactions, without executing any chained/nested txns.
+     * Resolves a list of tx descriptions to full tcx's, without handing any of their
+     * any chained/nested txns.
      * @remarks
+     * if submitEach is provided, each txn will be submitted as it is resolved.
+     * If submitEach is not provided, then the network must be capable of tx-chaining
      * use submitTxnChain() to submit a list of txns with chaining
      */
-    async submitTxns(txns: TxDescription<any>[], callbacks?: SubmitCallbacks) {
-        for (const [txName, addlTxInfo] of Object.entries(txns) as [
-            string,
-            TxDescription<any>
-        ][]) {
-            const { txName, description } = addlTxInfo;
+    async resolveMultipleTxns(
+        txns: TxDescription<any, "buildLater!">[],
+        pipelineOptions?: TxPipelineOptions,
+    ) {
+        //         as [
+        //         string,
+        //         TxDescription<any, "buildLater!">
+        //     ][]
+        
+        //@ts-expect-error on probing for a maybe-undefined entry:
+        if (!this.setup.network.with) {
+            if (pipelineOptions?.submitVia === "buffer") {
+                throw new Error(
+                    `this network-client does not support  submitVia: "buffer"`
+                );
+            }
+        }
+
+        for (const [txName, addlTxInfo] of Object.entries(txns)) {
+            const txInfoResolved: TxDescription<any, "resolved"> = {
+                ...addlTxInfo,
+                tcx: "" as any // placeholder
+            };
+            const { txName, description } = txInfoResolved;
             console.log("  -- before: " + description);
             const tcx = (
                 "function" == typeof addlTxInfo.tcx
-                    ? await addlTxInfo.tcx()
-                    : addlTxInfo.tcx
+                    ? await (() => {
+                          console.log(
+                              "  creating TCX just in time for: " + description
+                          );
+                          return addlTxInfo.tcx();
+                      })()
+                    : (() => {
+                          console.log(
+                              "  ---------------- warning!!!! addlTxInfo is already built!"
+                          );
+                          throw new Error(" unreachable - right?");
+                          return addlTxInfo.tcx;
+                      })()
             ) as StellarTxnContext;
             if ("undefined" == typeof tcx) {
                 throw new Error(`no txn provided for addlTx ${txName}`);
             }
-            addlTxInfo.tcx = tcx;
+            txInfoResolved.tcx = tcx;
             // if (callback) {
             //     console.log("   -- submitTxns: callback", {
             //         txName,
@@ -1357,11 +1474,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
             //     });
             // }
             const replacementTcx =
-                (callbacks?.beforeSubmit &&
-                    ((await callbacks.beforeSubmit({
-                        ...addlTxInfo,
-                        tcx,
-                    })) as typeof replacementTcx | boolean)) ||
+                (pipelineOptions?.fixupBeforeSubmit &&
+                    ((await pipelineOptions.fixupBeforeSubmit(txInfoResolved)) as
+                        | typeof replacementTcx
+                        | boolean)) ||
                 tcx;
             if (false === replacementTcx) {
                 console.log("callback cancelled txn: ", txName);
@@ -1380,18 +1496,23 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 true === replacementTcx ? tcx : replacementTcx || tcx;
             // console.log("   -- submitTxns: -> txn: ", txName, description);
             // console.log("   ----> effective tx", effectiveTcx);
-            if (!effectiveTcx) debugger;
+
+            txInfoResolved.tcx = effectiveTcx;
+
             await effectiveTcx.submit({
-                addlTxInfo, // just for its description.
-            });
+                addlTxInfo: txInfoResolved,
+                    ...pipelineOptions
+                });
             // console.log("   -- submitTxns: <- txn: ", txName, description);
-            if (callbacks?.onSubmitted) {
-                // console.log("   -- submitTxns: triggering onSubmit callback");
-                await callbacks.onSubmitted(addlTxInfo);
-                // console.log("   -- submitTxns: onSubmitted callback completed");
-            }
+            // m oved into submit()
+            // if (callbacks?.onSubmitted) {
+            // console.log("   -- submitTxns: triggering onSubmit callback");
+            // await callbacks.onSubmitted(txInfoResolved);
+            // console.log("   -- submitTxns: onSubmitted callback completed");
+            // }
         }
     }
+
     /**
      * To add a script to the transaction context, use `attachScript`
      *
@@ -1401,8 +1522,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     async submitTxnChain(
         options: {
-            txns?: TxDescription<any>[];
-        } & SubmitCallbacks = {
+            txns?: TxDescription<any, "buildLater!">[]
+        } & TxPipelineOptions = {
             //@ts-expect-error because the type of this context doesn't
             //   guarantee the presence of addlTxns.  But it might be there!
             txns: this.state.addlTxns || [],
@@ -1411,22 +1532,31 @@ export class StellarTxnContext<S extends anyState = anyState> {
         //@ts-expect-error on probing for a maybe-undefined entry:
         const addlTxns = this.state.addlTxns;
 
-        const newTxns: TxDescription<any>[] = options.txns || addlTxns || [];
-        let chainedTxns: TxDescription<any>[] = [];
-        const hookedCallbacks: SubmitCallbacks = {
+        const newTxns: TxDescription<any, "buildLater!">[] =
+            options.txns || addlTxns || [];
+        let chainedTxns: TxDescription<any, "buildLater!">[] = [];
+        const txChainSubmitOtions: TxPipelineOptions = {
+            ...options,
             // txns,  // see newTxns
-            beforeSubmit: (txinfo) => {
+            fixupBeforeSubmit: (txinfo) => {
                 //@ts-expect-error triggering the test-network-emulator's tick
                 //   ... in regular execution environment, this is a no-op by default
                 this.setup.network.tick?.(1);
-                options.beforeSubmit?.(txinfo);
+                options.fixupBeforeSubmit?.(txinfo);
             },
-            onSubmitted: (txinfo) => {
-                const more: Record<string, TxDescription<any>> = txinfo.tcx
-                    ?.state?.addlTxns || {};
+            submitVia: (this.uh.network as any).with ? "buffer" : "submit",
+            whenQueued: (txinfo) => {
+                const more: Record<
+                    string,
+                    TxDescription<any, "buildLater!">
+                > = 
+                    //@ts-expect-error on optional prop
+                    txinfo.tcx.state.addlTxns || {};
                 console.log("  ✅ " + txinfo.description);
                 const moreTxns = Object.values(more);
                 if (moreTxns.length) {
+                    // recognizes next round of semantic txns to be built & submitted
+                    // ... but does not resolve them or submit them yet.
                     chainedTxns.push(...moreTxns);
                     console.log(
                         " + chained txns: \n" +
@@ -1435,6 +1565,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                                 .join("")
                     );
                 }
+            },
+            onSubmitted: (txinfo) => {
                 //@ts-expect-error triggering the test-network-emulator's tick
                 //   ... in regular execution environment, this is a no-op by default
                 this.setup.network.tick?.(1);
@@ -1448,7 +1580,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 newTxns.map((t) => `  🟩 ${t.description}\n`).join("")
         );
 
-        const t = isolatedTcx.submitTxns(newTxns, hookedCallbacks);
+        const t = isolatedTcx.resolveMultipleTxns(newTxns, txChainSubmitOtions);
 
         const allPromises = [] as Promise<any>[];
         chainDepth = 1;
@@ -1460,20 +1592,30 @@ export class StellarTxnContext<S extends anyState = anyState> {
             chainDepth++;
 
             for (const { tcx } of chainedTxns) {
-                const { addlTxns: nestedAddlTxns } = (tcx.state || {}) as {
-                    addlTxns?: Record<string, TxDescription<any>>;
-                };
-                if (!nestedAddlTxns) continue;
-                nextChain.push(...Object.values(nestedAddlTxns));
+                // if (tcx.state) {
+                //     debugger
+                // } else {
+                //     const { addlTxns: nestedAddlTxns } = (tcx.state || {}) as {
+                //         addlTxns?: Record<
+                //             string,
+                //             TxDescription<any, "buildLater!">
+                //         >;
+                //     };
+                //     if (!nestedAddlTxns) continue;
+                //     nextChain.push(...Object.values(nestedAddlTxns));
+                // }
             }
             console.log(
-                " 🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞\n" +
+                " 🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 \n" +
                     `submitting ${chainedTxns.length} transactions at depth ${chainDepth}`
             );
             console.log(
                 chainedTxns.map((t) => `  🟩 ${t.description}\n`).join("")
             );
-            const t = isolatedTcx.submitTxns(chainedTxns, hookedCallbacks);
+            const thisBatch = chainedTxns
+            chainedTxns = [];
+            debugger;
+            const t = isolatedTcx.resolveMultipleTxns(thisBatch, txChainSubmitOtions);
             allPromises.push(t);
             await t;
             console.log(

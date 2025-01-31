@@ -6,7 +6,8 @@ export type {
 
 export { 
     mkDeployedScriptConfigs,
-    mkCapoDeploymentJSON,
+    mkCapoDeployment,
+    mkDelegateDeployment,
     parseCapoJSONConfig
 } from "./src/configuration/DeployedScriptConfigs.js";
 

@@ -2328,6 +2328,7 @@ export abstract class Capo<
             // settingsUut: uuts.set,
         });
 
+        if (true) {
         // creates an addl txn that stores a refScript in the delegate;
         //   that refScript could be stored somewhere else instead (e.g. the Capo)
         //   but for now it's in the delegate addr.
@@ -2351,6 +2352,7 @@ export abstract class Capo<
             throw new Error(
                 `${this.constructor.name}: mkAdditionalTxnsForCharter() must return a txn context`
             );
+        }
 
         console.log(
             " --------------------- CHARTER MINT ---------------------\n"
@@ -2443,16 +2445,16 @@ export abstract class Capo<
         const sn = scriptName[0].toUpperCase() + scriptName.slice(1);
 
         return tcx.includeAddlTxn(`refScript${sn}`, {
-            description: `creates on-chain reference script for ${scriptName}`,
+            description: `+ on-chain refScript: ${scriptName}`,
             moreInfo: "saves txn fees and txn space in future txns",
             optional: false,
-            tcx: this.mkRefScriptTxn(script),
+            tcx: () => this.mkRefScriptTxn(script) 
         }) as RETURNS;
     }
 
-    mkRefScriptTxn(
+    async mkRefScriptTxn(
         script: anyUplcProgram
-    ): StellarTxnContext {
+    ): Promise<StellarTxnContext> {
         const tcx = this.mkTcx();
         const txo = makeTxOutput(
                 this.address,
@@ -2461,6 +2463,20 @@ export abstract class Capo<
                 script
         )
         txo.correctLovelace(this.networkParams);
+        if (this.actorContext.wallet) {
+            const foundFunds = await this.uh.findActorUtxo(
+                "cost of refScript", 
+                this.uh.mkValuePredicate(txo.value.lovelace, tcx)
+            )
+            if (!foundFunds) {
+                throw new Error(
+                    `no funds available in your wallet to create refScript; needed ${
+                        (Number(txo.value.lovelace) / 1_000_000).toFixed(3)
+                    } ADA`
+                );
+            }
+            tcx.addInput(foundFunds);
+        }
         return tcx.addOutput(
             txo
         )

@@ -21,10 +21,10 @@ export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
  * A set of Helios scripts that are used to define a Capo contract.
  * @remarks
  * This class is intended to be extended to provide a specific Capo contract.
- * 
- * You can inherit & augment `get sharedModules()` to make additional 
- * helios modules available for use in related contract scripts.  Other 
- * bundles can include these modules only by naming them in their 
+ *
+ * You can inherit & augment `get sharedModules()` to make additional
+ * helios modules available for use in related contract scripts.  Other
+ * bundles can include these modules only by naming them in their
  * own `includeFromCapoModules()` method.
  * @public
  */
@@ -33,30 +33,34 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
         // if we have deployed details, use that.
         // otherwise, require setupDetails
         super(setupDetails);
-        this.deployedScriptDetails = this.deployedDetails?.capo
-            || (setupDetails?.deployedDetails ?? undefined);
+        this.deployedScriptDetails =
+            this.deployedDetails?.capo ||
+            (setupDetails?.deployedDetails ?? undefined);
     }
     get main() {
-        return mainContract
+        return mainContract;
     }
 
-    datumTypeName = "CapoDatum"
-    capoBundle = this // ???
+    datumTypeName = "CapoDatum";
+    capoBundle = this; // ???
 
-    // todo: make types for these 
+    // todo: make types for these
     // config? : any
-    deployedDetails?: CapoDeployedDetails
+    deployedDetails?: CapoDeployedDetails;
 
     // scriptConfigs? : AllDeployedScriptConfigs
     get scriptConfigs() {
-        return this.deployedDetails?.scripts
+        return this.deployedDetails?.scripts;
     }
     get bridgeClassName(): string {
         if (this.constructor === CapoHeliosBundle) {
             return "CapoDataBridge";
         }
 
-        return this.constructor.name.replace("Helios", "").replace("Bundle", "") + "Bridge";
+        return (
+            this.constructor.name.replace("Helios", "").replace("Bundle", "") +
+            "Bridge"
+        );
         // throw new Error(`${this.constructor.name} must implement get bridgeClassName`);
     }
     static isCapoBundle = true;
@@ -65,11 +69,11 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
      * returns only the modules needed for the Capo contract
      * @remarks
      * overrides the base class's logic that references a connected
-     * Capo bundle - that policy is not needed here because this IS 
+     * Capo bundle - that policy is not needed here because this IS
      * the Capo bundle.
      */
     getEffectiveModuleList() {
-        return this.modules
+        return this.modules;
     }
 
     /**
@@ -78,11 +82,11 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
      * Subclasses can implement this method to provide additional modules
      * shareable to various Capo-connected scripts; those scripts need to
      * include the modules by name in their `includeFromCapoModules()` method.
-     * 
-     * See the 
+     *
+     * See the
      */
-    get sharedModules() : Source[] {
-        return []
+    get sharedModules(): Source[] {
+        return [];
     }
 
     get modules() {
@@ -91,8 +95,7 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
             CapoDelegateHelpers,
             StellarHeliosHelpers,
             CapoHelpers,
-            TypeMapMetadata
+            TypeMapMetadata,
         ];
     }
 }
-

@@ -83,6 +83,7 @@ export class UtxoHelper {
         }
         this.strella = strella;
     }
+    
     get networkParams(): NetworkParams {
         return this.setup.networkParams;
     }

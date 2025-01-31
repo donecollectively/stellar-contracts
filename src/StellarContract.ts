@@ -764,7 +764,7 @@ export class StellarContract<
         return this.actorContext.wallet;
     }
 
-    private get missingActorError(): string {
+    get missingActorError(): string {
         return `Wallet not connected to Stellar Contract '${this.constructor.name}'`;
     }
 
@@ -1852,7 +1852,7 @@ export class StellarContract<
             },
         }: {
             signers?: Address[];
-            addlTxInfo?: Pick<TxDescription<any>, "description">;
+            addlTxInfo?: Pick<TxDescription<any, any>, "description">;
         } = {}
     ) {
         console.warn("deprecated: use tcx.submit() instead");
@@ -2137,7 +2137,9 @@ export class StellarContract<
         const tcx =
             tcxOrName instanceof StellarTxnContext
                 ? tcxOrName
-                : new StellarTxnContext(this.setup).withName(name || "");
+                : new StellarTxnContext(this.setup).
+                    withName(name || "")
+
         const effectiveName =
             tcxOrName instanceof StellarTxnContext ? name : tcxOrName;
 

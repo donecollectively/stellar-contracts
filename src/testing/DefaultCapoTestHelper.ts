@@ -257,10 +257,11 @@ export class DefaultCapoTestHelper<
         this.network.tick(1);
 
         await tcx.submitAddlTxns({
-            onSubmitted: ({ txName, description }) => {
+            onSubmitted: ({ txName, description, tx, txId }) => {
                 this.network.tick(1);
                 console.log(
-                    `           ------- submitting addl txn ${txName} at slot ${this.network.currentSlot}:`
+                    `           ------- submitted addl txn ${txName} at slot ${this.network.currentSlot}:` +
+                        `           ------- txId: ${txId}`
                 );
             },
         });
