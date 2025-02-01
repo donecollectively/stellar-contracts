@@ -282,6 +282,12 @@ export type CapoConfig = configBaseWithRev &
         bootstrapping?: true;
     };
 
+type bootstrappedCapoConfig = {
+    bsc: CapoConfig;
+    uuts: uutMap;
+    bootstrappedConfig: any;
+};
+
 /**
  * StellarTransactionContext exposing a bootstrapped Capo configuration
  * @remarks
@@ -294,11 +300,16 @@ export type CapoConfig = configBaseWithRev &
  * of this type, with `state.bootstrappedConfig`;
  * @public
  **/
-export type hasBootstrappedCapoConfig = StellarTxnContext<{
-    bsc: CapoConfig;
-    uuts: uutMap;
-    bootstrappedConfig: any;
-}>;
+export type hasBootstrappedCapoConfig = StellarTxnContext<bootstrappedCapoConfig>;
+
+/**
+ * @public
+ */
+export type charterDataState = {
+    charterData: CharterDataLike,
+    uuts: uutMap
+}
+
 
 /**
  * @public

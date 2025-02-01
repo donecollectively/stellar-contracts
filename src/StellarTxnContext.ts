@@ -301,6 +301,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         this.txb = makeTxBuilder({
             isMainnet,
+            additionalFee: 50_000n, // adds a nickel to each txn
         });
         // const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error

@@ -89,9 +89,7 @@ import { type NamedPolicyCreationOptions } from "./delegation/ContractBasedDeleg
 
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
-import type {
-    AnyDataTemplate,
-} from "./delegation/DelegatedData.js";
+import type { AnyDataTemplate } from "./delegation/DelegatedData.js";
 import type { tokenPredicate } from "./UtxoHelper.js";
 import CapoDataBridge from "./CapoHeliosBundle.bridge.js";
 import type { mustFindActivityType } from "./helios/dataBridge/BridgeTypes.js";
@@ -108,17 +106,11 @@ import type {
     PendingCharterChangeLike,
 } from "./CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
-import type {
-    SomeDgtActivityHelper,
-} from "./delegation/GenericDelegateBridge.js";
-import type {
-    DelegatedDataContract,
-} from "./delegation/DelegatedDataContract.js";
+import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.js";
+import type { DelegatedDataContract } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
 import type { isActivity } from "./ActivityTypes.js";
-import type {
-    DelegateDatum$capoStoredDataLike,
-} from "./delegation/UnspecializedDelegate.typeInfo.js";
+import type { DelegateDatum$capoStoredDataLike } from "./delegation/UnspecializedDelegate.typeInfo.js";
 import type {
     CapoConfig,
     CharterData,
@@ -135,6 +127,7 @@ import type {
     PreconfiguredDelegate,
     UutCreationAttrsWithSeed,
     basicDelegateMap,
+    charterDataState,
     hasBootstrappedCapoConfig,
     hasCharterRef,
     hasGovAuthority,
@@ -145,7 +138,10 @@ import type {
     uutPurposeMap,
 } from "./CapoTypes.js";
 import { mkDgtStateKey } from "./CapoTypes.js";
-import type { CapoConfigJSON, DeployedScriptDetails } from "./configuration/DeployedScriptConfigs.js";
+import type {
+    CapoConfigJSON,
+    DeployedScriptDetails,
+} from "./configuration/DeployedScriptConfigs.js";
 
 /**
  * Base class for leader contracts, with predefined roles for cooperating/delegated policies
@@ -210,9 +206,7 @@ export abstract class Capo<
 > extends StellarContract<CapoConfig> {
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
-    static async currentConfig() {
-        
-    }
+    static async currentConfig() {}
     dataBridgeClass = CapoDataBridge;
 
     get onchain(): mustFindConcreteContractBridgeType<this> {
@@ -237,9 +231,8 @@ export abstract class Capo<
     }
 
     get canPartialConfig() {
-        return true
+        return true;
     }
-
 
     get newReadDatum(): mustFindReadDatumType<this> {
         // & ( (d: UplcData) => CapoDatumLike ) {
@@ -308,39 +301,45 @@ export abstract class Capo<
      * Does a lookup of the preconfigured / deployed script configuration details
      * @remarks
      * Expects a "singleton" name if arg2 is not provided.
-     * 
+     *
      * Returns undefined if there is no preconfiguration for the given role
-     * 
+     *
      * Throws an error if the requested role doesn't have a matching deployed name
      */
     deployedScriptDetails(
-        role: string, 
+        role: string,
         config: configBaseWithRev,
-        deployedName="singleton"
-    ) : DeployedScriptDetails | undefined{
+        deployedName = "singleton"
+    ): DeployedScriptDetails | undefined {
         const preconfigs = this.getBundle().scriptConfigs?.[role];
         if (!preconfigs) return undefined;
 
         const preconf = preconfigs[deployedName] as DeployedScriptDetails;
         if (!preconf) {
-            console.warn(role, "config from capo:", preconfigs );
+            console.warn(role, "config from capo:", preconfigs);
             if ("singleton" == deployedName) {
-                throw new Error(`role: ${role}: delegate roles must have only singleton configurations`);
+                throw new Error(
+                    `role: ${role}: delegate roles must have only singleton configurations`
+                );
             }
-            throw new Error(`role: ${role}: no deployment named ${deployedName}`);
+            throw new Error(
+                `role: ${role}: no deployment named ${deployedName}`
+            );
         }
 
-        const errors: string[] = []
-        for (const [k,v] of Object.entries(preconf.config)) {
+        const errors: string[] = [];
+        for (const [k, v] of Object.entries(preconf.config)) {
             if (config[k] !== v) {
-                errors.push(`role: ${role}: capo bundle's deployedDetails.${k}=${v} doesn't match computed config.${k}=${config[k]}`);
+                errors.push(
+                    `role: ${role}: capo bundle's deployedDetails.${k}=${v} doesn't match computed config.${k}=${config[k]}`
+                );
             }
         }
         if (errors.length) {
             throw new Error(errors.join("\n"));
         }
 
-        preconf
+        preconf;
         return preconf;
     }
 
@@ -460,17 +459,19 @@ export abstract class Capo<
      * This method is a hook for subclasses to add extra transactions during the
      * charter creation process.  It is called during the creation of the charter transaction.
      *
-     * The Capo has a {@link Capo.bootstrapping|`bootstrapping`} property that can be referenced as needed
-     * during extra transaction creation.
+     * The Capo has a {@link Capo.bootstrapping|`bootstrapping`} property that can be
+     * referenced as needed during extra transaction creation.
+     *
+     * The provided transaction context has state.charterData in case it's needed.
      *
      * This method should use {@link StellarTxnContext.includeAddlTxn} to add transactions
      * to the context.
      *
      * @public
      **/
-    async mkAdditionalTxnsForCharter<TCX extends StellarTxnContext>(
-        tcx: TCX
-    ): Promise<TCX> {
+    async mkAdditionalTxnsForCharter(
+        tcx: StellarTxnContext<charterDataState>
+    ): Promise<StellarTxnContext<charterDataState>> {
         return tcx;
     }
 
@@ -584,7 +585,11 @@ export abstract class Capo<
     async mustFindCharterUtxo() {
         const predicate = this.uh.mkTokenPredicate(this.tvCharter());
 
-        return this.mustFindMyUtxo("charter", predicate, "is the charter-mint done & already confirmed?");
+        return this.mustFindMyUtxo(
+            "charter",
+            predicate,
+            "is the charter-mint done & already confirmed?"
+        );
     }
 
     //     /**
@@ -1016,7 +1021,7 @@ export abstract class Capo<
     }
 
     /**
-     * 
+     *
      */
     async addStrellaWithConfig<
         SC extends StellarContract<any>
@@ -1055,7 +1060,11 @@ export abstract class Capo<
             capo: this,
         };
         const maybeDeployed = this.deployedScriptDetails("minter", config);
-        const minter = await this.addStrellaWithConfig(minterClass, config, maybeDeployed);
+        const minter = await this.addStrellaWithConfig(
+            minterClass,
+            config,
+            maybeDeployed
+        );
 
         if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
             throw new Error(
@@ -1364,7 +1373,7 @@ export abstract class Capo<
             });
             throw e;
         }
-        
+
         const {
             delegateClass,
             config: { validateConfig, partialConfig: paramsFromRole = {} },
@@ -1382,7 +1391,10 @@ export abstract class Capo<
             capo: this,
         } /*as unknown*/ as ConfigFor<StellarDelegate>;
 
-        const maybeDeployed = this.deployedScriptDetails(role, fullCapoDgtConfig);
+        const maybeDeployed = this.deployedScriptDetails(
+            role,
+            fullCapoDgtConfig
+        );
 
         //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined =
@@ -1410,10 +1422,7 @@ export abstract class Capo<
                 fullCapoDgtConfig,
                 config: configForOnchainRelativeDelegateLink,
             };
-            delegate = await this.mustGetDelegate<DT>(
-                role,
-                delegateSettings,
-            );
+            delegate = await this.mustGetDelegate<DT>(role, delegateSettings);
         } catch (e: any) {
             console.log("error: unable to create delegate: ", e.stack);
             debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
@@ -1629,16 +1638,16 @@ export abstract class Capo<
     }
 
     /**
-     * Given a role name and configuration details, 
+     * Given a role name and configuration details,
      * finds and creates the class for the delegate in that role.
      * @remarks
      * Uses the deployedDetails from the Capo's bundle
      * for the compiled on-chain script, if available.
-     * 
+     *
      * If the indicated script role is not deployed as a singleton,
      * the deployedName is required, and matched against those
      * instances of the script seen in the bundle's deployedDetails.
-     * 
+     *
      * If the script role has no deployedDetails, the configuredDelegate
      * details are used to compile the script for on-chain use, after
      * which the resulting details should be used to update the bundle's
@@ -1653,7 +1662,11 @@ export abstract class Capo<
         deployedName?: string
     ): Promise<T> {
         const { delegateClass, fullCapoDgtConfig: config } = configuredDelegate;
-        const maybeDeployed = this.deployedScriptDetails(scriptRole, config, deployedName);
+        const maybeDeployed = this.deployedScriptDetails(
+            scriptRole,
+            config,
+            deployedName
+        );
         try {
             // delegate
             const configured = await this.addStrellaWithConfig(
@@ -1924,7 +1937,8 @@ export abstract class Capo<
             chD.govAuthorityLink
         );
         console.log(
-            "finding charter's govDelegate via link"+ uplcDataSerializer("link", chD.govAuthorityLink)
+            "finding charter's govDelegate via link" +
+                uplcDataSerializer("link", chD.govAuthorityLink)
         );
 
         return capoGovDelegate;
@@ -2118,7 +2132,7 @@ export abstract class Capo<
      *
      * The returned transaction context has `state.bootstrappedConfig` for
      * capturing the details for reproducing the contract's settings and on-chain
-     * address.
+     * address, and state.charterData
      *
      * @param charterDataArgs - initial details for the charter datum
      * @param existinTcx - any existing transaction context
@@ -2134,6 +2148,7 @@ export abstract class Capo<
                 : unknown),
         TCX3 = TCX2 &
             hasAddlTxns<TCX2> &
+            StellarTxnContext<charterDataState> &
             hasUutContext<
                 | "govAuthority"
                 | "capoGov"
@@ -2179,7 +2194,7 @@ export abstract class Capo<
             console.log(`  🏃 dry-run mode for charter setup`);
         }
         type hasBsc = hasBootstrappedCapoConfig;
-        
+
         //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
         const initialTcx: TCX2 & hasBsc =
             existingTcx || (this.mkTcx("mint charter token") as hasBsc);
@@ -2249,8 +2264,10 @@ export abstract class Capo<
                 // settings: "set",
             }
         );
-        const { uuts } = tcx.state;
+        const tcx2 = tcx as unknown as typeof tcx &
+            StellarTxnContext<charterDataState>;
 
+        const { uuts } = tcx2.state;
         if (uuts.govAuthority !== uuts.capoGov) {
             throw new Error(`assertion can't fail`);
         }
@@ -2265,25 +2282,25 @@ export abstract class Capo<
             };
             console.log(`  🏃  dry-run charter setup done`);
 
-            return tcx as TCX3 & Awaited<typeof tcx>;
+            return tcx2 as TCX3 & Awaited<typeof tcx2>;
         } else {
             this.didDryRun = {} as any;
         }
 
         const govAuthority = await this.txnCreateOffchainDelegateLink(
-            tcx,
+            tcx2,
             "govAuthority",
             charterDataArgs.govAuthorityLink
         );
 
         const mintDelegate = await this.txnCreateOffchainDelegateLink(
-            tcx,
+            tcx2,
             "mintDelegate",
             charterDataArgs.mintDelegateLink
         );
 
         const spendDelegate = await this.txnCreateOffchainDelegateLink(
-            tcx,
+            tcx2,
             "spendDelegate",
             charterDataArgs.spendDelegateLink
         );
@@ -2293,34 +2310,33 @@ export abstract class Capo<
             mintDelegate,
             spendDelegate,
         };
+        const charterData = {
+            govAuthorityLink: this.mkOnchainRelativeDelegateLink(govAuthority),
+            spendDelegateLink:
+                this.mkOnchainRelativeDelegateLink(spendDelegate),
+            mintDelegateLink: this.mkOnchainRelativeDelegateLink(mintDelegate),
+
+            // empty items during charter setup:
+            otherNamedDelegates: new Map(),
+            manifest: new Map(),
+            spendInvariants: [],
+            mintInvariants: [],
+            pendingChanges: [],
+        };
         const charterOut = makeTxOutput(
             this.address,
             this.tvCharter(),
-            this.onchain.datum?.CharterData({
-                govAuthorityLink:
-                    this.mkOnchainRelativeDelegateLink(govAuthority),
-                spendDelegateLink:
-                    this.mkOnchainRelativeDelegateLink(spendDelegate),
-                mintDelegateLink:
-                    this.mkOnchainRelativeDelegateLink(mintDelegate),
-
-                // empty items during charter setup:
-                otherNamedDelegates: new Map(),
-                manifest: new Map(),
-                spendInvariants: [],
-                mintInvariants: [],
-                pendingChanges: [],
-            })
+            this.onchain.datum?.CharterData(charterData)
             // this.compiledScript
         );
         charterOut.correctLovelace(this.networkParams);
 
         // tcx.addInput(seedUtxo);
-        tcx.addOutput(charterOut);
-
+        tcx2.addOutput(charterOut);
+        tcx2.state.charterData = charterData;
         // mints the charter, along with the capoGov and mintDgt UUTs.
         // TODO: if there are additional UUTs needed for other delegates, include them here.
-        const tcxWithCharterMint = await this.minter.txnMintingCharter(tcx, {
+        const tcxWithCharterMint = await this.minter.txnMintingCharter(tcx2, {
             owner: this.address,
             capoGov: uuts.capoGov, // same as govAuthority,
             mintDelegate: uuts.mintDelegate,
@@ -2328,31 +2344,31 @@ export abstract class Capo<
             // settingsUut: uuts.set,
         });
 
-        if (true) {
         // creates an addl txn that stores a refScript in the delegate;
         //   that refScript could be stored somewhere else instead (e.g. the Capo)
         //   but for now it's in the delegate addr.
-        const tcx2 = await this.txnMkAddlRefScriptTxn(
+        const tcx4a = await this.txnMkAddlRefScriptTxn(
             tcxWithCharterMint,
             "mintDelegate",
             mintDelegate.delegate.compiledScript
         );
-        const tcx3 = await this.txnMkAddlRefScriptTxn(
+        const tcx4b = await this.txnMkAddlRefScriptTxn(
             tcxWithCharterMint,
             "capo",
             this.compiledScript
         );
-        const tcx4 = await this.txnMkAddlRefScriptTxn(
+        const tcx4c = await this.txnMkAddlRefScriptTxn(
             tcxWithCharterMint,
             "minter",
             minter.compiledScript
         );
-        const tcx4a = await this.mkAdditionalTxnsForCharter(tcxWithCharterMint);
-        if (!tcx4a)
+
+        const tcx3a = await this.bootstrapSettings(tcxWithCharterMint);
+        const tcx3b = await this.mkAdditionalTxnsForCharter(tcx3a || tcxWithCharterMint);
+        if (!tcx3b)
             throw new Error(
                 `${this.constructor.name}: mkAdditionalTxnsForCharter() must return a txn context`
             );
-        }
 
         console.log(
             " --------------------- CHARTER MINT ---------------------\n"
@@ -2363,7 +2379,125 @@ export abstract class Capo<
         //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
         //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
 
-        return tcxWithCharterMint as TCX3 & Awaited<typeof tcxWithCharterMint>;
+        return tcxWithCharterMint as unknown as TCX3 &
+            typeof tcx3a &
+            Awaited<typeof tcxWithCharterMint>;
+    }
+
+    async bootstrapSettings(tcx: StellarTxnContext<charterDataState>) {
+        if (!this.delegateRoles.settings) {
+            console.warn(
+                ` 🐞🐞🐞🐞🐞 ${this.constructor.name} has no settings policy to initialize`
+            );
+            return tcx
+        } else {
+            tcx.includeAddlTxn("create settings delegate", {
+                description: `creates the settings policy`,
+                optional: false,
+                tcx: () =>
+                    this.mkTxnInstallingPolicyDelegate("settings", "set"),
+            });
+
+            tcx.includeAddlTxn(`commitSettings`, {
+                description: `commits settingsPolicy`,
+                moreInfo: "makes the on-chain Settings policy active",
+                optional: false,
+                tcx: () => this.mkTxnCommittingPendingChanges(),
+            });
+
+            tcx.includeAddlTxn(`createSettingsRecord`, {
+                description: `creates the initial settings record`,
+                moreInfo: "needed to  configure other contract scripts",
+                optional: false,
+                tcx: async () => {
+                    // console.log({ initialSettings });
+
+                    const settingsController = await (
+                        this as Capo<any>
+                    ).getDgDataController("settings");
+
+                    let initialSettings = settingsController.exampleData();
+                    if (
+                        settingsController &&
+                        //@ts-expect-error on optional method not declared on the general data-controller type
+                        !settingsController.initialSettingsData
+                    ) {
+                        console.warn(
+                            "Note: the Settings controller has no `async initialSettingsData()` method defined; using exampleData().\n" +
+                                "  Add this method to the settings policy if needed for deployment of the initial settings record.\n" +
+                                "  To suppress this warning, add `initiaiSettingsData() { return this.exampleData() }` to the settings policy."
+                        );
+                    } else {
+                        initialSettings =
+                            //@ts-expect-error on optional method not declared on the general data-controller type
+                            await settingsController.initialSettingsData();
+                    }
+
+                    if (!initialSettings) {
+                        throw new Error(
+                            "the settings policy must implement exampleData() and/or async initialSettingsData() and return a valid settings record"
+                        );
+                    }
+
+                    const ma = settingsController.activity.MintingActivities;
+                    //@ts-expect-error because we don't yet have a sufficiently-specific
+                    // generic type for delegated data controllers that require the basic
+                    // seeded-creating-record activity
+                    const activity = ma.$seeded$CreatingRecord;
+
+                    return settingsController.mkTxnCreateRecord({
+                        activity,
+                        data: initialSettings,
+                    });
+                },
+            });
+
+            tcx.includeAddlTxn(`addCurrentSettings`, {
+                description: `adds the current settings record to the Capo manifest`,
+                moreInfo: "provides settings to all the Capo scripts",
+                optional: false,
+                tcx: async () => {
+                    const settingsController = await (
+                        this as Capo<any>
+                    ).getDgDataController("settings");
+                    // settingsController.$find
+
+                    const settingsUtxo = (
+                        await (this as Capo<any>).findDelegatedDataUtxos({
+                            type: "settings",
+                        })
+                    )[0];
+                    if (!settingsUtxo) {
+                        throw new Error("can't find settings record");
+                    }
+
+                    const initialSettings = settingsUtxo.data;
+
+                    if (!initialSettings) {
+                        throw new Error(
+                            "can't extract initial settings record data"
+                        );
+                    }
+
+                    console.log(
+                        "🐞🐞🐞🐞🐞🐞🐞🐞🐞 hurray  🐞🐞🐞🐞🐞🐞🐞🐞🐞"
+                    );
+                    console.log({ initialSettings });
+
+                    return this.mkTxnAddManifestEntry(
+                        "currentSettings",
+                        settingsUtxo,
+                        {
+                            tokenName: initialSettings.id,
+                            entryType: { NamedTokenRef: {} },
+                            mph: undefined,
+                        }
+                    );
+                },
+            });
+
+            return tcx;
+        }
     }
 
     // async txnAddSettingsOutput<
@@ -2448,38 +2582,34 @@ export abstract class Capo<
             description: `+ on-chain refScript: ${scriptName}`,
             moreInfo: "saves txn fees and txn space in future txns",
             optional: false,
-            tcx: () => this.mkRefScriptTxn(script) 
+            tcx: () => this.mkRefScriptTxn(script),
         }) as RETURNS;
     }
 
-    async mkRefScriptTxn(
-        script: anyUplcProgram
-    ): Promise<StellarTxnContext> {
+    async mkRefScriptTxn(script: anyUplcProgram): Promise<StellarTxnContext> {
         const tcx = this.mkTcx();
         const txo = makeTxOutput(
-                this.address,
-                makeValue(this.ADA(0n)),
-                this.mkDatumScriptReference(),
-                script
-        )
+            this.address,
+            makeValue(this.ADA(0n)),
+            this.mkDatumScriptReference(),
+            script
+        );
         txo.correctLovelace(this.networkParams);
         if (this.actorContext.wallet) {
             const foundFunds = await this.uh.findActorUtxo(
-                "cost of refScript", 
+                "cost of refScript",
                 this.uh.mkValuePredicate(txo.value.lovelace, tcx)
-            )
+            );
             if (!foundFunds) {
                 throw new Error(
-                    `no funds available in your wallet to create refScript; needed ${
-                        (Number(txo.value.lovelace) / 1_000_000).toFixed(3)
-                    } ADA`
+                    `no funds available in your wallet to create refScript; needed ${(
+                        Number(txo.value.lovelace) / 1_000_000
+                    ).toFixed(3)} ADA`
                 );
             }
             tcx.addInput(foundFunds);
         }
-        return tcx.addOutput(
-            txo
-        )
+        return tcx.addOutput(txo);
     }
 
     /**
@@ -2490,9 +2620,9 @@ export abstract class Capo<
      * it is used to attach the refScript to the transaction context.  Otherwise,
      * the script's bytes are added directly to the transaction.
      *
-     * The indicated script is expected to be found in one of the Capo's 
-     * refScript utxos.  Otherwise, a missing-refScript warning is emitted, 
-     * and the program is added directly to the transaction.  
+     * The indicated script is expected to be found in one of the Capo's
+     * refScript utxos.  Otherwise, a missing-refScript warning is emitted,
+     * and the program is added directly to the transaction.
      * If this makes the transaction too big, the console
      * warning will be followed by a thrown error during the transaction's
      * wallet-submission sequence.
@@ -2570,7 +2700,9 @@ export abstract class Capo<
         activity: isActivity = this.activityUpdatingCharter(),
         tcx: TCX = this.mkTcx() as TCX
     ): Promise<StellarTxnContext> {
-        console.log("update charter"+ uplcDataSerializer("activity", activity));
+        console.log(
+            "update charter" + uplcDataSerializer("activity", activity)
+        );
         return this.txnUpdateCharterUtxo(tcx, activity, args);
     }
 
@@ -2803,12 +2935,11 @@ export abstract class Capo<
                                 `Error: ${msg}, couldn't parse data` as any,
                             toJSON() {
                                 return {
-                                    utxo: utxo.
-                                    datum,
+                                    utxo: utxo.datum,
                                     data: `[error: couldn't parse]`,
                                     dataWrapped: null,
                                 };
-                            }
+                            },
                         };
                     }
 
@@ -2884,9 +3015,11 @@ export abstract class Capo<
                         utxo: utxo.id,
                         datum,
                         data,
-                        dataWrapped: dataWrapped ? `[data wrapped  as ${dataWrapped?.constructor.name}]` : undefined
+                        dataWrapped: dataWrapped
+                            ? `[data wrapped  as ${dataWrapped?.constructor.name}]`
+                            : undefined,
                     };
-                }
+                },
             } as FoundDatumUtxo<any>;
         }
     }
@@ -3344,7 +3477,7 @@ export abstract class Capo<
      * typically the full `typename` of a delegated-data-policy.
      *
      * The idPrefix refers to the short prefix used for UUT id's for this data-type.
-     * 
+     *
      * An addlTxn for ref-script creation is included.
      */
     @txn
