@@ -21,6 +21,13 @@ import {
 import {
     decodeTx,
     makeNetworkParamsHelper,
+    makeTx,
+    makeTxBody,
+    makeTxCertifyingRedeemer,
+    makeTxMintingRedeemer,
+    makeTxRewardingRedeemer,
+    makeTxSpendingRedeemer,
+    makeTxWitnesses,
     type Address,
     type NetworkParams,
     type PubKeyHash,
@@ -205,6 +212,7 @@ type BuiltTcx = {
         [key: string]: Cost;
     };
 };
+
 
 /**
  * Transaction-building context for Stellar Contract transactions
@@ -879,7 +887,23 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         return costs;
                     },
                 });
+
                 this.txb.validToTime;
+
+                //!!! todo: come back to this later.  Blockfrost's endpoint for this
+                // seems to have some issues.  Ogmios itself seems to be fine. 
+                //                
+                // //@ts-expect-error on type-probe
+                // if (this.setup.network.evalTx) {
+                //     const partialTx = undoFeesFrom(tx)
+                //     console.log(bytesToHex(partialTx.toCbor()))
+                //     //@ts-expect-error on type-probe
+                //     const evalResult = await this.setup.network.evalTx(
+                //         partialTx
+                //     );
+                //     debugger                    
+                // }
+        
             } catch (e: any) {
                 // buildUnsafe shouldn't throw errors.
 
@@ -1628,3 +1652,54 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return Promise.all(allPromises);
     }
 }
+
+/**
+ * Given a fully built transaction, returns a new transaction with the fees removed
+ * @remarks
+ * The result is suitable for submission to Ogmios' tx-evaluation endpoint
+ * that uses Haskell's CEK interpreter to give us the costs for the transaction.
+ * 
+ * TODO: use this to cross-check Helios' CEK budgeting and ensure we
+ * make a txn that will be accepted by the network
+ */
+export function undoFeesFrom(
+    t: Tx,
+    { isValid: validity = true }: { isValid?: boolean } = {}
+  ): Tx {
+    const tb = t.body
+    const pTxB = makeTxBody({
+      dcerts: tb.dcerts,
+      fee: BigInt(0),
+      minted: tb.minted,
+      refInputs: tb.refInputs,
+      inputs: tb.inputs,
+      outputs: tb.outputs,
+      signers: tb.signers,
+      withdrawals: tb.withdrawals,
+      collateral: tb.collateral,
+      collateralReturn: tb.collateralReturn,
+      firstValidSlot: tb.firstValidSlot,
+      lastValidSlot: tb.lastValidSlot,
+      metadataHash: tb.metadataHash,
+      scriptDataHash: tb.scriptDataHash,
+      totalCollateral: tb.totalCollateral,
+    })
+  
+    const txW = makeTxWitnesses({
+      ...t.witnesses,
+      redeemers: t.witnesses.redeemers.map((r) => {
+        switch (r.kind) {
+          case "TxCertifyingRedeemer":
+            return makeTxCertifyingRedeemer(r.dcertIndex, r.data)
+          case "TxMintingRedeemer":
+            return makeTxMintingRedeemer(r.policyIndex, r.data)
+          case "TxSpendingRedeemer":
+            return makeTxSpendingRedeemer(r.inputIndex, r.data)
+          case "TxRewardingRedeemer":
+            return makeTxRewardingRedeemer(r.withdrawalIndex, r.data)
+        }
+      }),
+    })
+    return makeTx(pTxB, txW, validity, t.metadata)
+  }
+  
