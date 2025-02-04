@@ -22,6 +22,7 @@ import {
     txAsString,
     utxosAsString,
     UtxoHelper,
+    TxBatcher,
 } from "@donecollectively/stellar-contracts";
 import type {
     stellarSubclass,

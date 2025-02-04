@@ -61,12 +61,14 @@ export type TxDescription<
     PROGRESS extends "buildLater!" | "resolved" | "built" | "submitted",
     TCX extends StellarTxnContext = IF_ISANY<T, StellarTxnContext<anyState>, T>
 > = {
-    tcx: PROGRESS extends resolvedOrBetter ?TCX : (() => TCX) | (() => Promise<TCX>);
+    tcx: PROGRESS extends resolvedOrBetter
+        ? TCX
+        : (() => TCX) | (() => Promise<TCX>);
     description: string;
     moreInfo?: string;
     optional?: boolean;
     txName?: string;
-} & (PROGRESS extends txBuiltOrSubmitted ? { tx: Tx, txId?: TxId } : {}) &
+} & (PROGRESS extends txBuiltOrSubmitted ? { tx: Tx; txId?: TxId } : {}) &
     (PROGRESS extends "submitted" ? { txId: TxId } : {});
 
 /**
@@ -157,29 +159,30 @@ type RedeemerArg = {
 /**
  * @public
  */
-export type SubmitOptions = TxSubmitCallbacks & TxPipelineOptions & {
-    /**
-     * indicates additional signers expected for the transaction
-     */
-    signers?: Address[];
-    addlTxInfo?: Partial<
-        Omit<TxDescription<any, "submitted">, "description">
-    > & { description: string };
-    paramsOverride?: Partial<NetworkParams>;
-    /**
-     * useful most for test environment, so that a txn failure can be me marked
-     * as "failing as expected".  Not normally needed for production code.
-     */
-    expectError?: true;
-    /**
-     * Called when there is a detected error, before logging.  Probably only needed in test.
-     */
-    beforeError?: (tx: Tx) => MultiTxnCallback<any>;
-    /**
-     * Passed into the Helios TxBuilder's build()/buildUnsafe()
-     */
-    beforeValidate?: (tx: Tx) => MultiTxnCallback<any>;
-}
+export type SubmitOptions = TxSubmitCallbacks &
+    TxPipelineOptions & {
+        /**
+         * indicates additional signers expected for the transaction
+         */
+        signers?: Address[];
+        addlTxInfo?: Partial<
+            Omit<TxDescription<any, "submitted">, "description">
+        > & { description: string };
+        paramsOverride?: Partial<NetworkParams>;
+        /**
+         * useful most for test environment, so that a txn failure can be me marked
+         * as "failing as expected".  Not normally needed for production code.
+         */
+        expectError?: true;
+        /**
+         * Called when there is a detected error, before logging.  Probably only needed in test.
+         */
+        beforeError?: (tx: Tx) => MultiTxnCallback<any>;
+        /**
+         * Passed into the Helios TxBuilder's build()/buildUnsafe()
+         */
+        beforeValidate?: (tx: Tx) => MultiTxnCallback<any>;
+    };
 
 type MintUnsafeParams = Parameters<TxBuilder["mintPolicyTokensUnsafe"]>;
 type MintTokensParams = [
@@ -190,11 +193,12 @@ type MintTokensParams = [
 /**
  * Provides notifications for various stages of transaction submission
  */
-type TxPipelineOptions = Expand<TxSubmitCallbacks & {
-    fixupBeforeSubmit?: MultiTxnCallback;
-    submitVia?: "buffer" | "submit";
-    whenQueued?: MultiTxnCallback<any, TxDescription<any, "built">>;
-}>;
+type TxPipelineOptions = Expand<
+    TxSubmitCallbacks & {
+        fixupBeforeSubmit?: MultiTxnCallback;
+        whenQueued?: MultiTxnCallback<any, TxDescription<any, "built">>;
+    }
+>;
 
 type TxSubmitCallbacks = {
     onSubmitError?: MultiTxnCallback<any, TxDescription<any, "built">>;
@@ -212,7 +216,6 @@ type BuiltTcx = {
         [key: string]: Cost;
     };
 };
-
 
 /**
  * Transaction-building context for Stellar Contract transactions
@@ -302,6 +305,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         Object.defineProperty(this, "_builtTx", { enumerable: false });
 
         const isMainnet = setup.isMainnet;
+        this.isFacade = undefined;
+
         if ("undefined" == typeof isMainnet) {
             throw new Error(
                 "StellarTxnContext: setup.isMainnet must be defined"
@@ -319,7 +324,30 @@ export class StellarTxnContext<S extends anyState = anyState> {
         };
         this.parentTcx = parentTcx;
     }
+
+    isFacade: true | false | undefined;
+    facade(
+        this: StellarTxnContext,
+    ): this & { isFacade: true } {
+        if (this.isFacade === false)
+            throw new Error(`this tcx already has txn material`);
+        if (this.parentTcx)
+            throw new Error(`no parentTcx allowed for tcx facade`);
+
+        this.isFacade = true;
+        return this as any;
+    }
+    noFacade(situation: string) {
+        if (this.isFacade)
+            throw new Error(
+                `${situation}: ${
+                    this.txnName || "this tcx"
+                } is a facade for nested multi-tx`
+            );
+    }
+
     withParent(tcx: StellarTxnContext<any>) {
+        this.noFacade("withParent");
         this.parentTcx = tcx;
         return this;
     }
@@ -351,6 +379,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         txInfo: TxDescription<any, "buildLater!">
     ): RETURNS {
         const thisWithMoreType: RETURNS = this as any;
+        if ("undefined" == typeof this.isFacade) {
+            throw new Error(
+                `to include additional txns on a tcx with no txn details, call facade() first.\n`+
+                `   ... otherwise, add txn details first or set isFacade to false`
+            )
+        }
         if (thisWithMoreType.state.addlTxns?.[txnName]) {
             throw new Error(
                 `addlTxns['${txnName}'] already included in this transaction`
@@ -364,6 +398,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     mintTokens(...args: MintTokensParams): StellarTxnContext<S> {
+        this.noFacade("mintTokens");
         const [policy, tokens, r = { redeemer: undefined }] = args;
         const { redeemer } = r;
         if (this.txb.mintPolicyTokensUnsafe) {
@@ -377,6 +412,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     getSeedAttrs<TCX extends hasSeedUtxo>(this: TCX): SeedAttrs {
+        this.noFacade("getSeedAttrs");
         // const { seedUtxo } = this.state;  // bad api-extractor!
         const seedUtxo = this.state.seedUtxo;
         // const { txId, utxoIdx: seedIndex } = seedUtxo.id; // ugh, api-extractor!
@@ -384,6 +420,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     reservedUtxos(): TxInput[] {
+        this.noFacade("reservedUtxos");
         return this.parentTcx
             ? this.parentTcx.reservedUtxos()
             : ([
@@ -405,6 +442,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         uutName: UutName,
         ...names: T[]
     ): hasUutContext<T> & TCX {
+        this.noFacade("addUut");
         this.state.uuts = this.state.uuts || {};
 
         for (const name of names) {
@@ -419,6 +457,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         key: K,
         value: V
     ): StellarTxnContext<{ [keyName in K]: V } & anyState> & TCX {
+        this.noFacade("addState");
         //@ts-expect-error
         this.state[key] = value;
         return this as StellarTxnContext<{ [keyName in K]: V } & anyState> &
@@ -426,6 +465,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     addCollateral(collateral: TxInput) {
+        this.noFacade("addCollateral");
         if (!collateral.value.assets.isZero()) {
             throw new Error(
                 `invalid attempt to add non-pure-ADA utxo as collateral`
@@ -437,6 +477,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this;
     }
     getSeedUtxoDetails(this: hasSeedUtxo): SeedAttrs {
+        this.noFacade("getSeedUtxoDetails");
         const seedUtxo = this.state.seedUtxo;
         return {
             txId: seedUtxo.id.txId,
@@ -464,6 +505,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * use-case-specific functions that those methods.
      */
     futureDate<TCX extends StellarTxnContext<S>>(this: TCX, date: Date) {
+        this.noFacade("futureDate");
         if (this._txnTime) {
             throw new Error(
                 "txnTime already set; cannot set futureDate() after txnTime"
@@ -559,6 +601,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this: TCX,
         durationMs: number
     ): TCX {
+        this.noFacade("validFor");
         const startMoment = this.txnTime.getTime();
 
         this._validityPeriodSet = true;
@@ -582,6 +625,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this: TCX,
         ...inputArgs: addRefInputArgs
     ) {
+        this.noFacade("addRefInput");
         // const [input, ...moreArgs] = inputArgs; // ugh, api-extractor!
         const input = inputArgs[0];
         if (this.txRefInputs.find((v) => v.id.isEqual(input.id))) {
@@ -632,6 +676,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         input: TxInput,
         r?: isActivity
     ): TCX {
+        this.noFacade("addInput");
         if (r && !r.redeemer) {
             console.log("activity without redeemer tag: ", r);
             throw new Error(
@@ -665,6 +710,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this: TCX,
         output: TxOutput
     ): TCX {
+        this.noFacade("addOutput");
         try {
             this.txb.addOutput(output);
             this.outputs.push(output);
@@ -705,6 +751,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * transaction if needed.
      */
     addScriptProgram(...args: Parameters<TxBuilder["attachUplcProgram"]>) {
+        this.noFacade("addScriptProgram");
         this.txb.attachUplcProgram(...args);
 
         return this;
@@ -717,6 +764,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     _builtTx?: Tx | Promise<Tx>;
     get builtTx() {
+        this.noFacade("builtTx");
         if (!this._builtTx) {
             return (this._builtTx = this.build().then(({ tx }) => {
                 return (this._builtTx = tx);
@@ -726,6 +774,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     async addSignature(wallet: Wallet) {
+        this.noFacade("addSignature");
         const builtTx = await this.builtTx;
         const sig = await wallet.signTx(builtTx);
 
@@ -733,6 +782,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     async findAnySpareUtxos(): Promise<TxInput[] | never> {
+        this.noFacade("findAnySpareUtxos");
         const mightNeedFees = 3_500_000n; // lovelace this.ADA(3.5);
 
         const toSortInfo = this.uh.mkUtxoSortInfo(mightNeedFees);
@@ -757,6 +807,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     async findChangeAddr(): Promise<Address> {
+        this.noFacade("findChangeAddr");
         // const {
         //     actorContext: { wallet },
         // } = this; // ugh, api-extractor!
@@ -791,6 +842,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             paramsOverride?: Partial<NetworkParams>;
         } = {}
     ): Promise<BuiltTcx> {
+        this.noFacade("build");
         console.timeStamp?.(`submit() txn ${this.txnName}`);
         console.log("tcx build() @top");
 
@@ -891,8 +943,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 this.txb.validToTime;
 
                 //!!! todo: come back to this later.  Blockfrost's endpoint for this
-                // seems to have some issues.  Ogmios itself seems to be fine. 
-                //                
+                // seems to have some issues.  Ogmios itself seems to be fine.
+                //
                 // //@ts-expect-error on type-probe
                 // if (this.setup.network.evalTx) {
                 //     const partialTx = undoFeesFrom(tx)
@@ -901,9 +953,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 //     const evalResult = await this.setup.network.evalTx(
                 //         partialTx
                 //     );
-                //     debugger                    
+                //     debugger
                 // }
-        
             } catch (e: any) {
                 // buildUnsafe shouldn't throw errors.
 
@@ -1024,11 +1075,15 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * or for logging or any other post-submission processing.
      */
     async submitAll(this: StellarTxnContext<any>, options: SubmitOptions = {}) {
-        return this.submit(options).then(() => {
-            if (this.state.addlTxns) {
-                return this.submitAddlTxns();
-            }
-        });
+        if (this.isFacade == false) {
+            return this.submit(options).then(() => {
+                if (this.state.addlTxns) {
+                    return this.submitAddlTxns();
+                }
+            });
+        } else if (this.state.addlTxns) {
+            return this.submitAddlTxns();
+        }
     }
 
     /**
@@ -1051,12 +1106,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
             beforeError,
             beforeValidate,
             whenQueued,
-            submitVia,
             fixupBeforeSubmit: beforeSubmit,
             onSubmitError,
             onSubmitted,
         }: SubmitOptions & TxSubmitCallbacks = {}
     ) {
+        this.noFacade("submit");
         const { logger } = this;
         const {
             tx,
@@ -1146,7 +1201,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     ...addlTxInfo,
                     tcx: this,
                     tx,
-
                 });
                 throw new Error(`wallet signing failed`);
             }
@@ -1158,19 +1212,18 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         console.timeStamp?.(`submit(): to net/wallet`);
 
-        if (submitVia == "buffer") {
-            //@ts-expect-error - with() is only present on TxBuilderChain kinds of network
-            if (this.uh.network.with?.(tx)) {
-                await whenQueued?.({ 
-                    ...addlTxInfo, 
-                    tcx: this,
-                    tx,
-                    txId: tx.id()
-                });
-                return 
-            }
-        }
+        const txDescr = {
+            ...addlTxInfo,
+            tcx: this,
+            tx,
+            txId: tx.id(),
+        };
         let txId: TxId | undefined;
+        if (this.setup.txBatcher) {
+            txId = await this.setup.txBatcher?.current.submitTxDescr(txDescr);
+            await whenQueued?.(txDescr);
+        }
+
         let walletPromise: Promise<TxId> | undefined;
         let didHaveError = false;
         if (wallet) {
@@ -1182,6 +1235,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
                             "submitTx() success via wallet: ",
                             walletTxId
                         );
+                        if (txId && !txId.isEqual(walletTxId)) {
+                            console.error(
+                                "submitter and wallet disagree on the txid!",
+                                { walletSaid: walletTxId, submitterSaid: txId }
+                            );
+                        }
                         return walletTxId;
                     },
                     (e) => {
@@ -1190,7 +1249,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         onSubmitError?.({
                             ...addlTxInfo,
                             tx,
-                            tcx: this,                            
+                            tcx: this,
                         });
                         console.log(
                             "⚠️  submitting via wallet failed (debugging breakpoint available): ",
@@ -1426,7 +1485,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * @param callback - an optional async callback that you can use to notify a user, or to log the results of the additional txns
      * @public
      **/
-    async submitAddlTxns(this: hasAddlTxns<any>, pipelineOptions?: TxPipelineOptions) {
+    async submitAddlTxns(
+        this: hasAddlTxns<any>,
+        pipelineOptions?: TxPipelineOptions
+    ) {
         const { addlTxns } = this.state;
         if (!addlTxns) return;
 
@@ -1448,26 +1510,17 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     async resolveMultipleTxns(
         txns: TxDescription<any, "buildLater!">[],
-        pipelineOptions?: TxPipelineOptions,
+        pipelineOptions?: TxPipelineOptions
     ) {
         //         as [
         //         string,
         //         TxDescription<any, "buildLater!">
         //     ][]
-        
-        //@ts-expect-error on probing for a maybe-undefined entry:
-        if (!this.setup.network.with) {
-            if (pipelineOptions?.submitVia === "buffer") {
-                throw new Error(
-                    `this network-client does not support  submitVia: "buffer"`
-                );
-            }
-        }
 
         for (const [txName, addlTxInfo] of Object.entries(txns)) {
             const txInfoResolved: TxDescription<any, "resolved"> = {
                 ...addlTxInfo,
-                tcx: "" as any // placeholder
+                tcx: "" as any, // placeholder
             };
             const { txName, description } = txInfoResolved;
             console.log("  -- before: " + description);
@@ -1500,9 +1553,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
             // }
             const replacementTcx =
                 (pipelineOptions?.fixupBeforeSubmit &&
-                    ((await pipelineOptions.fixupBeforeSubmit(txInfoResolved)) as
-                        | typeof replacementTcx
-                        | boolean)) ||
+                    ((await pipelineOptions.fixupBeforeSubmit(
+                        txInfoResolved
+                    )) as typeof replacementTcx | boolean)) ||
                 tcx;
             if (false === replacementTcx) {
                 console.log("callback cancelled txn: ", txName);
@@ -1526,8 +1579,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
             await effectiveTcx.submit({
                 addlTxInfo: txInfoResolved,
-                    ...pipelineOptions
-                });
+                ...pipelineOptions,
+            });
             // console.log("   -- submitTxns: <- txn: ", txName, description);
             // m oved into submit()
             // if (callbacks?.onSubmitted) {
@@ -1547,7 +1600,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     async submitTxnChain(
         options: {
-            txns?: TxDescription<any, "buildLater!">[]
+            txns?: TxDescription<any, "buildLater!">[];
         } & TxPipelineOptions = {
             //@ts-expect-error because the type of this context doesn't
             //   guarantee the presence of addlTxns.  But it might be there!
@@ -1569,12 +1622,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 this.setup.network.tick?.(1);
                 options.fixupBeforeSubmit?.(txinfo);
             },
-            submitVia: (this.uh.network as any).with ? "buffer" : "submit",
             whenQueued: (txinfo) => {
-                const more: Record<
-                    string,
-                    TxDescription<any, "buildLater!">
-                > = 
+                const more: Record<string, TxDescription<any, "buildLater!">> =
                     //@ts-expect-error on optional prop
                     txinfo.tcx.state.addlTxns || {};
                 console.log("  ✅ " + txinfo.description);
@@ -1637,10 +1686,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
             console.log(
                 chainedTxns.map((t) => `  🟩 ${t.description}\n`).join("")
             );
-            const thisBatch = chainedTxns
+            const thisBatch = chainedTxns;
             chainedTxns = [];
             debugger;
-            const t = isolatedTcx.resolveMultipleTxns(thisBatch, txChainSubmitOtions);
+            const t = isolatedTcx.resolveMultipleTxns(
+                thisBatch,
+                txChainSubmitOtions
+            );
             allPromises.push(t);
             await t;
             console.log(
@@ -1658,48 +1710,47 @@ export class StellarTxnContext<S extends anyState = anyState> {
  * @remarks
  * The result is suitable for submission to Ogmios' tx-evaluation endpoint
  * that uses Haskell's CEK interpreter to give us the costs for the transaction.
- * 
+ *
  * TODO: use this to cross-check Helios' CEK budgeting and ensure we
  * make a txn that will be accepted by the network
  */
 export function undoFeesFrom(
     t: Tx,
     { isValid: validity = true }: { isValid?: boolean } = {}
-  ): Tx {
-    const tb = t.body
+): Tx {
+    const tb = t.body;
     const pTxB = makeTxBody({
-      dcerts: tb.dcerts,
-      fee: BigInt(0),
-      minted: tb.minted,
-      refInputs: tb.refInputs,
-      inputs: tb.inputs,
-      outputs: tb.outputs,
-      signers: tb.signers,
-      withdrawals: tb.withdrawals,
-      collateral: tb.collateral,
-      collateralReturn: tb.collateralReturn,
-      firstValidSlot: tb.firstValidSlot,
-      lastValidSlot: tb.lastValidSlot,
-      metadataHash: tb.metadataHash,
-      scriptDataHash: tb.scriptDataHash,
-      totalCollateral: tb.totalCollateral,
-    })
-  
+        dcerts: tb.dcerts,
+        fee: BigInt(0),
+        minted: tb.minted,
+        refInputs: tb.refInputs,
+        inputs: tb.inputs,
+        outputs: tb.outputs,
+        signers: tb.signers,
+        withdrawals: tb.withdrawals,
+        collateral: tb.collateral,
+        collateralReturn: tb.collateralReturn,
+        firstValidSlot: tb.firstValidSlot,
+        lastValidSlot: tb.lastValidSlot,
+        metadataHash: tb.metadataHash,
+        scriptDataHash: tb.scriptDataHash,
+        totalCollateral: tb.totalCollateral,
+    });
+
     const txW = makeTxWitnesses({
-      ...t.witnesses,
-      redeemers: t.witnesses.redeemers.map((r) => {
-        switch (r.kind) {
-          case "TxCertifyingRedeemer":
-            return makeTxCertifyingRedeemer(r.dcertIndex, r.data)
-          case "TxMintingRedeemer":
-            return makeTxMintingRedeemer(r.policyIndex, r.data)
-          case "TxSpendingRedeemer":
-            return makeTxSpendingRedeemer(r.inputIndex, r.data)
-          case "TxRewardingRedeemer":
-            return makeTxRewardingRedeemer(r.withdrawalIndex, r.data)
-        }
-      }),
-    })
-    return makeTx(pTxB, txW, validity, t.metadata)
-  }
-  
+        ...t.witnesses,
+        redeemers: t.witnesses.redeemers.map((r) => {
+            switch (r.kind) {
+                case "TxCertifyingRedeemer":
+                    return makeTxCertifyingRedeemer(r.dcertIndex, r.data);
+                case "TxMintingRedeemer":
+                    return makeTxMintingRedeemer(r.policyIndex, r.data);
+                case "TxSpendingRedeemer":
+                    return makeTxSpendingRedeemer(r.inputIndex, r.data);
+                case "TxRewardingRedeemer":
+                    return makeTxRewardingRedeemer(r.withdrawalIndex, r.data);
+            }
+        }),
+    });
+    return makeTx(pTxB, txW, validity, t.metadata);
+}

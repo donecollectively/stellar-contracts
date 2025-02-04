@@ -54,6 +54,7 @@ import type {
     StringifiedHeliosCacheEntry,
 } from "./helios/CachedHeliosProgram.js";
 import type { DeployedScriptDetails } from "./configuration/DeployedScriptConfigs.js";
+import type { TxBatcher } from "./networkClients/TxBatcher.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -327,6 +328,7 @@ export type SetupInfo = {
     network: CardanoClient | Emulator;
     /** the params for this network */
     networkParams: NetworkParams;
+    txBatcher?: TxBatcher;
     /** false for any testnet.  todo: how to express L2? */
     isMainnet?: boolean;
     /** wallet-wrapping envelope, allows wallet-changing without reinitializing anything using that envelope */
