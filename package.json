@@ -36,6 +36,7 @@
     "scripts": {
         "build": "scripts/build",
         "dev": "scripts/rollup --watch",
+        "dev:rollupPlugin": "scripts/esbuild-rollup-dev",
         "smoke:test": "SMOKE=1 vitest run 02 04",
         "smoke:testing": "SMOKE=1 vitest --inspect --poolOptions.forks.singleFork watch 02 04",
         "test": "vitest run ",

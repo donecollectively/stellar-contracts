@@ -10,6 +10,29 @@ cleanup() {
     rm -f $hasProblem
 }
 
+ESBUILD_EXTERNALS=$(cat <<EOF
+--external:esbuild 
+--external:rollup 
+--external:rollup-plugin-esbuild 
+--external:rollup-pluginutils 
+--external:@helios-lang
+EOF
+)
+ESBUILD="esbuild --format=esm --bundle --sourcemap --packages=external"
+
+makeRollupPlugin() {
+    WATCH=${1:-}
+    $ESBUILD $WATCH --platform=node $ESBUILD_EXTERNALS \
+        --drop-labels=__BROWSER_ONLY__ \
+        --outfile=dist/rollup-plugins.mjs \
+        index-rollup-plugins.ts
+
+    # raw DTS to be fed to api-extractor 
+    inBackground "updating rollup-plugin.d.ts..." \
+        rollupPluginDTS &
+} 
+
+
 # Set trap to call cleanup function on script exit or interruption
 trap cleanup EXIT INT TERM
 

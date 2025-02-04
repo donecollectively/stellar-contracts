@@ -1,0 +1,11 @@
+#!/bin/bash
+srcDir=$(dirname $0)
+. $srcDir/support.sh
+
+# note this is a snapshot of what the main build
+makeRollupPlugin --watch
+sleep 0.5
+echo "------------------------------ waiting ------------------------------"
+wait
+
+exitIfError
