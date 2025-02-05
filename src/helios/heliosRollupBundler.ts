@@ -3,30 +3,34 @@ import { blake2b } from "@helios-lang/crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { createFilter } from "rollup-pluginutils";
+import MagicString from "magic-string";
 import {
     type InputOptions,
     type ResolveIdHook,
+    type ResolveDynamicImportHook,
     type ResolveIdResult,
     type PartialResolvedId,
     type LoadResult,
     type PluginContext,
+    type SourceDescription,
     type LoadHook,
     type CustomPluginOptions,
     rollup,
     type ResolvedId,
 } from "rollup";
-import esbuild from "rollup-plugin-esbuild";
 
 import { StellarHeliosProject } from "./StellarHeliosProject.js";
-import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { textToBytes } from "../HeliosPromotedTypes.js";
+import { rollupCreateHlbundledClass } from "./rollupPlugins/rollupCreateHlbundledClass.js";
+import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
 
 type HeliosBundlerPluginState = {
     capoBundle: any; // CapoHeliosBundle;
     hasExplicitCapoBundle: boolean;
     hasOtherBundles: boolean;
     project: StellarHeliosProject;
+    bundleClassById: Record<string, any>;
 };
 
 /**
@@ -77,8 +81,20 @@ export function heliosRollupBundler(
         pluginOptions.include,
         pluginOptions.exclude
     );
+
+    const regexCurrentCapoConfig =
+        /^@donecollectively\/stellar-contracts\/currentCapoConfig$/;
+
     const filterHlbundledImportName = createFilter(/.*\.hlb\.[jt]s\?bundled/);
     // const project = options.project ? `${options.project}` : "";
+
+    const netName = process.env.CARDANO_NETWORK;
+    if (!netName) {
+        console.warn(
+            "missing CARDANO_NETWORK environment variable; building for 'preprod'"
+        );
+    }
+    const networkId = netName || "preprod";
 
     // const lib = loadCompilerLib();
     const { projectRoot, packageJSON } =
@@ -88,13 +104,15 @@ export function heliosRollupBundler(
     //read package.json from project root, parse and check its package name
     // const packageJsonPath = path.join(projectRoot, "package.json");
     // const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
-    // const isStellarContracts = "@donecollectively/stellar-contracts" === packageJson.name;
+    const isStellarContracts =
+        "@donecollectively/stellar-contracts" === packageJSON.name;
 
     const state: HeliosBundlerPluginState = {
         capoBundle: null, // new CapoHeliosBundle(),
         hasExplicitCapoBundle: false,
         hasOtherBundles: false,
         project: new StellarHeliosProject(),
+        bundleClassById: {},
     };
 
     const firstImportFrom: Record<string, string> = {};
@@ -111,9 +129,15 @@ export function heliosRollupBundler(
                 // write the project file after the build, skipping any
                 // pending delay from calls to `deferredWriteProjectFile()`
                 console.log(
-                    "heliosBundler: buildEnd: " +
-                        (error ? "error: " + error?.message : "")
+                    "heliosBundler @buildEnd: " +
+                    (error ? "error: " + error?.message : "")
                 );
+                if (pluginOptions.vite) return;
+                this.emitFile({
+                    type: "asset",
+                    fileName: "needResolverConditions.mjs",
+                    source: resolverConditionsHelper(),
+                });
                 // return state.project.writeProjectFile();
             },
         },
@@ -136,7 +160,9 @@ export function heliosRollupBundler(
                     resolutionTargetIsJS &&
                     importerIsInThisProject
                 ) {
-                    this.warn(`patching up a vitest resolution: ${importer} imported ${source}`);
+                    this.warn(
+                        `patching up a vitest resolution: ${importer} imported ${source}`
+                    );
                     // work around vitest not resolving .ts files from .js using
                     // the correct rules...
                     const sourceWithTs = source.replace(/\.js$/, ".ts");
@@ -185,7 +211,7 @@ export function heliosRollupBundler(
                         return resolved;
                     } else {
                         // id is now an absolute filename of a (TS or JS) helios-bundle definition.
-                        // before proceeding with returning a resolution for that file, let's
+                        // Before proceeding with returning a resolution for that file, let's
                         // try to push it through a depth-first compile, load it and generate types.
                         // const name = resolved.id.replace(
                         //     /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
@@ -197,7 +223,12 @@ export function heliosRollupBundler(
                             /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
                             "$1"
                         );
-                        const packageRelativeName = `contracts/${name}.hlb`;
+                        const buildGenericArtifacts = !!isStellarContracts;
+                        const netIdSuffix = buildGenericArtifacts
+                            ? ""
+                            : `-${networkId}`;
+
+                        const packageRelativeName = `contracts${netIdSuffix}/${name}.hlb`;
                         const bundledExportName = `${thisPackageName}/${packageRelativeName}`;
                         //This arranges a convention for emitting a predictable
                         // exported file, used to connect the importer with emitted code
@@ -207,29 +238,56 @@ export function heliosRollupBundler(
                         // ```
                         //   "exports": {
                         //       ".": { /* types, import, ...etc */ }
-                        //       "./contracts/*.hlb": "./dist/contracts/*.hlb.mjs",
+                        //       "./contracts/*.hlb": {
+                        //             "network-preprod": "./dist/contracts-preprod/*.hlb.mjs",
+                        //             "network-mainnet": ""./dist/contracts-mainnet/*.hlb.mjs",
+                        //       }
                         //      [...]
                         //   }
                         // ```
-                        if (pluginOptions.emitBundled) {
-                            // immediately starts resolving the file-for-emit, and returns a
-                            // PACKAGE-RELATIVE name for the artifact.  The importer of
-                            // the .hlb.ts file will get that translated import statement, and
-                            // the emitFile acts like a fork, with the processing of the emitted
-                            // file happening on a separate track.
-                            // and the package-relative import name used in place of normal
-                            // load/transform processing of the separate chunk.
-                            console.log(
-                                `  -- heliosBundler: emitting ${bundledExportName}`
+                        if (pluginOptions.emitBundled ) {
+                            const result = await this.resolve(
+                                id,
+                                    importer,
+                                options
                             );
-                            const outputId = this.emitFile({
-                                type: "chunk",
-                                id: bundledId,
-                                name: packageRelativeName,
-                                importer,
-                                // only valid for emitted assets, not chunks:
-                                // originalFileName: resolved.id,
-                            });
+                            if (result?.id) {
+                                const SomeBundleClass =
+                                    await rollupCreateHlbundledClass(result.id);
+
+                                const isMainnet = networkId === "mainnet";
+
+                                state.bundleClassById[id] = SomeBundleClass;
+                                const hlBundler : HeliosScriptBundle = new SomeBundleClass();
+                                
+                                const scriptVariants = hlBundler.variants;
+                                for (const [variant, baseParams] of Object.entries(scriptVariants)) {
+                                    const compiled = await hlBundler.withSetupDetails({
+                                        params: baseParams,
+                                        setup: { isMainnet },
+                                    })
+
+
+                                    // immediately starts resolving the file-for-emit, and returns a
+                                    // PACKAGE-RELATIVE name for the artifact.  The importer of
+                                    // the .hlb.ts file will get that translated import statement, and
+                                    // the emitFile acts like a fork, with the processing of the emitted
+                                    // file happening on a separate track.
+                                    // and the package-relative import name used in place of normal
+                                    // load/transform processing of the separate chunk.
+                                    console.log(
+                                        `  -- heliosBundler: emitting ${packageRelativeName}`
+                                    );
+                                    const outputId = this.emitFile({
+                                        type: "chunk",
+                                        id: bundledId,                                        
+                                        name: packageRelativeName,
+                                        importer,
+                                        // only valid for emitted assets, not chunks:
+                                        // originalFileName: resolved.id,
+                                    });
+                                }
+                            }
                         }
                         return bundledExportName;
                     }
@@ -251,10 +309,10 @@ export function heliosRollupBundler(
                             skipSelf: true,
                         }
                     );
-                    debugger;
                     return result;
                 } else {
-                    if (id.match(/hlb/) && !id.match(/hlbundled/)) {
+
+                    if (id.match(/hlb/) && !id.match(/hlBundled/) && !id.match(/dist\//)) {
                         console.log(
                             `HeliosBundler resolve: skipping due to filter mismatch (debugging breakpoint available)`,
                             { id, importer }
@@ -280,48 +338,20 @@ export function heliosRollupBundler(
                 const interesting = !!id.match(/\.hlb\./);
                 const { project } = state;
                 if (filterHlbundledImportName(id)) {
-                    if (process.env.DEBUG) console.log("    ---- heliosBundler: load", { id });
-                    const indirectBundleId = id;
-                    const referenceId = indirectBundleId.replace(
-                        /\?bundled$/,
-                        ""
-                    );
-                    const name = referenceId.replace(
-                        /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
-                        "$1"
-                    );
-                    console.log(
-                        "XXXXXXXXXXXXXXXXXXXXXXXXXXXXX emitFile chunk",
-                        indirectBundleId
-                    );
+                    // NOTE: the filterHlbundledImportName branch
+                    // in the resolveId hook above ensures that we NEVER
+                    // arrive here.  Instead, the load process continues
+                    // normally, but with the output emitted to the separate
+                    // chunk whose emitFile() is initiated above.
+                    //
+                    // See the transform hook for the details we add to the .hlb
+
                     throw new Error(
                         `unused code path for broken emitFile in load `
                     );
-
-                    //XXX emits meta information for an OUTPUT chunk, indirectly
-                    //XXX resolving it to a separate output file.  This miniature chunk
-                    //XXX of code ends up being transparently removed from the output,
-                    //XXX with the indirectBundleId that was resolved above being replaced
-                    //XXX with the output-file indicated in the import.meta... expression.
-
-                    // doesn't work as expected - the emitted file simply references
-                    // its own filename, not the bundled content.  see emitFile() above,
-                    // in which a convention for emitting a predictable exported file
-                    // is used to connect the importer with emitted code.
-                    const outputId = this.emitFile({
-                        type: "chunk",
-                        id: indirectBundleId,
-                        name: `contracts/${name}.hlbundled`,
-                        // only valid for emitted assets, not chunks:
-                        // originalFileName: resolved.id,
-                    });
-                    if (interesting) {
-                        console.log("   ---- emitted chunkId", outputId);
-                    }
-                    return `export default import.meta.ROLLUP_FILE_URL_${outputId};`;
                 }
                 if (!filterHLB(id)) {
-                    if (id.match(/hlb/) && !id.match(/hlbundled/)) {
+                    if (id.match(/hlb/) && !id.match(/hlBundled/) && !id.match(/dist\//)) {
                         console.log(
                             `HeliosBundler load: skipping due to filter mismatch (debugging breakpoint available)`,
                             { id }
@@ -348,7 +378,9 @@ export function heliosRollupBundler(
                 //??? addWatchFile for all the .hl scripts in the bundle
                 // return null as LoadResult;
 
-                let bundle = new SomeBundleClass({setup: {isMainnet:false}});
+                let bundle = new SomeBundleClass({
+                    setup: { isMainnet: false },
+                });
                 // compile the program seen in that bundle!
                 // ... to trigger helios syntax-checking:
                 let program = bundle.program;
@@ -395,6 +427,7 @@ export function heliosRollupBundler(
                         // );
                     } else {
                         if (state.hasOtherBundles && !skipInstallingThisOne) {
+                            throw new Error(`unreachable code path??`);
                             let dCur = shortHash(
                                 JSON.stringify(state.capoBundle.modules)
                             );
@@ -406,25 +439,6 @@ export function heliosRollupBundler(
 
                             if (dCur !== dNew) {
                                 throw new Error(`unreachable code path`);
-                                logCapoBundleDifferences(
-                                    dCur,
-                                    state,
-                                    dNew,
-                                    SomeBundleClass,
-                                    id
-                                );
-                                const ts1 = Date.now();
-                                state.project =
-                                    state.project.replaceWithNewCapo(
-                                        id,
-                                        SomeBundleClass
-                                    );
-                                console.log(
-                                    "  ---- Reinitialized project in",
-                                    Date.now() - ts1,
-                                    "ms"
-                                );
-                                replacedCapo = true;
                             } else {
                                 console.log(
                                     "  ---- warning: second capo discovered, though its modules aren't different from default. Generatings its types, but otherwise, Ignoring."
@@ -441,7 +455,9 @@ export function heliosRollupBundler(
                     }
                     state.hasExplicitCapoBundle = true;
 
-                    bundle = new SomeBundleClass({setup: {isMainnet:false}});
+                    bundle = new SomeBundleClass({
+                        setup: { isMainnet: false },
+                    });
                     if (!replacedCapo) {
                         // state.project.loadBundleWithClass(id, SomeBundleClass);
                         // state.project.generateBundleTypes(id);
@@ -512,6 +528,64 @@ export function heliosRollupBundler(
                 //  throw new Error(`heliosLoader: ${importer} is importing ${source}`);
             },
         },
+        async transform(this: PluginContext, code: string, id: string) {
+            if (!filterHLB(id)) return;
+            let looksLikeCapo = code.match(/extends .*Capo.*/);
+            if (looksLikeCapo?.[0].match(/usingCapoBundle/)) looksLikeCapo = null;
+
+            const deployedConfigRegex = /^(\s*deployed *= )*(?:currentDeploymentConfig)(?:\s|$)/m;
+            // const tester = `            deployed = mkCapoDeployment`
+            const filenameBase = id.replace(
+                /.*\/([^.]+)\..*$/,
+                "$1"
+            );    
+            const deployDetailsFile = `./${filenameBase}.hlDeploy.${networkId}.json`;
+            if (!code.match(deployedConfigRegex)) {
+                if (looksLikeCapo) {
+                    debugger
+                    this.warn(`It looks like this is a Capo bundle class without a currentDeploymentConfig in ${id}`);
+                    console.log(`  import {currentDeploymentConfig} from "@donecollectively/stellar-contracts"`);
+                    console.log(`  ... and add  'deployed = currentDeploymentConfig' to your class.`);
+                    console.log(`This will use configuration details from its ${deployDetailsFile}`);
+                    console.log(`  ... or another json file when deploying to a different network`);
+                }
+                return null
+            }
+            if (!looksLikeCapo) {                                
+                this.warn(`non-Capo class using currentDeploymentConfig in ${id}`);
+            }
+            debugger
+
+            const s = new MagicString(code);
+            const resolvedDeployConfig = await this.resolve(deployDetailsFile, id, {
+                // attributes: {type: "json" },
+            });
+            if (!resolvedDeployConfig) {
+                this.warn(`no ${networkId} deployDetails for Capo bundle: ${deployDetailsFile}`);
+            } else {
+                const deployDetailsConfigJSON = readFileSync(
+                    resolvedDeployConfig.id
+                )
+                debugger
+                const deployDetails = JSON.parse(deployDetailsConfigJSON.toString() || '{}');
+
+                if (!deployDetails.capo) {
+                    this.warn(`missing required 'capo' entry in ${resolvedDeployConfig.id}`);
+                }
+                this.addWatchFile(id);
+                this.addWatchFile(resolvedDeployConfig.id)
+
+                s.replace(deployedConfigRegex, 
+                    `$1 (${JSON.stringify(deployDetails)})`
+                );
+                console.log(s.toString());
+                debugger
+                return {
+                    code: s.toString(),
+                    map: s.generateMap({ hires: true }),
+                }
+            }
+        },
     };
 
     function traceImportPath(existing: string) {
@@ -523,245 +597,54 @@ export function heliosRollupBundler(
         return importTrace;
     }
 
-    async function rollupMakeBundledScriptClass(inputFile: string) {
-        // writes the output file next to the input file as *.hlBundled.mjs
-        const outputFile = inputFile.replace(
-            /\.hlb\.[tj]s$/,
-            ".hlBundled.mjs" // ??? move to dist/ or .hltemp/?  hlbundle
-        );
-        if (inputFile == outputFile) {
-            throw new Error(`inputFile cannot be the same as outputFile`);
-        }
-
-        const buildStartTime = Date.now();
-
-        // throw new Error(inputFile);
-        console.log(`📦 StellarHeliosProject: loading ${inputFile}`);
-        let didWarn = false;
-        const bundle = await rollup({
-            input: inputFile,
-            external(id) {
-                return !/^[./]/.test(id);
-            },
-
-            onwarn(warning, warn) {
-                if (warning.code === "UNUSED_EXTERNAL_IMPORT") return;
-                if (warning.code === "CIRCULAR_DEPENDENCY") {
-                    if (
-                        warning.message ==
-                            "Circular dependency: src/StellarTxnContext.ts -> src/diagnostics.ts -> src/StellarTxnContext.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/diagnostics.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/diagnostics.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
-                    ) {
-                        if (didWarn) return;
-                        didWarn = true;
-                        // warn("    ... all the usual Circular dependencies...")
-                        return;
-                    }
-                }
-                warn(warning);
-            },
-            plugins: [
-                heliosRollupLoader({
-                    // todo make this right for the context
-                    project: "stellar-contracts",
-                    // onLoadHeliosFile: (filename) => {
-                    //   remember this list of files
-                    // }
-                }),
-                // !!! figure out how to make the bundle include the compiled & optimized
-                //   program, when options.compile is true.
-                esbuild({
-                    tsconfig: "./tsconfig.json",
-                    target: ["node18"],
-
-                    sourceMap: false,
-                }),
-                // after the build is finished, append the list of input files
-                // in a way making it quick and easy to load an existing compiled
-                // file and let it check its own input files for changes.  Then
-                // we can save time and avoid this build step if everything is already good.
-            ],
-            // output: {
-            //     file: this.compiledProjectFilename,
-            //     sourcemap: true,
-            //     format: "es",
-            // },
-        }).catch((error) => {
-            console.error("Error during rollup of helios bundle:", error);
-            throw error;
-        });
-
-        const result = await bundle.generate({ format: "es" });
-        if (result.output.length > 1) {
-            throw new Error(`unexpected: bundle should have one output`);
-        }
-        const compiled = result.output[0].code;
-        let buildTime = Date.now() - buildStartTime;
-
-        let needsWrite = true;
-        // if the file is not changed, skip write of the compiled file
-        if (existsSync(outputFile)) {
-            const existing = readFileSync(outputFile, "utf-8");
-            if (existing === compiled) {
-                console.log(
-                    `📦 StellarHeliosProject: unchanged bundle (${buildTime}ms): ${outputFile}`
-                );
-                needsWrite = false;
-            }
-        }
-        if (needsWrite) {
-            await bundle.write({
-                file: outputFile,
-                // sourcemap: true,  // ?? how to get this to work properly?  debugging goes to wrong site
-                format: "es",
-            });
-            buildTime = Date.now() - buildStartTime;
-            console.log(
-                `📦 StellarHeliosProject: wrote compiled bundle (${buildTime}ms): ${outputFile}`
-            );
-        }
-        bundle.close();
-        return import(outputFile).then((mod) => {
-            if (mod.default) {
-                const BundleClass = mod.default;
-                return BundleClass;
-            } else {
-                throw new Error(`no default export in ${outputFile}`);
-            }
-        });
+    function shortHash(str: string) {
+        return bytesToHex(blake2b(textToBytes(str)).slice(0, 5));
     }
 
-    async function makeCapoHeliosBundle() {
-        // uses rollup to make a CapoHeliosBundle.mjs in .hltemp/typegen
+    function resolverConditionsHelper() {
+        return `export default class needResolveConditions {
+    constructor() {
+        throw new Error(\`
 
-        throw new Error(`not implemented2`);
+This app tried to load a deployed on-chain script bundle, without
+having indicated a network-id.
 
-        const outputFile = path.join(tempDir, "CapoHeliosBundle.mjs");
-        console.log(
-            `📦 StellarHeliosProject: making CapoHeliosBundle: ${outputFile}`
-        );
-        const buildStartTime = Date.now();
-        let didWarn = false;
-        const bundle = await rollup({
-            input: path.join("src/CapoHeliosBundle.ts"),
-            external(id) {
-                return !/^[./]/.test(id);
-            },
-            onwarn(warning, warn) {
-                if (warning.code === "UNUSED_EXTERNAL_IMPORT") return;
-                if (warning.code === "CIRCULAR_DEPENDENCY") {
-                    if (
-                        warning.message ==
-                            "Circular dependency: src/StellarTxnContext.ts -> src/diagnostics.ts -> src/StellarTxnContext.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/diagnostics.ts -> src/StellarTxnContext.ts -> src/diagnostics.ts" ||
-                        warning.message ==
-                            "Circular dependency: src/diagnostics.ts -> src/delegation/jsonSerializers.ts -> src/diagnostics.ts"
-                    ) {
-                        if (didWarn) return;
-                        didWarn = true;
-                        // warn("    ... all the usual Circular dependencies...")
-                        return;
+To resolve deployed on-chain script bundles, you need to specify
+custom resolver condition to connect the specific deployment
+environment with the pre-compiled scripts for that environment.
+
+In Next.js, try something like this in next.config.js:
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    esmExternals: true
+  },
+  webpack: (config) => {
+    config.resolve.conditionNames.push(\`network-\${CARDANO_NETWORK || "preprod"}\`);
+    return config;
+  }
+    ...
+                        \`)
                     }
-                }
-                warn(warning);
-            },
-            plugins: [
-                heliosRollupLoader({
-                    project: "stellar-contracts",
-                }),
-                esbuild({
-                    tsconfig: "./tsconfig.json",
-                    target: ["node18"],
-                    sourceMap: false,
-                }),
-            ],
-        }).catch((error) => {
-            console.error("Error during rollup of CapoHeliosBundle:", error);
-            throw error;
-        });
-        const result = await bundle.generate({ format: "es" });
-        const compiled = result.output[0].code;
-        const buildTime = Date.now() - buildStartTime;
-        console.log(
-            `📦 CapoHeliosBundle: generated temporary bundle (${buildTime}ms): ${outputFile}`
-        );
-        let needsWrite = true;
-        // if the file is not changed, skip write of the compiled file
-        if (existsSync(outputFile)) {
-            const existing = readFileSync(outputFile, "utf-8");
-            if (existing === compiled ) {
-                console.log(
-                    `📦 CapoHeliosBundle: unchanged bundle (${buildTime}ms): ${outputFile}`
-                );
-                needsWrite = false;
-            }
-        }
 
-        if (needsWrite) {
-            await bundle.write({
-                file: outputFile,
-                format: "es",
-            });
-            console.log(
-                `📦 CapoHeliosBundle: wrote compiled bundle (${buildTime}ms): ${outputFile}`
-            );
-        }
+In VIte, use its resolve.conditions setting.
+   - see https://vite.dev/config/shared-options.html#resolve-conditions
+                    
+   export default defineConfig({
+        ...
+        resolve: {
+            conditions: [
+                \`network-\${process.env.CARDANO_NETWORK || "preprod"}\`
+            ]
+    })
 
-        console.log("importing CapoHeliosBundle");
-        return import(outputFile).then((mod) => {
-            console.log("CapoHeliosBundle loaded", outputFile);
-            return mod.CapoHeliosBundle;
-        });
+More about conditional exports and the resolver conditions they match:
+
+  https://nodejs.org/docs/latest-v22.x/api/packages.html#conditional-exports
+\`  
+  }
+}
+`;
     }
-}
 
-function logCapoBundleDifferences(
-    digestExisting: string,
-    state: HeliosBundlerPluginState,
-    digestNew: string,
-    SomeBundleClass: any,
-    id: string
-) {
-    console.log(
-        `existing = ${digestExisting}`,
-        state.capoBundle.modules.map((x) =>
-            JSON.stringify({
-                name: x.name,
-                content: shortHash(x.content),
-            })
-        )
-    );
-    console.log(
-        `late arrival: ${digestNew}`,
-        SomeBundleClass.prototype.modules.map((x) =>
-            JSON.stringify({
-                name: x.name,
-                content: shortHash(x.content),
-            })
-        )
-    );
-    console.log("  ^^^^ from", id);
-    console.log(
-        "  ---- Late-arriving Capo.  Reinitializing project with updated dependencies..."
-    );
-}
-
-function shortHash(str: string) {
-    return bytesToHex(blake2b(textToBytes(str)).slice(0, 5));
 }

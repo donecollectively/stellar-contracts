@@ -13,9 +13,10 @@ import type {
     AllDeployedScriptConfigs,
     CapoDeployedDetails,
 } from "./configuration/DeployedScriptConfigs.js";
-import type { StellarSetupUplc } from "./StellarContract.js";
+import type { StellarBundleSetupUplc } from "./StellarContract.js";
+import type { AbstractNew } from "./helios/typeUtils.js";
 
-export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
+export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
 
 /**
  * A set of Helios scripts that are used to define a Capo contract.
@@ -29,29 +30,40 @@ export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
  * @public
  */
 export class CapoHeliosBundle extends HeliosScriptBundle {
-    constructor(setupDetails?: StellarSetupUplc<any>) {
+    constructor(setupDetails: StellarBundleSetupUplc<any>) {
         // if we have deployed details, use that.
         // otherwise, require setupDetails
         super(setupDetails);
-        this.deployedScriptDetails =
-            this.deployedDetails?.capo ||
-            (setupDetails?.deployedDetails ?? undefined);
     }
+    deployed:
+        | CapoDeployedDetails<any>
+        | ((...args: any[]) => CapoDeployedDetails<any>) = { capo: undefined };
+
     get main() {
         return mainContract;
+    }
+
+    get params() {
+        const deployedDetails = "function" == typeof this.deployed ?
+            this.deployed({capo: {config: {}}}) :
+            this.deployed;
+
+        if (!deployedDetails.capo) {
+            // throw new Error(`${this.constructor.name}: missing required \`get deployed()\` for Capo bundle`);
+            return {}; // or something that leads to compiling without params
+        }
+
+        const { mph, rev } = deployedDetails.capo.config || {};
+        return { mph, rev };
     }
 
     datumTypeName = "CapoDatum";
     capoBundle = this; // ???
 
-    // todo: make types for these
-    // config? : any
-    deployedDetails?: CapoDeployedDetails;
-
-    // scriptConfigs? : AllDeployedScriptConfigs
     get scriptConfigs() {
-        return this.deployedDetails?.scripts;
+        throw new Error(`scriptConfigs - do something else instead`);
     }
+
     get bridgeClassName(): string {
         if (this.constructor === CapoHeliosBundle) {
             return "CapoDataBridge";

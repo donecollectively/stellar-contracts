@@ -26,7 +26,7 @@ import {
 } from "./StellarContract.js";
 
 import type {
-    StellarSetupDetails as StellarSetupDetails,
+    StellarSetupDetails,
     configBaseWithRev,
     stellarSubclass,
     ConfigFor,
@@ -277,7 +277,9 @@ export abstract class Capo<
         console.warn(
             "using a generic Capo bundle - just enough for getting started."
         );
-        return new CapoHeliosBundle();
+        return new CapoHeliosBundle({
+            setup: this.setup,
+        });
     }
 
     /**
@@ -312,35 +314,9 @@ export abstract class Capo<
         deployedName = "singleton"
     ): DeployedScriptDetails | undefined {
         const preconfigs = this.getBundle().scriptConfigs?.[role];
-        if (!preconfigs) return undefined;
+        throw new Error("where is deployedScriptDetails() used?")
 
-        const preconf = preconfigs[deployedName] as DeployedScriptDetails;
-        if (!preconf) {
-            console.warn(role, "config from capo:", preconfigs);
-            if ("singleton" == deployedName) {
-                throw new Error(
-                    `role: ${role}: delegate roles must have only singleton configurations`
-                );
-            }
-            throw new Error(
-                `role: ${role}: no deployment named ${deployedName}`
-            );
-        }
 
-        const errors: string[] = [];
-        for (const [k, v] of Object.entries(preconf.config)) {
-            if (config[k] !== v) {
-                errors.push(
-                    `role: ${role}: capo bundle's deployedDetails.${k}=${v} doesn't match computed config.${k}=${config[k]}`
-                );
-            }
-        }
-        if (errors.length) {
-            throw new Error(errors.join("\n"));
-        }
-
-        preconf;
-        return preconf;
     }
 
     get scriptDatumName() {
@@ -1021,7 +997,7 @@ export abstract class Capo<
     }
 
     /**
-     *
+     * @public
      */
     async addStrellaWithConfig<
         SC extends StellarContract<any>

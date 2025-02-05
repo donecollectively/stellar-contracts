@@ -1,6 +1,7 @@
 import type { DataType, Program } from "@helios-lang/compiler";
 import type { Source } from "@helios-lang/compiler-utils";
 import {
+    type UplcData,
     type UplcProgramV2,
     type UplcProgramV3,
     type UplcSourceMapJsonSafe,
@@ -12,8 +13,10 @@ import { HeliosProgramWithCacheAPI } from "@donecollectively/stellar-contracts/H
 
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type {
+    configBaseWithRev,
     SetupInfo,
-    StellarSetupUplc,
+    SetupOrMainnetSignalForBundle,
+    StellarBundleSetupUplc,
     UplcRecord,
 } from "../StellarContract.js";
 import type { anyUplcProgram } from "../HeliosPromotedTypes.js";
@@ -25,6 +28,7 @@ import type {
 import type { StringifiedHeliosCacheEntry } from "./CachedHeliosProgram.js";
 import type { DeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
+import { makeCast } from "@helios-lang/contract-utils";
 
 /**
  * @internal
@@ -63,10 +67,11 @@ export abstract class HeliosScriptBundle {
     static usingCapoBundleClass<CB extends CapoBundleClass>(
         c: CB
     ): HeliosBundleClassWithCapo {
+        //@ts-expect-error creating from abstract class
         const cb = new c();
         const newClass = class aCapoBoundBundle extends HeliosScriptBundle {
             capoBundle = cb;
-            constructor(setupDetails: StellarSetupUplc<any>) {
+            constructor(setupDetails: StellarBundleSetupUplc<any>) {
                 super(setupDetails);
             }
 
@@ -99,22 +104,22 @@ export abstract class HeliosScriptBundle {
     isMainnet?: boolean;
     _program?: HeliosProgramWithCacheAPI;
     _progHasDeploymentDetails = false;
-    setup?: SetupInfo;
-    params?: UplcRecord<any>;
+    setup: SetupOrMainnetSignalForBundle;
+    configuredParams?: UplcRecord<any>;
     deployedScriptDetails?: DeployedScriptDetails;
 
-    constructor(setupDetails?: StellarSetupUplc<any>) {
+    constructor(setupDetails: StellarBundleSetupUplc<any>) {
         // this.devReloadModules()
         // if (setupDetails) debugger;
-        this._program = undefined
+        this._program = undefined;
         this.setup = setupDetails?.setup;
-        this.isMainnet = this.setup?.isMainnet
+        this.isMainnet = this.setup?.isMainnet;
         if (this.setup && "undefined" === typeof this.isMainnet) {
             throw new Error(
                 `${this.constructor.name}: setup.isMainnet must be defined`
             );
         }
-        this.params = setupDetails?.params;
+        this.configuredParams = setupDetails?.params;
         this.deployedScriptDetails = setupDetails?.deployedDetails;
     }
 
@@ -122,9 +127,9 @@ export abstract class HeliosScriptBundle {
         return !!this.deployedScriptDetails;
     }
 
-    withSetupDetails(details: StellarSetupUplc<any>) {
+    withSetupDetails(details: StellarBundleSetupUplc<any>) {
         if (this.setup) {
-            throw new Error(`setup already present`)
+            throw new Error(`setup already present`);
         }
         //@ts-expect-error with dynamic creation
         return new this.constructor(details);
@@ -157,6 +162,18 @@ export abstract class HeliosScriptBundle {
     //         }
     //     }
     // }
+
+    get params() {
+        return {} as any
+    }
+    /**
+     * The known variants of this contract script, with any contract
+     * parameters applicable to each variant.  By default, there is a
+     * singleton variant that uses the result of `get params()`.
+     */
+    get variants() : { [variantName: string]: any } {
+        return { singleton: this.params };
+    }
 
     get main(): Source {
         throw new Error(
@@ -326,9 +343,9 @@ export abstract class HeliosScriptBundle {
      * params.
      */
     async compiledScript(): Promise<anyUplcProgram> {
-        const { params, setup, program } = this;
+        const { configuredParams: params, setup, program } = this;
         if (!params || !setup) {
-            debugger // eslint-disable-line no-debugger - keep for downstream troubleshooting   
+            debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
             // theoretically only here for type-narrowing
             throw new Error(
                 `(unreachable?): missing required params or setup for compiledScript() (debugging breakpoint available)`
@@ -404,7 +421,7 @@ export abstract class HeliosScriptBundle {
         // on the browser, there's not (currently) a cache.  It's intended
         // that the deployedScriptDetails will usually be available, so
         // the cases where this is needed on the browser side should be rare.
-        console.warn("compiling helios script.  This could take 30s or so... ")
+        console.warn("compiling helios script.  This could take 30s or so... ");
         const t = new Date().getTime();
         for (const [p, v] of Object.entries(params)) {
             program.changeParam(p, v);
@@ -416,7 +433,6 @@ export abstract class HeliosScriptBundle {
             program.entryPoint.paramsDetails()
         );
 
-        debugger;
         const uplcProgram = await program.compileWithCache({
             optimize: this.optimize,
         });
@@ -438,7 +454,7 @@ export abstract class HeliosScriptBundle {
             console.log({
                 uplcProgram,
                 cbor: bytesToHex(uplcProgram.toCbor()),
-            })
+            });
         }
         return uplcProgram;
     }
@@ -477,11 +493,11 @@ export abstract class HeliosScriptBundle {
     }
 
     /**
-     * provides a temporary indicator of mainnet-ness, while not 
+     * provides a temporary indicator of mainnet-ness, while not
      * requiring the question to be permanently resolved.
      */
     isDefinitelyMainnet() {
-        return this.isMainnet ?? false
+        return this.isMainnet ?? false;
     }
 
     // _pct: number = 0
@@ -507,7 +523,7 @@ export abstract class HeliosScriptBundle {
         const moduleSources = this.getEffectiveModuleList();
 
         if (!isTestnet) {
-            debugger
+            debugger;
         }
         try {
             const p = new HeliosProgramWithCacheAPI(this.main, {
@@ -781,4 +797,86 @@ export abstract class HeliosScriptBundle {
 
         return types;
     }
+
+    paramsToUplc<
+        ConfigType extends configBaseWithRev
+    >(params: Record<string, any>): UplcRecord<ConfigType> {
+        const namespace = this.program.name;
+        const { paramTypes } = this.program;
+
+        return Object.fromEntries(
+            Object.entries(params)
+                .map(([paramName, data]) => {
+                    const fullName = `${namespace}::${paramName}`;
+                    // console.log("  -- param", fullName);
+                    const thatType = paramTypes[fullName];
+                    if (!thatType) {
+                        // group the params by namespace to produce a list of:
+                        //   "namespace::{ ... paramNames ... }"
+                        //   "namespace2::{ ... paramNames ... }"
+                        const availableParams = Object.entries(
+                            paramTypes
+                        ).reduce((acc, [k, v]) => {
+                            const [ns, name] = k.split("::");
+                            if (!acc[ns]) acc[ns] = [];
+                            acc[ns].push(name);
+                            return acc;
+                        }, {} as Record<string, string[]>);
+                        // if (Array.isArray(data)) {
+                        //     // probably it's wrong to categorically reject arrays,
+                        //     // but if you have this problem, please let us know and we'll help you resolve it.
+                        //     throw new Error(
+                        //         `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
+                        //             `  ... expected single value, got array`
+                        //     );
+                        // }
+
+                        // throw an error showing all the namespaces and all the short params in each
+                        const availableScriptParams = Object.entries(
+                            availableParams
+                        )
+                            .map(
+                                ([ns, names]) =>
+                                    `  ${ns}::{${names.join(", ")}}`
+                            )
+                            .join("\n");
+                        // console.log("availableScriptParams", availableScriptParams);
+                        if (paramName == "0") {
+                            throw new Error(
+                                `numeric param name is probably wrong`
+                            );
+                        }
+                        if ((paramName = "addrHint")) {
+                            // silently ignore this one
+                            return undefined;
+                        }
+                        throw new Error(
+                            `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
+                                `  ... expected one of: ${availableScriptParams}`
+                        );
+                    }
+                    return [
+                        fullName,
+                        this.typeToUplc(thatType, data, `params[${fullName}]`),
+                    ];
+                })
+                .filter((x) => !!x)
+        ) as UplcRecord<ConfigType>;
+    }
+
+    typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
+        const schema = type.toSchema();
+        const isMainnet = this.setup!.isMainnet
+        if ("undefined" == typeof isMainnet) {
+            throw new Error(
+                `${this.constructor.name}: isMainnet must be defined in the setup`
+            );
+        }
+        const cast = makeCast(schema, {
+            isMainnet,
+            unwrapSingleFieldEnumVariants: true,
+        });
+        return cast.toUplcData(data, path);
+    }
+
 }

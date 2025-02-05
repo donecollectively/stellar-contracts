@@ -330,7 +330,7 @@ export type SetupInfo = {
     networkParams: NetworkParams;
     txBatcher?: TxBatcher;
     /** false for any testnet.  todo: how to express L2? */
-    isMainnet?: boolean;
+    isMainnet: boolean;
     /** wallet-wrapping envelope, allows wallet-changing without reinitializing anything using that envelope */
     actorContext: ActorContext;
     /** testing environment? */
@@ -367,8 +367,11 @@ export type StellarSetupDetails<CT extends configBaseWithRev> = {
     deployedDetails?: DeployedScriptDetails;
 };
 
-export type StellarSetupUplc<CT extends configBaseWithRev> = {
-    setup: SetupInfo;
+export type SetupOrMainnetSignalForBundle = Partial<Omit<SetupInfo, "isMainnet">> &
+    Required<Pick<SetupInfo, "isMainnet">>;
+
+export type StellarBundleSetupUplc<CT extends configBaseWithRev> = {
+    setup: SetupOrMainnetSignalForBundle;
     params?: UplcRecord<CT>;
     deployedDetails?: DeployedScriptDetails;
     // partialConfig?: Partial<UplcRecord<CT>>;
@@ -1318,83 +1321,12 @@ export class StellarContract<
         return this.getBundle().isDefinitelyMainnet()
     }
 
-    typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
-        const schema = type.toSchema();
-        const isMainnet = this.setup.isMainnet
-        if ("undefined" == typeof isMainnet) {
-            throw new Error(
-                `${this.constructor.name}: isMainnet must be defined in the setup`
-            );
-        }
-        const cast = makeCast(schema, {
-            isMainnet,
-            unwrapSingleFieldEnumVariants: true,
-        });
-        return cast.toUplcData(data, path);
+    paramsToUplc(params: Record<string, any>): UplcRecord<ConfigType> {
+        return this.getBundle().paramsToUplc(params)
     }
 
-    paramsToUplc(params: Record<string, any>): UplcRecord<ConfigType> {
-        const namespace = this.program.name;
-        const { paramTypes } = this.program;
-
-        return Object.fromEntries(
-            Object.entries(params)
-                .map(([paramName, data]) => {
-                    const fullName = `${namespace}::${paramName}`;
-                    // console.log("  -- param", fullName);
-                    const thatType = paramTypes[fullName];
-                    if (!thatType) {
-                        // group the params by namespace to produce a list of:
-                        //   "namespace::{ ... paramNames ... }"
-                        //   "namespace2::{ ... paramNames ... }"
-                        const availableParams = Object.entries(
-                            paramTypes
-                        ).reduce((acc, [k, v]) => {
-                            const [ns, name] = k.split("::");
-                            if (!acc[ns]) acc[ns] = [];
-                            acc[ns].push(name);
-                            return acc;
-                        }, {} as Record<string, string[]>);
-                        // if (Array.isArray(data)) {
-                        //     // probably it's wrong to categorically reject arrays,
-                        //     // but if you have this problem, please let us know and we'll help you resolve it.
-                        //     throw new Error(
-                        //         `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
-                        //             `  ... expected single value, got array`
-                        //     );
-                        // }
-
-                        // throw an error showing all the namespaces and all the short params in each
-                        const availableScriptParams = Object.entries(
-                            availableParams
-                        )
-                            .map(
-                                ([ns, names]) =>
-                                    `  ${ns}::{${names.join(", ")}}`
-                            )
-                            .join("\n");
-                        // console.log("availableScriptParams", availableScriptParams);
-                        if (paramName == "0") {
-                            throw new Error(
-                                `numeric param name is probably wrong`
-                            );
-                        }
-                        if ((paramName = "addrHint")) {
-                            // silently ignore this one
-                            return undefined;
-                        }
-                        throw new Error(
-                            `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
-                                `  ... expected one of: ${availableScriptParams}`
-                        );
-                    }
-                    return [
-                        fullName,
-                        this.typeToUplc(thatType, data, `params[${fullName}]`),
-                    ];
-                })
-                .filter((x) => !!x)
-        ) as UplcRecord<ConfigType>;
+    typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
+        return this.getBundle().typeToUplc(type, data, path);
     }
 
     get program() {

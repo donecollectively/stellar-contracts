@@ -7,13 +7,16 @@
     "engines": {
         "node": ">=20"
     },
+    "bin": {
+        "stellar-deploy": "dist/stellar-deploy.mjs"
+    },
     "exports": {
         ".": {
             "typescriptNative": "./index.ts",
             "types": "./dist/stellar-contracts.d.ts",
             "import": "./dist/stellar-contracts.mjs"
         },
-        "./contracts/*.hlb": "./dist/contracts/*.hlb.mjs",        
+        "./contracts/*.hlb": "./dist/contracts/*.hlb.mjs",
         "./testing": {
             "types": "./dist/testing.d.ts",
             "node": "./dist/testing-node.mjs",
@@ -46,14 +49,10 @@
         "test:run": "vitest run"
     },
     "author": "Done Collectively LCA",
-    "dependencies": {
-    },
     "peerDependencies": {
         "rollup-plugin-esbuild": "^6.1.0"
     },
     "devDependencies": {
-        "@types/proper-lockfile": "^4.1.4",
-        "proper-lockfile": "^4.1.2",
         "@helios-lang/codec-utils": "link:../helios/codec-utils",
         "@helios-lang/compiler": "link:../helios/compiler",
         "@helios-lang/compiler-utils": "link:../helios/compiler-utils",
@@ -68,7 +67,10 @@
         "@rollup/plugin-node-resolve": "^15.1.0",
         "@rollup/pluginutils": "^5.0.2",
         "@types/node": "^20.2.5",
+        "@types/proper-lockfile": "^4.1.4",
         "esbuild": "^0.19.4",
+        "magic-string": "^0.30.17",
+        "proper-lockfile": "^4.1.2",
         "rollup": "^4.30.1",
         "rollup-plugin-api-extractor": "^0.2.5",
         "rollup-plugin-esbuild": "^6.1.0",
@@ -82,5 +84,9 @@
         "typescript": "5.6.2",
         "vite": "^6.0.7",
         "vitest": "^3.0.2"
+    },
+    "dependencies": {
+        "eventemitter3": "^5.0.1",
+        "@cardano-ogmios/client": "^6.11.2"
     }
 }

@@ -1,16 +1,17 @@
 import type { CharterDataLike } from "./src/CapoTypes.js";
+export { 
+    MintSpendDelegateBundle 
+} from "./src/helios/scriptBundling/MintSpendDelegateBundle.js";
+export { 
+    currentDeploymentConfig 
+} from "./src/configuration/DefaultNullCapoDeploymentConfig.js";
 export type { 
     tagOnly,
     EnumTypeMeta, singleEnumVariantMeta, 
 } from "./src/helios/HeliosMetaTypes.js";
 
-export { 
-    mkDeployedScriptConfigs,
-    mkCapoDeployment,
-    mkDelegateDeployment,
-    parseCapoJSONConfig
-} from "./src/configuration/DeployedScriptConfigs.js";
 
+export * from "./src/configuration/DeployedScriptConfigs.js";
 export {
     mkValuesEntry,
     mkUutValuesEntries,
@@ -63,6 +64,7 @@ export type {
     hasBootstrappedCapoConfig,
     hasCharterRef,
     hasSettingsRef,
+    charterDataState,
     hasUutContext,
     CapoConfig,
     CapoConfig as CapoBaseConfig,
@@ -239,6 +241,9 @@ export {
     bytesToText,
     textToBytes,
 } from "./src/HeliosPromotedTypes.js";
+
+export * from "./src/networkClients/index.js";
+
 
 // export {
 //     Datum,

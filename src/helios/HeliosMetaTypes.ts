@@ -11,10 +11,11 @@ import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type { hasSeedUtxo } from "../StellarTxnContext.js";
 import type { DataBridge } from "./dataBridge/DataBridge.js";
 import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
+import type { AbstractNew } from "./typeUtils.js";
 
 
-export type HeliosBundleClass = new () => HeliosScriptBundle;
-export type CapoBundleClass = new () => CapoHeliosBundle;
+export type HeliosBundleClass = AbstractNew<HeliosScriptBundle>
+export type CapoBundleClass = AbstractNew<CapoHeliosBundle>
 export type hasCapoBundle = { capoBundle: CapoHeliosBundle; };
 
 export type TypeVariety = "canonical" | "permissive" | "ergonomic";

@@ -28,6 +28,9 @@ import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 /* prettier-ignore */
 export default class UnspecializedDgtBundle 
 extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
+    get rev() {
+        return 1n
+    }
     get moduleName() {
         return "UnspecializedDelegate";
     }

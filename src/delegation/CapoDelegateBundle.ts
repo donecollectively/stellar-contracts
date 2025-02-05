@@ -9,9 +9,12 @@ import {
     type Constructor,
     type EmptyConstructor
 } from "../helios/HeliosMetaTypes.js";
-import type { configBaseWithRev, StellarSetupUplc, stellarSubclass } from "../StellarContract.js";
 import BasicDelegate from "./BasicDelegate.hl";
+import type { configBaseWithRev, StellarBundleSetupUplc, stellarSubclass } from "../StellarContract.js";
+// .hl files are transpiled to helios Source (JS object) attributes.
 import type { capoDelegateConfig } from "./RolesAndDelegates.js";
+// ?? any important need to export the transpiled source?
+// export {BasicDelegate}
 
 export type CapoDelegateBundleClass = new () => CapoDelegateBundle;
 
@@ -52,12 +55,13 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         THIS extends typeof CapoDelegateBundle,
         CB extends CapoBundleClass
     >(this: THIS, c: CB) : ConcreteCapoDelegateBundle {
-        const cb = new c();
         //@ts-expect-error returning a subclass without concrete implementations
         // of the abstract members; hopefully the subclass will error if they're missing
+        const cb = new c();
+        //@ts-expect-error - same as above
         const newClass = class aCapoBoundBundle extends this {
             capoBundle = cb;
-            constructor(setupDetails: StellarSetupUplc<any>) {
+            constructor(setupDetails: StellarBundleSetupUplc<any>) {
                 super(setupDetails);
             }
             isConcrete = true;
@@ -73,6 +77,20 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
 
     get main() {
         return BasicDelegate;
+    }
+
+    get rev() : bigint {
+        return 1n;
+    }
+
+    get params() {
+        return {
+            rev: this.rev,
+            delegateName: this.moduleName,
+            isMintDelegate: true,
+            isSpendDelegate: true,
+            isDgDataPolicy: false,
+        }
     }
 
     get moduleName() {

@@ -15,7 +15,7 @@ import CapoMinterScript from "./CapoMinter.hl";
 
 /**
  * for the special Capo minter; makes the Capo's modules available
- *  to the minter for imports
+ * to the minter for imports
  **/
 export default class CapoMinterBundle 
 extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {

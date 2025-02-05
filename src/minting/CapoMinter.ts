@@ -109,7 +109,7 @@ export class CapoMinter
     ): UplcRecord<configBaseWithRev & SeedTxnScriptParams> {
         const { seedIndex, seedTxn, rev = this.currentRev } = config;
 
-        return this.paramsToUplc({
+        return this.getBundle().paramsToUplc({
             rev,
             seedIndex,
             seedTxn,

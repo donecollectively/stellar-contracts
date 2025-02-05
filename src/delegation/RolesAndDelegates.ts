@@ -84,14 +84,25 @@ export type DelegationDetail = {
  * @public
  **/
 export type capoDelegateConfig = configBaseWithRev & {
+    rev: bigint;
+    delegateName: string;
+    mph: MintingPolicyHash;
+    tn: number[];
+    addrHint: Address[];
     capoAddr: Address;
     capo: Capo<any>;
-    mph: MintingPolicyHash;
-    delegateName: string;
-    tn: number[];
-    rev: bigint;
-    addrHint: Address[];
 };
+
+export type minimalDelegateConfig = Pick<capoDelegateConfig, 
+    "rev" | "delegateName" 
+> & {
+    rev: bigint;
+    delegateName: string;
+    isMintDelegate: true,
+    isSpendDelegate: true,
+    isDgDataPolicy: false,
+}
+
 
 /**
  * Richly-typed structure that can capture the various delegation roles available

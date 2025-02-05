@@ -4,8 +4,8 @@
 
 import { resolve } from "path";
 import { defineConfig } from "vite";
-import { heliosRollupLoader } from "./src/helios/heliosRollupLoader";
-import { heliosRollupBundler } from "./src/helios/heliosRollupTypeGen";
+import { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
+import { heliosRollupBundler } from "./src/helios/heliosRollupBundler.js"
 import { sourceMapsEnabled } from "process";
 import { debug } from "console";
 

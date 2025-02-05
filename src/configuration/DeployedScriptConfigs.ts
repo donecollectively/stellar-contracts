@@ -13,6 +13,7 @@ import {
 import type { CapoConfig } from "../CapoTypes.js";
 import type { DeployedProgramBundle } from "../helios/CachedHeliosProgram.js";
 import type { configBaseWithRev } from "../StellarContract.js";
+import type { capoDelegateConfig, minimalDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
 /**
  * type-safe factory function for creating a registry of scripts with their
@@ -35,27 +36,36 @@ export function mkDeployedScriptConfigs(x: AllDeployedScriptConfigs) {
  * use this to make your Capo bundle's deployedDetails attribute.
  * @public
  */
-export function mkCapoDeploymentJSON({
+export function mkCapoDeployment({
     capo,
-    scripts,
-}: CapoDeployedDetails<"json">) {
-    const { config, hash, programBundle } = capo;
+    // scripts,
+}: Required<CapoDeployedDetails<"json">>) {
+    const { config, programBundle } = capo;
     return {
-        scripts,
         capo: {
             config: parseCapoJSONConfig(config),
-            hash, programBundle
         } as DeployedScriptDetails<CapoConfig, "native">,
     };
 }
-export type CapoDeployedDetails<form extends "json" | "native" = "native"> = {
-    capo: DeployedScriptDetails<CapoConfig, form>;
-    scripts: AllDeployedScriptConfigs & {
-        mintDgt: DeployedSingletonConfig;
-        spendDgt?: DeployedSingletonConfig;
-        settings?: DeployedSingletonConfig;
 
-    };
+type DelegateDeployment = {
+    config: minimalDelegateConfig;
+    scriptHash: string;
+    programBundle?: DeployedProgramBundle;
+}
+
+/**
+ * type-safe factory function for creating a Delegate deployment details object
+ * @public
+ */
+export function mkDelegateDeployment(
+    ddd: DelegateDeployment
+) : DelegateDeployment {
+    return ddd;
+}
+
+export type CapoDeployedDetails<form extends "json" | "native" = "native"> = {
+    capo?: DeployedScriptDetails<CapoConfig, form>;
 };
 
 export type AllDeployedScriptConfigs = {
@@ -68,8 +78,10 @@ type DeployedConfigWithVariants = {
     singleton?: never;
 };
 
-type DeployedSingletonConfig = {
-    singleton: DeployedScriptDetails;
+type DeployedSingletonConfig<
+    CT extends configBaseWithRev = configBaseWithRev
+> = {
+    singleton: DeployedScriptDetails<CT>;
 };
 
 export type ScriptDeployments =
@@ -82,12 +94,12 @@ export type DeployedScriptDetails<
 > =
     | {
           config: form extends "json" ? any : CT;
-          hash?: string;
+          scriptHash?: string;
           programBundle?: DeployedProgramBundle;
       }
     | {
           config: CT;
-          hash: string;
+          scriptHash: string;
           programBundle: DeployedProgramBundle;
       };
 export type CapoConfigJSON = {
