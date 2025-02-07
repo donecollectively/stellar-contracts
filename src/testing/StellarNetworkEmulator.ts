@@ -25,9 +25,7 @@ import {
     type Value,
 } from "@helios-lang/ledger";
 
-import {
-    type IntLike,
-} from "@helios-lang/codec-utils";
+import { type IntLike } from "@helios-lang/codec-utils";
 import {
     BIP39_DICT_EN,
     SECOND,
@@ -47,9 +45,9 @@ import type { NumberGenerator } from "@helios-lang/crypto";
 import { DEFAULT_NETWORK_PARAMS } from "@helios-lang/ledger";
 import { type UplcLogger } from "@helios-lang/uplc";
 
-import { 
-    dumpAny, 
-    type NetworkContext 
+import {
+    dumpAny,
+    type NetworkContext,
 } from "@donecollectively/stellar-contracts";
 
 // class GenesisTx implements EmulatorGenesisTx {
@@ -192,7 +190,7 @@ import {
 // }
 
 /**
- * This wallet only has a single private/public key, which isn't rotated. 
+ * This wallet only has a single private/public key, which isn't rotated.
  * Staking is not yet supported.
  * @public
  */
@@ -201,7 +199,7 @@ export class SimpleWallet_stellar implements Wallet {
     spendingPrivateKey: Bip32PrivateKey;
     spendingPubKey: PubKey;
 
-    stakingPrivateKey: Bip32PrivateKey | undefined
+    stakingPrivateKey: Bip32PrivateKey | undefined;
     stakingPubKey: PubKey | undefined;
 
     get cardanoClient() {
@@ -299,11 +297,13 @@ export class SimpleWallet_stellar implements Wallet {
             resolve([this.address]);
         });
     }
+
     get unusedAddresses(): Promise<ShelleyAddress<PubKeyHash>[]> {
         return new Promise((resolve, _) => {
             resolve([]);
         });
     }
+
     get utxos(): Promise<TxInput<PubKeyHash>[]> {
         return new Promise((resolve, _) => {
             resolve(this.cardanoClient.getUtxos(this.address) as any);
@@ -382,7 +382,7 @@ export class StellarNetworkEmulator implements Emulator {
      * Cached map of UTxOs at addresses
      * @internal
      */
-    _addressUtxos: Record<string, TxInput[]>
+    _addressUtxos: Record<string, TxInput[]>;
 
     id: number;
     params: NetworkParams;
@@ -457,19 +457,19 @@ export class StellarNetworkEmulator implements Emulator {
     /**
      * Ignores the genesis txs
      */
-    get txIds() : TxId[]{
-        const res : TxId[] = []
+    get txIds(): TxId[] {
+        const res: TxId[] = [];
 
         // TODO: the current approach is very slow, use a snapshot
         for (let block of this.blocks) {
             for (let tx of block) {
                 if (tx.kind == "Regular") {
-                    res.push(tx.id())
+                    res.push(tx.id());
                 }
             }
         }
 
-        return res
+        return res;
     }
 
 
@@ -569,8 +569,8 @@ export class StellarNetworkEmulator implements Emulator {
      */
     createUtxo(
         wallet: SimpleWallet,
-        lovelace: bigint, 
-        assets : Assets = makeAssets([])
+        lovelace: bigint,
+        assets: Assets = makeAssets([])
     ): TxOutputId {
         if (lovelace != 0n || !assets.isZero()) {
             const tx = makeEmulatorGenesisTx(
@@ -620,7 +620,19 @@ export class StellarNetworkEmulator implements Emulator {
         }
     }
 
-    async getUtxos(address : Address) : Promise<TxInput[]> {
+    /*
+     * @param {TxOutputId} id
+     * @returns {Promise<TxInput>}
+     */
+    async hasUtxo(id) {
+        try {
+            return !!(await this.getUtxo(id));
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async getUtxos(address: Address): Promise<TxInput[]> {
         this.warnMempool();
 
         return this._addressUtxos[address.toString()] ?? [];
@@ -664,7 +676,7 @@ export class StellarNetworkEmulator implements Emulator {
                 (input) => input.id.toString() in this._allUtxos
             )
         ) {
-            throw new Error("some inputs don't exist")
+            throw new Error("some inputs don't exist");
         }
 
         // make sure that each ref input exists
@@ -673,7 +685,7 @@ export class StellarNetworkEmulator implements Emulator {
                 (input) => input.id.toString() in this._allUtxos
             )
         ) {
-            throw new Error("some ref inputs don't exist")
+            throw new Error("some ref inputs don't exist");
         }
 
         // make sure that none of the inputs have been consumed before
@@ -714,7 +726,7 @@ export class StellarNetworkEmulator implements Emulator {
         );
 
         if (this.mempool.length > 0) {
-            this.pushBlock(this.mempool)
+            this.pushBlock(this.mempool);
 
             this.mempool = [];
 
@@ -740,35 +752,35 @@ export class StellarNetworkEmulator implements Emulator {
      * @internal
      */
     pushBlock(txs: EmulatorTx[]) {
-        this.blocks.push(txs)
+        this.blocks.push(txs);
 
         // add all new utxos
         txs.forEach((tx) => {
             tx.newUtxos().forEach((utxo) => {
-                const key = utxo.id.toString()
-                this._allUtxos[key] = utxo
+                const key = utxo.id.toString();
+                this._allUtxos[key] = utxo;
 
-                const addr = utxo.address.toString()
+                const addr = utxo.address.toString();
 
                 if (addr in this._addressUtxos) {
-                    this._addressUtxos[addr].push(utxo)
+                    this._addressUtxos[addr].push(utxo);
                 } else {
-                    this._addressUtxos[addr] = [utxo]
+                    this._addressUtxos[addr] = [utxo];
                 }
-            })
+            });
 
             tx.consumedUtxos().forEach((utxo) => {
-                this._consumedUtxos.add(utxo.id.toString())
+                this._consumedUtxos.add(utxo.id.toString());
 
-                const addr = utxo.address.toString()
+                const addr = utxo.address.toString();
 
                 if (addr in this._addressUtxos) {
                     this._addressUtxos[addr] = this._addressUtxos[addr].filter(
                         (inner) => !inner.isEqual(utxo)
-                    )
+                    );
                 }
-            })
-        })
+            });
+        });
     }
 }
 
