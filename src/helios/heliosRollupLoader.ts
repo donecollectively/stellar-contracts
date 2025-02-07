@@ -47,7 +47,9 @@ export function heliosRollupLoader(
         // the importer is an a fully resolved id of the imported module
         const where = new Error(`here!`).stack;
         if (!filter(source)) {
-            // console.log(`resolver1: resolving ${source} for ${importer}`, where);
+            // console.log(`resolver1: resolving ${source} for ${importer}`, 
+            //     //where
+            // );
             // } else {
             // if (source.match(/\.hl$/))
             // console.log(

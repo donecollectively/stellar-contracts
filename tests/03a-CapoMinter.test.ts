@@ -8,20 +8,23 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { StellarTxnContext } from "../src/StellarTxnContext";
+import {
+    Capo,
+    StellarTxnContext,
+    parseCapoJSONConfig,
+    CapoWithoutSettings,
+    BasicMintDelegate,
+    dumpAny,
+    type ConfigFor,
+    TxDescription,
+    textToBytes
+} from "@donecollectively/stellar-contracts";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { ConfigFor } from "../src/StellarContract";
-import { dumpAny } from "../src/diagnostics";
-import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
-import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
-import { Capo } from "../src/Capo";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { TestHelperState } from "../src/testing/types";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 import { expectTxnError } from "../src/testing/StellarTestHelper.js";
-import { textToBytes } from "../src/HeliosPromotedTypes.js";
 
 type localTC = StellarTestContext<
     DefaultCapoTestHelper<CapoCanMintGenericUuts>

@@ -61,7 +61,7 @@ import type {
     OR,
     TypeError,
 } from "../typeUtils.js";
-import type { StellarDelegate } from "../../delegation/StellarDelegate.js";
+import type { StellarDelegate } from "@donecollectively/stellar-contracts";
 import type {
     GenericDelegateBridge,
     GenericDelegateBridgeClass,

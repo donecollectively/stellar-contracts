@@ -1,5 +1,8 @@
 import { SubmitterMultiClient, type namedSubmitters } from "./SubmitterMultiClient.js";
 
+/**
+ * @public
+ */
 export class TxBatcher {
     previous: SubmitterMultiClient
     current: SubmitterMultiClient

@@ -65,7 +65,10 @@ export class CapoMinter
 {
     currentRev: bigint = 1n;
     scriptBundle() {
-        return new CapoMinterBundle();
+        return new CapoMinterBundle()
+        // return new CapoMinterBundle({
+        //     setup: this.setup
+        // });
     }
     /**
      * the data bridge for this minter is fixed to one particular type
@@ -108,7 +111,7 @@ export class CapoMinter
         config: BasicMinterParams
     ): UplcRecord<configBaseWithRev & SeedTxnScriptParams> {
         const { seedIndex, seedTxn, rev = this.currentRev } = config;
-
+        
         return this.getBundle().paramsToUplc({
             rev,
             seedIndex,

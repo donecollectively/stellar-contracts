@@ -18,6 +18,9 @@ import {
     type SubmitManagerState,
 } from "./TxSubmitMgr.js";
 
+/**
+ * @public
+ */
 type SingleTxSubmissionState = {
     txDescription: TxDescription<any, "built">;
     state: "pending" | "submitting" | "confirming" | "confirmed" | "failed" | "mostly confirmed";
@@ -25,12 +28,21 @@ type SingleTxSubmissionState = {
     notifier: EventEmitter<SMC_TxStatusNotifier> 
 };
 
+/**
+ * @public
+ */
 interface MultiTxnSubmissionState {
     [txId: string]: SingleTxSubmissionState;
 }
 
+/**
+ * @public
+ */
 export type TimeoutId = ReturnType<typeof setTimeout>;
 
+/**
+ * @public
+ */
 export type SMC_TxChangeNotifier = {
     txAdded: [ SingleTxSubmissionState ];
     destroyed: [ SubmitterMultiClient ];
@@ -39,17 +51,35 @@ export type SMC_TxChangeNotifier = {
     // txFailed: [ SingleTxSubmissionState ]
 }
 
+/**
+ * @public
+ */
 export type SMC_TxStatusNotifier = {
     txUpdated: [ SingleTxSubmissionState ];
     txConfirmed: [ SingleTxSubmissionState ];
     txFailed: [ SingleTxSubmissionState ];
 }
 
+/**
+ * @public
+ */
 export type txIdString = string;
+/**
+ * @public
+ */
 export type submitterName = string;
+/**
+ * @public
+ */
 export type namedSubmitters = Record<submitterName, CardanoTxSubmitter>;
+/**
+ * @public
+ */
 export type namedTxSubmitMgrs = Record<submitterName, TxSubmitMgr>;
 
+/**
+ * @public
+ */
 export class SubmitterMultiClient {
     readonly submitters: namedSubmitters;
     aggregateState: string;

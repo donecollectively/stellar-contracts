@@ -1,5 +1,5 @@
 import { bytesToText } from "../HeliosPromotedTypes.js";
-export const _uutName = Symbol("uutName");
+
 export const maxUutName = 32;
 
 /**
@@ -12,7 +12,7 @@ export const maxUutName = 32;
  * @public
  **/
 export class UutName {
-    private [_uutName]: string;
+    _uutName: string;
     purpose: string;
     constructor(purpose: string, fullUutName: string | number[]) {
         this.purpose = purpose;
@@ -24,7 +24,7 @@ export class UutName {
                 `uut name '${fullUutName}' exceeds max length of ${maxUutName}`
             );
         }
-        this[_uutName] = fullUutName;
+        this._uutName = fullUutName;
     }
     /**
      * the full uniquified name of this UUT
@@ -34,9 +34,9 @@ export class UutName {
      * @public
      **/
     get name() {
-        return this[_uutName];
+        return this._uutName;
     }
     toString() {
-        return this[_uutName];
+        return this._uutName;
     }
 }

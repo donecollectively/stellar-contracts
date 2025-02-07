@@ -48,6 +48,9 @@ export function mkCapoDeployment({
     };
 }
 
+/**
+ * @public
+ */
 type DelegateDeployment = {
     config: minimalDelegateConfig;
     scriptHash: string;
@@ -64,30 +67,49 @@ export function mkDelegateDeployment(
     return ddd;
 }
 
+/**
+ * @public
+ */
 export type CapoDeployedDetails<form extends "json" | "native" = "native"> = {
     capo?: DeployedScriptDetails<CapoConfig, form>;
+    isNullDeployment?: boolean;
 };
 
+/**
+ * @public
+ */
 export type AllDeployedScriptConfigs = {
     [scriptModuleName: string]: ScriptDeployments;
 };
 
+/**
+ * @public
+ */
 type DeployedConfigWithVariants = {
     [name: string]: DeployedScriptDetails;
 } & {
     singleton?: never;
 };
 
+/**
+ * @public
+ */
 type DeployedSingletonConfig<
     CT extends configBaseWithRev = configBaseWithRev
 > = {
     singleton: DeployedScriptDetails<CT>;
 };
 
+/**
+ * @public
+ */
 export type ScriptDeployments =
     | DeployedSingletonConfig
     | DeployedConfigWithVariants;
 
+/**
+ * @public
+ */
 export type DeployedScriptDetails<
     CT extends configBaseWithRev = configBaseWithRev,
     form extends "json" | "native" = "native"
@@ -102,6 +124,9 @@ export type DeployedScriptDetails<
           scriptHash: string;
           programBundle: DeployedProgramBundle;
       };
+/**
+ * @public
+ */
 export type CapoConfigJSON = {
     mph: {
         bytes: string;

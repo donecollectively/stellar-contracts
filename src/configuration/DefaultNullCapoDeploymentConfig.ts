@@ -6,14 +6,15 @@ import type { CapoDeployedDetails } from "./DeployedScriptConfigs.js";
  * Provides a default configuration to hold the place of a real
  * Capo deployment. 
  * 
- * This serves to provide a resolution for the 'currentCapoConfig` import,
+ * This serves to provide a resolution for the \`currentCapoConfig\` import,
  * being bundled to dist/currentCapoConfig.mjs.  
  * 
  * This also serves during the heliosRollupBundler's
  * type- and bridge-code generation activities, which are independent 
  * of the actual deployment environment.  
+ * @public
  */
-export const currentDeploymentConfig : CapoDeployedDetails<"native"> = Object.freeze({
+export const capoConfigurationDetails : CapoDeployedDetails<"native"> = Object.freeze({
     capo: undefined,
-    scripts: undefined
+    isNullDeployment: true,
 });

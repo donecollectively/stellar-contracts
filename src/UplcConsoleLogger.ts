@@ -57,7 +57,6 @@ export class UplcConsoleLogger implements UplcLogger {
         return this;
     }
     logError(message: string, stack? : Site) {
-        debugger
         this.logPrint("\n");
         this.logPrint(
             "-".repeat((process?.stdout?.columns || 65) - 8)

@@ -7,17 +7,19 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import { StellarTxnContext } from "../src/StellarTxnContext";
+import { makeTxOutput, TxOutput } from "@helios-lang/ledger";
+import {
+    Capo,
+    StellarTxnContext,
+    parseCapoJSONConfig,
+    CapoWithoutSettings,
+    type ConfigFor,
+    TxDescription
+} from "@donecollectively/stellar-contracts";
+
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { ConfigFor } from "../src/StellarContract";
-import { dumpAny } from "../src/diagnostics";
-import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
-import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
-import { Capo } from "../src/Capo";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
-import { makeTxOutput, TxOutput } from "@helios-lang/ledger";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -320,8 +322,9 @@ describe("Capo", async () => {
                 h.state.mintedCharterToken;
             const minter = strella.minter;
             // console.log("             ---------- ", mintDelegate.compiledScript.toString());
+            const refScriptTxD : TxDescription<any, "submitted"> = tcx.state.addlTxns.refScriptMinter as any 
             expect(
-                tcx.state.addlTxns.refScriptMinter.tcx.outputs.find((txo) => {
+                refScriptTxD.tcx.outputs.find((txo) => {
                     return (
                         txo.refScript?.toString() ==
                         minter.compiledScript.toString()
@@ -338,8 +341,10 @@ describe("Capo", async () => {
             const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
                 h.state.mintedCharterToken;
 
+            const refScriptTxD : TxDescription<any, "submitted"> = tcx.state.addlTxns.refScriptCapo as any 
+
             expect(
-                tcx.state.addlTxns.refScriptCapo.tcx.outputs.find((txo) => {
+                refScriptTxD.tcx.outputs.find((txo) => {
                     return (
                         txo.refScript?.toString() ==
                         strella.compiledScript.toString()
@@ -356,9 +361,11 @@ describe("Capo", async () => {
             const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
                 h.state.mintedCharterToken;
             const mintDelegate = await strella.getMintDelegate();
-            // console.log("             ---------- ", mintDelegate.compiledScript.toString());
+
+            const refScriptTxD : TxDescription<any, "submitted"> = tcx.state.addlTxns.refScriptMintDelegate as any 
+
             expect(
-                tcx.state.addlTxns.refScriptMintDelegate.tcx.outputs.find(
+                refScriptTxD.tcx.outputs.find(
                     (txo) => {
                         return (
                             txo.refScript?.toString() ==

@@ -14,6 +14,9 @@ type wrapWithTimeout = hasWrap & hasTimeout
 type MCP_options = wrapOnly | hasTimeout | wrapWithTimeout
 
 
+/**
+ * @public
+ */
 export type CancellablePromise<T> = {
     promise: Promise<T>;
     cancel: () => void;
@@ -25,6 +28,9 @@ type GenericResolvable<T> = {
     cancel: () => void;
 }
 
+/**
+ * @public
+ */
 export function mkCancellablePromise<T>(
     options?: MCP_options,
 ) : CancellablePromise<T> | GenericResolvable<T> {

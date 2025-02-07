@@ -86,7 +86,8 @@ type WalletsAndAddresses = {
  * @public
  **/
 export type stellarSubclass<S extends StellarContract<any>> = (new (
-    setup: SetupInfo ) => S) & {
+    setup: SetupInfo
+) => S) & {
     // & StellarContract<CT>
     defaultParams: Partial<ConfigFor<S>>;
     createWith(args: StellarSetupDetails<ConfigFor<S>>): Promise<S>;
@@ -367,8 +368,10 @@ export type StellarSetupDetails<CT extends configBaseWithRev> = {
     deployedDetails?: DeployedScriptDetails;
 };
 
-export type SetupOrMainnetSignalForBundle = Partial<Omit<SetupInfo, "isMainnet">> &
-    Required<Pick<SetupInfo, "isMainnet">>;
+export type SetupOrMainnetSignalForBundle = Partial<
+    Omit<SetupInfo, "isMainnet">
+> &
+    Required<Pick<SetupInfo, "isMainnet">> & { isPlaceholder?: any };
 
 export type StellarBundleSetupUplc<CT extends configBaseWithRev> = {
     setup: SetupOrMainnetSignalForBundle;
@@ -571,7 +574,7 @@ export class StellarContract<
             this._bundle = this.scriptBundle();
             // this._bundle.checkDevReload()
         }
-        
+
         return this._bundle;
     }
 
@@ -696,8 +699,8 @@ export class StellarContract<
             }
 
             const datumType = this.getBundle().locateDatumType();
-            const isMainnet = this.setup.isMainnet
-            let newBridge : any
+            const isMainnet = this.setup.isMainnet;
+            let newBridge: any;
             try {
                 newBridge = new (dataBridgeClass as any)(
                     isMainnet ?? false
@@ -728,7 +731,7 @@ export class StellarContract<
                 return newBridge;
             }
 
-            return this._dataBridge = newBridge;
+            return (this._dataBridge = newBridge);
         }
 
         if (!this._dataBridge) {
@@ -998,16 +1001,13 @@ export class StellarContract<
             "TODO TODO TODO - ensure each contract can indicate the right stake part of its address"
         );
         console.log("and that the onchain part also supports it");
-        const isMainnet = this.setup.isMainnet
+        const isMainnet = this.setup.isMainnet;
         if ("undefined" == typeof isMainnet) {
             throw new Error(
                 `${this.constructor.name}: isMainnet must be defined in the setup`
             );
-        }        
-        const nAddr = makeAddress(
-            isMainnet,
-            this.validatorHash
-        );
+        }
+        const nAddr = makeAddress(isMainnet, this.validatorHash);
         // this.validatorHash);
         // console.log("nAddr", nAddr.toBech32());
         // if (this._address) {
@@ -1064,7 +1064,7 @@ export class StellarContract<
 
     //! searches the network for utxos stored in the contract,
     //  returning those whose datum hash is the same as the input datum
-    async outputsSentToDatum(datum: InlineDatum) : Promise<any> /*unused*/{
+    async outputsSentToDatum(datum: InlineDatum): Promise<any> /*unused*/ {
         const myUtxos = await this.network.getUtxos(this.address);
         throw new Error(`unused`);
         // const dump = utxosAsString(myUtxos)
@@ -1306,23 +1306,23 @@ export class StellarContract<
     }
 
     /**
-     * provides a temporary indicator of mainnet-ness, while not 
+     * provides a temporary indicator of mainnet-ness, while not
      * requiring the question to be permanently resolved.
      * @remarks
      * Allows other methods to proceed prior to the final determination of mainnet status.
-     * 
-     * Any code using this path should avoid caching a negative result.  If you need to 
+     *
+     * Any code using this path should avoid caching a negative result.  If you need to
      * determine the actual network being used, getBundle().isMainnet, if present, provides
      * the definitive answer.  If that attribute is not yet present, then the mainnet status
      * has not yet been materialized.
      * @public
      */
     isDefinitelyMainnet() {
-        return this.getBundle().isDefinitelyMainnet()
+        return this.getBundle().isDefinitelyMainnet();
     }
 
     paramsToUplc(params: Record<string, any>): UplcRecord<ConfigType> {
-        return this.getBundle().paramsToUplc(params)
+        return this.getBundle().paramsToUplc(params);
     }
 
     typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
@@ -1330,7 +1330,7 @@ export class StellarContract<
     }
 
     get program() {
-        return  this.getBundle()!.program;
+        return this.getBundle()!.program;
     }
 
     // async readDatum<
@@ -1835,7 +1835,7 @@ export class StellarContract<
             debugger;
         }
         if (!this.usesContractScript) {
-            throw new Error(`avoid this call to begin with?`)
+            throw new Error(`avoid this call to begin with?`);
             return;
         }
         if (!params) {
@@ -1854,7 +1854,7 @@ export class StellarContract<
             debugger
         }
 
-        if (!bundle.setup) {
+        if (!bundle.setup || !bundle.configuredParams) {
             bundle = this._bundle = bundle.withSetupDetails({
                 params,
                 setup: this.setup,
@@ -2071,8 +2071,7 @@ export class StellarContract<
         const tcx =
             tcxOrName instanceof StellarTxnContext
                 ? tcxOrName
-                : new StellarTxnContext(this.setup).
-                    withName(name || "")
+                : new StellarTxnContext(this.setup).withName(name || "");
 
         const effectiveName =
             tcxOrName instanceof StellarTxnContext ? name : tcxOrName;

@@ -794,7 +794,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const theNetwork = new StellarNetworkEmulator(undefined, { params });
         const emuParams = theNetwork.initHelper();
 
-        const wrappedNetwork = makeTxChainBuilder(theNetwork);
+        // const wrappedNetwork = makeTxChainBuilder(theNetwork);
         // debugger
         //@xxxts-expect-error
         // emuParams.timeToSlot = function (t) {
@@ -803,7 +803,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         // };
         // emuParams.slotToTimestamp = this.slotToTimestamp;
 
-        return [wrappedNetwork, emuParams];
+        return [theNetwork, emuParams];
     }
 
     /**

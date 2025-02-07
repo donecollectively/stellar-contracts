@@ -19,6 +19,9 @@ import {
 export function mkUutValuesEntries(uuts: UutName[]): valuesEntry[];
 /** @public **/
 export function mkUutValuesEntries(uuts: uutPurposeMap<any>): valuesEntry[];
+export function mkUutValuesEntries(
+    uuts: UutName[] | uutPurposeMap<any>
+): valuesEntry[];
 /** @public **/
 export function mkUutValuesEntries(
     uuts: UutName[] | uutPurposeMap<any>

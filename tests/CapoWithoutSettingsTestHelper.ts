@@ -1,5 +1,10 @@
-import { MinimalCharterDataArgs } from "../src/Capo.js";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings.js";
+
+
+import { 
+    MinimalCharterDataArgs ,
+    CapoWithoutSettings
+} from "@donecollectively/stellar-contracts"
+
 import { minimalReqtData } from "../src/reqts/Reqts.concrete.typeInfo.js";
 import { ReqtsController } from "../src/reqts/ReqtsController.js";
 import { CapoTestHelper } from "../src/testing/CapoTestHelper.js";

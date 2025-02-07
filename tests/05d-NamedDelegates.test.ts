@@ -8,30 +8,27 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { CapoMinter } from "../src/minting/CapoMinter";
-import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
+import {
+    Capo,
+    StellarTxnContext,
+    ContractBasedDelegate,
+    CapoHeliosBundle,
+    CapoWithoutSettings,
+    type ConfigFor,
+    TxDescription,
+    parseCapoJSONConfig,
+    delegateRoles,
+    defineRole,
+    txn,
+    UnspecializedDgtBundle,
+    UnspecializedDelegateBridge
+} from "@donecollectively/stellar-contracts";
+
 import { ADA, addTestContext } from "../src/testing/types";
 import { StellarTestContext } from "../src/testing/StellarTestContext";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-
-import {
-    DelegateConfigNeeded,
-    DelegateMap,
-    DelegateSetup,
-    delegateRoles,
-    delegateConfigValidation,
-    defineRole,
-} from "../src/delegation/RolesAndDelegates";
-import { StellarTxnContext } from "../src/StellarTxnContext";
-import { configBaseWithRev, txn } from "../src/StellarContract";
-import { dumpAny, txAsString } from "../src/diagnostics";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts";
-import { ContractBasedDelegate } from "../src/delegation/ContractBasedDelegate";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
-import UnspecializedDelegateBundle from "../src/delegation/UnspecializedDelegate.hlb.js"
-import { CapoHeliosBundle } from "../src/CapoHeliosBundle.js";
-import UnspecializedDelegateBridge from "../src/delegation/UnspecializedDelegate.bridge.js";
 
 export class MyAppCapo extends CapoHeliosBundle {
     get modules() {
@@ -114,7 +111,7 @@ export class TestNamedDelegate extends ContractBasedDelegate {
     get delegateName() { return "myNamedDgt" }
     dataBridgeClass = UnspecializedDelegateBridge
     scriptBundle() {
-        return new UnspecializedDelegateBundle()
+        return new UnspecializedDgtBundle()
     }
 }
 

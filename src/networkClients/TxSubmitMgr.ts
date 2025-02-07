@@ -5,7 +5,13 @@ import {
     type CancellablePromise,
 } from "./mkCancellablePromise.js";
 
+/**
+ * @public
+ */
 export type dateAsMillis = number;
+/**
+ * @public
+ */
 export type SubmitManagerState = {
     state: "submitting" | "confirming" | "confirmed" | "failed";
     pendingActivity: string;
@@ -44,6 +50,9 @@ type SubmissionDetails = {
     onStateChanged: (state: SubmitManagerState) => void;
 };
 
+/**
+ * @public
+ */
 export class TxSubmitMgr {
     settings: SubmissionDetails;
     state: SubmitManagerState;

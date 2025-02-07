@@ -14,15 +14,6 @@ withDocs() {
     [[ $WITHDOCS -eq 0 ]] || $*
 }
 
-rollupPluginDTS() {
-    # stage 1: raw DTS to be fed to api-extractor
-    tsc -p ./tsconfig.rollupPlugins.dts.json  &&
-    # .d.ts only for now (do we need separate docs?)
-    # stage 2: api extractor brings it all together
-    # only if WITHDOCS isn't 0
-    withDocs api-extractor run --local -c api-extractor.rollupPlugins.json 
-}
-
 
 programDTS() {
     tsc -p ./tsconfig.programWithCacheAPI.dts.json &&
@@ -57,8 +48,7 @@ playStartSound &
         # ... needed for the rollup plugin
 
     wait  # for stuff above to finish
-    inBackground "build rollupPlugin" \
-        makeRollupPlugin &
+    makeRollupPlugin &
     inBackground "typecheck all, prep for doc-gen and main .d.ts" \
         tsc -p ./tsconfig.all.dts.json  &
 

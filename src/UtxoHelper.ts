@@ -783,9 +783,18 @@ export class UtxoHelper {
             if (!globalThis.utxoDump) {
                 console.log(
                     // warning emoji: "⚠️"
-                    " ⚠️ find failed in candidate",
+                    " ⚠️ find failed in candidate (debugging breakpoint available)",
                     dumpAny(utxos)
                 );
+            }
+            debugger
+            // Debuggering?  YOU ARE AWESOME!
+            // need to see more? dig in here:
+            const addrString = address?.toString();
+            const utxos2 = address ? await this.network.getUtxos(address)
+                : await wallet!.utxos;
+            for (const u of utxos2) {
+                predicate(u)                
             }
             throw new Error(
                 this.utxoSearchError(

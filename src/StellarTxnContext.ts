@@ -61,14 +61,20 @@ export type TxDescription<
     PROGRESS extends "buildLater!" | "resolved" | "built" | "submitted",
     TCX extends StellarTxnContext = IF_ISANY<T, StellarTxnContext<anyState>, T>
 > = {
-    tcx: PROGRESS extends resolvedOrBetter
-        ? TCX
-        : (() => TCX) | (() => Promise<TCX>);
     description: string;
     moreInfo?: string;
     optional?: boolean;
     txName?: string;
-} & (PROGRESS extends txBuiltOrSubmitted ? { tx: Tx; txId?: TxId } : {}) &
+} & (PROGRESS extends resolvedOrBetter
+    ? {
+          mkTcx?: (() => TCX) | (() => Promise<TCX>) | undefined;
+          tcx: TCX;
+      }
+    : {
+          mkTcx: (() => TCX) | (() => Promise<TCX>);
+          tcx?: undefined;
+      }) &
+    (PROGRESS extends txBuiltOrSubmitted ? { tx: Tx; txId?: TxId } : {}) &
     (PROGRESS extends "submitted" ? { txId: TxId } : {});
 
 /**
@@ -313,8 +319,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             );
         }
         this.txb = makeTxBuilder({
-            isMainnet,
-            additionalFee: 50_000n, // adds a nickel to each txn
+            isMainnet
         });
         // const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error
@@ -326,9 +331,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     isFacade: true | false | undefined;
-    facade(
-        this: StellarTxnContext,
-    ): this & { isFacade: true } {
+    facade(this: StellarTxnContext): this & { isFacade: true } {
         if (this.isFacade === false)
             throw new Error(`this tcx already has txn material`);
         if (this.parentTcx)
@@ -344,6 +347,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     this.txnName || "this tcx"
                 } is a facade for nested multi-tx`
             );
+        this.isFacade = false;
     }
 
     withParent(tcx: StellarTxnContext<any>) {
@@ -381,9 +385,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const thisWithMoreType: RETURNS = this as any;
         if ("undefined" == typeof this.isFacade) {
             throw new Error(
-                `to include additional txns on a tcx with no txn details, call facade() first.\n`+
-                `   ... otherwise, add txn details first or set isFacade to false`
-            )
+                `to include additional txns on a tcx with no txn details, call facade() first.\n` +
+                    `   ... otherwise, add txn details first or set isFacade to false`
+            );
         }
         if (thisWithMoreType.state.addlTxns?.[txnName]) {
             throw new Error(
@@ -919,7 +923,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
             let capturedCosts: {
                 total: Cost;
                 [key: string]: Cost;
-            } = { total: { cpu: 0n, mem: 0n } };
+            } = {
+                total: { cpu: 0n, mem: 0n },
+                slush: { cpu: 0n, mem: 0n },
+            };
             try {
                 // the transaction can fail validation without throwing an error
                 tx = await this.txb.buildUnsafe({
@@ -932,10 +939,25 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     logOptions: logger,
                     beforeValidate,
                     modifyExBudget: (txi, purpose, index, costs) => {
+                        capturedCosts[`${purpose} @${1 + index}`] = {
+                            ...costs,
+                        };
+
+                        // todo: use Ogmios API to just get the exact costs
+                        //   ... and report here when there is a diff.
+                        // Meanwhile, add a small amount of padding
+                        //   ... to the computed costs
+
+                        const cpuSlush = BigInt(350_000_000n); // ~25k lovelace
+                        const memSlush = BigInt(430_000n); // ~25k lovelace
+                        capturedCosts.slush.cpu += cpuSlush;
+                        capturedCosts.slush.mem += memSlush;
+                        costs.cpu += cpuSlush;
+                        costs.mem += memSlush;
+
                         capturedCosts.total.cpu += costs.cpu;
                         capturedCosts.total.mem += costs.mem;
                         if ("minting" == purpose) purpose = "minting ";
-                        capturedCosts[`${purpose} @${1 + index}`] = costs;
                         return costs;
                     },
                 });
@@ -1200,6 +1222,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 onSubmitError?.({
                     ...addlTxInfo,
                     tcx: this,
+
                     tx,
                 });
                 throw new Error(`wallet signing failed`);
@@ -1492,7 +1515,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const { addlTxns } = this.state;
         if (!addlTxns) return;
 
-        debugger;
+        
         // return this.submitTxns(Object.values(addlTxns), callback);
         return this.submitTxnChain({
             ...pipelineOptions,
@@ -1518,19 +1541,17 @@ export class StellarTxnContext<S extends anyState = anyState> {
         //     ][]
 
         for (const [txName, addlTxInfo] of Object.entries(txns)) {
-            const txInfoResolved: TxDescription<any, "resolved"> = {
-                ...addlTxInfo,
-                tcx: "" as any, // placeholder
-            };
+            const txInfoResolved: TxDescription<any, "resolved"> =
+                addlTxInfo as any;
             const { txName, description } = txInfoResolved;
             console.log("  -- before: " + description);
             const tcx = (
-                "function" == typeof addlTxInfo.tcx
+                "function" == typeof addlTxInfo.mkTcx
                     ? await (() => {
                           console.log(
                               "  creating TCX just in time for: " + description
                           );
-                          return addlTxInfo.tcx();
+                          return addlTxInfo.mkTcx();
                       })()
                     : (() => {
                           console.log(

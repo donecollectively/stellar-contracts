@@ -277,9 +277,7 @@ export abstract class Capo<
         console.warn(
             "using a generic Capo bundle - just enough for getting started."
         );
-        return new CapoHeliosBundle({
-            setup: this.setup,
-        });
+        return new CapoHeliosBundle();
     }
 
     /**
@@ -313,8 +311,9 @@ export abstract class Capo<
         config: configBaseWithRev,
         deployedName = "singleton"
     ): DeployedScriptDetails | undefined {
+        debugger;
         const preconfigs = this.getBundle().scriptConfigs?.[role];
-        throw new Error("where is deployedScriptDetails() used?")
+        throw new Error("where is deployedScriptDetails() used?");
 
 
     }
@@ -521,9 +520,16 @@ export abstract class Capo<
                 : Array.isArray(x)
                 ? { single: new UutName("some-uut", x) }
                 : x;
-        const vEntries = mkUutValuesEntries(uutMap);
+
+        const vEntries = this.mkUutValuesEntries(uutMap);
 
         return makeValue(0, makeAssets([[this.mintingPolicyHash!, vEntries]]));
+    }
+    /**
+     * mockable
+     */
+    mkUutValuesEntries(uutNameOrMap: UutName[] | uutPurposeMap<any>) {
+        return mkUutValuesEntries(uutNameOrMap);
     }
 
     @Activity.redeemer
@@ -1004,13 +1010,11 @@ export abstract class Capo<
         // P = SC extends StellarContract<infer P> ? P : never
     >(
         TargetClass: stellarSubclass<SC>,
-        config: SC extends StellarContract<infer iCT> ? iCT : never,
-        maybeDeployed?: DeployedScriptDetails
+        config: SC extends StellarContract<infer iCT> ? iCT : never
     ) {
         const args: StellarSetupDetails<ConfigFor<SC>> = {
             config,
             setup: this.setup,
-            deployedDetails: maybeDeployed,
         };
 
         const strella = await TargetClass.createWith(args);
@@ -1035,11 +1039,9 @@ export abstract class Capo<
             seedIndex,
             capo: this,
         };
-        const maybeDeployed = this.deployedScriptDetails("minter", config);
         const minter = await this.addStrellaWithConfig(
             minterClass,
-            config,
-            maybeDeployed
+            config
         );
 
         if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
@@ -1367,10 +1369,6 @@ export abstract class Capo<
             capo: this,
         } /*as unknown*/ as ConfigFor<StellarDelegate>;
 
-        const maybeDeployed = this.deployedScriptDetails(
-            role,
-            fullCapoDgtConfig
-        );
 
         //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined =
@@ -1638,17 +1636,11 @@ export abstract class Capo<
         deployedName?: string
     ): Promise<T> {
         const { delegateClass, fullCapoDgtConfig: config } = configuredDelegate;
-        const maybeDeployed = this.deployedScriptDetails(
-            scriptRole,
-            config,
-            deployedName
-        );
         try {
             // delegate
             const configured = await this.addStrellaWithConfig(
                 delegateClass,
-                config as any,
-                maybeDeployed
+                config as any
             );
             return configured as T;
         } catch (e: any) {
@@ -2340,7 +2332,9 @@ export abstract class Capo<
         );
 
         const tcx3a = await this.bootstrapSettings(tcxWithCharterMint);
-        const tcx3b = await this.mkAdditionalTxnsForCharter(tcx3a || tcxWithCharterMint);
+        const tcx3b = await this.mkAdditionalTxnsForCharter(
+            tcx3a || tcxWithCharterMint
+        );
         if (!tcx3b)
             throw new Error(
                 `${this.constructor.name}: mkAdditionalTxnsForCharter() must return a txn context`
@@ -2365,12 +2359,12 @@ export abstract class Capo<
             console.warn(
                 ` 🐞🐞🐞🐞🐞 ${this.constructor.name} has no settings policy to initialize`
             );
-            return tcx
+            return tcx;
         } else {
             tcx.includeAddlTxn("create settings delegate", {
                 description: `creates the settings policy`,
                 optional: false,
-                tcx: () =>
+                mkTcx: () =>
                     this.mkTxnInstallingPolicyDelegate("settings", "set"),
             });
 
@@ -2378,14 +2372,14 @@ export abstract class Capo<
                 description: `commits settingsPolicy`,
                 moreInfo: "makes the on-chain Settings policy active",
                 optional: false,
-                tcx: () => this.mkTxnCommittingPendingChanges(),
+                mkTcx: () => this.mkTxnCommittingPendingChanges(),
             });
 
             tcx.includeAddlTxn(`createSettingsRecord`, {
                 description: `creates the initial settings record`,
                 moreInfo: "needed to  configure other contract scripts",
                 optional: false,
-                tcx: async () => {
+                mkTcx: async () => {
                     // console.log({ initialSettings });
 
                     const settingsController = await (
@@ -2432,7 +2426,7 @@ export abstract class Capo<
                 description: `adds the current settings record to the Capo manifest`,
                 moreInfo: "provides settings to all the Capo scripts",
                 optional: false,
-                tcx: async () => {
+                mkTcx: async () => {
                     const settingsController = await (
                         this as Capo<any>
                     ).getDgDataController("settings");
@@ -2558,7 +2552,7 @@ export abstract class Capo<
             description: `+ on-chain refScript: ${scriptName}`,
             moreInfo: "saves txn fees and txn space in future txns",
             optional: false,
-            tcx: () => this.mkRefScriptTxn(script),
+            mkTcx: () => this.mkRefScriptTxn(script),
         }) as RETURNS;
     }
 
@@ -3940,7 +3934,7 @@ export abstract class Capo<
             const tcx2 = await this.minter.txnMintingWithoutDelegate(
                 tcx,
                 [
-                    ...mkUutValuesEntries(tcx.state.uuts),
+                    ...this.mkUutValuesEntries(tcx.state.uuts),
                     ...additionalMintValues,
                 ],
                 specialMinterActivity
@@ -3963,7 +3957,7 @@ export abstract class Capo<
 
         const tcx2 = await this.minter.txnMintWithDelegateAuthorizing(
             tcx,
-            [...mkUutValuesEntries(tcx.state.uuts), ...additionalMintValues],
+            [...this.mkUutValuesEntries(tcx.state.uuts), ...additionalMintValues],
             mintDelegate,
             mintDelegateActivity,
             skipDelegateReturn

@@ -3,6 +3,7 @@ import type { Capo } from "../Capo.js";
 import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import {
     HeliosScriptBundle,
+    placeholderSetupDetails,
 } from "../helios/HeliosScriptBundle.js";
 import {
     type CapoBundleClass,
@@ -57,11 +58,11 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     >(this: THIS, c: CB) : ConcreteCapoDelegateBundle {
         //@ts-expect-error returning a subclass without concrete implementations
         // of the abstract members; hopefully the subclass will error if they're missing
-        const cb = new c();
+        const cb = new c(placeholderSetupDetails);
         //@ts-expect-error - same as above
         const newClass = class aCapoBoundBundle extends this {
             capoBundle = cb;
-            constructor(setupDetails: StellarBundleSetupUplc<any>) {
+            constructor(setupDetails: StellarBundleSetupUplc<any>=placeholderSetupDetails) {
                 super(setupDetails);
             }
             isConcrete = true;

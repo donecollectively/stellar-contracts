@@ -55,6 +55,9 @@ export async function makeOgmiosConnection(conn: simpleOgmiosConn) {
 }
 type OgmiosClients = Awaited<ReturnType<typeof makeOgmiosConnection>>
 
+/**
+ * @public
+ */
 export class OgmiosTxSubmitter implements CardanoTxSubmitter {
     static async withOgmiosConn(isMainnet: boolean, conn: simpleOgmiosConn) {
         const ogmios = await makeOgmiosConnection(conn);

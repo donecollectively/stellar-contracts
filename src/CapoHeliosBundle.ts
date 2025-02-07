@@ -1,6 +1,6 @@
 import type { Source } from "@helios-lang/compiler-utils";
 
-import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
+import { HeliosScriptBundle, placeholderSetupDetails } from "./helios/HeliosScriptBundle.js";
 
 import CapoMintHelpers from "./CapoMintHelpers.hl";
 import CapoDelegateHelpers from "./delegation/CapoDelegateHelpers.hl";
@@ -30,23 +30,28 @@ export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
  * @public
  */
 export class CapoHeliosBundle extends HeliosScriptBundle {
-    constructor(setupDetails: StellarBundleSetupUplc<any>) {
-        // if we have deployed details, use that.
-        // otherwise, require setupDetails
+    constructor(setupDetails: StellarBundleSetupUplc<any>=placeholderSetupDetails) {
         super(setupDetails);
+
+        if (setupDetails.params && !this.preConfigured.isNullDeployment) {
+            // anything needed here?
+        }
     }
-    deployed:
-        | CapoDeployedDetails<any>
-        | ((...args: any[]) => CapoDeployedDetails<any>) = { capo: undefined };
+
+    preConfigured:
+        CapoDeployedDetails<any>
+        // | ((...args: any[]) => CapoDeployedDetails<any>) 
+        = { capo: undefined };
 
     get main() {
         return mainContract;
     }
 
     get params() {
-        const deployedDetails = "function" == typeof this.deployed ?
-            this.deployed({capo: {config: {}}}) :
-            this.deployed;
+        const deployedDetails = "function" == typeof this.preConfigured ?
+            //@ts-expect-error while the function option above is commented out
+            this.preConfigured({capo: {config: {}}}) :
+            this.preConfigured;
 
         if (!deployedDetails.capo) {
             // throw new Error(`${this.constructor.name}: missing required \`get deployed()\` for Capo bundle`);

@@ -8,30 +8,26 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { isValidUtf8 } from "@helios-lang/codec-utils";
 import { makeAddress, makeValidatorHash } from "@helios-lang/ledger";
 
-import { CapoMinter } from "../src/minting/CapoMinter";
-import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { ADA, addTestContext } from "../src/testing/types";
 import { StellarTestContext } from "../src/testing/StellarTestContext";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 
 import {
     DelegateConfigNeeded,
+    CapoWithoutSettings,
     delegateRoles,
     defineRole,
     delegateConfigValidation,
     DelegateSetup,
-} from "../src/delegation/RolesAndDelegates";
-import { StellarTxnContext } from "../src/StellarTxnContext";
-import { configBaseWithRev } from "../src/StellarContract";
-import { txAsString } from "../src/diagnostics";
+     StellarTxnContext,
+     configBase,
+     txAsString,
+     textToBytes
+} from "@donecollectively/stellar-contracts";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
-import { Capo } from "../src/Capo";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
-import { textToBytes } from "../src/HeliosPromotedTypes.js";
 
 class DelegationTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
@@ -285,7 +281,7 @@ describe("Capo", () => {
                         failsWhenBad: "mintDgt",
                     }
                 );
-                let config: configBaseWithRev & Record<string, any> = {
+                let config: configBase & Record<string, any> = {
                     rev: 1n,
                 };
                 let dgtRole = "mintDelegate";
@@ -431,8 +427,51 @@ describe("Capo", () => {
 
                 throw new Error(`test not implemented`);
             });
+            it.todo("expects the mint delegate to fail creating the delegate without the expected capoAddr", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.initialize();
+
+                throw new Error(`test not implemented`);
+            });
+            it.todo("fails any use of the mint delegate without the expected capoAddr", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.initialize();
+
+                throw new Error(`test not implemented`);
+            });
+            it.todo("fails any use of other delegates without the expected capoAddr", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.initialize();
+
+                throw new Error(`test not implemented`);
+            });
+            it.todo("can retire the mint delegate when replacing it with a new one having the right capoAddr", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.initialize();
+
+                throw new Error(`test not implemented`);
+            });
+            it.todo("can retire the mint delegate when FORCE-replacing it with a new one having the right capoAddr", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.initialize();
+
+                throw new Error(`test not implemented`);
+            });
+            it.todo("can install updated other-delegates having the right capoAddr", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.initialize();
+
+                throw new Error(`test not implemented`);
+            });
         });
     });
+
     describe("the mint delegate token is used for enforcing minting policy", () => {
         it("builds minting txns that include the mintDgt and reference script", async (context: localTC) => {
             // prettier-ignore

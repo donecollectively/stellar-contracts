@@ -9,20 +9,20 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-
-import { StellarTxnContext } from "../src/StellarTxnContext";
-import { Capo } from "../src/Capo";
-import { CapoMinter } from "../src/minting/CapoMinter";
-import { ADA, StellarTestContext, addTestContext } from "../src/testing";
-
-import type { UutName } from "../src/delegation/UutName";
-
-import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import * as utils from "../src/utils";
-import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts";
 import { makeTxOutput, makeValue } from "@helios-lang/ledger";
 import { Value } from "@helios-lang/ledger";
-import { hasAllUuts } from "../src/CapoTypes";
+
+import { 
+    CapoMinter, 
+    UutName ,
+    hasAllUuts, mkValuesEntry, uutPurposeMap
+} from "@donecollectively/stellar-contracts";
+import * as utils from "../src/utils";
+
+import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts";
+import { ADA, StellarTestContext, addTestContext } from "../src/testing";
+import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
+
 
 type localTC = StellarTestContext<
     DefaultCapoTestHelper<CapoCanMintGenericUuts>
@@ -353,7 +353,7 @@ describe("Capo", async () => {
                 ).rejects.toThrow(/mismatch in UUT mint/);
                 network.tick(1);
             }
-            const spy = vi.spyOn(utils, "mkUutValuesEntries");
+            const spy = vi.spyOn(capo, "mkUutValuesEntries");
             if (true) {
                 console.log(
                     "------ case 2: directly creating the transaction with >1 tokens in mint"
@@ -365,7 +365,7 @@ describe("Capo", async () => {
                     //@ts-expect-error
                     function (f: uniqUutMap) {
                         return [
-                            utils.mkValuesEntry(
+                            mkValuesEntry(
                                 f["multiple-is-bad"],
                                 BigInt(2)
                             ),
@@ -441,13 +441,12 @@ describe("Capo", async () => {
             // await t.txnAddCharterAuthorityTokenRef(tcx);
             const m: CapoMinter = capo.minter!;
 
-            const spy = vi.spyOn(utils, "mkUutValuesEntries");
+            const spy = vi.spyOn(capo, "mkUutValuesEntries");
             spy.mockImplementation(
-                //@ts-expect-error
-                function (f: uniqUutMap) {
+                function (f) {
                     return [
-                        this.mkValuesEntry(f["testSomeThing"], BigInt(1)),
-                        this.mkValuesEntry(f["something-else"], BigInt(1)),
+                        mkValuesEntry(f["testSomeThing"].name, BigInt(1)),
+                        mkValuesEntry("something-else", BigInt(1)),
                     ];
                 }
             );
@@ -464,6 +463,7 @@ describe("Capo", async () => {
             const uut = capo.uutsValue(tcx2);
 
             tcx2.addOutput(makeTxOutput(tina.address, uut));
+            expect(spy).toHaveBeenCalled();
             await expect(
                 tcx2.submit({
                     signers: [tom.address, tina.address, tracy.address],

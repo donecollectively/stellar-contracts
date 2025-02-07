@@ -35,6 +35,13 @@ import { makeCast } from "@helios-lang/contract-utils";
  */
 export const defaultNoDefinedModuleName = "‹default-needs-override›";
 
+export const placeholderSetupDetails = { 
+    setup: { 
+        isMainnet: "mainnet" === process.env.CARDANO_NETWORK, 
+        isPlaceholder: "for abstract bundleClass" 
+    }
+};
+
 /**
  * Base class for any Helios script bundle
  * @remarks
@@ -67,11 +74,12 @@ export abstract class HeliosScriptBundle {
     static usingCapoBundleClass<CB extends CapoBundleClass>(
         c: CB
     ): HeliosBundleClassWithCapo {
-        //@ts-expect-error creating from abstract class
-        const cb = new c();
+        //@ts-expect-error returning a subclass without concrete implementations
+        // of the abstract members; hopefully the subclass will error if they're missing
+        const cb = new c(placeholderSetupDetails);
         const newClass = class aCapoBoundBundle extends HeliosScriptBundle {
             capoBundle = cb;
-            constructor(setupDetails: StellarBundleSetupUplc<any>) {
+            constructor(setupDetails: StellarBundleSetupUplc<any>=placeholderSetupDetails) {
                 super(setupDetails);
             }
 
@@ -108,15 +116,17 @@ export abstract class HeliosScriptBundle {
     configuredParams?: UplcRecord<any>;
     deployedScriptDetails?: DeployedScriptDetails;
 
-    constructor(setupDetails: StellarBundleSetupUplc<any>) {
+    constructor(setupDetails: StellarBundleSetupUplc<any>=placeholderSetupDetails) {
         // this.devReloadModules()
         // if (setupDetails) debugger;
         this._program = undefined;
-        this.setup = setupDetails?.setup;
-        this.isMainnet = this.setup?.isMainnet;
+        this.setup = setupDetails.setup;
+        this.isMainnet = this.setup.isMainnet;
+
         if (this.setup && "undefined" === typeof this.isMainnet) {
+            debugger
             throw new Error(
-                `${this.constructor.name}: setup.isMainnet must be defined`
+                `${this.constructor.name}: setup.isMainnet must be defined (debugging breakpoint available)`
             );
         }
         this.configuredParams = setupDetails?.params;
@@ -128,8 +138,9 @@ export abstract class HeliosScriptBundle {
     }
 
     withSetupDetails(details: StellarBundleSetupUplc<any>) {
-        if (this.setup) {
-            throw new Error(`setup already present`);
+        if (details.setup.isPlaceholder) {
+            debugger
+            throw new Error(`unexpected use of placeholder setup for helios script bundle (debugging breakpoint available)`);
         }
         //@ts-expect-error with dynamic creation
         return new this.constructor(details);
@@ -427,7 +438,7 @@ export abstract class HeliosScriptBundle {
             program.changeParam(p, v);
         }
 
-        const net = setup.isMainnet ? "mainnet" : "testnet";
+        const net = this.isMainnet ? "mainnet" : "testnet";
         console.log(
             `(${net}) ${this.moduleName} with params:`,
             program.entryPoint.paramsDetails()
@@ -533,13 +544,13 @@ export abstract class HeliosScriptBundle {
             });
             this._program = p;
             this._progHasDeploymentDetails = this.hasDeploymentDetails;
+
+            // Hi!  Are you investigating a duplicate load of the same module? 
+            //  🔥🔥🔥  thanks! you're saving people 100ms at a time!
             console.log(
                 `📦 ${mName}: loaded & parsed ${
                     this.hasDeploymentDetails ? "with" : "without"
-                } setup: ${Date.now() - ts1}ms`
-                // Hi!  Are you investigating a duplicate load of the same module?  🔥🔥🔥
-                //   thanks! you're saving people 100ms at a time!
-                // new Error("stack").stack
+                } deployment details: ${Date.now() - ts1}ms`                
             );
             return p;
         } catch (e: any) {

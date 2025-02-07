@@ -29,8 +29,18 @@ makeRollupPlugin() {
 
     # raw DTS to be fed to api-extractor 
     inBackground "updating rollup-plugin.d.ts..." \
-        rollupPluginDTS &
+        rollupPluginDTS  &
 } 
+
+
+rollupPluginDTS() {
+    # stage 1: raw DTS to be fed to api-extractor
+    tsc -p ./tsconfig.rollupPlugins.dts.json  &&
+    withDocs api-extractor run --local -c api-extractor.rollupPlugins.json 
+    # .d.ts only for now (do we need separate docs?)
+    # stage 2: api extractor brings it all together
+    # only if WITHDOCS isn't 0
+}
 
 
 # Set trap to call cleanup function on script exit or interruption
@@ -106,7 +116,7 @@ exitIfError() {
         cat $hasProblem | while read line; do
             echo "  $line" >&2
         done
-        exit
+        exit 42
     fi
 }
 

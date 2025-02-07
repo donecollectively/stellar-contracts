@@ -124,7 +124,7 @@ export class CachedHeliosProgramFS extends CachedHeliosProgram {
                 console.log(
                     `🐢${this.id}: compiler cache: lock acquired for ${cacheKey}`
                 );
-                debugger;
+                
 
                 return {
                     lock: null,

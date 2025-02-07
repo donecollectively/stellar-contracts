@@ -1,9 +1,14 @@
 import type { CharterDataLike } from "./src/CapoTypes.js";
+export { DelegateConfigNeeded } from "./src/delegation/RolesAndDelegates.js";
+export { UnspecializedMintDelegate } from "./src/delegation/UnspecializedMintDelegate.js";
+export {UnspecializedDelegateBridge} from "./src/delegation/UnspecializedDelegate.bridge.js";
+export {UnspecializedDgtBundle} from "./src/delegation/UnspecializedDelegate.hlb.js";
+
 export { 
     MintSpendDelegateBundle 
 } from "./src/helios/scriptBundling/MintSpendDelegateBundle.js";
 export { 
-    currentDeploymentConfig 
+    capoConfigurationDetails 
 } from "./src/configuration/DefaultNullCapoDeploymentConfig.js";
 export type { 
     tagOnly,
