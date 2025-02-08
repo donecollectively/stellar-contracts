@@ -4,7 +4,7 @@
 import { Program } from "@helios-lang/compiler";
 import type { CompileOptionsForCachedHeliosProgram } from "../HeliosPromotedTypes.js";
 import type { anyUplcProgram } from "../HeliosPromotedTypes.js";
-import type { CacheableProgramProps } from "./CachedHeliosProgram.js";
+import type { CacheableProgramProps, HeliosProgramCacheEntry } from "./CachedHeliosProgram.js";
 import type { Source } from "@helios-lang/compiler-utils";
 
 export { type CompileOptionsForCachedHeliosProgram } from "../HeliosPromotedTypes.js";
@@ -24,6 +24,7 @@ export type { anyUplcProgram } from "../HeliosPromotedTypes.js";
  * @public
  */
 export class HeliosProgramWithCacheAPI extends Program {
+    cacheEntry: HeliosProgramCacheEntry | undefined = undefined
     constructor(mainSource: string | Source, props: CacheableProgramProps) {
         super(mainSource, props);
     }

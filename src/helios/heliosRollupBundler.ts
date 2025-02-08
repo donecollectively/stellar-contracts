@@ -21,9 +21,12 @@ import {
 
 import { StellarHeliosProject } from "./StellarHeliosProject.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
-import { textToBytes } from "../HeliosPromotedTypes.js";
+import { bytesToText, textToBytes } from "../HeliosPromotedTypes.js";
 import { rollupCreateHlbundledClass } from "./rollupPlugins/rollupCreateHlbundledClass.js";
 import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
+import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import { parseCapoJSONConfig, type CapoDeployedDetails } from "../configuration/DeployedScriptConfigs.js";
+import { serializeCacheEntry, stringifyCacheEntry } from "./CachedHeliosProgram.js";
 
 type HeliosBundlerPluginState = {
     capoBundle: any; // CapoHeliosBundle;
@@ -267,17 +270,20 @@ export function heliosRollupBundler(
 
                                 state.bundleClassById[id] = SomeBundleClass;
                                 const hlBundler: HeliosScriptBundle =
-                                    new SomeBundleClass({
+                                    SomeBundleClass.create({
                                         ...placeholderSetup,
                                         placeholderAt: "variant generation",
                                     });
 
-                                const scriptVariants = hlBundler.variants;
+                                let scriptVariants: Record<string, any> =
+                                    hlBundler.hasAnyVariant
+                                        ? hlBundler.variants
+                                        : { singleton: undefined };
                                 for (const [
                                     variant,
                                     baseParams,
                                 ] of Object.entries(scriptVariants)) {
-                                    const compiled =
+                                    const configured =
                                         await hlBundler.withSetupDetails({
                                             params: baseParams,
                                             setup: { isMainnet },
@@ -411,7 +417,7 @@ export function heliosRollupBundler(
                 //??? addWatchFile for all the .hl scripts in the bundle
                 // return null as LoadResult;
 
-                let bundle = new SomeBundleClass({
+                let bundle = SomeBundleClass.create({
                     ...placeholderSetup,
                     placeholderAt: "load() before type-gen",
                 });
@@ -575,23 +581,24 @@ export function heliosRollupBundler(
             // const tester = `            preConfigured = mkCapoDeployment`
             const filenameBase = id.replace(/.*\/([^.]+)\..*$/, "$1");
             const deployDetailsFile = `./${filenameBase}.hlDeploy.${networkId}.json`;
+            const SomeBundleClass: typeof CapoHeliosBundle =
+                state.bundleClassById[id];
+
             if (!code.match(capoConfigRegex)) {
                 if (looksLikeCapo) {
                     debugger;
+                    if (SomeBundleClass.isAbstract == true) {
+                        this.info(
+                            `${SomeBundleClass.name}: abstract class; skipping config injection`
+                        );
+                        return null;
+                    }
                     this.warn(
-                        `It looks like this is a Capo bundle class without a currentDeploymentConfig in ${id}`
-                    );
-                    console.log(
-                        `  import {currentDeploymentConfig} from "@donecollectively/stellar-contracts"`
-                    );
-                    console.log(
-                        `  ... and add  'preConfigured = capoConfigurationDetails' to your class.`
-                    );
-                    console.log(
-                        `This will use configuration details from its ${deployDetailsFile}`
-                    );
-                    console.log(
-                        `  ... or another json file when deploying to a different network`
+                        `${SomeBundleClass.name}: this looks like a Capo bundle class without a currentDeploymentConfig in ${id}\n` +
+                            `  import {currentDeploymentConfig} from "@donecollectively/stellar-contracts"\n` +
+                            `  ... and add  'preConfigured = capoConfigurationDetails' to your class.\n` +
+                            `This will use configuration details from its ${deployDetailsFile}\n` +
+                            `  ... or another json file when deploying to a different network`
                     );
                 }
                 return null;
@@ -601,12 +608,10 @@ export function heliosRollupBundler(
                     `non-Capo class using currentDeploymentConfig in ${id}`
                 );
             }
-            debugger;
 
-            const s = new MagicString(code);
             const resolvedDeployConfig = await this.resolve(
                 deployDetailsFile,
-                id,
+                id, // importer
                 {
                     // attributes: {type: "json" },
                 }
@@ -619,19 +624,53 @@ export function heliosRollupBundler(
                 const deployDetailsConfigJSON = readFileSync(
                     resolvedDeployConfig.id
                 );
-                debugger;
-                const deployDetails = JSON.parse(
+                const deployDetails : CapoDeployedDetails<"json"> = JSON.parse(
                     deployDetailsConfigJSON.toString() || "{}"
                 );
-
                 if (!deployDetails.capo) {
-                    this.warn(
-                        `missing required 'capo' entry in ${resolvedDeployConfig.id}`
-                    );
+                    throw new Error(`missing required 'capo' entry in ${resolvedDeployConfig.id}`);
                 }
+
                 this.addWatchFile(id);
                 this.addWatchFile(resolvedDeployConfig.id);
 
+                const hlBundler: CapoHeliosBundle = SomeBundleClass.create({
+                    deployedDetails: {
+                        config: parseCapoJSONConfig(deployDetails.capo.config),
+                    },
+                    setup: {
+                        isMainnet: networkId === "mainnet",
+                        isPlaceholder: `rollupBundlerPlugin for type-gen`,
+                    },
+                });
+
+                const compiledScript = await hlBundler.compiledScript();
+                const cacheEntry = hlBundler.program.cacheEntry
+                if (!cacheEntry) throw new Error(`missing cacheEntry`);
+                const serializedCacheEntry = serializeCacheEntry(cacheEntry)
+                const {
+                    programElements,
+                    version,
+                    optimizeOptions,
+                    optimized,
+                    unoptimized,
+                    optimizedIR,
+                    unoptimizedIR,
+                    optimizedSmap,
+                    unoptimizedSmap
+                } = serializedCacheEntry
+                deployDetails.capo.scriptHash = bytesToHex(compiledScript.hash())
+                deployDetails.capo.programBundle = {
+                    programElements,
+                    version,
+                    optimized,
+                    unoptimized,
+                    optimizedIR,
+                    unoptimizedIR,
+                    optimizedSmap,
+                    unoptimizedSmap,
+                }
+                const s = new MagicString(code);
                 s.replace(
                     capoConfigRegex,
                     `$1 (${JSON.stringify(deployDetails)})`

@@ -8,7 +8,7 @@ import {
     type HeliosProgramCacheEntry,
     type lockInfo,
     type LockInfoForStrat,
-    type StringifiedHeliosCacheEntry,
+    type SerializedHeliosCacheEntry,
 } from "./CachedHeliosProgram.js";
 import type { Source } from "@helios-lang/compiler-utils";
 

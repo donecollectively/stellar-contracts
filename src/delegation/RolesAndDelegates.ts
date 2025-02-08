@@ -21,8 +21,6 @@ import type { DelegatedDataContract } from "./DelegatedDataContract.js";
  *
  * acts like a regular error, plus has an `errors` object mapping field names
  * to problems found in those fields.
- *
- * @param ‹pName› - descr
  * @public
  **/
 export class DelegateConfigNeeded extends Error {

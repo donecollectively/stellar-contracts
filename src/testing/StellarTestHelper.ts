@@ -538,6 +538,12 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         TargetClass: stellarSubclass<SC>,
         config?: ConfigFor<SC>
     ) {
+        const envOptimize = !! parseInt(process.env.OPTIMIZE || "0")
+        if ("undefined" == typeof process.env.OPTIMIZE) {
+            console.warn(`OPTIMIZE is not set; using this.optimize = ${this.optimize}`)
+        } else {
+            console.warn(`using env OPTIMIZE=${envOptimize}`)
+        }
         const setup: SetupInfo = {
             network: this.network,
             actorContext: this.actorContext,

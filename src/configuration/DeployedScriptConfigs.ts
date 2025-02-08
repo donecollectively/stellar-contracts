@@ -38,12 +38,14 @@ export function mkDeployedScriptConfigs(x: AllDeployedScriptConfigs) {
  */
 export function mkCapoDeployment({
     capo,
-    // scripts,
-}: Required<CapoDeployedDetails<"json">>) {
+}: // scripts,
+Required<CapoDeployedDetails<"json">>) {
     const { config, programBundle } = capo;
     return {
+        // scripts,
         capo: {
             config: parseCapoJSONConfig(config),
+            programBundle,
         } as DeployedScriptDetails<CapoConfig, "native">,
     };
 }
@@ -55,7 +57,7 @@ type DelegateDeployment = {
     config: minimalDelegateConfig;
     scriptHash: string;
     programBundle?: DeployedProgramBundle;
-}
+};
 
 /**
  * type-safe factory function for creating a Delegate deployment details object
@@ -63,7 +65,7 @@ type DelegateDeployment = {
  */
 export function mkDelegateDeployment(
     ddd: DelegateDeployment
-) : DelegateDeployment {
+): DelegateDeployment {
     return ddd;
 }
 
@@ -94,11 +96,10 @@ type DeployedConfigWithVariants = {
 /**
  * @public
  */
-type DeployedSingletonConfig<
-    CT extends configBaseWithRev = configBaseWithRev
-> = {
-    singleton: DeployedScriptDetails<CT>;
-};
+type DeployedSingletonConfig<CT extends configBaseWithRev = configBaseWithRev> =
+    {
+        singleton: DeployedScriptDetails<CT>;
+    };
 
 /**
  * @public
@@ -119,11 +120,17 @@ export type DeployedScriptDetails<
           scriptHash?: string;
           programBundle?: DeployedProgramBundle;
       }
-    | {
-          config: CT;
-          scriptHash: string;
-          programBundle: DeployedProgramBundle;
-      };
+    | RequiredDeployedScriptDetails<CT>;
+
+export type RequiredDeployedScriptDetails<
+    CT extends configBaseWithRev,
+    form extends "json" | "native" = "native"
+> = {
+    config: form extends "json" ? any : CT;
+    scriptHash: string;
+    programBundle: DeployedProgramBundle;
+};
+
 /**
  * @public
  */

@@ -25,8 +25,8 @@ import type {
     HeliosBundleClassWithCapo,
     HeliosBundleTypes,
 } from "./HeliosMetaTypes.js";
-import type { StringifiedHeliosCacheEntry } from "./CachedHeliosProgram.js";
-import type { DeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
+import { programFromCacheEntry, type DeployedProgramBundle } from "./CachedHeliosProgram.js";
+import type { DeployedScriptDetails, RequiredDeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { makeCast } from "@helios-lang/contract-utils";
 
@@ -35,11 +35,14 @@ import { makeCast } from "@helios-lang/contract-utils";
  */
 export const defaultNoDefinedModuleName = "‹default-needs-override›";
 
-export const placeholderSetupDetails = { 
-    setup: { 
-        isMainnet: "mainnet" === process.env.CARDANO_NETWORK, 
-        isPlaceholder: "for abstract bundleClass" 
-    }
+/**
+ * @public
+ */
+export const placeholderSetupDetails = {
+    setup: {
+        isMainnet: "mainnet" === process.env.CARDANO_NETWORK,
+        isPlaceholder: "for abstract bundleClass",
+    },
 };
 
 /**
@@ -50,7 +53,22 @@ export const placeholderSetupDetails = {
  * @public
  */
 export abstract class HeliosScriptBundle {
+    /**
+     * an indicator of a Helios bundle that is intended to be used as a Capo contract
+     * @remarks
+     * the CapoHeliosBundle class overrides this to true.
+     * @internal
+     */
     static isCapoBundle = false;
+    /**
+     * an opt-in indicator of abstractness
+     * @remarks
+     * Subclasses that aren't intended for instantiation can set this to true.
+     *
+     * Subclasses that don't set this will not be treated as abstract.
+     * @public
+     */
+    static isAbstract?: boolean | undefined = undefined;
 
     /**
      * Constructs a base class for any Helios script bundle,
@@ -79,7 +97,9 @@ export abstract class HeliosScriptBundle {
         const cb = new c(placeholderSetupDetails);
         const newClass = class aCapoBoundBundle extends HeliosScriptBundle {
             capoBundle = cb;
-            constructor(setupDetails: StellarBundleSetupUplc<any>=placeholderSetupDetails) {
+            constructor(
+                setupDetails: StellarBundleSetupUplc<any> = placeholderSetupDetails
+            ) {
                 super(setupDetails);
             }
 
@@ -87,6 +107,17 @@ export abstract class HeliosScriptBundle {
         } as HeliosBundleClassWithCapo & typeof newClass;
 
         return newClass;
+    }
+
+    static create<THIS extends typeof HeliosScriptBundle>(
+        this: THIS,
+        setupDetails: StellarBundleSetupUplc<any> = placeholderSetupDetails
+    ) {
+        //@ts-expect-error creating instance of abstract class
+        const created = new this(setupDetails);
+
+        created.init(setupDetails);
+        return created;
     }
 
     capoBundle?: CapoHeliosBundle;
@@ -111,12 +142,17 @@ export abstract class HeliosScriptBundle {
     redeemerTypeName?: string;
     isMainnet?: boolean;
     _program?: HeliosProgramWithCacheAPI;
-    _progHasDeploymentDetails = false;
+    _progIsPrecompiled = false;
     setup: SetupOrMainnetSignalForBundle;
     configuredParams?: UplcRecord<any>;
-    deployedScriptDetails?: DeployedScriptDetails;
+    preCompiled?: {
+        [variant: string]: RequiredDeployedScriptDetails<any, "json">;
+    };
+    alreadyCompiledScript: anyUplcProgram | undefined;
 
-    constructor(setupDetails: StellarBundleSetupUplc<any>=placeholderSetupDetails) {
+    constructor(
+        setupDetails: StellarBundleSetupUplc<any> = placeholderSetupDetails
+    ) {
         // this.devReloadModules()
         // if (setupDetails) debugger;
         this._program = undefined;
@@ -124,26 +160,66 @@ export abstract class HeliosScriptBundle {
         this.isMainnet = this.setup.isMainnet;
 
         if (this.setup && "undefined" === typeof this.isMainnet) {
-            debugger
+            debugger;
             throw new Error(
                 `${this.constructor.name}: setup.isMainnet must be defined (debugging breakpoint available)`
             );
         }
-        this.configuredParams = setupDetails?.params;
-        this.deployedScriptDetails = setupDetails?.deployedDetails;
     }
 
-    get hasDeploymentDetails() {
-        return !!this.deployedScriptDetails;
+    get hasAnyVariant() {
+        return true;
     }
 
-    withSetupDetails(details: StellarBundleSetupUplc<any>) {
+    init(setupDetails: StellarBundleSetupUplc<any>) {
+        if (setupDetails?.params) {
+            if (this.preCompiled) {
+                debugger;
+                throw new Error(
+                    `??? disallow params to pre-compiled bundle??? (dbpa)`
+                );
+            }
+            this.configuredParams = setupDetails?.params;
+        } else {
+            // temp singleton
+            const selectedVariant = "singleton";
+            this.configuredParams =
+                this.getPreconfiguredUplcParams(selectedVariant);
+        }
+    }
+
+    get isPrecompiled() {
+        return !!this.preCompiled;
+    }
+
+    getPreCompiledBundle(variant: string) {
+        const foundVariant = this.preCompiled?.[variant];
+        if (!foundVariant) {
+            throw new Error(`${this.constructor.name}: variant ${variant} not found in preCompiled scripts`)
+        }
+        return foundVariant.programBundle
+    }
+
+
+    getPreconfiguredUplcParams(
+        variantName: string
+    ): UplcRecord<any> | undefined {
+        const p = this.variants?.[variantName] || this.params;
+        if (!p) return undefined;
+        return this.paramsToUplc(p);
+    }
+
+    withSetupDetails(details: StellarBundleSetupUplc<any>): this {
         if (details.setup.isPlaceholder) {
-            debugger
-            throw new Error(`unexpected use of placeholder setup for helios script bundle (debugging breakpoint available)`);
+            debugger;
+            throw new Error(
+                `unexpected use of placeholder setup for helios script bundle (debugging breakpoint available)`
+            );
         }
         //@ts-expect-error with dynamic creation
-        return new this.constructor(details);
+        const created = new this.constructor(details);
+        created.init(details);
+        return created;
     }
 
     // these should be unnecessary if we arrange the rollup plugin
@@ -175,14 +251,14 @@ export abstract class HeliosScriptBundle {
     // }
 
     get params() {
-        return {} as any
+        return undefined as any;
     }
     /**
      * The known variants of this contract script, with any contract
      * parameters applicable to each variant.  By default, there is a
      * singleton variant that uses the result of `get params()`.
      */
-    get variants() : { [variantName: string]: any } {
+    get variants(): { [variantName: string]: any } {
         return { singleton: this.params };
     }
 
@@ -345,13 +421,30 @@ export abstract class HeliosScriptBundle {
         defaultNoDefinedModuleName; // overridden in subclasses where relevant
     }
 
+    _selectedVariant?: string;
+    withVariant(vn: string) {
+        if (!this.variants) {
+            throw new Error(
+                `variants not defined for ${this.constructor.name}`
+            );
+        }
+        const foundVariant = this.variants[vn];
+        if (!foundVariant) {
+            throw new Error(
+                `${this.constructor.name}: variant ${vn} not found in variants()`
+            );
+        }
+        this._selectedVariant = vn;
+        return this;
+    }
+
     /**
      * resolves the compiled script for this class with its provided
      * configuration details
      * @remarks
-     * The configuration details may come through the Capo bundle's
-     * `deployedDetails` or by compiling the script with the provided
-     * params.
+     * The configuration details & pre-compiled script may be injected by
+     * the HeliosRollupBundler or by compiling the script with provided
+     * params (in tests or during a first deployment of a Capo)
      */
     async compiledScript(): Promise<anyUplcProgram> {
         const { configuredParams: params, setup, program } = this;
@@ -362,77 +455,38 @@ export abstract class HeliosScriptBundle {
                 `(unreachable?): missing required params or setup for compiledScript() (debugging breakpoint available)`
             );
         }
-
-        if (this.deployedScriptDetails?.programBundle) {
-            const {
-                optimized,
-                unoptimized,
-                // optimizedIR, // omitted
-                // unoptimizedIR, // omitted
-                optimizedSmap,
-                unoptimizedSmap,
-                version,
-            } = this.deployedScriptDetails.programBundle;
-            if (!unoptimized) {
-                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
-                throw new Error(
-                    `${this.constructor.name}: missing unoptimized program in serialized program cache\n` +
-                        `  (debugging breakpoint available)`
-                );
-            }
-            if (/* !unoptimizedIR || */ !unoptimizedSmap) {
-                console.error({
-                    // unoptimizedIR,
-                    unoptimizedSmap,
-                });
-                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
-                throw new Error(
-                    `${this.constructor.name}: missing expected ` +
-                        /*unoptimizedIR or */ `sourcemap in serialized program cache\n` +
-                        `  (debugging breakpoint available)`
-                );
-            }
-            const altProgram = this.decodeAnyPlutusUplcProgram(
-                version,
-                unoptimized,
-                // unoptimizedIR,
-                unoptimizedSmap
-            );
-            if (this.optimize) {
-                if (!optimized) {
-                    debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+        if (this.isPrecompiled) {
+            let selectedVariant = "singleton";
+            if (this.variants) {
+                const variant = this._selectedVariant;
+                if (!variant) {
                     throw new Error(
-                        `${this.constructor.name}: missing optimized program in serialized program cache, with optimization enabled\n` +
-                            `  (debugging breakpoint available)`
+                        `${this.constructor.name}: variant not selected with withVariant(variantName)`
                     );
                 }
-                if (/* !optimizedIR || */ !optimizedSmap) {
-                    console.error({
-                        // optimizedIR,
-                        optimizedSmap,
-                    });
-                    throw new Error(
-                        `${this.constructor.name}: missing expected optimizedIR or sourcemap in serialized program cache, with optimization enabled\n` +
-                            `  (debugging breakpoint available)`
-                    );
-                }
-                return this.decodeAnyPlutusUplcProgram(
-                    version,
-                    optimized,
-                    // optimizedIR,
-                    optimizedSmap,
-                    altProgram
+                selectedVariant = variant;
+            }
+            const bundleForVariant = this.getPreCompiledBundle[selectedVariant];
+            if (!bundleForVariant) {
+                throw new Error(
+                    `${this.constructor.name}: variant ${selectedVariant} not found in preCompiled`
                 );
             }
-            return altProgram;
+            if (bundleForVariant) {
+                return programFromCacheEntry(bundleForVariant);
+            }
         }
+        console.warn(
+            `${this.constructor.name}: compiling helios script.  This could take 30s or so... `
+        );
 
         // falls back to actually compiling the program.
         // on server side, this comes with caching for performance.
         // on the browser, there's not (currently) a cache.  It's intended
-        // that the deployedScriptDetails will usually be available, so
-        // the cases where this is needed on the browser side should be rare.
-        console.warn("compiling helios script.  This could take 30s or so... ");
+        // that the preCompiled= settings
+        // will usually be available, so the cases where this is needed on the browser
+        // side should be rare (from .hlb's params() or variants())
+        // or only used in special cases of capo deployment (with its configuredScriptDetails)
         const t = new Date().getTime();
         for (const [p, v] of Object.entries(params)) {
             program.changeParam(p, v);
@@ -473,8 +527,8 @@ export abstract class HeliosScriptBundle {
     decodeAnyPlutusUplcProgram(
         version: "PlutusV2" | "PlutusV3",
         cborHex: string,
-        // ir: string,
-        sourceMap: UplcSourceMapJsonSafe,
+        ir?: string,
+        sourceMap?: UplcSourceMapJsonSafe,
         alt?: anyUplcProgram
     ) {
         if (version === "PlutusV2") {
@@ -484,7 +538,7 @@ export abstract class HeliosScriptBundle {
                 );
             }
             return decodeUplcProgramV2FromCbor(cborHex, {
-                // ir: ir,
+                ir: ir,
                 sourceMap: sourceMap,
                 alt: alt as UplcProgramV2,
             });
@@ -514,10 +568,13 @@ export abstract class HeliosScriptBundle {
     // _pct: number = 0
     get program(): HeliosProgramWithCacheAPI {
         if (this._program) {
+            // bust through pre-cached version if the
+            // fundmental settings are changed
             if (
-                this.hasDeploymentDetails != this._progHasDeploymentDetails ||
+                this.isPrecompiled != this._progIsPrecompiled ||
                 this.setup?.isMainnet !== this.isMainnet
             ) {
+                console.warn("busting program cache");
                 this._program = undefined;
             } else {
                 return this._program;
@@ -543,14 +600,14 @@ export abstract class HeliosScriptBundle {
                 name: mName, // it will fall back to the program name if this is empty
             });
             this._program = p;
-            this._progHasDeploymentDetails = this.hasDeploymentDetails;
+            this._progIsPrecompiled = this.isPrecompiled;
 
-            // Hi!  Are you investigating a duplicate load of the same module? 
+            // Hi!  Are you investigating a duplicate load of the same module?
             //  🔥🔥🔥  thanks! you're saving people 100ms at a time!
             console.log(
                 `📦 ${mName}: loaded & parsed ${
-                    this.hasDeploymentDetails ? "with" : "without"
-                } deployment details: ${Date.now() - ts1}ms`                
+                    this.isPrecompiled ? "with" : "without"
+                } pre-compiled program: ${Date.now() - ts1}ms`
             );
             return p;
         } catch (e: any) {
@@ -809,9 +866,9 @@ export abstract class HeliosScriptBundle {
         return types;
     }
 
-    paramsToUplc<
-        ConfigType extends configBaseWithRev
-    >(params: Record<string, any>): UplcRecord<ConfigType> {
+    paramsToUplc<ConfigType extends configBaseWithRev>(
+        params: Record<string, any>
+    ): UplcRecord<ConfigType> {
         const namespace = this.program.name;
         const { paramTypes } = this.program;
 
@@ -877,7 +934,10 @@ export abstract class HeliosScriptBundle {
 
     typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
         const schema = type.toSchema();
-        const isMainnet = this.setup!.isMainnet
+        if (!this.setup) {
+            debugger;
+        }
+        const isMainnet = this.setup!.isMainnet;
         if ("undefined" == typeof isMainnet) {
             throw new Error(
                 `${this.constructor.name}: isMainnet must be defined in the setup`
@@ -889,5 +949,4 @@ export abstract class HeliosScriptBundle {
         });
         return cast.toUplcData(data, path);
     }
-
 }

@@ -6,6 +6,7 @@ import {
 import type { Source } from "@helios-lang/compiler-utils";
 import {
     decodeUplcProgramV2FromCbor,
+    deserializeUplcSourceMap,
     makeUplcSourceMap,
     type UplcProgramV2,
     type UplcSourceMapJsonSafe,
@@ -60,11 +61,11 @@ export type HeliosProgramCacheEntry = {
     unoptimizedSmap?: UplcSourceMapJsonSafe;
 };
 
-export type StringifiedHeliosCacheEntry = {
+export type SerializedHeliosCacheEntry = {
     version: "PlutusV2" | "PlutusV3";
     createdBy: string;
     programElements: Record<string, string | Object>;
-    compileOptions: string; // hash of the compile options
+    optimizeOptions: OptimizeOptions;
     optimized?: string;
     unoptimized?: string;
     optimizedIR?: string;
@@ -74,13 +75,14 @@ export type StringifiedHeliosCacheEntry = {
 };
 
 export type DeployedProgramBundle = Pick<
-    StringifiedHeliosCacheEntry,
+    SerializedHeliosCacheEntry,
     | "version"
-    | "createdBy"
     | "programElements"
     | "optimized"
-    | "optimizedSmap"
     | "unoptimized"
+    | "optimizedIR"
+    | "unoptimizedIR"
+    | "optimizedSmap"
     | "unoptimizedSmap"
 >;
 
@@ -110,6 +112,7 @@ export class CachedHeliosProgram extends Program {
     props: CacheableProgramProps;
     locks: Map<string, lockInfo<any>> = new Map();
     programElements: Record<string, string | Object>;
+    cacheEntry: HeliosProgramCacheEntry | undefined;
 
     sources: (Source | string)[];
     static id: string =
@@ -191,68 +194,8 @@ export class CachedHeliosProgram extends Program {
         throw new Error(redirecToCorrectConstructor);
     }
 
-    static programFromCacheEntry(
-        fromCache: StringifiedHeliosCacheEntry
-    ): UplcProgramV2 {
-        //  | UplcProgramV3 {
-        // the program is a hex-string, accepted by both UplcProgramV2 and UplcProgramV3
-        const {
-            optimized,
-            optimizedIR,
-            unoptimized,
-            unoptimizedIR,
-            version,
-            optimizedSmap,
-            unoptimizedSmap,
-        } = fromCache;
-        if (version !== "PlutusV2") throw new Error(`pv3supportpending`);
-        // TargetClass = version == "PlutusV2" ? UplcProgramV2 : UplcProgramV3;
-
-        const o = optimized
-            ? decodeUplcProgramV2FromCbor(optimized, {
-                  ir: optimizedIR,
-                  sourceMap: optimizedSmap,
-              })
-            : undefined;
-        const u = unoptimized
-            ? decodeUplcProgramV2FromCbor(unoptimized, {
-                  ir: unoptimizedIR,
-                  sourceMap: unoptimizedSmap,
-              })
-            : undefined;
-        if (o) {
-            if (u) {
-                return o.withAlt(u); // | UplcProgramV3;
-            }
-            return o;
-        }
-        if (!u) {
-            throw new Error(
-                `🐢${this.id}: No optimized or unoptimized program in cache entry: ${fromCache}`
-            );
-        }
-        return u;
-    }
-
-    static serializeCacheEntry(entry: HeliosProgramCacheEntry): string {
-        const { optimized, unoptimized } = entry;
-        return JSON.stringify(
-            {
-                ...entry,
-                ...(optimized
-                    ? { optimized: bytesToHex(optimized.toCbor()) }
-                    : {}),
-                ...(unoptimized
-                    ? { unoptimized: bytesToHex(unoptimized.toCbor()) }
-                    : {}),
-            },
-            null,
-            2
-        );
-    }
-
     static async initCacheFromBundle(
-        cacheEntries: Record<string, string | StringifiedHeliosCacheEntry>
+        cacheEntries: Record<string, string | SerializedHeliosCacheEntry>
     ): Promise<void> {
         //!!! todo work on this more
         for (const [key, value] of Object.entries(cacheEntries)) {
@@ -277,7 +220,7 @@ export class CachedHeliosProgram extends Program {
                     continue;
                 }
                 try {
-                    this.programFromCacheEntry(value);
+                    programFromCacheEntry(value);
                 } catch (e: any) {
                     console.log(e.message);
                     console.log(
@@ -296,7 +239,7 @@ export class CachedHeliosProgram extends Program {
     }
 
     static toHeliosProgramCacheEntry(
-        value: StringifiedHeliosCacheEntry
+        value: SerializedHeliosCacheEntry
     ): HeliosProgramCacheEntry {
         throw new Error("todo");
     }
@@ -509,7 +452,10 @@ export class CachedHeliosProgram extends Program {
             );
             try {
                 const cacheEntry = await this.waitForCaching(cacheKey);
-                return this.programFromCacheEntry(cacheEntry);
+                const program = programFromCacheEntry(cacheEntry);        
+                this.cacheEntry = deserializeHeliosCacheEntry(cacheEntry);
+                debugger
+                return program
             } catch (e) {
                 console.log(
                     `🐢${this.id}: Failed getting cache-awaited program with cacheKey: ${cacheKey}; will compile in-process`
@@ -563,6 +509,7 @@ export class CachedHeliosProgram extends Program {
                     cacheEntry.optimizedSmap = sourceMap.toJsonSafe();
                 }
             }
+            this.cacheEntry = cacheEntry;
             this.storeInCache(cacheKey, cacheEntry);
             return uplcProgram;
         } catch (e: any) {
@@ -577,7 +524,7 @@ export class CachedHeliosProgram extends Program {
 
     async waitForCaching(
         cacheKey: string
-    ): Promise<StringifiedHeliosCacheEntry> {
+    ): Promise<SerializedHeliosCacheEntry> {
         // we won't get the lock very quickly, but it should come through as
         // soon as the other process finishes.
         return this.acquireLock(cacheKey).then(async (lock) => {
@@ -607,7 +554,11 @@ export class CachedHeliosProgram extends Program {
         cacheKey: string
     ): Promise<undefined | UplcProgramV2 /* | UplcProgramV3 */> {
         const cacheEntry = await this.ifCached(cacheKey);
-        if (cacheEntry) return this.programFromCacheEntry(cacheEntry);
+        if (cacheEntry) {
+            this.cacheEntry = deserializeHeliosCacheEntry(cacheEntry)
+            // debugger
+            return programFromCacheEntry(cacheEntry);
+        }
         return undefined;
     }
 
@@ -677,11 +628,11 @@ export class CachedHeliosProgram extends Program {
 
     async ifCached(
         cacheKey: string
-    ): Promise<StringifiedHeliosCacheEntry | null> {
+    ): Promise<SerializedHeliosCacheEntry | null> {
         const string = await this.subclass.ifCached(cacheKey);
         if (string) {
             try {
-                return JSON.parse(string) as StringifiedHeliosCacheEntry;
+                return JSON.parse(string) as SerializedHeliosCacheEntry;
             } catch (e: any) {
                 console.log(
                     `  -- 🐢${this.id}: cleaning up invalid cache entry for ${cacheKey}: ${e.message}`
@@ -738,7 +689,7 @@ export class CachedHeliosProgram extends Program {
         return this.subclass
             .cacheStore(
                 cacheKey,
-                this.subclass.serializeCacheEntry(value),
+                stringifyCacheEntry(value),
                 value
             )
             .then(() => {
@@ -760,10 +711,105 @@ export class CachedHeliosProgram extends Program {
             throw new Error(`releaseLock: no lock found for ${cacheKey}`);
         }
     }
-    programFromCacheEntry(
-        fromCache: StringifiedHeliosCacheEntry
-    ): UplcProgramV2 {
-        // | UplcProgramV3 {
-        return this.subclass.programFromCacheEntry(fromCache);
+}
+
+export function stringifyCacheEntry(entry: HeliosProgramCacheEntry): string {
+    return JSON.stringify(
+        serializeCacheEntry(entry),
+        null,
+        2
+    );
+}
+
+export function serializeCacheEntry(
+    entry: HeliosProgramCacheEntry): SerializedHeliosCacheEntry 
+{
+    const { optimized, unoptimized } = entry;
+    return {
+        ...entry,
+        ...(optimized
+            ? { optimized: bytesToHex(optimized.toCbor()) }
+            : {}),
+        ...(unoptimized
+            ? { unoptimized: bytesToHex(unoptimized.toCbor()) }
+            : {}),
+    } as any;
+}
+
+export function programFromCacheEntry(
+    fromCache: SerializedHeliosCacheEntry
+): UplcProgramV2 {
+    //  | UplcProgramV3 {
+    // the program is a hex-string, accepted by both UplcProgramV2 and UplcProgramV3
+    const {
+        optimized,
+        optimizedIR,
+        unoptimized,
+        unoptimizedIR,
+        version,
+        optimizedSmap,
+        unoptimizedSmap,
+        optimizeOptions,
+        createdBy,
+        programElements
+    } = fromCache;
+    if (version !== "PlutusV2") throw new Error(`pv3supportpending`);
+    // TargetClass = version == "PlutusV2" ? UplcProgramV2 : UplcProgramV3;
+
+    const o = optimized
+        ? decodeUplcProgramV2FromCbor(optimized, {
+              ir: optimizedIR,
+              sourceMap: optimizedSmap,
+          })
+        : undefined;
+    const u = unoptimized
+        ? decodeUplcProgramV2FromCbor(unoptimized, {
+              ir: unoptimizedIR,
+              sourceMap: unoptimizedSmap,
+          })
+        : undefined;
+    if (o) {
+        if (u) {
+            return o.withAlt(u); // | UplcProgramV3;
+        }
+        return o;
     }
+    if (!u) {
+        throw new Error(
+            `🐢 No optimized or unoptimized program in cache entry: ${fromCache}`
+        );
+    }
+    return u;
+}
+
+export function deserializeHeliosCacheEntry(
+    entry: SerializedHeliosCacheEntry
+): HeliosProgramCacheEntry {
+    const {
+        optimized,
+        optimizedIR,
+        unoptimized,
+        unoptimizedIR,
+        version,
+        optimizedSmap,
+        unoptimizedSmap,
+        optimizeOptions,
+        createdBy,
+        programElements
+    } = entry
+
+    return {
+        optimized: optimized ? decodeUplcProgramV2FromCbor(optimized) : undefined,
+        unoptimized: unoptimized ? decodeUplcProgramV2FromCbor(unoptimized) : undefined,
+        optimizedSmap: optimizedSmap || undefined, 
+        //XXX it's already json-safe. deserializeUplcSourceMap(optimizedSmap).toJsonSafe() : undefined,
+        unoptimizedSmap: unoptimizedSmap || undefined,
+        //XXX it's already json-safe. deserializeUplcSourceMap(unoptimizedSmap).toJsonSafe(): undefined,
+        optimizeOptions,
+        version,
+        createdBy,
+        programElements,
+        optimizedIR,
+        unoptimizedIR,
+    };
 }

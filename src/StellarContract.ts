@@ -51,7 +51,7 @@ import { getSeed, type hasSeed, type SeedAttrs } from "./ActivityTypes.js";
 import { makeCast } from "@helios-lang/contract-utils";
 import type {
     DeployedProgramBundle,
-    StringifiedHeliosCacheEntry,
+    SerializedHeliosCacheEntry,
 } from "./helios/CachedHeliosProgram.js";
 import type { DeployedScriptDetails } from "./configuration/DeployedScriptConfigs.js";
 import type { TxBatcher } from "./networkClients/TxBatcher.js";
@@ -365,7 +365,6 @@ export type StellarSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupInfo;
     config?: CT;
     partialConfig?: Partial<CT>;
-    deployedDetails?: DeployedScriptDetails;
 };
 
 export type SetupOrMainnetSignalForBundle = Partial<
@@ -376,6 +375,10 @@ export type SetupOrMainnetSignalForBundle = Partial<
 export type StellarBundleSetupUplc<CT extends configBaseWithRev> = {
     setup: SetupOrMainnetSignalForBundle;
     params?: UplcRecord<CT>;
+    /**
+     * used only for Capo bundles, to initialize them based on
+     * their `.hlDeploy.<network>.json` config file
+     */
     deployedDetails?: DeployedScriptDetails;
     // partialConfig?: Partial<UplcRecord<CT>>;
 };
@@ -790,7 +793,7 @@ export class StellarContract<
         config: ConfigType
     ): UplcRecord<Partial<ConfigType> & Required<Pick<ConfigType, "rev">>> {
         throw new Error(
-            `${this.constructor.name} must implement getContractScriptParamsUplc`
+            `${this.constructor.name} must implement getContractScriptParamsUplc - delegating to the scriptBundle?`
         );
     }
 
@@ -912,17 +915,21 @@ export class StellarContract<
         const { config, partialConfig } = args;
         if (config) {
             this.configIn = config;
-            this.contractParams = this.getContractScriptParamsUplc(config);
+            const paramsUplc = this.contractParams = this.getContractScriptParamsUplc(config);
             if (this.usesContractScript) {
-                this._bundle = this.scriptBundle().withSetupDetails({
+                const bundle = this._bundle = this.scriptBundle().withSetupDetails({
                     setup: this.setup,
                     params: this.contractParams,
-                    deployedDetails: args.deployedDetails,
+                    // deployedDetails: args.deployedDetails,
                 });
-                // debugger;
-
-                // this.bundle = this.loadBundle(args);
-                await this.compileWithScriptParams(this.contractParams);
+                if (bundle.isPrecompiled) {
+                    debugger;
+                    // TBD how to handle this
+                    throw new Error(`config is redundant because bundle is precompiled (dbpa)`)
+                } else {
+                    // just have the bundle compile the script
+                    await this.prepareBundleWithScriptParams(paramsUplc);
+                }
             } else {
                 // if (this.canPartialConfig) {
                 //     throw new Error(
@@ -1827,7 +1834,7 @@ export class StellarContract<
     _cache: ComputedScriptProperties = {};
     optimize: boolean = true;
 
-    async compileWithScriptParams(params: UplcRecord<ConfigType>) {
+    async prepareBundleWithScriptParams(params: UplcRecord<ConfigType>) {
         if (this.compiledScript) {
             console.warn(
                 "compileWithScriptParams() called after script compilation already done"
@@ -1843,9 +1850,9 @@ export class StellarContract<
         }
 
         let bundle = this.getBundle();
-        if (bundle.hasDeploymentDetails) {
+        if (bundle.isPrecompiled) {
             debugger;
-            throw new Error(`deployed script shouldn't need to compile`);
+            throw new Error(`deployed script shouldn't need to compile (debugging breakpoint available)`);
         }
         if (!this.setup) {
             console.warn(
@@ -1855,6 +1862,7 @@ export class StellarContract<
         }
 
         if (!bundle.setup || !bundle.configuredParams) {
+            // primarily for capo's bootstrap in mkTxnMintCharterToken():
             bundle = this._bundle = bundle.withSetupDetails({
                 params,
                 setup: this.setup,

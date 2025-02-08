@@ -1,5 +1,9 @@
 import type { Source } from "@helios-lang/compiler-utils";
 
+import {
+    HeliosScriptBundle,
+    placeholderSetupDetails,
+} from "./helios/HeliosScriptBundle.js";
 import { HeliosScriptBundle, placeholderSetupDetails } from "./helios/HeliosScriptBundle.js";
 
 import CapoMintHelpers from "./CapoMintHelpers.hl";
@@ -12,6 +16,7 @@ import mainContract from "./DefaultCapo.hl";
 import type {
     AllDeployedScriptConfigs,
     CapoDeployedDetails,
+    DeployedScriptDetails,
 } from "./configuration/DeployedScriptConfigs.js";
 import type { StellarBundleSetupUplc } from "./StellarContract.js";
 import type { AbstractNew } from "./helios/typeUtils.js";
@@ -30,35 +35,74 @@ export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
  * @public
  */
 export class CapoHeliosBundle extends HeliosScriptBundle {
-    constructor(setupDetails: StellarBundleSetupUplc<any>=placeholderSetupDetails) {
-        super(setupDetails);
+    configuredScriptDetails?: DeployedScriptDetails;
 
-        if (setupDetails.params && !this.preConfigured.isNullDeployment) {
-            // anything needed here?
-        }
+
+    get hasAnyVariant() {
+        if (this.preConfigured?.capo?.config) return true;
+        if (this.configuredParams) return true;
+        return false
     }
 
-    preConfigured:
-        CapoDeployedDetails<any>
-        // | ((...args: any[]) => CapoDeployedDetails<any>) 
-        = { capo: undefined };
+    init(setupDetails: StellarBundleSetupUplc<any>) {
+        super.init(setupDetails);
+        // only for Capo bundles, yes?
+        this.configuredScriptDetails = setupDetails?.deployedDetails;
+
+        const deployedDetails = ( this.preConfigured?.capo ?? 
+            this.configuredScriptDetails )
+            
+        const hasParams = deployedDetails?.config ??
+            setupDetails.params
+
+        if (hasParams) {
+            this.configuredParams = hasParams
+        }
+        if (setupDetails.params && !this.preConfigured.isNullDeployment) {
+            // anything needed here?
+        }        
+    }
+
+    get isPrecompiled() {
+        return !!this.preConfigured?.capo?.programBundle;
+    }
+    
+    preConfigured: CapoDeployedDetails<any> =
+        // | ((...args: any[]) => CapoDeployedDetails<any>)
+        { capo: undefined };
+
+    getPreCompiledBundle(variant: string) {
+        if (variant !== "singleton") {
+            throw new Error(`Capo bundle: ${this.constructor.name} only singleton variant is supported`);
+        }
+
+        const {capo} = this.preConfigured
+        if (!capo?.programBundle) {
+            debugger
+            throw new Error(`Capo bundle: ${this.constructor.name} - not preConfigured or no programBundle configured (debugging breakpoint available)`)
+        }
+        return capo.programBundle
+    }
 
     get main() {
         return mainContract;
     }
 
-    get params() {
-        const deployedDetails = "function" == typeof this.preConfigured ?
-            //@ts-expect-error while the function option above is commented out
-            this.preConfigured({capo: {config: {}}}) :
-            this.preConfigured;
+    getPreconfiguredUplcParams(variantName:string) {
+        if (!this.preConfigured?.capo?.config) {
+            return undefined
+        }
+        return super.getPreconfiguredUplcParams(variantName)
+    }
 
-        if (!deployedDetails.capo) {
-            // throw new Error(`${this.constructor.name}: missing required \`get deployed()\` for Capo bundle`);
-            return {}; // or something that leads to compiling without params
+    get params() {
+        throw new Error(`used where?`)
+        if (this.configuredParams) {
+
+        }
         }
 
-        const { mph, rev } = deployedDetails.capo.config || {};
+        const { mph, rev } = deployedDetails?.config || {};
         return { mph, rev };
     }
 

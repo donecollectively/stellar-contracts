@@ -25,6 +25,9 @@ import UnspecializedDelegateScript from "../delegation/UnspecializedDelegate.hl"
 import { CapoDelegateBundle } from "./CapoDelegateBundle.js";
 import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 
+/**
+ * @public
+ */
 /* prettier-ignore */
 export class UnspecializedDgtBundle 
 extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
@@ -35,7 +38,7 @@ extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
     get moduleName() {
         return "UnspecializedDelegate";
     }
-    
+
     get bridgeClassName(): string {
         return "UnspecializedDelegateBridge";
     }

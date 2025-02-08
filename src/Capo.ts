@@ -297,23 +297,6 @@ export abstract class Capo<
     //     Record<string, someDataWrapper<any>>
     // >;
 
-    /**
-     * Does a lookup of the preconfigured / deployed script configuration details
-     * @remarks
-     * Expects a "singleton" name if arg2 is not provided.
-     *
-     * Returns undefined if there is no preconfiguration for the given role
-     *
-     * Throws an error if the requested role doesn't have a matching deployed name
-     */
-    deployedScriptDetails(
-        role: string,
-        config: configBaseWithRev,
-        deployedName = "singleton"
-    ): DeployedScriptDetails | undefined {
-        debugger;
-        const preconfigs = this.getBundle().scriptConfigs?.[role];
-        throw new Error("where is deployedScriptDetails() used?");
 
 
     }
@@ -2193,22 +2176,22 @@ export abstract class Capo<
             const csp = //this.getContractScriptParamsUplc(
                 this.partialConfig as CapoConfig;
 
-            const bsc = {
+            const capoParams = {
                 ...csp,
                 mph,
                 seedTxn,
                 seedIndex,
             }; // as configType;
             // this.scriptProgram = this.loadProgramScript({ ...csp, mph });
-            this.contractParams = this.getContractScriptParamsUplc(bsc);
+            const paramsUplc = this.contractParams = this.getContractScriptParamsUplc(capoParams);
 
             // this.scriptProgram = this.loadProgramScript();
-            await this.compileWithScriptParams(this.contractParams);
-            bsc.rootCapoScriptHash = makeValidatorHash(
+            await this.prepareBundleWithScriptParams(paramsUplc);
+            capoParams.rootCapoScriptHash = makeValidatorHash(
                 this.compiledScript.hash()
             );
 
-            this.configIn = bsc;
+            this.configIn = capoParams;
         }
         tcxWithSeed.state.bsc = this.configIn!;
         tcxWithSeed.state.bootstrappedConfig = JSON.parse(
@@ -2567,7 +2550,7 @@ export abstract class Capo<
         txo.correctLovelace(this.networkParams);
         if (this.actorContext.wallet) {
             const foundFunds = await this.uh.findActorUtxo(
-                "cost of refScript",
+                "to pay for refScript storage",
                 this.uh.mkValuePredicate(txo.value.lovelace, tcx)
             );
             if (!foundFunds) {

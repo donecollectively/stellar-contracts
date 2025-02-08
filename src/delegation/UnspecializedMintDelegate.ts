@@ -6,6 +6,9 @@ import UnspecializedDelegateBundle from "./UnspecializedDelegate.hlb.js";
 import {UnspecializedDelegateBridge} from "./UnspecializedDelegate.bridge.js"
 import type { hasSeed } from "../ActivityTypes.js";
 
+/**
+ * @public
+ */
 export class UnspecializedMintDelegate extends BasicMintDelegate {
     dataBridgeClass = UnspecializedDelegateBridge;
     get delegateName() { return "unspecialDelegate" }
