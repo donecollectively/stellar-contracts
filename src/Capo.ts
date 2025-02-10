@@ -299,7 +299,6 @@ export abstract class Capo<
 
 
 
-    }
 
     get scriptDatumName() {
         return "CapoDatum";

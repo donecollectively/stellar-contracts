@@ -67,7 +67,8 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
         return !!this.preConfigured?.capo?.programBundle;
     }
     
-    preConfigured: CapoDeployedDetails<any> =
+
+    preConfigured: CapoDeployedDetails<"json"> =
         // | ((...args: any[]) => CapoDeployedDetails<any>)
         { capo: undefined };
 
