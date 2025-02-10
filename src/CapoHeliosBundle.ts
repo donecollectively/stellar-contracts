@@ -4,7 +4,6 @@ import {
     HeliosScriptBundle,
     placeholderSetupDetails,
 } from "./helios/HeliosScriptBundle.js";
-import { HeliosScriptBundle, placeholderSetupDetails } from "./helios/HeliosScriptBundle.js";
 
 import CapoMintHelpers from "./CapoMintHelpers.hl";
 import CapoDelegateHelpers from "./delegation/CapoDelegateHelpers.hl";
@@ -56,6 +55,8 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
             setupDetails.params
 
         if (hasParams) {
+            //??? any need to check whether the params need Uplc conversion?
+            //    this.paramsToUplc(hasParams)
             this.configuredParams = hasParams
         }
         if (setupDetails.params && !this.preConfigured.isNullDeployment) {
@@ -66,7 +67,6 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     get isPrecompiled() {
         return !!this.preConfigured?.capo?.programBundle;
     }
-    
 
     preConfigured: CapoDeployedDetails<"json"> =
         // | ((...args: any[]) => CapoDeployedDetails<any>)
