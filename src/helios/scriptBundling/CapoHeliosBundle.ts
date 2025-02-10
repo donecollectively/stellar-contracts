@@ -5,12 +5,12 @@ import {
     placeholderSetupDetails,
 } from "./HeliosScriptBundle.js";
 
-import CapoMintHelpers from "./CapoMintHelpers.hl";
-import CapoDelegateHelpers from "./delegation/CapoDelegateHelpers.hl";
-import StellarHeliosHelpers from "./StellarHeliosHelpers.hl";
-import CapoHelpers from "./CapoHelpers.hl";
-import TypeMapMetadata from "./TypeMapMetadata.hl";
-import mainContract from "./DefaultCapo.hl";
+import CapoMintHelpers from "../../CapoMintHelpers.hl";
+import CapoDelegateHelpers from "../../delegation/CapoDelegateHelpers.hl";
+import StellarHeliosHelpers from "../../StellarHeliosHelpers.hl";
+import CapoHelpers from "../../CapoHelpers.hl";
+import TypeMapMetadata from "../../TypeMapMetadata.hl";
+import mainContract from "../../DefaultCapo.hl";
 
 import type {
     AllDeployedScriptConfigs,
@@ -101,10 +101,6 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
         if (this.configuredParams) {
 
         }
-        }
-
-        const { mph, rev } = deployedDetails?.config || {};
-        return { mph, rev };
     }
 
     datumTypeName = "CapoDatum";

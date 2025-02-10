@@ -53,7 +53,7 @@ import type {
             stellarImports = `
 import {HeliosScriptBundle} from "${this.mkRelativeImport(
                 inputFile,
-                "src/helios/HeliosScriptBundle.js"
+                "src/helios/scriptBundling/HeliosScriptBundle.js"
             )}"
 import type { 
     tagOnly, 

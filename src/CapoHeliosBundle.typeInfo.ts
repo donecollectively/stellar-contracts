@@ -34,7 +34,7 @@ import type {
  type TimeLike = IntLike;
  
 
-import {HeliosScriptBundle} from "./helios/HeliosScriptBundle.js"
+import {HeliosScriptBundle} from "./helios/scriptBundling/HeliosScriptBundle.js"
 import type { 
     tagOnly, 
     EnumTypeMeta, 
