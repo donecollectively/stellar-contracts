@@ -2,7 +2,8 @@
 
 if [[ -z $DEBUG ]] ; then
   node node_modules/rollup/dist/bin/rollup --config rollup.config.ts \
-  --configPlugin 'esbuild={loaders:{".json":"json"},target:"esnext",tsconfig:"./tsconfig.rollupconfig.json"}' \
+    --importAttributesKey "with" \
+      --configPlugin 'esbuild={loaders:{".json":"json"},target:"esnext",tsconfig:"./tsconfig.rollupconfig.json"}' \
   $@
 #   --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
 else

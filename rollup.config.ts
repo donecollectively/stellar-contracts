@@ -1,3 +1,4 @@
+
 // seems to have a bug that deletes one of the pnpm modules :/
 // import { apiExtractor } from "rollup-plugin-api-extractor";
 import externals from "rollup-plugin-node-externals";
@@ -8,8 +9,10 @@ import resolve from "@rollup/plugin-node-resolve";
 import json from "@rollup/plugin-json";
 
 // const packageJson = await import("./package.json", { assert: { type: "json" } });
+import { createRequire } from 'node:module';
+const requireIt = createRequire(import.meta.url);
+const packageJson = requireIt("./package.json")
 
-import packageJson from "./package.json" with { type: "json" };
 import { 
     heliosRollupLoader, 
     heliosRollupBundler
@@ -30,8 +33,10 @@ const codeBundle = (config) => {
     if (!config.input) throw new Error(`missing required entry module 'input'`);
 
     let didWarn = false;
+    const logLevel = process.env.ROLLUP_LOG || "warn"
     return {
         ...config,
+        ... (process.env.DEBUG ? {logLevel: "debug"} : {logLevel: logLevel}),
         onwarn(warning: any, warn: (s: string) => void) {
             if (warning.code === "CIRCULAR_DEPENDENCY") {
                 if (

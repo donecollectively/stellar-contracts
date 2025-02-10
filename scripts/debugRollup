@@ -5,8 +5,10 @@ echo ""
 echo "  ---- use package.json 'build' script for regular build"
 echo ""
 
-DEBUG=1 node --inspect-brk node_modules/rollup/dist/bin/rollup --config rollup.config.ts \
-  --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
+DEBUG=1 node --inspect-brk node_modules/rollup/dist/bin/rollup \
+    --config rollup.config.ts \
+    --importAttributesKey "with" \
+    --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
   $@
 
 # NOTE: when debugging, you may benefit from patching rollup's treatment 
