@@ -91,7 +91,7 @@ import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import type { AnyDataTemplate } from "./delegation/DelegatedData.js";
 import type { tokenPredicate } from "./UtxoHelper.js";
-import CapoDataBridge from "./CapoHeliosBundle.bridge.js";
+import CapoDataBridge from "./helios/scriptBundling/CapoHeliosBundle.bridge.js";
 import type { mustFindActivityType } from "./helios/dataBridge/BridgeTypes.js";
 import type { mustFindConcreteContractBridgeType } from "./helios/dataBridge/BridgeTypes.js";
 import type { mustFindReadDatumType } from "./helios/dataBridge/BridgeTypes.js";
@@ -104,7 +104,7 @@ import type {
     PendingDelegateActionLike,
     PendingDelegateAction$AddLike,
     PendingCharterChangeLike,
-} from "./CapoHeliosBundle.typeInfo.js";
+} from "./helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
 import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.js";
 import type { DelegatedDataContract } from "./delegation/DelegatedDataContract.js";

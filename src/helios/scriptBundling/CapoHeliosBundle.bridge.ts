@@ -38,17 +38,17 @@ import {
     ContractDataBridge, 
     DataBridgeReaderClass,
     type callWith,
-} from "./helios/dataBridge/DataBridge.js"
+} from "../dataBridge/DataBridge.js"
 import { 
     EnumBridge,
     type JustAnEnum,
-} from "./helios/dataBridge/EnumBridge.js"
-import type { tagOnly } from "./helios/HeliosMetaTypes.js"
-import type { IntersectedEnum } from "./helios/typeUtils.js"
+} from "../dataBridge/EnumBridge.js"
+import type { tagOnly } from "../HeliosMetaTypes.js"
+import type { IntersectedEnum } from "../typeUtils.js"
 import { 
     impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 
     type funcWithImpliedSeed, type SeedAttrs
-} from "./ActivityTypes.js"
+} from "../../ActivityTypes.js"
 
 export type TimeLike = IntLike;
 

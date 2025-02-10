@@ -13,7 +13,7 @@ import type {
     CapoDatum$CharterDataLike,
     ErgoRelativeDelegateLink,
     CapoManifestEntryLike,
-} from "./CapoHeliosBundle.typeInfo.js";
+} from "./helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
 import type {
     OffchainPartialDelegateLink,
     ConfiguredDelegate,

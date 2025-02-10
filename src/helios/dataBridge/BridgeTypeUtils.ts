@@ -1,7 +1,7 @@
 import CapoDataBridge, {
     CapoActivityHelper,
     CapoDatumHelper,
-} from "../../CapoHeliosBundle.bridge.js";
+} from "../scriptBundling/CapoHeliosBundle.bridge.js";
 
 import {
     StellarContract,
@@ -45,7 +45,7 @@ import {
     ContractDataBridgeWithEnumDatum,
     DataBridgeReaderClass,
 } from "./DataBridge.js";
-import type { CapoDatum } from "../../CapoHeliosBundle.typeInfo.js";
+import type { CapoDatum } from "../scriptBundling/CapoHeliosBundle.typeInfo.js";
 import CapoMinterDataBridge, {
     MinterActivityHelper,
     type types as MinterTypes,

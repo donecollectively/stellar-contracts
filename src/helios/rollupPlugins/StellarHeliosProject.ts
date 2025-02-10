@@ -49,6 +49,7 @@ export class StellarHeliosProject {
     };
     configuredCapo = mkCancellablePromise<CapoHeliosBundle>()
     bundleEntries: Map<string, BundleStatusEntry>;
+    capoBundleName?: string;
     capoBundle: CapoHeliosBundle | undefined = undefined;
     constructor() {
         this.bundleEntries = new Map();

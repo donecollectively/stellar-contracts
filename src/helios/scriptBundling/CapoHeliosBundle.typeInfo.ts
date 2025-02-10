@@ -34,14 +34,14 @@ import type {
  type TimeLike = IntLike;
  
 
-import {HeliosScriptBundle} from "./helios/scriptBundling/HeliosScriptBundle.js"
+import {HeliosScriptBundle} from "./HeliosScriptBundle.js"
 import type { 
     tagOnly, 
     EnumTypeMeta, 
     singleEnumVariantMeta
-} from "./helios/HeliosMetaTypes.js"
-import type { minimalData } from "./delegation/DelegatedData.js"
-import type { IntersectedEnum } from "./helios/typeUtils.js"
+} from "../HeliosMetaTypes.js"
+import type { minimalData } from "../../delegation/DelegatedData.js"
+import type { IntersectedEnum } from "../typeUtils.js"
                 
 
 
