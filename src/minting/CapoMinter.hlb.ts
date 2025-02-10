@@ -1,4 +1,6 @@
 import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import type { CapoConfig } from "../CapoTypes.js";
+import type { RequiredDeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
 import { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 import { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 
@@ -19,8 +21,39 @@ import CapoMinterScript from "./CapoMinter.hl";
  **/
 export default class CapoMinterBundle 
 extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
-    declare capoBundle: CapoHeliosBundle;
+    static needsCapoConfiguration = true
     
+    declare capoBundle: CapoHeliosBundle;
+
+    get rev(): bigint {
+        return 1n
+    }
+    
+    get params() {
+        const configuredCapo = this.capoBundle?.configuredScriptDetails as RequiredDeployedScriptDetails<CapoConfig>
+        const noConfig = `${this.constructor.name}: capoMph not found in deployed capo bundle; can't make config yet`;
+        if (!configuredCapo) {
+            console.warn(noConfig);
+            return undefined
+        }
+        const capoConfig = configuredCapo.config
+        const {
+            mph,
+            seedTxn,
+            seedIndex,
+        } = capoConfig
+        if (!mph) {
+            console.warn(noConfig);
+            return undefined
+        }
+
+        return {
+            rev: this.rev,
+            seedTxn,
+            seedIndex
+        }
+    }
+
     // // no datum types in this script
     // declare Activity: makesUplcActivityEnumData<MinterActivityLike>;
 

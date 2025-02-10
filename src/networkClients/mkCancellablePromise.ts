@@ -1,5 +1,17 @@
 import type { TimeoutId } from "./SubmitterMultiClient.js";
 
+if (typeof Promise.withResolvers !== 'function') {
+    //@ts-expect-error
+    Promise.withResolvers = function() {
+      let resolve, reject;
+      const promise = new Promise((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    };
+  }
+  
 type hasWrap = {
     wrap: Promise<any>
 }

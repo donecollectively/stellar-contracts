@@ -13,7 +13,10 @@ import {
 import type { CapoConfig } from "../CapoTypes.js";
 import type { DeployedProgramBundle } from "../helios/CachedHeliosProgram.js";
 import type { configBaseWithRev } from "../StellarContract.js";
-import type { capoDelegateConfig, minimalDelegateConfig } from "../delegation/RolesAndDelegates.js";
+import type {
+    capoDelegateConfig,
+    minimalDelegateConfig,
+} from "../delegation/RolesAndDelegates.js";
 
 /**
  * type-safe factory function for creating a registry of scripts with their
@@ -122,6 +125,9 @@ export type DeployedScriptDetails<
       }
     | RequiredDeployedScriptDetails<CT>;
 
+/**
+ * @public
+ */
 export type RequiredDeployedScriptDetails<
     CT extends configBaseWithRev,
     form extends "json" | "native" = "native"

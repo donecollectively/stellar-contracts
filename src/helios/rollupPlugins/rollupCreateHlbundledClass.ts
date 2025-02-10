@@ -4,8 +4,9 @@ import {
 } from "rollup";
 import esbuild from "rollup-plugin-esbuild";
 import { heliosRollupLoader } from "../heliosRollupLoader.js";
+import path from "path";
 
-export async function rollupCreateHlbundledClass(inputFile: string) {
+export async function rollupCreateHlbundledClass(inputFile: string, projectRoot: string) {
     // writes the output file next to the input file as *.hlBundled.mjs
     const outputFile = inputFile.replace(
         /\.hlb\.[tj]s$/,
@@ -96,7 +97,7 @@ export async function rollupCreateHlbundledClass(inputFile: string) {
         const existing = readFileSync(outputFile, "utf-8");
         if (existing === compiled) {
             console.log(
-                `📦 StellarHeliosProject: unchanged bundle (${buildTime}ms): ${outputFile}`
+                `📦 StellarHeliosProject: unchanged bundle (${buildTime}ms): ${path.relative(projectRoot, outputFile)}`
             );
             needsWrite = false;
         }

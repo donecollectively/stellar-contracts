@@ -25,15 +25,22 @@ import { bytesToText, textToBytes } from "../HeliosPromotedTypes.js";
 import { rollupCreateHlbundledClass } from "./rollupPlugins/rollupCreateHlbundledClass.js";
 import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-import { parseCapoJSONConfig, type CapoDeployedDetails } from "../configuration/DeployedScriptConfigs.js";
-import { serializeCacheEntry, stringifyCacheEntry } from "./CachedHeliosProgram.js";
+import {
+    parseCapoJSONConfig,
+    type CapoDeployedDetails,
+} from "../configuration/DeployedScriptConfigs.js";
+import {
+    serializeCacheEntry,
+    stringifyCacheEntry,
+} from "./CachedHeliosProgram.js";
 
 type HeliosBundlerPluginState = {
-    capoBundle: any; // CapoHeliosBundle;
+    capoBundle?: CapoHeliosBundle;
     hasExplicitCapoBundle: boolean;
     hasOtherBundles: boolean;
     project: StellarHeliosProject;
     bundleClassById: Record<string, any>;
+    emittedArtifacts: Set<string>;
 };
 
 /**
@@ -111,11 +118,12 @@ export function heliosRollupBundler(
         "@donecollectively/stellar-contracts" === packageJSON.name;
 
     const state: HeliosBundlerPluginState = {
-        capoBundle: null, // new CapoHeliosBundle(),
+        capoBundle: undefined, // new CapoHeliosBundle(),
         hasExplicitCapoBundle: false,
         hasOtherBundles: false,
         project: new StellarHeliosProject(),
         bundleClassById: {},
+        emittedArtifacts: new Set<string>(),
     };
 
     const firstImportFrom: Record<string, string> = {};
@@ -129,19 +137,18 @@ export function heliosRollupBundler(
         setup: {
             isMainnet: false,
             isPlaceholder: "rollupBundlerPlugin for type-gen",
-        }
+        },
     };
 
     return {
-        name: "helios-type-gen",
+        name: "heliosBundler",
         buildEnd: {
             order: "pre",
             handler(this: PluginContext, error?: Error) {
                 // write the project file after the build, skipping any
                 // pending delay from calls to `deferredWriteProjectFile()`
-                console.log(
-                    "heliosBundler @buildEnd: " +
-                        (error ? "error: " + error?.message : "")
+                this.debug(
+                    "@buildEnd: " + (error ? "error: " + error?.message : "")
                 );
                 if (pluginOptions.vite) return;
                 this.emitFile({
@@ -152,10 +159,21 @@ export function heliosRollupBundler(
                 // return state.project.writeProjectFile();
             },
         },
+        // ...stellarDeploymentHook({
+        //     networkId,
+        //     thisPackageName,
+        //     isStellarContracts,
+        // }),
         resolveId: {
             order: "pre",
             async handler(this: PluginContext, source, importer, options) {
                 const interesting = !!source.match(/CapoMinter\.hlb\./);
+
+                if (source.match(regexCurrentCapoConfig)) {
+                    throw new Error(`hurray`);
+                } else {
+                    // console.log("      ==== import ... from ", source);
+                }
 
                 const { project } = state;
                 const { isEntry } = options;
@@ -197,6 +215,7 @@ export function heliosRollupBundler(
                     }
                 }
                 if (isEntry && !importer) {
+                    // this.debug(`<- resolveId (${source}) @isEntry`)
                     return resolved;
                 }
                 // let other resolvers resolve to an absolute filename
@@ -210,8 +229,16 @@ export function heliosRollupBundler(
                 firstImportFrom[p] =
                     firstImportFrom[p] || relativePath(importer);
                 if (resolved && id && filterHLB(id)) {
-                    if (interesting && process.env.DEBUG) {
-                        console.log("resolved absolute HLB id " + id, options);
+                    this.debug(
+                        `-> resolveId ${source} (from ${relativePath(
+                            importer
+                        )})`
+                    );
+                    if (interesting) {
+                        this.debug(
+                            `resolved absolute HLB id ${id} with options: ` +
+                                JSON.stringify(options)
+                        );
                     }
                     if (pluginOptions.vite) {
                         // in vite, we allow resolution and loading to proceed without
@@ -219,6 +246,11 @@ export function heliosRollupBundler(
                         // Vite(st) uses in-memory techniques, so it doesn't support emitFile().
                         // nonetheless, our type-generation will create the appropriate
                         // typeInfo & bridge files for any .hlb.ts file loaded in vite/vitest.
+                        this.debug(
+                            `<- resolveId (${relativePath(
+                                resolved.id
+                            )}) for Vite`
+                        );
                         return resolved;
                     } else {
                         // id is now an absolute filename of a (TS or JS) helios-bundle definition.
@@ -262,9 +294,18 @@ export function heliosRollupBundler(
                                 importer,
                                 options
                             );
-                            if (result?.id) {
+                            if (
+                                result?.id &&
+                                !state.emittedArtifacts.has(bundledId)
+                            ) {
+                                // preempt asynchronous overlapping work:
+                                state.emittedArtifacts.add(bundledId);
+
                                 const SomeBundleClass =
-                                    await rollupCreateHlbundledClass(result.id);
+                                    await rollupCreateHlbundledClass(
+                                        result.id,
+                                        projectRoot
+                                    );
 
                                 const isMainnet = networkId === "mainnet";
 
@@ -275,6 +316,23 @@ export function heliosRollupBundler(
                                         placeholderAt: "variant generation",
                                     });
 
+                                if (SomeBundleClass.needsCapoConfiguration) {
+                                    this.debug(
+                                        `    ---- waiting for configured capo before emitting ${relativePath(
+                                            id
+                                        )}`
+                                    );
+                                    hlBundler.capoBundle = await state.project
+                                        .configuredCapo.promise;
+                                    this.debug(
+                                        `    ---- got configured capo; emitting variant(s) for ${relativePath(
+                                            id
+                                        )}`
+                                    );
+
+                                    debugger;
+                                }
+
                                 let scriptVariants: Record<string, any> =
                                     hlBundler.hasAnyVariant
                                         ? hlBundler.variants
@@ -284,7 +342,7 @@ export function heliosRollupBundler(
                                     baseParams,
                                 ] of Object.entries(scriptVariants)) {
                                     const configured =
-                                        await hlBundler.withSetupDetails({
+                                        hlBundler.withSetupDetails({
                                             params: baseParams,
                                             setup: { isMainnet },
                                         });
@@ -297,7 +355,10 @@ export function heliosRollupBundler(
                                     // and the package-relative import name used in place of normal
                                     // load/transform processing of the separate chunk.
                                     console.log(
-                                        `  -- heliosBundler: emitting ${packageRelativeName}`
+                                        `--------------------------------------------------------------\n` +
+                                            `  -- heliosBundler: emitting ${packageRelativeName}` +
+                                            `\n--------------------------------------------------------------\n` +
+                                            ""
                                     );
                                     const outputId = this.emitFile({
                                         type: "chunk",
@@ -308,13 +369,40 @@ export function heliosRollupBundler(
                                         // originalFileName: resolved.id,
                                     });
                                 }
+                                this.debug(
+                                    `<- resolveId (${relativePath(
+                                        resolved.id
+                                    )}) with separately emitted artifacts`
+                                );
+                                return bundledExportName;
+                            } else if (result?.id) {
+                                this.debug(
+                                    `<- resolveId (${relativePath(
+                                        resolved.id
+                                    )}) skipped redundant artifact creation`
+                                );
+                                return bundledExportName;
                             }
                         }
+                        this.debug(
+                            `<- resolveId (${relativePath(
+                                resolved.id
+                            )}) without emitted artifacts`
+                        );
                         return bundledExportName;
                     }
                 } else if (filterHlbundledImportName(id)) {
+                    this.debug(
+                        `-> resolveId for emitted bundle: ${relativePath(
+                            source
+                        )}\n   (from ${relativePath(importer)})`
+                    );
+
                     if (interesting && process.env.DEBUG) {
-                        console.log("resolveId: got HLBundled: " + id, options);
+                        this.warn(
+                            `resolveId: got HLBundled: ${id}` +
+                                JSON.stringify(options)
+                        );
                     }
                     // resolving the file-to-be-emitted - it's the same file, but as a
                     // dynamic entry-point.  We resolve it like any file, minus the ?bundled suffix,
@@ -330,23 +418,30 @@ export function heliosRollupBundler(
                             skipSelf: true,
                         }
                     );
+                    // debugger;
+                    this.debug(
+                        `<- resolveId (${
+                            result ? relativePath(result.id) : "‹null›"
+                        }) for emitted bundle`
+                    );
                     return result;
                 } else {
-
                     if (
                         id.match(/hlb/) &&
                         !id.match(/hlBundled/) &&
                         !id.match(/dist\//)
                     ) {
                         console.log(
-                            `HeliosBundler resolve: skipping due to filter mismatch (debugging breakpoint available)`,
+                            `resolve: skipping due to filter mismatch (debugging breakpoint available)`,
                             { id, importer }
                         );
                         debugger;
                         //no-op, but helpful for debugging:
                         filterHLB(id); // trace into here to see what's up with the filter
+                        return null;
                     }
                 }
+                // this.debug(`<- resolveId (${source}) verbatim result`)
                 return resolved;
             },
         },
@@ -382,7 +477,7 @@ export function heliosRollupBundler(
                         !id.match(/dist\//)
                     ) {
                         console.log(
-                            `HeliosBundler load: skipping due to filter mismatch (debugging breakpoint available)`,
+                            `load: skipping due to filter mismatch (debugging breakpoint available)`,
                             { id }
                         );
                         debugger;
@@ -392,6 +487,7 @@ export function heliosRollupBundler(
 
                     return null;
                 }
+                this.debug(`-> load: ${relativePath(id)}`);
                 if (interesting && process.env.DEBUG) {
                     console.log("    ---- heliosBundler: load", { id });
                 }
@@ -408,8 +504,12 @@ export function heliosRollupBundler(
                         );
                         debugger;
                     }
-                    SomeBundleClass = await rollupCreateHlbundledClass(id);
+                    SomeBundleClass = await rollupCreateHlbundledClass(
+                        id,
+                        projectRoot
+                    );
                 }
+                // await rollupCreateHlbundledClass(id);
                 const relativeFilename = path.relative(projectRoot, id);
                 console.log(
                     `   👁️  checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`
@@ -429,6 +529,12 @@ export function heliosRollupBundler(
                 if (SomeBundleClass.isCapoBundle) {
                     let skipInstallingThisOne = false;
                     if (state.hasExplicitCapoBundle) {
+                        if (!state.capoBundle) {
+                            throw new Error(
+                                `redundant unreachable error for typescript narrowing`
+                            );
+                        }
+
                         let existingBundleProtoChainNames: string[] = [];
                         // if the new class is just a base class for a more specific one, that's ok
                         // we will still return it, without installing it as "the" Capo bundle
@@ -451,17 +557,24 @@ export function heliosRollupBundler(
                                     `  ... because it looks like a base class of already-loaded ${state.capoBundle.constructor.name}`
                             );
                         } else {
-                            // console.log({id, x, y})
+                            console.log(
+                                "have explicitCapoBundle - AND another with a different lineage",
+                                { id, existing: state.capoBundle }
+                            );
                             debugger;
                         }
                     }
                     if (!state.capoBundle) {
-                        console.log("\nTroubleshooting first .hlb.ts imports?");
-
-                        for (const existing of state.project.bundleEntries.keys()) {
-                            console.log(`    • ${traceImportPath(existing)}`);
-                        }
-                        console.log("");
+                        console.log(
+                            "\nTroubleshooting first .hlb.ts imports?" +
+                                [...state.project.bundleEntries.keys()]
+                                    .map(
+                                        (existing: string) =>
+                                            `    • ${traceImportPath(existing)}`
+                                    )
+                                    .join("\n") +
+                                "\n"
+                        );
                         // throw new Error(
                         //     `heliosBundler: Capo bundle not loaded, but there are already other bundles in the state (see import trace above)`
                         // );
@@ -469,7 +582,7 @@ export function heliosRollupBundler(
                         if (state.hasOtherBundles && !skipInstallingThisOne) {
                             throw new Error(`unreachable code path??`);
                             let dCur = shortHash(
-                                JSON.stringify(state.capoBundle.modules)
+                                JSON.stringify(state.capoBundle?.modules)
                             );
                             let dNew = shortHash(
                                 JSON.stringify(
@@ -479,6 +592,25 @@ export function heliosRollupBundler(
 
                             if (dCur !== dNew) {
                                 throw new Error(`unreachable code path`);
+                                // logCapoBundleDifferences(
+                                //     dCur,
+                                //     state,
+                                //     dNew,
+                                //     SomeBundleClass,
+                                //     id
+                                // );
+                                // const ts1 = Date.now();
+                                // state.project =
+                                //     state.project.replaceWithNewCapo(
+                                //         id,
+                                //         SomeBundleClass
+                                //     );
+                                // console.log(
+                                //     "  ---- Reinitialized project in",
+                                //     Date.now() - ts1,
+                                //     "ms"
+                                // );
+                                // replacedCapo = true;
                             } else {
                                 console.log(
                                     "  ---- warning: second capo discovered, though its modules aren't different from default. Generatings its types, but otherwise, Ignoring."
@@ -514,11 +646,11 @@ export function heliosRollupBundler(
                 } else {
                     state.hasOtherBundles = true;
                     if (state.project.bundleEntries.size === 0) {
+                        const capoName = bundle.capoBundle.constructor.name;
                         console.log(
-                            "looks like you're using the default Capo bundle. ok!\n"
+                            `looks like you're using the default Capo bundle! ${capoName}`
                         );
 
-                        const capoName = bundle.capoBundle.constructor.name;
                         if (
                             capoName == "CapoHeliosBundle" &&
                             !state.capoBundle
@@ -541,6 +673,12 @@ export function heliosRollupBundler(
                     state.project.loadBundleWithClass(id, SomeBundleClass);
                     try {
                         state.project.generateBundleTypes(id);
+                        this.debug(
+                            `<- load: ${relativePath(
+                                id
+                            )} type-gen side effects done`
+                        );
+                        return null;
                     } catch (e: any) {
                         if (e.message.match("compilerError")) {
                             console.error(e);
@@ -559,10 +697,10 @@ export function heliosRollupBundler(
                             }, 5000);
                         });
                     }
-                    if (process.env.DEBUG) {
-                        this.warn("  ---- heliosRollupBundler: load: ok");
-                    }
                 }
+                this.debug(
+                    `<- load: ${relativePath(id)} deferred to other plugins`
+                );
                 return null as LoadResult;
                 //     id: source,
                 // };
@@ -584,8 +722,8 @@ export function heliosRollupBundler(
             const SomeBundleClass: typeof CapoHeliosBundle =
                 state.bundleClassById[id];
 
-            if (!code.match(capoConfigRegex)) {
-                if (looksLikeCapo) {
+            if (looksLikeCapo) {
+                if (!code.match(capoConfigRegex)) {
                     debugger;
                     if (SomeBundleClass.isAbstract == true) {
                         this.info(
@@ -600,90 +738,212 @@ export function heliosRollupBundler(
                             `This will use configuration details from its ${deployDetailsFile}\n` +
                             `  ... or another json file when deploying to a different network`
                     );
+                    return null;
                 }
-                return null;
-            }
-            if (!looksLikeCapo) {
+            } else if (code.match(capoConfigRegex)) {
                 this.warn(
                     `non-Capo class using currentDeploymentConfig in ${id}`
                 );
+            } else {
+                return transformNonCapo.call(this, code, id);
+            }
+            return transformCapo.call(
+                this,
+                code,
+                id,
+                capoConfigRegex,
+                deployDetailsFile
+            );
+        },
+    };
+
+    async function transformCapo(
+        this: PluginContext,
+        code: string,
+        id: string,
+        capoConfigRegex: RegExp,
+        deployDetailsFile: string
+    ) {
+        this.debug(`-> transform Capo`);
+        const SomeBundleClass: typeof CapoHeliosBundle =
+            state.bundleClassById[id];
+
+        const resolvedDeployConfig = await this.resolve(
+            deployDetailsFile,
+            id, // importer
+            {
+                // attributes: {type: "json" },
+            }
+        );
+        if (!resolvedDeployConfig) {
+            this.warn(
+                `no ${networkId} deployDetails for Capo bundle: ${deployDetailsFile}`
+            );
+        } else {
+            const deployDetailsConfigJSON = readFileSync(
+                resolvedDeployConfig.id
+            );
+            const deployDetails: CapoDeployedDetails<"json"> = JSON.parse(
+                deployDetailsConfigJSON.toString() || "{}"
+            );
+            if (!deployDetails.capo) {
+                throw new Error(
+                    `missing required 'capo' entry in ${resolvedDeployConfig.id}`
+                );
             }
 
-            const resolvedDeployConfig = await this.resolve(
-                deployDetailsFile,
-                id, // importer
-                {
-                    // attributes: {type: "json" },
-                }
-            );
-            if (!resolvedDeployConfig) {
-                this.warn(
-                    `no ${networkId} deployDetails for Capo bundle: ${deployDetailsFile}`
-                );
-            } else {
-                const deployDetailsConfigJSON = readFileSync(
-                    resolvedDeployConfig.id
-                );
-                const deployDetails : CapoDeployedDetails<"json"> = JSON.parse(
-                    deployDetailsConfigJSON.toString() || "{}"
-                );
-                if (!deployDetails.capo) {
-                    throw new Error(`missing required 'capo' entry in ${resolvedDeployConfig.id}`);
-                }
+            this.addWatchFile(id);
+            this.addWatchFile(resolvedDeployConfig.id);
 
-                this.addWatchFile(id);
-                this.addWatchFile(resolvedDeployConfig.id);
+            const hlBundler: CapoHeliosBundle = SomeBundleClass.create({
+                deployedDetails: {
+                    config: parseCapoJSONConfig(deployDetails.capo.config),
+                },
+                setup: {
+                    isMainnet: networkId === "mainnet",
+                    isPlaceholder: `rollupBundlerPlugin for injecting pre-compiled Capo details`,
+                },
+            });
 
-                const hlBundler: CapoHeliosBundle = SomeBundleClass.create({
-                    deployedDetails: {
-                        config: parseCapoJSONConfig(deployDetails.capo.config),
-                    },
-                    setup: {
-                        isMainnet: networkId === "mainnet",
-                        isPlaceholder: `rollupBundlerPlugin for type-gen`,
-                    },
-                });
+            const { scriptHash, programBundle } =
+                await hlBundler.getSerializedProgramBundle();
+            //@ts-expect-error
+            state.project.configuredCapo.resolve(hlBundler);
 
-                const compiledScript = await hlBundler.compiledScript();
-                const cacheEntry = hlBundler.program.cacheEntry
-                if (!cacheEntry) throw new Error(`missing cacheEntry`);
-                const serializedCacheEntry = serializeCacheEntry(cacheEntry)
-                const {
-                    programElements,
-                    version,
-                    optimizeOptions,
-                    optimized,
-                    unoptimized,
-                    optimizedIR,
-                    unoptimizedIR,
-                    optimizedSmap,
-                    unoptimizedSmap
-                } = serializedCacheEntry
-                deployDetails.capo.scriptHash = bytesToHex(compiledScript.hash())
-                deployDetails.capo.programBundle = {
-                    programElements,
-                    version,
-                    optimized,
-                    unoptimized,
-                    optimizedIR,
-                    unoptimizedIR,
-                    optimizedSmap,
-                    unoptimizedSmap,
-                }
-                const s = new MagicString(code);
-                s.replace(
-                    capoConfigRegex,
-                    `$1 (${JSON.stringify(deployDetails)})`
-                );
-                console.log(s.toString());
+            deployDetails.capo.scriptHash = scriptHash;
+            deployDetails.capo.programBundle = programBundle;
+
+            const s = new MagicString(code);
+            s.replace(capoConfigRegex, `$1 (${JSON.stringify(deployDetails)})`);
+            // console.log(s.toString());
+            debugger;
+            this.debug(`<- transform Capo (w/ deployment)`);
+            return {
+                code: s.toString(),
+                map: s.generateMap({ hires: true }),
+            };
+        }
+    }
+
+    async function transformNonCapo(
+        this: PluginContext,
+        code: string,
+        id: string
+    ) {
+        const s = new MagicString(code);
+        const r = filterHLB(id);
+        if (!r) {
+            return null;
+        }
+        // 1. matches one of the following patterns in the bundle code:
+        //  - specializedDelegateModule = ...
+        //  - get main()
+        // 2. inserts precompiled: { [variant]: {scriptHash, programBundle} } details
+        //     ... with one entry per variant found in the SomeBundleClass
+
+        const regex =
+            /(\s*specializedDelegateModule\s*=\s*)|(\bget\s+main\s*\(\)\s*{)/;
+        if (code.match(regex)) {
+            const SomeBundleClass: typeof HeliosScriptBundle =
+                state.bundleClassById[id];
+            if (!SomeBundleClass) {
                 debugger;
+                this.warn(
+                    `not (yet) injecting pre-compiled script for ${id} (dbpa)`
+                );
+                return null;
+            }
+            let hlBundler: HeliosScriptBundle = SomeBundleClass.create({
+                setup: {
+                    isMainnet: networkId === "mainnet",
+                    isPlaceholder: `rollupBundlerPlugin for injecting pre-compiled script details`,
+                },
+            });
+
+            const precompiledVariants: Record<
+                string,
+                {
+                    scriptHash: string;
+                    programBundle: any;
+                }
+            > = {};
+
+            if (SomeBundleClass.needsCapoConfiguration) {
+                this.debug(`    ---- waiting for configured capo`);
+                hlBundler.capoBundle = await state.project.configuredCapo
+                    .promise;
+            }
+
+            let scriptCount = 0;
+            let skipCount = 0;
+            for (const [variant, baseParams] of Object.entries(
+                hlBundler.variants
+            )) {
+                if (baseParams) {
+                    const params = hlBundler.paramsToUplc(baseParams);
+                    const configured = hlBundler.withSetupDetails({
+                        params,
+                        setup: { isMainnet: networkId === "mainnet" },
+                    });
+                    const { scriptHash, programBundle } =
+                        await configured.getSerializedProgramBundle();
+                    precompiledVariants[variant] = {
+                        scriptHash,
+                        programBundle,
+                    };
+                    scriptCount++;
+                } else {
+                    debugger;
+                    if (state.capoBundle?.configuredParams) {
+                        this.warn(
+                            `variant '${variant}': derive params from capo? (dbpa)`
+                        );
+                    } else if (state.capoBundle) {
+                        this.warn(
+                            `variant '${variant}': missing baseParams; skipping (dbpa)`
+                        );
+                    } else {
+                        this.warn(`wait for capoBundle?`);
+                    }
+                    skipCount++;
+                }
+            }
+
+            const skipMsg = scriptCount > 0 ? ` (+${skipCount} skipped)` : ``;
+            if (scriptCount) {
+                const precompiled = `preCompiled = ${JSON.stringify(
+                    precompiledVariants
+                )}\n\n`;
+
+                s.replace(
+                    regex,
+                    (match, specializedDelegateModule, getMain) => {
+                        this.debug(
+                            `    ---- injecting pre-compiled script for ${id}`
+                        );
+                        const existing = specializedDelegateModule || getMain;
+                        return precompiled + existing;
+                    }
+                );
+
+                this.debug(
+                    `<- transform non-capo w/ ${scriptCount} compiled script(s)${skipMsg}`
+                );
                 return {
                     code: s.toString(),
                     map: s.generateMap({ hires: true }),
                 };
+            } else {
+                this.debug(`<- NO transform for non-capo${skipMsg}`);
+                return null;
             }
-        },
-    };
+        }
+        this.warn(
+            `bundle module format error\n` +
+                ` ... non-Capo must define 'specializedDelegateModule = ...`
+        );
+        return null;
+    }
 
     function traceImportPath(existing: string) {
         let trace: string[] = [];

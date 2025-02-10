@@ -25,8 +25,15 @@ import type {
     HeliosBundleClassWithCapo,
     HeliosBundleTypes,
 } from "./HeliosMetaTypes.js";
-import { programFromCacheEntry, type DeployedProgramBundle } from "./CachedHeliosProgram.js";
-import type { DeployedScriptDetails, RequiredDeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
+import {
+    programFromCacheEntry,
+    serializeCacheEntry,
+    type DeployedProgramBundle,
+} from "./CachedHeliosProgram.js";
+import type {
+    DeployedScriptDetails,
+    RequiredDeployedScriptDetails,
+} from "../configuration/DeployedScriptConfigs.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { makeCast } from "@helios-lang/contract-utils";
 
@@ -60,6 +67,13 @@ export abstract class HeliosScriptBundle {
      * @internal
      */
     static isCapoBundle = false;
+
+    /**
+     * set to true if the bundle depends on having a deployed capo's configuration details
+     * @public
+     */
+    static needsCapoConfiguration = false
+
     /**
      * an opt-in indicator of abstractness
      * @remarks
@@ -195,11 +209,12 @@ export abstract class HeliosScriptBundle {
     getPreCompiledBundle(variant: string) {
         const foundVariant = this.preCompiled?.[variant];
         if (!foundVariant) {
-            throw new Error(`${this.constructor.name}: variant ${variant} not found in preCompiled scripts`)
+            throw new Error(
+                `${this.constructor.name}: variant ${variant} not found in preCompiled scripts`
+            );
         }
-        return foundVariant.programBundle
+        return foundVariant.programBundle;
     }
-
 
     getPreconfiguredUplcParams(
         variantName: string
@@ -524,6 +539,37 @@ export abstract class HeliosScriptBundle {
         return uplcProgram;
     }
 
+    async getSerializedProgramBundle() {
+        const compiledScript = await this.compiledScript();
+        const cacheEntry = this.program.cacheEntry;
+        if (!cacheEntry) throw new Error(`missing cacheEntry`);
+        const serializedCacheEntry = serializeCacheEntry(cacheEntry);
+        const {
+            programElements,
+            version,
+            optimizeOptions,
+            optimized,
+            unoptimized,
+            optimizedIR,
+            unoptimizedIR,
+            optimizedSmap,
+            unoptimizedSmap,
+        } = serializedCacheEntry;
+        return {
+            scriptHash: bytesToHex(compiledScript.hash()),
+            programBundle: {
+                programElements,
+                version,
+                optimized,
+                unoptimized,
+                optimizedIR,
+                unoptimizedIR,
+                optimizedSmap,
+                unoptimizedSmap,
+            },
+        };
+    }
+
     decodeAnyPlutusUplcProgram(
         version: "PlutusV2" | "PlutusV3",
         cborHex: string,
@@ -607,7 +653,8 @@ export abstract class HeliosScriptBundle {
             console.log(
                 `📦 ${mName}: loaded & parsed ${
                     this.isPrecompiled ? "with" : "without"
-                } pre-compiled program: ${Date.now() - ts1}ms`
+                } pre-compiled program: ${Date.now() - ts1}ms`,
+                // new Error(`stack`).stack
             );
             return p;
         } catch (e: any) {

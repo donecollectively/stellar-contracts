@@ -5,6 +5,7 @@ import type { UplcData } from "@helios-lang/uplc";
 import { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
 import { dataBridgeGenerator } from "./dataBridge/dataBridgeGenerator.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import { mkCancellablePromise } from "../networkClients/mkCancellablePromise.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 
 const startTime = Date.now();
@@ -46,7 +47,7 @@ export class StellarHeliosProject {
             devDependencies: Record<string, string>,
         };
     };
-
+    configuredCapo = mkCancellablePromise<CapoHeliosBundle>()
     bundleEntries: Map<string, BundleStatusEntry>;
     capoBundle: CapoHeliosBundle | undefined = undefined;
     constructor() {
@@ -72,6 +73,7 @@ export class StellarHeliosProject {
         absoluteFilename: string,
         newCapoClass: typeof HeliosScriptBundle
     ) {
+        throw new Error(`dead code?!?!`)
         const replacement = new StellarHeliosProject();
         replacement.loadBundleWithClass(absoluteFilename, newCapoClass);
         replacement.generateBundleTypes(absoluteFilename);
@@ -91,6 +93,9 @@ export class StellarHeliosProject {
         bundleClass: typeof HeliosScriptBundle,
         harmlessSecondCapo: boolean = false
     ) {
+        if (harmlessSecondCapo) {
+            throw new Error("deprecated use of arg3 'harmlessSecondCapo'");
+        }
         // if the file location is within the project root, make it relative
         // otherwise, use the absolute path
         const filename = absoluteFilename.startsWith(this.projectRoot)
@@ -124,7 +129,7 @@ export class StellarHeliosProject {
             this.capoBundle = new (bundleClass as any)({setup: {isMainnet: false}});
             const registeredCapoName = bundleClass.name;
             if (this.bundleEntries.size > 0) {
-                debugger
+                // debugger
                 for (const [filename, entry] of this.bundleEntries.entries()) {
                     const thatCapoName = entry.bundle?.capoBundle?.constructor.name;
                     if (thatCapoName !== registeredCapoName) {
@@ -161,6 +166,7 @@ export class StellarHeliosProject {
                 bundleClass,
             });
         } else if (isCapoBundle && harmlessSecondCapo) {
+            throw new Error("dead code path")
             console.log(`Project: loading CapoBundle ${bundleClassName}`);
             console.log(
                 `  (replaces existing capo ${this.capoBundle?.constructor.name})`

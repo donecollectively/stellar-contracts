@@ -31,6 +31,7 @@ import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 /* prettier-ignore */
 export class UnspecializedDgtBundle 
 extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
+    specializedDelegateModule = UnspecializedDelegateScript;
     get rev() {
         return 1n
     }
@@ -43,9 +44,6 @@ extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
         return "UnspecializedDelegateBridge";
     }
 
-    get specializedDelegateModule() {
-        return UnspecializedDelegateScript;
-    }
 }
 
 export default UnspecializedDgtBundle;
