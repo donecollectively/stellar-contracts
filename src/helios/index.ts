@@ -2,4 +2,4 @@
 // export { dataBridgeGenerator as dataBridgeGenerator } from "./dataBridge/dataBridgeGenerator.js";
 
 // export { StellarHeliosProject } from "./StellarHeliosProject.js";
-export * from "./HeliosScriptBundle.js";
+export * from "./scriptBundling/HeliosScriptBundle.js";

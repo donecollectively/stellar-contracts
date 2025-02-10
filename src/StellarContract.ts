@@ -34,7 +34,7 @@ import type { Capo } from "./Capo.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
 // import { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 // import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
-import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
+import { HeliosScriptBundle } from "./helios/scriptBundling/HeliosScriptBundle.js";
 import { type HeliosBundleClass } from "./helios/HeliosMetaTypes.js";
 import {
     DataBridge,

@@ -1,7 +1,7 @@
 import { genTypes } from "@helios-lang/contract-utils";
 import type {
     HeliosScriptBundle,
-} from "../HeliosScriptBundle.js";
+} from "../scriptBundling/HeliosScriptBundle.js";
 import type {
     anyTypeDetails,
     EnumId,

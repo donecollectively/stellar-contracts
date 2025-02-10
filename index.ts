@@ -193,7 +193,7 @@ export {
 
 export * from "./src/helios/dataBridge/BridgeTypes.js";
 
-export { CapoHeliosBundle } from "./src/CapoHeliosBundle.js";
+export { CapoHeliosBundle } from "./src/helios/scriptBundling/CapoHeliosBundle.js";
 export {
     ContractDataBridge,
     DataBridge,
@@ -233,8 +233,8 @@ export {
  */
 export type DefaultCharterDatumArgs = CharterDataLike;
 export * from "./src/helios/index.js";
-export { CapoDelegateBundle } from "./src/delegation/CapoDelegateBundle.js";
-export { HeliosScriptBundle } from "./src/helios/HeliosScriptBundle.js";
+export { CapoDelegateBundle } from "./src/helios/scriptBundling/CapoDelegateBundle.js";
+export { HeliosScriptBundle } from "./src/helios/scriptBundling/HeliosScriptBundle.js";
 
 export type {
     tokenNamesOrValuesEntry,

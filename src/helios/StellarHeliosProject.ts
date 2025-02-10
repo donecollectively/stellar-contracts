@@ -1,10 +1,10 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
-import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
+import type { HeliosScriptBundle } from "./scriptBundling/HeliosScriptBundle.js";
 import type { UplcData } from "@helios-lang/uplc";
 import { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
 import { dataBridgeGenerator } from "./dataBridge/dataBridgeGenerator.js";
-import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import type { CapoHeliosBundle } from "./scriptBundling/CapoHeliosBundle.js";
 import { mkCancellablePromise } from "../networkClients/mkCancellablePromise.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 

@@ -15,7 +15,7 @@ import {
 } from "@helios-lang/ledger";
 import { blake2b } from "@helios-lang/crypto";
 
-import { CapoHeliosBundle } from "./CapoHeliosBundle.js";
+import { CapoHeliosBundle } from "./helios/scriptBundling/CapoHeliosBundle.js";
 import { CapoMinter } from "./minting/CapoMinter.js";
 import {
     Activity,

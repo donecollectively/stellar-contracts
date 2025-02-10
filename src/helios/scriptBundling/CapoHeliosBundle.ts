@@ -3,7 +3,7 @@ import type { Source } from "@helios-lang/compiler-utils";
 import {
     HeliosScriptBundle,
     placeholderSetupDetails,
-} from "./helios/HeliosScriptBundle.js";
+} from "./HeliosScriptBundle.js";
 
 import CapoMintHelpers from "./CapoMintHelpers.hl";
 import CapoDelegateHelpers from "./delegation/CapoDelegateHelpers.hl";
@@ -16,9 +16,9 @@ import type {
     AllDeployedScriptConfigs,
     CapoDeployedDetails,
     DeployedScriptDetails,
-} from "./configuration/DeployedScriptConfigs.js";
-import type { StellarBundleSetupUplc } from "./StellarContract.js";
-import type { AbstractNew } from "./helios/typeUtils.js";
+} from "../../configuration/DeployedScriptConfigs.js";
+import type { StellarBundleSetupUplc } from "../../StellarContract.js";
+import type { AbstractNew } from "../typeUtils.js";
 
 export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
 

@@ -1,5 +1,5 @@
-import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-import { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import { CapoHeliosBundle } from "../helios/scriptBundling/CapoHeliosBundle.js";
+import { HeliosScriptBundle } from "../helios/scriptBundling/HeliosScriptBundle.js";
 import StructDatumTesterScript from "./StructDatumTester.hl";
 /**
  * A CapoHeliosBundle subclass that can be used with generic UUTs.

@@ -3,7 +3,7 @@ import {
     rollup,
 } from "rollup";
 import esbuild from "rollup-plugin-esbuild";
-import { heliosRollupLoader } from "../heliosRollupLoader.js";
+import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import path from "path";
 
 export async function rollupCreateHlbundledClass(inputFile: string, projectRoot: string) {

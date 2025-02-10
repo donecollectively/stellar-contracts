@@ -1,4 +1,4 @@
-import { CapoDelegateBundle } from "../../delegation/CapoDelegateBundle.js";
+import { CapoDelegateBundle } from "./CapoDelegateBundle.js";
 
 /**
  * base class for helios code bundles for a mint/spend delegate

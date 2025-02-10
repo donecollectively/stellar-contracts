@@ -1,5 +1,5 @@
 import { BundleTypes } from "./BundleTypes.js";
-import type { HeliosScriptBundle } from "../HeliosScriptBundle.js";
+import type { HeliosScriptBundle } from "../scriptBundling/HeliosScriptBundle.js";
 import path from "path";
 
 const CREATED = Symbol("withCreate");

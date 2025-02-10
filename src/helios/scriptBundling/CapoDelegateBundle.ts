@@ -1,19 +1,19 @@
 import { makeSource, type Source } from "@helios-lang/compiler-utils";
-import type { Capo } from "../Capo.js";
-import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import type { Capo } from "../../Capo.js";
+import { CapoHeliosBundle } from "./CapoHeliosBundle.js";
 import {
     HeliosScriptBundle,
     placeholderSetupDetails,
-} from "../helios/HeliosScriptBundle.js";
+} from "./HeliosScriptBundle.js";
 import {
     type CapoBundleClass,
     type Constructor,
     type EmptyConstructor
-} from "../helios/HeliosMetaTypes.js";
+} from "../HeliosMetaTypes.js";
 import BasicDelegate from "./BasicDelegate.hl";
-import type { configBaseWithRev, StellarBundleSetupUplc, stellarSubclass } from "../StellarContract.js";
+import type { configBaseWithRev, StellarBundleSetupUplc, stellarSubclass } from "../../StellarContract.js";
 // .hl files are transpiled to helios Source (JS object) attributes.
-import type { capoDelegateConfig } from "./RolesAndDelegates.js";
+import type { capoDelegateConfig } from "../../delegation/RolesAndDelegates.js";
 // ?? any important need to export the transpiled source?
 // export {BasicDelegate}
 

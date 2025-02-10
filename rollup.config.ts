@@ -87,10 +87,10 @@ const nodeOnlyEntryPoints = {
 const browserOnlyEntryPoints = {
 }
 const platformIndependentEntryPoints = {
+    "HeliosBundle": "./src/helios/scriptBundling/HeliosScriptBundle.ts",
+    "CapoHeliosBundle": "./src/helios/scriptBundling/CapoHeliosBundle.ts",
+    "CapoDelegateHeliosBundle": "./src/helios/scriptBundling/CapoDelegateBundle.ts",
     "ContractBasedDelegate": "./src/delegation/ContractBasedDelegate.ts",
-    "HeliosBundle": "./src/helios/HeliosScriptBundle.ts",
-    "CapoHeliosBundle": "./src/CapoHeliosBundle.ts",
-    "CapoDelegateHeliosBundle": "./src/delegation/CapoDelegateBundle.ts",
     "DelegatedDataContract": "./src/delegation/DelegatedDataContract.ts",
     "stellar-contracts": "./index.ts",
 };

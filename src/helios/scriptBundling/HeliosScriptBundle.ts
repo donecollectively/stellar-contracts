@@ -11,29 +11,29 @@ import { decodeUplcProgramV2FromCbor } from "@helios-lang/uplc";
 
 import { HeliosProgramWithCacheAPI } from "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI";
 
-import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import type { CapoHeliosBundle } from "./CapoHeliosBundle.js";
 import type {
     configBaseWithRev,
     SetupInfo,
     SetupOrMainnetSignalForBundle,
     StellarBundleSetupUplc,
     UplcRecord,
-} from "../StellarContract.js";
-import type { anyUplcProgram } from "../HeliosPromotedTypes.js";
+} from "../../StellarContract.js";
+import type { anyUplcProgram } from "../../HeliosPromotedTypes.js";
 import type {
     CapoBundleClass,
     HeliosBundleClassWithCapo,
     HeliosBundleTypes,
-} from "./HeliosMetaTypes.js";
+} from "../HeliosMetaTypes.js";
 import {
     programFromCacheEntry,
     serializeCacheEntry,
     type DeployedProgramBundle,
-} from "./CachedHeliosProgram.js";
+} from "../CachedHeliosProgram.js";
 import type {
     DeployedScriptDetails,
     RequiredDeployedScriptDetails,
-} from "../configuration/DeployedScriptConfigs.js";
+} from "../../configuration/DeployedScriptConfigs.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { makeCast } from "@helios-lang/contract-utils";
 

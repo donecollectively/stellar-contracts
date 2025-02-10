@@ -7,10 +7,10 @@ import type {
 } from "@helios-lang/type-utils";
 import type { UplcData } from "@helios-lang/uplc";
 import type { isActivity, hasSeed, SeedAttrs } from "../ActivityTypes.js";
-import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import type { CapoHeliosBundle } from "./scriptBundling/CapoHeliosBundle.js";
 import type { hasSeedUtxo } from "../StellarTxnContext.js";
 import type { DataBridge } from "./dataBridge/DataBridge.js";
-import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
+import type { HeliosScriptBundle } from "./scriptBundling/HeliosScriptBundle.js";
 import type { AbstractNew } from "./typeUtils.js";
 
 

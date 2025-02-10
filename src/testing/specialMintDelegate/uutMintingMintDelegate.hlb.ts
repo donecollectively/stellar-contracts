@@ -1,6 +1,10 @@
 import uutMintingMintDelegate from "./uutMintingMintDelegate.hl";
-import { CapoDelegateBundle } from "../../delegation/CapoDelegateBundle.js";
-import { CapoHeliosBundle } from "../../CapoHeliosBundle.js";
+import { CapoDelegateBundle } from "../../helios/scriptBundling/CapoDelegateBundle.js";
+import { CapoHeliosBundle } from "../../helios/scriptBundling/CapoHeliosBundle.js";
+
+
+// todo: use MintSpendDelegateBundle here
+// todo: ?? package the bundle-types as a export @dc/s-c/script-bundles?
 
 /**
  * A specialized minting delegate for testing purposes

@@ -32,7 +32,7 @@ import type {
     capoDelegateConfig,
 } from "./RolesAndDelegates.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import type { CapoDelegateBundle } from "./CapoDelegateBundle.js";
+import type { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
 import type { isActivity } from "../ActivityTypes.js";
 
 import { bytesToText, textToBytes } from "../HeliosPromotedTypes.js";

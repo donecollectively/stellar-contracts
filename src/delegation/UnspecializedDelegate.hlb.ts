@@ -22,8 +22,8 @@ import type {
 import type { Cast } from "@helios-lang/contract-utils";
 
 import UnspecializedDelegateScript from "../delegation/UnspecializedDelegate.hl";
-import { CapoDelegateBundle } from "./CapoDelegateBundle.js";
-import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
+import { CapoHeliosBundle } from "../helios/scriptBundling/CapoHeliosBundle.js";
 
 /**
  * @public

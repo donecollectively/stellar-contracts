@@ -1,8 +1,8 @@
-import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import { CapoHeliosBundle } from "../helios/scriptBundling/CapoHeliosBundle.js";
 import type { CapoConfig } from "../CapoTypes.js";
 import type { RequiredDeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
-import { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
-import { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
+import { HeliosScriptBundle } from "../helios/scriptBundling/HeliosScriptBundle.js";
 
 import CapoMinterScript from "./CapoMinter.hl";
 

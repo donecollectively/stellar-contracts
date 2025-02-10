@@ -1,6 +1,6 @@
 import type { UplcData } from "@helios-lang/uplc";
 import { DataBridge, type DataBridgeOptions } from "./DataBridge.js";
-import type { HeliosScriptBundle } from "../HeliosScriptBundle.js";
+import type { HeliosScriptBundle } from "../scriptBundling/HeliosScriptBundle.js";
 import type { isActivity } from "../../ActivityTypes.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 

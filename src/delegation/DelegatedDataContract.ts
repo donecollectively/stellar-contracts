@@ -28,8 +28,8 @@ import { textToBytes, type InlineDatum } from "../HeliosPromotedTypes.js";
 import type {
     CapoHeliosBundle,
     CapoHeliosBundleClass,
-} from "../CapoHeliosBundle.js";
-import type { CapoDelegateBundle } from "./CapoDelegateBundle.js";
+} from "../helios/scriptBundling/CapoHeliosBundle.js";
+import type { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
 import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
 import { uplcDataSerializer } from "./jsonSerializers.js";
 
