@@ -1,4 +1,4 @@
-import { CapoHeliosBundle } from "../../src/CapoHeliosBundle.js";
+import { CapoHeliosBundle } from "../../src/helios/scriptBundling/CapoHeliosBundle.js";
 import { DelegatedDataContract } from "../../src/delegation/DelegatedDataContract.js";
 import { hasReqts } from "../../src/Requirements";
 import BadSettingsBundle from "./BadSettings.hlb.js";
@@ -23,7 +23,7 @@ export class BadSettingsController extends DelegatedDataContract<
     needsGovAuthority = true;
 
     scriptBundle() {
-        return new BadSettingsBundle()
+        return BadSettingsBundle.create()
     }
 
 

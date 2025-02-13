@@ -89,6 +89,7 @@ const browserOnlyEntryPoints = {
 const platformIndependentEntryPoints = {
     "HeliosBundle": "./src/helios/scriptBundling/HeliosScriptBundle.ts",
     "CapoHeliosBundle": "./src/helios/scriptBundling/CapoHeliosBundle.ts",
+    "DelegatedDataBundle": "./src/helios/scriptBundling/DelegatedDataBundle.ts",
     "CapoDelegateHeliosBundle": "./src/helios/scriptBundling/CapoDelegateBundle.ts",
     "ContractBasedDelegate": "./src/delegation/ContractBasedDelegate.ts",
     "DelegatedDataContract": "./src/delegation/DelegatedDataContract.ts",

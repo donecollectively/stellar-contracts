@@ -36,6 +36,16 @@ extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
         return 1n
     }
 
+    get params() {
+        return {
+            rev: this.rev,
+            delegateName: this.moduleName,
+            isMintDelegate: true,
+            isSpendDelegate: true,
+            isDgDataPolicy: false,
+        }
+    }
+
     get moduleName() {
         return "UnspecializedDelegate";
     }

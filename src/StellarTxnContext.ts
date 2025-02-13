@@ -319,7 +319,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             );
         }
         this.txb = makeTxBuilder({
-            isMainnet
+            isMainnet,
         });
         // const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error
@@ -839,11 +839,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
             },
             beforeValidate,
             paramsOverride,
+            expectError,
         }: {
             signers?: Address[];
             addlTxInfo?: Pick<TxDescription<any, "buildLater!">, "description">;
             beforeValidate?: (tx: Tx) => Promise<any> | any;
             paramsOverride?: Partial<NetworkParams>;
+            expectError?: boolean;
         } = {}
     ): Promise<BuiltTcx> {
         this.noFacade("build");
@@ -1149,6 +1151,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             paramsOverride,
             addlTxInfo,
             beforeValidate,
+            expectError,
         });
         const { description } = addlTxInfo;
 

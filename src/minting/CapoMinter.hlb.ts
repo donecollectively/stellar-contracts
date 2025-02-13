@@ -19,7 +19,7 @@ import CapoMinterScript from "./CapoMinter.hl";
  * for the special Capo minter; makes the Capo's modules available
  * to the minter for imports
  **/
-export default class CapoMinterBundle 
+export class CapoMinterBundle 
 extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     static needsCapoConfiguration = true
     
@@ -28,15 +28,20 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     get rev(): bigint {
         return 1n
     }
-    
+
     get params() {
-        const configuredCapo = this.capoBundle?.configuredScriptDetails as RequiredDeployedScriptDetails<CapoConfig>
+        const {configuredScriptDetails, configuredParams } = this.capoBundle || {}
+        //  
         const noConfig = `${this.constructor.name}: capoMph not found in deployed capo bundle; can't make config yet`;
-        if (!configuredCapo) {
-            console.warn(noConfig);
+        if (!configuredScriptDetails) {
+            
+            if (configuredParams) {                
+                console.warn(noConfig);
+                debugger
+            }
             return undefined
         }
-        const capoConfig = configuredCapo.config
+        const capoConfig = (configuredScriptDetails as RequiredDeployedScriptDetails<CapoConfig>).config
         const {
             mph,
             seedTxn,
@@ -71,3 +76,5 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     //     return [...this.capoBundle.modules];
     // }
 }
+
+export default CapoMinterBundle

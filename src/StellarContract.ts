@@ -13,6 +13,7 @@ import {
     makeMintingPolicyHash,
     makeInlineTxOutputDatum,
     type TxOutputId,
+    type ScriptHash,
 } from "@helios-lang/ledger";
 
 import type { CardanoClient, Emulator, Wallet } from "@helios-lang/tx-utils";
@@ -365,6 +366,8 @@ export type StellarSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupInfo;
     config?: CT;
     partialConfig?: Partial<CT>;
+    programBundle?: DeployedProgramBundle;
+    scriptHash?: string;
 };
 
 export type SetupOrMainnetSignalForBundle = Partial<
@@ -372,14 +375,14 @@ export type SetupOrMainnetSignalForBundle = Partial<
 > &
     Required<Pick<SetupInfo, "isMainnet">> & { isPlaceholder?: any };
 
-export type StellarBundleSetupUplc<CT extends configBaseWithRev> = {
+export type StellarBundleSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupOrMainnetSignalForBundle;
-    params?: UplcRecord<CT>;
+    params?: CT;
     /**
      * used only for Capo bundles, to initialize them based on
      * their `.hlDeploy.<network>.json` config file
      */
-    deployedDetails?: DeployedScriptDetails;
+    deployedDetails?: DeployedScriptDetails<CT>;
     // partialConfig?: Partial<UplcRecord<CT>>;
 };
 
@@ -440,7 +443,7 @@ export class StellarContract<
     // bundle?: HeliosScriptBundle;
     configIn?: ConfigType;
     partialConfig?: Partial<ConfigType>;
-    contractParams?: UplcRecord<ConfigType>;
+    // contractParams?: UplcRecord<ConfigType>;
     setup: SetupInfo;
     network: CardanoClient | Emulator;
     networkParams: NetworkParams;
@@ -575,6 +578,13 @@ export class StellarContract<
     getBundle(): HeliosScriptBundle {
         if (!this._bundle) {
             this._bundle = this.scriptBundle();
+            if (!this._bundle._didInit) {
+                console.warn(
+                    `NOTE: the scriptBundle() method in ${this.constructor.name} isn't\n` +
+                        `initialized properly; it should use \`${this._bundle.constructor.name}.create({...})\`\n` +
+                        `... instead of \`new ${this._bundle.constructor.name}({...})\` `
+                );
+            }
             // this._bundle.checkDevReload()
         }
 
@@ -782,19 +792,14 @@ export class StellarContract<
     /**
      * Transforms input configuration to contract script params
      * @remarks
-     * Should filter out any keys from the ConfigType that are not in the contract
-     * script's params.
-     *
-     * Each Stellar Contract subclass must implement this method.  Delegate contract,
-     * Capo contracts, and minter contracts all have implementations of this method,
-     * so in most cases, you may not need to implement this method yourself.
+     * May filter out any keys from the ConfigType that are not in the contract
+     * script's params.  Should add any keys that may be needed by the script and
+     * not included in the ConfigType (as delegate scripts do with `delegateName`).
      */
-    getContractScriptParamsUplc(
+    getContractScriptParams(
         config: ConfigType
-    ): UplcRecord<Partial<ConfigType> & Required<Pick<ConfigType, "rev">>> {
-        throw new Error(
-            `${this.constructor.name} must implement getContractScriptParamsUplc - delegating to the scriptBundle?`
-        );
+    ): Partial<ConfigType> & Required<Pick<ConfigType, "rev">> {
+        return config;
     }
 
     delegateReqdAddress(): false | Address {
@@ -886,6 +891,7 @@ export class StellarContract<
                     `wallet on ${foundNetwork} doesn't match network from setup`
                 );
             }
+            // redundant
             this.actorContext = actorContext;
         }
 
@@ -897,6 +903,8 @@ export class StellarContract<
         //  - a Capo Configuration structure created in Stellar SaaS, with...
         //      - Capo minter's seed-txn/mph/rev
         //          - seed txn == a utxo in Stellar SaaS contract
+        //          - in this case, there is also args.programBundle, provided by
+        //            the Capo's init(), via its connectMintingScript().
         //      - Capo's mph/rev & script hash
         //      - each delegate's {rev, delegateName, isMint/Spend/DataPolicy} details
         //          - a script hash for the delegate's script, can be cross-checked with the on-chain version
@@ -912,53 +920,72 @@ export class StellarContract<
         //      - the minter MPH (for a Capo)
         //      - derived details for delegates
 
-        const { config, partialConfig } = args;
+        const { config, partialConfig, programBundle, scriptHash } = args;
         if (config) {
             this.configIn = config;
-            const paramsUplc = this.contractParams = this.getContractScriptParamsUplc(config);
+            const params = this.getContractScriptParams(config);
             if (this.usesContractScript) {
-                const bundle = this._bundle = this.scriptBundle().withSetupDetails({
-                    setup: this.setup,
-                    params: this.contractParams,
-                    // deployedDetails: args.deployedDetails,
-                });
-                if (bundle.isPrecompiled) {
-                    debugger;
-                    // TBD how to handle this
-                    throw new Error(`config is redundant because bundle is precompiled (dbpa)`)
+                if (programBundle) {
+                    const deployedDetails = {
+                        config,
+                        programBundle,
+                        scriptHash,
+                    };
+                    this._bundle = this.scriptBundle().withSetupDetails({
+                        setup: this.setup,
+                        params,
+                        deployedDetails,
+                    });
                 } else {
-                    // just have the bundle compile the script
-                    await this.prepareBundleWithScriptParams(paramsUplc);
+                    await this.prepareBundleWithScriptParams(params);
                 }
-            } else {
+            } else if (partialConfig) {
                 // if (this.canPartialConfig) {
-                //     throw new Error(
-                //         `${this.constructor.name} use case for partial-config?`
-                //     );
-                // }
+                throw new Error(
+                    `${this.constructor.name}: any use case for partial-config?`
+                );
                 this.partialConfig = partialConfig;
                 // this._bundle = this.scriptBundle();
             }
             if (this.usesContractScript) {
-                if (!this.getBundle()) {
+                const bundle = this.getBundle();
+                if (!bundle) {
                     throw new Error(
                         `${this.constructor.name}: missing required this.bundle for contract class`
                     );
-                } else if (!this.getBundle().isHeliosScriptBundle()) {
+                } else if (!bundle.isHeliosScriptBundle()) {
                     throw new Error(
                         `${
                             this.constructor.name
                         }: this.bundle must be a HeliosScriptBundle; got ${
-                            this.getBundle().constructor.name
+                            bundle.constructor.name
                         }`
                     );
-                } else {
-                    console.log(this.program.name, "bundle loaded");
                 }
+                if (bundle.setup && bundle.configuredParams) {
+                    try {
+                        this.compiledScript =
+                            await bundle.compiledScript();
+                    } catch (e: any) {
+                        console.warn("while setting compiledScript: ", e.message);
+                    }
+                } else if (bundle.setup && bundle.params) {
+                    debugger            
+                    throw new Error(`what is this situation here? (dbpa)`)
+                }
+                console.log(this.program.name, "bundle loaded");
             }
-
-            return this;
+        } else {
+            const bundle = this.getBundle()
+            if (bundle.isPrecompiled) {
+                this.compiledScript = await bundle.compiledScript()
+            } else {
+                debugger            
+                throw new Error(`... and what situation do we have here? (dbpa)`)
+            }
         }
+        
+        return this;
     }
 
     compiledScript!: anyUplcProgram; // initialized in compileWithScriptParams()
@@ -982,6 +1009,7 @@ export class StellarContract<
         if (vh) return vh;
         // console.log(this.constructor.name, "cached vh", vh?.hex || "none");
 
+        // debugger
         const nvh = this.compiledScript.hash();
         // console.log("nvh", nvh.hex);
         // if (vh) {
@@ -1096,43 +1124,6 @@ export class StellarContract<
 
         return tcx;
     }
-
-    // async findDatum(d: Datum | DatumHash): Promise<TxInput[]>;
-    // async findDatum(predicate: utxoPredicate): Promise<TxInput[]>;
-    // async findDatum(d: Datum | DatumHash | utxoPredicate): Promise<TxInput[]> {
-    //     let targetHash: DatumHash | undefined =
-    //         d instanceof Datum
-    //             ? d.hash
-    //             : d instanceof DatumHash
-    //             ? d
-    //             : undefined;
-    //     let predicate =
-    //         "function" === typeof d
-    //             ? d
-    //             : (u: TxInput) => {
-    //                   const match =
-    //                       u.origOutput?.datum?.hash.hex == targetHash?.hex;
-    //                   console.log(
-    //                       txOutputAsString(
-    //                           u.origOutput,
-    //                           `    ${match ? "✅ matched " : "❌ no match"}`
-    //                       )
-    //                   );
-    //                   return !!match;
-    //               };
-
-    //     //prettier-ignore
-    //     console.log(
-    //         `finding utxo with datum ${
-    //             targetHash?.hex.substring(0,12)
-    //         }... in wallet`,
-    //         this.address.toBech32().substring(0,18)
-    //     );
-
-    //     const heldUtxos = await this.network.getUtxos(this.address);
-    //     console.log(`    - found ${heldUtxos.length} utxo:`);
-    //     return heldUtxos.filter(predicate);
-    // }
 
     /**
      * Returns all the types exposed by the contract script
@@ -1340,432 +1331,6 @@ export class StellarContract<
         return this.getBundle()!.program;
     }
 
-    // async readDatum<
-    //     DPROPS extends anyDatumProps,
-    //     adapterType extends DatumAdapter<DPROPS, any> | undefined = undefined
-    // >(
-    //     datumNameOrAdapter: string | adapterType,
-    //     datum: InlineDatum,
-    //     ignoreOtherTypes?: "ignoreOtherTypes"
-    // ): Promise<
-    //     | (adapterType extends DatumAdapter<any, any> ? adapterType : DPROPS)
-    //     | undefined
-    // > {
-    //     throw new Error(`obsolete?`);
-
-    //     const ts1 = Date.now();
-    //     const hasAdapter = datumNameOrAdapter instanceof DatumAdapter;
-    //     const datumName: string = hasAdapter
-    //         ? datumNameOrAdapter.datumName
-    //         : (datumNameOrAdapter as string);
-
-    //     const scriptDatumType = this.onChainDatumType;
-    //     const thisDatumType = scriptDatumType.typeMembers[datumName];
-    //     if (!thisDatumType) throw new Error(`invalid datumName ${datumName}`);
-
-    //     const cast = new Cast(scriptDatumType.toSchema(), {
-    //         isMainnet: this.setup.isMainnet || false,
-    //     });
-
-    //     const parsedData = (cast.fromUplcData(datum.data) as any)[
-    //         datumName
-    //     ] as DPROPS;
-    //     const ts2 = Date.now();
-    //     // throw new Error(`todo: parse some datum here`);
-    //     // // console.log(` ----- read datum ${datumName}`)
-
-    //     // if (!datum.isInline())
-    //     //     throw new Error(
-    //     //         `datum must be an InlineDatum to be readable using readDatum()`
-    //     //     );
-
-    //     // let ts2;
-    //     // const rawParsedData = (await this.readUplcDatum(
-    //     //     thisDatumType,
-    //     //     datum.data!,
-    //     //     ignoreOtherTypes
-    //     // )
-    //     //     .catch((e) => {
-    //     //         if (e.message?.match(/expected constrData/)) return undefined;
-    //     //         throw e;
-    //     //     })
-    //     //     .finally(() => {
-    //     //         ts2 = Date.now();
-    //     //         const elapsed = ts2 - ts1;
-    //     //         if (elapsed > 10) {
-    //     //             console.log(
-    //     //                 `    -- readUplcDatum ${datumName} took ${ts2 - ts1}ms`
-    //     //             );
-    //     //         }
-    //     //     })) as DPROPS | undefined;
-    //     // if (!rawParsedData) return undefined;
-    //     if (hasAdapter) {
-    //         debugger; // ??? vvv
-    //         const adapted = datumNameOrAdapter.fromOnchainDatum(parsedData);
-    //         const ts3 = Date.now();
-    //         const elapsed = ts3 - ts1;
-    //         if (elapsed > 10) {
-    //             console.log(`    -- adapter ${datumName} took ${ts3 - ts2}ms`);
-    //             console.log(
-    //                 `  ⏱ readDatum ${datumName} took ${ts3 - ts1}ms total`
-    //             );
-    //         }
-    //         console.log(
-    //             JSON.parse(JSON.stringify(adapted, betterJsonSerializer, 2))
-    //         );
-    //         return adapted;
-    //     }
-    //     return parsedData as any;
-    // }
-
-    // private async readUplcStructList(uplcType: any, uplcData: ListData) {
-    //     const { fieldNames, instanceMembers } = uplcType as any;
-
-    //     if (uplcType.fieldNames?.length == 1) {
-    //         const fn = fieldNames[0];
-    //         const singleFieldStruct = {
-    //             [fn]: await this.readUplcField(
-    //                 fn,
-    //                 instanceMembers[fn],
-    //                 uplcData
-    //             ),
-    //         };
-    //         return singleFieldStruct;
-    //     }
-
-    //     const nestedFieldList = uplcData.list;
-    //     return Object.fromEntries(
-    //         await Promise.all(
-    //             fieldNames.map(async (fn: string, i: number) => {
-    //                 const fieldData = nestedFieldList[i];
-    //                 const fieldType = instanceMembers[fn];
-    //                 // console.log(` ----- read struct field ${fn}`)
-    //                 const value = await this.readUplcField(
-    //                     fn,
-    //                     fieldType,
-    //                     fieldData
-    //                 );
-    //                 // console.log(` <----- struct field ${fn}`, value);
-
-    //                 return [fn, value];
-    //             })
-    //         )
-    //     );
-    // }
-
-    // private async readUplcEnumVariant(
-    //     uplcType: any,
-    //     enumDataDef: any,
-    //     uplcData: ConstrData & UplcData
-    // ) {
-    //     const fieldNames: string[] = enumDataDef.fieldNames;
-
-    //     const { fields } = uplcData;
-    //     return Object.fromEntries(
-    //         await Promise.all(
-    //             fieldNames.map(async (fn, i) => {
-    //                 const fieldData = fields[i];
-    //                 const fieldType = enumDataDef.fields[i].type;
-
-    //                 const value = await this.readUplcField(
-    //                     fn,
-    //                     fieldType,
-    //                     fieldData
-    //                 ).catch((nestedError) => {
-    //                     console.warn(
-    //                         "error parsing nested data inside enum variant",
-    //                         { fn, fieldType, fieldData }
-    //                     );
-    //                     debugger;
-    //                     throw nestedError;
-    //                 });
-    //                 return [fn, value];
-    //             })
-    //         )
-    //     );
-    // }
-
-    // private async readUplcDatum(
-    //     uplcType: any,
-    //     uplcData: UplcData,
-    //     ignoreOther?: "ignoreOtherTypes"
-    // ) {
-    //     const { fieldNames, instanceMembers } = uplcType as any;
-    //     if (!fieldNames) {
-    //         const enumVariant = uplcType.prototype._enumVariantStatement;
-    //         if (enumVariant) {
-    //             //@ts-expect-error because TS doesn't grok ConstrData here
-    //             const foundIndex = uplcData.index;
-    //             const { dataDefinition: enumDataDef, constrIndex } =
-    //                 enumVariant;
-    //             if (!(uplcData instanceof ConstrData)) {
-    //                 throw new Error(
-    //                     `uplcData mismatch - no constrData, expected constData#${constrIndex}`
-    //                 );
-    //             }
-    //             if (!(foundIndex == constrIndex)) {
-    //                 if (ignoreOther) return undefined;
-    //                 throw new Error(
-    //                     `uplcData expected constrData#${constrIndex}, got #${foundIndex}`
-    //                 );
-    //             }
-    //             const t = this.readUplcEnumVariant(
-    //                 uplcType,
-    //                 enumDataDef,
-    //                 uplcData
-    //             );
-    //             return t; // caller can deal with catching the error
-    //         }
-    //         throw new Error(
-    //             `can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`
-    //         );
-    //     }
-
-    //     // const heliosTypes = Object.fromEntries(
-    //     //     fieldNames.map((fn) => {
-    //     //         return [fn, instanceMembers[fn].name];
-    //     //     })
-    //     // );
-    //     // const inputTypes = Object.fromEntries(
-    //     //     fieldNames.map((fn) => {
-    //     //         return [fn, instanceMembers[fn].typeDetails.inputType];
-    //     //     })
-    //     // );
-    //     // const outputTypes = Object.fromEntries(
-    //     //     fieldNames.map((fn) => {
-    //     //         debugger
-    //     //         return [fn, instanceMembers[fn].typeDetails.outputType];
-    //     //     })
-    //     // );
-    //     return Object.fromEntries(
-    //         await Promise.all(
-    //             fieldNames.map(async (fn, i) => {
-    //                 let current;
-
-    //                 //@ts-expect-error
-    //                 const uplcDataField = uplcData.fields[i];
-    //                 const fieldType = instanceMembers[fn];
-    //                 // console.log(` ----- read field ${fn}`)
-
-    //                 current = await this.readUplcField(
-    //                     fn,
-    //                     fieldType,
-    //                     uplcDataField
-    //                 );
-
-    //                 return [fn, current];
-    //             })
-    //         )
-    //     );
-    // }
-
-    // async readTypedUplcMapData(fn: string, uplcMap, valueType) {
-    //     const t = Object.fromEntries(
-    //         await Promise.all(
-    //             uplcMap.map.map(async ([keyThingy, vThingy]) => {
-    //                 // const key = keyThingy.string;
-    //                 const key = helios.bytesToText(keyThingy.bytes);
-    //                 return [
-    //                     key,
-    //                     await this.readUplcField(
-    //                         `${fn}.[${key}]`,
-    //                         valueType,
-    //                         vThingy
-    //                     ),
-    //                 ];
-    //             })
-    //         )
-    //     );
-    //     // if (uplcMap.map.length > 0) debugger
-    //     return t;
-    // }
-
-    // private async readUplcField(
-    //     fn: string,
-    //     fieldType: any,
-    //     uplcDataField: any
-    // ) {
-    //     let value;
-    //     const { offChainType } = fieldType;
-    //     const isMapData = uplcDataField instanceof helios.MapData;
-    //     try {
-    //         let internalType;
-    //         try {
-    //             internalType = fieldType.typeDetails?.internalType.type;
-    //             if ("Struct" == internalType) {
-    //                 if (isMapData) {
-    //                     value = await this.readOtherUplcType(
-    //                         fn,
-    //                         uplcDataField,
-    //                         fieldType
-    //                     );
-    //                     return value;
-    //                 } else {
-    //                     value = await this.readUplcStructList(
-    //                         fieldType,
-    //                         uplcDataField
-    //                     );
-    //                     // console.log(`  <-- field value`, value)
-    //                     return value;
-    //                 }
-    //             }
-    //         } catch (e) {}
-    //         value = fieldType.uplcToJs(uplcDataField);
-    //         if (value.then) value = await value;
-
-    //         if (internalType) {
-    //             if (
-    //                 "Enum" === internalType &&
-    //                 0 === uplcDataField.fields.length
-    //             ) {
-    //                 return (value = Object.keys(value)[0]);
-    //             }
-    //         } else if (typeof value === "string") {
-    //             return value;
-    //         } else {
-    //             console.log(
-    //                 "no internal type for special post-uplc-to-JS handling at",
-    //                 fn
-    //             );
-    //             debugger;
-    //             return value;
-    //         }
-    //     } catch (e: any) {
-    //         if (e.message?.match(/doesn't support converting from Uplc/)) {
-    //             if (!offChainType) {
-    //                 return this.readOtherUplcType(fn, uplcDataField, fieldType);
-    //             }
-    //             try {
-    //                 value = await offChainType.fromUplcData(uplcDataField);
-    //                 if (value && "some" in value) value = value.some;
-    //                 if (value && "string" in value) value = value.string;
-
-    //                 if (isMapData) {
-    //                     const { valueType } =
-    //                         fieldType.typeDetails.internalType;
-    //                     // Map[String]SomethingSpecific?
-    //                     return this.readTypedUplcMapData(
-    //                         fn,
-    //                         uplcDataField,
-    //                         fieldType.instanceMembers.head_value
-    //                     );
-    //                 }
-    //             } catch (e: any) {
-    //                 console.error(`datum: field ${fn}: ${e.message}`);
-    //                 // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
-    //                 debugger;
-    //                 throw e;
-    //             }
-    //         } else {
-    //             throw e;
-    //         }
-    //     }
-    //     // console.log(`  <-- field value`, value)
-    //     return value;
-    // }
-    // async readOtherUplcType(fn: string, uplcDataField: any, fieldType: any) {
-    //     if (uplcDataField instanceof helios.IntData) {
-    //         return uplcDataField.value;
-    //     }
-    //     if (uplcDataField instanceof helios.ListData) {
-    //         const entries = [];
-    //         const promises = uplcDataField.list.map((item, i) => {
-    //             const readOne = this.readOtherUplcType(
-    //                 `${fn}.[${i}]`,
-    //                 item,
-    //                 undefined
-    //             );
-    //             return readOne;
-    //         });
-    //         const gotList = Promise.all(promises).catch((e) => {
-    //             console.error(
-    //                 `datum: field ${fn}: error reading list`,
-    //                 e,
-    //                 "\n   ",
-    //                 { uplcDataField, fieldType }
-    //             );
-    //             debugger;
-    //             throw e;
-    //         });
-    //         return gotList;
-    //     }
-    //     if (uplcDataField instanceof helios.IntData) {
-    //         return uplcDataField.value;
-    //     }
-    //     if (uplcDataField instanceof helios.ByteArrayData) {
-    //         return uplcDataField.bytes;
-    //     }
-
-    //     // it unwraps an existential type tag (#242) providing CIP-68 struct compatibility,
-    //     // to return the inner details' key/value pairs as a JS object.
-    //     if (uplcDataField instanceof helios.ConstrData) {
-    //         //@ts-expect-error
-    //         const { index } = uplcDataField;
-    //         let fieldName = `‹constr#${index}›`;
-    //         if (index == 242) {
-    //             fieldName = "‹cip68›";
-    //             if (
-    //                 // prettier-ignore
-    //                 //@ts-expect-error
-    //                 (uplcDataField.fields.length != 1 || uplcDataField.fields.length != 3) &&
-
-    //                 !(uplcDataField.fields[0] instanceof helios.MapData
-    //             )
-    //             ) {
-    //                 console.log(
-    //                     "CIP68 wrapper: expected MapData, got ",
-    //                     uplcDataField
-    //                 );
-    //                 debugger;
-    //                 throw new Error(
-    //                     `datum error at ${fn} existential ConstrData(#242) must wrap a single field of MapData, or a triplet with Map, Version, Any`
-    //                 );
-    //             }
-    //         }
-
-    //         if (!uplcDataField.fields.length) {
-    //             // console.log(`datum: field ${fn}: empty ConstrData`, {
-    //             //     fieldType,
-    //             //     uplcDataField,
-    //             // });
-    //             // enum variant without any nested data.  That's ok!!!
-    //             return uplcDataField; // return `variant #${index}`;
-    //         }
-    //         return this.readOtherUplcType(
-    //             `${fn}.${fieldName}`,
-
-    //             uplcDataField.fields[0],
-    //             undefined
-    //         );
-    //     }
-    //     if (uplcDataField instanceof helios.MapData) {
-    //         const entries: Record<string, any> = {};
-    //         for (const [k, v] of uplcDataField["map"]) {
-    //             let parsedKey: string;
-    //             try {
-    //                 parsedKey = helios.bytesToText(k.bytes);
-    //             } catch (e) {
-    //                 parsedKey = k.hex;
-    //             }
-    //             // type of value??
-    //             entries[parsedKey] = await this.readOtherUplcType(
-    //                 `${fn}.‹map›@${parsedKey}`,
-    //                 v,
-    //                 undefined
-    //             );
-    //         }
-
-    //         return entries;
-    //     }
-    //     console.log(`datum: field ${fn}: no offChainType, no internalType`, {
-    //         fieldType,
-    //         uplcDataField,
-    //     });
-
-    //     debugger;
-    //     return uplcDataField;
-    // }
-
     _utxoHelper: UtxoHelper;
     /**
      * Provides access to a UtxoHelper instance
@@ -1834,7 +1399,9 @@ export class StellarContract<
     _cache: ComputedScriptProperties = {};
     optimize: boolean = true;
 
-    async prepareBundleWithScriptParams(params: UplcRecord<ConfigType>) {
+    async prepareBundleWithScriptParams(
+        params: Partial<ConfigType> & Required<Pick<ConfigType, "rev">>
+    ) {
         if (this.compiledScript) {
             console.warn(
                 "compileWithScriptParams() called after script compilation already done"
@@ -1852,17 +1419,25 @@ export class StellarContract<
         let bundle = this.getBundle();
         if (bundle.isPrecompiled) {
             debugger;
-            throw new Error(`deployed script shouldn't need to compile (debugging breakpoint available)`);
+            console.warn(
+                `deployed script shouldn't need to compile (debugging breakpoint available)`
+            );
         }
         if (!this.setup) {
             console.warn(
                 `compileWithScriptParams() called before setup is available`
             );
-            debugger
+            debugger;
         }
 
-        if (!bundle.setup || !bundle.configuredParams) {
-            // primarily for capo's bootstrap in mkTxnMintCharterToken():
+        if (
+            !bundle.setup ||
+            bundle.setup.isPlaceholder ||
+            !bundle.configuredUplcParams
+        ) {
+            // serves capo's bootstrap in mkTxnMintCharterToken()
+            // also allows delegates to call <bundleClass>.create() without args,
+            // ... and still get the right setup details.
             bundle = this._bundle = bundle.withSetupDetails({
                 params,
                 setup: this.setup,
@@ -1873,137 +1448,6 @@ export class StellarContract<
         console.log(`       ✅ ${this.constructor.name} ready`);
         this._cache = {};
     }
-
-    // XXXloadBundle(
-    //     args?: StellarFactoryArgs<ConfigType>
-    // ): HeliosScriptBundle | undefined {
-
-    //     const { config: params } = args || {};
-    //     try {
-    //         const script = CachedHeliosProgram.forCurrentPlatform(codeModule, {
-    //             moduleSources: modules,
-    //         });
-    //         // this.bundle = script;
-
-    //         if (params) {
-    //             this.contractParams = this.getContractScriptParamsUplc(params);
-    //         }
-
-    //         return script;
-    //     } catch (e: any) {
-    //         // !!! probably this stuff needs to move to compileWithScriptParams()
-    //         if (e.message.match(/invalid parameter name/)) {
-    //             throw new Error(
-    //                 e.message +
-    //                     `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})` +
-    //                     "\n   ... can be missing a getContractScriptParamsUplc() method " +
-    //                     "\n   ... to map from the configured settings to contract parameters"
-    //             );
-    //         }
-    //         const [unsetConst, constName] =
-    //             e.message.match(/used unset const '(.*?)'/) || [];
-    //         if (unsetConst) {
-    //             console.log(e.message);
-    //             throw new Error(
-    //                 `${this.constructor.name}: missing required script param '${constName}' in static getDefaultParams() or getContractScriptParams()`
-    //             );
-    //         }
-    //         if (!e.src) {
-    //             console.error(
-    //                 `unexpected error while compiling helios program (or its imported module) \n` +
-    //                     `> ${e.message}\n` +
-    //                     `Suggested: connect with debugger (we provided a debugging point already)\n` +
-    //                     `  ... and use 'break on caught exceptions' to analyze the error \n` +
-    //                     `This likely indicates a problem in Helios' error reporting - \n` +
-    //                     `   ... please provide a minimal reproducer as an issue report for repair!\n\n` +
-    //                     e.stack.split("\n").slice(1).join("\n")
-    //             );
-    //             try {
-    //                 debugger;
-    //                 // debugger'ing?  YOU ARE AWESOME!
-    //                 //  reminder: ensure "pause on caught exceptions" is enabled
-    //                 //  before playing this next line to dig deeper into the error.
-    //                 const script2 = new Program(codeModule, {
-    //                     moduleSources: modules,
-    //                     isTestnet: this.setup.isTest,
-    //                 });
-    //                 console.log({ params });
-    //                 if (params) {
-    //                     for (const [p, v] of Object.entries(params || {})) {
-    //                         script2.changeParam(p, v);
-    //                     }
-    //                     script2.compile();
-    //                 }
-    //                 console.warn("NOTE: no error thrown on second attempt");
-    //             } catch (sameError) {
-    //                 // entirely expected it would throw the same error
-    //                 // throw sameError;
-    //             }
-    //             // throw e;
-    //         }
-    //         debugger;
-    //         if (!e.site) {
-    //             console.warn(
-    //                 "error thrown from helios doesn't have source site info; rethrowing it"
-    //             );
-    //             throw e;
-    //         }
-    //         const moduleName2 = e.site.file; // moduleName? & filename ? :pray:
-    //         const errorModule = moduleInfo[moduleName2];
-    //         // const errorModule = [codeModule, ...modules].find(
-    //         //     (m) => (m as any).name == moduleName
-    //         // );
-
-    //         const {
-    //             project,
-    //             moduleName,
-    //             name: srcFilename = "‹unknown path to module›",
-    //             moreInfo,
-    //         } = errorModule || {};
-    //         let errorInfo: string = "";
-    //         try {
-    //             statSync(srcFilename).isFile();
-    //         } catch (e) {
-    //             const indent = " ".repeat(6);
-    //             errorInfo = project
-    //                 ? `\n${indent}Error found in project ${project}:${srcFilename}\n` +
-    //                   `${indent}- in module ${moduleName}:\n${moreInfo}\n` +
-    //                   `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
-    //                   `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
-    //                 : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
-    //                   `${indent}  ... this can be caused if your module definition doesn't include a correct path to your helios file\n` +
-    //                   `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFilename}"\n${indent})\n`;
-    //         }
-
-    //         const { startLine, startColumn } = e.site;
-    //         const t = new Error(errorInfo);
-    //         const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
-    //         const additionalErrors = (e.otherErrors || [])
-    //             .slice(1)
-    //             .map((oe) => `       |         ⚠️  also: ${
-    //                 // (oe.message as string).replace(e.site.file, "")}`);
-    //                 oe.site.file == e.site.file ?
-    //                     oe.site.toString().replace(e.site.file+":", "at ") + ": "+ oe.originalMessage
-    //                 : oe.site.toString()
-    //             }`);
-    //         const addlErrorText = additionalErrors.length
-    //             ? ["", ...additionalErrors, "       v"].join("\n")
-    //             : "";
-    //         t.message = `${e.kind}: ${this.constructor.name}: ${
-    //             e.originalMessage
-    //         }${addlErrorText
-    //         }\n${errorInfo}`;
-
-    //         t.stack =
-    //             `${this.constructor.name}: ${
-    //                 e.message
-    //             }\n    at ${moduleName2} (${srcFilename}:${1 + startLine}:${
-    //                 1 + startColumn
-    //             })\n` + modifiedStack;
-
-    //         throw t;
-    //     }
-    // }
 
     /**
      * Locates a UTxO locked in a validator contract address
@@ -2051,18 +1495,6 @@ export class StellarContract<
             extraErrorHint
         );
     }
-
-    // async hasMyUtxo(
-    //     semanticName: string,
-    //     predicate: utxoPredicate
-    // ): Promise<TxInput | undefined> {
-    //     const utxos = await this.network.getUtxos(this.address);
-
-    //     return this.utxoHelper.hasUtxo(semanticName, predicate, {
-    //         address: this.address,
-    //         utxos,
-    //     });
-    // }
 
     /**
      * Reuses an existing transaction context, or creates a new one with the given name and the current actor context

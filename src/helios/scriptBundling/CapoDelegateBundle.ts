@@ -10,7 +10,7 @@ import {
     type EmptyConstructor
 } from "../HeliosMetaTypes.js";
 import BasicDelegate from "../../delegation/BasicDelegate.hl";
-import type { configBaseWithRev, StellarBundleSetupUplc, stellarSubclass } from "../../StellarContract.js";
+import type { configBaseWithRev, StellarBundleSetupDetails, stellarSubclass } from "../../StellarContract.js";
 // .hl files are transpiled to helios Source (JS object) attributes.
 import type { capoDelegateConfig } from "../../delegation/RolesAndDelegates.js";
 // ?? any important need to export the transpiled source?
@@ -61,7 +61,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         //@ts-expect-error - same as above
         const newClass = class aCapoBoundBundle extends this {
             capoBundle = cb;
-            constructor(setupDetails: StellarBundleSetupUplc<any>=placeholderSetupDetails) {
+            constructor(setupDetails: StellarBundleSetupDetails<any>=placeholderSetupDetails) {
                 super(setupDetails);
             }
             isConcrete = true;
@@ -87,8 +87,8 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         return {
             rev: this.rev,
             delegateName: this.moduleName,
-            isMintDelegate: true,
-            isSpendDelegate: true,
+            isMintDelegate: false,
+            isSpendDelegate: false,
             isDgDataPolicy: false,
         }
     }

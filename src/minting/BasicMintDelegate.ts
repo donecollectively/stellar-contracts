@@ -14,7 +14,7 @@ import type { hasSeed, isActivity } from "../ActivityTypes.js";
  * shifts detailed minting policy out of the minter and into the delegate.
  * 
  * By default, this delegate policy serves also as a spend delegate.  To use a separate
- * spend delegate, define `get isMintAndSpendDelegate() { return false; }` in the subclass,
+ * spend delegate, define `static isMintAndSpendDelegate = false;` in the subclass,
  * define a separate ContractBasedDelegate subclass for the spend delegate, and
  * register it in the Capo contract's `delegateRoles.spendDelegate`.
  * 
@@ -22,15 +22,14 @@ import type { hasSeed, isActivity } from "../ActivityTypes.js";
  **/
 export class BasicMintDelegate extends ContractBasedDelegate {
     static currentRev = 1n;
+    static isMintDelegate = true;
     declare dataBridgeClass : GenericDelegateBridgeClass
 
     get delegateName() {
         return "mintDelegate";
     }
 
-    get isMintAndSpendDelegate() {
-        return true;
-    }
+    static isMintAndSpendDelegate = true
 
     /**
      * the scriptBundle for the BasicMintDelegate looks concrete,
@@ -54,7 +53,8 @@ export class BasicMintDelegate extends ContractBasedDelegate {
             ...super.defaultParams,
             delegateName: "mintDelegate",
             isMintDelegate: true,
-            isSpendDelegate: this.prototype.isMintAndSpendDelegate,
+            isDgDataPolicy: false,
+            isSpendDelegate: this.isMintAndSpendDelegate,
         };
     }
 

@@ -233,6 +233,7 @@ export {
  */
 export type DefaultCharterDatumArgs = CharterDataLike;
 export * from "./src/helios/index.js";
+export { DelegatedDataBundle } from "./src/helios/scriptBundling/DelegatedDataBundle.js";
 export { CapoDelegateBundle } from "./src/helios/scriptBundling/CapoDelegateBundle.js";
 export { HeliosScriptBundle } from "./src/helios/scriptBundling/HeliosScriptBundle.js";
 

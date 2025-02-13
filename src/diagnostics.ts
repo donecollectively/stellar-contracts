@@ -271,7 +271,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
 
     let details = "";
     if (!networkParams) {
-        debugger;
+        
         console.warn(
             new Error(`dumpAny: no networkParams; can't show txn size info!?!`)
         );

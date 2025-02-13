@@ -77,6 +77,7 @@ export function mkDelegateDeployment(
  */
 export type CapoDeployedDetails<form extends "json" | "native" = "native"> = {
     capo?: DeployedScriptDetails<CapoConfig, form>;
+    minter? : DeployedScriptDetails<BasicMinterParams, form>
     isNullDeployment?: boolean;
 };
 
@@ -181,4 +182,20 @@ export function parseCapoJSONConfig(rawJsonConfig: CapoConfigJSON | string) {
     );
 
     return outputConfig as CapoConfig;
+}
+/**
+ * parses details needed for a Capo minter to be instantiated
+ * @public
+ */
+export function parseCapoMinterJSONConfig(
+    rawJSONConfig: Pick<CapoConfigJSON, "seedTxn" | "seedIndex">
+) {
+    const { seedTxn, seedIndex } = rawJSONConfig;
+    if (!seedTxn) throw new Error("seedTxn is required");
+    if (!seedIndex) throw new Error("seedIndex is required");
+
+    return {
+        seedTxn: makeTxId(seedTxn.bytes),
+        seedIndex: BigInt(seedIndex),
+    };
 }

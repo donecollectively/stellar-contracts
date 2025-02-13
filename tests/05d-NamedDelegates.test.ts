@@ -111,7 +111,7 @@ export class TestNamedDelegate extends ContractBasedDelegate {
     get delegateName() { return "myNamedDgt" }
     dataBridgeClass = UnspecializedDelegateBridge
     scriptBundle() {
-        return new UnspecializedDgtBundle()
+        return UnspecializedDgtBundle.create()
     }
 }
 

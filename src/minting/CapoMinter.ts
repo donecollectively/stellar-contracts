@@ -65,11 +65,11 @@ export class CapoMinter
 {
     currentRev: bigint = 1n;
     scriptBundle() {
-        return new CapoMinterBundle()
-        // return new CapoMinterBundle({
-        //     setup: this.setup
-        // });
+        return CapoMinterBundle.create({
+            setup: this.setup
+        });
     }
+
     /**
      * the data bridge for this minter is fixed to one particular type
      */
@@ -89,34 +89,6 @@ export class CapoMinter
     get activity(): mustFindActivityType<CapoMinter> {
         const bridge = this.onchain;
         return bridge.activity as any;
-    }
-
-    // get mkDatum(): mustFindDatumType<Capo<any>> {
-    //     return this.onchain.datum;
-    // }
-
-    // mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
-    //     const { capo } = this.configIn || this.partialConfig || {};
-    //     if (!capo)
-    //         throw new Error(
-    //             `missing capo in config or partial-config for ${this.constructor.name}`
-    //         );
-
-    //     const capoBundle = capo.getBundle() as CapoHeliosBundle;
-    //     const t = new BundleClass(capoBundle);
-    //     return t
-    // }
-
-    getContractScriptParamsUplc(
-        config: BasicMinterParams
-    ): UplcRecord<configBaseWithRev & SeedTxnScriptParams> {
-        const { seedIndex, seedTxn, rev = this.currentRev } = config;
-        
-        return this.getBundle().paramsToUplc({
-            rev,
-            seedIndex,
-            seedTxn,
-        });
     }
 
     get scriptActivitiesName() {

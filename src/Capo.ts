@@ -12,6 +12,8 @@ import {
     makeTxOutput,
     type TxOutputDatum,
     makeDummyMintingPolicyHash,
+    type TxId,
+    type ScriptHash,
 } from "@helios-lang/ledger";
 import { blake2b } from "@helios-lang/crypto";
 
@@ -142,6 +144,7 @@ import type {
     CapoConfigJSON,
     DeployedScriptDetails,
 } from "./configuration/DeployedScriptConfigs.js";
+import type { DeployedProgramBundle } from "./helios/CachedHeliosProgram.js";
 
 /**
  * Base class for leader contracts, with predefined roles for cooperating/delegated policies
@@ -297,9 +300,6 @@ export abstract class Capo<
     //     Record<string, someDataWrapper<any>>
     // >;
 
-
-
-
     get scriptDatumName() {
         return "CapoDatum";
     }
@@ -312,37 +312,6 @@ export abstract class Capo<
             rev: this.currentRev,
         };
         return params;
-    }
-
-    /**
-     * extracts from the input configuration the key details needed to construct/reconstruct the on-chain contract address
-     * @remarks
-     *
-     * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script
-     * @public
-     **/
-    getContractScriptParamsUplc(
-        config: CapoConfig
-    ): UplcRecord<
-        configBaseWithRev & Pick<CapoConfig, "seedTxn" | "seedIndex" | "mph">
-    > {
-        if (
-            this.configIn &&
-            config.mph &&
-            this.minter &&
-            !config.mph.isEqual(this.mph)
-        )
-            throw new Error(`mph mismatch`);
-        const { mph } = config;
-        const rev = (this.constructor as typeof Capo).currentRev;
-        // console.log("this treasury uses mph", mph?.hex);
-
-        const params = {
-            mph,
-            rev,
-        }; //as configType;
-
-        return this.paramsToUplc(params) as any;
     }
 
     async init(args: StellarSetupDetails<CapoConfig>) {
@@ -373,26 +342,38 @@ export abstract class Capo<
                 `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
             );
 
-        if (this.configIn && !this.configIn.bootstrapping) {
-            const { seedTxn, seedIndex } = this.configIn;
-            await this.connectMintingScript({
-                seedTxn,
-                seedIndex,
-            });
+        
+        const bundle = this.getBundle();
+        let seedTxn: TxId | undefined = undefined;
+        let seedIndex: bigint = 0n;
+        const {
+            configuredParams,
+            preConfigured: { minter: { 
+                config: minterConfig, 
+                programBundle: minterProgramBundle,
+                scriptHash: mph
+            } = {} }
+        } = bundle;
+        
+        if (configuredParams) {
+            seedTxn = configuredParams.seedTxn;
+            seedIndex = configuredParams.seedIndex;
+        } else if (this.configIn && !this.configIn.bootstrapping) {
+            seedTxn = this.configIn.seedTxn;
+            seedIndex = this.configIn.seedIndex;
+        }
+        if (seedTxn) {
+            await this.connectMintingScript(
+                minterConfig,
+                minterProgramBundle,
+                mph
+            );
+        }
+        //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
+        this._delegateRoles = this.initDelegateRoles();
 
-            //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
-            this._delegateRoles = this.initDelegateRoles();
-
+        if (seedTxn) {
             await this.verifyConfigs();
-            // this._verifyingConfigs = this.verifyConfigs().then((r) => {
-            //     this._verifyingConfigs = undefined;
-            //     return r;
-            // });
-        } else {
-            //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
-            this._delegateRoles = this.initDelegateRoles();
-
-            // this.connectMintingScript(this.getMinterParams());
         }
 
         // //@ts-expect-error - trust the subclass's initDelegatedDatumAdapters() to be type-matchy
@@ -992,11 +973,15 @@ export abstract class Capo<
         // P = SC extends StellarContract<infer P> ? P : never
     >(
         TargetClass: stellarSubclass<SC>,
-        config: SC extends StellarContract<infer iCT> ? iCT : never
+        config: SC extends StellarContract<infer iCT> ? iCT : never,
+        programBundle?: DeployedProgramBundle,
+        scriptHash?: string
     ) {
         const args: StellarSetupDetails<ConfigFor<SC>> = {
             config,
             setup: this.setup,
+            programBundle,
+            scriptHash,
         };
 
         const strella = await TargetClass.createWith(args);
@@ -1004,26 +989,37 @@ export abstract class Capo<
     }
 
     async connectMintingScript(
-        params: SeedTxnScriptParams
+        params: SeedTxnScriptParams,
+        programBundle?: DeployedProgramBundle,
+        mph?: string
     ): Promise<CapoMinter> {
         if (this.minter)
             throw new Error(`just use this.minter when it's already present`);
         const { minterClass } = this;
         const { seedTxn, seedIndex } = params;
-        const { mph: expectedMph, rev } = this.configIn || {
-            mph: undefined,
-            ...(this.constructor as typeof Capo).defaultParams,
-        };
+        const { mph: expectedMph, rev } = this.getBundle().configuredParams ||
+            this.configIn || {
+                mph: undefined,
+                ...(this.constructor as typeof Capo).defaultParams,
+            };
 
+        if (mph && expectedMph && !expectedMph.isEqual(makeMintingPolicyHash(mph))) {
+            throw new Error(
+                `minting policy hash mismatch: expected ${expectedMph.toHex()}, got ${mph}`
+            );
+        }
         const config = {
             rev,
             seedTxn,
             seedIndex,
             capo: this,
         };
+
         const minter = await this.addStrellaWithConfig(
             minterClass,
-            config
+            config,
+            programBundle,
+            mph
         );
 
         if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
@@ -1350,7 +1346,6 @@ export abstract class Capo<
             ...impliedDelegationDetails,
             capo: this,
         } /*as unknown*/ as ConfigFor<StellarDelegate>;
-
 
         //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined =
@@ -2172,20 +2167,19 @@ export abstract class Capo<
 
         const { mintingPolicyHash: mph } = minter;
         if (!didHaveDryRun) {
-            const csp = //this.getContractScriptParamsUplc(
-                this.partialConfig as CapoConfig;
+            const csp = this.partialConfig
 
             const capoParams = {
                 ...csp,
                 mph,
                 seedTxn,
                 seedIndex,
-            }; // as configType;
+            } as CapoConfig
             // this.scriptProgram = this.loadProgramScript({ ...csp, mph });
-            const paramsUplc = this.contractParams = this.getContractScriptParamsUplc(capoParams);
+            const params = capoParams
 
             // this.scriptProgram = this.loadProgramScript();
-            await this.prepareBundleWithScriptParams(paramsUplc);
+            await this.prepareBundleWithScriptParams(params);
             capoParams.rootCapoScriptHash = makeValidatorHash(
                 this.compiledScript.hash()
             );
@@ -2614,7 +2608,7 @@ export abstract class Capo<
                 new Error(
                     `⚠️  missing refScript in Capo ${this.address.toString()} \n  ... for expected script hash ${bytesToHex(
                         expectedVh
-                    )}; adding script directly to txn`
+                    )}; \nADDING SCRIPT DIRECTLY TO TXN!`
                 ).stack?.replace(/^Error/, "")
             );
             // console.log("------------------- NO REF SCRIPT")
@@ -3939,7 +3933,10 @@ export abstract class Capo<
 
         const tcx2 = await this.minter.txnMintWithDelegateAuthorizing(
             tcx,
-            [...this.mkUutValuesEntries(tcx.state.uuts), ...additionalMintValues],
+            [
+                ...this.mkUutValuesEntries(tcx.state.uuts),
+                ...additionalMintValues,
+            ],
             mintDelegate,
             mintDelegateActivity,
             skipDelegateReturn

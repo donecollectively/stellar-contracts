@@ -65,9 +65,7 @@ export class ContractBasedDelegate extends StellarDelegate {
      * are used only in the context the Capo's main spend delegate, re-delegating to the data-controller which
      * can't use those generic activities, but instead implements its user-facing txns as variants of its SpendingActivities enum.
      */
-    get isSpendDelegate() {
-        return false;
-    }
+    static isSpendDelegate = false
 
     get delegateName(): string {
         throw new Error(
@@ -159,28 +157,28 @@ export class ContractBasedDelegate extends StellarDelegate {
         return "DelegateActivity";
     }
 
+    static isMintDelegate = false;
+    static isMintAndSpendDelegate = false;
+    static isDgDataPolicy = false;
+
     static get defaultParams() {
         const params = {
             rev: this.currentRev,
-            isSpendDelegate: this.prototype.isSpendDelegate,
+            isMintDelegate: this.isMintDelegate,
+            isSpendDelegate: this.isMintAndSpendDelegate,
+            isDgDataPolicy: this.isDgDataPolicy,
         };
         return params;
     }
     static mkDelegateWithArgs(a: capoDelegateConfig) {}
 
-    getContractScriptParamsUplc(config: capoDelegateConfig) {
-        // //@ts-expect-error - spurious "could be instantiated with an unrelated type"
-        // const params: CT = {
-        //     rev: config.rev,
-        //     delegateName: this.delegateName,
-        // };
-
+    getContractScriptParams(config: capoDelegateConfig) {
         const { capoAddr, mph, tn, capo, ...otherConfig } = config;
 
-        return this.paramsToUplc({
+        return {
             ...otherConfig,
             delegateName: this.delegateName,
-        });
+        }
         // console.log(`${this.constructor.name} config:`, otherConfig);
         // const namespace = this.scriptProgram!.name;
         // const {paramTypes} = this.scriptProgram!;

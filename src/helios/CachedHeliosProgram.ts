@@ -116,7 +116,7 @@ export class CachedHeliosProgram extends Program {
 
     sources: (Source | string)[];
     static id: string =
-        global?.id || Math.floor(Math.random() * 1000).toString();
+        globalThis?.id || Math.floor(Math.random() * 1000).toString();
     id: string;
 
     /**
@@ -515,7 +515,7 @@ export class CachedHeliosProgram extends Program {
         } catch (e: any) {
             debugger;
             console.log(
-                `🐢${this.id}: compiler cache: throwing compile error: ${e.message} (not caching)`
+                `🐢${this.id}: compiler cache: throwing compile error: ${e.message} (not caching) (dbpa)`
             );
             this.releaseLock(cacheKey);
             throw e;
@@ -737,7 +737,7 @@ export function serializeCacheEntry(
 }
 
 export function programFromCacheEntry(
-    fromCache: SerializedHeliosCacheEntry
+    fromCache: DeployedProgramBundle | SerializedHeliosCacheEntry
 ): UplcProgramV2 {
     //  | UplcProgramV3 {
     // the program is a hex-string, accepted by both UplcProgramV2 and UplcProgramV3
@@ -749,8 +749,8 @@ export function programFromCacheEntry(
         version,
         optimizedSmap,
         unoptimizedSmap,
-        optimizeOptions,
-        createdBy,
+        // optimizeOptions,
+        // createdBy,
         programElements
     } = fromCache;
     if (version !== "PlutusV2") throw new Error(`pv3supportpending`);

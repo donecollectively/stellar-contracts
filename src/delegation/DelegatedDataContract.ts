@@ -86,6 +86,9 @@ export abstract class DelegatedDataContract<
     T extends AnyDataTemplate<any, any>,
     TLike extends AnyDataTemplate<any, any>
 > extends ContractBasedDelegate {
+    static isDgDataPolicy = true;
+    static isMintDelegate = false;
+    
     usesWrappedData?: boolean;
     dgDatumHelper = this.dataBridgeClass?.prototype.DelegateDatum;
 

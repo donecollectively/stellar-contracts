@@ -1,5 +1,5 @@
-import { CapoHeliosBundle } from "../../src/CapoHeliosBundle";
-import { CapoDelegateBundle } from "../../src/delegation/CapoDelegateBundle";
+import { CapoHeliosBundle } from "../../src/helios/scriptBundling/CapoHeliosBundle";
+import { CapoDelegateBundle } from "../../src/helios/scriptBundling/CapoDelegateBundle";
 import BadSettingsPolicy from "./BadSettingsPolicy.hl";
 import BadProtocolSettings from "./TestBadSettings.hl";
 

@@ -25,9 +25,9 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     }
 
     usesContractScript = false as const;
-    getContractScriptParamsUplc() {
+    getContractScriptParams() {
         return {
-            rev: makeIntData(0),
+            rev: 0n,
         };
     }
 

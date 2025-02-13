@@ -12,12 +12,14 @@ import CapoHelpers from "../../CapoHelpers.hl";
 import TypeMapMetadata from "../../TypeMapMetadata.hl";
 import mainContract from "../../DefaultCapo.hl";
 
-import type {
-    AllDeployedScriptConfigs,
-    CapoDeployedDetails,
-    DeployedScriptDetails,
+import {
+    parseCapoJSONConfig,
+    parseCapoMinterJSONConfig,
+    type AllDeployedScriptConfigs,
+    type CapoDeployedDetails,
+    type DeployedScriptDetails,
 } from "../../configuration/DeployedScriptConfigs.js";
-import type { StellarBundleSetupUplc } from "../../StellarContract.js";
+import type { StellarBundleSetupDetails } from "../../StellarContract.js";
 import type { AbstractNew } from "../typeUtils.js";
 
 export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
@@ -35,42 +37,56 @@ export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
  */
 export class CapoHeliosBundle extends HeliosScriptBundle {
     configuredScriptDetails?: DeployedScriptDetails;
-
+    static isPreconfigured = false;
+    preConfigured: CapoDeployedDetails<any> = {capo: undefined};
 
     get hasAnyVariant() {
         if (this.preConfigured?.capo?.config) return true;
-        if (this.configuredParams) return true;
+        if (this.configuredUplcParams) return true;
+
         return false
     }
 
-    init(setupDetails: StellarBundleSetupUplc<any>) {
-        super.init(setupDetails);
-        // only for Capo bundles, yes?
-        this.configuredScriptDetails = setupDetails?.deployedDetails;
+    parseCapoJSONConfig(config: any) {
+        return parseCapoJSONConfig(config);
+    }
 
-        const deployedDetails = ( this.preConfigured?.capo ?? 
-            this.configuredScriptDetails )
-            
-        const hasParams = deployedDetails?.config ??
-            setupDetails.params
+    parseCapoMinterJSONConfig(config: any) {
+        return parseCapoMinterJSONConfig(config);
+    }
+
+    init(setupDetails: StellarBundleSetupDetails<any>) {
+        let deployedDetails : DeployedScriptDetails | undefined;
+        
+        if (this.preConfigured.capo) {
+            this.configuredScriptDetails = deployedDetails = this.preConfigured.capo
+            const {
+                config, programBundle, scriptHash
+            } = deployedDetails;
+            if (!programBundle) throw new Error(`${this.constructor.name} missing deployedDetails.programBundle`);
+            if (!scriptHash) throw new Error(`${this.constructor.name}: missing deployedDetails.scriptHash`);
+
+            this.preCompiled = { singleton: { scriptHash, programBundle, config } };
+        } else if (setupDetails.deployedDetails) {
+            this.configuredScriptDetails = deployedDetails = setupDetails.deployedDetails
+        } else if (!this.configuredScriptDetails) {
+            console.warn(`no script details configured for ${this.constructor.name} (dbpa)`)
+        }
+
+        const hasParams = deployedDetails?.config || setupDetails.params
+        const uplcParams = hasParams ? this.paramsToUplc(hasParams) : undefined
 
         if (hasParams) {
-            //??? any need to check whether the params need Uplc conversion?
-            //    this.paramsToUplc(hasParams)
             this.configuredParams = hasParams
+            this.configuredUplcParams = uplcParams
         }
-        if (setupDetails.params && !this.preConfigured.isNullDeployment) {
-            // anything needed here?
-        }        
+        this._didInit = true;
     }
 
     get isPrecompiled() {
         return !!this.preConfigured?.capo?.programBundle;
     }
 
-    preConfigured: CapoDeployedDetails<"json"> =
-        // | ((...args: any[]) => CapoDeployedDetails<any>)
-        { capo: undefined };
 
     getPreCompiledBundle(variant: string) {
         if (variant !== "singleton") {
@@ -97,9 +113,9 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     }
 
     get params() {
-        throw new Error(`used where?`)
+        
         if (this.configuredParams) {
-
+            return this.configuredParams
         }
     }
 

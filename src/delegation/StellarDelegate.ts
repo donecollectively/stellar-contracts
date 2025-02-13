@@ -26,7 +26,9 @@ import { mkTv } from "../utils.js";
 export abstract class StellarDelegate extends StellarContract<capoDelegateConfig> {
     static currentRev = 1n;
     static get defaultParams() {
-        return { rev: this.currentRev };
+        return { 
+            rev: this.currentRev
+         };
     }
     // not required except for Contract-based delegates.  A subclass can represent a delegation
     // relationship without an on-chain contract, resulting in there being no relevant data-bridge.

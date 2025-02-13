@@ -16,7 +16,7 @@ import type {
     configBaseWithRev,
     SetupInfo,
     SetupOrMainnetSignalForBundle,
-    StellarBundleSetupUplc,
+    StellarBundleSetupDetails,
     UplcRecord,
 } from "../../StellarContract.js";
 import type { anyUplcProgram } from "../../HeliosPromotedTypes.js";
@@ -36,6 +36,7 @@ import type {
 } from "../../configuration/DeployedScriptConfigs.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { makeCast } from "@helios-lang/contract-utils";
+import { uplcDataSerializer } from "../../delegation/jsonSerializers.js";
 
 /**
  * @internal
@@ -55,8 +56,8 @@ export const placeholderSetupDetails = {
 /**
  * Base class for any Helios script bundle
  * @remarks
- * See also {@link CapoHeliosBundle} and {@link CapoDelegateBundle} for
- * specialized bundle types
+ * See also {@link CapoHeliosBundle} and {@link CapoDelegateBundle}
+ * and {@link DelegatedDataBundle} for specialized bundle types
  * @public
  */
 export abstract class HeliosScriptBundle {
@@ -72,7 +73,7 @@ export abstract class HeliosScriptBundle {
      * set to true if the bundle depends on having a deployed capo's configuration details
      * @public
      */
-    static needsCapoConfiguration = false
+    static needsCapoConfiguration = false;
 
     /**
      * an opt-in indicator of abstractness
@@ -112,7 +113,7 @@ export abstract class HeliosScriptBundle {
         const newClass = class aCapoBoundBundle extends HeliosScriptBundle {
             capoBundle = cb;
             constructor(
-                setupDetails: StellarBundleSetupUplc<any> = placeholderSetupDetails
+                setupDetails: StellarBundleSetupDetails<any> = placeholderSetupDetails
             ) {
                 super(setupDetails);
             }
@@ -125,7 +126,7 @@ export abstract class HeliosScriptBundle {
 
     static create<THIS extends typeof HeliosScriptBundle>(
         this: THIS,
-        setupDetails: StellarBundleSetupUplc<any> = placeholderSetupDetails
+        setupDetails: StellarBundleSetupDetails<any> = placeholderSetupDetails
     ) {
         //@ts-expect-error creating instance of abstract class
         const created = new this(setupDetails);
@@ -153,23 +154,23 @@ export abstract class HeliosScriptBundle {
      * type for the redeemer; the type-bridge & type-gen system will use this data type
      * instead of inferring the type from the entry point.
      */
-    redeemerTypeName?: string;
-    isMainnet?: boolean;
-    _program?: HeliosProgramWithCacheAPI;
+    redeemerTypeName: string = "";
+    isMainnet: boolean;
+    _program: HeliosProgramWithCacheAPI | undefined = undefined;
     _progIsPrecompiled = false;
     setup: SetupOrMainnetSignalForBundle;
-    configuredParams?: UplcRecord<any>;
+    configuredUplcParams: UplcRecord<any> | undefined = undefined;
+    configuredParams: any | undefined = undefined;
     preCompiled?: {
         [variant: string]: RequiredDeployedScriptDetails<any, "json">;
     };
     alreadyCompiledScript: anyUplcProgram | undefined;
 
     constructor(
-        setupDetails: StellarBundleSetupUplc<any> = placeholderSetupDetails
+        setupDetails: StellarBundleSetupDetails<any> = placeholderSetupDetails
     ) {
         // this.devReloadModules()
         // if (setupDetails) debugger;
-        this._program = undefined;
         this.setup = setupDetails.setup;
         this.isMainnet = this.setup.isMainnet;
 
@@ -184,22 +185,80 @@ export abstract class HeliosScriptBundle {
     get hasAnyVariant() {
         return true;
     }
+    _didInit = false;
+    debug = false;
+    init(setupDetails: StellarBundleSetupDetails<any>) {
+        if (this.debug) debugger;
 
-    init(setupDetails: StellarBundleSetupUplc<any>) {
-        if (setupDetails?.params) {
-            if (this.preCompiled) {
-                debugger;
+        const { deployedDetails } = setupDetails;
+        if (deployedDetails) {
+            const { config, programBundle, scriptHash } = deployedDetails;
+
+            if (!programBundle)
                 throw new Error(
-                    `??? disallow params to pre-compiled bundle??? (dbpa)`
+                    `${this.constructor.name} missing deployedDetails.programBundle`
                 );
+            if (!scriptHash)
+                throw new Error(
+                    `${this.constructor.name}: missing deployedDetails.scriptHash`
+                );
+            // debugger; // do we need to cross-check config <=> params ?
+            this.configuredParams = config;
+            this.configuredUplcParams = this.paramsToUplc(config);
+            this.preCompiled = {
+                singleton: { scriptHash, programBundle, config },
+            };
+        } else if (setupDetails?.params) {
+            if (this.preCompiled) {
+                const preConfig = this.preCompiled.singleton.config;
+                preConfig.rev = BigInt(preConfig.rev);
+                const uplcPreConfig = this.paramsToUplc(preConfig);
+                const { params } = setupDetails;
+                const uplcRuntimeConfig = this.paramsToUplc(params);
+                let didFindProblem: string = "";
+                for (const k of Object.keys(uplcPreConfig)) {
+                    const runtime = uplcRuntimeConfig[k];
+                    const pre = uplcPreConfig[k];
+                    if (!runtime.isEqual(pre)) {
+                        if (!didFindProblem) {
+                            console.warn(
+                                `${this.constructor.name}: config mismatch between pre-config and runtime-config`
+                            );
+                            didFindProblem = k;
+                        }
+                        debugger;
+                        console.warn(
+                            `• ${k}:  pre-config: `,
+                            preConfig[k] || (pre.rawData ?? pre),
+                            ` at runtime:`,
+                            params[k] || (runtime.rawData ?? runtime)
+                        );
+                    }
+                }
+                if (didFindProblem) {
+                    throw new Error(
+                        `runtime-config conflicted with pre-config (see logged details) at key ${didFindProblem}`
+                    );
+                }
             }
-            this.configuredParams = setupDetails?.params;
+            this.configuredParams = setupDetails.params;
+            this.configuredUplcParams = this.paramsToUplc(setupDetails.params);
+        } else if (this.configuredParams) {
+            debugger;
+            throw new Error(
+                `where is configuredParameters used without deployedDetails? (dbpa)`
+            );
         } else {
             // temp singleton
             const selectedVariant = "singleton";
             this.configuredParams =
-                this.getPreconfiguredUplcParams(selectedVariant);
+                this.getPreconfiguredVariantParams(selectedVariant);
+            if (this.configuredParams) {
+                this.configuredUplcParams =
+                    this.getPreconfiguredUplcParams(selectedVariant);
+            }
         }
+        this._didInit = true;
     }
 
     get isPrecompiled() {
@@ -215,16 +274,20 @@ export abstract class HeliosScriptBundle {
         }
         return foundVariant.programBundle;
     }
+    getPreconfiguredVariantParams(variantName: string) {
+        const p = this.variants?.[variantName] || this.params;
+        return p;
+    }
 
     getPreconfiguredUplcParams(
         variantName: string
     ): UplcRecord<any> | undefined {
-        const p = this.variants?.[variantName] || this.params;
+        const p = this.getPreconfiguredVariantParams(variantName);
         if (!p) return undefined;
         return this.paramsToUplc(p);
     }
 
-    withSetupDetails(details: StellarBundleSetupUplc<any>): this {
+    withSetupDetails(details: StellarBundleSetupDetails<any>): this {
         if (details.setup.isPlaceholder) {
             debugger;
             throw new Error(
@@ -443,7 +506,7 @@ export abstract class HeliosScriptBundle {
                 `variants not defined for ${this.constructor.name}`
             );
         }
-        const foundVariant = this.variants[vn];
+        const foundVariant = this.variants[vn] ?? this.preCompiled?.[vn];
         if (!foundVariant) {
             throw new Error(
                 `${this.constructor.name}: variant ${vn} not found in variants()`
@@ -462,7 +525,7 @@ export abstract class HeliosScriptBundle {
      * params (in tests or during a first deployment of a Capo)
      */
     async compiledScript(): Promise<anyUplcProgram> {
-        const { configuredParams: params, setup, program } = this;
+        const { configuredUplcParams: params, setup, program } = this;
         if (!params || !setup) {
             debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
             // theoretically only here for type-narrowing
@@ -471,28 +534,22 @@ export abstract class HeliosScriptBundle {
             );
         }
         if (this.isPrecompiled) {
-            let selectedVariant = "singleton";
-            if (this.variants) {
-                const variant = this._selectedVariant;
-                if (!variant) {
-                    throw new Error(
-                        `${this.constructor.name}: variant not selected with withVariant(variantName)`
-                    );
-                }
-                selectedVariant = variant;
+            const { singleton } = this.preCompiled!;
+            if (singleton && !this._selectedVariant) {
+                this.withVariant("singleton");
             }
-            const bundleForVariant = this.getPreCompiledBundle[selectedVariant];
+            const bundleForVariant = this.preCompiled?.[this._selectedVariant!];
             if (!bundleForVariant) {
                 throw new Error(
-                    `${this.constructor.name}: variant ${selectedVariant} not found in preCompiled`
+                    `${this.constructor.name}: variant ${this._selectedVariant} not found in preCompiled`
                 );
             }
             if (bundleForVariant) {
-                return programFromCacheEntry(bundleForVariant);
+                return programFromCacheEntry(bundleForVariant.programBundle);
             }
         }
         console.warn(
-            `${this.constructor.name}: compiling helios script.  This could take 30s or so... `
+            `${this.constructor.name}: compiling helios script.  This could take 30s or more... `
         );
 
         // falls back to actually compiling the program.
@@ -503,14 +560,23 @@ export abstract class HeliosScriptBundle {
         // side should be rare (from .hlb's params() or variants())
         // or only used in special cases of capo deployment (with its configuredScriptDetails)
         const t = new Date().getTime();
+        const rawValues: Record<string, any> = {};
         for (const [p, v] of Object.entries(params)) {
             program.changeParam(p, v);
+            rawValues[p] = v.rawData;
         }
 
         const net = this.isMainnet ? "mainnet" : "testnet";
-        console.log(
-            `(${net}) ${this.moduleName} with params:`,
-            program.entryPoint.paramsDetails()
+        console.log( 
+            `(${net}) ${this.moduleName} with params:\n`,
+            Object.fromEntries(
+                Object.entries(program.entryPoint.paramsDetails()).map(
+                    ([k, uplcVal]) => [
+                        k,
+                        [uplcVal, rawValues[k]?.toString()].flat(),
+                    ]
+                )
+            )
         );
 
         const uplcProgram = await program.compileWithCache({
@@ -653,7 +719,7 @@ export abstract class HeliosScriptBundle {
             console.log(
                 `📦 ${mName}: loaded & parsed ${
                     this.isPrecompiled ? "with" : "without"
-                } pre-compiled program: ${Date.now() - ts1}ms`,
+                } pre-compiled program: ${Date.now() - ts1}ms`
                 // new Error(`stack`).stack
             );
             return p;
@@ -664,7 +730,7 @@ export abstract class HeliosScriptBundle {
                 throw new Error(
                     e.message +
                         `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})` +
-                        "\n   ... can be missing a getContractScriptParamsUplc() method " +
+                        "\n   ... can be missing a getContractScriptParams() method " +
                         "\n   ... to map from the configured settings to contract parameters"
                 );
             }
