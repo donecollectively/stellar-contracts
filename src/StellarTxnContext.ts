@@ -1038,17 +1038,19 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 logger.flush();
                 const ctxCbor = scriptContext?.toCbor();
                 const cborHex = ctxCbor ? bytesToHex(ctxCbor) : "";
-                console.log(
-                    cborHex
-                        ? "------------------- failed ScriptContext as cbor-hex -------------------\n" +
-                              cborHex +
-                              "\n"
-                        : "",
-                    "------------------- failed tx as cbor-hex -------------------\n" +
-                        bytesToHex(tx.toCbor()),
-                    "\n------------------^ failed tx details ^------------------\n" +
-                        "(debugging breakpoint available)"
-                );
+                if (!expectError) {
+                    console.log(
+                        cborHex
+                            ? "------------------- failed ScriptContext as cbor-hex -------------------\n" +
+                                  cborHex +
+                                  "\n"
+                            : "",
+                        "------------------- failed tx as cbor-hex -------------------\n" +
+                            bytesToHex(tx.toCbor()),
+                        "\n------------------^ failed tx details ^------------------\n" +
+                            "(debugging breakpoint available)"
+                    );
+                }
             }
 
             return {
@@ -1340,14 +1342,16 @@ export class StellarTxnContext<S extends anyState = anyState> {
             const asHex = bytesToHex(tx.toCbor());
             const t2 = decodeTx(asHex);
             debugger;
-            console.warn(
-                "------------------- failed tx as cbor-hex -------------------\n" +
-                    asHex,
-                "\n------------------^ failed tx details ^------------------\n" +
-                    // note, the debugging breakpoint mentioned is actually one or more of
-                    // multiple breakpoints above.
-                    "(debugging breakpoint available)"
-            );
+            if (!expectError) {
+                console.warn(
+                    "------------------- failed tx as cbor-hex -------------------\n" +
+                        asHex,
+                    "\n------------------^ failed tx details ^------------------\n" +
+                        // note, the debugging breakpoint mentioned is actually one or more of
+                        // multiple breakpoints above.
+                        "(debugging breakpoint available)"
+                );
+            }
         }
 
         onSubmitted?.(
@@ -1518,7 +1522,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const { addlTxns } = this.state;
         if (!addlTxns) return;
 
-        
         // return this.submitTxns(Object.values(addlTxns), callback);
         return this.submitTxnChain({
             ...pipelineOptions,
