@@ -397,7 +397,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         if ("firstValidSlot" == x || "lastValidSlot" == x) {
             if (networkParamsHelper) {
                 const slotTime = new Date(networkParamsHelper.slotToTime(item));
-                const timeDiff = ( Date.now() - slotTime.getTime()) / 1000;
+                const timeDiff = ( slotTime.getTime() - Date.now()) / 1000;
                 // format timeDiff with explicit plus or minus sign:
                 const sign = timeDiff > 0 ? "+" : "-";
                 const timeDiffString = sign + Math.abs(timeDiff).toFixed(1) + "s";

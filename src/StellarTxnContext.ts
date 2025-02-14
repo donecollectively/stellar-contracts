@@ -331,13 +331,15 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     isFacade: true | false | undefined;
-    facade(this: StellarTxnContext): this & { isFacade: true } {
+    facade(this: StellarTxnContext): hasAddlTxns<this> & { isFacade: true } {
         if (this.isFacade === false)
             throw new Error(`this tcx already has txn material`);
         if (this.parentTcx)
             throw new Error(`no parentTcx allowed for tcx facade`);
 
-        this.isFacade = true;
+        const t : hasAddlTxns<this> = this as any;
+        t.state.addlTxns = t.state.addlTxns || {};
+        t.isFacade = true;
         return this as any;
     }
     noFacade(situation: string) {
@@ -399,6 +401,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
             [txnName]: txInfo,
         };
         return thisWithMoreType;
+    }
+
+    /**
+     * @public
+     */
+    get addlTxns() : Record<string, TxDescription<any, "buildLater!">> {
+        //@ts-expect-error
+        return this.state.addlTxns || {};
     }
 
     mintTokens(...args: MintTokensParams): StellarTxnContext<S> {

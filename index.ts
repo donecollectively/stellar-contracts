@@ -48,7 +48,13 @@ export {
     dumpAny,
     betterJsonSerializer,
 } from "./src/diagnostics.js";
-export {uplcDataSerializer} from "./src/delegation/jsonSerializers.js";
+
+export {
+    uplcDataSerializer,
+    abbrevAddress,
+    abbreviatedDetail,
+    abbreviatedDetailBytes,    
+} from "./src/delegation/jsonSerializers.js";
 
 export { UutName } from "./src/delegation/UutName.js";
 export {
@@ -225,7 +231,6 @@ export {
     CapoMinter,
     type BasicMinterParams,
 } from "./src/minting/CapoMinter.js";
-
 
 /**
  * @deprecated - use CharterDataLike instead

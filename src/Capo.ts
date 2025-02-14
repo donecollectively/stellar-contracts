@@ -342,19 +342,20 @@ export abstract class Capo<
                 `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
             );
 
-        
         const bundle = this.getBundle();
         let seedTxn: TxId | undefined = undefined;
         let seedIndex: bigint = 0n;
         const {
             configuredParams,
-            preConfigured: { minter: { 
-                config: minterConfig, 
-                programBundle: minterProgramBundle,
-                scriptHash: mph
-            } = {} }
+            preConfigured: {
+                minter: {
+                    config: minterConfig,
+                    programBundle: minterProgramBundle,
+                    scriptHash: mph,
+                } = {},
+            },
         } = bundle;
-        
+
         if (configuredParams) {
             seedTxn = configuredParams.seedTxn;
             seedIndex = configuredParams.seedIndex;
@@ -407,10 +408,13 @@ export abstract class Capo<
      *
      * @public
      **/
-    async mkAdditionalTxnsForCharter(
-        tcx: StellarTxnContext<charterDataState>
-    ): Promise<StellarTxnContext<charterDataState>> {
-        return tcx;
+    async mkAdditionalTxnsForCharter<
+        TCX extends StellarTxnContext<charterDataState>
+    >(tcx: TCX): Promise<hasAddlTxns<TCX>> {
+        //@ts-expect-error
+        if (!tcx.state.addlTxns) tcx.state.addlTxns = [];
+
+        return tcx as any;
     }
 
     // async readSettingsDatum<THIS extends Capo<any>>(
@@ -1003,7 +1007,11 @@ export abstract class Capo<
                 ...(this.constructor as typeof Capo).defaultParams,
             };
 
-        if (mph && expectedMph && !expectedMph.isEqual(makeMintingPolicyHash(mph))) {
+        if (
+            mph &&
+            expectedMph &&
+            !expectedMph.isEqual(makeMintingPolicyHash(mph))
+        ) {
             throw new Error(
                 `minting policy hash mismatch: expected ${expectedMph.toHex()}, got ${mph}`
             );
@@ -2167,16 +2175,16 @@ export abstract class Capo<
 
         const { mintingPolicyHash: mph } = minter;
         if (!didHaveDryRun) {
-            const csp = this.partialConfig
+            const csp = this.partialConfig;
 
             const capoParams = {
                 ...csp,
                 mph,
                 seedTxn,
                 seedIndex,
-            } as CapoConfig
+            } as CapoConfig;
             // this.scriptProgram = this.loadProgramScript({ ...csp, mph });
-            const params = capoParams
+            const params = capoParams;
 
             // this.scriptProgram = this.loadProgramScript();
             await this.prepareBundleWithScriptParams(params);
@@ -2328,6 +2336,24 @@ export abstract class Capo<
         return tcxWithCharterMint as unknown as TCX3 &
             typeof tcx3a &
             Awaited<typeof tcxWithCharterMint>;
+    }
+
+    async mkTxnUpgradeIfNeeded(this: SELF) {
+        const tcx = await this.tcxWithCharterData(
+            this.mkTcx("upgrade if needed").facade()
+        );
+        const tcx2 = await this.bootstrapSettings(tcx);
+        return this.mkAdditionalTxnsForCharter(tcx2);
+    }
+
+    async tcxWithCharterData<TCX extends StellarTxnContext>(
+        this: SELF,
+        tcx: TCX
+    ): Promise<TCX & StellarTxnContext<charterDataState>> {
+        const ch = await this.findCharterData();
+        const tcx2: TCX & StellarTxnContext<charterDataState> = tcx as any;
+        tcx2.state.charterData = ch;
+        return tcx2;
     }
 
     async bootstrapSettings(tcx: StellarTxnContext<charterDataState>) {

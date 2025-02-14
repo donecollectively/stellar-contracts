@@ -17,6 +17,7 @@ import type {
     capoDelegateConfig,
     minimalDelegateConfig,
 } from "../delegation/RolesAndDelegates.js";
+import type { BasicMinterParams } from "../minting/CapoMinter.js";
 
 /**
  * type-safe factory function for creating a registry of scripts with their
