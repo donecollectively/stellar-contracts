@@ -1952,11 +1952,12 @@ export abstract class Capo<
         charterData?: CharterData
     ): Promise<BasicMintDelegate> {
         if (!this.configIn) {
-            throw new Error(`what now?`);
+            // throw new Error(`what now?`);
         }
         //!!! needs to work also during bootstrapping.
         const chD = charterData || (await this.findCharterData());
 
+        
         return this.connectDelegateWithOnchainRDLink<
             "mintDelegate",
             BasicMintDelegate
@@ -2364,22 +2365,22 @@ export abstract class Capo<
             return tcx;
         } else {
             tcx.includeAddlTxn("create settings delegate", {
-                description: `creates the settings policy`,
+                description: `create settings-policy dgt`,
                 optional: false,
                 mkTcx: () =>
                     this.mkTxnInstallingPolicyDelegate("settings", "set"),
             });
 
             tcx.includeAddlTxn(`commitSettings`, {
-                description: `commits settingsPolicy`,
+                description: `commit settings-policy`,
                 moreInfo: "makes the on-chain Settings policy active",
                 optional: false,
                 mkTcx: () => this.mkTxnCommittingPendingChanges(),
             });
 
             tcx.includeAddlTxn(`createSettingsRecord`, {
-                description: `creates the initial settings record`,
-                moreInfo: "needed to  configure other contract scripts",
+                description: `creates initial settings`,
+                moreInfo: "needed to configure other contract scripts",
                 optional: false,
                 mkTcx: async () => {
                     // console.log({ initialSettings });
@@ -2425,7 +2426,7 @@ export abstract class Capo<
             });
 
             tcx.includeAddlTxn(`addCurrentSettings`, {
-                description: `adds the current settings record to the Capo manifest`,
+                description: `register settings in Capo manifest`,
                 moreInfo: "provides settings to all the Capo scripts",
                 optional: false,
                 mkTcx: async () => {
@@ -2673,7 +2674,7 @@ export abstract class Capo<
         tcx: TCX = this.mkTcx() as TCX
     ): Promise<StellarTxnContext> {
         console.log(
-            "update charter" + uplcDataSerializer("activity", activity)
+            "update charter: " + uplcDataSerializer("activity", activity)
         );
         return this.txnUpdateCharterUtxo(tcx, activity, args);
     }
