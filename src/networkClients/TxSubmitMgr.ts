@@ -2,7 +2,7 @@ import { makeTxOutputId, type Tx, type TxId } from "@helios-lang/ledger";
 import type { CardanoTxSubmitter } from "@helios-lang/tx-utils";
 import {
     mkCancellablePromise,
-    type CancellablePromise,
+    type WrappedPromise,
 } from "./mkCancellablePromise.js";
 
 /**
@@ -44,6 +44,14 @@ const halfSlot = 10 * 1000; // half of avg slot-time 20s
 
 type SubmissionDetails = {
     name: string;
+    description: string;
+    /**
+     * the txd id (created before the tcx or tx may exist)
+     */
+    id: string;
+    /**
+     * the stringified transaction id (available after the tx is built)
+     */
     txId: string;
     tx: Tx;
     submitter: CardanoTxSubmitter;
@@ -56,7 +64,7 @@ type SubmissionDetails = {
 export class TxSubmitMgr {
     settings: SubmissionDetails;
     state: SubmitManagerState;
-    pending: (CancellablePromise<any> & { activity: string }) | undefined;
+    pending: (WrappedPromise<any> & { activity: string }) | undefined;
     constructor(settings: SubmissionDetails) {
         this.settings = settings;
         this.pending = undefined;
@@ -66,9 +74,22 @@ export class TxSubmitMgr {
         this.state = this.resetState();
     }
 
+    get txDescription() {
+        return this.settings.description;
+    }
     get name() {
         return this.settings.name;
     }
+    
+    /**
+     * the locally-unique id-ish label of the tx description
+     * @remarks
+     * see {@link txId} for the actual txId available after the tx is built
+     */
+    get id() {
+        return this.settings.id;
+    }
+
     get txId() {
         return this.settings.txId;
     }
@@ -158,8 +179,10 @@ export class TxSubmitMgr {
         this.state.pendingActivity = activityName;
         this.wasUpdated()
         return pending.promise.catch((e) => {
-            if (e.message == "timeout") return undefined;
-            if (e.message == "cancelled") return undefined;
+            if (e.message == "timeout" || e.message == "cancelled") {
+                this.pending = undefined;
+                return undefined;
+            }
             throw e;
         });
     }

@@ -343,7 +343,6 @@ export function heliosRollupBundler(
                                                 `Capo bundle: no deploy config for ${networkId}: ${SomeBundleClass.name}`
                                             );
 
-                                            //@ts-expect-error - we didn't expose the reject function yet
                                             state.project.configuredCapo.reject(
                                                 new Error(
                                                     "no deployment config"
@@ -868,7 +867,6 @@ export function heliosRollupBundler(
             } = await minterBundler.getSerializedProgramBundle();
             const { scriptHash, programBundle } =
                 await hlBundler.getSerializedProgramBundle();
-            //@ts-expect-error
             state.project.configuredCapo.resolve(hlBundler);
 
             const { capo: { config }} = deployDetails;

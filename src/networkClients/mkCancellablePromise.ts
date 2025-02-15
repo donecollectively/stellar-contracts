@@ -29,12 +29,14 @@ type MCP_options = wrapOnly | hasTimeout | wrapWithTimeout
 /**
  * @public
  */
-export type CancellablePromise<T> = {
+export type WrappedPromise<T> = {
     promise: Promise<T>;
     cancel: () => void;
+    status: "pending" | "fulfilled" | "rejected" | "cancelled" | "timeout",
 }
-type GenericResolvable<T> = {
+export type ResolveablePromise<T> = {
     promise: Promise<T>;
+    status: "pending" | "fulfilled" | "rejected" | "cancelled" | "timeout",
     resolve: (value?: T) => void;
     reject: (reason?: Error) => void;
     cancel: () => void;
@@ -45,7 +47,7 @@ type GenericResolvable<T> = {
  */
 export function mkCancellablePromise<T>(
     options?: MCP_options,
-) : CancellablePromise<T> | GenericResolvable<T> {
+) : MCP_options extends hasWrap ? WrappedPromise<T> : ResolveablePromise<T> {
     const { 
         wrap: wrapped ,
         timeout, 
@@ -56,39 +58,55 @@ export function mkCancellablePromise<T>(
     const signal = controller.signal;
 
     const { promise, resolve, reject } = Promise.withResolvers();
+    const cancel = () => {
+        reject(new Error("cancelled"))
+        controller.abort;
+    }
+    const wrappedResolve = (x) => {
+        resolve(x)
+        cpObj.status = "fulfilled"
+    }
+    const wrappedReject = (e) => {
+        cpObj.status="rejected"
+        reject(e)
+    }
+    const cpObj = { 
+        promise: promise as any,
+        status: "pending",
+        resolve: wrappedResolve, 
+        reject: wrappedReject,
+        cancel 
+    }
+
     let timeoutId: TimeoutId | undefined = timeout ? setTimeout(() => {
         controller.abort();
+        cpObj.status = "timeout"
         onTimeout?.();
         reject(new Error("timeout"));
     }) : undefined;
+
     signal.addEventListener('abort', () => {
         clearTimeout(timeoutId);
+        cpObj.status = "cancelled"
         timeoutId = undefined;
         console.log("cancelling activity by external signal")
         reject(new Error("cancelled"))
     });
 
-    const cancel = () => {
-        reject(new Error("cancelled"))
-        controller.abort;
-    }
     promise.then(() => {
         if (timeoutId) clearTimeout(timeoutId);
+        cpObj.status = "fulfilled"
         timeoutId = undefined
     });
 
     if (wrapped) {
-        wrapped.then(resolve, reject);
+        wrapped.then(wrappedResolve, wrappedReject);
         return { 
             promise: promise as any, 
+            status: "pending",
             cancel,
-        }
+        } as any // WrappedPromise<T>
     }
 
-    return { 
-        promise: promise as any,
-        resolve, 
-        reject, 
-        cancel 
-    }
+    return cpObj as any // ResolveablePromise<T>
 }

@@ -4,28 +4,46 @@ import {
     type Tx,
     type TxId,
 } from "@helios-lang/ledger";
+import type { CardanoTxSubmitter, SubmitOnly } from "@helios-lang/tx-utils";
+import { EventEmitter } from "eventemitter3";
 import type {
-    CardanoTxSubmitter,
-    SubmitOnly,
-} from "@helios-lang/tx-utils";
-import {
-    EventEmitter
-} from "eventemitter3";
-import type { TxDescription } from "../StellarTxnContext.js";
+    FacadeTxnContext,
+    hasAddlTxns,
+    resolvedOrBetter,
+    StellarTxnContext,
+    TxDescription,
+} from "../StellarTxnContext.js";
 import {
     TxSubmitMgr,
     type dateAsMillis,
     type SubmitManagerState,
 } from "./TxSubmitMgr.js";
+import { nanoid } from "nanoid";
+import {
+    mkCancellablePromise,
+    type ResolveablePromise,
+} from "./mkCancellablePromise.js";
 
 /**
  * @public
  */
 type SingleTxSubmissionState = {
-    txDescription: TxDescription<any, "built">;
-    state: "pending" | "submitting" | "confirming" | "confirmed" | "failed" | "mostly confirmed";
+    txDescription: TxDescription<any, any>;
+    txSubmitter:
+        | ResolveablePromise<void>
+        | {
+              promise: Promise<void>;
+              status: "automatic";
+          };
+    state:
+        | "pending"
+        | "submitting"
+        | "confirming"
+        | "confirmed"
+        | "failed"
+        | "mostly confirmed";
     submitters: Record<string, SubmitManagerState>;
-    notifier: EventEmitter<SMC_TxStatusNotifier> 
+    notifier: EventEmitter<SMC_TxStatusNotifier>;
 };
 
 /**
@@ -44,21 +62,23 @@ export type TimeoutId = ReturnType<typeof setTimeout>;
  * @public
  */
 export type SMC_TxChangeNotifier = {
-    txAdded: [ SingleTxSubmissionState ];
-    destroyed: [ SubmitterMultiClient ];
-    txListUpdated: [ SingleTxSubmissionState[] ]
-    statusUpdate: [ string ]
+    txAdded: [SingleTxSubmissionState];
+    destroyed: [SubmitterMultiClient];
+    txListUpdated: [SingleTxSubmissionState[]];
+    statusUpdate: [string];
     // txFailed: [ SingleTxSubmissionState ]
-}
+};
 
 /**
  * @public
  */
 export type SMC_TxStatusNotifier = {
-    txUpdated: [ SingleTxSubmissionState ];
-    txConfirmed: [ SingleTxSubmissionState ];
-    txFailed: [ SingleTxSubmissionState ];
-}
+    "tx:changed": [SingleTxSubmissionState];
+    txBuilt: [SingleTxSubmissionState];
+    txSubmitting: [SingleTxSubmissionState];
+    txConfirmed: [SingleTxSubmissionState];
+    txFailed: [SingleTxSubmissionState];
+};
 
 /**
  * @public
@@ -77,26 +97,43 @@ export type namedSubmitters = Record<submitterName, CardanoTxSubmitter>;
  */
 export type namedTxSubmitMgrs = Record<submitterName, TxSubmitMgr>;
 
+export type TxBatchOptions = {
+    releaseEach?: "interactive" | "automatic";
+    releaseAll?: "interactive" | "automatic";
+};
+
+const defaultTxBatchOptions: TxBatchOptions = {
+    releaseEach: "automatic",
+    releaseAll: "automatic",
+};
+
 /**
  * @public
  */
 export class SubmitterMultiClient {
     readonly submitters: namedSubmitters;
     aggregateState: string;
-    state: MultiTxnSubmissionState = {};
+    txStates: MultiTxnSubmissionState = {};
     txSubmitMgrs: Record<txIdString, namedTxSubmitMgrs>;
     readonly mainnet: boolean;
     nextUpdate?: TimeoutId;
-    txChanges: EventEmitter<SMC_TxChangeNotifier>
+    txChanges: EventEmitter<SMC_TxChangeNotifier>;
+    releaseAllOption?: TxBatchOptions["releaseAll"];
+    submitAll?:
+        | ResolveablePromise<void>
+        | {
+              promise: Promise<void>;
+              status: "automatic";
+          };
 
     destroy() {
         // cleans up all the notifiers
         for (const [txIdStr, submitMgrs] of Object.entries(this.txSubmitMgrs)) {
-            this.state[txIdStr].notifier.removeAllListeners();
+            this.txStates[txIdStr].notifier.removeAllListeners();
             for (const mgr of Object.values(submitMgrs)) {
                 mgr.destroy();
             }
-        } 
+        }
         this.txChanges.emit("destroyed", this);
         this.txChanges.removeAllListeners();
     }
@@ -198,38 +235,150 @@ export class SubmitterMultiClient {
         return id.toHex();
     }
 
-    async submitTxDescr(txd: TxDescription<any, "built">): Promise<TxId> {
-        const { tx } = txd;
-        const txId = this.txId(tx);
-        if (this.state[txId]) {
-            return tx.id();
+    async addTxBatch(
+        tcxd:
+            | StellarTxnContext
+            | TxDescription<any, any>
+            | TxDescription<any, any>[],
+        options: TxBatchOptions = this.defaultTxBatchOptions
+    ) {
+        const { releaseEach, releaseAll } = options;
+        //@ts-expect-error on type probe
+        if (!tcxd.isFacade && !!tcxd.state) {
+            // when there's not a wrapper TxDescription, we construct one
+            // ... based on the already-created tcx
+            const tcx: StellarTxnContext = tcxd as any;
+            const tx = tcx._builtTx ? await tcx._builtTx : undefined;
+            const id = tx?.id().toString() ?? nanoid(5);
+            this.addTxDescr({
+                description: tcx.txnName || "‹unnamed txn›",
+                id,
+                tcx,
+                txName: tcx.txnName,
+            });
+            for (const [name, txd] of Object.entries(tcx.addlTxns)) {
+                this.addTxDescr(txd, options);
+            }
+        } else if (
+            //prettier-ignore
+            //@ts-ignore-error on type probe
+            !! tcxd.state && tcxd.addlTxns
+        ) {
+            // it's a facade transaction.
+            const tcx: hasAddlTxns<any> = tcxd as any;
+            return this.addTxBatch(Object.values(tcx.addlTxns), options);
+        } else if (Array.isArray(tcxd)) {
+            for (const txd of tcxd) {
+                this.addTxDescr(txd, options);
+            }
+        } else {
+            const txd = tcxd as TxDescription<any, any>;
+            this.addTxDescr(txd, options);
         }
-        const notifier = new EventEmitter<SMC_TxStatusNotifier>()
-        notifier.on("txUpdated", this.updateAggregateState.bind(this))
-        const state = (this.state[txId] = {
-            txDescription: txd,
-            state: "submitting",
-            submitters: {},
-            notifier,
-        });
+    }
+    get defaultTxBatchOptions(): TxBatchOptions {
+        return {
+            releaseAll: this.releaseAllOption || "automatic",
+            releaseEach: "automatic",
+        }
+    }
 
-        this.txChanges.emit("txAdded", state);
-        this.txSubmitMgrs[txId] = Object.fromEntries(
-            Object.entries(this.submitters).map(([name, submitter]) => [
-                name,
-                new TxSubmitMgr({
+    addTxDescr(
+        txd: TxDescription<any, any>,
+        options: TxBatchOptions = this.defaultTxBatchOptions,
+    ) {
+        const { id } = txd;
+        const { releaseEach, releaseAll } = options;
+
+        const { releaseAllOption } = this;
+
+        if (releaseAllOption) {
+            if (releaseAllOption !== releaseAll) {
+                throw new Error(
+                    `developer error: inconsistent submitOptions.releaseAll='${releaseAll}' in this tx batch (was '${releaseAllOption}')`
+                );
+            }
+        } else {
+            this.releaseAllOption = releaseAll;
+            if ("automatic" == releaseAll) {
+                this.submitAll = {
+                    promise: Promise.resolve(),
+                    status: "automatic" as const,
+                };
+            } else {
+                this.submitAll = mkCancellablePromise<void>();
+            }
+        }
+
+        let notifier: EventEmitter<SMC_TxStatusNotifier>;
+        let state: SingleTxSubmissionState;
+        if (this.txStates[id]) {
+            if (this.txSubmitMgrs[id]) {
+                throw new Error(`tx '${id}' already present and submitting`);
+            }
+            state = this.txStates[id];
+            notifier = state.notifier;
+        } else {
+            const sa = this.submitAll!;
+
+            const txSubmitter =
+                "automatic" == releaseEach || sa.status == "automatic"
+                    ? {
+                          promise: Promise.resolve(),
+                          status: "automatic" as const,
+                      }
+                    : mkCancellablePromise<void>();
+            notifier = new EventEmitter<SMC_TxStatusNotifier>();
+            notifier.on("tx:changed", this.updateAggregateState.bind(this));
+            state = this.txStates[id] = {
+                txDescription: txd,
+                txSubmitter,
+                state: "pending",
+                submitters: {},
+                notifier,
+            };
+            this.txChanges.emit("txAdded", state);
+        }
+        const { tx } = txd;
+
+        if (tx) {
+            state.txDescription = txd;
+            notifier.emit("tx:changed", state);
+            notifier.emit("txBuilt", state);
+            const txId = tx.id().toString();
+            this.txSubmitMgrs[id] = Object.fromEntries(
+                Object.entries(this.submitters).map(([name, submitter]) => [
                     name,
-                    txId,
-                    tx,
-                    submitter,
-                    onStateChanged: this.updateSubmitterState.bind(
-                        this,
+                    new TxSubmitMgr({
+                        id,
                         txId,
-                        name
-                    ),
-                }),
-            ])
-        );
+                        tx,
+                        name,
+                        description: txd.txName || txd.description,
+                        submitter,
+                        onStateChanged: this.updateSubmitterState.bind(
+                            this,
+                            id,
+                            name
+                        ),
+                    }),
+                ])
+            );
+        }
+        this.txChanges.emit("txListUpdated", Object.values(this.txStates));
+        notifier.emit("tx:changed", state);
+        notifier.emit("txSubmitting", state);
+    }
+
+    async submitTxDescr(txd: TxDescription<any, "built">): Promise<TxId> {
+        const {
+            tx,
+            tcx: { id },
+        } = txd;
+        // const txId = tx.id().toString();
+        if (!this.txStates[id]) {
+            this.addTxDescr(txd);
+        }
         return tx.id();
     }
 
@@ -238,7 +387,7 @@ export class SubmitterMultiClient {
         // if all of them are failed, the aggregate state is failed
         // if all of them are confirmed, the aggregate state is confirmed
         // otherwise, the state is a summary with the the count of each state
-        const txs = Object.values(this.state);
+        const txs = Object.values(this.txStates);
         const allConfirmed = txs.every((t) => t.state == "confirmed");
         if (allConfirmed) {
             this.aggregateState = "confirmed";
@@ -250,20 +399,30 @@ export class SubmitterMultiClient {
             this.aggregateState = "failed";
             return;
         }
-        const countConfirming = txs.filter((t) => t.state == "confirming").length;
-        const countSubmitting = txs.filter((t) => t.state == "submitting").length;
+        const countConfirming = txs.filter(
+            (t) => t.state == "confirming"
+        ).length;
+        const countSubmitting = txs.filter(
+            (t) => t.state == "submitting"
+        ).length;
         const countConfirmed = txs.filter((t) => t.state == "confirmed").length;
         const countFailed = txs.filter((t) => t.state == "failed").length;
-        const countMostlyConfirmed = txs.filter((t) => t.state == "mostly confirmed").length;
+        const countMostlyConfirmed = txs.filter(
+            (t) => t.state == "mostly confirmed"
+        ).length;
         this.aggregateState = [
             countConfirming ? `${countConfirming} confirming` : null,
             countSubmitting ? `${countSubmitting} submitting` : null,
             countConfirmed ? `${countConfirmed} confirmed` : null,
-            countMostlyConfirmed ? `${countMostlyConfirmed} mostly confirmed` : null,
+            countMostlyConfirmed
+                ? `${countMostlyConfirmed} mostly confirmed`
+                : null,
             countFailed ? `${countFailed} failed` : null,
-        ].filter((s) => s != null).join(", ");
+        ]
+            .filter((s) => s != null)
+            .join(", ");
 
-        this.txChanges.emit("statusUpdate", this.aggregateState)
+        this.txChanges.emit("statusUpdate", this.aggregateState);
     }
 
     updateSubmitterState(
@@ -271,53 +430,65 @@ export class SubmitterMultiClient {
         name: string,
         state: SubmitManagerState
     ) {
-        this.state[txId].submitters[name] = state;
+        this.txStates[txId].submitters[name] = state;
         const isFail = state.state == "failed";
-        const submitters = Object.values(this.state[txId].submitters);
-        const allConfirmed = submitters.every(s => s.state == "confirmed");
-        const allFailed = submitters.every(s => s.state == "failed");
-        const countConfirming = submitters.filter(s => s.state == "confirming").length;
-        const countSubmitting = submitters.filter(s => s.state == "submitting").length;
-        const countConfirmed = submitters.filter(s => s.state == "confirmed").length;
+        const submitters = Object.values(this.txStates[txId].submitters);
+        const allConfirmed = submitters.every((s) => s.state == "confirmed");
+        const allFailed = submitters.every((s) => s.state == "failed");
+        const countConfirming = submitters.filter(
+            (s) => s.state == "confirming"
+        ).length;
+        const countSubmitting = submitters.filter(
+            (s) => s.state == "submitting"
+        ).length;
+        const countConfirmed = submitters.filter(
+            (s) => s.state == "confirmed"
+        ).length;
 
-        this.state[txId].state = allConfirmed ? "confirmed" : 
-            allFailed ? "failed" :
-            countSubmitting > Math.max(countConfirming, countConfirmed) ? "submitting" :
-            countConfirming > Math.max(countSubmitting, countConfirmed) ? "confirming" :
-            countConfirmed > Math.max(countSubmitting, countConfirming) ? "mostly confirmed" 
+        this.txStates[txId].state = allConfirmed
+            ? "confirmed"
+            : allFailed
+            ? "failed"
+            : countSubmitting > Math.max(countConfirming, countConfirmed)
+            ? "submitting"
+            : countConfirming > Math.max(countSubmitting, countConfirmed)
+            ? "confirming"
+            : countConfirmed > Math.max(countSubmitting, countConfirming)
+            ? "mostly confirmed"
             : "pending";
 
-        const newState = this.state[txId] = {
-            ...this.state[txId],
-        }
-        this.state[txId].notifier.emit("txUpdated", newState)
+        const newState = (this.txStates[txId] = {
+            ...this.txStates[txId],
+        });
+        this.txStates[txId].notifier.emit("tx:changed", newState);
         if (newState.state == "confirmed") {
-            newState.notifier.emit("txConfirmed", newState)
-            newState.notifier.removeAllListeners()
+            newState.notifier.emit("txConfirmed", newState);
+            newState.notifier.removeAllListeners();
         }
         if (newState.state == "failed") {
-            newState.notifier.emit("txFailed", newState)
-            newState.notifier.removeAllListeners()
+            newState.notifier.emit("txFailed", newState);
+            newState.notifier.removeAllListeners();
         }
 
         if (isFail) {
             // trigger otherSubmitterProblem on the other submitters,
             // while skipping this one.  This might indicate a slot battle situation
             const mgrsThisTx = this.txSubmitMgrs[txId];
-            const otherSubmitters = Object.entries(mgrsThisTx).filter(([n]) => n !== name);
+            const otherSubmitters = Object.entries(mgrsThisTx).filter(
+                ([n]) => n !== name
+            );
             for (const [name, mgr] of otherSubmitters) {
                 mgr.otherSubmitterProblem();
             }
         }
-
     }
 
     reqts() {
-        // TODO: review all these and rework them based on 
+        // TODO: review all these and rework them based on
         // the current state of the code
         // they're generally right but were just enough
         // to get the code working.  Some of the mechanisms
-        // are implemented differently, and there are 
+        // are implemented differently, and there are
         // more outcomes, more specific details, and other
         // methods used in implementation than described here.
         return {
