@@ -93,7 +93,7 @@ export class UtxoHelper {
     }
 
     get network() {
-        return this.setup.network;
+        return this.setup.chainBuilder || this.setup.network;
     }
 
     /**

@@ -16,7 +16,7 @@ import {
     type ScriptHash,
 } from "@helios-lang/ledger";
 
-import type { CardanoClient, Emulator, Wallet } from "@helios-lang/tx-utils";
+import type { CardanoClient, Emulator, TxChainBuilder, Wallet } from "@helios-lang/tx-utils";
 import type { UplcProgramV3, UplcData } from "@helios-lang/uplc";
 import type { DataType, Program, EnumMemberType } from "@helios-lang/compiler";
 
@@ -326,11 +326,14 @@ export type UtxoDisplayCache = Map<TxOutputId, string>;
  * @public
  **/
 export type SetupInfo = {
-    /** access to ledger: utxos, txn-posting */
-    network: CardanoClient | Emulator;
+    /** access to ledger: utxos, txn-posting; can sometimes be a TxChainBuilder overlay on the real network */
+    network: CardanoClient | Emulator 
+    /** the actual network client; never a TxChainBuilder */
+    chainBuilder?: TxChainBuilder
     /** the params for this network */
     networkParams: NetworkParams;
-    txBatcher?: TxBatcher;
+    /** collects a batch of transactions, connected with a TxChainBuilder in context */
+    txBatcher: TxBatcher;
     /** false for any testnet.  todo: how to express L2? */
     isMainnet: boolean;
     /** wallet-wrapping envelope, allows wallet-changing without reinitializing anything using that envelope */
@@ -445,7 +448,10 @@ export class StellarContract<
     partialConfig?: Partial<ConfigType>;
     // contractParams?: UplcRecord<ConfigType>;
     setup: SetupInfo;
-    network: CardanoClient | Emulator;
+    get network() : CardanoClient | Emulator | TxChainBuilder {    
+        return this.setup.chainBuilder || this.setup.network;
+    }    
+
     networkParams: NetworkParams;
     actorContext: ActorContext<any>;
     // isTest?: boolean
@@ -851,11 +857,10 @@ export class StellarContract<
 
         // console.log(new Error(`\n  in ${this.constructor.name}`).stack!.split("\n").slice(1).join("\n"));
 
-        const { network, networkParams, isTest, isMainnet, actorContext } =
+        const { networkParams, isTest, isMainnet, actorContext } =
             setup;
         this.actorContext = actorContext;
         // helios.config.set({ IS_TESTNET: !isMainnet }); use for TxBuilderConfig from this.setup.isMainnet
-        this.network = network;
         this.networkParams = networkParams;
         // this.isTest = isTest
     }
@@ -1418,7 +1423,7 @@ export class StellarContract<
 
         let bundle = this.getBundle();
         if (bundle.isPrecompiled) {
-            debugger;
+            // debugger;
             console.warn(
                 `deployed script shouldn't need to compile (debugging breakpoint available)`
             );

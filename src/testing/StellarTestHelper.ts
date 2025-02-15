@@ -544,13 +544,15 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         } else {
             console.warn(`using env OPTIMIZE=${envOptimize}`)
         }
+        const getNetwork = () => { return this.network };
         const setup: SetupInfo = {
-            network: this.network,
+            get network() { return getNetwork() },
             actorContext: this.actorContext,
             networkParams: this.networkParams,
             uh: undefined as any,
             isTest: true,
             isMainnet: false,
+            txBatcher: new TxBatcher({}),
             optimize: process.env.OPTIMIZE ? true : this.optimize,
         };
         setup.uh = new UtxoHelper(setup);

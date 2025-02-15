@@ -17,6 +17,7 @@ import {
     type Wallet,
     makeTxBuilder,
     makeWalletHelper,
+    makeTxChainBuilder,
 } from "@helios-lang/tx-utils";
 import {
     decodeTx,
@@ -406,7 +407,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     /**
      * @public
      */
-    get addlTxns() : Record<string, TxDescription<any, "buildLater!">> {
+    get addlTxns(): Record<string, TxDescription<any, "buildLater!">> {
         //@ts-expect-error
         return this.state.addlTxns || {};
     }
@@ -1097,6 +1098,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * @remarks
      * To submit only the current transaction, use the `submit()` method.
      *
+     * Uses the TxBatcher to create a new batch of transactions.  This new batch
+     * overlays a TxChainBuilder on the current network-client, using that facade
+     * to provide utxos for chained transactions in the batch.
+     *
      * The signers array can be used to add additional signers to the transaction, and
      * is passed through to the submit() for the current txn only; it is not used for
      * any additional transactions.
@@ -1111,15 +1116,51 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * or for logging or any other post-submission processing.
      */
     async submitAll(this: StellarTxnContext<any>, options: SubmitOptions = {}) {
+        //@ts-expect-error probing for is-chain-builder
+        const isAlreadyChainBuilder = this.setup.network.build;
+        if (isAlreadyChainBuilder) {
+            throw new Error(`can't submitAll() with an existing chain-builder`);
+        }
+        if (this.setup.chainBuilder) {
+            console.warn(
+                `⚠️  submitAll(): detected overlapping txn batches... \n` +
+                    `  ... that MIGHT be a developer error on our part.\n` +
+                    `  ... or, you might need to add your transaction to an existing batch \n`+
+                    `      (use otherTcx.includeAddlTxn(...))\n` +
+                    `  ... or, you might need to ensure you're waiting for an existing batch \n`+
+                    `      to finish (monitor setup.txBatcher.current for batch:confirmed)\n` +
+                    `\nFinally, you might have an advanced use-case for building multiple \n` +
+                    `independent batches of transactions that don't need tx chaining between them. \n\n` +
+                    `Please be welcome to log an issue with the project's support desk, \n` +
+                    `... and we'll see what we can do to help.`
+            );
+            throw new Error(
+                `submitAll(): the network wasn't restored after previous submitAll() (see log for more guidance)`
+            );
+        }
+        if (!this.setup.isTest) {
+            this.setup.chainBuilder = makeTxChainBuilder(this.setup.network);
+        }
+
         if (this.isFacade == false) {
             return this.submit(options).then(() => {
                 if (this.state.addlTxns) {
-                    return this.submitAddlTxns();
+                    return this.submitAddlTxns(options).then( (x) => {
+                        this.setup.chainBuilder = undefined
+                        return x
+                    } );
                 }
             });
         } else if (this.state.addlTxns) {
-            return this.submitAddlTxns();
+            return this.submitAddlTxns(options).then( (x) => {
+                this.setup.chainBuilder = undefined
+                return x
+            } )
         }
+        console.warn(
+            `⚠️  submitAll(): no txns to submit`, this
+        );
+        throw new Error(`unreachable? -- nothing to do for submitting this tcx`);
     }
 
     /**
