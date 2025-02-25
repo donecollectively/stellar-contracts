@@ -11,7 +11,10 @@ import type {
     hasAddlTxns,
     resolvedOrBetter,
     StellarTxnContext,
+    SubmitOptions,
     TxDescription,
+    TxDescriptionWithError,
+    TxSubmitCallbacks,
 } from "../StellarTxnContext.js";
 import {
     TxSubmitMgr,
@@ -23,62 +26,21 @@ import {
     mkCancellablePromise,
     type ResolveablePromise,
 } from "./mkCancellablePromise.js";
+import { TxSubmissionTracker } from "./TxSubmissionTracker.js";
+import type { SetupInfo } from "../StellarContract.js";
+import type { WalletSigningStrategy } from "./WalletSigningStrategy.js";
 
 /**
  * @public
  */
-type SingleTxSubmissionState = {
-    txDescription: TxDescription<any, any>;
-    txSubmitter:
-        | ResolveablePromise<void>
-        | {
-              promise: Promise<void>;
-              status: "automatic";
-          };
-    state:
-        | "pending"
-        | "submitting"
-        | "confirming"
-        | "confirmed"
-        | "failed"
-        | "mostly confirmed";
-    submitters: Record<string, SubmitManagerState>;
-    notifier: EventEmitter<SMC_TxStatusNotifier>;
-};
-
-/**
- * @public
- */
-interface MultiTxnSubmissionState {
-    [txId: string]: SingleTxSubmissionState;
+interface AllTxSubmissionStates {
+    [txId: string]: TxSubmissionTracker;
 }
 
 /**
  * @public
  */
 export type TimeoutId = ReturnType<typeof setTimeout>;
-
-/**
- * @public
- */
-export type SMC_TxChangeNotifier = {
-    txAdded: [SingleTxSubmissionState];
-    destroyed: [SubmitterMultiClient];
-    txListUpdated: [SingleTxSubmissionState[]];
-    statusUpdate: [string];
-    // txFailed: [ SingleTxSubmissionState ]
-};
-
-/**
- * @public
- */
-export type SMC_TxStatusNotifier = {
-    "tx:changed": [SingleTxSubmissionState];
-    txBuilt: [SingleTxSubmissionState];
-    txSubmitting: [SingleTxSubmissionState];
-    txConfirmed: [SingleTxSubmissionState];
-    txFailed: [SingleTxSubmissionState];
-};
 
 /**
  * @public
@@ -97,133 +59,176 @@ export type namedSubmitters = Record<submitterName, CardanoTxSubmitter>;
  */
 export type namedTxSubmitMgrs = Record<submitterName, TxSubmitMgr>;
 
-export type TxBatchOptions = {
-    releaseEach?: "interactive" | "automatic";
-    releaseAll?: "interactive" | "automatic";
-};
+// export type TxBatchOptions = {
+//     releaseEach?: "interactive" | "automatic";
+//     releaseAll?: "interactive" | "automatic";
+// };
 
-const defaultTxBatchOptions: TxBatchOptions = {
-    releaseEach: "automatic",
-    releaseAll: "automatic",
-};
+// const defaultTxBatchOptions: TxBatchOptions = {
+//     releaseEach: "automatic",
+//     releaseAll: "automatic",
+// };
 
 /**
  * @public
  */
-export class SubmitterMultiClient {
-    readonly submitters: namedSubmitters;
-    aggregateState: string;
-    txStates: MultiTxnSubmissionState = {};
-    txSubmitMgrs: Record<txIdString, namedTxSubmitMgrs>;
-    readonly mainnet: boolean;
-    nextUpdate?: TimeoutId;
-    txChanges: EventEmitter<SMC_TxChangeNotifier>;
-    releaseAllOption?: TxBatchOptions["releaseAll"];
-    submitAll?:
-        | ResolveablePromise<void>
-        | {
-              promise: Promise<void>;
-              status: "automatic";
-          };
+export type TxBatchChangeNotifier = {
+    txAdded: [TxSubmissionTracker];
+    destroyed: [SubmitterMultiClient];
+    txListUpdated: [SubmitterMultiClient];
+    statusUpdate: [aggregatedStateString[]];
+    // txFailed: [ SingleTxSubmissionState ]
+};
+type numberString = `${number}`;
 
+export type stateSummary =
+    | `pending`
+    | `building`
+    | `confirmed`
+    | `submitting`
+    | `confirming`
+    | `failed`
+    | `mostly confirmed`
+    | `pending`;
+export type aggregatedStateString =
+    | `pending`
+    | `${numberString} confirming`
+    | `${numberString} submitting`
+    | `${numberString} confirmed`
+    | `${numberString} failed`
+    | `${numberString} mostly confirmed`;
+
+export type BatchSubmitControllerOptions = {
+    submitters: namedSubmitters;
+    setup: SetupInfo;
+    signingStrategy: WalletSigningStrategy;
+    submitOptions?: SubmitOptions & TxSubmitCallbacks;
+};
+
+/**
+ * Gathers and manages submission of a batch of linked transactions
+ * @remarks
+ * Initialized with a pool of named submitters, the batch-submit controller
+ * gathers a set of transactions in collaboration with one or more
+ * transaction-context ("tcx" or StellarTxnContext) objects.
+ *
+ * Those tcx's provide the batch controller with a set of tx-descriptions,
+ * either describing themselves `{id, description, tcx, ...}` or describing
+ * a set of linked `addlTxns`.  Each of those linked transactions may itself
+ * resolve to a tcx having its own bounded set of `addlTxns`.  This leads
+ * to an eventually-bounded tree of resolved transactions, each having
+ * a short, locally-unique string `id`.  The submit controller
+ * shepherds those transactions through their path from being
+ * known-but-abstract (description-only), to being resolved, then
+ * signed as needed and submitted through TxSubmitMgr objects.
+ *
+ * The tx-descriptions added to the batch-controller are exposed for
+ * presentation in the UI layer, and each one also contains a notifier
+ * object - an event emitter that the UI can use to easily subscribe to
+ * changes in the state of each transaction as it makes progress.
+ *
+ * It is expected that the transaction batch will generally be signed as
+ * a unit after on-screen review, either with a wallet-specific "sign multiple"
+ * strategy or using a series of individual tx-signing interactions (i.e. with
+ * less-capable wallet interfaces).  To achieve this, the batch controller is
+ * designed to use a signing-strategy object, which works in the abstract
+ * on either individual transactions or the entire batch.  When working
+ * with wallets having various different mechanisms or APIs for multi-signing
+ * (or not having them), the strategy object provides a simple interface to
+ * support wallet-specific implementation of the intended result.
+ *
+ * For single-tx-signers, the signing-strategy object is expected to indicate
+ * step-wise progress, so the UI can be signalled to incrementally present
+ * related details about each tx as appropriate for the dApp's user-interaction
+ * model).  Full-batch signing strategies SHOULD NOT emit single-tx signing
+ * signals.
+ *
+ * Once the signature(s) are collected for any tx, the submit-controller
+ * creates txSubmitMgrs for that tx, and it aggregates the net state of
+ * each transaction's submission progress. The aggregated information
+ * about per-tx progress is included in state updates emitted to subscribers
+ * of that transaction's change-notification events, for UI-level presentation
+ * purposes.
+ * @public
+ */
+export class /* BatchSubmitController */ SubmitterMultiClient {
+    readonly submitters: namedSubmitters;
+    setup: SetupInfo;
+    submitOptions: SubmitOptions & TxSubmitCallbacks;
+    $stateInfoCombined: aggregatedStateString[];
+    $stateShortSummary: stateSummary;
+    $txStates: AllTxSubmissionStates = {};
+    $registeredTxs: AllTxSubmissionStates = {};
+        // txSubmitMgrs: Record<txIdString, namedTxSubmitMgrs>;
+    isOpen = false;
+    isConfirmationComplete = false;
+    readonly _mainnet: boolean;
+    nextUpdate?: TimeoutId;
+    signingStrategy: WalletSigningStrategy
+    $txChanges: EventEmitter<TxBatchChangeNotifier>;
+    // releaseAllOption?: TxBatchOptions["releaseAll"];
+    destroyed = false;
+    // submitAll?:
+    //     | ResolveablePromise<void>
+    //     | {
+    //           promise: Promise<void>;
+    //           status: "automatic";
+    //       };
+
+    get chainBuilder() {
+        return this.setup.chainBuilder
+    }
+    
     destroy() {
         // cleans up all the notifiers
-        for (const [txIdStr, submitMgrs] of Object.entries(this.txSubmitMgrs)) {
-            this.txStates[txIdStr].notifier.removeAllListeners();
-            for (const mgr of Object.values(submitMgrs)) {
-                mgr.destroy();
-            }
+        for (const [txIdStr, submitTracker] of Object.entries(this.$registeredTxs)) {
+            submitTracker.destroy();
         }
-        this.txChanges.emit("destroyed", this);
-        this.txChanges.removeAllListeners();
+        for (const [txIdStr, submitTracker] of Object.entries(this.$txStates)) {
+            submitTracker.destroy();
+        }
+        this.$txChanges.emit("destroyed", this);
+        this.$txChanges.removeAllListeners();
+        this.$txStates = {};
+        this.destroyed = true;
+    }
+    notDestroyed() {
+        if (this.destroyed) {
+            throw new Error("submitter-multi-client has been destroyed");
+        }
     }
 
-    constructor(submitters: namedSubmitters) {
+    constructor(options: BatchSubmitControllerOptions) {
+        const {
+            submitters,
+            setup,
+            signingStrategy,
+            submitOptions={},
+        } = options
         this.submitters = submitters;
-        this.txSubmitMgrs = {};
-        this.aggregateState = "pending";
-        this.txChanges = new EventEmitter<SMC_TxChangeNotifier>();
+        this.setup = setup;
+        this.signingStrategy = signingStrategy;
+        this.submitOptions = submitOptions;
+        this.$stateInfoCombined = ["pending"];
+        this.$stateShortSummary = "pending";
+        this.$txChanges = new EventEmitter<TxBatchChangeNotifier>();
 
         if (Object.keys(submitters).length == 0) {
             throw new Error("expected at least one submitter");
         }
 
         const s = Object.values(this.submitters);
-        this.mainnet = s.every((client) => client.isMainnet());
+        this._mainnet = s.every((client) => client.isMainnet());
 
-        if (s.some((submitter) => submitter.isMainnet() !== this.mainnet)) {
+        if (s.some((submitter) => submitter.isMainnet() !== this._mainnet)) {
             throw new Error(
                 "some submitters are for mainnet and some for testnet"
             );
         }
     }
 
-    // scheduleStateUpdates() {
-    //     if (!this.nextUpdate) {
-    //         this.nextUpdate = setTimeout(() => {
-    //             this.nextUpdate = undefined;
-    //             this.updateAllTxStates();
-    //         }, 1000);
-    //     }
-    // }
-
-    // async updateAllTxStates() {
-    //     const didCheckTxs: Set<string> = new Set();
-    //     let remaining = 1;
-    //     while (remaining) {
-    //         // allows the state object to be modified asynchronously during this loop
-    //         const currentTxs: Set<string> = new Set(Object.keys(this.state));
-    //         // allows txs to be (async) added or removed from the state during the loop
-    //         const txsToCheck = currentTxs.difference(didCheckTxs);
-    //         remaining = txsToCheck.size;
-    //         const txId = txsToCheck.values().take(1).next().value;
-    //         if (!txId) break;
-    //         // it says "await", but it should return without getting blocked
-    //         await this.updateOneTxState(txId);
-    //     }
-    // }
-
-    // async updateOneTxState(txId) {
-    //     const stateEntry = this.state[txId];
-    //     const { txDescription, state, submitters: submitterStates } = stateEntry;
-    //     const { tx, description } = txDescription;
-    //     if (state == "confirmed") return;
-
-    //     stateEntry.checkingAt = Date.now()
-    //     let { promise, resolve, reject } = Promise.withResolvers();
-
-    //     stateEntry.checkPending = promise;
-    //     this.updateTxSubmitters().then(resolve)
-    // }
-
-    // async updateTxSubmitters() {
-    //     for (const [name, submitter] of Object.entries(this.submitters)) {
-
-    //         await this.updateOneTxSubmitter(txId, name)
-    //     }
-    // }
-
-    // async updateOneTxSubmitter(txId, name) {
-    //     const { txDescription, state, submitters: submitterStates } = this.state[txId];
-    //     const { tx, description } = txDescription;
-    //     if (state == "confirmed") return;
-
-    //     const submitter = this.submitters[name];
-    //     const { state: subState } = submitterStates[name];
-    //     if (subState == "confirmed") return;
-
-    //     const hasUtxo = await submitter.hasUtxo(makeTxOutputId(tx.id(), 0));
-    //     if (!hasUtxo) {
-    //         // not yet accepted
-    //         if (subState == "confirming") {
-    //             // we just lost the tx's tentative confirmation
-    //             submitterStates[name].state = "resubmitting";
-    //         }
-    //     }
-    // }
-
     isMainnet(): boolean {
-        return this.mainnet;
+        return this._mainnet;
     }
 
     // async hasTx(submitter: CardanoTxSubmitter, tx: Tx): Promise<boolean> {
@@ -235,29 +240,52 @@ export class SubmitterMultiClient {
         return id.toHex();
     }
 
-    async addTxBatch(
+    map<T>(
+        fn:
+            | ((txd: TxSubmissionTracker, i: number) => T)
+            | ((txd: TxSubmissionTracker) => T)
+    ) {
+        return [ 
+            ...Object.values(this.$txStates),
+            ...Object.values(this.$registeredTxs)
+        ].map(fn);
+    }
+
+    async $addTxns(tcx: StellarTxnContext);
+    //, options?: TxBatchOptions);
+    async $addTxns(txd: TxDescription<any, any>);
+    //, options?: TxBatchOptions);
+    async $addTxns(txds: TxDescription<any, any>[]);
+    //, options?: TxBatchOptions);
+    async $addTxns(
         tcxd:
             | StellarTxnContext
             | TxDescription<any, any>
-            | TxDescription<any, any>[],
-        options: TxBatchOptions = this.defaultTxBatchOptions
+            | TxDescription<any, any>[]
+
+        // options: TxBatchOptions = this.defaultTxBatchOptions
     ) {
-        const { releaseEach, releaseAll } = options;
+        this.notDestroyed();
+        // const { releaseEach, releaseAll } = options;
         //@ts-expect-error on type probe
         if (!tcxd.isFacade && !!tcxd.state) {
-            // when there's not a wrapper TxDescription, we construct one
-            // ... based on the already-created tcx
+            // when there's not a wrapper TxDescription, 
+            // then this is a StellarTxnContext. We construct a TxDescription
+            // ... based on the already-existing
             const tcx: StellarTxnContext = tcxd as any;
             const tx = tcx._builtTx ? await tcx._builtTx : undefined;
-            const id = tx?.id().toString() ?? nanoid(5);
+            const id = tcx?.id  ?? nanoid(5);
             this.addTxDescr({
                 description: tcx.txnName || "‹unnamed txn›",
                 id,
                 tcx,
                 txName: tcx.txnName,
+                depth: tcx.depth, // should typically be 0
+                parentId: tcx.parentId, // should typically be empty
             });
             for (const [name, txd] of Object.entries(tcx.addlTxns)) {
-                this.addTxDescr(txd, options);
+                this.addTxDescr(txd);
+                // , options);
             }
         } else if (
             //prettier-ignore
@@ -266,221 +294,260 @@ export class SubmitterMultiClient {
         ) {
             // it's a facade transaction.
             const tcx: hasAddlTxns<any> = tcxd as any;
-            return this.addTxBatch(Object.values(tcx.addlTxns), options);
+            return this.$addTxns(Object.values(tcx.addlTxns));
+            // , options);
         } else if (Array.isArray(tcxd)) {
             for (const txd of tcxd) {
-                this.addTxDescr(txd, options);
+                this.addTxDescr(txd);
+                //, options);
             }
         } else {
             const txd = tcxd as TxDescription<any, any>;
-            this.addTxDescr(txd, options);
+            this.addTxDescr(txd);
+            // , options);
         }
     }
-    get defaultTxBatchOptions(): TxBatchOptions {
-        return {
-            releaseAll: this.releaseAllOption || "automatic",
-            releaseEach: "automatic",
-        }
+
+
+    $txInfo(id: string) {
+        this.notDestroyed();
+        return this.$txStates[id] || this.$registeredTxs[id];
     }
 
     addTxDescr(
-        txd: TxDescription<any, any>,
-        options: TxBatchOptions = this.defaultTxBatchOptions,
+        txd: TxDescription<any, any>
+        // options: TxBatchOptions = this.defaultTxBatchOptions
     ) {
+        this.notDestroyed();
         const { id } = txd;
-        const { releaseEach, releaseAll } = options;
 
-        const { releaseAllOption } = this;
-
-        if (releaseAllOption) {
-            if (releaseAllOption !== releaseAll) {
-                throw new Error(
-                    `developer error: inconsistent submitOptions.releaseAll='${releaseAll}' in this tx batch (was '${releaseAllOption}')`
-                );
-            }
-        } else {
-            this.releaseAllOption = releaseAll;
-            if ("automatic" == releaseAll) {
-                this.submitAll = {
-                    promise: Promise.resolve(),
-                    status: "automatic" as const,
-                };
-            } else {
-                this.submitAll = mkCancellablePromise<void>();
-            }
-        }
-
-        let notifier: EventEmitter<SMC_TxStatusNotifier>;
-        let state: SingleTxSubmissionState;
-        if (this.txStates[id]) {
-            if (this.txSubmitMgrs[id]) {
-                throw new Error(`tx '${id}' already present and submitting`);
-            }
-            state = this.txStates[id];
-            notifier = state.notifier;
-        } else {
-            const sa = this.submitAll!;
-
-            const txSubmitter =
-                "automatic" == releaseEach || sa.status == "automatic"
-                    ? {
-                          promise: Promise.resolve(),
-                          status: "automatic" as const,
-                      }
-                    : mkCancellablePromise<void>();
-            notifier = new EventEmitter<SMC_TxStatusNotifier>();
-            notifier.on("tx:changed", this.updateAggregateState.bind(this));
-            state = this.txStates[id] = {
-                txDescription: txd,
-                txSubmitter,
-                state: "pending",
-                submitters: {},
-                notifier,
-            };
-            this.txChanges.emit("txAdded", state);
-        }
-        const { tx } = txd;
-
-        if (tx) {
-            state.txDescription = txd;
-            notifier.emit("tx:changed", state);
-            notifier.emit("txBuilt", state);
-            const txId = tx.id().toString();
-            this.txSubmitMgrs[id] = Object.fromEntries(
-                Object.entries(this.submitters).map(([name, submitter]) => [
-                    name,
-                    new TxSubmitMgr({
-                        id,
-                        txId,
-                        tx,
-                        name,
-                        description: txd.txName || txd.description,
-                        submitter,
-                        onStateChanged: this.updateSubmitterState.bind(
-                            this,
-                            id,
-                            name
-                        ),
-                    }),
-                ])
+        this.isOpen = true;
+        const pendingTracker = this.$registeredTxs[id];
+        const builtTracker = this.$txStates[id];
+        if (builtTracker && pendingTracker) {
+            throw new Error(
+                `impossible membership in both registered- and built-tx list: ${id}`
             );
         }
-        this.txChanges.emit("txListUpdated", Object.values(this.txStates));
-        notifier.emit("tx:changed", state);
-        notifier.emit("txSubmitting", state);
-    }
+        let tracker: TxSubmissionTracker = builtTracker || pendingTracker
+        if (tracker) {
+            if (Object.keys(tracker.txSubmitters).length) {
+                throw new Error(`tx '${id}' already present and submitting`);
+            }
+        }  
+        if (pendingTracker && txd.tcx) {
+            // move a "was-pending" tx to the "built" list
+            delete this.$registeredTxs[id];
 
-    async submitTxDescr(txd: TxDescription<any, "built">): Promise<TxId> {
-        const {
-            tx,
-            tcx: { id },
-        } = txd;
-        // const txId = tx.id().toString();
-        if (!this.txStates[id]) {
-            this.addTxDescr(txd);
+            this.$txStates[id] = pendingTracker;
+        } else if (!builtTracker) {
+            const {
+                parentId, depth
+            } = txd
+            tracker = new TxSubmissionTracker({
+                txd,
+                submitters: this.submitters,
+                setup: this.setup,
+            });
+
+            tracker.notifier.on(
+                "changed",
+                this.updateAggregateState.bind(this)
+            );
+            if (txd.tcx) {
+                // adds resolved txs to the end of 
+                // the tx-trackers list
+                this.$txStates[id]= tracker
+            } else {
+                // splits $registeredTxs into two lists: one having txns with this same parentId
+                // and one with any other parent-ids.  Both must preserve the order of the original list.
+                const [others, sameParentId] = Object.entries(this.$registeredTxs).reduce(
+                    ([others, sameParentId], [k, v]) => {
+                        if (v.txd.parentId == parentId) {
+                            sameParentId[k] = v;
+                        } else {
+                            others[k] = v;
+                        }
+                        return [others, sameParentId];
+                    },
+                    [{} as AllTxSubmissionStates, {} as AllTxSubmissionStates]
+                )                
+                // adds newly registered txs at the
+                // top of known-txs list
+                this.$registeredTxs = {
+                    ...sameParentId,
+                    [id]: tracker,
+                    ... others
+                }
+            }
+            this.$txChanges.emit("txAdded", tracker);
+            this.$txChanges.emit("txListUpdated", this);
         }
-        return tx.id();
+
+        tracker.update(txd);
+        this.$txChanges.emit("txListUpdated", this);
     }
 
+    get $allTxns() {
+        return [
+            ...Object.values(this.$txStates),
+            ...Object.values(this.$registeredTxs),
+        ];
+    }
+
+    async txError(txd: TxDescriptionWithError) {
+        this.notDestroyed();
+        const { id, tcx, tx, error } = txd;
+
+        if (this.$txStates[id]) {
+            const existing = this.$txStates[id];
+            existing.update(txd, "failed");
+
+            this.updateAggregateState();
+        }
+    }
+
+    /**
+     * triggers all the transactions in the batch to be signed
+     * and submitted.
+     * @remarks
+     * While the transactions are being signed, the signing-strategy
+     * object will emit incremental status updates (the "signingSingleTx" event)
+     * if it only supports signing one tx at a time.  If it supports multiple
+     * tx signing, it should emit a single "signingAll" event instead.
+     *
+     * UI implementations are expected to listen for signingSingleTx events
+     * and present a useful summary of the current transation being signed,
+     * to ease the user's understanding of the signing process.
+     *
+     * If signing is successful, the batch controller will continue by
+     * submitting each transation for submission through each of
+     * the submitters configured on the batch controller.
+     *
+     * The controller and individual tx-submission trackers will continue
+     * emitting status update events as each tx makes progress.  UIs
+     * should continue reflecting updated state information to the user.
+     * @public
+     */
+
+    async $signAndSubmitAll(
+        // txd: TxDescription<any, "built">,
+        // submitOptions: SubmitOptions & TxSubmitCallbacks = {}
+    ) {
+        debugger
+        if (!this.setup.isTest) {
+            // const result = await this.signingStrategy.signTxBatch(this);
+            // console.log("signingStrategy result: ", result);
+            debugger
+        }
+    }
+
+    // async $submitTxDescr(txd: TxDescription<any, "built">): Promise<TxId> {
+    //     this.notDestroyed();
+    //     const {
+    //         tx,
+    //         tcx: { id },
+    //     } = txd;
+    //     // const txId = tx.id().toString();
+    //     if (!this.$txStates[id]) {
+    //         this.addTxDescr(txd);
+    //     }
+    //     return tx.id();
+    // }
+
+    /**
+     * Updates the aggregate state of the tx batch and notifies listeners
+     * @remarks
+     * The aggregate state is a summary of the state of all the tx's in the batch.
+     *
+     * It counts the number of tx's in each state, and emits a  `statusUpdate`
+     * event to the batch-controller's {@link SubmitterMultiClient.$txChanges|txChanges}
+     * event stream.
+     *
+     * The result is
+     * @public
+     */
     updateAggregateState() {
+        this.notDestroyed();
         // iterates the tx's in the state.
         // if all of them are failed, the aggregate state is failed
         // if all of them are confirmed, the aggregate state is confirmed
         // otherwise, the state is a summary with the the count of each state
-        const txs = Object.values(this.txStates);
-        const allConfirmed = txs.every((t) => t.state == "confirmed");
-        if (allConfirmed) {
-            this.aggregateState = "confirmed";
-            return;
-        }
-
-        const allFailed = txs.every((t) => t.state == "failed");
-        if (allFailed) {
-            this.aggregateState = "failed";
-            return;
-        }
-        const countConfirming = txs.filter(
-            (t) => t.state == "confirming"
-        ).length;
-        const countSubmitting = txs.filter(
-            (t) => t.state == "submitting"
-        ).length;
-        const countConfirmed = txs.filter((t) => t.state == "confirmed").length;
-        const countFailed = txs.filter((t) => t.state == "failed").length;
-        const countMostlyConfirmed = txs.filter(
-            (t) => t.state == "mostly confirmed"
-        ).length;
-        this.aggregateState = [
-            countConfirming ? `${countConfirming} confirming` : null,
-            countSubmitting ? `${countSubmitting} submitting` : null,
-            countConfirmed ? `${countConfirmed} confirmed` : null,
-            countMostlyConfirmed
-                ? `${countMostlyConfirmed} mostly confirmed`
-                : null,
-            countFailed ? `${countFailed} failed` : null,
+        const txTrackers = [
+            ... Object.values(this.$registeredTxs),
+            ... Object.values(this.$txStates)
         ]
-            .filter((s) => s != null)
-            .join(", ");
-
-        this.txChanges.emit("statusUpdate", this.aggregateState);
-    }
-
-    updateSubmitterState(
-        txId: string,
-        name: string,
-        state: SubmitManagerState
-    ) {
-        this.txStates[txId].submitters[name] = state;
-        const isFail = state.state == "failed";
-        const submitters = Object.values(this.txStates[txId].submitters);
-        const allConfirmed = submitters.every((s) => s.state == "confirmed");
-        const allFailed = submitters.every((s) => s.state == "failed");
-        const countConfirming = submitters.filter(
-            (s) => s.state == "confirming"
-        ).length;
-        const countSubmitting = submitters.filter(
-            (s) => s.state == "submitting"
-        ).length;
-        const countConfirmed = submitters.filter(
-            (s) => s.state == "confirmed"
-        ).length;
-
-        this.txStates[txId].state = allConfirmed
-            ? "confirmed"
-            : allFailed
-            ? "failed"
-            : countSubmitting > Math.max(countConfirming, countConfirmed)
-            ? "submitting"
-            : countConfirming > Math.max(countSubmitting, countConfirmed)
-            ? "confirming"
-            : countConfirmed > Math.max(countSubmitting, countConfirming)
-            ? "mostly confirmed"
-            : "pending";
-
-        const newState = (this.txStates[txId] = {
-            ...this.txStates[txId],
-        });
-        this.txStates[txId].notifier.emit("tx:changed", newState);
-        if (newState.state == "confirmed") {
-            newState.notifier.emit("txConfirmed", newState);
-            newState.notifier.removeAllListeners();
-        }
-        if (newState.state == "failed") {
-            newState.notifier.emit("txFailed", newState);
-            newState.notifier.removeAllListeners();
-        }
-
-        if (isFail) {
-            // trigger otherSubmitterProblem on the other submitters,
-            // while skipping this one.  This might indicate a slot battle situation
-            const mgrsThisTx = this.txSubmitMgrs[txId];
-            const otherSubmitters = Object.entries(mgrsThisTx).filter(
-                ([n]) => n !== name
+        const count = txTrackers.length;
+        const allConfirmed =
+            count && txTrackers.every((t) => t.state == "confirmed");
+        const allFailed =
+            count &&
+            txTrackers.every((txTracker) => txTracker.state == "failed");
+        if (!count) {
+            console.warn(
+                "unreachable updateAggregateState before having tx trackers?"
             );
-            for (const [name, mgr] of otherSubmitters) {
-                mgr.otherSubmitterProblem();
+            this.$stateInfoCombined = ["pending"];
+            this.$stateShortSummary = "pending";
+        } else if (allConfirmed) {
+            this.$stateInfoCombined = [`${txTrackers.length} confirmed`];
+            this.$stateShortSummary = "confirmed";
+            this.isConfirmationComplete = true;
+        } else if (allFailed) {
+            this.$stateInfoCombined = [`${txTrackers.length} failed`];
+            this.$stateShortSummary = "failed";
+        } else {
+            const countConfirming = txTrackers.filter(
+                (t) => t.state == "confirming"
+            ).length;
+            const countSubmitting = txTrackers.filter(
+                (t) => t.state == "submitting"
+            ).length;
+            const countConfirmed = txTrackers.filter(
+                (t) => t.state == "confirmed"
+            ).length;
+            const countFailed = txTrackers.filter(
+                (t) => t.state == "failed"
+            ).length;
+            const countMostlyConfirmed = txTrackers.filter(
+                (t) => t.state == "mostly confirmed"
+            ).length;
+            const countRegistered = txTrackers.filter(
+                (t) => t.state == "registered"
+            ).length;
+            const countBuilding = txTrackers.filter(
+                (t) => t.state == "building"
+            ).length;
+            this.$stateInfoCombined = [
+                countConfirming ? `${countConfirming} confirming` : null,
+                countSubmitting ? `${countSubmitting} submitting` : null,
+                countConfirmed ? `${countConfirmed} confirmed` : null,
+                countMostlyConfirmed
+                    ? `${countMostlyConfirmed} mostly confirmed`
+                    : null,
+                countFailed ? `${countFailed} failed` : null,
+            ].filter((s) => s != null) as any;
+
+            if (count == countConfirmed) {
+                this.$stateShortSummary = "confirmed";
+            } else if (count == countFailed) {
+                this.$stateShortSummary = "failed";
+            } else if (
+                count ==
+                countConfirmed + countConfirming + countMostlyConfirmed
+            ) {
+                this.$stateShortSummary = "confirming";
+            } else if (count == countConfirmed + countMostlyConfirmed) {
+                this.$stateShortSummary = "mostly confirmed";
+            } else if (!countBuilding && !countRegistered) {
+                this.$stateShortSummary = "pending";
+            } else if (countRegistered + countBuilding > 0) {
+                this.$stateShortSummary = "building";
+            } else {
+                this.$stateShortSummary = "submitting";
             }
         }
+        this.$txChanges.emit("statusUpdate", this.$stateInfoCombined);
     }
 
     reqts() {
@@ -541,3 +608,4 @@ export class SubmitterMultiClient {
         };
     }
 }
+

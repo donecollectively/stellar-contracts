@@ -250,21 +250,13 @@ export class DefaultCapoTestHelper<
 
         expect(capo.network).toBe(this.network);
 
-        await tcx.submit(submitOptions);
+        debugger
+        await tcx.submitAll(submitOptions);
         console.log(
             `----- charter token minted at slot ${this.network.currentSlot}`
         );
         this.network.tick(1);
 
-        await tcx.submitAddlTxns({
-            onSubmitted: ({ txName, description, tx, txId }) => {
-                this.network.tick(1);
-                console.log(
-                    `           ------- submitted addl txn ${txName} at slot ${this.network.currentSlot}:` +
-                        `           ------- txId: ${txId}`
-                );
-            },
-        });
         // this.network.tick(1);
 
         this.state.mintedCharterToken = tcx;
@@ -283,7 +275,7 @@ export class DefaultCapoTestHelper<
 
         const tcx = await treasury.mkTxnUpdateCharter(args);
         return tcx
-            .submit({
+            .submitAll({
                 signers,
                 ...submitSettings,
             })

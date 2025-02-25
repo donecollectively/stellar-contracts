@@ -1,6 +1,4 @@
-import {
-    type BytesLike,
-} from "@helios-lang/codec-utils";
+import { type BytesLike } from "@helios-lang/codec-utils";
 import type { SimpleWallet, Wallet } from "@helios-lang/tx-utils";
 import {
     type Address,
@@ -53,9 +51,28 @@ export type utxoPredicate = (
 };
 
 export type UtxoSearchScope = {
+    /**
+     * searches in a specific address (e.g. a smart contract address)
+     */
     address?: Address;
-    wallet?: Wallet | SimpleWallet //| SimpleWallet_stellar;
+    /**
+     * searches in this wallet rather than the address
+     */
+    wallet?: Wallet | SimpleWallet; //| SimpleWallet_stellar;
+    /**
+     * @deprecated - ??? use txBatcher's chainBuilder and includeAddlTxns instead
+     * NOTE: if we're only using this to reference our OWN tcx, then
+     *   either make that automatic, or retract the deprecation.
+     */
     exceptInTcx?: StellarTxnContext;
+    /**
+     * by default it, only dumps detail if global.utxoDump is set to true
+     * @remarks
+     * - use "onFail" to log candidate utxos if the search fails
+     * - use "always" to log candidate utxos for a single search,
+     *   regardless of success or failure
+     */
+    dumpDetail?: "onFail" | "always";
     // utxos : TxInput[]
 };
 
@@ -78,12 +95,13 @@ export class UtxoHelper {
 
     constructor(setup: SetupInfo, strella?: StellarContract<any>) {
         this.setup = setup;
+        // console.log("UtxoHelper created with setup: ", setup);
         if (!setup.uxtoDisplayCache) {
             setup.uxtoDisplayCache = new Map();
         }
         this.strella = strella;
     }
-    
+
     get networkParams(): NetworkParams {
         return this.setup.networkParams;
     }
@@ -624,13 +642,17 @@ export class UtxoHelper {
      */
     async findActorUtxo(
         name: string,
-        predicate: (u: TxInput) => TxInput | undefined
+        predicate: (u: TxInput) => TxInput | undefined,
+        options: UtxoSearchScope = {}
     ) {
-        const wallet = this.wallet;
-
+        const wallet = options.wallet ?? this.wallet;
         const utxos = await wallet.utxos;
 
-        return this.hasUtxo(name, predicate, { wallet, utxos });
+        return this.hasUtxo(name, predicate, {
+            ...options,
+            wallet,
+            utxos,
+        });
     }
 
     /**
@@ -652,25 +674,37 @@ export class UtxoHelper {
             exceptInTcx,
             utxos,
             required,
+            dumpDetail,
         }: UtxoSearchScopeWithUtxos
     ): Promise<TxInput | undefined> {
-        const collateral = (wallet ? await wallet.collateral : [])[0];
+        const collateral = ((wallet
+            ? "handle" in wallet
+                ? await (wallet as any).handle.collateral
+                : "collateral" in wallet
+                ? wallet.collateral
+                : undefined
+            : undefined) ?? [])[0];
         // const filterUtxos = [
         //     ...collateral,
         //     ...(exceptInTcx?.reservedUtxos() || []),
         // ];
         const notCollateral = utxos.filter((u) => !collateral?.isEqual(u));
+
         const filtered = exceptInTcx
             ? notCollateral.filter(
                   exceptInTcx.utxoNotReserved.bind(exceptInTcx)
               )
             : notCollateral;
 
+        const found = filtered.find(predicate);
+
         const joiner = "\n   🔎  ";
         const detail = // true ||
-            globalThis.utxoDump
+            dumpDetail == "always" ||
+            globalThis.utxoDump ||
+            (!found && dumpDetail == "onFail")
                 ? "\n  from set: " + joiner + utxosAsString(filtered, joiner)
-                : `(${filtered.length} candidates; set globalThis.utxoDump to see details)`;
+                : `(${filtered.length} candidates; set globalThis.utxoDump to see all details, or use dumpDetails: option on a specific utxo search)`;
         console.log(
             `  🔎 finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
@@ -684,9 +718,15 @@ export class UtxoHelper {
             //     : [])
         );
 
-        const found = filtered.find(predicate);
         if (found) {
-            console.log("   🎈found" + utxosAsString([found], undefined, this.setup.uxtoDisplayCache));
+            console.log(
+                "   🎈found" +
+                    utxosAsString(
+                        [found],
+                        undefined,
+                        this.setup.uxtoDisplayCache
+                    )
+            );
         } else {
             if (exceptInTcx) {
                 const alreadyInTcx = exceptInTcx.inputs.find(predicate);
@@ -764,9 +804,13 @@ export class UtxoHelper {
         const address = searchScope.address;
         const exceptInTcx = searchScope.exceptInTcx;
 
-        const utxos = address
-            ? await this.network.getUtxos(address)
-            : await wallet!.utxos;
+        const addrs = (await wallet?.usedAddresses) ?? [address];
+        const utxos: TxInput[] = [];
+        for (const addr of addrs.flat(1)) {
+            if (!addr) continue;
+            const addrUtxos = await this.network.getUtxos(addr);
+            utxos.push(...addrUtxos);
+        }
 
         const found = await this.hasUtxo(semanticName, predicate, {
             address,
@@ -787,14 +831,20 @@ export class UtxoHelper {
                     dumpAny(utxos)
                 );
             }
-            debugger
+            debugger;
             // Debuggering?  YOU ARE AWESOME!
             // need to see more? dig in here:
             const addrString = address?.toString();
-            const utxos2 = address ? await this.network.getUtxos(address)
+            const utxos2 = address
+                ? await this.network.getUtxos(address)
                 : await wallet!.utxos;
+            console.log(
+                addrString,
+                wallet,
+                addrs.map((a) => a?.toString())
+            );
             for (const u of utxos2) {
-                predicate(u)                
+                predicate(u);
             }
             throw new Error(
                 this.utxoSearchError(

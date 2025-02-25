@@ -210,6 +210,7 @@ export abstract class Capo<
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
     static async currentConfig() {}
+    isChartered: boolean = false;
     dataBridgeClass = CapoDataBridge;
 
     get onchain(): mustFindConcreteContractBridgeType<this> {
@@ -280,7 +281,7 @@ export abstract class Capo<
         console.warn(
             "using a generic Capo bundle - just enough for getting started."
         );
-        return new CapoHeliosBundle();
+        return CapoHeliosBundle.create();
     }
 
     /**
@@ -345,7 +346,7 @@ export abstract class Capo<
         const bundle = this.getBundle();
         let seedTxn: TxId | undefined = undefined;
         let seedIndex: bigint = 0n;
-        const {
+        let {
             configuredParams,
             preConfigured: {
                 minter: {
@@ -359,6 +360,8 @@ export abstract class Capo<
         if (configuredParams) {
             seedTxn = configuredParams.seedTxn;
             seedIndex = configuredParams.seedIndex;
+            mph = configuredParams.mph;
+            minterConfig = configuredParams; // ??
         } else if (this.configIn && !this.configIn.bootstrapping) {
             seedTxn = this.configIn.seedTxn;
             seedIndex = this.configIn.seedIndex;
@@ -531,6 +534,20 @@ export abstract class Capo<
         return this.uh.mkMinTv(mph, tokenName, count);
     }
 
+    async canFindCharterUtxo() {
+        if (!this.minter) return undefined
+        const predicate = this.uh.mkTokenPredicate(this.tvCharter());
+        const { address } = this;
+        const utxos = await this.network.getUtxos(address);
+
+        const found = await this.uh.hasUtxo("charter", predicate, {
+            address,
+            utxos,
+            required: true,
+        });
+        return found;
+    }
+
     async mustFindCharterUtxo() {
         const predicate = this.uh.mkTokenPredicate(this.tvCharter());
 
@@ -674,6 +691,8 @@ export abstract class Capo<
                 tcx,
                 this.compiledScript
             );
+            //@ts-expect-error poking our nose into Helios TxBuilder's business
+            tcx2.txb._refInputs = tcx2.txb.refInputs.filter(x => !x.id.isEqual(ctUtxo.id))            
             tcx2.addInput(ctUtxo, redeemer);
             const datum = newCharterData
                 ? this.mkDatum.CharterData(newCharterData)
@@ -904,15 +923,46 @@ export abstract class Capo<
         // return withParsedOffchainLinks;
     }
 
-    async findCharterData(currentCharterUtxo?: TxInput): Promise<CharterData> {
+    /**
+     * @public
+     */
+    async findCharterData(
+        currentCharterUtxo?: TxInput
+    ): Promise<CharterData>
+    /**
+     * @private
+     */
+    async findCharterData(
+        currentCharterUtxo: TxInput | undefined,
+        optional: true
+    ): Promise<CharterData | undefined> 
+    async findCharterData(
+        currentCharterUtxo?: TxInput,
+        optional = false
+    ): Promise<CharterData> {
         // const ts1 = Date.now();
         // if (globalThis.__profile__) {
         //     debugger
         //     console.profile("findCharterData");
         // }
         if (!currentCharterUtxo) {
-            currentCharterUtxo = await this.mustFindCharterUtxo();
+            try {
+                currentCharterUtxo = optional
+                // doesn't throw
+                    ? await this.canFindCharterUtxo()
+                    // can throw
+                    : await this.mustFindCharterUtxo();
+            } catch (e) {
+                // rethrows the must-find-not-found error
+                throw e;
+            }
+            if (!currentCharterUtxo) {                
+                // this is contrary to the return type, but
+                // it's only used in a very special case
+                return undefined as any;
+            }
         }
+
         const datum = currentCharterUtxo.output.datum;
         if (datum?.kind !== "InlineTxOutputDatum") {
             throw new Error(`invalid charter UTxO datum`);
@@ -1794,7 +1844,19 @@ export abstract class Capo<
             );
         }
 
-        const charter = await this.findCharterData();
+        let charter: CapoDatum$Ergo$CharterData; {
+            const optional = true;
+            const maybeFound = await this.findCharterData(undefined, optional);
+            if (!maybeFound) {
+                console.warn(
+                    `Capo is not yet bootstrapped; skipping delegate verification`
+                );
+                return;
+            }
+            charter = maybeFound
+        }
+        this.isChartered = true;
+
         const { govAuthorityLink, mintDelegateLink, spendDelegateLink } =
             charter;
 
@@ -1957,7 +2019,6 @@ export abstract class Capo<
         //!!! needs to work also during bootstrapping.
         const chD = charterData || (await this.findCharterData());
 
-        
         return this.connectDelegateWithOnchainRDLink<
             "mintDelegate",
             BasicMintDelegate
@@ -1997,8 +2058,10 @@ export abstract class Capo<
         const chD = charterData || (await this.findCharterData());
         const foundME = chD.manifest.get(roleName);
         if (!foundME) {
+            debugger;
+            await this.findCharterData();
             throw new Error(
-                `no manifest entry found with link to installed ${roleName}`
+                `no manifest entry found with link to installed ${roleName} (debugging breakpoint available)`
             );
         }
         if (foundME?.entryType.DgDataPolicy) {
@@ -2155,7 +2218,9 @@ export abstract class Capo<
 
         // debugger
         const t = initialTcx.uh;
-        t;
+        // todo: use preconfigured seed-utxo id to ensure the seed used
+        // is the seed that was configured (it can't have been spent).
+
         const tcxWithSeed = !!dry.seedUtxo
             ? await this.tcxWithSeedUtxo(
                   initialTcx.addInput(dry.seedUtxo),
@@ -2169,6 +2234,7 @@ export abstract class Capo<
 
         const minter =
             dry.minter ||
+            this.minter ||
             (await this.connectMintingScript({
                 seedIndex,
                 seedTxn,
@@ -2571,7 +2637,10 @@ export abstract class Capo<
         if (this.actorContext.wallet) {
             const foundFunds = await this.uh.findActorUtxo(
                 "to pay for refScript storage",
-                this.uh.mkValuePredicate(txo.value.lovelace, tcx)
+                this.uh.mkValuePredicate(txo.value.lovelace, tcx),
+                {
+                    dumpDetail: "onFail",
+                }
             );
             if (!foundFunds) {
                 throw new Error(

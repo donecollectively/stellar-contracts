@@ -90,6 +90,15 @@ export class UplcConsoleLogger implements UplcLogger {
         return s;
     }
 
+    fullHistory() {
+        return this.history.join("\n");
+    }
+    formattedHistory: string[] = [];
+    fullFormattedHistory() {
+        return this.formattedHistory.join("\n")
+    }
+
+
     flushLines(footerString?: string) {
         // this.lines.push(this.accumulator.join(""))
         let content: string[] = [];
@@ -124,7 +133,9 @@ export class UplcConsoleLogger implements UplcLogger {
             //     content.push(abortMarker);
             // }
         }
-        console.log(content.join("\n"));
+        const joined = content.join("\n");
+        this.formattedHistory.push(joined);
+        console.log(joined);
         this.lines = [];
     }
     finish() {

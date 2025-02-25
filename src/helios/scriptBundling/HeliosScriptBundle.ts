@@ -37,6 +37,7 @@ import type {
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { makeCast } from "@helios-lang/contract-utils";
 import { uplcDataSerializer } from "../../delegation/jsonSerializers.js";
+import { makeMintingPolicyHash } from "@helios-lang/ledger";
 
 /**
  * @internal
@@ -190,7 +191,9 @@ export abstract class HeliosScriptBundle {
     init(setupDetails: StellarBundleSetupDetails<any>) {
         if (this.debug) debugger;
 
-        const { deployedDetails } = setupDetails;
+        const { deployedDetails, params: { variant = "singleton" } = {} } =
+            setupDetails;
+
         if (deployedDetails) {
             const { config, programBundle, scriptHash } = deployedDetails;
 
@@ -210,14 +213,40 @@ export abstract class HeliosScriptBundle {
             };
         } else if (setupDetails?.params) {
             if (this.preCompiled) {
-                const preConfig = this.preCompiled.singleton.config;
+                const thisVariant = this.preCompiled[variant];
+                if (!thisVariant) {
+                    const msg = `${this.constructor.name}: no precompiled variant '${variant}'`;
+                    console.warn(
+                        `${msg}\n  -- available variants: ${Object.keys(
+                            this.preCompiled
+                        ).join(", ")}`
+                    );
+                    console.log(
+                        "configured variant should be in scriptBundle's 'params'"
+                    );
+                    throw new Error(msg);
+                }
+                this._selectedVariant = variant
+                const preConfig = thisVariant.config;
                 preConfig.rev = BigInt(preConfig.rev);
+            
+                if (preConfig.capoMph?.bytes) {
+                    
+                    preConfig.capoMph = makeMintingPolicyHash(
+                        preConfig.capoMph.bytes
+                    );
+                }
                 const uplcPreConfig = this.paramsToUplc(preConfig);
-                const { params } = setupDetails;
+                // omits delegateName from the strict checks
+                //  ... it's provided by the bundle, which the 
+                //  ... off-chain wrapper class may not have access to.
+                const { params: {delegateName, ...params} } = setupDetails;
                 const uplcRuntimeConfig = this.paramsToUplc(params);
                 let didFindProblem: string = "";
                 for (const k of Object.keys(uplcPreConfig)) {
                     const runtime = uplcRuntimeConfig[k];
+                    // skips past any runtime setting that was not explicitly set
+                    if (!runtime) continue 
                     const pre = uplcPreConfig[k];
                     if (!runtime.isEqual(pre)) {
                         if (!didFindProblem) {
@@ -567,7 +596,7 @@ export abstract class HeliosScriptBundle {
         }
 
         const net = this.isMainnet ? "mainnet" : "testnet";
-        console.log( 
+        console.log(
             `(${net}) ${this.moduleName} with params:\n`,
             Object.fromEntries(
                 Object.entries(program.entryPoint.paramsDetails()).map(

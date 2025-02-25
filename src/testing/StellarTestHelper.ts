@@ -214,20 +214,28 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     } as any;
 
     beforeEach<localTC>(async (context) => {
-        await addTestContext(context,YourCapoTestHelper,
-        undefined,
-        helperState
-    )}                
+        await addTestContext(context,
+            YourCapoTestHelper,
+            undefined,
+            helperState
+        )
+    }                
 
     // in your tests:
     
     describe("your thing", async () => {
         it("your test", async (context: localTC) => {
-            await context.h.snapTo‹yourSnapshot›()
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            await h.reusableBootstrap();
+
+            await h.snapTo‹yourSnapshot›()
         });
         it("your other test", async (context: localTC) => { 
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
             // this one will use the snapshot generated earlier
-            await context.h.snapTo‹yourSnapshot›()
+            await h.snapTo‹yourSnapshot›()
         });
     })
 
@@ -326,7 +334,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const t = await tcx;
         await this.advanceNetworkTimeForTx(t, options.futureDate);
 
-        return t.submit(options).then(() => {
+        return t.buildAndQueue(options).then(() => {
             this.network.tick(1);
             return tcx;
         });
@@ -552,9 +560,14 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             uh: undefined as any,
             isTest: true,
             isMainnet: false,
-            txBatcher: new TxBatcher({}),
+            txBatcher: new TxBatcher({              
+                submitters:  {
+                   get emulator() { return getNetwork() } 
+                }
+            }),
             optimize: process.env.OPTIMIZE ? true : this.optimize,
         };
+        setup.txBatcher.setup = setup;
         setup.uh = new UtxoHelper(setup);
 
         let cfg: StellarSetupDetails<ConfigFor<SC>> = {

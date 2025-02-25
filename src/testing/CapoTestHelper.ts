@@ -160,6 +160,7 @@ export abstract class CapoTestHelper<
         let capo;
         const helperState = this.helperState!;
         if (helperState.bootstrapped) {
+            debugger
             console.log("  ---  ⚗️🐞🐞 already bootstrapped");
             if (!helperState.previousHelper) {
                 debugger;
@@ -359,7 +360,7 @@ export abstract class CapoTestHelper<
         if (!this.actorName) {
             await this.setDefaultActor();
         }
-        // this.strella = bootstrappedStrella;
+        this.strella = bootstrappedStrella;
         if (!this.strella) {
             await this.initStellarClass(parsedConfig);
         }

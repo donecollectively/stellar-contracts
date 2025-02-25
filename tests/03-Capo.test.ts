@@ -213,7 +213,7 @@ describe("Capo", async () => {
 
             console.log("------ submit charterSpend");
             await expect(
-                tcx.submit({
+                tcx.submitAll({
                     expectError: true,
                     signers: [actors.tracy.address, actors.tom.address],
                 })
@@ -243,7 +243,7 @@ describe("Capo", async () => {
             ).toBeTruthy();
 
             console.log("------ submit charterSpend");
-            await tcx.submit({
+            await tcx.submitAll({
                 signers: [actors.tracy.address, actors.tom.address],
             });
             const u = await network.getUtxos(treasury.address);
@@ -267,7 +267,7 @@ describe("Capo", async () => {
             const bogusPlace = (await actors.tina.usedAddresses)[0];
             tcx.addOutput(makeTxOutput(bogusPlace, treasury.tvCharter()));
 
-            const submitting = tcx.submit({
+            const submitting = tcx.submitAll({
                 expectError: true,
                 signers: [actors.tracy.address, actors.tom.address],
             });
@@ -298,7 +298,7 @@ describe("Capo", async () => {
                     makeTxOutput(treasury.address, treasury.tvCharter())
                 );
 
-                await expect(tcx.submit(expectTxnError)).rejects.toThrow(
+                await expect(tcx.submitAll(expectTxnError)).rejects.toThrow(
                     /charter token must be standalone/
                 );
             }

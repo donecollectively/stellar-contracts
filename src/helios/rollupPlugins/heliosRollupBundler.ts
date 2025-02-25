@@ -33,7 +33,10 @@ import {
     serializeCacheEntry,
     stringifyCacheEntry,
 } from "../CachedHeliosProgram.js";
-import { delegateLinkSerializer, uplcDataSerializer } from "../../delegation/jsonSerializers.js";
+import {
+    delegateLinkSerializer,
+    uplcDataSerializer,
+} from "../../delegation/jsonSerializers.js";
 
 type HeliosBundlerPluginState = {
     capoBundle?: CapoHeliosBundle;
@@ -155,7 +158,7 @@ export function heliosRollupBundler(
                 this.emitFile({
                     type: "asset",
                     fileName: "needResolverConditions.mjs",
-                    source: resolverConditionsHelper(),                    
+                    source: resolverConditionsHelper(),
                 });
                 // return state.project.writeProjectFile();
             },
@@ -317,6 +320,7 @@ export function heliosRollupBundler(
                                         placeholderAt: "variant generation",
                                     });
                                 if (SomeBundleClass.isCapoBundle) {
+                                    debugger;
                                     if (!state.project.capoBundleName) {
                                         // debugger
                                         // throw new Error(`surprise, we don't know the capo name yet!?! (debugging breakpoint available)`);
@@ -677,8 +681,9 @@ export function heliosRollupBundler(
                                 `looks like you're using the default Capo bundle! ${capoName}`
                             );
                             state.project.capoBundleName = capoName;
-                            //@ts-expect-error - we didn't expose the reject function yet
-                            state.project.configuredCapo.resolve(null);
+                            //@xts-expect-error - we didn't expose the reject function yet
+                            debugger;
+                            state.project.configuredCapo.resolve(undefined);
                             state.project.loadBundleWithClass(
                                 "src/helios/scriptBundling/CapoHeliosBundle.ts",
                                 bundle.capoBundle.constructor
@@ -776,6 +781,7 @@ export function heliosRollupBundler(
                         `non-Capo class using currentDeploymentConfig in ${id}`
                     );
                 } else {
+                    debugger;
                     return transformNonCapo.call(this, code, id);
                 }
                 return transformCapo.call(
@@ -811,6 +817,9 @@ export function heliosRollupBundler(
             this.warn(
                 `no ${networkId} deployDetails for Capo bundle: ${deployDetailsFile}`
             );
+            if (SomeBundleClass.name == state.project.capoBundleName) {
+                state.project.configuredCapo.resolve(undefined);
+            }
         } else {
             const deployDetailsConfigJSON = readFileSync(
                 resolvedDeployConfig.id
@@ -827,12 +836,9 @@ export function heliosRollupBundler(
             this.addWatchFile(id);
             this.addWatchFile(resolvedDeployConfig.id);
 
-            debugger
+            debugger;
             const capoConfig = parseCapoJSONConfig(deployDetails.capo.config);
-            const {
-                seedIndex,
-                seedTxn
-            } = capoConfig;
+            const { seedIndex, seedTxn } = capoConfig;
             const hlBundler: CapoHeliosBundle = await SomeBundleClass.create({
                 deployedDetails: {
                     config: capoConfig,
@@ -843,39 +849,44 @@ export function heliosRollupBundler(
                 },
             });
 
-            const {CapoMinterBundle} = await import("@donecollectively/stellar-contracts/contracts/CapoMinter.hlb")
-            const minterBundler: HeliosScriptBundle = await CapoMinterBundle.create({
-                params: {
-                    seedTxn,
-                    seedIndex
-                },
-                // deployedDetails: {
-                //     config: {
-                //         seedTxn,
-                //         seedIndex
-                //     }
-                // },
-                setup: {
-                    isMainnet: networkId === "mainnet",
-                    isPlaceholder: `rollupBundlerPlugin for inserting pre-compiled Minter details`,
-                },
-            });
+            const { CapoMinterBundle } = await import(
+                "@donecollectively/stellar-contracts/contracts/CapoMinter.hlb"
+            );
+            const minterBundler: HeliosScriptBundle =
+                await CapoMinterBundle.create({
+                    params: {
+                        seedTxn,
+                        seedIndex,
+                    },
+                    // deployedDetails: {
+                    //     config: {
+                    //         seedTxn,
+                    //         seedIndex
+                    //     }
+                    // },
+                    setup: {
+                        isMainnet: networkId === "mainnet",
+                        isPlaceholder: `rollupBundlerPlugin for inserting pre-compiled Minter details`,
+                    },
+                });
 
-            const { 
-                programBundle: minterBundle,
-                scriptHash: mph
-            } = await minterBundler.getSerializedProgramBundle();
+            const { programBundle: minterBundle, scriptHash: mph } =
+                await minterBundler.getSerializedProgramBundle();
             const { scriptHash, programBundle } =
                 await hlBundler.getSerializedProgramBundle();
             state.project.configuredCapo.resolve(hlBundler);
 
-            const { capo: { config }} = deployDetails;
-            debugger
+            const {
+                capo: { config },
+            } = deployDetails;
+            debugger;
             const typedDeployDetailsText = `{
         capo: {
             programBundle: (${JSON.stringify(programBundle)} as never),
             scriptHash: "${scriptHash}",
-            config: this.parseCapoJSONConfig(${JSON.stringify(deployDetails.capo.config)}),
+            config: this.parseCapoJSONConfig(${JSON.stringify(
+                deployDetails.capo.config
+            )}),
         },
         minter: {
             programBundle: (${JSON.stringify(minterBundle)} as never),
@@ -887,7 +898,7 @@ export function heliosRollupBundler(
         }
     } 
             static isPreconfigured = true;
-            `
+            `;
             deployDetails.capo.scriptHash = scriptHash;
             deployDetails.capo.programBundle = programBundle;
 
@@ -940,7 +951,7 @@ export function heliosRollupBundler(
             });
 
             const precompiledVariants: Record<
-                string, 
+                string,
                 string //... with jsonified contents:
                 // {
                 //     scriptHash: string;
@@ -951,8 +962,14 @@ export function heliosRollupBundler(
 
             if (SomeBundleClass.needsCapoConfiguration) {
                 this.debug(`[transform]  -- waiting for configured capo`);
-                const configuredCapo = await state.project.configuredCapo
-                    .promise;
+                const configuredCapo =
+                    await state.project.configuredCapo.promise.catch((e) => {
+                        this.debug(
+                            `failed to load configured Capo bundle: ${e.message}`
+                        );
+                        debugger;
+                        return undefined;
+                    });
                 if (configuredCapo) {
                     hlBundler.capoBundle = configuredCapo;
                     this.debug(`[transform]  -- configured capo ready`);
@@ -976,16 +993,17 @@ export function heliosRollupBundler(
                         params,
                         setup: { isMainnet: networkId === "mainnet" },
                     });
-                    const t = await configuredBundle.getSerializedProgramBundle();
-                    const { scriptHash, programBundle } = t
-            
+                    const t =
+                        await configuredBundle.getSerializedProgramBundle();
+                    const { scriptHash, programBundle } = t;
+
                     precompiledVariants[variant] = `{
                         programBundle: (${JSON.stringify(
-                            programBundle)
-                        } as never),
+                            programBundle
+                        )} as never),
                         scriptHash: "${scriptHash}",
                         config: ${JSON.stringify(
-                            configuredBundle.configuredParams, 
+                            configuredBundle.configuredParams,
                             delegateLinkSerializer
                         )},
                     }\n`;
@@ -1016,9 +1034,9 @@ export function heliosRollupBundler(
             } else {
                 const precompiled = `    preCompiled = ({\n${Object.entries(
                     precompiledVariants
-                ).map(([vName, vSrc]) => 
-                    `${vName}: ${vSrc},\n`
-            ).join("")}    })\n\n`;
+                )
+                    .map(([vName, vSrc]) => `${vName}: ${vSrc},\n`)
+                    .join("")}    })\n\n`;
 
                 s.replace(
                     regex,

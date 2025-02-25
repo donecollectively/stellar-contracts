@@ -16,7 +16,12 @@ import {
     type ScriptHash,
 } from "@helios-lang/ledger";
 
-import type { CardanoClient, Emulator, TxChainBuilder, Wallet } from "@helios-lang/tx-utils";
+import type {
+    CardanoClient,
+    Emulator,
+    TxChainBuilder,
+    Wallet,
+} from "@helios-lang/tx-utils";
 import type { UplcProgramV3, UplcData } from "@helios-lang/uplc";
 import type { DataType, Program, EnumMemberType } from "@helios-lang/compiler";
 
@@ -56,6 +61,7 @@ import type {
 } from "./helios/CachedHeliosProgram.js";
 import type { DeployedScriptDetails } from "./configuration/DeployedScriptConfigs.js";
 import type { TxBatcher } from "./networkClients/TxBatcher.js";
+import { bytesToHex } from "@helios-lang/codec-utils";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -327,9 +333,9 @@ export type UtxoDisplayCache = Map<TxOutputId, string>;
  **/
 export type SetupInfo = {
     /** access to ledger: utxos, txn-posting; can sometimes be a TxChainBuilder overlay on the real network */
-    network: CardanoClient | Emulator 
+    network: CardanoClient | Emulator;
     /** the actual network client; never a TxChainBuilder */
-    chainBuilder?: TxChainBuilder
+    chainBuilder?: TxChainBuilder;
     /** the params for this network */
     networkParams: NetworkParams;
     /** collects a batch of transactions, connected with a TxChainBuilder in context */
@@ -387,6 +393,7 @@ export type StellarBundleSetupDetails<CT extends configBaseWithRev> = {
      */
     deployedDetails?: DeployedScriptDetails<CT>;
     // partialConfig?: Partial<UplcRecord<CT>>;
+    variant?: string;
 };
 
 type scriptPurpose =
@@ -448,9 +455,9 @@ export class StellarContract<
     partialConfig?: Partial<ConfigType>;
     // contractParams?: UplcRecord<ConfigType>;
     setup: SetupInfo;
-    get network() : CardanoClient | Emulator | TxChainBuilder {    
+    get network(): CardanoClient | Emulator | TxChainBuilder {
         return this.setup.chainBuilder || this.setup.network;
-    }    
+    }
 
     networkParams: NetworkParams;
     actorContext: ActorContext<any>;
@@ -584,6 +591,11 @@ export class StellarContract<
     getBundle(): HeliosScriptBundle {
         if (!this._bundle) {
             this._bundle = this.scriptBundle();
+            if (
+                this._bundle.preCompiled &&
+                !this._bundle.preCompiled.singleton
+            ) {
+            }
             if (!this._bundle._didInit) {
                 console.warn(
                     `NOTE: the scriptBundle() method in ${this.constructor.name} isn't\n` +
@@ -857,8 +869,7 @@ export class StellarContract<
 
         // console.log(new Error(`\n  in ${this.constructor.name}`).stack!.split("\n").slice(1).join("\n"));
 
-        const { networkParams, isTest, isMainnet, actorContext } =
-            setup;
+        const { networkParams, isTest, isMainnet, actorContext } = setup;
         this.actorContext = actorContext;
         // helios.config.set({ IS_TESTNET: !isMainnet }); use for TxBuilderConfig from this.setup.isMainnet
         this.networkParams = networkParams;
@@ -928,6 +939,9 @@ export class StellarContract<
         const { config, partialConfig, programBundle, scriptHash } = args;
         if (config) {
             this.configIn = config;
+            //@ts-expect-error on probe for possible but not
+            //   required variant config
+            const variant = config.variant;
             const params = this.getContractScriptParams(config);
             if (this.usesContractScript) {
                 if (programBundle) {
@@ -940,6 +954,7 @@ export class StellarContract<
                         setup: this.setup,
                         params,
                         deployedDetails,
+                        variant,
                     });
                 } else {
                     await this.prepareBundleWithScriptParams(params);
@@ -960,36 +975,33 @@ export class StellarContract<
                     );
                 } else if (!bundle.isHeliosScriptBundle()) {
                     throw new Error(
-                        `${
-                            this.constructor.name
-                        }: this.bundle must be a HeliosScriptBundle; got ${
-                            bundle.constructor.name
-                        }`
+                        `${this.constructor.name}: this.bundle must be a HeliosScriptBundle; got ${bundle.constructor.name}`
                     );
                 }
                 if (bundle.setup && bundle.configuredParams) {
                     try {
-                        this.compiledScript =
-                            await bundle.compiledScript();
+                        this.compiledScript = await bundle.compiledScript();
                     } catch (e: any) {
-                        console.warn("while setting compiledScript: ", e.message);
+                        console.warn(
+                            "while setting compiledScript: ",
+                            e.message
+                        );
                     }
                 } else if (bundle.setup && bundle.params) {
-                    debugger            
-                    throw new Error(`what is this situation here? (dbpa)`)
+                    debugger;
+                    throw new Error(`what is this situation here? (dbpa)`);
                 }
                 console.log(this.program.name, "bundle loaded");
             }
         } else {
-            const bundle = this.getBundle()
+            const bundle = this.getBundle();
             if (bundle.isPrecompiled) {
-                this.compiledScript = await bundle.compiledScript()
+                this.compiledScript = await bundle.compiledScript();
             } else {
-                debugger            
-                throw new Error(`... and what situation do we have here? (dbpa)`)
+                console.log("no config, no precompiled bundle... we'll try to compile what's needed!")
             }
         }
-        
+
         return this;
     }
 
@@ -1367,7 +1379,7 @@ export class StellarContract<
         } = {}
     ) {
         console.warn("deprecated: use tcx.submit() instead");
-        return tcx.submit({ signers, addlTxInfo });
+        return tcx.buildAndQueue({ signers, addlTxInfo });
     }
 
     //!!! todo: implement more and/or test me:
@@ -1448,9 +1460,11 @@ export class StellarContract<
                 setup: this.setup,
             });
         }
-        this.compiledScript = await bundle.compiledScript();
+        this.compiledScript = await bundle.compiledScript();        
 
-        console.log(`       ✅ ${this.constructor.name} ready`);
+        console.log(`       ✅ ${this.constructor.name} ready with scriptHash=`,
+            bytesToHex(this.compiledScript.hash()),
+        );
         this._cache = {};
     }
 
@@ -1574,13 +1588,14 @@ export class StellarContract<
         }
     }
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
-        //!!! make it big enough to serve minUtxo for the new UUT(s)
         const uh = this.utxoHelper;
-        const uutSeed = uh.mkValuePredicate(BigInt(42_000_000), tcx);
+        //!!! big enough to serve minUtxo for each of the new UUT(s)
+        const uutSeed = uh.mkValuePredicate(BigInt(13_000_000), tcx);
         return uh.mustFindActorUtxo(
             `seed-for-uut ${uutPurposes.join("+")}`,
             uutSeed,
-            tcx
+            tcx,
+            "You might need to create some granular utxos in your wallet by sending yourself a series of small transactions (e.g. 15 then 16 and then 17 ADA) as separate utxos/txns"
         );
     }
 }

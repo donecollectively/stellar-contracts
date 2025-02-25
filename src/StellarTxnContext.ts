@@ -53,24 +53,30 @@ export type hasSeedUtxo = StellarTxnContext<
     }
 >;
 
-export type txBuiltOrSubmitted = "built" | "submitted";
+export type txBuiltOrSubmitted = "built" | "signed" | "submitted";
 export type resolvedOrBetter = "resolved" | txBuiltOrSubmitted;
 /**
  * @public
  */
 export type TxDescription<
     T extends StellarTxnContext,
-    PROGRESS extends "buildLater!" | "resolved" | "built" | "submitted",
+    PROGRESS extends "buildLater!" | "resolved" | "built" | "signed" | "submitted",
     TCX extends StellarTxnContext = IF_ISANY<T, StellarTxnContext<anyState>, T>,
     otherProps extends Record<string, unknown> = {}
 > = {
     description: string;
     id: string;
+    parentId?: string;
+    depth: number;
     moreInfo?: string;
     optional?: boolean;
     txName?: string;
-    tcx?: TCX ;
-    tx?: Tx ;
+    tcx?: TCX;
+    tx?: Tx;
+    stats?: BuiltTcxStats;
+    txCborHex? : string;
+    signedTxCborHex? : string;
+    walletTxId?: TxId;
 } & otherProps &
     (PROGRESS extends resolvedOrBetter
         ? {
@@ -81,8 +87,21 @@ export type TxDescription<
               mkTcx: (() => TCX) | (() => Promise<TCX>);
               tcx?: undefined;
           }) &
-    (PROGRESS extends txBuiltOrSubmitted ? { tx: Tx; txId?: TxId } : {}) &
-    (PROGRESS extends "submitted" ? { txId: TxId } : {});
+    (PROGRESS extends txBuiltOrSubmitted
+        ? {
+              tx: Tx;
+              txId?: TxId;
+              stats: BuiltTcxStats;
+              options: SubmitOptions;
+              txCborHex: string,
+            }
+        : {}) &
+    (PROGRESS extends "signed" | "submitted" ? { 
+        txId: TxId,
+        txCborHex: string,
+        signedTxCborHex: string,
+        walletTxId: TxId,
+    } : {});
 
 /**
  * @public
@@ -108,7 +127,7 @@ export type MultiTxnCallback<
  * current transaction is executed.  This type allows the transaction context to include such
  * future transactions in its state, so that they can be executed later.
  *
- * The future transactions can be executed using the {@link StellarTxnContext.submitAddlTxns}
+ * The future transactions can be executed using the {@link StellarTxnContext.queueAddlTxns}
  * helper method.
  * @public
  **/
@@ -169,33 +188,41 @@ type RedeemerArg = {
     redeemer?: UplcData;
 };
 
+export type TxDescriptionWithError = TxDescription<
+    any,
+    "built",
+    any,
+    {
+        error: string;
+    }
+>;
+
 /**
  * @public
  */
-export type SubmitOptions = TxSubmitCallbacks &
-    TxPipelineOptions & {
-        /**
-         * indicates additional signers expected for the transaction
-         */
-        signers?: Address[];
-        addlTxInfo?: Partial<
-            Omit<TxDescription<any, "submitted">, "description">
-        > & { description: string };
-        paramsOverride?: Partial<NetworkParams>;
-        /**
-         * useful most for test environment, so that a txn failure can be me marked
-         * as "failing as expected".  Not normally needed for production code.
-         */
-        expectError?: true;
-        /**
-         * Called when there is a detected error, before logging.  Probably only needed in test.
-         */
-        beforeError?: (tx: Tx) => MultiTxnCallback<any>;
-        /**
-         * Passed into the Helios TxBuilder's build()/buildUnsafe()
-         */
-        beforeValidate?: (tx: Tx) => MultiTxnCallback<any>;
-    };
+export type SubmitOptions = TxPipelineOptions & {
+    /**
+     * indicates additional signers expected for the transaction
+     */
+    signers?: Address[];
+    addlTxInfo?: Partial<
+        Omit<TxDescription<any, "submitted">, "description">
+    > & { description: string };
+    paramsOverride?: Partial<NetworkParams>;
+    /**
+     * useful most for test environment, so that a txn failure can be me marked
+     * as "failing as expected".  Not normally needed for production code.
+     */
+    expectError?: true;
+    /**
+     * Called when there is a detected error, before logging.  Probably only needed in test.
+     */
+    beforeError?: MultiTxnCallback<any, TxDescriptionWithError>;
+    /**
+     * Passed into the Helios TxBuilder's build()/buildUnsafe()
+     */
+    beforeValidate?: (tx: Tx) => MultiTxnCallback<any>;
+};
 
 type MintUnsafeParams = Parameters<TxBuilder["mintPolicyTokensUnsafe"]>;
 type MintTokensParams = [
@@ -209,11 +236,11 @@ type MintTokensParams = [
 type TxPipelineOptions = Expand<
     TxSubmitCallbacks & {
         fixupBeforeSubmit?: MultiTxnCallback;
-        whenQueued?: MultiTxnCallback<any, TxDescription<any, "built">>;
+        whenBuilt?: MultiTxnCallback<any, TxDescription<any, "built">>;
     }
 >;
 
-type TxSubmitCallbacks = {
+export type TxSubmitCallbacks = {
     onSubmitError?: MultiTxnCallback<
         any,
         TxDescription<any, "built", any, { error: string }>
@@ -223,6 +250,9 @@ type TxSubmitCallbacks = {
 
 type BuiltTcx = {
     tx: Tx;
+} & BuiltTcxStats;
+
+type BuiltTcxStats = {
     willSign: PubKeyHash[];
     walletMustSign: boolean;
     wallet: Wallet;
@@ -263,10 +293,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
     outputs: TxOutput[] = [];
     feeLimit?: bigint;
     state: S;
-    neededSigners: Address[] = [];
+    allNeededWitnesses: Address[] = [];
+    otherPartySigners: PubKeyHash[] = [];
     parentTcx?: StellarTxnContext<any>;
     childReservedUtxos: TxInput[] = [];
+    parentId: string = "";
+    depth=0
     declare setup: SetupInfo;
+    // submitOptions?: SubmitOptions
     txb: TxBuilder;
     txnName: string = "";
     withName(name: string) {
@@ -321,11 +355,21 @@ export class StellarTxnContext<S extends anyState = anyState> {
         state: Partial<S> = {},
         parentTcx?: StellarTxnContext<any>
     ) {
+        if (parentTcx) {
+            console.warn(
+                "Deprecated use of 'parentTcx' - use includeAddlTxn() instead"+
+                "\n  ... setup.txBatcher.current holds an in-progress utxo set for all 'parent' transactions"
+            )
+            throw new Error(`parentTcx used where? `)
+        }
         Object.defineProperty(this, "setup", {
             enumerable: false,
             value: setup,
         });
-        Object.defineProperty(this, "_builtTx", { enumerable: false, writable: true });
+        Object.defineProperty(this, "_builtTx", {
+            enumerable: false,
+            writable: true,
+        });
 
         const isMainnet = setup.isMainnet;
         this.isFacade = undefined;
@@ -337,6 +381,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         this.txb = makeTxBuilder({
             isMainnet,
+            additionalFee: 6_500n,
         });
         // const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error
@@ -344,6 +389,29 @@ export class StellarTxnContext<S extends anyState = anyState> {
             ...state,
             uuts: state.uuts || { ...emptyUuts },
         };
+
+        const currentBatch = this.currentBatch
+        const hasOpenBatch = currentBatch?.isOpen;
+        if (!currentBatch || currentBatch.isConfirmationComplete) {
+            this.setup.txBatcher.rotate(this.setup.chainBuilder);
+        }
+
+        if (!this.setup.isTest && !this.setup.chainBuilder) {
+            if (currentBatch.chainBuilder) {
+                // backfills the chainbuilder from the one auto-populated
+                // during `get TxBatcher.current()`
+                this.setup.chainBuilder = currentBatch.chainBuilder;
+            } else {
+                this.setup.chainBuilder = makeTxChainBuilder(
+                    this.setup.network
+                );
+            }
+        }
+
+        if (parentTcx) {
+            debugger
+            throw new Error(`parentTcx used where? `)
+        }
         this.parentTcx = parentTcx;
     }
 
@@ -399,11 +467,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
     >(
         this: TCX,
         txnName: string,
-        txInfoIn: Omit<TxDescription<any, "buildLater!">, "id"> & {
+        txInfoIn: Omit<TxDescription<any, "buildLater!">, "id" | "depth" | "parentId"> & {
             id?: string;
         }
     ): RETURNS {
-        const txInfo: TxDescription<any, "buildLater!"> = txInfoIn as any;
+        const txInfo: TxDescription<any, "buildLater!"> = {
+            ...(txInfoIn as any)
+        }
         if (!txInfo.id)
             txInfo.id =
                 //@ts-expect-error - the tcx is never there,
@@ -411,6 +481,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 // consistency about the policy of syncing to it.
                 txInfo.tcx?.id || nanoid(5);
 
+        txInfo.parentId = this.id
+        
+        txInfo.depth = (this.depth || 0) + 1;
         const thisWithMoreType: RETURNS = this as any;
         if ("undefined" == typeof this.isFacade) {
             throw new Error(
@@ -727,7 +800,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
 
         //@ts-expect-error probing for pubKeyHash
-        if (input.address.pubKeyHash) this.neededSigners.push(input.address);
+        if (input.address.pubKeyHash)
+            this.allNeededWitnesses.push(input.address);
         this.inputs.push(input);
         if (this.parentTcx) {
             this.parentTcx.childReservedUtxos.push(input);
@@ -911,7 +985,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             console.timeStamp?.(`submit(): findAnySpareUtxos()`);
             const spares = await this.findAnySpareUtxos();
 
-            const willSign = [...signers, ...this.neededSigners]
+            const willSign = [...signers, ...this.allNeededWitnesses]
                 .map((addr) =>
                     addr.era == "Shelley" &&
                     addr.spendingCredential.kind == "PubKeyHash"
@@ -923,34 +997,40 @@ export class StellarTxnContext<S extends anyState = anyState> {
             console.timeStamp?.(`submit(): addSIgners()`);
             this.txb.addSigners(...willSign);
             const wHelper = wallet && makeWalletHelper(wallet);
-
+            const othersMustSign: PubKeyHash[] = [];
             // determine whether we need to request signing from wallet.
             // may involve adding signers to the txn
             if (wallet && wHelper) {
                 for (const a of willSign) {
-                    if (!(await wHelper.isOwnAddress(a))) continue;
-                    walletMustSign = true;
-                    break;
-                }
-                // no fussing if we already know the wallet must sign.
-                if (!walletMustSign) {
-                    // if any inputs from the wallet were added as part of finalizing,
-                    // add the wallet's signature to the txn
-                    const inputs = this.txb.inputs;
-                    if (!inputs) throw new Error(`no inputs in txn`);
-                    for (const input of inputs) {
-                        if (!(await wHelper.isOwnAddress(input.address)))
-                            continue;
-                        this.neededSigners.push(input.address);
+                    if (await wHelper.isOwnAddress(a)) {
                         walletMustSign = true;
+                    } else {
+                        othersMustSign.push(a);
+                    }
+                }
+                this.otherPartySigners = othersMustSign;
+                // if any inputs from the wallet were added as part of finalizing,
+                // add the wallet's signature to the txn
+                const inputs = this.txb.inputs;
+                if (!inputs) throw new Error(`no inputs in txn`);
+                for (const input of inputs) {
+                    if (!(await wHelper.isOwnAddress(input.address))) continue;
+                    this.allNeededWitnesses.push(input.address);
+                    walletMustSign = true;
 
-                        //@ts-expect-error on type-probe
-                        const pubKeyHash = input.address.pubKeyHash;
+                    //@ts-expect-error on type-probe
+                    const pubKeyHash = input.address.pubKeyHash;
 
-                        if (pubKeyHash) {
-                            this.txb.addSigners(pubKeyHash);
-                        }
-                        break;
+                    if (pubKeyHash) {
+                        this.txb.addSigners(pubKeyHash);
+                    } else {
+                        //!!! todo: deal with "native-script" by traversing its
+                        //  struct and seeking the pubKeyHashes (or? other witnesses)
+                        //  that may be needed for signing.  That, or include the
+                        //  native-script information alongside the otherPartySigners,
+                        //  maybe as otherPartyScriptSigners or something.  The
+                        //  batch-submit-controller could take over the responsibility
+                        //  for finding signatures satisfactory for those.
                     }
                 }
             } else {
@@ -984,11 +1064,25 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
                         // todo: use Ogmios API to just get the exact costs
                         //   ... and report here when there is a diff.
-                        // Meanwhile, add a small amount of padding
-                        //   ... to the computed costs
+                        // Meanwhile, add a small amount (0.05 ADA) of padding
+                        //   ... to the computed costs, per involved script
 
+                        // temp? - + ~0.06 ada = 1.2x 0.05
+                        // const cpuSlush = 0n // BigInt(350_000_000n); // ~25k lovelace
+                        // const memSlush = 0n // BigInt(430_000n); // ~25k lovelace
+
+                        // without this, we **sometimes** get problems having enough
+                        // exBudget to cover the way the haskell node computes the 
+                        // per-script execution costs.  Prevents "out of budget" errors 
+                        // during script execution:
                         const cpuSlush = BigInt(350_000_000n); // ~25k lovelace
                         const memSlush = BigInt(430_000n); // ~25k lovelace
+
+                        //... but doesn't suffice to just add per-script slush:
+                        // this approach leads to escalating "expected/actual fee" messaging
+                        // const cpuSlush = BigInt( 350_000_000n * 13n / 10n); // ~25k lovelace/0.025 ADA
+                        // const memSlush = BigInt(430_000n * 13n / 10n); // ~25k lovelace/0.025 ADA
+
                         capturedCosts.slush.cpu += cpuSlush;
                         capturedCosts.slush.mem += memSlush;
                         costs.cpu += cpuSlush;
@@ -1073,6 +1167,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     }\n` + (heliosStack?.join("\n") || "")
                 );
                 logger.flush();
+                // TODO: notify the currentBatch and let it reveal the script-context
+                // and tx-cbor.  KEEP THE console LOGGING for now ALSO.
+
                 const ctxCbor = scriptContext?.toCbor();
                 const cborHex = ctxCbor ? bytesToHex(ctxCbor) : "";
                 if (!expectError) {
@@ -1142,51 +1239,65 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * or for logging or any other post-submission processing.
      */
     async submitAll(this: StellarTxnContext<any>, options: SubmitOptions = {}) {
-        //@ts-expect-error probing for is-chain-builder
-        const isAlreadyChainBuilder = this.setup.network.build;
-        if (isAlreadyChainBuilder) {
-            throw new Error(`can't submitAll() with an existing chain-builder`);
-        }
-        if (this.setup.chainBuilder) {
-            console.warn(
-                `⚠️  submitAll(): detected overlapping txn batches... \n` +
-                    `  ... that MIGHT be a developer error on our part.\n` +
-                    `  ... or, you might need to add your transaction to an existing batch \n`+
-                    `      (use otherTcx.includeAddlTxn(...))\n` +
-                    `  ... or, you might need to ensure you're waiting for an existing batch \n`+
-                    `      to finish (monitor setup.txBatcher.current for batch:confirmed)\n` +
-                    `\nFinally, you might have an advanced use-case for building multiple \n` +
-                    `independent batches of transactions that don't need tx chaining between them. \n\n` +
-                    `Please be welcome to log an issue with the project's support desk, \n` +
-                    `... and we'll see what we can do to help.`
-            );
-            throw new Error(
-                `submitAll(): the network wasn't restored after previous submitAll() (see log for more guidance)`
-            );
-        }
-        if (!this.setup.isTest) {
-            this.setup.chainBuilder = makeTxChainBuilder(this.setup.network);
+        const currentBatch = this.currentBatch
+        const hasOpenBatch = currentBatch?.isOpen;
+
+
+        return this.buildAndQueueAll(options).then(() => {
+            return currentBatch.$signAndSubmitAll()
+        })
+    }
+
+    async buildAndQueueAll(
+        this: StellarTxnContext<any>,
+        options: SubmitOptions = {}
+    ) {
+        const {addlTxInfo = {
+            description: this.txnName
+                ? ": " + this.txnName
+                : "‹unnamed tx›",
+            id: this.id,
+            tcx: this,            
+        }, ...generalSubmitOptions} = options
+        if (options.paramsOverride) {
+            console.warn("⚠️  paramsOverride can be useful for extreme cases \n"+
+                "of troubleshooting tx execution by submitting an oversized tx \n"+
+                "with unoptimized contract scripts having diagnostic print/trace calls\n"+
+                "to a custom preprod node having overloaded network params, thus allowing \n"+
+                "such a transaction to be evaluated end-to-end by the Haskell evaluator using \n"+
+                "the cardano-node's script-budgeting mini-protocol.\n\n"+
+
+                "This will cause problems for regular transactions (such as requiring very large collateral)"+
+                "Be sure to remove any params override if you're not dealing with \n"+
+                "one of those very special situations. \n"
+            )
+            debugger
         }
 
         if (this.isFacade == false) {
-            return this.submit(options).then(() => {
+            return this.buildAndQueue({
+                ... generalSubmitOptions,
+                addlTxInfo,
+            }).then(() => {
                 if (this.state.addlTxns) {
-                    return this.submitAddlTxns(options).then( (x) => {
-                        this.setup.chainBuilder = undefined
-                        return x
-                    } );
+                    // this gives early registration of nested txns from top-level txns
+                    console.log(`🎄⛄🎁 ${this.id}   -- B&QA - registering addl txns`)
+                    return this.queueAddlTxns(options)
                 }
             });
         } else if (this.state.addlTxns) {
-            return this.submitAddlTxns(options).then( (x) => {
-                this.setup.chainBuilder = undefined
-                return x
-            } )
+            // this gives early registration of nested txns from top-level txns
+            console.log(`🎄⛄🎁 ${this.id}   -- B&QA - registering txns in facade`)
+            return this.queueAddlTxns(generalSubmitOptions)
         }
-        console.warn(
-            `⚠️  submitAll(): no txns to submit`, this
+        console.warn(`⚠️  submitAll(): no txns to queue/submit`, this);
+        throw new Error(
+            `unreachable? -- nothing to do for submitting this tcx`
         );
-        throw new Error(`unreachable? -- nothing to do for submitting this tcx`);
+    }
+
+    get currentBatch() {
+        return this.setup.txBatcher.current;
     }
 
     /**
@@ -1194,21 +1305,24 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * @remarks
      * To also submit additional transactions, use the `submitAll()` method.
      */
-    async submit(
+    async buildAndQueue(
         this: StellarTxnContext<any>,
-        {
+        submitOptions: SubmitOptions = {}
+    ) {
+        let {
             signers = [],
             addlTxInfo,
             paramsOverride,
             expectError,
             beforeError,
             beforeValidate,
-            whenQueued,
+            whenBuilt,
             fixupBeforeSubmit,
             onSubmitError,
             onSubmitted,
-        }: SubmitOptions & TxSubmitCallbacks = {}
-    ) {
+        } = submitOptions;
+
+        // console.log("buildAndQueue with setup", this.setup);
         this.noFacade("submit");
         if (!addlTxInfo) {
             throw new Error(`expecting addlTxInfo to be passed`);
@@ -1220,7 +1334,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 tcx: this,
             };
         }
-        const { logger } = this;
+        const { logger, setup: {network} } = this;
         const {
             tx,
             willSign,
@@ -1237,15 +1351,21 @@ export class StellarTxnContext<S extends anyState = anyState> {
             beforeValidate,
             expectError,
         });
-        const { description, id } = addlTxInfo;
+        let { description, id } = addlTxInfo;
         if (!id) {
-            // temp until we can get types fixed up to make it required
-            throw new Error(`expecting addlTxInfo.id to be set`);
+            id = addlTxInfo.id = this.id
         }
         const addlTxInfo2: TxDescription<any, "buildLater!"> = {
             ...addlTxInfo,
         } as any;
 
+        const txStats = {
+            costs: costs,
+            wallet: wallet,
+            walletMustSign,
+            wHelper,
+            willSign,
+        };
         const errMsg =
             tx.hasValidationError && tx.hasValidationError.toString();
         if (errMsg) {
@@ -1260,15 +1380,28 @@ export class StellarTxnContext<S extends anyState = anyState> {
             logger.logPrint(this.dump(tx));
             this.emitCostDetails(tx, costs);
             logger.flush();
-            if (beforeError) {
-                await beforeError(tx);
-            }
             logger.logError(`FAILED submitting tx: ${description}`);
             logger.logPrint(errMsg);
             if (expectError) {
                 logger.logPrint(
                     `\n\n💣🎉 💣🎉 🎉 🎉 transaction failed (as expected)`
                 );
+            }
+
+            const txErrorDescription: TxDescriptionWithError = {
+                ...addlTxInfo2,
+                tcx: this,
+                error: errMsg,
+                tx,
+                stats: txStats,
+                options: submitOptions,
+                txCborHex: bytesToHex(tx.toCbor())
+            };
+            this.currentBatch.txError(txErrorDescription);
+
+            let errorHandled;
+            if (beforeError) {
+                errorHandled = await beforeError(txErrorDescription);
             }
             logger.flushError();
             if (
@@ -1280,8 +1413,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     `⚠️  mint delegate for multiple activities should be given delegated-data activities, not the activities of the delegate`
                 );
             }
-            debugger;
-            throw new Error(errMsg);
+            if (!errorHandled) {
+                debugger;
+                throw new Error(errMsg);
+            }
         }
         // const elapsed = t2 - t1;
         // console.log(
@@ -1298,173 +1433,40 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 `incontheeivable! all signers should have been added to the builder above`
             );
         }
-        const txDescr = {
+
+        const txDescr : TxDescription<any, "built"> = {
             ...addlTxInfo2,
             tcx: this,
             tx,
             txId: tx.id(),
+            options: submitOptions,
+            stats: txStats,
+            txCborHex: bytesToHex(tx.toCbor()),
         };
-        const txState = this.setup.txBatcher.current.txStates[id]
-        debugger
-        this.setup.txBatcher.current.addTxDescr(txDescr)
-        // txState.notifier.emit("change", txState)
-        await whenQueued?.(txDescr);
-        await Promise.resolve();
-        this.setup.chainBuilder?.with(txDescr.tx);
-        
-        if (walletMustSign) {
-            console.timeStamp?.(`submit(): wallet.signTx()`);
-            const walletSign = wallet.signTx(tx);
-            const sigs = await walletSign.catch((e) => {
-                logger.logError("signing via wallet failed: " + e.message);
-                logger.logPrint(this.dump(tx));
-                logger.flushError();
-                return null;
-            });
-            console.timeStamp?.(`submit(): tx.addSignatures()`);
-            if (sigs) {
-                //! doesn't need to re-verify a sig it just collected
-                //   (sig verification is ~2x the cost of signing)
-                tx.addSignatures(sigs, false);
-            } else {
-                onSubmitError?.({
-                    ...addlTxInfo2,
-                    tcx: this,
-                    error: "wallet signing failed",
-                    tx,
-                });
-                throw new Error(`wallet signing failed`);
-            }
-        }
+        const { currentBatch } = this;
+        const txState = currentBatch.$txStates[id];
+
+
         logger.logPrint(`tx transcript: ${description}\n`);
         logger.logPrint(this.dump(tx));
         this.emitCostDetails(tx, costs);
         logger.flush();
 
-        console.timeStamp?.(`submit(): to net/wallet`);
-
+        // hands off wallet signing & tx-completion to the batcher.
+        console.timeStamp?.(`tx: add to current-tx-batch`);
+        currentBatch.$addTxns(txDescr)
+        this.setup.chainBuilder?.with(txDescr.tx);
+        await whenBuilt?.(txDescr);
+        
         let txId: TxId | undefined;
-        debugger
-        if (this.setup.txBatcher) {
-            txId = await this.setup.txBatcher?.current.submitTxDescr(txDescr);
+
+        if (this.setup.isTest) {
+            return wallet.submitTx(tx).then(() => {
+                //@ts-expect-error emulator-specific method
+                network.tick?.(1n);
+            })
+
         }
-
-        let walletPromise: Promise<TxId> | undefined;
-        let didHaveError = false;
-        if (wallet) {
-            if (!this.setup.isTest) {
-                // submit via wallet in addition to the network, may allow for faster confirmation
-                walletPromise = wallet.submitTx(tx).then(
-                    (walletTxId) => {
-                        console.log(
-                            "submitTx() success via wallet: ",
-                            walletTxId
-                        );
-                        if (txId && !txId.isEqual(walletTxId)) {
-                            console.error(
-                                "submitter and wallet disagree on the txid!",
-                                { walletSaid: walletTxId, submitterSaid: txId }
-                            );
-                        }
-                        return walletTxId;
-                    },
-                    (e) => {
-                        didHaveError = true;
-                        debugger;
-                        onSubmitError?.({
-                            ...addlTxInfo2,
-                            tx,
-                            tcx: this,
-                            error: e.message,
-                        });
-                        console.log(
-                            "⚠️  submitting via wallet failed (debugging breakpoint available): ",
-                            e.message
-                        );
-                        debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
-                        throw e;
-                    }
-                );
-            }
-        }
-
-        try {
-            const networkSubmitPending = this.setup.network
-                //@ts-expect-error on non-standard submitTx() in emulator
-                .submitTx(tx, logger)
-                .then(
-                    async (netTxId) => {
-                        console.log(
-                            "submitTx() success via network: ",
-                            netTxId
-                        );
-                        const walletTxId = await walletPromise; // resolves txId
-                        if (walletTxId && !netTxId.isEqual(walletTxId)) {
-                            console.error(
-                                "network submit and wallet submit disagree on the txid!",
-                                { walletSaid: walletTxId, networkSaid: netTxId }
-                            );
-                        }
-                        return netTxId;
-                    },
-                    (e) => {
-                        if (
-                            "currentSlot" in this.setup.network &&
-                            e.message.match(/or slot out of range/)
-                        ) {
-                            this.checkTxValidityDetails(tx);
-                        }
-                        debugger;
-                        didHaveError = true;
-                        onSubmitError?.({
-                            ...addlTxInfo2,
-                            tx,
-                            tcx: this,
-                            error: e.message,
-                        });
-                        console.warn(
-                            "⚠️  submitting via helios CardanoClient failed: ",
-                            e.message
-                        );
-                        debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
-                        throw e;
-                    }
-                );
-            await walletPromise; // no-op in test;
-            txId = await networkSubmitPending;
-        } catch (e: any) {
-            logger.logError(
-                `submitting tx failed: ${description}: ❌ ${e.message}`
-            );
-            logger.flushError();
-
-            const asHex = bytesToHex(tx.toCbor());
-            const t2 = decodeTx(asHex);
-            debugger;
-            if (!expectError) {
-                console.warn(
-                    "------------------- failed tx as cbor-hex -------------------\n" +
-                        asHex,
-                    "\n------------------^ failed tx details ^------------------\n" +
-                        // note, the debugging breakpoint mentioned is actually one or more of
-                        // multiple breakpoints above.
-                        "(debugging breakpoint available)"
-                );
-            }
-        }
-
-        onSubmitted?.(
-            {
-                ...addlTxInfo2,
-                tcx: this,
-                tx,
-                txId: txId!,
-            } /* todo? txId */
-        );
-        console.timeStamp?.(`submit(): success`);
-        logger.logPrint(`\n\n\n🎉🎉 tx submitted: ${description} 🎉🎉`);
-        logger.finish();
-        return txId;
     }
     emitCostDetails(tx: Tx, costs: { total: Cost; [key: string]: Cost }) {
         const { logger } = this;
@@ -1535,6 +1537,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         logger.logPrint(
             "costs: " +
+                `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}` +
+                `\n  -- tx size ${txSize}` +
+                ` (${(Number((1000 * txSize) / oMaxSize) / 10).toFixed(
+                    1
+                )}% of tx size limit)` +
+                ` = ${lovelaceToAda(sizeFee)}` +
                 `\n  -- scripting costs` +
                 `\n    -- cpu units ${total.cpu}` +
                 ` = ${lovelaceToAda(cpuFee)}` +
@@ -1547,74 +1555,26 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     Number((1000n * total.mem) / BigInt(oMaxMem)) / 10
                 ).toFixed(1)}% of mem limit/tx)` +
                 scriptBreakdown +
-                `\n  -- tx size ${txSize}` +
-                ` (${(Number((1000 * txSize) / oMaxSize) / 10).toFixed(
-                    1
-                )}% of tx size limit)` +
-                ` = ${lovelaceToAda(sizeFee)}` +
-                `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}` +
                 `\n  -- remainder ${lovelaceToAda(
                     txFee - cpuFee - memFee - sizeFee - txFeeFixed
                 )} is for refScripts/etc`
         );
     }
 
-    get currentSlot() {
-        return makeNetworkParamsHelper(this.networkParams).timeToSlot(
-            this.setup.network.now
-        );
-    }
-    private checkTxValidityDetails(tx: Tx) {
-        const b = tx.body;
-        // const db = tx.dump().body;
-        function getAttr(x: string) {
-            const qq = tx.body[x];
-            if (!qq) {
-                throw new Error(`no ${x} in tx.body: `);
-            }
-            return qq;
-        }
-
-        const validFrom = getAttr("firstValidSlot");
-        const validTo = getAttr("lastValidSlot");
-
-        // vf = 100,  current = 102, vt = 110  =>   FROM now -2, TO now +8; VALID
-        // vf = 100,  current = 98,   vt = 110  =>   FROM now +2, TO now +12; FUTURE
-        // vf = 100,  current = 100,  vt = 110  =>  FROM now, TO now +10; VALID
-        // vf = 100, current = 120, vt = 110  =>  FROM now -20, TO now -10; PAST
-        debugger;
-        const { currentSlot } = this;
-        const diff1 = validFrom - currentSlot;
-        const diff2 = validTo - currentSlot;
-        const disp1 =
-            diff1 > 0
-                ? `NOT VALID for +${diff1}s`
-                : `${diff2 > 0 ? "starting" : "was valid"} ${diff1}s ago`;
-        const disp2 =
-            diff2 > 0
-                ? `${diff1 > 0 ? "would be " : ""}VALID until now +${diff2}s`
-                : `EXPIRED ${0 - diff2}s ago`;
-
-        console.log(
-            `  ⚠️  slot validity issue?\n` +
-                `    - validFrom: ${validFrom} - ${disp1}\n` +
-                `    - validTo: ${validTo} - ${disp2}\n` +
-                `    - current: ${currentSlot}\n`
-        );
-    }
 
     /**
      * Executes additional transactions indicated by an existing transaction
      * @remarks
      *
      * During the off-chain txn-creation process, additional transactions may be
-     * queued for execution.  This method is used to execute those transactions,
-     * along with any chained transactions they may trigger.
-     * @param tcx - the prior txn context having the additional txns to execute
-     * @param callback - an optional async callback that you can use to notify a user, or to log the results of the additional txns
+     * queued for execution.  This method is used to register those transactions,
+     * along with any chained transactions THEY may trigger.
+     * 
+     * The TxBatcher and batch-controller classes handle wallet-signing
+     * and submission of the transactions for execution.
      * @public
      **/
-    async submitAddlTxns(
+    async queueAddlTxns(
         this: hasAddlTxns<any>,
         pipelineOptions?: TxPipelineOptions
     ) {
@@ -1646,9 +1606,28 @@ export class StellarTxnContext<S extends anyState = anyState> {
         //     ][]
 
         for (const [txName, addlTxInfo] of Object.entries(txns)) {
+            const { id } = addlTxInfo;
+            let txTracker = this.currentBatch.$txInfo(id)
+            if (!txTracker) {
+                this.currentBatch.$addTxns(addlTxInfo)
+                txTracker = this.currentBatch.$txInfo(id)
+            }
+        }
+        /* yield to allow rendering */
+        await new Promise((res) => setTimeout(res, 5)) 
+
+        for (const [txName, addlTxInfo] of Object.entries(txns)) {
+            const { id, depth, parentId } = addlTxInfo;
+            let txTracker = this.currentBatch.$txInfo(id)
+            
+            txTracker.$transition("building");
+            /* yield to allow rendering */
+            await new Promise((res) => setTimeout(res, 5)) 
+
+            // IS resolving.  WILL BE resolved
             const txInfoResolved: TxDescription<any, "resolved"> =
                 addlTxInfo as any;
-            const { txName, description, id } = txInfoResolved;
+            const { txName, description } = txInfoResolved;
             console.log("  -- before: " + description);
             const tcx = (
                 "function" == typeof addlTxInfo.mkTcx
@@ -1657,6 +1636,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                               "  creating TCX just in time for: " + description
                           );
                           const tcx = await addlTxInfo.mkTcx();
+                          tcx.parentId = parentId || "";
+                          tcx.depth = depth;
                           if (id) {
                               tcx.id = id;
                           } else {
@@ -1711,10 +1692,29 @@ export class StellarTxnContext<S extends anyState = anyState> {
             // console.log("   ----> effective tx", effectiveTcx);
 
             txInfoResolved.tcx = effectiveTcx;
+            if (!this.currentBatch.$txInfo(id)) {
+                debugger
+                throw new Error(`unreachable - right?`)
+                await this.currentBatch.$addTxns(txInfoResolved)
+                /* yield to allow rendering */
+                await new Promise((res) => setTimeout(res, 5)) 
 
-            await effectiveTcx.submit({
+                // debugger            
+                // throw new Error("no matching tx tracker (dbpa)")
+            }
+
+            //!!! was just buildAndQueue, but that was executing
+            // in "breadth-first" order (good for registration) 
+            //    (i.e. in consecutive layers of discovered txns)
+            // ... instead of executing depth-first (good for tx-chaining).
+            // We want all txns to be registered as soon as they're 
+            //   known to be a tx to be made.  But for each such tx,
+            //   we want its chained txns to be executed BEFORE moving on
+            //   to build any of those other registered txns.
+
+            await effectiveTcx.buildAndQueueAll({
+                ...pipelineOptions,
                 addlTxInfo: txInfoResolved,
-                ...pipelineOptions ,
             });
             // console.log("   -- submitTxns: <- txn: ", txName, description);
             // m oved into submit()
@@ -1745,11 +1745,16 @@ export class StellarTxnContext<S extends anyState = anyState> {
         //@ts-expect-error on probing for a maybe-undefined entry:
         const addlTxns = this.state.addlTxns;
 
+        const {
+            txns,
+            onSubmitError,
+        } = options
         const newTxns: TxDescription<any, "buildLater!">[] =
-            options.txns || addlTxns || [];
+            txns || addlTxns || [];
         let chainedTxns: TxDescription<any, "buildLater!">[] = [];
-        const txChainSubmitOtions: TxPipelineOptions = {
-            ...options,
+        
+        const txChainSubmitOptions: TxPipelineOptions = {
+            onSubmitError,
             // txns,  // see newTxns
             fixupBeforeSubmit: (txinfo) => {
                 //@ts-expect-error triggering the test-network-emulator's tick
@@ -1757,26 +1762,25 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 this.setup.network.tick?.(1);
                 options.fixupBeforeSubmit?.(txinfo);
             },
-            whenQueued: (txinfo) => {
-                const stackedPromise = options.whenQueued?.(txinfo);
+            whenBuilt: async (txinfo) => {
+                const {id: parentId} = txinfo
+                const stackedPromise = options.whenBuilt?.(txinfo);
                 const more: Record<string, TxDescription<any, "buildLater!">> =
                     //@ts-expect-error on optional prop
                     txinfo.tcx.state.addlTxns || {};
                 console.log("  ✅ " + txinfo.description);
                 const moreTxns = Object.values(more);
-                if (moreTxns.length) {
-                    // recognizes next round of semantic txns to be built & submitted
-                    // ... but does not resolve them or submit them yet.
-                    chainedTxns.push(...moreTxns);
-                    console.log(
-                        " + chained txns: \n" +
-                            moreTxns
-                                .map((t) => `   🟩 ${t.description}\n`)
-                                .join("")
-                    );
-                    this.setup.txBatcher.current.addTxBatch(moreTxns)
+
+                for (const nested of moreTxns) {
+                    nested.parentId = parentId
                 }
-                return stackedPromise
+                console.log(`🎄⛄🎁 ${parentId}   -- registering nested txns ASAP`)
+                this.currentBatch.$addTxns(moreTxns);
+
+                /* yield to allow rendering */
+                await new Promise((res) => setTimeout(res, 5)) 
+
+                return stackedPromise;
             },
             onSubmitted: (txinfo) => {
                 //@ts-expect-error triggering the test-network-emulator's tick
@@ -1787,18 +1791,24 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         let chainDepth = 0;
         const isolatedTcx = new StellarTxnContext(this.setup);
+        console.log("🐝😾🐻🦀"  )
+        isolatedTcx.id = this.id
         console.log(
             "at d=0: submitting addl txns: \n" +
                 newTxns.map((t) => `  🟩 ${t.description}\n`).join("")
         );
 
-        const t = isolatedTcx.resolveMultipleTxns(newTxns, txChainSubmitOtions);
+        const t = isolatedTcx.resolveMultipleTxns(
+            newTxns,
+            txChainSubmitOptions
+        );
 
         const allPromises = [] as Promise<any>[];
-        chainDepth = 1;
+        chainDepth = 0;
         allPromises.push(t);
 
         await t;
+        return
         while (chainedTxns.length) {
             const nextChain: typeof chainedTxns = [];
             chainDepth++;
@@ -1818,18 +1828,20 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 // }
             }
             console.log(
-                " 🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 \n" +
-                    `submitting ${chainedTxns.length} transactions at depth ${chainDepth}`
+                ` 🐞🐞🐞🐞 submitting ${chainedTxns.length} transactions at depth ${chainDepth}`
             );
             console.log(
                 chainedTxns.map((t) => `  🟩 ${t.description}\n`).join("")
             );
             const thisBatch = chainedTxns;
             chainedTxns = [];
-            debugger;
+
+            const isolatedTcx = new StellarTxnContext(this.setup);
+            isolatedTcx.id = this.id
+
             const t = isolatedTcx.resolveMultipleTxns(
                 thisBatch,
-                txChainSubmitOtions
+                txChainSubmitOptions
             );
             allPromises.push(t);
             await t;

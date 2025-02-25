@@ -25,7 +25,7 @@ import {
     type Value,
 } from "@helios-lang/ledger";
 
-import { type IntLike } from "@helios-lang/codec-utils";
+import { type BytesLike, type IntLike } from "@helios-lang/codec-utils";
 import {
     BIP39_DICT_EN,
     SECOND,
@@ -40,6 +40,8 @@ import {
     makeEmulatorGenesisTx,
     makeEmulatorRegularTx,
     type SimpleWallet,
+    type Cip30CoseSign1,
+    signCip30CoseData,
 } from "@helios-lang/tx-utils";
 import type { NumberGenerator } from "@helios-lang/crypto";
 import { DEFAULT_NETWORK_PARAMS } from "@helios-lang/ledger";
@@ -49,6 +51,7 @@ import {
     dumpAny,
     type NetworkContext,
 } from "@donecollectively/stellar-contracts";
+import { expectDefined } from "@helios-lang/type-utils";
 
 // class GenesisTx implements EmulatorGenesisTx {
 //     #id: number;
@@ -315,12 +318,43 @@ export class SimpleWallet_stellar implements Wallet {
             resolve([]);
         });
     }
+    async signData(
+        addr: ShelleyAddress<PubKeyHash>, 
+        data: BytesLike
+    ): Promise<{signature: Cip30CoseSign1, key: PubKey}> {
+        const spendingCredential = addr.spendingCredential
+        const stakingCredential = addr.stakingCredential
 
-    /**
-     * Not yet implemented.
-     */
-    async signData(addr: Address, message: number[]): Promise<Signature> {
-        throw new Error("not yet implemented");
+        if (stakingCredential) {
+            if (!addr.isEqual(this.address)) {
+                throw new Error(
+                    "givend address doesn't correspond to SimpleWallet's address"
+                )
+            }
+
+            const pubKey = expectDefined(this.stakingPubKey)
+            const privateKey = expectDefined(this.stakingPrivateKey)
+
+            return {
+                signature: signCip30CoseData(addr, privateKey, data),
+                key: pubKey
+            }
+        } else {
+            if (!spendingCredential.isEqual(this.address.spendingCredential)) {
+                throw new Error(
+                    "given address.spendingCredential doesn't correspond to SimpleWallet's spending credential"
+                )
+            }
+
+            return {
+                signature: signCip30CoseData(
+                    addr,
+                    this.spendingPrivateKey,
+                    data
+                ),
+                key: this.spendingPubKey
+            }
+        }
     }
 
     /**
