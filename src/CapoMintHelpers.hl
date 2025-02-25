@@ -135,7 +135,7 @@ func requiresDelegateAuthorizingMint(
 func requiresMintDelegateApproval(
     mph: MintingPolicyHash
 ) -> Bool {
-    cctx : CapoCtx = mkCapoCtx(mph).withCharterRef();
+    cctx : CapoCtx = mkCapoCtx(mph).needsCharter();
     print("Minter needs mintDgt + mint activity\n");
     REQT("EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value");
     
