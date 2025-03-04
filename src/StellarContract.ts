@@ -980,7 +980,8 @@ export class StellarContract<
                 }
                 if (bundle.setup && bundle.configuredParams) {
                     try {
-                        this.compiledScript = await bundle.compiledScript();
+                        // eager compile for early feedback on errors
+                        this._compiledScript = await bundle.compiledScript(true);
                     } catch (e: any) {
                         console.warn(
                             "while setting compiledScript: ",
@@ -996,7 +997,8 @@ export class StellarContract<
         } else {
             const bundle = this.getBundle();
             if (bundle.isPrecompiled) {
-                this.compiledScript = await bundle.compiledScript();
+                console.log(`${bundle.displayName}: will use precompiled script on-demand`);
+                // this.compiledScript = await bundle.compiledScript();
             } else {
                 console.log(
                     "no config, no precompiled bundle... we'll try to compile what's needed!"
@@ -1007,7 +1009,18 @@ export class StellarContract<
         return this;
     }
 
-    compiledScript!: anyUplcProgram; // initialized in compileWithScriptParams()
+    _compiledScript!: anyUplcProgram; // initialized in compileWithScriptParams()
+    get compiledScript() : anyUplcProgram {
+        if (!this._compiledScript) {
+            throw new Error(`${this.constructor.name}: compiledScript not yet initialized; call asyncCompiledScript() first`);
+        }
+        return this._compiledScript;
+    }
+    async asyncCompiledScript() {
+        const s = await this.getBundle().compiledScript(true)
+        this._compiledScript = s;
+        return s;
+    }
     usesContractScript: boolean = true;
 
     get datumType(): DataType {
@@ -1421,7 +1434,7 @@ export class StellarContract<
     async prepareBundleWithScriptParams(
         params: Partial<ConfigType> & Required<Pick<ConfigType, "rev">>
     ) {
-        if (this.compiledScript) {
+        if (this._compiledScript) {
             console.warn(
                 "compileWithScriptParams() called after script compilation already done"
             );
@@ -1437,7 +1450,7 @@ export class StellarContract<
 
         let bundle = this.getBundle();
         if (bundle.isPrecompiled) {
-            // debugger;
+            debugger;
             console.warn(
                 `deployed script shouldn't need to compile (debugging breakpoint available)`
             );
@@ -1462,12 +1475,13 @@ export class StellarContract<
                 setup: this.setup,
             });
         }
-        this.compiledScript = await bundle.compiledScript();
+        debugger // can we defer this? vvvvv
+        // this._compiledScript = await bundle.compiledScript(true);
 
-        console.log(
-            `       ✅ ${this.constructor.name} ready with scriptHash=`,
-            bytesToHex(this.compiledScript.hash())
-        );
+        // console.log(
+        //     `       ✅ ${this.constructor.name} ready with scriptHash=`,
+        //     bytesToHex(this.compiledScript.hash())
+        // );
         this._cache = {};
     }
 

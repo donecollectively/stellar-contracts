@@ -652,7 +652,7 @@ export abstract class Capo<
         }
         const settingsInfo = await this.findSettingsInfo({
             charterData,
-            capoUtxos
+            capoUtxos,
         });
         tcx.addRefInput(settingsInfo.utxo);
 
@@ -1018,17 +1018,14 @@ export abstract class Capo<
     async findSettingsInfo(
         this: SELF,
         options: {
-            charterData: CharterData
-            capoUtxos?: TxInput[],
+            charterData: CharterData;
+            capoUtxos?: TxInput[];
         }
     ): Promise<FoundDatumUtxo<any, any>> {
-        let {
-            charterData,
-            capoUtxos
-        } = options
+        let { charterData, capoUtxos } = options;
         if (!capoUtxos) {
-            debugger
-            capoUtxos = await this.findCapoUtxos()
+            debugger;
+            capoUtxos = await this.findCapoUtxos();
             // throw new Error(
             //     `charterData must be provided or found in the transaction context`
             // );
@@ -1045,7 +1042,7 @@ export abstract class Capo<
             type: "settings",
             id: uutName,
             capoUtxos,
-            charterData,            
+            charterData,
         }).then((xs) => this.singleItem(xs));
     }
 
@@ -2290,8 +2287,10 @@ export abstract class Capo<
             // this.scriptProgram = this.loadProgramScript({ ...csp, mph });
             const params = capoParams;
 
-            // this.scriptProgram = this.loadProgramScript();
             await this.prepareBundleWithScriptParams(params);
+            // this.scriptProgram = this.loadProgramScript();
+            await this.asyncCompiledScript()
+            
             capoParams.rootCapoScriptHash = makeValidatorHash(
                 this.compiledScript.hash()
             );
@@ -2354,6 +2353,7 @@ export abstract class Capo<
             "mintDelegate",
             charterDataArgs.mintDelegateLink
         );
+        debugger
 
         const spendDelegate = await this.txnCreateOffchainDelegateLink(
             tcx2,
@@ -2419,7 +2419,6 @@ export abstract class Capo<
             minter.compiledScript
         );
 
-
         console.log(
             " --------------------- CHARTER MINT ---------------------\n"
             // txAsString(tcx4.tx, this.networkParams)
@@ -2434,13 +2433,19 @@ export abstract class Capo<
 
     async mkTxnUpgradeIfNeeded(this: SELF, charterData?: CharterData) {
         const tcx = this.mkTcx("upgrade if needed").facade();
-        const capoUtxos = await this.findCapoUtxos()
+        const capoUtxos = await this.findCapoUtxos();
 
         if (!charterData) {
-            charterData = await this.findCharterData(undefined, {capoUtxos, optional:false});
+            charterData = await this.findCharterData(undefined, {
+                capoUtxos,
+                optional: false,
+            });
         }
         const tcx2 = await this.addTxnBootstrappingSettings(tcx, charterData);
-        const tcx3 = await this.mkAdditionalTxnsForCharter(tcx2, {charterData, capoUtxos});
+        const tcx3 = await this.mkAdditionalTxnsForCharter(tcx2, {
+            charterData,
+            capoUtxos,
+        });
         return tcx3;
     }
 
@@ -2498,11 +2503,10 @@ export abstract class Capo<
                         this.mkTxnInstallingPolicyDelegate({
                             policyName: "settings",
                             idPrefix: "set",
-                            charterData
-                    }),
+                            charterData,
+                        }),
                 });
                 this.commitPendingChangesIfNeeded(tcx);
-
             }
 
             if (!charterData.manifest.get("currentSettings")) {
@@ -2543,7 +2547,7 @@ export abstract class Capo<
 
                         const ma =
                             settingsController.activity.MintingActivities;
-                        debugger
+                        debugger;
                         //@ts-expect-error because we don't yet have a sufficiently-specific
                         // generic type for delegated data controllers that require the basic
                         // seeded-creating-record activity
@@ -2735,18 +2739,22 @@ export abstract class Capo<
      * If this makes the transaction too big, the console
      * warning will be followed by a thrown error during the transaction's
      * wallet-submission sequence.
-     * @param program - the UPLC program to attach to the script
+     * @param program2 - the UPLC program to attach to the script
      * @public
      **/
     @partialTxn
     async txnAttachScriptOrRefScript<TCX extends StellarTxnContext>(
         tcx: TCX,
-        program: anyUplcProgram = this.compiledScript,
+        program: anyUplcProgram | undefined = undefined,
         useRefScript = true
     ): Promise<TCX> {
-        let expectedVh = program.hash();
+        const program2 =
+            program ||
+            this._compiledScript ||
+            (await this.asyncCompiledScript());
+        let expectedVh = program2.hash();
 
-        const capoUtxos = await this.findCapoUtxos()
+        const capoUtxos = await this.findCapoUtxos();
         const matchesRefScript = this.uh.mkRefScriptPredicate(expectedVh);
         if (tcx.txRefInputs.find(matchesRefScript)) {
             console.warn("suppressing second add of refScript");
@@ -2769,10 +2777,10 @@ export abstract class Capo<
                 ).stack?.replace(/^Error/, "")
             );
             // console.log("------------------- NO REF SCRIPT")
-            return tcx.addScriptProgram(program);
+            return tcx.addScriptProgram(program2);
         }
         // console.log("------------------- REF SCRIPT")
-        return tcx.addRefInput(matchingScriptRef, program);
+        return tcx.addRefInput(matchingScriptRef, program2);
     }
 
     /** finds UTXOs in the capo that are of tnhe ReferenceScript variety of its datum
@@ -2928,8 +2936,8 @@ export abstract class Capo<
             throw new Error("Cannot provide both id and predicate");
         }
         if (!capoUtxos) {
-            debugger
-            capoUtxos = await this.findCapoUtxos()
+            debugger;
+            capoUtxos = await this.findCapoUtxos();
         }
 
         if (!charterData) {
@@ -2956,7 +2964,9 @@ export abstract class Capo<
         // console.log({ type, types: Object.keys(this.datumAdapters)})
         const hasType = !!type;
         if ("undefined" !== typeof type) {
-            const dgtForType = await this.getDgDataController(type as any, {charterData});
+            const dgtForType = await this.getDgDataController(type as any, {
+                charterData,
+            });
 
             if (!dgtForType) {
                 console.log("no adapter for type", type);
@@ -3614,9 +3624,9 @@ export abstract class Capo<
     >(
         this: THIS,
         options: {
-            policyName: RoLabel,
-            idPrefix: string,
-            charterData: CapoDatum$Ergo$CharterData
+            policyName: RoLabel;
+            idPrefix: string;
+            charterData: CapoDatum$Ergo$CharterData;
         }
     ) {
         // const mintDelegate = await this.getMintDelegate(charter);
@@ -3625,10 +3635,7 @@ export abstract class Capo<
         // console.log("   --spendDgt", spendDelegate.constructor.name);
 
         const tcx1 = await this.tcxWithSeedUtxo(this.mkTcx());
-        return this.mkTxnQueuingDelegateChange(
-            "Add", options,
-            tcx1
-        );
+        return this.mkTxnQueuingDelegateChange("Add", options, tcx1);
     }
 
     // async mkTxnQueuingDelegateRemoval<
@@ -3726,10 +3733,10 @@ export abstract class Capo<
         this: THIS,
         change: "Add" | "Replace",
         options: {
-            policyName: RoLabel,
-            charterData: CharterData,
-            idPrefix: string,
-            dgtOptions?: OPTIONS, // & NamedPolicyCreationOptions<THIS, DT>,
+            policyName: RoLabel;
+            charterData: CharterData;
+            idPrefix: string;
+            dgtOptions?: OPTIONS; // & NamedPolicyCreationOptions<THIS, DT>,
         },
         tcx: TCX = this.mkTcx() as TCX
     ) {
@@ -3737,8 +3744,8 @@ export abstract class Capo<
             idPrefix,
             policyName,
             charterData,
-            dgtOptions = { config: {} } as OPTIONS
-        } = options
+            dgtOptions = { config: {} } as OPTIONS,
+        } = options;
         const purpose: string = dgtOptions.uutName || "dgPol";
 
         if (purpose.length > 13) {
@@ -3783,11 +3790,9 @@ export abstract class Capo<
             // config: tempOCDPLink.config,
         };
         const policyNameBytes = textToBytes(policyName);
-        const replacesDgtME = [...charterData.manifest.values()].find(
-            (m) => {
-                !!m.entryType.DgDataPolicy && m.tokenName == policyNameBytes;
-            }
-        );
+        const replacesDgtME = [...charterData.manifest.values()].find((m) => {
+            !!m.entryType.DgDataPolicy && m.tokenName == policyNameBytes;
+        });
         const acReplacesDgt = replacesDgtME?.tokenName;
         if (acReplacesDgt) {
             if ("Add" === change) {
@@ -3835,7 +3840,11 @@ export abstract class Capo<
             }
         );
         const delegateLink = this.mkOnchainRelativeDelegateLink(
-            await this.txnCreateOffchainDelegateLink(tcx2, policyName, dgtOptions)
+            await this.txnCreateOffchainDelegateLink(
+                tcx2,
+                policyName,
+                dgtOptions
+            )
         );
         const pendingChange: PendingCharterChangeLike = {
             delegateChange: {
@@ -3871,10 +3880,7 @@ export abstract class Capo<
         const tcx4 = await this.mkTxnUpdateCharter(
             {
                 ...charterData,
-                pendingChanges: [
-                    pendingChange,
-                    ...charterData.pendingChanges,
-                ],
+                pendingChanges: [pendingChange, ...charterData.pendingChanges],
             },
             this.activity.capoLifecycleActivity.queuePendingChange,
             // (

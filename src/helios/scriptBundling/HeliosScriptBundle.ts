@@ -226,27 +226,28 @@ export abstract class HeliosScriptBundle {
                     );
                     throw new Error(msg);
                 }
-                this._selectedVariant = variant
+                this._selectedVariant = variant;
                 const preConfig = thisVariant.config;
                 preConfig.rev = BigInt(preConfig.rev);
-            
+
                 if (preConfig.capoMph?.bytes) {
-                    
                     preConfig.capoMph = makeMintingPolicyHash(
                         preConfig.capoMph.bytes
                     );
                 }
                 const uplcPreConfig = this.paramsToUplc(preConfig);
                 // omits delegateName from the strict checks
-                //  ... it's provided by the bundle, which the 
+                //  ... it's provided by the bundle, which the
                 //  ... off-chain wrapper class may not have access to.
-                const { params: {delegateName, ...params} } = setupDetails;
+                const {
+                    params: { delegateName, ...params },
+                } = setupDetails;
                 const uplcRuntimeConfig = this.paramsToUplc(params);
                 let didFindProblem: string = "";
                 for (const k of Object.keys(uplcPreConfig)) {
                     const runtime = uplcRuntimeConfig[k];
                     // skips past any runtime setting that was not explicitly set
-                    if (!runtime) continue 
+                    if (!runtime) continue;
                     const pre = uplcPreConfig[k];
                     if (!runtime.isEqual(pre)) {
                         if (!didFindProblem) {
@@ -541,6 +542,12 @@ export abstract class HeliosScriptBundle {
                 `${this.constructor.name}: variant ${vn} not found in variants()`
             );
         }
+        if (this._selectedVariant) {
+            throw new Error(
+                `we aren't sharing variants on a single bundle instance, right?`
+            );
+        }
+
         this._selectedVariant = vn;
         return this;
     }
@@ -552,9 +559,20 @@ export abstract class HeliosScriptBundle {
      * The configuration details & pre-compiled script may be injected by
      * the HeliosRollupBundler or by compiling the script with provided
      * params (in tests or during a first deployment of a Capo)
+     *
+     * When the asyncOk flag is not present, returns or fails synchronously.
+     * With the asyncOk flag, returns synchronously if the script is already
+     * compiled, or returns a Promise that resolves to the compiled script.
      */
-    async compiledScript(): Promise<anyUplcProgram> {
+    compiledScript(): anyUplcProgram;
+    compiledScript(asyncOk: true): anyUplcProgram | Promise<anyUplcProgram>;
+    compiledScript(asyncOk?: true): anyUplcProgram | Promise<anyUplcProgram> {
         const { configuredUplcParams: params, setup, program } = this;
+
+        if (this.alreadyCompiledScript) {
+            return this.alreadyCompiledScript;
+        }
+
         if (!params || !setup) {
             debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
             // theoretically only here for type-narrowing
@@ -574,7 +592,10 @@ export abstract class HeliosScriptBundle {
                 );
             }
             if (bundleForVariant) {
-                return programFromCacheEntry(bundleForVariant.programBundle);
+                const p = (this.alreadyCompiledScript = programFromCacheEntry(
+                    bundleForVariant.programBundle
+                ));
+                return p;
             }
         }
         console.warn(
@@ -608,30 +629,33 @@ export abstract class HeliosScriptBundle {
             )
         );
 
-        const uplcProgram = await program.compileWithCache({
-            optimize: this.optimize,
-        });
-        //     // optimize: {
-        //     //     keepTracing: true,
-        //     //     factorizeCommon: false,
-        //     //     inlineSimpleExprs: false,
-        //     //     flattenNestedFuncExprs: false,
-        //     //     removeUnusedArgs: false,
-        //     //     replaceUncalledArgsWithUnit: false,
-        //     //     inlineErrorFreeSingleUserCallExprs: false,
-        //     //     inlineSingleUseFuncExprs: false,
-        //     // },
-        //     withAlt: true,
-        // });
-
-        console.log(`compiled in ${new Date().getTime() - t}ms`);
-        if (globalThis.document) {
-            console.log({
-                uplcProgram,
-                cbor: bytesToHex(uplcProgram.toCbor()),
+        return program
+            .compileWithCache({
+                optimize: this.optimize,
+            })
+            .then((uplcProgram) => {
+                //     // optimize: {
+                //     //     keepTracing: true,
+                //     //     factorizeCommon: false,
+                //     //     inlineSimpleExprs: false,
+                //     //     flattenNestedFuncExprs: false,
+                //     //     removeUnusedArgs: false,
+                //     //     replaceUncalledArgsWithUnit: false,
+                //     //     inlineErrorFreeSingleUserCallExprs: false,
+                //     //     inlineSingleUseFuncExprs: false,
+                //     // },
+                //     withAlt: true,
+                // });
+                this.alreadyCompiledScript = uplcProgram;
+                console.log(`compiled in ${new Date().getTime() - t}ms`);
+                // if (globalThis.document) {
+                //     console.log({
+                //         uplcProgram,
+                //         cbor: bytesToHex(uplcProgram.toCbor()),
+                //     });
+                // }
+                return uplcProgram;
             });
-        }
-        return uplcProgram;
     }
 
     async getSerializedProgramBundle() {
