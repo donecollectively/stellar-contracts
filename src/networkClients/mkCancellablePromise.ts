@@ -54,13 +54,13 @@ export function mkCancellablePromise<T>(
         onTimeout,
     } = options || {};
 
-    const controller = new AbortController();
-    const signal = controller.signal;
+    // const controller = new AbortController();
+    // const signal = controller.signal;
 
     const { promise, resolve, reject } = Promise.withResolvers();
     const cancel = () => {
         reject(new Error("cancelled"))
-        controller.abort;
+        // controller.abort();
     }
     const wrappedResolve = (x) => {
         resolve(x)
@@ -79,30 +79,27 @@ export function mkCancellablePromise<T>(
     }
 
     let timeoutId: TimeoutId | undefined = timeout ? setTimeout(() => {
-        controller.abort();
+        // controller.abort();
         cpObj.status = "timeout"
         onTimeout?.();
         reject(new Error("timeout"));
-    }) : undefined;
+    }, timeout) : undefined;
 
-    signal.addEventListener('abort', () => {
-        clearTimeout(timeoutId);
-        cpObj.status = "cancelled"
-        timeoutId = undefined;
-        console.log("cancelling activity by external signal")
-        reject(new Error("cancelled"))
-    });
 
     promise.then(() => {
         if (timeoutId) clearTimeout(timeoutId);
         cpObj.status = "fulfilled"
         timeoutId = undefined
+    }, () =>{
+        // prevent unhanded promise rejection.
+        // callers should still handle the rejection.
     });
 
     if (wrapped) {
         wrapped.then(wrappedResolve, wrappedReject);
         return { 
             promise: promise as any, 
+            isWrapped: "wraps an input promise; no separate resolve/reject",
             status: "pending",
             cancel,
         } as any // WrappedPromise<T>

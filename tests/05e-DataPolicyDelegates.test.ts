@@ -84,8 +84,14 @@ describe("Capo", async () => {
 
             await h.snapToInstallingTestDataPolicy()
 
-            const tcx2 = await capo.mkTxnInstallingPolicyDelegate("testData", "tData");
-            const submitting = tcx2.submit();
+            const charterData = await capo.findCharterData();
+
+            const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
+                idPrefix: "tData",
+                policyName: "testData",
+                charterData,
+            });
+            const submitting = tcx2.submitAll();
             // await submitting
             await expect(submitting).rejects.toThrow("already has a pending change for this delegate");
         })

@@ -216,6 +216,12 @@ export type FoundDatumUtxo<
     dataWrapped?: WRAPPED_DatumType;
 };
 
+export type FoundCarterUtxo = {
+    utxo: TxInput;
+    datum: InlineDatum;
+    data: CharterData
+}
+
 /**
  * @public
  */
@@ -395,3 +401,12 @@ export type hasGovAuthority = StellarTxnContext<
         govAuthority: AuthorityPolicy;
     }
 >;
+
+/**
+ * @public
+ */
+export type FindableViaCharterData = {
+    charterData: CharterData;
+    optional?: true;
+};
+

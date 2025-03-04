@@ -10,18 +10,19 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { StellarTxnContext } from "../src/StellarTxnContext";
+import { makeValue, Value, Address } from "@helios-lang/ledger";
+import { makeTxBuilder } from "@helios-lang/tx-utils";
+import {
+    CapoWithoutSettings,
+    StellarTxnContext,
+    textToBytes,
+} from "@donecollectively/stellar-contracts";
 // import { DefaultMinter } from "../src/DefaultMinter";
 // import { BasicMintDelegate } from "../src/delegation/BasicMintDelegate";
 import { ADA, addTestContext } from "../src/testing/";
 import { StellarTestContext } from "../src/testing/";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { textToBytes } from "../src/HeliosPromotedTypes";
-import { makeValue, Value, Address } from "@helios-lang/ledger";
-import { makeTxBuilder } from "@helios-lang/tx-utils";
-// import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper<CapoWithoutSettings>>;
 
@@ -93,7 +94,7 @@ describe("StellarContract", async () => {
             } = context;
 
             const treasury = await h.initialize();
-            expect(treasury.address.kind).toBe("Address")
+            expect(treasury.address.kind).toBe("Address");
         });
         describe("getter: mintingPolicyHash", () => {
             it("is defined, by delegation to Capo's minting-purposed helper", async (context: localTC) => {
@@ -108,7 +109,9 @@ describe("StellarContract", async () => {
                 expect(t.mph.toHex()).toEqual(
                     t.minter!.mintingPolicyHash.toHex()
                 );
-                expect(t.minter!.mintingPolicyHash.kind).toBe("MintingPolicyHash")
+                expect(t.minter!.mintingPolicyHash.kind).toBe(
+                    "MintingPolicyHash"
+                );
                 console.log("--- init again with different seed");
                 const t2 = await h.initialize({ randomSeed: 43 });
                 await h.bootstrap();
@@ -158,7 +161,7 @@ describe("StellarContract", async () => {
 
                 type FOO = { foo: "bar"; uuts: {} };
                 await h.initialize();
-                const tcx: StellarTxnContext<FOO> = context.h.mkTcx() as any;
+                const tcx: StellarTxnContext<FOO> = context.h.mkTcx();
                 //! basic type-checks only
                 tcx.state.foo = "bar";
                 //@ts-expect-error
@@ -252,16 +255,15 @@ describe("StellarContract", async () => {
                     const t = await h.initialize();
 
                     const tcx = h.mkTcx();
-                    const found = await t.uh.mustFindActorUtxo(
-                        "biggest",
-                        (u) => {
+                    const found = await t.uh.mustFindActorUtxo("biggest", {
+                        predicate: (u) => {
                             return (
                                 (u.value.lovelace > t.ADA(500) && u) ||
                                 undefined
                             );
                         },
-                        tcx
-                    );
+                        exceptInTcx: tcx,
+                    });
                     // more than 500 ada - actually > 1k with the given setup.
                     expect(found.value.lovelace).toBeGreaterThan(1_000_000_000);
                 });
@@ -283,7 +285,10 @@ describe("StellarContract", async () => {
                             return undefined;
                         });
                     await expect(
-                        t.utxoHelper.mustFindActorUtxo("any", (x) => x, tcx)
+                        t.utxoHelper.mustFindActorUtxo("any", {
+                            predicate: (x) => x,
+                            exceptInTcx: tcx,
+                        })
                     ).rejects.toThrow();
                     expect(hasUtxo).toHaveBeenCalled();
                     expect(findingInWallet).toBe(actors.tina);
@@ -298,11 +303,10 @@ describe("StellarContract", async () => {
                     const t = await h.initialize();
                     const tcx = h.mkTcx();
                     await expect(
-                        t.utxoHelper.mustFindActorUtxo(
-                            "testSomeThing",
-                            () => undefined,
-                            tcx
-                        )
+                        t.utxoHelper.mustFindActorUtxo("testSomeThing", {
+                            predicate: () => undefined,
+                            exceptInTcx: tcx,
+                        })
                     ).rejects.toThrow(/testSomeThing.*utxo not found/);
                 });
 
@@ -343,18 +347,15 @@ describe("StellarContract", async () => {
                         const isEnoughT = uh.mkTokenPredicate(makeValue(42000));
                         const u1 = await uh.mustFindActorUtxo(
                             "first with token",
-                            isEnoughT,
-                            tcx
+                            { predicate: isEnoughT, exceptInTcx: tcx }
                         );
-                        const u1a = await uh.mustFindActorUtxo(
-                            "t1a",
-                            isEnoughT
-                        );
-                        const u1b = await uh.mustFindActorUtxo(
-                            "t1b",
-                            isEnoughT,
-                            tcx
-                        );
+                        const u1a = await uh.mustFindActorUtxo("t1a", {
+                            predicate: isEnoughT,
+                        });
+                        const u1b = await uh.mustFindActorUtxo("t1b", {
+                            predicate: isEnoughT,
+                            exceptInTcx: tcx,
+                        });
 
                         expect(uh.toUtxoId(u1a)).toEqual(uh.toUtxoId(u1));
                         expect(uh.toUtxoId(u1b)).toEqual(uh.toUtxoId(u1));
@@ -362,14 +363,18 @@ describe("StellarContract", async () => {
                         tcx.addInput(u1);
                         const u2 = await uh.mustFindActorUtxo(
                             "second with token",
-                            isEnoughT,
-                            tcx
+                            {
+                                predicate: isEnoughT,
+                                exceptInTcx: tcx,
+                            }
                         );
                         tcx.addCollateral(u2);
                         const u3 = await uh.mustFindActorUtxo(
                             "third, with token",
-                            isEnoughT,
-                            tcx
+                            {
+                                predicate: isEnoughT,
+                                exceptInTcx: tcx,
+                            }
                         );
 
                         // yes, but it doesn't mean anything; different refs to same details
@@ -429,29 +434,31 @@ describe("StellarContract", async () => {
                     h.network.tick(1);
 
                     const isEnough = uh.mkValuePredicate(42_000n, tcx);
-                    const u1 = await uh.mustFindActorUtxo(
-                        "first",
-                        isEnough,
-                        tcx
-                    );
-                    const u1a = await uh.mustFindActorUtxo("1a", isEnough);
-                    const u1b = await uh.mustFindActorUtxo("1b", isEnough, tcx);
+                    const u1 = await uh.mustFindActorUtxo("first", {
+                        predicate: isEnough,
+                        exceptInTcx: tcx,
+                    });
+                    const u1a = await uh.mustFindActorUtxo("1a", {
+                        predicate: isEnough,
+                    });
+                    const u1b = await uh.mustFindActorUtxo("1b", {
+                        predicate: isEnough,
+                        exceptInTcx: tcx,
+                    });
 
                     expect(uh.toUtxoId(u1a)).toEqual(uh.toUtxoId(u1));
                     expect(uh.toUtxoId(u1b)).toEqual(uh.toUtxoId(u1));
 
                     tcx.addInput(u1);
-                    const u2 = await uh.mustFindActorUtxo(
-                        "second",
-                        isEnough,
-                        tcx
-                    );
+                    const u2 = await uh.mustFindActorUtxo("second", {
+                        predicate: isEnough,
+                        exceptInTcx: tcx,
+                    });
                     tcx.addCollateral(u2);
-                    const u3 = await uh.mustFindActorUtxo(
-                        "#3with token",
-                        isEnough,
-                        tcx
-                    );
+                    const u3 = await uh.mustFindActorUtxo("#3with token", {
+                        predicate: isEnough,
+                        exceptInTcx: tcx,
+                    });
 
                     // yes, but it doesn't mean anything; different refs to same details
                     //  will also not be === despite being equivalent.
@@ -495,7 +502,10 @@ describe("StellarContract", async () => {
                         return undefined;
                     });
                 await expect(
-                    t.mustFindMyUtxo("any", (x) => x, tcx)
+                    t.mustFindMyUtxo("any", {
+                        predicate: (x) => x,
+                        exceptInTcx: tcx,
+                    })
                 ).rejects.toThrow();
                 expect(hasUtxo).toHaveBeenCalled();
                 expect(foundAddress.toBech32()).toEqual(t.address.toString());
@@ -520,7 +530,8 @@ describe("StellarContract", async () => {
                         return undefined;
                     });
                 await expect(
-                    t.utxoHelper.mustFindUtxo("any", (x) => x, {
+                    t.utxoHelper.mustFindUtxo("any", {
+                        predicate: (x) => x,
                         address: actors.tracy.address,
                     })
                 ).rejects.toThrow();

@@ -672,6 +672,17 @@ export class StellarNetworkEmulator implements Emulator {
         return this._addressUtxos[address.toString()] ?? [];
     }
 
+    isSubmissionExpiryError(e: Error) { 
+        if (e.message.match(/slot out of range/)) return true
+        return false 
+    } 
+
+    isUnknownUtxoError(e: Error) { 
+        if (e.message.match(/previously consumed/)) return true
+        if (e.message.match(/don't exist/)) return true
+        return false
+    }
+
     dump() {
         console.log(`${this.blocks.length} BLOCKS`);
         this.blocks.forEach((block, i) => {

@@ -1,8 +1,5 @@
-import { CapoHeliosBundle } from "../../src/helios/scriptBundling/CapoHeliosBundle.js";
-import { DelegatedDataContract } from "../../src/delegation/DelegatedDataContract.js";
-import { hasReqts } from "../../src/Requirements";
 import BadSettingsBundle from "./BadSettings.hlb.js";
- import {
+import {
     SpendingActivity,
     SpendingActivityLike,
     type ProtocolSettingsLike,
@@ -12,8 +9,7 @@ import BadSettingsBundle from "./BadSettings.hlb.js";
 import { 
     BadSettingsPolicyDataBridge
 } from "./BadSettings.bridge.js" ;
-import { textToBytes } from "../../src/HeliosPromotedTypes.js";
-import { WrappedDgDataContract } from "../../src/delegation/WrappedDgDataContract.js";
+import { DelegatedDataContract, hasReqts, WrappedDgDataContract } from "@donecollectively/stellar-contracts";
 
 
 export class BadSettingsController extends DelegatedDataContract<

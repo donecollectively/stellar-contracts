@@ -8,6 +8,7 @@ import { TxSubmitMgr, type SubmitManagerState } from "./TxSubmitMgr.js";
 type SubmissionsStates =
     | "registered"
     | "building"
+    | "alreadyDone"
     | "built"
     | "signingSingle"
     | "submitting"
@@ -20,6 +21,7 @@ type SubmissionsTransitions = SubmissionsStates | "rebuild";
 
 const noTransitionsExcept = {
     registered: null,
+    alreadyDone: null,
     building: null,
     rebuild: null,
     built: null,
@@ -82,22 +84,23 @@ export class TxSubmissionTracker extends StateMachine<
     }
 
     get id() {
-        return this.txd.id
+        return this.txd.id;
     }
+
     get txLabel() {
-        return this.txd.txName || this.txd.description
+        return this.txd.txName || this.txd.description;
     }
 
     get stateMachineName() {
         return `💳 TxSubmissionTracker ${this.id} ${this.txLabel}\n     💳 `;
     }
-    
+
     get txId() {
         return this.txd.tx!.id().toString();
     }
 
     resetState() {
-        this.state = this.initialState;
+        this.$state = this.initialState;
     }
 
     isBuilt = false;
@@ -106,7 +109,6 @@ export class TxSubmissionTracker extends StateMachine<
             // debugger
         },
         [`built`]: () => {
-            
             this.isBuilt = true;
         },
         [`signingSingle`]: () => {
@@ -114,7 +116,7 @@ export class TxSubmissionTracker extends StateMachine<
         },
         [`building`]: () => {
             // debugger
-        }
+        },
     };
 
     async $signAndSubmit() {
@@ -123,7 +125,7 @@ export class TxSubmissionTracker extends StateMachine<
         const {
             actorContext: { wallet },
         } = this.setup;
-        debugger
+        // debugger
         const txd = this.txd as TxDescription<any, "built">;
         const { tcx, tx, options } = txd;
         if (!this.isBuilt || !tx || !tcx) {
@@ -144,10 +146,13 @@ export class TxSubmissionTracker extends StateMachine<
         if (sigs) {
             //! doesn't need to re-verify a sig it just collected
             //   (sig verification is ~2x the cost of signing)
-            debugger
             tx.addSignatures(sigs, false);
-            txd.signedTxCborHex = bytesToHex(tx.toCbor())
-            this.notifier.emit("changed", this)
+            txd.signedTxCborHex = bytesToHex(tx.toCbor());
+            const txdSigned: TxDescription<any, "signed"> = txd as any;
+            txdSigned.signedTxCborHex = bytesToHex(tx.toCbor());
+            debugger;
+            this.$didSignTx();
+            // this.notifier.emit("changed", this)
         } else {
             options.onSubmitError?.({
                 ...txd,
@@ -158,10 +163,12 @@ export class TxSubmissionTracker extends StateMachine<
     }
 
     update(txd: TxDescription<any, any>, transition?: SubmissionsStates) {
-        const { txd: {tcx: {id: oldId}={}}} = this;
-        const {tcx: {id: newId}={}} = txd;
+        const {
+            txd: { tcx: { id: oldId } = {} },
+        } = this;
+        const { tcx: { id: newId } = {} } = txd;
         if (oldId && newId && oldId !== newId) {
-            debugger
+            debugger;
             throw new Error(`txd.id ${oldId} !== ${newId}`);
         }
         this.txd = { ...txd };
@@ -175,7 +182,7 @@ export class TxSubmissionTracker extends StateMachine<
             // notifies change-event automatically:
             this.transition(transition);
         } else {
-            this.notifier.emit("changed", this);
+            this.$notifier.emit("changed", this);
         }
     }
 
@@ -247,7 +254,7 @@ export class TxSubmissionTracker extends StateMachine<
                     txd,
                     setup: this.setup,
                 });
-                mgr.notifier.on(
+                mgr.$notifier.on(
                     "changed",
                     this.updateSubmitterState.bind(this, name)
                 );
@@ -275,9 +282,11 @@ export class TxSubmissionTracker extends StateMachine<
                     this.doRebuild();
                 },
             },
+            alreadyDone: { to: "alreadyDone" },
             built: { to: "built" },
             failed: { to: "failed" },
         },
+        [`alreadyDone`]: terminalState,
         [`built`]: {
             ...noTransitionsExcept,
             signingSingle: { to: "signingSingle" },
@@ -312,6 +321,7 @@ export class TxSubmissionTracker extends StateMachine<
         },
         [`confirming`]: {
             ...noTransitionsExcept,
+            confirming: { to: "confirming" },
             confirmed: { to: "confirmed" },
             "mostly confirmed": { to: "mostly confirmed" },
             failed: { to: "failed" },
@@ -344,35 +354,39 @@ export class TxSubmissionTracker extends StateMachine<
      * If there is a failure detected in the submit-manager, the other submit
      * managers are notified of the problem, which typically triggers them to
      * re-confirm and/or re-submit the transaction to the network, to recover
-     * from txns that might otherwise have been dropped due to a slot battle.
+     * from txns that might otherwise have been dropped due to a slot/height 
+     * battle.
      *
      * Switches the tx-tracker's state to match the aggregated state of its
      * submitters.  This aggregated state is suitable for presenting to the user
      */
     updateSubmitterState(name: string, mgr: TxSubmitMgr) {
         this.notDestroyed();
-        const state: SubmitManagerState = mgr.mgrState;
+        const state: SubmitManagerState = mgr.$mgrState;
         // this.txStates[txId].submitters[name] = state;
 
-        const isFail = mgr.state == "failed";
+        const isFail = mgr.$state == "failed";
         const submitters = Object.values(this.txSubmitters);
-        const allConfirmed = submitters.every((s) => s.state == "confirmed");
-        const allFailed = submitters.every((s) => s.state == "failed");
+        const allConfirmed = submitters.every((s) => s.$state == "confirmed");
+        const allFailed = submitters.every((s) => s.$state == "failed");
         const countConfirming = submitters.filter(
-            (s) => s.state == "confirming"
+            (s) => s.$state == "confirming"
         ).length;
         const countSubmitting = submitters.filter(
-            (s) => s.state == "submitting"
+            (s) => s.$state == "submitting"
         ).length;
         const countConfirmed = submitters.filter(
-            (s) => s.state == "confirmed"
+            (s) => s.$state == "confirmed" || s.$state == "softConfirmed"
         ).length;
+
+        // const countBuilt = submitters.filter((s) => s.$state == "built").length;
 
         const transition = allConfirmed
             ? "confirmed"
             : allFailed
             ? "failed"
-            : countSubmitting > Math.max(countConfirming, countConfirmed)
+            : // : countBuilt > 1 ? "built"
+            countSubmitting > Math.max(countConfirming, countConfirmed)
             ? "submitting"
             : countConfirming > Math.max(countSubmitting, countConfirmed)
             ? "confirming"

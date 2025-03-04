@@ -7,8 +7,6 @@
 //     }
 // >;
 
-import { Capo } from "../../src/Capo";
-import { defineRole } from "../../src/delegation/RolesAndDelegates";
 import { BadSettingsController } from "./BadSettingsController.js";
 import {
     ProtocolSettingsLike,
@@ -17,6 +15,7 @@ import {
     ErgoDelegateActivity,
     ErgoDelegateDatum
 } from "./BadSettings.typeInfo.js";
+import { Capo, defineRole } from "@donecollectively/stellar-contracts";
 
 // const goodSettings: CanBeBadSettings = { data: {
 //     "@id": "set-‹replaceMe›",

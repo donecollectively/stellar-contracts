@@ -262,8 +262,8 @@ export class StellarHeliosProject {
         // console.log("writing data bridge code: ", bundle.moduleName);
         const bridgeGenerator = dataBridgeGenerator.create(bundle);
         if (this.isStellarContracts()) {
-            if (dataBridgeFn.match(/testing/)) {
-                console.log(`   ------- from testing package: ${dataBridgeFn} -- uses @donecollectively/stellar-contracts for imports`);
+            if (dataBridgeFn.match(/\b(testing|tests)\//)) {
+                console.log(`   ------- from testing package or tests: ${dataBridgeFn} -- uses @donecollectively/stellar-contracts for imports`);
             } else {
                 bridgeGenerator._isInStellarContractsLib(true);
             }
@@ -330,8 +330,8 @@ export class StellarHeliosProject {
         const ts1 = Date.now();
         const typeContext = BundleTypeGenerator.create(bundle);
         if (this.isStellarContracts()) {
-            if (filename.match(/testing/)) {
-                console.log(`   ------- from testing package: ${filename} -- uses @donecollectively/stellar-contracts for imports`);
+            if (filename.match(/\b(testing|tests)\//)) {
+                console.log(`   ------- from testing package or tests: ${filename} -- uses @donecollectively/stellar-contracts for imports`);
             } else {
                 typeContext._isInStellarContractsLib(true);
             }

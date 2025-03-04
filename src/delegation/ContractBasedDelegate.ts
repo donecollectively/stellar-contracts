@@ -565,9 +565,10 @@ export class ContractBasedDelegate extends StellarDelegate {
         label: string
     ): Promise<TxInput> {
         return this.mustFindMyUtxo(
-            `${label}: ${bytesToText(this.configIn!.tn)}`,
-            this.uh.mkTokenPredicate(this.tvAuthorityToken()),
-            "this delegate strategy might need to override txnMustFindAuthorityToken()"
+            `${label}: ${bytesToText(this.configIn!.tn)}`, {
+                predicate: this.uh.mkTokenPredicate(this.tvAuthorityToken()),
+                extraErrorHint: "this delegate strategy might need to override txnMustFindAuthorityToken()"
+            }
         );
     }
 

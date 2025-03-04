@@ -385,16 +385,30 @@ export abstract class CapoTestHelper<
             return strella;
         }
 
-        await this.mintCharterToken(args, submitOptions);
+        const options = {
+            ...submitOptions,
+            onSubmitted: () => {
+                this.network.tick(1)
+            }
+        }
+        await this.mintCharterToken(args, options);
         console.log(
             "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter"
         );
 
-        await this.extraBootstrapping(args);
+        this.network.tick(1);
+        await this.extraBootstrapping(args, options);
         return strella;
     }
 
-    async extraBootstrapping(args?: Partial<MinimalCharterDataArgs>) {
+    async extraBootstrapping(
+        args?: Partial<MinimalCharterDataArgs>,
+        submitOptions: SubmitOptions = {}
+    ) {
+        const tcx = this.mkTcx("extra bootstrapping").facade()
+        const charterData = await this.capo.findCharterData()
+        const tcx2 = await this.capo.addTxnBootstrappingSettings(tcx, charterData);
+        await this.submitTxnWithBlock(tcx2, submitOptions)
         return this.strella;
     }
 

@@ -80,7 +80,12 @@ import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
 import { errorMapAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
 
-import { mkUutValuesEntries, mkValuesEntry } from "./utils.js";
+import {
+    AlreadyPendingError,
+    mkUutValuesEntries,
+    mkValuesEntry,
+    TxNotNeededError,
+} from "./utils.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
@@ -93,7 +98,9 @@ import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import type { AnyDataTemplate } from "./delegation/DelegatedData.js";
 import type { tokenPredicate } from "./UtxoHelper.js";
-import CapoDataBridge from "./helios/scriptBundling/CapoHeliosBundle.bridge.js";
+import CapoDataBridge, {
+    PendingCharterChangeHelper,
+} from "./helios/scriptBundling/CapoHeliosBundle.bridge.js";
 import type { mustFindActivityType } from "./helios/dataBridge/BridgeTypes.js";
 import type { mustFindConcreteContractBridgeType } from "./helios/dataBridge/BridgeTypes.js";
 import type { mustFindReadDatumType } from "./helios/dataBridge/BridgeTypes.js";
@@ -119,6 +126,7 @@ import type {
     CharterDataLike,
     DelegateSetupWithoutMintDelegate,
     DelegatedDataPredicate,
+    FindableViaCharterData,
     FoundDatumUtxo,
     FoundUut,
     ManifestEntryTokenRef,
@@ -412,9 +420,11 @@ export abstract class Capo<
      * @public
      **/
     async mkAdditionalTxnsForCharter<
-        TCX extends StellarTxnContext<charterDataState>
-    >(tcx: TCX): Promise<hasAddlTxns<TCX>> {
-        //@ts-expect-error
+        TCX extends hasAddlTxns<StellarTxnContext<any>>
+    >(
+        tcx: TCX,
+        options: { charterData: CharterData; capoUtxos: TxInput[] }
+    ): Promise<hasAddlTxns<TCX>> {
         if (!tcx.state.addlTxns) tcx.state.addlTxns = [];
 
         return tcx as any;
@@ -534,28 +544,27 @@ export abstract class Capo<
         return this.uh.mkMinTv(mph, tokenName, count);
     }
 
-    async canFindCharterUtxo() {
-        if (!this.minter) return undefined
+    async canFindCharterUtxo(capoUtxos: TxInput[]) {
+        if (!this.minter) return undefined;
         const predicate = this.uh.mkTokenPredicate(this.tvCharter());
         const { address } = this;
-        const utxos = await this.network.getUtxos(address);
 
         const found = await this.uh.hasUtxo("charter", predicate, {
             address,
-            utxos,
+            utxos: capoUtxos,
             required: true,
         });
         return found;
     }
 
-    async mustFindCharterUtxo() {
+    async mustFindCharterUtxo(capoUtxos?: TxInput[]) {
         const predicate = this.uh.mkTokenPredicate(this.tvCharter());
 
-        return this.mustFindMyUtxo(
-            "charter",
+        return this.mustFindMyUtxo("charter", {
             predicate,
-            "is the charter-mint done & already confirmed?"
-        );
+            extraErrorHint: "is the charter-mint done & already confirmed?",
+            utxos: capoUtxos,
+        });
     }
 
     //     /**
@@ -626,7 +635,14 @@ export abstract class Capo<
 
     async tcxWithSettingsRef<TCX extends StellarTxnContext>(
         this: SELF,
-        tcx: TCX
+        tcx: TCX,
+        {
+            charterData,
+            capoUtxos,
+        }: {
+            charterData: CharterData;
+            capoUtxos: TxInput[];
+        }
     ): Promise<TCX & hasSettingsRef<any, any>> {
         if (
             //@ts-expect-error on type-probe:
@@ -634,7 +650,10 @@ export abstract class Capo<
         ) {
             return tcx as TCX & hasSettingsRef<any, any>;
         }
-        const settingsInfo = await this.findSettingsInfo();
+        const settingsInfo = await this.findSettingsInfo({
+            charterData,
+            capoUtxos
+        });
         tcx.addRefInput(settingsInfo.utxo);
 
         const tcx2 = tcx as TCX & hasSettingsRef<any, any>;
@@ -692,7 +711,9 @@ export abstract class Capo<
                 this.compiledScript
             );
             //@ts-expect-error poking our nose into Helios TxBuilder's business
-            tcx2.txb._refInputs = tcx2.txb.refInputs.filter(x => !x.id.isEqual(ctUtxo.id))            
+            tcx2.txb._refInputs = tcx2.txb.refInputs.filter(
+                (x) => !x.id.isEqual(ctUtxo.id)
+            );
             tcx2.addInput(ctUtxo, redeemer);
             const datum = newCharterData
                 ? this.mkDatum.CharterData(newCharterData)
@@ -927,36 +948,50 @@ export abstract class Capo<
      * @public
      */
     async findCharterData(
-        currentCharterUtxo?: TxInput
-    ): Promise<CharterData>
+        currentCharterUtxo?: TxInput,
+        options?: {
+            optional: false;
+            capoUtxos?: TxInput[];
+        }
+    ): Promise<CharterData>;
     /**
      * @private
      */
     async findCharterData(
         currentCharterUtxo: TxInput | undefined,
-        optional: true
-    ): Promise<CharterData | undefined> 
+        options: {
+            optional: true;
+            capoUtxos?: TxInput[];
+        }
+    ): Promise<CharterData | undefined>;
     async findCharterData(
         currentCharterUtxo?: TxInput,
-        optional = false
+        options?: {
+            optional: boolean;
+            capoUtxos?: TxInput[];
+        }
     ): Promise<CharterData> {
         // const ts1 = Date.now();
         // if (globalThis.__profile__) {
         //     debugger
         //     console.profile("findCharterData");
         // }
+        let { optional, capoUtxos } = options || { optional: false };
+        if (!capoUtxos) {
+            capoUtxos = await this.findCapoUtxos();
+        }
         if (!currentCharterUtxo) {
             try {
                 currentCharterUtxo = optional
-                // doesn't throw
-                    ? await this.canFindCharterUtxo()
-                    // can throw
-                    : await this.mustFindCharterUtxo();
+                    ? // doesn't throw
+                      await this.canFindCharterUtxo(capoUtxos)
+                    : // can throw
+                      await this.mustFindCharterUtxo(capoUtxos);
             } catch (e) {
                 // rethrows the must-find-not-found error
                 throw e;
             }
-            if (!currentCharterUtxo) {                
+            if (!currentCharterUtxo) {
                 // this is contrary to the return type, but
                 // it's only used in a very special case
                 return undefined as any;
@@ -982,29 +1017,22 @@ export abstract class Capo<
 
     async findSettingsInfo(
         this: SELF,
-        charterRefOrInputOrProps?:
-            | hasCharterRef
-            | TxInput
-            | CapoDatum$Ergo$CharterData
-        // !!! todo: make this type more specific
+        options: {
+            charterData: CharterData
+            capoUtxos?: TxInput[],
+        }
     ): Promise<FoundDatumUtxo<any, any>> {
-        const chUtxo =
-            charterRefOrInputOrProps || (await this.mustFindCharterUtxo());
-        let charterData: CapoDatum$Ergo$CharterData =
-            charterRefOrInputOrProps instanceof StellarTxnContext
-                ? charterRefOrInputOrProps.state.charterData
-                : //@ts-expect-error - probing for txinput
-                charterRefOrInputOrProps?.kind == "TxInput"
-                ? await this.findCharterData(chUtxo as TxInput)
-                : (charterRefOrInputOrProps as CapoDatum$Ergo$CharterData);
-
-        if (!charterData) {
-            charterData = await this.findCharterData();
+        let {
+            charterData,
+            capoUtxos
+        } = options
+        if (!capoUtxos) {
+            debugger
+            capoUtxos = await this.findCapoUtxos()
             // throw new Error(
             //     `charterData must be provided or found in the transaction context`
             // );
         }
-
         const currentSettings = charterData.manifest.get("currentSettings");
         if (!currentSettings) {
             throw new Error(
@@ -1016,6 +1044,8 @@ export abstract class Capo<
         return this.findDelegatedDataUtxos({
             type: "settings",
             id: uutName,
+            capoUtxos,
+            charterData,            
         }).then((xs) => this.singleItem(xs));
     }
 
@@ -1147,7 +1177,10 @@ export abstract class Capo<
             tcx
         );
         const seedUtxo = await this.uh
-            .mustFindActorUtxo(purpose, uutSeed, tcx)
+            .mustFindActorUtxo(purpose, {
+                predicate: uutSeed,
+                exceptInTcx: tcx,
+            })
             .catch((x) => {
                 throw x;
             });
@@ -1844,16 +1877,18 @@ export abstract class Capo<
             );
         }
 
-        let charter: CapoDatum$Ergo$CharterData; {
-            const optional = true;
-            const maybeFound = await this.findCharterData(undefined, optional);
+        let charter: CapoDatum$Ergo$CharterData;
+        {
+            const maybeFound = await this.findCharterData(undefined, {
+                optional: true,
+            });
             if (!maybeFound) {
                 console.warn(
                     `Capo is not yet bootstrapped; skipping delegate verification`
                 );
                 return;
             }
-            charter = maybeFound
+            charter = maybeFound;
         }
         this.isChartered = true;
 
@@ -2038,8 +2073,8 @@ export abstract class Capo<
         >("spendDelegate", chD.spendDelegateLink);
     }
 
-    getSettingsController(this: SELF) {
-        return this.getDgDataController("settings");
+    getSettingsController(this: SELF, options: FindableViaCharterData) {
+        return this.getDgDataController("settings", options);
     }
 
     /**
@@ -2052,13 +2087,14 @@ export abstract class Capo<
     async getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(
         this: SELF,
         roleName: RN,
-        // typeName: string,
-        charterData?: CharterData
-    ): Promise<DelegatedDataContract<any, any>> {
+        options?: FindableViaCharterData
+    ): Promise<undefined | DelegatedDataContract<any, any>> {
+        const { charterData, optional } = options || {};
         const chD = charterData || (await this.findCharterData());
         const foundME = chD.manifest.get(roleName);
         if (!foundME) {
             debugger;
+            if (optional) return undefined as any;
             await this.findCharterData();
             throw new Error(
                 `no manifest entry found with link to installed ${roleName} (debugging breakpoint available)`
@@ -2174,6 +2210,7 @@ export abstract class Capo<
                 | "setting"
             >
     >(
+        this: SELF,
         charterDataArgs: MinimalCharterDataArgs,
         existingTcx?: TCX,
         dryRun?: "DRY_RUN"
@@ -2382,14 +2419,6 @@ export abstract class Capo<
             minter.compiledScript
         );
 
-        const tcx3a = await this.bootstrapSettings(tcxWithCharterMint);
-        const tcx3b = await this.mkAdditionalTxnsForCharter(
-            tcx3a || tcxWithCharterMint
-        );
-        if (!tcx3b)
-            throw new Error(
-                `${this.constructor.name}: mkAdditionalTxnsForCharter() must return a txn context`
-            );
 
         console.log(
             " --------------------- CHARTER MINT ---------------------\n"
@@ -2400,17 +2429,23 @@ export abstract class Capo<
         //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
         //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
 
-        return tcxWithCharterMint as unknown as TCX3 &
-            typeof tcx3a &
-            Awaited<typeof tcxWithCharterMint>;
+        return tcx4c as unknown as TCX3 & Awaited<typeof tcxWithCharterMint>;
     }
 
-    async mkTxnUpgradeIfNeeded(this: SELF) {
-        const tcx = await this.tcxWithCharterData(
-            this.mkTcx("upgrade if needed").facade()
-        );
-        const tcx2 = await this.bootstrapSettings(tcx);
-        return this.mkAdditionalTxnsForCharter(tcx2);
+    async mkTxnUpgradeIfNeeded(this: SELF, charterData?: CharterData) {
+        const tcx = this.mkTcx("upgrade if needed").facade();
+        const capoUtxos = await this.findCapoUtxos()
+
+        if (!charterData) {
+            charterData = await this.findCharterData(undefined, {capoUtxos, optional:false});
+        }
+        const tcx2 = await this.addTxnBootstrappingSettings(tcx, charterData);
+        const tcx3 = await this.mkAdditionalTxnsForCharter(tcx2, {charterData, capoUtxos});
+        return tcx3;
+    }
+
+    findCapoUtxos() {
+        return this.network.getUtxos(this.address);
     }
 
     async tcxWithCharterData<TCX extends StellarTxnContext>(
@@ -2423,118 +2458,150 @@ export abstract class Capo<
         return tcx2;
     }
 
-    async bootstrapSettings(tcx: StellarTxnContext<charterDataState>) {
+    async commitPendingChangesIfNeeded(this: SELF, tcx: StellarTxnContext) {
+        return tcx.includeAddlTxn("commit pending charter changes", {
+            description: `commit pending changes if needed`,
+            moreInfo:
+                "If the capo manifest has any pending changes, this tx makes them active",
+            mkTcx: async () => {
+                const charter = await this.findCharterData();
+
+                if (charter.pendingChanges.length > 0) {
+                    return this.mkTxnCommittingPendingChanges();
+                }
+                throw new TxNotNeededError("no pending changes to commit");
+            },
+        });
+    }
+
+    async addTxnBootstrappingSettings(
+        this: SELF,
+        tcx: StellarTxnContext,
+        charterData: CharterData
+    ) {
         if (!this.delegateRoles.settings) {
             console.warn(
                 ` 🐞🐞🐞🐞🐞 ${this.constructor.name} has no settings policy to initialize`
             );
             return tcx;
         } else {
-            tcx.includeAddlTxn("create settings delegate", {
-                description: `create settings-policy dgt`,
-                optional: false,
-                mkTcx: () =>
-                    this.mkTxnInstallingPolicyDelegate("settings", "set"),
+            const optional = true;
+            const foundDelegate = await this.getDgDataController("settings", {
+                charterData,
+                optional,
             });
+            if (!foundDelegate) {
+                tcx.includeAddlTxn("create settings delegate", {
+                    description: `create settings-policy dgt`,
+                    optional: false,
+                    mkTcx: () =>
+                        this.mkTxnInstallingPolicyDelegate({
+                            policyName: "settings",
+                            idPrefix: "set",
+                            charterData
+                    }),
+                });
+                this.commitPendingChangesIfNeeded(tcx);
 
-            tcx.includeAddlTxn(`commitSettings`, {
-                description: `commit settings-policy`,
-                moreInfo: "makes the on-chain Settings policy active",
-                optional: false,
-                mkTcx: () => this.mkTxnCommittingPendingChanges(),
-            });
+            }
 
-            tcx.includeAddlTxn(`createSettingsRecord`, {
-                description: `creates initial settings`,
-                moreInfo: "needed to configure other contract scripts",
-                optional: false,
-                mkTcx: async () => {
-                    // console.log({ initialSettings });
-
-                    const settingsController = await (
-                        this as Capo<any>
-                    ).getDgDataController("settings");
-
-                    let initialSettings = settingsController.exampleData();
-                    if (
-                        settingsController &&
-                        //@ts-expect-error on optional method not declared on the general data-controller type
-                        !settingsController.initialSettingsData
-                    ) {
-                        console.warn(
-                            "Note: the Settings controller has no `async initialSettingsData()` method defined; using exampleData().\n" +
-                                "  Add this method to the settings policy if needed for deployment of the initial settings record.\n" +
-                                "  To suppress this warning, add `initiaiSettingsData() { return this.exampleData() }` to the settings policy."
-                        );
-                    } else {
-                        initialSettings =
-                            //@ts-expect-error on optional method not declared on the general data-controller type
-                            await settingsController.initialSettingsData();
-                    }
-
-                    if (!initialSettings) {
-                        throw new Error(
-                            "the settings policy must implement exampleData() and/or async initialSettingsData() and return a valid settings record"
-                        );
-                    }
-
-                    const ma = settingsController.activity.MintingActivities;
-                    //@ts-expect-error because we don't yet have a sufficiently-specific
-                    // generic type for delegated data controllers that require the basic
-                    // seeded-creating-record activity
-                    const activity = ma.$seeded$CreatingRecord;
-
-                    return settingsController.mkTxnCreateRecord({
-                        activity,
-                        data: initialSettings,
-                    });
-                },
-            });
-
-            tcx.includeAddlTxn(`addCurrentSettings`, {
-                description: `register settings in Capo manifest`,
-                moreInfo: "provides settings to all the Capo scripts",
-                optional: false,
-                mkTcx: async () => {
-                    const settingsController = await (
-                        this as Capo<any>
-                    ).getDgDataController("settings");
-                    // settingsController.$find
-
-                    const settingsUtxo = (
-                        await (this as Capo<any>).findDelegatedDataUtxos({
-                            type: "settings",
-                        })
-                    )[0];
-                    if (!settingsUtxo) {
-                        throw new Error("can't find settings record");
-                    }
-
-                    const initialSettings = settingsUtxo.data;
-
-                    if (!initialSettings) {
-                        throw new Error(
-                            "can't extract initial settings record data"
-                        );
-                    }
-
-                    console.log(
-                        "🐞🐞🐞🐞🐞🐞🐞🐞🐞 hurray  🐞🐞🐞🐞🐞🐞🐞🐞🐞"
-                    );
-                    console.log({ initialSettings });
-
-                    return this.mkTxnAddManifestEntry(
-                        "currentSettings",
-                        settingsUtxo,
-                        {
-                            tokenName: initialSettings.id,
-                            entryType: { NamedTokenRef: {} },
-                            mph: undefined,
+            if (!charterData.manifest.get("currentSettings")) {
+                tcx.includeAddlTxn(`createSettingsRecord`, {
+                    description: `creates initial settings`,
+                    moreInfo: "needed to configure other contract scripts",
+                    optional: false,
+                    mkTcx: async () => {
+                        const settingsController =
+                            await this.getDgDataController("settings");
+                        if (!settingsController) {
+                            throw new Error(
+                                `no settings policy found in the Capo manifest`
+                            );
                         }
-                    );
-                },
-            });
+                        let initialSettings = settingsController.exampleData();
+                        if (
+                            settingsController &&
+                            //@ts-expect-error on optional method not declared on the general data-controller type
+                            !settingsController.initialSettingsData
+                        ) {
+                            console.warn(
+                                "Note: the Settings controller has no `async initialSettingsData()` method defined; using exampleData().\n" +
+                                    "  Add this method to the settings policy if needed for deployment of the initial settings record.\n" +
+                                    "  To suppress this warning, add `initiaiSettingsData() { return this.exampleData() }` to the settings policy."
+                            );
+                        } else {
+                            initialSettings =
+                                //@ts-expect-error on optional method not declared on the general data-controller type
+                                await settingsController.initialSettingsData();
+                        }
 
+                        if (!initialSettings) {
+                            throw new Error(
+                                "the settings policy must implement exampleData() and/or async initialSettingsData() and return a valid settings record"
+                            );
+                        }
+
+                        const ma =
+                            settingsController.activity.MintingActivities;
+                        debugger
+                        //@ts-expect-error because we don't yet have a sufficiently-specific
+                        // generic type for delegated data controllers that require the basic
+                        // seeded-creating-record activity
+                        const activity = ma.$seeded$CreatingRecord;
+
+                        return settingsController.mkTxnCreateRecord({
+                            activity,
+                            data: initialSettings,
+                        });
+                    },
+                });
+
+                tcx.includeAddlTxn(`addCurrentSettings`, {
+                    description: `register settings in Capo manifest`,
+                    moreInfo: "provides settings to all the Capo scripts",
+                    optional: false,
+                    mkTcx: async () => {
+                        const settingsController = await (
+                            this as Capo<any>
+                        ).getDgDataController("settings");
+                        // settingsController.$find
+
+                        const settingsUtxo = (
+                            await (this as Capo<any>).findDelegatedDataUtxos({
+                                type: "settings",
+                            })
+                        )[0];
+                        if (!settingsUtxo) {
+                            throw new Error("can't find settings record");
+                        }
+
+                        const initialSettings = settingsUtxo.data;
+
+                        if (!initialSettings) {
+                            throw new Error(
+                                "can't extract initial settings record data"
+                            );
+                        }
+
+                        console.log(
+                            "🐞🐞🐞🐞🐞🐞🐞🐞🐞 hurray  🐞🐞🐞🐞🐞🐞🐞🐞🐞"
+                        );
+                        console.log({ initialSettings });
+
+                        const tcx2 = await this.mkTxnAddManifestEntry(
+                            "currentSettings",
+                            settingsUtxo,
+                            {
+                                tokenName: initialSettings.id,
+                                entryType: { NamedTokenRef: {} },
+                                mph: undefined,
+                            }
+                        );
+                        return this.commitPendingChangesIfNeeded(tcx2);
+                    },
+                });
+                // return this.commitPendingChangesIfNeeded(tcx);
+            }
             return tcx;
         }
     }
@@ -2678,28 +2745,22 @@ export abstract class Capo<
         useRefScript = true
     ): Promise<TCX> {
         let expectedVh = program.hash();
-        const isCorrectRefScript = (txin: TxInput) => {
-            const refScript = txin.output.refScript;
-            if (!refScript) return false;
 
-            const foundHash = refScript.hash();
-            return equalsBytes(foundHash, expectedVh);
-        };
-        if (tcx.txRefInputs.find(isCorrectRefScript)) {
+        const capoUtxos = await this.findCapoUtxos()
+        const matchesRefScript = this.uh.mkRefScriptPredicate(expectedVh);
+        if (tcx.txRefInputs.find(matchesRefScript)) {
             console.warn("suppressing second add of refScript");
             return tcx;
         }
         const scriptReferences = useRefScript
-            ? await this.findScriptReferences()
+            ? await this.findScriptReferences(capoUtxos)
             : [];
         // for (const [txin, refScript] of scriptReferences) {
         //     console.log("refScript", dumpAny(txin));
         // }
 
-        const matchingScriptRefs = scriptReferences.find(([txin, refScript]) =>
-            isCorrectRefScript(txin)
-        );
-        if (!matchingScriptRefs) {
+        const matchingScriptRef = scriptReferences.find(matchesRefScript);
+        if (!matchingScriptRef) {
             console.warn(
                 new Error(
                     `⚠️  missing refScript in Capo ${this.address.toString()} \n  ... for expected script hash ${bytesToHex(
@@ -2711,16 +2772,23 @@ export abstract class Capo<
             return tcx.addScriptProgram(program);
         }
         // console.log("------------------- REF SCRIPT")
-        return tcx.addRefInput(matchingScriptRefs[0]);
+        return tcx.addRefInput(matchingScriptRef, program);
     }
 
-    async findScriptReferences() {
-        const utxos = await this.network.getUtxos(this.address);
-        type TxoWithScriptRefs = [TxInput, any];
-        // console.log("finding script refs", utxos);
-        const utxosWithDatum = (
+    /** finds UTXOs in the capo that are of tnhe ReferenceScript variety of its datum
+     * @remarks
+     *
+     * @public
+     */
+    async findScriptReferences(capoUtxos: TxInput[]): Promise<TxInput[]> {
+        //! todo: adjust this to use a more abstract form of querying
+        // that allows for indexing the datums by their type
+        // and/or querying that index instead of explicitly finding utxos
+        // const myUtxos = await this.network.getUtxos(this.address);
+
+        const utxos = (
             await Promise.all(
-                utxos.map((utxo) => {
+                capoUtxos.map((utxo) => {
                     const datum = utxo.output.datum?.data;
                     // console.log("datum", datum);
                     if (!datum) return null;
@@ -2728,12 +2796,11 @@ export abstract class Capo<
                     if (!scriptRef.ScriptReference) {
                         return null;
                     }
-                    return [utxo, scriptRef] as TxoWithScriptRefs;
+                    return utxo;
                 })
             )
-        ).filter((x) => !!x) as TxoWithScriptRefs[];
-
-        return utxosWithDatum;
+        ).filter((x) => !!x);
+        return utxos;
     }
 
     @txn
@@ -2843,11 +2910,15 @@ export abstract class Capo<
             id,
             predicate,
             query,
+            charterData,
+            capoUtxos,
         }: {
             type?: T;
             id?: string | number[] | UutName;
             predicate?: DelegatedDataPredicate<RAW_DATUM_TYPE>;
             query?: never; // todo
+            charterData?: CharterData;
+            capoUtxos?: TxInput[];
         }
     ): Promise<FoundDatumUtxo<RAW_DATUM_TYPE, PARSED_DATUM_TYPE>[]> {
         if (!type && !predicate && !id) {
@@ -2855,6 +2926,17 @@ export abstract class Capo<
         }
         if (id && predicate) {
             throw new Error("Cannot provide both id and predicate");
+        }
+        if (!capoUtxos) {
+            debugger
+            capoUtxos = await this.findCapoUtxos()
+        }
+
+        if (!charterData) {
+            charterData = await this.findCharterData(undefined, {
+                optional: false,
+                capoUtxos: capoUtxos,
+            });
         }
         if (id) {
             let idBytes: number[];
@@ -2874,7 +2956,7 @@ export abstract class Capo<
         // console.log({ type, types: Object.keys(this.datumAdapters)})
         const hasType = !!type;
         if ("undefined" !== typeof type) {
-            const dgtForType = await this.getDgDataController(type as any);
+            const dgtForType = await this.getDgDataController(type as any, {charterData});
 
             if (!dgtForType) {
                 console.log("no adapter for type", type);
@@ -2890,12 +2972,11 @@ export abstract class Capo<
             }
         }
         // console.log("findDelegatedDataUtxos", type, predicate);
-        const utxos = await this.network.getUtxos(this.address);
 
         // console.log("utxos", dumpAny(utxos));
         const utxosWithDatum = (
             await Promise.all(
-                utxos.map(async (utxo: TxInput) => {
+                capoUtxos.map(async (utxo: TxInput) => {
                     const { datum } = utxo.output;
                     // console.log("datum", datum);
                     if (!datum?.data) return null;
@@ -2958,7 +3039,11 @@ export abstract class Capo<
                         }
                     }
                     const dgtForType =
-                        type && (await this.getDgDataController(type));
+                        type &&
+                        (await this.getDgDataController(type, {
+                            charterData,
+                            optional: true,
+                        }));
                     if (!dgtForType) {
                         console.log(
                             "no type found in datum",
@@ -3528,9 +3613,11 @@ export abstract class Capo<
         THIS extends Capo<any>
     >(
         this: THIS,
-        dgtRole: RoLabel,
-        idPrefix: string,
-        charter?: CapoDatum$Ergo$CharterData
+        options: {
+            policyName: RoLabel,
+            idPrefix: string,
+            charterData: CapoDatum$Ergo$CharterData
+        }
     ) {
         // const mintDelegate = await this.getMintDelegate(charter);
         // console.log("   --mintDgt", mintDelegate.constructor.name);
@@ -3539,10 +3626,7 @@ export abstract class Capo<
 
         const tcx1 = await this.tcxWithSeedUtxo(this.mkTcx());
         return this.mkTxnQueuingDelegateChange(
-            "Add",
-            dgtRole,
-            idPrefix,
-            undefined,
+            "Add", options,
             tcx1
         );
     }
@@ -3601,9 +3685,10 @@ export abstract class Capo<
             throw new Error(`not yet supported for ${Object.keys(entry)}[0]`);
         }
         const { tokenName } = entry;
-        const spendDgt = await this.getSpendDelegate(currentCharter);
         const tcx1a = await this.txnAddGovAuthority(tcx);
         const tcx1b = tcx1a.addRefInput(utxo.utxo);
+
+        const spendDgt = await this.getSpendDelegate(currentCharter);
         const tcx1c = await spendDgt.txnGrantAuthority(
             tcx1b,
             spendDgt.activity.CapoLifecycleActivities.updatingManifest.addingEntry(
@@ -3640,12 +3725,22 @@ export abstract class Capo<
     >(
         this: THIS,
         change: "Add" | "Replace",
-        policyName: RoLabel,
-        idPrefix: string,
-        options: OPTIONS = { config: {} } as OPTIONS, // & NamedPolicyCreationOptions<THIS, DT>,
+        options: {
+            policyName: RoLabel,
+            charterData: CharterData,
+            idPrefix: string,
+            dgtOptions?: OPTIONS, // & NamedPolicyCreationOptions<THIS, DT>,
+        },
         tcx: TCX = this.mkTcx() as TCX
     ) {
-        const purpose: string = options.uutName || "dgPol";
+        const {
+            idPrefix,
+            policyName,
+            charterData,
+            dgtOptions = { config: {} } as OPTIONS
+        } = options
+        const purpose: string = dgtOptions.uutName || "dgPol";
+
         if (purpose.length > 13) {
             throw new Error(
                 `delegate-purpose ${purpose} can be max 13 chars for a UUT-name.  \n` +
@@ -3658,8 +3753,7 @@ export abstract class Capo<
         //     options
         // );
 
-        const currentCharter = await this.findCharterData();
-        const mintDgt = await this.getMintDelegate(currentCharter);
+        const mintDgt = await this.getMintDelegate(charterData);
         const mintDgtActivity = mintDgt.activity as SomeDgtActivityHelper;
 
         // const dgtActivity = this.onchain.types.PendingDelegateAction
@@ -3676,7 +3770,7 @@ export abstract class Capo<
                 purpose,
                 policyName,
                 idPrefix,
-                options
+                dgtOptions
             );
         const tempOCDPLink =
             this.mkOnchainRelativeDelegateLink(tempDataPolicyLink);
@@ -3689,7 +3783,7 @@ export abstract class Capo<
             // config: tempOCDPLink.config,
         };
         const policyNameBytes = textToBytes(policyName);
-        const replacesDgtME = [...currentCharter.manifest.values()].find(
+        const replacesDgtME = [...charterData.manifest.values()].find(
             (m) => {
                 !!m.entryType.DgDataPolicy && m.tokenName == policyNameBytes;
             }
@@ -3741,7 +3835,7 @@ export abstract class Capo<
             }
         );
         const delegateLink = this.mkOnchainRelativeDelegateLink(
-            await this.txnCreateOffchainDelegateLink(tcx2, policyName, options)
+            await this.txnCreateOffchainDelegateLink(tcx2, policyName, dgtOptions)
         );
         const pendingChange: PendingCharterChangeLike = {
             delegateChange: {
@@ -3753,12 +3847,33 @@ export abstract class Capo<
             },
         };
 
+        const helper: PendingCharterChangeHelper = this.getOnchainBridge().types
+            .PendingCharterChange as any;
+        const pendingChangeUplc = helper.delegateChange(
+            pendingChange.delegateChange!
+        );
+
+        const isAlreadyPresent = charterData.pendingChanges.find((pc) => {
+            const dgc = pc.delegateChange;
+            if (!dgc) return false;
+            const existingRole = dgc.role.DgDataPolicy;
+            if (policyName != existingRole) return false;
+            const existingChangeAction = Object.keys(dgc.action)[0];
+            return change == existingChangeAction;
+        });
+
+        if (isAlreadyPresent) {
+            throw new AlreadyPendingError(
+                "pending delegate change already queued"
+            );
+        }
+
         const tcx4 = await this.mkTxnUpdateCharter(
             {
-                ...currentCharter,
+                ...charterData,
                 pendingChanges: [
                     pendingChange,
-                    ...currentCharter.pendingChanges,
+                    ...charterData.pendingChanges,
                 ],
             },
             this.activity.capoLifecycleActivity.queuePendingChange,

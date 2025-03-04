@@ -7,14 +7,15 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import { makeTxOutput, TxOutput } from "@helios-lang/ledger";
+import { decodeTx, makeTxOutput, NetworkParams, TxOutput } from "@helios-lang/ledger";
 import {
     Capo,
     StellarTxnContext,
     parseCapoJSONConfig,
     CapoWithoutSettings,
     type ConfigFor,
-    TxDescription
+    TxDescription,
+    TxSubmitMgr
 } from "@donecollectively/stellar-contracts";
 import {
     blue
@@ -22,6 +23,8 @@ import {
 import { ADA, StellarTestContext, TestHelperState, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
+import { makeBlockfrostV0Client } from "@helios-lang/tx-utils";
+import { UplcConsoleLogger } from "../src/UplcConsoleLogger";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -53,18 +56,8 @@ describe("Transaction context", async () => {
         )
         await context.h.delay(1);
     });
-    describe("StellarTxnContext", () => {
-        it("initiates a tx batch controller if needed", async (context: localTC) => {
-            // prettier-ignore
-            const {h, h:{network, actors, delay, state} } = context;
-            await h.reusableBootstrap();
-
-            const capo = h.capo
-            const tcx = capo.mkTcx();
-            expect(tcx.id).toBeTruthy();
-            expect(capo.setup.txBatcher._current).toBeTruthy();
-        })        
-        it("a second test, less expensive", async (context: localTC) => {
+    describe("Transactions & Submitting", () => {
+        it("StellarTxnContext: initiates a tx batch controller if needed", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
             await h.reusableBootstrap();

@@ -8,7 +8,7 @@ export class MintDelegateWithGenericUuts extends BasicMintDelegate {
     get delegateName() { return "uutMintingDelegate" }
 
     scriptBundle() {
-        return new uutMintingMintDelegateBundle();
+        return uutMintingMintDelegateBundle.create();
     }
     
 }

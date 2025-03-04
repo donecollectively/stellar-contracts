@@ -503,7 +503,9 @@ describe("Capo", () => {
             );
             expect(spentDgtToken).toBeTruthy();
             expect(returnedToken).toBeTruthy();
-            await expect(tcx2b.submit()).resolves.toBeTruthy();
+            debugger
+            await expect(tcx2b.submitAll()).resolves.toBeTruthy();
+            h.network.tick(1)
 
             // uses the reference script in the minting txn:
             expect(
@@ -549,7 +551,7 @@ describe("Capo", () => {
                         purposes,
                     }),
             });
-            await expect(tcx1b.submit(expectTxnError)).rejects.toThrow(
+            await expect(tcx1b.submitAll(expectTxnError)).rejects.toThrow(
                 /missing .*mintDgt/
             );
         });
@@ -588,7 +590,7 @@ describe("Capo", () => {
             console.log(
                 "------ submitting bogus txn with modified delegate datum"
             );
-            const submitting = tcx1b.submit(expectTxnError);
+            const submitting = tcx1b.submitAll(expectTxnError);
             // await submitting
             await expect(submitting).rejects.toThrow(
                 // /delegation datum must not be modified/

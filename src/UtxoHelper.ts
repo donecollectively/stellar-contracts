@@ -1,4 +1,4 @@
-import { type BytesLike } from "@helios-lang/codec-utils";
+import { equalsBytes, type BytesLike } from "@helios-lang/codec-utils";
 import type { SimpleWallet, Wallet } from "@helios-lang/tx-utils";
 import {
     type Address,
@@ -14,6 +14,7 @@ import {
     makeAssetClass,
     makeAddress,
     makeDummyAddress,
+    type ScriptHash,
 } from "@helios-lang/ledger";
 
 import { StellarTxnContext } from "./StellarTxnContext.js";
@@ -51,6 +52,10 @@ export type utxoPredicate = (
 };
 
 export type UtxoSearchScope = {
+    /**
+     * provides pre-resolved utxos for the indicated address-or-wallet
+     */
+    utxos?: TxInput[];
     /**
      * searches in a specific address (e.g. a smart contract address)
      */
@@ -387,6 +392,19 @@ export class UtxoHelper {
             return this.hasOnlyAda(value, tcx, utxo);
         }
     }
+
+    mkRefScriptPredicate(
+        expectedScriptHash: number[]
+    ) : utxoPredicate {
+        return (txin: TxInput) => {
+            const refScript = txin.output.refScript;
+            if (!refScript) return false;
+
+            const foundHash = refScript.hash();
+            return equalsBytes(foundHash, expectedScriptHash);
+        };
+    }
+
     /**
      * Creates an asset class for the given token name, for the indicated minting policy
      */
@@ -646,7 +664,16 @@ export class UtxoHelper {
         options: UtxoSearchScope = {}
     ) {
         const wallet = options.wallet ?? this.wallet;
-        const utxos = await wallet.utxos;
+
+        // doesn't go through the wallet's interface - uses the network client instead,
+        // so that txChainBuilder can take into account the UTxO's already being spent in the tx-chain.
+        const addrs = (await wallet?.usedAddresses) ?? [];
+        const utxos: TxInput[] = [];
+        for (const addr of addrs.flat(1)) {
+            if (!addr) continue;
+            const addrUtxos = await this.network.getUtxos(addr);
+            utxos.push(...addrUtxos);
+        }
 
         return this.hasUtxo(name, predicate, {
             ...options,
@@ -754,55 +781,32 @@ export class UtxoHelper {
     }
 
     async mustFindActorUtxo(
-        name: string,
-        predicate: (u: TxInput) => TxInput | undefined,
-        exceptInTcx: StellarTxnContext<any>,
-        extraErrorHint?: string
-    ): Promise<TxInput>;
-    async mustFindActorUtxo(
-        name: string,
-        predicate: (u: TxInput) => TxInput | undefined,
-        extraErrorHint?: string
-    ): Promise<TxInput>;
-
-    async mustFindActorUtxo(
-        name: string,
-        predicate: (u: TxInput) => TxInput | undefined,
-        hintOrExcept?: string | StellarTxnContext,
-        hint?: string
+        name: string, options: {
+            predicate: (u: TxInput) => TxInput | undefined,
+            exceptInTcx?: StellarTxnContext<any>,
+            extraErrorHint?: string
+        }
     ): Promise<TxInput> {
         const wallet = this.wallet;
 
-        const isTcx = hintOrExcept instanceof StellarTxnContext;
-        const exceptInTcx = isTcx ? hintOrExcept : undefined;
-        const extraErrorHint = isTcx
-            ? hint
-            : "string" == typeof hintOrExcept
-            ? hintOrExcept
-            : undefined;
-
         return this.mustFindUtxo(
             name,
-            predicate,
             {
+                ...options,
                 wallet,
-                exceptInTcx,
             },
-            extraErrorHint
         );
     }
 
     async mustFindUtxo(
-        semanticName: string,
-        predicate: utxoPredicate,
-        searchScope: UtxoSearchScope,
-        extraErrorHint: string = ""
+        semanticName: string, options: UtxoSearchScope & {
+            predicate: utxoPredicate,
+            extraErrorHint?: string
+        }
     ): Promise<TxInput> {
+        // workaround for a failure in api-extractor to make this a separate assignment??
+        const { predicate, extraErrorHint ="", wallet, address, exceptInTcx } = options;
         // const { address, exceptInTcx } = searchScope;
-        // workaround for a failure in api-extractor to make this a separate assignment:
-        const wallet = searchScope.wallet;
-        const address = searchScope.address;
-        const exceptInTcx = searchScope.exceptInTcx;
 
         const addrs = (await wallet?.usedAddresses) ?? [address];
         const utxos: TxInput[] = [];
@@ -849,7 +853,7 @@ export class UtxoHelper {
             throw new Error(
                 this.utxoSearchError(
                     semanticName,
-                    searchScope,
+                    options,
                     extraErrorHint,
                     walletAddr
                 )

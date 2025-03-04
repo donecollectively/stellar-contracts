@@ -1,5 +1,6 @@
 import {
     dumpAny,
+    intWithGrouping,
     lovelaceToAda,
     txAsString,
     utxosAsString,
@@ -8,7 +9,7 @@ import type { hasUutContext } from "./CapoTypes.js";
 import { UutName } from "./delegation/UutName.js";
 import type { ActorContext, SetupInfo } from "./StellarContract.js";
 import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";
-import type { Cost, UplcData } from "@helios-lang/uplc";
+import type { Cost, UplcData, UplcProgramV2 } from "@helios-lang/uplc";
 import { UplcConsoleLogger } from "./UplcConsoleLogger.js";
 import type { isActivity, SeedAttrs } from "./ActivityTypes.js";
 import {
@@ -42,6 +43,7 @@ import type { UtxoHelper } from "./UtxoHelper.js";
 import type { IF_ISANY } from "./helios/typeUtils.js";
 import type { Expand } from "./helios/typeUtils.js";
 import { nanoid } from "nanoid";
+import { TxNotNeededError } from "./utils.js";
 
 /**
  * A txn context having a seedUtxo in its state
@@ -53,14 +55,24 @@ export type hasSeedUtxo = StellarTxnContext<
     }
 >;
 
-export type txBuiltOrSubmitted = "built" | "signed" | "submitted";
+export type txBuiltOrSubmitted =
+    | "built"
+    | "alreadyPresent"
+    | "signed"
+    | "submitted";
 export type resolvedOrBetter = "resolved" | txBuiltOrSubmitted;
 /**
  * @public
  */
 export type TxDescription<
     T extends StellarTxnContext,
-    PROGRESS extends "buildLater!" | "resolved" | "built" | "signed" | "submitted",
+    PROGRESS extends
+        | "buildLater!"
+        | "resolved"
+        | "alreadyPresent"
+        | "built"
+        | "signed"
+        | "submitted",
     TCX extends StellarTxnContext = IF_ISANY<T, StellarTxnContext<anyState>, T>,
     otherProps extends Record<string, unknown> = {}
 > = {
@@ -71,14 +83,18 @@ export type TxDescription<
     moreInfo?: string;
     optional?: boolean;
     txName?: string;
-    tcx?: TCX;
+    tcx?: TCX | TxNotNeededError;
     tx?: Tx;
     stats?: BuiltTcxStats;
-    txCborHex? : string;
-    signedTxCborHex? : string;
-    walletTxId?: TxId;
+    txCborHex?: string;
+    signedTxCborHex?: string;
 } & otherProps &
-    (PROGRESS extends resolvedOrBetter
+    (PROGRESS extends "alreadyPresent}"
+        ? {
+              mkTcx: (() => TCX) | (() => Promise<TCX>);
+              tcx: TCX & { alreadyPresent: TxNotNeededError };
+          }
+        : PROGRESS extends resolvedOrBetter
         ? {
               mkTcx?: (() => TCX) | (() => Promise<TCX>) | undefined;
               tcx: TCX;
@@ -93,15 +109,17 @@ export type TxDescription<
               txId?: TxId;
               stats: BuiltTcxStats;
               options: SubmitOptions;
-              txCborHex: string,
-            }
+              txCborHex: string;
+          }
         : {}) &
-    (PROGRESS extends "signed" | "submitted" ? { 
-        txId: TxId,
-        txCborHex: string,
-        signedTxCborHex: string,
-        walletTxId: TxId,
-    } : {});
+    (PROGRESS extends "signed" | "submitted"
+        ? {
+              txId: TxId;
+              txCborHex: string;
+              signedTxCborHex: string;
+              walletTxId: TxId;
+          }
+        : {});
 
 /**
  * @public
@@ -298,7 +316,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
     parentTcx?: StellarTxnContext<any>;
     childReservedUtxos: TxInput[] = [];
     parentId: string = "";
-    depth=0
+    alreadyPresent: TxNotNeededError | undefined = undefined;
+    depth = 0;
     declare setup: SetupInfo;
     // submitOptions?: SubmitOptions
     txb: TxBuilder;
@@ -357,10 +376,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
     ) {
         if (parentTcx) {
             console.warn(
-                "Deprecated use of 'parentTcx' - use includeAddlTxn() instead"+
-                "\n  ... setup.txBatcher.current holds an in-progress utxo set for all 'parent' transactions"
-            )
-            throw new Error(`parentTcx used where? `)
+                "Deprecated use of 'parentTcx' - use includeAddlTxn() instead" +
+                    "\n  ... setup.txBatcher.current holds an in-progress utxo set for all 'parent' transactions"
+            );
+            throw new Error(`parentTcx used where? `);
         }
         Object.defineProperty(this, "setup", {
             enumerable: false,
@@ -390,7 +409,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             uuts: state.uuts || { ...emptyUuts },
         };
 
-        const currentBatch = this.currentBatch
+        const currentBatch = this.currentBatch;
         const hasOpenBatch = currentBatch?.isOpen;
         if (!currentBatch || currentBatch.isConfirmationComplete) {
             this.setup.txBatcher.rotate(this.setup.chainBuilder);
@@ -409,8 +428,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
 
         if (parentTcx) {
-            debugger
-            throw new Error(`parentTcx used where? `)
+            debugger;
+            throw new Error(`parentTcx used where? `);
         }
         this.parentTcx = parentTcx;
     }
@@ -467,13 +486,16 @@ export class StellarTxnContext<S extends anyState = anyState> {
     >(
         this: TCX,
         txnName: string,
-        txInfoIn: Omit<TxDescription<any, "buildLater!">, "id" | "depth" | "parentId"> & {
+        txInfoIn: Omit<
+            TxDescription<any, "buildLater!">,
+            "id" | "depth" | "parentId"
+        > & {
             id?: string;
         }
     ): RETURNS {
         const txInfo: TxDescription<any, "buildLater!"> = {
-            ...(txInfoIn as any)
-        }
+            ...(txInfoIn as any),
+        };
         if (!txInfo.id)
             txInfo.id =
                 //@ts-expect-error - the tcx is never there,
@@ -481,8 +503,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 // consistency about the policy of syncing to it.
                 txInfo.tcx?.id || nanoid(5);
 
-        txInfo.parentId = this.id
-        
+        txInfo.parentId = this.id;
+
         txInfo.depth = (this.depth || 0) + 1;
         const thisWithMoreType: RETURNS = this as any;
         if ("undefined" == typeof this.isFacade) {
@@ -737,11 +759,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
      **/
     addRefInput<TCX extends StellarTxnContext<S>>(
         this: TCX,
-        ...inputArgs: addRefInputArgs
+        input: TxInput<any>,
+        refScript?: UplcProgramV2
     ) {
         this.noFacade("addRefInput");
-        // const [input, ...moreArgs] = inputArgs; // ugh, api-extractor!
-        const input = inputArgs[0];
+        if (!input) throw new Error(`missing required input for addRefInput()`);
+
         if (this.txRefInputs.find((v) => v.id.isEqual(input.id))) {
             console.warn("suppressing second add of refInput");
             return this;
@@ -754,14 +777,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         this.txRefInputs.push(input);
 
-        // if (moreArgs.length) {
-        //     //@ts-expect-error
-        //     this.tx.attachScript(...moreArgs);
-        //     return this
-        // }
-
         //@ts-expect-error private field
         const v2sBefore = this.txb.v2Scripts;
+        if (refScript) {
+            //@ts-expect-error on private method
+            this.txb.addV2RefScript(refScript);
+        }
+
         this.txb.refer(input);
         //@ts-expect-error private field
         const v2sAfter = this.txb.v2Scripts;
@@ -965,6 +987,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         if (!this._validityPeriodSet) {
             this.validFor(12 * 60 * 1000); // 12 minutes
+            // this.validFor(12 * 60 * 1000 * 60 * 24); // 12 days
         }
         let { description } = addlTxInfo;
         if (description && !description.match(/^:/)) {
@@ -1047,6 +1070,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 slush: { cpu: 0n, mem: 0n },
             };
             try {
+                
                 // the transaction can fail validation without throwing an error
                 tx = await this.txb.buildUnsafe({
                     changeAddress,
@@ -1072,8 +1096,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         // const memSlush = 0n // BigInt(430_000n); // ~25k lovelace
 
                         // without this, we **sometimes** get problems having enough
-                        // exBudget to cover the way the haskell node computes the 
-                        // per-script execution costs.  Prevents "out of budget" errors 
+                        // exBudget to cover the way the haskell node computes the
+                        // per-script execution costs.  Prevents "out of budget" errors
                         // during script execution:
                         const cpuSlush = BigInt(350_000_000n); // ~25k lovelace
                         const memSlush = BigInt(430_000n); // ~25k lovelace
@@ -1187,6 +1211,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 }
             }
 
+            // tx.body.fee = tx.body.fee + BigInt(250_000n); // 25k lovelace
+
             return {
                 tx,
                 willSign,
@@ -1239,56 +1265,106 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * or for logging or any other post-submission processing.
      */
     async submitAll(this: StellarTxnContext<any>, options: SubmitOptions = {}) {
-        const currentBatch = this.currentBatch
+        const currentBatch = this.currentBatch;
         const hasOpenBatch = currentBatch?.isOpen;
+        // if (hasOpenBatch) {
+        //     console.warn(
+        //         `⚠️  submitAll(): detected overlapping txn batches... \n` +
+        //             `  ... that MIGHT be a developer error on our part.\n` +
+        //             `  ... or, you might need to add your transaction to an existing batch \n` +
+        //             `      (use otherTcx.includeAddlTxn(...))\n` +
+        //             `  ... or, you might need to ensure you're waiting for an existing batch \n` +
+        //             `      to finish (monitor setup.txBatcher.current for batch:confirmed)\n` +
+        //             `\nFinally, you might have an advanced use-case for building multiple \n` +
+        //             `independent batches of transactions that don't need tx chaining between them. \n\n` +
+        //             `Please be welcome to log an issue with the project's support desk, \n` +
+        //             `... and we'll see what we can do to help.`
+        //         );
+        //     throw new Error(`can't submitAll() with an existing open tx batch (wait for the existing batch to finish first`);
+        // }
 
+        //!!! remove because it's already done in the constructor?
+        // debugger
+        // if (!currentBatch || currentBatch.isConfirmationComplete) {
+        //     this.setup.txBatcher.rotate(this.setup.chainBuilder);
+        // }
+
+        // if (!this.setup.isTest && !this.setup.chainBuilder) {
+        //     if (currentBatch.chainBuilder) {
+        //         // backfills the chainbuilder from the one auto-populated
+        //         // during `get TxBatcher.current()`
+        //         this.setup.chainBuilder = currentBatch.chainBuilder;
+        //     } else {
+        //         this.setup.chainBuilder = makeTxChainBuilder(
+        //             this.setup.network
+        //         );
+        //     }
+        // }
+        //!!! ^^^ remove?
 
         return this.buildAndQueueAll(options).then(() => {
-            return currentBatch.$signAndSubmitAll()
-        })
+            return currentBatch.$signAndSubmitAll().then(() => true)
+        });
     }
 
     async buildAndQueueAll(
         this: StellarTxnContext<any>,
         options: SubmitOptions = {}
     ) {
-        const {addlTxInfo = {
-            description: this.txnName
-                ? ": " + this.txnName
-                : "‹unnamed tx›",
-            id: this.id,
-            tcx: this,            
-        }, ...generalSubmitOptions} = options
+        const {
+            addlTxInfo = {
+                description: this.txnName
+                    ? ": " + this.txnName
+                    : "‹unnamed tx›",
+                id: this.id,
+                tcx: this,
+            },
+            ...generalSubmitOptions
+        } = options;
         if (options.paramsOverride) {
-            console.warn("⚠️  paramsOverride can be useful for extreme cases \n"+
-                "of troubleshooting tx execution by submitting an oversized tx \n"+
-                "with unoptimized contract scripts having diagnostic print/trace calls\n"+
-                "to a custom preprod node having overloaded network params, thus allowing \n"+
-                "such a transaction to be evaluated end-to-end by the Haskell evaluator using \n"+
-                "the cardano-node's script-budgeting mini-protocol.\n\n"+
-
-                "This will cause problems for regular transactions (such as requiring very large collateral)"+
-                "Be sure to remove any params override if you're not dealing with \n"+
-                "one of those very special situations. \n"
-            )
-            debugger
+            console.warn(
+                "⚠️  paramsOverride can be useful for extreme cases \n" +
+                    "of troubleshooting tx execution by submitting an oversized tx \n" +
+                    "with unoptimized contract scripts having diagnostic print/trace calls\n" +
+                    "to a custom preprod node having overloaded network params, thus allowing \n" +
+                    "such a transaction to be evaluated end-to-end by the Haskell evaluator using \n" +
+                    "the cardano-node's script-budgeting mini-protocol.\n\n" +
+                    "This will cause problems for regular transactions (such as requiring very large collateral)" +
+                    "Be sure to remove any params override if you're not dealing with \n" +
+                    "one of those very special situations. \n"
+            );
+            debugger;
         }
 
         if (this.isFacade == false) {
             return this.buildAndQueue({
-                ... generalSubmitOptions,
+                ...generalSubmitOptions,
                 addlTxInfo,
             }).then(() => {
                 if (this.state.addlTxns) {
                     // this gives early registration of nested txns from top-level txns
-                    console.log(`🎄⛄🎁 ${this.id}   -- B&QA - registering addl txns`)
-                    return this.queueAddlTxns(options)
+                    console.log(
+                        `🎄⛄🎁 ${this.id}   -- B&QA - registering addl txns`
+                    );
+                    return this.queueAddlTxns(options).then(() => {
+                        return true   
+                    })
+
+                    // .then((x) => {
+                    //     return this.currentBatch.$signAndSubmitAll()
+                    //     // this.setup.chainBuilder = undefined;
+                    //     // return x;
+                    // });
                 }
             });
         } else if (this.state.addlTxns) {
             // this gives early registration of nested txns from top-level txns
-            console.log(`🎄⛄🎁 ${this.id}   -- B&QA - registering txns in facade`)
-            return this.queueAddlTxns(generalSubmitOptions)
+            console.log(
+                `🎄⛄🎁 ${this.id}   -- B&QA - registering txns in facade`
+            );
+            return this.queueAddlTxns(generalSubmitOptions).then(() => {
+                return true
+            })
         }
         console.warn(`⚠️  submitAll(): no txns to queue/submit`, this);
         throw new Error(
@@ -1325,6 +1401,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         // console.log("buildAndQueue with setup", this.setup);
         this.noFacade("submit");
         if (!addlTxInfo) {
+            debugger;
             throw new Error(`expecting addlTxInfo to be passed`);
             addlTxInfo = {
                 description: this.txnName
@@ -1334,7 +1411,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 tcx: this,
             };
         }
-        const { logger, setup: {network} } = this;
+        const {
+            logger,
+            setup: { network },
+        } = this;
         const {
             tx,
             willSign,
@@ -1353,7 +1433,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         });
         let { description, id } = addlTxInfo;
         if (!id) {
-            id = addlTxInfo.id = this.id
+            id = addlTxInfo.id = this.id;
         }
         const addlTxInfo2: TxDescription<any, "buildLater!"> = {
             ...addlTxInfo,
@@ -1395,7 +1475,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 tx,
                 stats: txStats,
                 options: submitOptions,
-                txCborHex: bytesToHex(tx.toCbor())
+                txCborHex: bytesToHex(tx.toCbor()),
             };
             this.currentBatch.txError(txErrorDescription);
 
@@ -1434,7 +1514,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             );
         }
 
-        const txDescr : TxDescription<any, "built"> = {
+        const txDescr: TxDescription<any, "built"> = {
             ...addlTxInfo2,
             tcx: this,
             tx,
@@ -1446,7 +1526,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const { currentBatch } = this;
         const txState = currentBatch.$txStates[id];
 
-
         logger.logPrint(`tx transcript: ${description}\n`);
         logger.logPrint(this.dump(tx));
         this.emitCostDetails(tx, costs);
@@ -1454,18 +1533,17 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         // hands off wallet signing & tx-completion to the batcher.
         console.timeStamp?.(`tx: add to current-tx-batch`);
-        currentBatch.$addTxns(txDescr)
+        currentBatch.$addTxns(txDescr);
         this.setup.chainBuilder?.with(txDescr.tx);
         await whenBuilt?.(txDescr);
-        
+
         let txId: TxId | undefined;
 
         if (this.setup.isTest) {
             return wallet.submitTx(tx).then(() => {
                 //@ts-expect-error emulator-specific method
                 network.tick?.(1n);
-            })
-
+            });
         }
     }
     emitCostDetails(tx: Tx, costs: { total: Cost; [key: string]: Cost }) {
@@ -1491,27 +1569,83 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         const { total, ...otherCosts } = costs;
         const txSize = tx.calcSize();
-        const txFee = Number(tx.calcMinFee(this.networkParams));
-        const cpuFee = Number(total.cpu) * exCpuFeePerUnit;
-        const memFee = Number(total.mem) * exMemFeePerUnit;
-        const sizeFee = txSize * txFeePerByte;
-
+        const txFeeCalc = Number(tx.calcMinFee(this.networkParams));
+        const txFee = tx.body.fee;
+        
+        const cpuFee = BigInt((Number(total.cpu) * exCpuFeePerUnit).toFixed(0));
+        const memFee = BigInt((Number(total.mem) * exMemFeePerUnit).toFixed(0));
+        const sizeFee = BigInt(txSize * txFeePerByte);
         const nCpu = Number(total.cpu);
         const nMem = Number(total.mem);
+        let refScriptSize = 0;
+        for (const anyInput of [...tx.body.inputs, ...tx.body.refInputs]) {
+            const refScript = anyInput.output.refScript;
+            if (refScript) {
+                const scriptSize = refScript.toCbor().length;
+                refScriptSize += scriptSize;
+            }
+        }
+        let multiplier = 1.0;
+        let refScriptsFee = 0n;
+        let refScriptsFeePerByte = this.networkParams.refScriptsFeePerByte;
+        let refScriptCostDetails: string[] = [];
+        const tierSize = 25600;
+        let alreadyConsumed = 0;
+        for (
+            let tier = 0;
+            tier * tierSize < refScriptSize;
+            tier += 1, multiplier *= 1.2
+        ) {
+            const topOfThisTier = (1 + tier) * tierSize;
+            const consumedThisTier = Math.min(
+                tierSize,
+                refScriptSize - alreadyConsumed
+            );
+            alreadyConsumed += consumedThisTier;
+            const feeThisTier = Math.round(
+                consumedThisTier * multiplier * refScriptsFeePerByte
+            );
+            refScriptsFee += BigInt(feeThisTier);
+            refScriptCostDetails.push(
+                `\n      -- refScript tier${
+                    1 + tier
+                } (${consumedThisTier} × ${multiplier}) ×${refScriptsFeePerByte} = ${lovelaceToAda(
+                    feeThisTier
+                )}`
+            );
+        }
+
+        // for (let i = 0; i < refScriptSize; i += 25600, multiplier *= 1.2) {
+        //     const chunkSize = Math.min(25600, refScriptSize - i)
+        //     const feeThisChunk = chunkSize * multiplier * refScriptsFeePerByte
+        //     refScriptsFee += BigInt(feeThisChunk)
+        //     refScriptCostDetails.push(
+        //         `\n      -- refScript tier${i} (${chunkSize} bytes) × ${multiplier} = ${lovelaceToAda(feeThisChunk)}`
+        //     )
+        // }
+        const fixedTxFeeBigInt = BigInt(txFeeFixed);
+
+        const remainderUnaccounted =
+            txFee -
+            cpuFee -
+            memFee -
+            sizeFee -
+            fixedTxFeeBigInt -
+            refScriptsFee;
 
         if (nCpu > oMaxCpu || nMem > oMaxMem || txSize > oMaxSize) {
             logger.logPrint(
                 "🔥🔥🔥🔥  THIS TX EXCEEDS default (overridden in test env) limits on network params  🔥🔥🔥🔥\n" +
-                    `  -- cpu ${nCpu} = ${((100 * nCpu) / oMaxCpu).toFixed(
+                    `  -- cpu ${intWithGrouping(nCpu)} = ${((100 * nCpu) / oMaxCpu).toFixed(
                         1
-                    )}% of ${oMaxCpu} (patched to ${maxTxExCpu})\n` +
+                    )}% of ${intWithGrouping(oMaxCpu)} (patched to ${intWithGrouping(maxTxExCpu)})\n` +
                     `  -- mem ${nMem} = ${((100 * nMem) / oMaxMem).toFixed(
                         1
-                    )}% of ${oMaxMem} (patched to ${maxTxExMem})\n` +
-                    `  -- tx size ${txSize} = ${(
+                    )}% of ${intWithGrouping(oMaxMem)} (patched to ${intWithGrouping(maxTxExMem)})\n` +
+                    `  -- tx size ${intWithGrouping(txSize)} = ${(
                         (100 * txSize) /
                         oMaxSize
-                    ).toFixed(1)}% of ${oMaxSize} (patched to ${maxTxSize})\n`
+                    ).toFixed(1)}% of ${intWithGrouping(oMaxSize)} (patched to ${intWithGrouping(maxTxSize)})\n`
             );
         }
         const scriptBreakdown =
@@ -1536,31 +1670,33 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 : "";
 
         logger.logPrint(
-            "costs: " +
+            `costs: ${lovelaceToAda(txFee)}`+
                 `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}` +
-                `\n  -- tx size ${txSize}` +
-                ` (${(Number((1000 * txSize) / oMaxSize) / 10).toFixed(
+                `\n  -- tx size fee = ${lovelaceToAda(sizeFee)}` +
+                ` (${intWithGrouping(txSize)} bytes = ${(Number((1000 * txSize) / oMaxSize) / 10).toFixed(
                     1
                 )}% of tx size limit)` +
-                ` = ${lovelaceToAda(sizeFee)}` +
+                `\n  -- refScripts fee = ${lovelaceToAda(
+                    refScriptsFee
+                )}` +
+                refScriptCostDetails.join("") +
                 `\n  -- scripting costs` +
-                `\n    -- cpu units ${total.cpu}` +
+                `\n    -- cpu units ${intWithGrouping(total.cpu)}` +
                 ` = ${lovelaceToAda(cpuFee)}` +
                 ` (${(
                     Number((1000n * total.cpu) / BigInt(oMaxCpu)) / 10
                 ).toFixed(1)}% of cpu limit/tx)` +
-                `\n    -- memory units ${total.mem}` +
+                `\n    -- memory units ${intWithGrouping(total.mem)}` +
                 ` = ${lovelaceToAda(memFee)}` +
                 ` (${(
                     Number((1000n * total.mem) / BigInt(oMaxMem)) / 10
                 ).toFixed(1)}% of mem limit/tx)` +
                 scriptBreakdown +
                 `\n  -- remainder ${lovelaceToAda(
-                    txFee - cpuFee - memFee - sizeFee - txFeeFixed
-                )} is for refScripts/etc`
+                    remainderUnaccounted
+                )} unaccounted-for`
         );
     }
-
 
     /**
      * Executes additional transactions indicated by an existing transaction
@@ -1569,7 +1705,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * During the off-chain txn-creation process, additional transactions may be
      * queued for execution.  This method is used to register those transactions,
      * along with any chained transactions THEY may trigger.
-     * 
+     *
      * The TxBatcher and batch-controller classes handle wallet-signing
      * and submission of the transactions for execution.
      * @public
@@ -1585,7 +1721,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this.submitTxnChain({
             ...pipelineOptions,
             txns: Object.values(addlTxns),
-        });
+        })
     }
 
     /**
@@ -1607,27 +1743,28 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         for (const [txName, addlTxInfo] of Object.entries(txns)) {
             const { id } = addlTxInfo;
-            let txTracker = this.currentBatch.$txInfo(id)
+            let txTracker = this.currentBatch.$txInfo(id);
             if (!txTracker) {
-                this.currentBatch.$addTxns(addlTxInfo)
-                txTracker = this.currentBatch.$txInfo(id)
+                this.currentBatch.$addTxns(addlTxInfo);
+                txTracker = this.currentBatch.$txInfo(id);
             }
         }
         /* yield to allow rendering */
-        await new Promise((res) => setTimeout(res, 5)) 
+        await new Promise((res) => setTimeout(res, 5));
 
         for (const [txName, addlTxInfo] of Object.entries(txns)) {
             const { id, depth, parentId } = addlTxInfo;
-            let txTracker = this.currentBatch.$txInfo(id)
-            
+            let txTracker = this.currentBatch.$txInfo(id);
+
             txTracker.$transition("building");
             /* yield to allow rendering */
-            await new Promise((res) => setTimeout(res, 5)) 
+            await new Promise((res) => setTimeout(res, 5));
 
             // IS resolving.  WILL BE resolved
             const txInfoResolved: TxDescription<any, "resolved"> =
                 addlTxInfo as any;
             const { txName, description } = txInfoResolved;
+            let alreadyPresent: TxNotNeededError | undefined = undefined;
             console.log("  -- before: " + description);
             const tcx = (
                 "function" == typeof addlTxInfo.mkTcx
@@ -1635,6 +1772,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                           console.log(
                               "  creating TCX just in time for: " + description
                           );
+                          
                           const tcx = await addlTxInfo.mkTcx();
                           tcx.parentId = parentId || "";
                           tcx.depth = depth;
@@ -1647,26 +1785,44 @@ export class StellarTxnContext<S extends anyState = anyState> {
                               );
                           }
                           return tcx;
-                      })()
+                      })().catch((e) => {
+                          if (e instanceof TxNotNeededError) {
+                              alreadyPresent = e;
+                              const tcx = new StellarTxnContext(
+                                  this.setup
+                              ).withName(
+                                  `addlTxInfo already present: ${description}`
+                              );
+                              tcx.alreadyPresent = alreadyPresent;
+                              return tcx;
+                          }
+                        throw e
+                      })
                     : (() => {
                           console.log(
                               "  ---------------- warning!!!! addlTxInfo is already built!"
                           );
+                          debugger
                           throw new Error(" unreachable - right?");
                           return addlTxInfo.tcx;
                       })()
             ) as StellarTxnContext;
             if ("undefined" == typeof tcx) {
-                throw new Error(`no txn provided for addlTx ${txName}`);
+                throw new Error(
+                    `no txn provided for addlTx ${txName || description}`
+                );
             }
             txInfoResolved.tcx = tcx;
-            // if (callback) {
-            //     console.log("   -- submitTxns: callback", {
-            //         txName,
-            //         description,
-            //         callback,
-            //     });
-            // }
+            if (tcx.alreadyPresent) {
+                console.log(
+                    "  -- tx effects are already present; skipping: " +
+                        txName || description
+                );
+                debugger;
+                this.currentBatch.$addTxns(txInfoResolved);
+                continue;
+            }
+
             const replacementTcx =
                 (pipelineOptions?.fixupBeforeSubmit &&
                     ((await pipelineOptions.fixupBeforeSubmit(
@@ -1692,26 +1848,40 @@ export class StellarTxnContext<S extends anyState = anyState> {
             // console.log("   ----> effective tx", effectiveTcx);
 
             txInfoResolved.tcx = effectiveTcx;
+            if (txInfoResolved.id !== id) {
+                alert(`bad way 1`);
+            }
+            if (txInfoResolved.id != txInfoResolved.tcx.id) {
+                alert(`bad way 2`);
+            }
+            // debugger
             if (!this.currentBatch.$txInfo(id)) {
-                debugger
-                throw new Error(`unreachable - right?`)
-                await this.currentBatch.$addTxns(txInfoResolved)
+                debugger;
+                throw new Error(`unreachable - right?`);
+                await this.currentBatch.$addTxns(txInfoResolved);
                 /* yield to allow rendering */
-                await new Promise((res) => setTimeout(res, 5)) 
+                await new Promise((res) => setTimeout(res, 5));
 
-                // debugger            
+                // debugger
                 // throw new Error("no matching tx tracker (dbpa)")
             }
 
             //!!! was just buildAndQueue, but that was executing
-            // in "breadth-first" order (good for registration) 
+            // in "breadth-first" order (good for registration)
             //    (i.e. in consecutive layers of discovered txns)
             // ... instead of executing depth-first (good for tx-chaining).
-            // We want all txns to be registered as soon as they're 
+            // We want all txns to be registered as soon as they're
             //   known to be a tx to be made.  But for each such tx,
             //   we want its chained txns to be executed BEFORE moving on
             //   to build any of those other registered txns.
 
+            // //@ts-expect-error
+            // if (this.setup.stopped) return;
+            // if (description == "+ on-chain refScript: minter") {
+            //     //@ts-expect-error
+            //     this.setup.stopped = true
+            //     break
+            // }
             await effectiveTcx.buildAndQueueAll({
                 ...pipelineOptions,
                 addlTxInfo: txInfoResolved,
@@ -1745,14 +1915,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
         //@ts-expect-error on probing for a maybe-undefined entry:
         const addlTxns = this.state.addlTxns;
 
-        const {
-            txns,
-            onSubmitError,
-        } = options
+        const { txns, onSubmitError } = options;
         const newTxns: TxDescription<any, "buildLater!">[] =
             txns || addlTxns || [];
         let chainedTxns: TxDescription<any, "buildLater!">[] = [];
-        
+
         const txChainSubmitOptions: TxPipelineOptions = {
             onSubmitError,
             // txns,  // see newTxns
@@ -1763,7 +1930,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 options.fixupBeforeSubmit?.(txinfo);
             },
             whenBuilt: async (txinfo) => {
-                const {id: parentId} = txinfo
+                const { id: parentId } = txinfo;
                 const stackedPromise = options.whenBuilt?.(txinfo);
                 const more: Record<string, TxDescription<any, "buildLater!">> =
                     //@ts-expect-error on optional prop
@@ -1772,14 +1939,26 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 const moreTxns = Object.values(more);
 
                 for (const nested of moreTxns) {
-                    nested.parentId = parentId
+                    nested.parentId = parentId;
                 }
-                console.log(`🎄⛄🎁 ${parentId}   -- registering nested txns ASAP`)
+                console.log(
+                    `🎄⛄🎁 ${parentId}   -- registering nested txns ASAP`
+                );
                 this.currentBatch.$addTxns(moreTxns);
 
                 /* yield to allow rendering */
-                await new Promise((res) => setTimeout(res, 5)) 
+                await new Promise((res) => setTimeout(res, 5));
 
+                // if (moreTxns.length) {
+                //     // gathers the next layer of txns to be resolved & built
+                //     chainedTxns.push(...moreTxns);
+                //     console.log(
+                //         " + chained txns: \n" +
+                //             moreTxns
+                //                 .map((t) => `   🟩 ${t.description}\n`)
+                //                 .join("")
+                //     );
+                // }
                 return stackedPromise;
             },
             onSubmitted: (txinfo) => {
@@ -1788,11 +1967,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 this.setup.network.tick?.(1);
             },
         };
-
         let chainDepth = 0;
         const isolatedTcx = new StellarTxnContext(this.setup);
-        console.log("🐝😾🐻🦀"  )
-        isolatedTcx.id = this.id
+        console.log("🐝😾🐻🦀");
+        isolatedTcx.id = this.id;
         console.log(
             "at d=0: submitting addl txns: \n" +
                 newTxns.map((t) => `  🟩 ${t.description}\n`).join("")
@@ -1808,7 +1986,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         allPromises.push(t);
 
         await t;
-        return
+        return;
         while (chainedTxns.length) {
             const nextChain: typeof chainedTxns = [];
             chainDepth++;
@@ -1837,7 +2015,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             chainedTxns = [];
 
             const isolatedTcx = new StellarTxnContext(this.setup);
-            isolatedTcx.id = this.id
+            isolatedTcx.id = this.id;
 
             const t = isolatedTcx.resolveMultipleTxns(
                 thisBatch,

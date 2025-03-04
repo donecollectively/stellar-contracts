@@ -340,6 +340,9 @@ export class /* BatchSubmitController */ SubmitterMultiClient {
             delete this.$registeredTxs[id];
 
             this.$txStates[id] = pendingTracker;
+            if (txd.tcx?.alreadyPresent) {
+                pendingTracker.transition("alreadyDone")
+            }
         } else if (!builtTracker) {
             const {
                 parentId, depth
@@ -350,7 +353,7 @@ export class /* BatchSubmitController */ SubmitterMultiClient {
                 setup: this.setup,
             });
 
-            tracker.notifier.on(
+            tracker.$notifier.on(
                 "changed",
                 this.updateAggregateState.bind(this)
             );
@@ -436,8 +439,8 @@ export class /* BatchSubmitController */ SubmitterMultiClient {
     ) {
         debugger
         if (!this.setup.isTest) {
-            // const result = await this.signingStrategy.signTxBatch(this);
-            // console.log("signingStrategy result: ", result);
+            const result = await this.signingStrategy.signTxBatch(this);
+            console.log("signingStrategy result: ", result);
             debugger
         }
     }
@@ -479,10 +482,10 @@ export class /* BatchSubmitController */ SubmitterMultiClient {
         ]
         const count = txTrackers.length;
         const allConfirmed =
-            count && txTrackers.every((t) => t.state == "confirmed");
+            count && txTrackers.every((t) => t.$state == "confirmed");
         const allFailed =
             count &&
-            txTrackers.every((txTracker) => txTracker.state == "failed");
+            txTrackers.every((txTracker) => txTracker.$state == "failed");
         if (!count) {
             console.warn(
                 "unreachable updateAggregateState before having tx trackers?"
@@ -498,25 +501,25 @@ export class /* BatchSubmitController */ SubmitterMultiClient {
             this.$stateShortSummary = "failed";
         } else {
             const countConfirming = txTrackers.filter(
-                (t) => t.state == "confirming"
+                (t) => t.$state == "confirming"
             ).length;
             const countSubmitting = txTrackers.filter(
-                (t) => t.state == "submitting"
+                (t) => t.$state == "submitting"
             ).length;
             const countConfirmed = txTrackers.filter(
-                (t) => t.state == "confirmed"
+                (t) => t.$state == "confirmed"
             ).length;
             const countFailed = txTrackers.filter(
-                (t) => t.state == "failed"
+                (t) => t.$state == "failed"
             ).length;
             const countMostlyConfirmed = txTrackers.filter(
-                (t) => t.state == "mostly confirmed"
+                (t) => t.$state == "mostly confirmed"
             ).length;
             const countRegistered = txTrackers.filter(
-                (t) => t.state == "registered"
+                (t) => t.$state == "registered"
             ).length;
             const countBuilding = txTrackers.filter(
-                (t) => t.state == "building"
+                (t) => t.$state == "building"
             ).length;
             this.$stateInfoCombined = [
                 countConfirming ? `${countConfirming} confirming` : null,

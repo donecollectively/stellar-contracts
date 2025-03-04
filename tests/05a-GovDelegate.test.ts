@@ -11,7 +11,7 @@ import {
 import { ADA, addTestContext } from "../src/testing/types";
 import { StellarTestContext } from "../src/testing/StellarTestContext";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
+import { CapoWithoutSettings } from "@donecollectively/stellar-contracts";
 
 
 //xxx@ts-expect-error

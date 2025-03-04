@@ -24,7 +24,10 @@ export {
     debugMath,
     realMul,
     toFixedReal,
+    AlreadyPendingError,
+    TxNotNeededError
 } from "./src/utils.js";
+
 export {
     displayTokenName,
     stringToPrintableString,
@@ -62,28 +65,7 @@ export {
 } from "./src/Capo.js";
 export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
 
-export type {
-    MintUutActivityArgs,
-    CharterData,
-    CharterDataLike,
-    CharterDataLike as CharterDatumProps,
-    FoundDatumUtxo,
-    FoundUut,
-    uutPurposeMap,
-    DelegatedDataPredicate,
-    hasAllUuts,
-    hasBootstrappedCapoConfig,
-    hasCharterRef,
-    hasSettingsRef,
-    charterDataState,
-    hasUutContext,
-    CapoConfig,
-    CapoConfig as CapoBaseConfig,
-    MinimalDelegateLink,
-    dgtStateKey,
-    hasNamedDelegate,
-    MinimalCharterDataArgs
-} from "./src/CapoTypes.js";
+export * from "./src/CapoTypes.js";
 export {
     mkDgtStateKey
 } from "./src/CapoTypes.js";

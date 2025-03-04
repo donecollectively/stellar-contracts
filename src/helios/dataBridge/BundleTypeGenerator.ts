@@ -48,7 +48,6 @@ import type {
     IntersectedEnum
 } from "@donecollectively/stellar-contracts"
 `;
-
         if (this._isSC) {
             stellarImports = `
 import {HeliosScriptBundle} from "${this.mkRelativeImport(

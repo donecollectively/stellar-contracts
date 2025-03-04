@@ -14,7 +14,7 @@ import {
     parseCapoJSONConfig,
     CapoWithoutSettings,
     type ConfigFor,
-    TxDescription
+    TxDescription,
 } from "@donecollectively/stellar-contracts";
 
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
@@ -155,10 +155,11 @@ describe("Capo", async () => {
                 const { mintDgt } = tcx.state.uuts;
 
                 const datum = await capo.findCharterData();
-                const mintDelegate = await capo.connectDelegateWithOnchainRDLink(
-                    "mintDelegate",
-                    datum.mintDelegateLink
-                );
+                const mintDelegate =
+                    await capo.connectDelegateWithOnchainRDLink(
+                        "mintDelegate",
+                        datum.mintDelegateLink
+                    );
 
                 expect(
                     tcx.outputs.find((o: TxOutput) => {
@@ -175,11 +176,13 @@ describe("Capo", async () => {
                 debugger;
                 const findingRefScript = capo.mustFindMyUtxo(
                     "mint delegate refScript",
-                    (utxo) => {
-                        return (
-                            utxo.output.refScript?.toString() ==
-                            mintDelegate.compiledScript.toString()
-                        );
+                    {
+                        predicate: (utxo) => {
+                            return (
+                                utxo.output.refScript?.toString() ==
+                                mintDelegate.compiledScript.toString()
+                            );
+                        },
                     }
                 );
                 await findingRefScript;
@@ -322,7 +325,8 @@ describe("Capo", async () => {
                 h.state.mintedCharterToken;
             const minter = strella.minter;
             // console.log("             ---------- ", mintDelegate.compiledScript.toString());
-            const refScriptTxD : TxDescription<any, "submitted"> = tcx.state.addlTxns.refScriptMinter as any 
+            const refScriptTxD: TxDescription<any, "submitted"> = tcx.state
+                .addlTxns.refScriptMinter as any;
             expect(
                 refScriptTxD.tcx.outputs.find((txo) => {
                     return (
@@ -341,7 +345,8 @@ describe("Capo", async () => {
             const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
                 h.state.mintedCharterToken;
 
-            const refScriptTxD : TxDescription<any, "submitted"> = tcx.state.addlTxns.refScriptCapo as any 
+            const refScriptTxD: TxDescription<any, "submitted"> = tcx.state
+                .addlTxns.refScriptCapo as any;
 
             expect(
                 refScriptTxD.tcx.outputs.find((txo) => {
@@ -362,17 +367,16 @@ describe("Capo", async () => {
                 h.state.mintedCharterToken;
             const mintDelegate = await strella.getMintDelegate();
 
-            const refScriptTxD : TxDescription<any, "submitted"> = tcx.state.addlTxns.refScriptMintDelegate as any 
+            const refScriptTxD: TxDescription<any, "submitted"> = tcx.state
+                .addlTxns.refScriptMintDelegate as any;
 
             expect(
-                refScriptTxD.tcx.outputs.find(
-                    (txo) => {
-                        return (
-                            txo.refScript?.toString() ==
-                            mintDelegate.compiledScript.toString()
-                        );
-                    }
-                )
+                refScriptTxD.tcx.outputs.find((txo) => {
+                    return (
+                        txo.refScript?.toString() ==
+                        mintDelegate.compiledScript.toString()
+                    );
+                })
             ).toBeTruthy();
         });
 
@@ -380,8 +384,9 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const strella = await h.bootstrap();
-            const refScripts = await strella.findScriptReferences();
+            const capo = await h.bootstrap();
+            const capoUtxos = await capo.findCapoUtxos()
+            const refScripts = await capo.findScriptReferences(capoUtxos);
             expect(refScripts.length).toBe(3);
         });
 
@@ -390,24 +395,22 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const strella = await h.bootstrap();
-            const tcx = strella.mkTcx();
+            const tcx = strella.mkTcx("uses scriptRefs");
             const tcx2 = await strella.txnAttachScriptOrRefScript(tcx);
-            expect(
-                tcx2.txRefInputs[0].output.refScript?.toString()
-            ).toEqual(strella.compiledScript.toString());
+            expect(tcx2.txRefInputs[0].output.refScript?.toString()).toEqual(
+                strella.compiledScript.toString()
+            );
 
             const tcx3 = await strella.txnAttachScriptOrRefScript(
                 tcx,
                 strella.minter.compiledScript
             );
-            expect(
-                tcx3.txRefInputs[1].output.refScript?.toString()
-            ).toEqual(strella.minter.compiledScript.toString());
-                
-            const tx = await tcx3.builtTx
+            expect(tcx3.txRefInputs[1].output.refScript?.toString()).toEqual(
+                strella.minter.compiledScript.toString()
+            );
+
+            const tx = await tcx3.builtTx;
             expect(tx.witnesses.v2RefScripts.length).toBe(2);
         });
     });
 });
-
-xit("rewards the first 256 buyers with 2.56x bonus credit", async () => {});

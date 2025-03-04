@@ -80,7 +80,11 @@ describe("Capo Minter", async () => {
                 mintDelegateActivity:
                     mintDelegate.activity.MintingActivities.mintingUuts(tcx1, {purposes}),
             });
-            await h.submitTxnWithBlock(tcx1a);
+            await h.submitTxnWithBlock(tcx1a, {
+                addlTxInfo: {
+                    description: "test tx"
+                }
+            });
         });
 
         it("fails minting if the mintDgt has a SpendingActivity", async (context: localTC) => {
@@ -103,7 +107,12 @@ describe("Capo Minter", async () => {
             });
 
             await expect(
-                h.submitTxnWithBlock(tcx1a, expectTxnError)
+                h.submitTxnWithBlock(tcx1a, {
+                    ... expectTxnError,
+                    addlTxInfo: {
+                        description: "test tx"
+                    }
+                })
             ).rejects.toThrow(/SpendingActivity can't mint/);
         });
     });
@@ -128,7 +137,12 @@ describe("Capo Minter", async () => {
             });
 
             await expect(
-                h.submitTxnWithBlock(tcx1a, expectTxnError)
+                h.submitTxnWithBlock(tcx1a, {
+                    ... expectTxnError,
+                    addlTxInfo: {
+                        description: "test tx"
+                    }
+                })
             ).rejects.toThrow(
                 /mintDgt: MultipleDelegateActivities: nested MintingActivities invalid/
             );
@@ -154,7 +168,12 @@ describe("Capo Minter", async () => {
             });
 
             await expect(
-                h.submitTxnWithBlock(tcx1a, expectTxnError)
+                h.submitTxnWithBlock(tcx1a, {
+                    ... expectTxnError,
+                    addlTxInfo: {
+                        description: "test tx"
+                    }
+                })
             ).rejects.toThrow(/mintDgt: Multi.* SpendingActivities invalid/);
         });
 
@@ -180,7 +199,12 @@ describe("Capo Minter", async () => {
             });
 
             await expect(
-                h.submitTxnWithBlock(tcx1a, expectTxnError)
+                h.submitTxnWithBlock(tcx1a, {
+                    ... expectTxnError,
+                    addlTxInfo: {
+                        description: "test tx"
+                    }
+                })
             ).rejects.toThrow(/UpdatingDelegatedDatum can't mint/);
         });
 
@@ -214,7 +238,7 @@ describe("Capo Minter", async () => {
             // ... mint the new delegated data record, and not finding
             // ... a workable policy for it.  So that's a good kind of failure.
             // We can make this test better and prove the positive use-case end-to-end.
-            const submitting = tcx1a.submit({ expectError: true });
+            const submitting = tcx1a.submitAll({ expectError: true });
             await expect(submitting).rejects.toThrow(
                 /missing required data policy.*fooPurpose/
             );

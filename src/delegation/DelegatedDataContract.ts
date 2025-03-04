@@ -270,9 +270,12 @@ export abstract class DelegatedDataContract<
         });
 
         const activity: isActivity =
-            options.activity instanceof SeedActivity
-                ? options.activity.mkRedeemer(tcx2)
-                : options.activity;
+            //@ts-expect-error hitting up the SeedActivity object with a conditional func call
+            // ... that might be just an activity object
+            options.activity.mkRedeemer?.(tcx2)
+            // ^ this probes for SeedActivity, producing an activity with redeemer.
+            // vv this expects there to be a 'redeemer' attribute on the activity object.
+             ?? options.activity
 
         // ... now the transaction has what it needs to trigger the creation policy
         // ... and be approved by it creation policy.

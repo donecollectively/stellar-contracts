@@ -8,16 +8,10 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { StellarTxnContext } from "../src/StellarTxnContext";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { dumpAny } from "../src/diagnostics";
-import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 
-import { Capo } from "../src/Capo";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
-import { defineRole } from "../src/delegation/RolesAndDelegates";
-import { DelegatedDataContract } from "../src/delegation/DelegatedDataContract";
 import { CapoCanHaveBadSettings } from "./customizing/BadSettingsCapo";
 import { textToBytes } from "../src/HeliosPromotedTypes";
 import { BadSettingsController } from "./customizing/BadSettingsController";
@@ -76,7 +70,13 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
         const {h, h:{network, actors, delay, state} } = context;
 
         const capo = await h.bootstrap();
-        const settings = await capo.findSettingsInfo();
+        const charterData = await capo.findCharterData();
+        const capoUtxos = await capo.findCapoUtxos();
+        const settings = await capo.findSettingsInfo({
+            charterData,
+            capoUtxos,
+
+        });
         expect(settings.data.meaning).toEqual(42n);
     });
     it.todo("TEST: onchain code can read the settings data from the contract");
@@ -151,11 +151,18 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
             const {h, h:{network, actors, delay, state} } = context;
             await h.bootstrap();
             const capo: CapoCanHaveBadSettings = h.capo;
-            const settingsInfo = await capo.findSettingsInfo();
-            const settingsController =
-                (await capo.getSettingsController()) as BadSettingsController;
+            const capoUtxos = await capo.findCapoUtxos();
+            const charterData = await capo.findCharterData();
 
-            const update = settingsController.mkTxnUpdateRecord(
+            const settingsInfo = await capo.findSettingsInfo({
+                charterData,
+                capoUtxos,
+            });
+            const settingsController = (await capo.getSettingsController({
+                charterData,
+            })) as BadSettingsController;
+
+            const update = await settingsController.mkTxnUpdateRecord(
                 "updates settings",
                 settingsInfo,
                 {
@@ -172,7 +179,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
             );
             const updating = h.submitTxnWithBlock(update);
             await expect(updating).resolves.toBeTruthy();
-            const newSettings = await capo.findSettingsInfo();
+            const newSettings = await capo.findSettingsInfo({ charterData });
             expect(newSettings.data.meaning).toEqual(19n);
         });
 
@@ -186,7 +193,12 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
                 .spyOn(capo, "txnAddGovAuthority")
                 .mockImplementation(async (tcx) => tcx);
 
-            const settingsInfo = await capo.findSettingsInfo();
+            const charterData = await capo.findCharterData();
+            const capoUtxos = await capo.findCapoUtxos();
+            const settingsInfo = await capo.findSettingsInfo({
+                charterData,
+                capoUtxos,
+            });
             const settingsController =
                 (await capo.getSettingsController()) as BadSettingsController;
 
@@ -215,7 +227,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
             );
         });
 
-        xit("TODO: the spending delegate must validate the UpdatingSettings details", async (context: localTC) => {
+        it.skip("TODO: the spending delegate must validate the UpdatingSettings details", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
             await h.bootstrap();
@@ -224,7 +236,12 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
 
             const settingsController =
                 (await capo.getSettingsController()) as BadSettingsController;
-            const settingsInfo = await capo.findSettingsInfo();
+            const charterData = await capo.findCharterData();
+            const capoUtxos = await capo.findCapoUtxos();
+            const settingsInfo = await capo.findSettingsInfo({
+                charterData,
+                capoUtxos,
+            });
             const update = await settingsController.mkTxnUpdateRecord(
                 "updates settings with bad setting for spend-delegate",
                 settingsInfo,
@@ -234,6 +251,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
                             settingsInfo.data.id
                         ),
                     updatedFields: {
+                        //@ts-expect-error on bad setting for this test of bad settings
                         badSettingToSpendDelegate: 1,
                         badSettingToMintDelegate: 0,
                         meaning: 42,
@@ -262,6 +280,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
                             settingsInfo.data.id
                         ),
                     updatedFields: {
+                        //@ts-expect-error on bad setting for this test of bad settings
                         badSettingToMintDelegate: 0,
                         meaning: 43,
                     },
@@ -295,10 +314,9 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
                 // for a pending update should be able to include a list of policies that
                 // haven't yet validated the settings; each one can validate and remove itself
                 // from the list; then, the commit can happen when the list becomes empty.
-
                 // ... as a special case, a single transaction that commits the changes AND
                 // involves all the remaining policies from the list doing the validation can
-                // be used to commit the changes, reducing transaction count needed to 
+                // be used to commit the changes, reducing transaction count needed to
                 // complete the update.
             }
         );

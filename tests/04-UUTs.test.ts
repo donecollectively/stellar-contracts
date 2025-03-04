@@ -82,7 +82,7 @@ describe("Capo", async () => {
                 const uutVal = capo.uutsValue(tcx1b.state.uuts!);
                 tcx1b.addOutput(makeTxOutput(tina.address, uutVal));
                 await expect(
-                    tcx1b.submit({
+                    tcx1b.submitAll({
                         signers: [tom.address, tina.address, tracy.address],
                         expectError: true,
                     })
@@ -111,7 +111,7 @@ describe("Capo", async () => {
             tcx.addOutput(makeTxOutput(h.wallet.address, tinyValue));
             tcx.addOutput(makeTxOutput(h.wallet.address, collateralValue));
             tcx.addOutput(makeTxOutput(h.wallet.address, collateralValue));
-            await tcx.submit();
+            await tcx.submitAll();
             network.tick(1);
             console.log("-------------- minting UUT from high-index txo");
 
@@ -126,7 +126,7 @@ describe("Capo", async () => {
                 mintDelegateActivity:
                 mintDelegate.activity.MintingActivities.mintingUuts(tcx2a, {purposes}),
             });
-            return tcx2b.submit();
+            return tcx2b.submitAll();
         });
 
         it("requires the charter to be used as reference input", async (context: localTC) => {
@@ -165,7 +165,7 @@ describe("Capo", async () => {
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);
             tcx1b.addOutput(makeTxOutput(tina.address, uutVal));
             await expect(
-                tcx1.submit({
+                tcx1.submitAll({
                     signers: [tom.address, tina.address, tracy.address],
                     expectError: true,
                 })
@@ -202,7 +202,7 @@ describe("Capo", async () => {
                 const uutVal = capo.uutsValue(tcx1b.state.uuts!);
                 tcx1b.addOutput(makeTxOutput(tina.address, uutVal));
                 await expect(
-                    tcx1b.submit({
+                    tcx1b.submitAll({
                         signers: [tom.address, tina.address, tracy.address],
                         expectError: true,
                     })
@@ -231,7 +231,7 @@ describe("Capo", async () => {
 
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);
             tcx1a.addOutput(makeTxOutput(tina.address, uutVal));
-            await capo.submit(tcx1a, {
+            await tcx1a.submitAll({
                 signers: [tom.address, tina.address, tracy.address],
             });
             network.tick(1);
@@ -266,7 +266,7 @@ describe("Capo", async () => {
             const uuts = capo.uutsValue(tcx1b.state.uuts!);
 
             tcx1b.addOutput(makeTxOutput(tina.address, uuts));
-            await capo.submit(tcx1b, {
+            await tcx1b.submitAll({
                 signers: [tom.address, tina.address, tracy.address],
             });
             network.tick(1);
@@ -303,7 +303,7 @@ describe("Capo", async () => {
             expect(tcx1b.state.uuts?.bar).toBeTruthy();
 
             tcx1b.addOutput(makeTxOutput(tina.address, uuts));
-            await capo.submit(tcx1b, {
+            await tcx1b.submitAll({
                 signers: [tom.address, tina.address, tracy.address],
             });
             network.tick(1);
@@ -346,7 +346,7 @@ describe("Capo", async () => {
 
                 tcx1b.addOutput(makeTxOutput(tina.address, uut));
                 await expect(
-                    tcx1b.submit({
+                    tcx1b.submitAll({
                         signers: [tom.address, tina.address, tracy.address],
                         expectError: true,
                     })
@@ -384,7 +384,7 @@ describe("Capo", async () => {
 
                 tcx2b.addOutput(makeTxOutput(tina.address, uut2));
                 await expect(
-                    tcx2b.submit({
+                    tcx2b.submitAll({
                         signers: [tom.address, tina.address, tracy.address],
                         expectError: true,
                     })
@@ -419,7 +419,7 @@ describe("Capo", async () => {
 
             // tcx3a.addOutput(makeTxOutput(tina.address, uut3));
             // await expect(
-            //     tcx3a.submit({
+            //     tcx3a.submitAll({
             //         signers: [tom.address, tina.address, tracy.address],
             //         expectError: true,
             //     })
@@ -465,7 +465,7 @@ describe("Capo", async () => {
             tcx2.addOutput(makeTxOutput(tina.address, uut));
             expect(spy).toHaveBeenCalled();
             await expect(
-                tcx2.submit({
+                tcx2.submitAll({
                     signers: [tom.address, tina.address, tracy.address],
                     expectError: true,
                 })
@@ -496,7 +496,7 @@ describe("Capo", async () => {
 
             const uutVal = capo.uutsValue(tcx2.state.uuts!);
             tcx2.addOutput(makeTxOutput(tina.address, uutVal));
-            await tcx2.submit({
+            await tcx2.submitAll({
                 signers: [tom.address, tina.address, tracy.address],
             });
             network.tick(1);

@@ -24,7 +24,9 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
                 "  ... both pointing to a single specialized mint-delegate class."
             );
         }
-        return new UnspecializedDelegateBundle();
+        return UnspecializedDelegateBundle.create({
+            setup: this.setup,            
+        });
     }
     
     @Activity.redeemer

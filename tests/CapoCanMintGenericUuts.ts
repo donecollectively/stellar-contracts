@@ -19,7 +19,7 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     }
     
     scriptBundle() {
-        return new CapoHeliosBundle();
+        return CapoHeliosBundle.create();
     }
     async t() {
         const t = await this.getSpendDelegate()

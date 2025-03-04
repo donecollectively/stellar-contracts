@@ -26,7 +26,7 @@ export class TxBatcher {
     signingStrategy?: WalletSigningStrategy;
     submitters: namedSubmitters;
     setup?: SetupInfo;
-    notifier = new EventEmitter<TxBatcherChanges>();
+    $notifier = new EventEmitter<TxBatcherChanges>();
 
     constructor(options: TxBatcherOptions) {
         const { signingStrategy, submitters, setup } = options;
@@ -65,7 +65,7 @@ export class TxBatcher {
                 },
                 signingStrategy: this.signingStrategy,
             });
-            this.notifier.emit("rotated", this._current);
+            this.$notifier.emit("rotated", this._current);
         }
         return this._current;
     }
@@ -105,6 +105,6 @@ export class TxBatcher {
             },
             signingStrategy: this.signingStrategy,
         });
-        this.notifier.emit("rotated", this._current);
+        this.$notifier.emit("rotated", this._current);
     }
 }

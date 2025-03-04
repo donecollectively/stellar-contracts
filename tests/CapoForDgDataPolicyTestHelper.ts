@@ -1,5 +1,8 @@
-import { MinimalCharterDataArgs } from "../src/Capo.js";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings.js";
+import {
+    MinimalCharterDataArgs,
+    CapoWithoutSettings,
+} from "@donecollectively/stellar-contracts";
+
 import { CapoTestHelper } from "../src/testing/CapoTestHelper.js";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
 import { StellarTestContext } from "../src/testing/StellarTestContext.js";
@@ -100,9 +103,12 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return this.installingTestDataPolicy();
     }
     async installingTestDataPolicy() {
-        const tcx = await this.capo.mkTxnInstallingPolicyDelegate(
-            "testData", "tData"
-        );
+        const charterData = await this.capo.findCharterData();
+        const tcx = await this.capo.mkTxnInstallingPolicyDelegate({
+            policyName: "testData",
+            idPrefix: "tData",
+            charterData,
+        });
         return this.submitTxnWithBlock(tcx);
     }
 

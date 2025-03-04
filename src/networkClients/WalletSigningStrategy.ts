@@ -1,19 +1,22 @@
-import type { Cip30Wallet, WalletHelper } from "@helios-lang/tx-utils";
+import type { Cip30Wallet, Wallet, WalletHelper } from "@helios-lang/tx-utils";
 import type { SubmitterMultiClient } from "./SubmitterMultiClient.js";
 import {
+    decodeTxWitnesses,
+    makeSignature,
     makeTxInput,
     makeTxOutputId,
     type Signature,
     type Tx,
 } from "@helios-lang/ledger";
 import type { TxSubmissionTracker } from "./TxSubmissionTracker.js";
+import { bytesToHex } from "@helios-lang/codec-utils";
 
 export abstract class WalletSigningStrategy {
     abstract canBatch: boolean;
-    wallet: Cip30Wallet;
+    wallet: Wallet;
     // wHelper: WalletHelper
 
-    constructor(wallet: Cip30Wallet) {
+    constructor(wallet: Wallet) {
         this.wallet = wallet;
     }
 
@@ -30,25 +33,28 @@ export abstract class WalletSigningStrategy {
      * Adds the signatures to the txns and also returns the signatures
      * in case that's helpful.
      */
-    async signTxBatch(batch: SubmitterMultiClient): Promise<(undefined | Signature[])[]> {
+    async signTxBatch(
+        batch: SubmitterMultiClient
+    ): Promise<(undefined | Signature[])[]> {
         if (this.canBatch) {
             throw new Error(
                 `${this.constructor.name}: signTxBatch must be implemented if canBatch is true`
             );
         }
 
-        return Promise.all(
-            batch.map(async (txTracker: TxSubmissionTracker) => {
-                if (!txTracker.isBuilt) {
-                    throw new Error(`all txns must be built before signing`);
-                }
-                const sigs = await this.signTx(txTracker);;
-                if (sigs) {
-                    txTracker.txd.tx!.addSignatures(sigs);
-                }
-                return sigs ?? undefined
-            })
-        );
+        const rv : Signature[][] = [];
+        for (const txTracker of batch.map((txTracker : TxSubmissionTracker )=> txTracker)){ 
+            if (!txTracker.isBuilt) {
+                throw new Error(`all txns must be built before signing`);
+            }
+            const sigs = await this.signTx(txTracker);
+            if (sigs) {
+                txTracker.txd.tx!.addSignatures(sigs);
+                rv.push(sigs);
+            }
+            txTracker.$didSignTx()
+        }
+        return rv
     }
 
     async signTx(txTracker: TxSubmissionTracker) {
@@ -69,7 +75,7 @@ export abstract class WalletSigningStrategy {
     }
 }
 
-export class GenericCip30Signer extends WalletSigningStrategy {
+export class GenericSigner extends WalletSigningStrategy {
     canBatch = false;
 
     signSingleTx(tx: Tx): Promise<Signature[]> {
@@ -77,22 +83,32 @@ export class GenericCip30Signer extends WalletSigningStrategy {
     }
 }
 
-export class DraftEternlMultiSigner extends GenericCip30Signer {
+export class DraftEternlMultiSigner extends GenericSigner {
     canBatch = true;
 
     async signTxBatch(batch: SubmitterMultiClient) {
         debugger;
-        //@ts-expect-error in this draft version of the strat
-        return this.wallet.cip103
-            .signTxs(batch.map((txTracker) => txTracker.txd.tx!))
+        const w = (this.wallet as any).handle
+        return (w.experimental as any)
+            .signTxs(
+                batch.map((txTracker) => {
+                    return {
+                        cbor: bytesToHex(txTracker.txd.tx!.toCbor()),
+                        partialSign: true,
+                    };
+                })
+            )
             .then((signatures: Signature[][]) => {
+                debugger
                 batch.map((txTracker, i) => {
-                    const sigs = signatures[i];
+                    const wits = signatures[i];
+                    debugger
+                    const sigs = decodeTxWitnesses(wits as any).signatures
                     const tx = txTracker.txd.tx;
 
-                    txTracker.txd.tx?.addSignatures(sigs);
+                    txTracker.txd.tx?.addSignatures(wits);
                     txTracker.$didSignTx();
-                    return sigs;
+                    return wits;
                 });
                 return signatures;
             });

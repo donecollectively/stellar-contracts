@@ -998,7 +998,9 @@ export class StellarContract<
             if (bundle.isPrecompiled) {
                 this.compiledScript = await bundle.compiledScript();
             } else {
-                console.log("no config, no precompiled bundle... we'll try to compile what's needed!")
+                console.log(
+                    "no config, no precompiled bundle... we'll try to compile what's needed!"
+                );
             }
         }
 
@@ -1460,10 +1462,11 @@ export class StellarContract<
                 setup: this.setup,
             });
         }
-        this.compiledScript = await bundle.compiledScript();        
+        this.compiledScript = await bundle.compiledScript();
 
-        console.log(`       ✅ ${this.constructor.name} ready with scriptHash=`,
-            bytesToHex(this.compiledScript.hash()),
+        console.log(
+            `       ✅ ${this.constructor.name} ready with scriptHash=`,
+            bytesToHex(this.compiledScript.hash())
         );
         this._cache = {};
     }
@@ -1482,37 +1485,23 @@ export class StellarContract<
     //! finds a utxo (
     async mustFindMyUtxo(
         semanticName: string,
-        predicate: utxoPredicate,
-        exceptInTcx: StellarTxnContext,
-        extraErrorHint?: string
-    ): Promise<TxInput>;
-    async mustFindMyUtxo(
-        semanticName: string,
-        predicate: utxoPredicate,
-        extraErrorHint?: string
-    ): Promise<TxInput>;
-
-    async mustFindMyUtxo(
-        semanticName: string,
-        predicate: utxoPredicate,
-        hintOrExcept?: string | StellarTxnContext,
-        hint?: string
+        options: {
+            predicate: utxoPredicate;
+            exceptInTcx?: StellarTxnContext;
+            extraErrorHint?: string;
+            utxos?: TxInput[];
+        }
     ): Promise<TxInput> {
+        const { predicate, exceptInTcx, extraErrorHint, utxos } = options;
         const { address } = this;
-        const isTcx = hintOrExcept instanceof StellarTxnContext;
-        const exceptInTcx = isTcx ? hintOrExcept : undefined;
-        const extraErrorHint = isTcx
-            ? hint
-            : "string" == typeof hintOrExcept
-            ? hintOrExcept
-            : undefined;
 
-        return this.utxoHelper.mustFindUtxo(
-            semanticName,
+        return this.utxoHelper.mustFindUtxo(semanticName, {
             predicate,
-            { address, exceptInTcx },
-            extraErrorHint
-        );
+            address,
+            exceptInTcx,
+            extraErrorHint,
+            utxos,
+        });
     }
 
     /**
@@ -1591,11 +1580,11 @@ export class StellarContract<
         const uh = this.utxoHelper;
         //!!! big enough to serve minUtxo for each of the new UUT(s)
         const uutSeed = uh.mkValuePredicate(BigInt(13_000_000), tcx);
-        return uh.mustFindActorUtxo(
-            `seed-for-uut ${uutPurposes.join("+")}`,
-            uutSeed,
-            tcx,
-            "You might need to create some granular utxos in your wallet by sending yourself a series of small transactions (e.g. 15 then 16 and then 17 ADA) as separate utxos/txns"
-        );
+        return uh.mustFindActorUtxo(`seed-for-uut ${uutPurposes.join("+")}`, {
+            predicate: uutSeed,
+            exceptInTcx: tcx,
+            extraErrorHint:
+                "You might need to create some granular utxos in your wallet by sending yourself a series of small transactions (e.g. 15 then 16 and then 17 ADA) as separate utxos/txns",
+        });
     }
 }

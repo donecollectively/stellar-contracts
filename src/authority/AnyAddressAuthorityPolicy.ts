@@ -54,19 +54,24 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         const { addrHint } = this.configIn!;
         return this.uh.mustFindActorUtxo(
             `${label}: ${bytesToText(this.configIn!.tn)}`,
-            this.uh.mkTokenPredicate(v),
-            tcx,
-            "are you connected to the right wallet address? " +
-                (addrHint?.length
-                    ? "\nauthority token originally issued to " +
-                      addrHint
-                          .map((x) => {
-                              const addr =
-                                  "string" == typeof x ? makeAddress(x) : x;
-                              return dumpAny(addr) + " = " + addr.toString();
-                          })
-                          .join("\n or ")
-                    : "")
+            {
+                predicate: this.uh.mkTokenPredicate(v),
+                exceptInTcx: tcx,
+                extraErrorHint:
+                    "are you connected to the right wallet address? " +
+                    (addrHint?.length
+                        ? "\nauthority token originally issued to " +
+                          addrHint
+                              .map((x) => {
+                                  const addr =
+                                      "string" == typeof x ? makeAddress(x) : x;
+                                  return (
+                                      dumpAny(addr) + " = " + addr.toString()
+                                  );
+                              })
+                              .join("\n or ")
+                        : ""),
+            }
         );
     }
 

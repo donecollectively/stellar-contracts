@@ -9,6 +9,7 @@ import {
     makeValue,
     type ShelleyAddress,
     type PubKeyHash,
+    type TxBody,
 } from "@helios-lang/ledger";
 import { generateBytes, mulberry32 } from "@helios-lang/crypto";
 
@@ -23,6 +24,7 @@ import {
     utxosAsString,
     UtxoHelper,
     TxBatcher,
+    GenericSigner,
 } from "@donecollectively/stellar-contracts";
 import type {
     stellarSubclass,
@@ -334,7 +336,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const t = await tcx;
         await this.advanceNetworkTimeForTx(t, options.futureDate);
 
-        return t.buildAndQueue(options).then(() => {
+        return t.buildAndQueueAll(options).then(() => {
             this.network.tick(1);
             return tcx;
         });
@@ -345,19 +347,22 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
      */
     async advanceNetworkTimeForTx(tcx: StellarTxnContext, futureDate?: Date) {
         // determines the validity range of the transaction
-        const tx = await tcx.builtTx;
 
-        const txBody = tx.body;
-        function txnAttr(x: string) {
-            return txBody[x];
+        let txBody: TxBody | undefined = undefined
+        let validFrom=0, validTo=0;
+        if (tcx.isFacade && !futureDate) {
+            console.log("not advancing network time for facade tx")
+            return
+        } else if (!tcx.isFacade) {
+            const tx = await tcx.builtTx;
+
+            txBody = tx.body;
+            function txnAttr(x: string) {
+                return txBody![x];
+            }
+            validFrom = txnAttr("firstValidSlot");
+            validTo = txnAttr("lastValidSlot");
         }
-        function withPositiveSign(x: number | bigint) {
-            return x < 0 ? `${x}` : `+${x}`;
-        }
-
-        const validFrom = txnAttr("firstValidSlot");
-        const validTo = txnAttr("lastValidSlot");
-
         let targetTime: number = futureDate?.getTime() || Date.now();
         let targetSlot = this.netPHelper.timeToSlot(BigInt(targetTime));
 
@@ -382,6 +387,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                 validFrom || "anytime"
             } -> ${validTo || "anytime"}`
         );
+        function withPositiveSign(x: number | bigint) {
+            return x < 0 ? `${x}` : `+${x}`;
+        }
         const currentToNowDiff = withPositiveSign(nowSlot - currentSlot);
         const currentToTargetDiff = withPositiveSign(slotDiff);
         let effectiveNetworkSlot = targetSlot;
@@ -553,6 +561,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             console.warn(`using env OPTIMIZE=${envOptimize}`)
         }
         const getNetwork = () => { return this.network };
+        const getActor = () => { return this.actorContext.wallet! };
         const setup: SetupInfo = {
             get network() { return getNetwork() },
             actorContext: this.actorContext,
@@ -563,7 +572,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             txBatcher: new TxBatcher({              
                 submitters:  {
                    get emulator() { return getNetwork() } 
-                }
+                },
+                get signingStrategy() { return new GenericSigner( getActor()) }                
             }),
             optimize: process.env.OPTIMIZE ? true : this.optimize,
         };

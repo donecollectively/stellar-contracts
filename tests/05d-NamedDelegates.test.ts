@@ -111,6 +111,7 @@ export class TestNamedDelegate extends ContractBasedDelegate {
     get delegateName() { return "myNamedDgt" }
     dataBridgeClass = UnspecializedDelegateBridge
     scriptBundle() {
+        debugger
         return UnspecializedDgtBundle.create()
     }
 }
@@ -156,7 +157,7 @@ describe("Capo", async () => {
 
                 const tcx = await capo.mkTxnCreatingTestNamedDelegate("myNamedDgt");
                 expect(tcx.state.namedDelegateMyNamedDgt).toBeTruthy()
-                await tcx.submit();
+                await h.submitTxnWithBlock(tcx)
                 network.tick(1);
 
                 const charter2 = await capo.findCharterData();
@@ -179,7 +180,7 @@ describe("Capo", async () => {
                 const tcx = await capo.mkTxnCreatingTestNamedDelegate("myNamedDgt");
 
                 expect(addedGovToken).toHaveBeenCalledTimes(1);
-                await expect(tcx.submit(expectTxnError)).rejects.toThrow(
+                await expect(tcx.submitAll(expectTxnError)).rejects.toThrow(
                     /missing.*input .* dgTkn capoGov-/
                 );
             })

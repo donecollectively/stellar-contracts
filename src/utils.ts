@@ -148,3 +148,19 @@ export function debugMath<T extends number>(callback: () => T): T {
 }
 
 let debugRealMath = false;
+
+
+
+export class TxNotNeededError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "TxAlreadyPresentError";
+    }
+}
+
+export class AlreadyPendingError extends TxNotNeededError {
+    constructor(message: string) {
+        super(message);
+        this.name = "AlreadyPendingError";
+    }
+}

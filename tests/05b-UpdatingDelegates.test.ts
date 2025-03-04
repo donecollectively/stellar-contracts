@@ -49,7 +49,7 @@ describe("Capo", async () => {
                     config: {}
                 },
             );
-            await tcx.submit()
+            await tcx.submitAll()
             network.tick(1);
 
             const updatedDatum = await capo.findCharterData();
@@ -79,7 +79,7 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
-            await expect(tcx1.submit(expectTxnError)).rejects.toThrow(
+            await expect(tcx1.submitAll(expectTxnError)).rejects.toThrow(
                 /missing.* input.* dgTkn capoGov-/
             );
 
@@ -91,7 +91,7 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(2);
-            await expect(tcx2.submit(expectTxnError)).rejects.toThrow(
+            await expect(tcx2.submitAll(expectTxnError)).rejects.toThrow(
                 /missing.* input.* dgTkn capoGov-/
             );
         });
@@ -111,7 +111,7 @@ describe("Capo", async () => {
                     forcedUpdate: true,
                 },
             );
-            await tcx.submit();
+            await tcx.submitAll();
             network.tick(1);
             const updatedDatum = await capo.findCharterData();
             expect(updatedDatum.mintDelegateLink.uutName).not.toEqual(
@@ -163,7 +163,7 @@ describe("Capo", async () => {
             expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
 
-            await expect(tcx2.submit(expectTxnError)).rejects.toThrow(
+            await expect(tcx2.submitAll(expectTxnError)).rejects.toThrow(
                 /missing req.* input .*script addr.* mintDgt-/
             );
         });
@@ -182,7 +182,7 @@ describe("Capo", async () => {
             const tcx = await capo.mkTxnUpdatingMintDelegate({
                 config: {},
             });
-            await tcx.submit();
+            await tcx.submitAll();
             network.tick(1);
             
             console.log(" ------- case 1a: replacing second delegate to see that it's involved in the upgrade ");
@@ -217,7 +217,7 @@ describe("Capo", async () => {
                 },
             );
 
-            await expect(tcx3.submit()).resolves.toBeTruthy();
+            await expect(tcx3.submitAll()).resolves.toBeTruthy();
             network.tick(1);
 
             console.log(" ------- case 3: minting with the new delegate");
@@ -265,7 +265,7 @@ describe("Capo", async () => {
             // auditors: note that the updated mint delegate gets the same address
             // ... as the old one, but the authority token is different.
 
-            await tcx.submit();
+            await tcx.submitAll();
             network.tick(1);
             
             const fakeDelegate = vi.spyOn(capo, "getMintDelegate").mockImplementation(async () => {
@@ -289,7 +289,7 @@ describe("Capo", async () => {
             expect(fakeCharter).toHaveBeenCalled();
             expect(tcx2.inputs.find(oldPredicate)).toBeTruthy();
 
-            await expect(tcx2.submit(expectTxnError)).rejects.toThrow(
+            await expect(tcx2.submitAll(expectTxnError)).rejects.toThrow(
                 /missing .*mintDgt/
             );
         });
@@ -309,7 +309,7 @@ describe("Capo", async () => {
                     config: {},
                 },
             );
-            await tcx.submit();
+            await tcx.submitAll();
             network.tick(1);
 
             const updatedDatum = await capo.findCharterData();
@@ -338,7 +338,7 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
-            await expect(tcx1.submit(expectTxnError)).rejects.toThrow(
+            await expect(tcx1.submitAll(expectTxnError)).rejects.toThrow(
                 /missing.* input.* dgTkn capoGov-/
             );
 
@@ -352,7 +352,7 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(2);
-            await expect(tcx2.submit(expectTxnError)).rejects.toThrow(
+            await expect(tcx2.submitAll(expectTxnError)).rejects.toThrow(
                 /missing.* input.* dgTkn capoGov-/
             );
         });
@@ -372,7 +372,7 @@ describe("Capo", async () => {
                     forcedUpdate: true,
                 },
             );
-            await tcx.submit();
+            await tcx.submitAll();
             network.tick(1);
             const updatedDatum = await capo.findCharterData();
             expect(updatedDatum.spendDelegateLink.uutName).not.toEqual(
@@ -417,7 +417,7 @@ describe("Capo", async () => {
             expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
 
-            const submission = tcx2.submit(expectTxnError);
+            const submission = tcx2.submitAll(expectTxnError);
             /* \X matches any char including line breaks */
             await expect(submission).rejects.toThrow(/\X*mismatch in UUT mint/);
 
@@ -443,7 +443,7 @@ describe("Capo", async () => {
                 const tcx = await capo.mkTxnUpdatingSpendDelegate({
                     config: {},
                 });
-                await tcx.submit();
+                await tcx.submitAll();
                 network.tick(1);
                 console.log("    ---- spending with the new delegate");
 

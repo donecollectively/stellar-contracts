@@ -27,7 +27,11 @@ import {
     makeNetworkParamsHelper,
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
-import { bytesToText, textToBytes, type InlineDatum } from "./HeliosPromotedTypes.js";
+import {
+    bytesToText,
+    textToBytes,
+    type InlineDatum,
+} from "./HeliosPromotedTypes.js";
 import type { UtxoDisplayCache } from "./StellarContract.js";
 
 /**
@@ -112,7 +116,7 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
             nameBytesHex.substring(7, 8) === "0"
         ) {
             // remove the first and last nibbles
-            cip68TagHex  = nameBytesHex.substring(1, 5);
+            cip68TagHex = nameBytesHex.substring(1, 5);
             checksum = nameBytesHex.substring(5, 7);
 
             // separate the cip-68 tag from the checksum
@@ -226,13 +230,36 @@ export function policyIdAsString(p: MintingPolicyHash) {
  * Converts lovelace to approximate ADA, in consumable 3-decimal form
  * @public
  **/
-export function lovelaceToAda(l: bigint | number) {
+export function lovelaceToAdaOld(l: bigint | number) {
     const asNum = parseInt(l.toString());
     const ada =
         (asNum && `${(Math.round(asNum / 1000) / 1000).toFixed(3)} ADA`) || "";
     return ada;
 }
 
+export function lovelaceToAda(lovelace: bigint | number): string {
+    const asNum = parseInt(lovelace.toString());
+    // input: 6004000 should output 6_004.000
+    // input: 700396001000 should output 700_396.001
+    // input: 400202 should output 0.400_202
+    const whole = Math.floor(asNum / 1_000_000).toFixed(0);
+    let fraction = (asNum % 1_000_000).toFixed(0); // ""
+    fraction = fraction.padStart(6, "0");
+    const wholeWithSeparators = whole.replace(/\B(?=(\d{3})+(?!\d))/g, "_");
+    let fractionWithSeparators = fraction
+        .replace(/(\d{3})(?=\d)/g, "$1_")
+        .replace(/^-/, ""); // remove leading - if any
+    return `${wholeWithSeparators}.${fractionWithSeparators} ADA`;
+}
+
+export function intWithGrouping(i : bigint | number) {
+    const whole = Math.floor(Number(i)).toFixed(0);
+    const fraction = Math.abs(Number(i) - Math.floor(Number(i))).toFixed(0);
+    const wholeWithSeparators = whole.replace(/\B(?=(\d{3})+(?!\d))/g, "_");
+    const fractionWithSeparators = fraction
+        .replace(/(\d{3})(?=\d)/g, "$1_")
+    return `${wholeWithSeparators}.${fractionWithSeparators}`;
+}
 /**
  * Converts a Value to printable form
  * @public
@@ -271,14 +298,14 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
 
     let details = "";
     if (!networkParams) {
-        
         console.warn(
             new Error(`dumpAny: no networkParams; can't show txn size info!?!`)
         );
     }
 
-    const networkParamsHelper = networkParams ? 
-        makeNetworkParamsHelper(networkParams) : undefined;
+    const networkParamsHelper = networkParams
+        ? makeNetworkParamsHelper(networkParams)
+        : undefined;
 
     // const d = tx.dump();
     const seenRedeemers = new Set();
@@ -397,14 +424,13 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         if ("firstValidSlot" == x || "lastValidSlot" == x) {
             if (networkParamsHelper) {
                 const slotTime = new Date(networkParamsHelper.slotToTime(item));
-                const timeDiff = ( slotTime.getTime() - Date.now()) / 1000;
+                const timeDiff = (slotTime.getTime() - Date.now()) / 1000;
                 // format timeDiff with explicit plus or minus sign:
                 const sign = timeDiff > 0 ? "+" : "-";
-                const timeDiffString = sign + Math.abs(timeDiff).toFixed(1) + "s";
+                const timeDiffString =
+                    sign + Math.abs(timeDiff).toFixed(1) + "s";
 
-                item = `${item} ${slotTime.toLocaleDateString()} ${
-                    slotTime.toLocaleTimeString()
-                } (now ${timeDiffString})`;
+                item = `${item} ${slotTime.toLocaleDateString()} ${slotTime.toLocaleTimeString()} (now ${timeDiffString})`;
             }
         }
 
@@ -416,11 +442,10 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         }
 
         if ("fee" == x) {
-            item = parseInt(item);
-            item = `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA ` + ""; // tx.profileReport.split("\n")[0];
-            // todo: find profile info and restore it here
+            item = lovelaceToAda(item);
 
-            // console.log("fee", item)
+            // tx.profileReport.split("\n")[0];
+            // todo: find profile info and restore it here
         }
 
         if ("collateralReturn" == x) {
@@ -550,8 +575,8 @@ export function txInputAsString(
  * @public
  **/
 export function utxosAsString(
-    utxos: TxInput[], 
-    joiner = "\n", 
+    utxos: TxInput[],
+    joiner = "\n",
     utxoDCache?: UtxoDisplayCache
 ): string {
     return utxos.map((u) => utxoAsString(u, " 💵", utxoDCache)).join(joiner);
@@ -560,7 +585,7 @@ export function utxosAsString(
  * Converts a TxOutputId to printable form
  * @public
  */
-export function txOutputIdAsString(x: TxOutputId, length=8): string {
+export function txOutputIdAsString(x: TxOutputId, length = 8): string {
     return (
         txidAsString(x.txId, length) +
         "🔹" /* <-- unicode blue bullet */ +
@@ -575,7 +600,7 @@ export function txOutputIdAsString(x: TxOutputId, length=8): string {
  * ... showing only the first 6 and last 4 characters of the hex
  * @public
  **/
-export function txidAsString(x: TxId, length=8): string {
+export function txidAsString(x: TxId, length = 8): string {
     const tid = x.toHex();
     return `${tid.slice(0, length)}…${tid.slice(-4)}`;
 }
@@ -588,7 +613,7 @@ export function txidAsString(x: TxId, length=8): string {
  * @internal
  **/
 export function utxoAsString(
-    x: TxInput, 
+    x: TxInput,
     prefix = "💵",
     utxoDCache?: UtxoDisplayCache
 ): string {
@@ -661,13 +686,15 @@ export function showRefScript(rs?: UplcProgramV2 | null) {
  * @public
  **/
 export function txOutputAsString(
-    x: TxOutput, 
+    x: TxOutput,
     prefix = "<-",
     utxoDCache?: UtxoDisplayCache,
     txoid?: TxOutputId
 ): string {
     if (utxoDCache && !txoid) {
-        throw new Error(`txOutputAsString: must provide txoid when using cache`);
+        throw new Error(
+            `txOutputAsString: must provide txoid when using cache`
+        );
     }
     let cache = utxoDCache?.get(txoid!);
     if (cache) {
@@ -675,7 +702,7 @@ export function txOutputAsString(
     }
     cache = `${prefix} ${addrAsString(x.address)}${showRefScript(
         x.refScript as any
-    )} ${valueAsString(x.value)}`
+    )} ${valueAsString(x.value)}`;
     utxoDCache?.set(txoid!, cache);
 
     return `${cache} ${datumSummary(x.datum)}`;
@@ -766,7 +793,7 @@ export function dumpAny(
     if ("undefined" == typeof x) return "‹undefined›";
     if (Array.isArray(x)) {
         if (!x.length) return "‹empty array›";
-        
+
         const firstItem = x[0];
         if ("number" == typeof firstItem) {
             return (
@@ -793,13 +820,17 @@ export function dumpAny(
         }
 
         if ("object" == typeof firstItem) {
-            debugger
+            debugger;
             if (firstItem instanceof Uint8Array) {
                 return "byte array: " + byteArrayAsString(firstItem);
             }
-            return `[` + x.map(
-                (item) => JSON.stringify(item, betterJsonSerializer) 
-            ).join(", ") + `]`;
+            return (
+                `[` +
+                x
+                    .map((item) => JSON.stringify(item, betterJsonSerializer))
+                    .join(", ") +
+                `]`
+            );
         }
 
         console.log("firstItem", firstItem);
@@ -821,6 +852,7 @@ export function dumpAny(
     if (x.kind == "TxOutput") {
         return txOutputAsString(x as TxOutput);
     }
+
     if (xx.kind == "Tx") {
         return txAsString(xx, networkParams);
     }
@@ -848,11 +880,9 @@ export function dumpAny(
     if (forJson) return xx;
 
     if ("object" == typeof x) {
-        return `{${
-            Object.entries(x).map(
-                ([k, v]) => `${k}: ${dumpAny(v as any, networkParams)}`
-            ).join(",\n")
-        }}`;
+        return `{${Object.entries(x)
+            .map(([k, v]) => `${k}: ${dumpAny(v as any, networkParams)}`)
+            .join(",\n")}}`;
     }
     debugger;
     return "dumpAny(): unsupported type or library mismatch";

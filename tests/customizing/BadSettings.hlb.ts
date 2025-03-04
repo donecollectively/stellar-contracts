@@ -1,5 +1,4 @@
-import { CapoHeliosBundle } from "../../src/helios/scriptBundling/CapoHeliosBundle";
-import { CapoDelegateBundle } from "../../src/helios/scriptBundling/CapoDelegateBundle";
+import { CapoDelegateBundle, CapoHeliosBundle } from "@donecollectively/stellar-contracts";
 import BadSettingsPolicy from "./BadSettingsPolicy.hl";
 import BadProtocolSettings from "./TestBadSettings.hl";
 
