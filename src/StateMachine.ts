@@ -435,7 +435,7 @@ export abstract class StateMachine<
                     to: targetState as $states<this>,
                     cancelTransition: mayCancelTransition,
                 })
-            }
+            })
 
         if (nextState == false) {
             this.log(

@@ -4,7 +4,7 @@ import {
     type Tx,
     type TxId,
 } from "@helios-lang/ledger";
-import type { CardanoTxSubmitter, SubmitOnly } from "@helios-lang/tx-utils";
+import type { CardanoTxSubmitter } from "@helios-lang/tx-utils";
 import { EventEmitter } from "eventemitter3";
 import type {
     FacadeTxnContext,
