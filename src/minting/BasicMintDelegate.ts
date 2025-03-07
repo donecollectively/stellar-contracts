@@ -25,6 +25,8 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     static isMintDelegate = true;
     declare dataBridgeClass : GenericDelegateBridgeClass
 
+    needsGovAuthority = true;
+
     get delegateName() {
         return "mintDelegate";
     }
@@ -55,6 +57,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
             isMintDelegate: true,
             isDgDataPolicy: false,
             isSpendDelegate: this.isMintAndSpendDelegate,
+            requiresGovAuthority: true, // but note: non-true is only relevant for delegated-data policies.
         };
     }
 

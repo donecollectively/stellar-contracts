@@ -61,6 +61,7 @@ import {
 } from CapoMintHelpers
 
 import {
+    CapoCtx,
     mkCapoCtx
 } from CapoHelpers
  
@@ -242,7 +243,8 @@ enum DelegateActivity {
     //    administrative expectations for DelegateLifecycleActivities and CapoLifecycleActivities
     //    so a specialization doesn't need to re-implement those checks.
     func additionalDelegateValidation( self,
-        priorMddd: DelegateDatum::IsDelegation
+        priorMddd: DelegateDatum::IsDelegation,
+        cctx: CapoCtx
     ) -> Bool {
         // print("  ----- checking additional delegate validation");
         mph : MintingPolicyHash = priorMddd.dd.mph;
@@ -300,7 +302,7 @@ enum DelegateActivity {
                  }
             },
             MintingActivities => {
-                _cctx = mkCapoCtx(mph).withCharterRef();
+                assert(cctx.withCharterRef().orFail(), "can't");
 
                 error("unspecialized mint delegate doesn't have any MintingActivities")
             },

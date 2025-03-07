@@ -65,7 +65,7 @@ export class BadSettingsControllerWithWrapper
 extends WrappedDgDataContract<ProtocolSettings, ProtocolSettingsLike, NoOpWrapper> {
     dataBridgeClass = BadSettingsPolicyDataBridge;
     scriptBundle() {
-        return new BadSettingsBundle()
+        return BadSettingsBundle.create()
     }
 
     mkDataWrapper(x: ProtocolSettings) {

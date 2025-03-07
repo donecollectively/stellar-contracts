@@ -98,8 +98,9 @@ export abstract class DelegatedDataContract<
      * @remarks
      * This is a convenience for the controller, and should be used along with
      * the appropriate on-chain policy to require the gov token's presence.
+     * @public
      */
-    needsGovAuthority = false;
+    needsGovAuthority = true;
     abstract get recordTypeName(): string;
     abstract get idPrefix(): string;
 
@@ -138,7 +139,7 @@ export abstract class DelegatedDataContract<
             throw new Error(
                 `${this.constructor.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.\n` +
                     `First, ensure you have derived a subclass for the controller, with a scriptBundle() method.\n` +
-                    `\nThat method should \`return new YourConcreteBundle()\`\n` +
+                    `\nThat method should \`return YourConcreteBundle.create()\`\n` +
                     `\n  ... where YourConcreteBundle is a subclass of CapoDelegateBundle that you've created.\n` +
                     `\nA concrete bundle class should be defined in \`${this.delegateName}.concrete.hlb.ts\`\n` +
                     `  ... in the same directory as your derived controller class:\n\n` +
@@ -151,8 +152,10 @@ export abstract class DelegatedDataContract<
         }
 
         throw new Error(
-            `${this.constructor.name}: missing required implementation of abstractBundleClass()\n` +
-                `\nDefined in a \`*.hlb.ts\` file, it should have at minimum:\n` +
+            `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
+            `\nThat method should \`return YourScriptBundle.create()\`\n` +
+            `\n  ... where YourScriptBundle is a subclass of CapoDelegateBundle that you've created.\n` +
+            `\nDefined in a \`*.hlb.ts\` file, it should have at minimum:\n` +
                 `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
                 `    import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";\n\n` +
                 `    export default class SomeDelegateBundle extends CapoHeliosBundle {\n` +

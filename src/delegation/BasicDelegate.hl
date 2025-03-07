@@ -6,6 +6,7 @@ const delegateName : String // = "💩  noName Delegate : ( "
 const isMintDelegate : Bool = false
 const isSpendDelegate : Bool = false
 const isDgDataPolicy : Bool = false
+const requiresGovAuthority : Bool = true
 
 import {
     tx, 
@@ -211,7 +212,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
             myDgTkn = showMyTokens(get_current_input().value);
             print("  -- is spending dgTkn "+ myDgTkn);
 
-            activity.switch {
+            checkNonDelegatedActivities: Bool = activity.switch {
                 MultipleDelegateActivities{activities} => {
                     // NOTE: the Capo ensures that each SPENT UTxO is addressed by EXACTLY ONE SpendDgt activity.
                     // When executed in a mint/spend delegate, the policy below ensures 
@@ -253,7 +254,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     //     "CreatingDelegatedData only ok in mintDgt"
                                     //     // " ... use MintingActivities in a delegated-data controller"
                                     // );
-                                    // recursion checks for the needed input/output and DgDataController MintingActivity                                
+                                    // recursion checks for the needed input/output and DgDataController MintingActivity
                                     main(mdd, a)
                                 },
                                 DeletingDelegatedData => {
@@ -1227,6 +1228,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     && true
                 },
 
+                // only used in mint/spend Delegate, not the delegated-data policy
                 DeletingDelegatedData {_dataType, recId} => {
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
 
@@ -1248,6 +1250,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     cctx.nowActingAsMintDgt() &&
                     false
                 },
+                // the following activities are NOT done in the mint/spend delegate,
+                //     ... but only in the data-controller delegate.
                 // We made these explicit so they're functionally required of every specialized delegate.
                 // All of the mint/spend/burn activities must be handled by the specialized delegate.  
                 // Note that this code module is generic, so it can't know the internal semantics of those activities,
@@ -1258,7 +1262,15 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 SpendingActivities => true, // handled by the specialized delegate
                 MintingActivities => true,  // handled by the specialized delegate
                 BurningActivities => true // handled by the specialized delegate
-            } && if (activity.additionalDelegateValidation(isD)) {
+            };
+            assert(checkNonDelegatedActivities, "checkNonDelegatedActivities failed");
+
+            cctx : CapoCtx = mkCapoCtx(isD.dd.mph).needsCharter();
+            if (!isDgDataPolicy) {true} else {
+                if (!requiresGovAuthority) {true} else {
+                    cctx.requiresGovAuthority().orFail()
+                }
+            } && if (activity.additionalDelegateValidation(isD, cctx)) {
                 print ("delegate: "+ delegateName + ": additionalDelegateValidation ok!\n");
                 true
             } else {

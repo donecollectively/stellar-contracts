@@ -187,7 +187,8 @@ enum DelegateActivity {
     //    administrative expectations for DelegateLifecycleActivities and CapoLifecycleActivities
     //    so a specialization doesn't need to re-implement those checks.
     func additionalDelegateValidation( self,
-        priorMddd: DelegateDatum::IsDelegation
+        priorMddd: DelegateDatum::IsDelegation,
+        cctx: CapoCtx
     ) -> Bool {
         print("  -- addl dgt validity check");
         self.switch {
@@ -201,7 +202,7 @@ enum DelegateActivity {
                     print("creating tData record...\n");
                     mkTn : (String) -> String = mkUutTnFactory(seed);
 
-                    cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
+                    cctx.withCharterRef().orFail();
                     // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
                     tokenName = mkTn("tData");
                     depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
@@ -231,7 +232,7 @@ enum DelegateActivity {
             },
             SpendingActivities{VSA} => {
                 print("capo mph: " + priorMddd.dd.mph.show());
-                cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
+                assert(cctx.withCharterRef().orFail(), "can't")
                 print( "\ncapo addr" + cctx.resolveCharterUtxo().address.show());
                 print("\n");
 

@@ -171,6 +171,17 @@ export class ContractBasedDelegate extends StellarDelegate {
         return params;
     }
     static mkDelegateWithArgs(a: capoDelegateConfig) {}
+    /**
+     * when set to true, the controller class will include the Capo's
+     * gov authority in the transaction, to ease transaction setup.
+     * @remarks
+     * If you set this to false, a delegated-data script will not 
+     * require governance authority for its transactions, and you will
+     * need to explicitly enforce any user-level permissions needed
+     * for authorizing delegated-data transactions.
+     * @public
+     */
+    needsGovAuthority = true;
 
     getContractScriptParams(config: capoDelegateConfig) {
         const { capoAddr, mph, tn, capo, ...otherConfig } = config;
@@ -178,6 +189,7 @@ export class ContractBasedDelegate extends StellarDelegate {
         return {
             ...otherConfig,
             delegateName: this.delegateName,
+            requiresGovAuthority: this.needsGovAuthority,
         }
         // console.log(`${this.constructor.name} config:`, otherConfig);
         // const namespace = this.scriptProgram!.name;
@@ -631,6 +643,7 @@ export class ContractBasedDelegate extends StellarDelegate {
             tcx,
             this.compiledScript
         );
+        if (!redeemer.redeemer) debugger
         return tcx2.addInput(uutxo, redeemer);
 
         // return this.txnKeepValue(

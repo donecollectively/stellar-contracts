@@ -185,7 +185,8 @@ enum DelegateActivity {
     //    administrative expectations for DelegateLifecycleActivities and CapoLifecycleActivities
     //    so a specialization doesn't need to re-implement those checks.
     func additionalDelegateValidation( self,
-        priorMddd: DelegateDatum::IsDelegation
+        priorMddd: DelegateDatum::IsDelegation,
+        cctx: CapoCtx
     ) -> Bool {
         print("  -- addl dgt validity check");
         self.switch {
@@ -199,7 +200,7 @@ enum DelegateActivity {
                     print("creating Settings record...\n");
                     mkTn : (String) -> String = mkUutTnFactory(seed);
 
-                    cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
+                    assert(cctx.withCharterRef().orFail(), "can't");
                     // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
                     tokenName = mkTn("set");
                     depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
@@ -216,8 +217,9 @@ enum DelegateActivity {
                         fromCip68Wrapper( newRec.datum.inline )
                     );
 
-                    cctx.requiresGovAuthority().orFail() &&
-                    recData.validate() &&
+                // it's still required, but in the harness instead of needing to be explicit here
+                // cctx.requiresGovAuthority().orFail();
+                recData.validate() &&
                     validateUutMinting(
                         mph: priorMddd.dd.mph,
                         seed: seed,
@@ -241,9 +243,11 @@ enum DelegateActivity {
             },
             SpendingActivities{VSA} => {
                 print("capo mph: " + priorMddd.dd.mph.show());
-                cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
+                assert(cctx.withCharterRef().orFail(), "can't");
+                
                 print( "capo addr: " + cctx.resolveCharterUtxo().address.show());
-                assert(cctx.requiresGovAuthority().orFail(), "unreachable");
+                // it's still required, but in the harness instead of needing to be explicit here
+                // cctx.requiresGovAuthority().orFail();
 
                 VSA.switch {
                     UpdatingRecord{recId} => {
