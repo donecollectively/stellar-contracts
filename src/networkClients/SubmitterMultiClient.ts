@@ -437,7 +437,7 @@ export class /* BatchSubmitController */ SubmitterMultiClient {
         // txd: TxDescription<any, "built">,
         // submitOptions: SubmitOptions & TxSubmitCallbacks = {}
     ) {
-        debugger
+        // debugger
         if (!this.setup.isTest) {
             const result = await this.signingStrategy.signTxBatch(this);
             console.log("signingStrategy result: ", result);

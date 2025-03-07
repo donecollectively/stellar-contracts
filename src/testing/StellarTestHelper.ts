@@ -325,14 +325,16 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     }
 
     /**
+     * Submits a transaction and advances the network block
      * @public
+     * @param TCX - The type of transaction context state, must extend anyState
      */
-    async submitTxnWithBlock(
-        tcx: StellarTxnContext | Promise<StellarTxnContext>,
+    async submitTxnWithBlock<TCX extends StellarTxnContext>(
+        tcx: TCX | Promise<TCX>,
         options: SubmitOptions & {
             futureDate?: Date;
         } = {}
-    ) {
+    ): Promise<TCX> {
         const t = await tcx;
         await this.advanceNetworkTimeForTx(t, options.futureDate);
 

@@ -621,10 +621,9 @@ export abstract class HeliosScriptBundle {
             `(${net}) ${this.moduleName} with params:\n`,
             Object.fromEntries(
                 Object.entries(program.entryPoint.paramsDetails()).map(
-                    ([k, uplcVal]) => [
-                        k,
-                        [uplcVal, rawValues[k]?.toString()].flat(),
-                    ]
+                    ([k, uplcVal]) => {
+                        return [k, [uplcVal, rawValues[k]?.toString()].flat()];
+                    }
                 )
             )
         );

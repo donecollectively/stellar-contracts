@@ -250,7 +250,6 @@ export class DefaultCapoTestHelper<
 
         expect(capo.network).toBe(this.network);
 
-        debugger
         await tcx.submitAll(submitOptions);
         console.log(
             `----- charter token minted at slot ${this.network.currentSlot}`
