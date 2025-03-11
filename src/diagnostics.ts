@@ -778,6 +778,7 @@ export function dumpAny(
         | Address
         | MintingPolicyHash
         | Value
+        | Assets
         | TxOutputId
         | TxOutput
         | TxOutput[]
@@ -791,6 +792,10 @@ export function dumpAny(
     forJson = false
 ) {
     if ("undefined" == typeof x) return "‹undefined›";
+    //@ts-expect-error probing type 
+    if (x?.kind == "Assets") {
+        return `assets: ${assetsAsString(x as Assets)}`;
+    }
     if (Array.isArray(x)) {
         if (!x.length) return "‹empty array›";
 
@@ -804,7 +809,7 @@ export function dumpAny(
         if (firstItem.kind == "TxOutput") {
             return (
                 "tx outputs: \n" +
-                (x as TxOutput[]).map((txo: TxOutput) => txOutputAsString(txo))
+                (x as TxOutput[]).map((txo: TxOutput) => txOutputAsString(txo)).join("\n")
             );
         }
 
@@ -820,7 +825,7 @@ export function dumpAny(
         }
 
         if ("object" == typeof firstItem) {
-            debugger;
+            // debugger;
             if (firstItem instanceof Uint8Array) {
                 return "byte array: " + byteArrayAsString(firstItem);
             }

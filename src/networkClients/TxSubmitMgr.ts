@@ -958,10 +958,7 @@ export class TxSubmitMgr extends StateMachine<
             // const submitting = Promise.resolve(tx.id());
             const submitting = this.submitter
             .submitTx(
-                tx,
-                //@ts-expect-error extra arg used in test emulated network only
-                //   -- ignored by real network clients
-                logger
+                tx
             )
             return submitting.then(
                 async (netTxId) => {

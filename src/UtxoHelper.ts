@@ -731,7 +731,7 @@ export class UtxoHelper {
             globalThis.utxoDump ||
             (!found && dumpDetail == "onFail")
                 ? "\n  from set: " + joiner + utxosAsString(filtered, joiner)
-                : `(${filtered.length} candidates; set globalThis.utxoDump to see all details, or use dumpDetails: option on a specific utxo search)`;
+                : `(${filtered.length} candidates; show with globalThis.utxoDump or \`dumpDetail\` option)`;
         console.log(
             `  🔎 finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
@@ -831,8 +831,8 @@ export class UtxoHelper {
             if (!globalThis.utxoDump) {
                 console.log(
                     // warning emoji: "⚠️"
-                    " ⚠️ find failed in candidate (debugging breakpoint available)",
-                    dumpAny(utxos)
+                    " ⚠️ find failed in candidate utxos (debugging breakpoint available)\n",
+                    semanticName, dumpAny(utxos)
                 );
             }
             debugger;

@@ -201,8 +201,8 @@ enum DelegateActivity {
                 CreatingTData{seed} => {
                     print("creating tData record...\n");
                     mkTn : (String) -> String = mkUutTnFactory(seed);
-
-                    cctx.withCharterRef().orFail();
+                    assert(cctx.withCharterRef().orFail(), "can't");
+                    
                     // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
                     tokenName = mkTn("tData");
                     depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
@@ -231,10 +231,9 @@ enum DelegateActivity {
                 }
             },
             SpendingActivities{VSA} => {
-                print("capo mph: " + priorMddd.dd.mph.show());
-                assert(cctx.withCharterRef().orFail(), "can't")
-                print( "\ncapo addr" + cctx.resolveCharterUtxo().address.show());
-                print("\n");
+                assert(cctx.withCharterRef().orFail(), "can't");
+                // print("capo mph: " + priorMddd.dd.mph.show());
+                // print( "capo addr" + cctx.resolveCharterUtxo().address.show());
 
                 VSA.switch {                    
                     UpdatingTData{recId} => {

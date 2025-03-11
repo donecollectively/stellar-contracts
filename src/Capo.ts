@@ -97,7 +97,7 @@ import { type NamedPolicyCreationOptions } from "./delegation/ContractBasedDeleg
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import type { AnyDataTemplate } from "./delegation/DelegatedData.js";
-import type { tokenPredicate } from "./UtxoHelper.js";
+import type { tokenPredicate, UtxoSearchScope } from "./UtxoHelper.js";
 import CapoDataBridge, {
     PendingCharterChangeHelper,
 } from "./helios/scriptBundling/CapoHeliosBundle.bridge.js";
@@ -1026,6 +1026,7 @@ export abstract class Capo<
         if (!capoUtxos) {
             debugger;
             capoUtxos = await this.findCapoUtxos();
+            charterData = await this.findCharterData(undefined, {optional: false, capoUtxos});
             // throw new Error(
             //     `charterData must be provided or found in the transaction context`
             // );
@@ -2090,7 +2091,6 @@ export abstract class Capo<
         const chD = charterData || (await this.findCharterData());
         const foundME = chD.manifest.get(roleName);
         if (!foundME) {
-            debugger;
             if (optional) return undefined as any;
             await this.findCharterData();
             throw new Error(
@@ -2353,7 +2353,6 @@ export abstract class Capo<
             "mintDelegate",
             charterDataArgs.mintDelegateLink
         );
-        debugger
 
         const spendDelegate = await this.txnCreateOffchainDelegateLink(
             tcx2,
@@ -2442,15 +2441,33 @@ export abstract class Capo<
             });
         }
         const tcx2 = await this.addTxnBootstrappingSettings(tcx, charterData);
-        const tcx3 = await this.mkAdditionalTxnsForCharter(tcx2, {
-            charterData,
-            capoUtxos,
-        });
-        return tcx3;
+        tcx2.includeAddlTxn("check for updates", {
+            description: `capo-specific txns for deploying any missing or upgraded delegates`,
+            moreInfo: "if any delegates are missing or need to be upgraded, these txns will take care of it",
+            mkTcx: async () => {
+                const tcx3 = this.mkTcx("addl txns for capo").facade();
+                const capoUtxos = await this.findCapoUtxos();
+                const charterData = await this.findCharterData(undefined, {
+                    capoUtxos,
+                    optional: false,
+                });
+                await this.mkAdditionalTxnsForCharter(tcx3, {
+                    charterData,
+                    capoUtxos,
+                });
+                return tcx3                
+            }
+        })
+
+        return tcx2        
     }
 
-    findCapoUtxos() {
-        return this.network.getUtxos(this.address);
+    async findCapoUtxos(option?: Required<Pick<UtxoSearchScope, "dumpDetail">>) {
+        const utxos = await this.network.getUtxos(this.address);
+        if ("always" === option?.dumpDetail) {
+            console.log("Capo utxos:", dumpAny(utxos, this.networkParams))
+        }
+        return utxos
     }
 
     async tcxWithCharterData<TCX extends StellarTxnContext>(
@@ -2547,7 +2564,8 @@ export abstract class Capo<
 
                         const ma =
                             settingsController.activity.MintingActivities;
-                        debugger;
+                        
+                        
                         //@ts-expect-error because we don't yet have a sufficiently-specific
                         // generic type for delegated data controllers that require the basic
                         // seeded-creating-record activity
@@ -2936,7 +2954,6 @@ export abstract class Capo<
             throw new Error("Cannot provide both id and predicate");
         }
         if (!capoUtxos) {
-            debugger;
             capoUtxos = await this.findCapoUtxos();
         }
 

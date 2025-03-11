@@ -57,12 +57,11 @@ export class TxBatcher {
                 );
                 // maybe it's okay - TBD if the error ever occurs.
             }
+            const chainBuilder = this.setup.isTest ? undefined : makeTxChainBuilder(this.setup.network);
+            this.setup.chainBuilder = chainBuilder
             this._current = new SubmitterMultiClient({
                 submitters: this.submitters,
-                setup: {
-                    ...this.setup,
-                    chainBuilder: makeTxChainBuilder(this.setup.network),
-                },
+                setup: this.setup,
                 signingStrategy: this.signingStrategy,
             });
             this.$notifier.emit("rotated", this._current);

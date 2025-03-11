@@ -258,7 +258,7 @@ enum DelegateActivity {
         cctx: CapoCtx
     ) -> Bool {
         print("  ----- uutMinting delegate - checking additional delegate validation\n");
-        mph = priorMddd.dd.mph;
+        // mph = priorMddd.dd.mph;
         self.switch {
             // normal  lifecycle activities are already validated, but 
             //  ... you can add more constraints here if needed

@@ -755,9 +755,14 @@ export function heliosRollupBundler(
                 // const tester = `            preConfigured = mkCapoDeployment`
                 const filenameBase = id.replace(/.*\/([^.]+)\..*$/, "$1");
                 const deployDetailsFile = `./${filenameBase}.hlDeploy.${networkId}.json`;
+
+
                 const SomeBundleClass: typeof CapoHeliosBundle =
                     state.bundleClassById[id];
-
+                if (!SomeBundleClass) {
+                    this.warn(`skipping config insertion (no emitBundle in this env?) ${filenameBase}`)
+                    return null
+                }
                 if (looksLikeCapo) {
                     if (!code.match(capoConfigRegex)) {
                         debugger;
@@ -805,6 +810,8 @@ export function heliosRollupBundler(
         this.debug(`-> [transform] Capo`);
         const SomeBundleClass: typeof CapoHeliosBundle =
             state.bundleClassById[id];
+
+        if (!SomeBundleClass) return null
 
         const resolvedDeployConfig = await this.resolve(
             deployDetailsFile,

@@ -33,6 +33,7 @@ const noTransitionsExcept = {
     "mostly confirmed": null,
 };
 const terminalState = noTransitionsExcept;
+const emulator = (process.env.NODE_ENV === "test");
 
 /**
  * Tracks the submission of a single tx via one or more submitter clients
@@ -92,7 +93,7 @@ export class TxSubmissionTracker extends StateMachine<
     }
 
     get stateMachineName() {
-        return `💳 TxSubmissionTracker ${this.id} ${this.txLabel}\n     💳 `;
+        return `💳 TxSubmissionTracker ${this.id} ${this.txLabel}`;
     }
 
     get txId() {
@@ -285,6 +286,8 @@ export class TxSubmissionTracker extends StateMachine<
             alreadyDone: { to: "alreadyDone" },
             built: { to: "built" },
             failed: { to: "failed" },
+            // this option is purposely left out of the types 
+            ... ( emulator ? { emulatorConfirmed: { to: "confirmed" } } : {} )
         },
         [`alreadyDone`]: terminalState,
         [`built`]: {
@@ -332,6 +335,10 @@ export class TxSubmissionTracker extends StateMachine<
             confirmed: { to: "confirmed" },
             failed: { to: "failed" },
         },
+        // this option is purposely left out of the types 
+        ... ( emulator ? { emulatorConfirmed : {
+            emulatorConfirmed: { to: "emulatorConfirmed" } } 
+        }: {} ),
         [`confirmed`]: terminalState,
         [`failed`]: {
             ...noTransitionsExcept,
@@ -416,6 +423,30 @@ export class TxSubmissionTracker extends StateMachine<
                 mgr.otherSubmitterProblem();
             }
         }
+    }
+
+    /**
+     * private internal method for forcing the state into an indication
+     * of confirmed, without triggering any other state changes
+     * @remarks
+     * helps prevent the test env from being affected by particularities
+     * of the tx batcher that are good for user-facing context but disruptive
+     * for test automation
+     * @internal
+     */
+    _emulatorConfirmed() {
+        if (!emulator) {
+            throw new Error(`not in test mode`);
+        }
+        //@ts-expect-error on this stuff that's only ever present in test env
+        this.$state = "emulatorConfirmed";
+        this.isBuilt = true
+        //XXX not execution transition or its side effects
+        // //@ts-expect-error here too
+        // this.transition("emulatorConfirmed");
+
+        this.log(` --  ⚗️ ⚗️  🥅 emulatorConfirmed ⚗️ ⚗️`);
+
     }
 }
 

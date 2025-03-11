@@ -113,14 +113,18 @@ describe("Capo", async () => {
             );
             await tcx.submitAll();
             network.tick(1);
-            const updatedDatum = await capo.findCharterData();
+            const utxos = await capo.findCapoUtxos();
+            const updatedDatum = await capo.findCharterData(
+                undefined,
+                {capoUtxos: utxos, optional: false}
+            );
             expect(updatedDatum.mintDelegateLink.uutName).not.toEqual(
                 originalDatum.mintDelegateLink.uutName
             );
             console.log("   ---- check for the old delegate-token's presence")
             const stillExists = await oldMintDelegate.mustFindMyUtxo(
                 "old delegate UUT",
-                oldPredicate
+                {predicate: oldPredicate, utxos}
             );
             expect(stillExists).toBeTruthy();
             console.log("   ---- check for the new delegate-token's presence")
@@ -128,7 +132,7 @@ describe("Capo", async () => {
             const newPredicate = newDelegate.mkAuthorityTokenPredicate();
             const newExists = await newDelegate.mustFindMyUtxo(
                 "new delegate UUT",
-                newPredicate
+                {predicate: newPredicate, utxos}
             );
             expect(newExists).toBeTruthy();
             console.log("-- the new dgTkn is different from the old one, right?!?")
@@ -374,21 +378,28 @@ describe("Capo", async () => {
             );
             await tcx.submitAll();
             network.tick(1);
-            const updatedDatum = await capo.findCharterData();
+            const utxos = await capo.findCapoUtxos();
+            const updatedDatum = await capo.findCharterData(undefined, {capoUtxos: utxos, optional: false});
             expect(updatedDatum.spendDelegateLink.uutName).not.toEqual(
                 originalDatum.spendDelegateLink.uutName
             );
 
             const stillExists = await oldSpendDelegate.mustFindMyUtxo(
                 "old delegate UUT",
-                oldPredicate
+                {
+                    predicate: oldPredicate,
+                    utxos
+                }
             );
             expect(stillExists).toBeTruthy();
             const newDelegate = await capo.getSpendDelegate();
             const newPredicate = newDelegate.mkAuthorityTokenPredicate();
             const newExists = await newDelegate.mustFindMyUtxo(
                 "new delegate UUT",
-                newPredicate
+                {
+                    predicate: newPredicate,
+                    utxos
+                }
             );
             expect(newExists).toBeTruthy();
             expect(stillExists.id.isEqual(newExists.id)).toBeFalsy();

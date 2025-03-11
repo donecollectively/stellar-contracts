@@ -169,7 +169,7 @@ describe("Capo", async () => {
                     signers: [tom.address, tina.address, tracy.address],
                     expectError: true,
                 })
-            ).rejects.toThrow(/Missing charter in required ref_inputs/);
+            ).rejects.toThrow(/(Missing charter in required ref_inputs|charter is from inputs!)/);
         });
 
         smokeTest(

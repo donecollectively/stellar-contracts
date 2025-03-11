@@ -1475,7 +1475,6 @@ export class StellarContract<
                 setup: this.setup,
             });
         }
-        debugger // can we defer this? vvvvv
         // this._compiledScript = await bundle.compiledScript(true);
 
         // console.log(

@@ -102,6 +102,8 @@ export abstract class CapoTestHelper<
                 return this.strella;
             });
         }
+        throw new Error(`unreachable pre-bootstrapped capo?`);
+
         console.log("  -- Capo already bootstrapped");
         const strella = await this.initStrella(this.stellarClass, this.config);
 
@@ -160,7 +162,6 @@ export abstract class CapoTestHelper<
         let capo;
         const helperState = this.helperState!;
         if (helperState.bootstrapped) {
-            debugger
             console.log("  ---  ⚗️🐞🐞 already bootstrapped");
             if (!helperState.previousHelper) {
                 debugger;
@@ -312,9 +313,14 @@ export abstract class CapoTestHelper<
         }
         const { parsedConfig } = previousHelper.state;
 
-        const { networkCtx: oldNetworkEnvelope } = previousHelper;
+        const { 
+            networkCtx: oldNetworkEnvelope, 
+            actorContext: oldActorContext,
+            setup:previousSetup 
+        } = previousHelper;
         const { network: previousNetwork } = oldNetworkEnvelope;
         const { network: newNet } = this.networkCtx;
+        this.initSetup(previousSetup)
 
         // hacky load of the indicator of already having restored details from the prievous helper
         const otherNet: number = previousHelper.actors[
@@ -335,11 +341,15 @@ export abstract class CapoTestHelper<
             } else {
                 Object.assign(this.actors, previousHelper.actors);
 
-                // swaps out the previous helper's envelope
+                // swaps out the previous helper's envelopes for network & actor
                 previousHelper.networkCtx = { network: previousNetwork };
+                //@ts-expect-error
+                previousHelper.actorContext = { address: "previous network retired" }
 
-                // uses the old envelope (that the actors used on the old network)
+                // uses the old envelope (that the Capo/etc classes used on the old network)
                 this.networkCtx = oldNetworkEnvelope;
+                this.actorContext = oldActorContext;
+                // ... but changes the referenced network
                 // ... to reflect the new snapshotted network
                 this.networkCtx.network = newNet;
 
@@ -406,8 +416,9 @@ export abstract class CapoTestHelper<
         submitOptions: SubmitOptions = {}
     ) {
         const tcx = this.mkTcx("extra bootstrapping").facade()
-        const charterData = await this.capo.findCharterData()
-        const tcx2 = await this.capo.addTxnBootstrappingSettings(tcx, charterData);
+        const capoUtxos = await this.capo.findCapoUtxos();
+        const charterData = await this.capo.findCharterData(undefined, {optional: false, capoUtxos});
+        const tcx2 = await this.capo.mkTxnUpgradeIfNeeded(charterData)
         await this.submitTxnWithBlock(tcx2, submitOptions)
         return this.strella;
     }

@@ -27,6 +27,9 @@ import {
 
 import { type BytesLike, type IntLike } from "@helios-lang/codec-utils";
 import {
+    magenta
+} from "ansi-colors"
+import {
     BIP39_DICT_EN,
     SECOND,
     type EmulatorTx,
@@ -702,10 +705,11 @@ export class StellarNetworkEmulator implements Emulator {
         );
     }
 
-    async submitTx(tx: Tx, logger?: UplcLogger) {
+    async submitTx(tx: Tx) {
         this.warnMempool();
 
         if (!tx.isValidSlot(BigInt(this.currentSlot))) {
+            debugger
             throw new Error(
                 `tx invalid (slot out of range, ${
                     this.currentSlot
@@ -743,15 +747,9 @@ export class StellarNetworkEmulator implements Emulator {
         }
 
         this.mempool.push(makeEmulatorRegularTx(tx));
-        if (logger) {
-            logger.logPrint(
-                `[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`
-            );
-        } else {
-            console.log(
-                `[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`
-            );
-        }
+        console.log(
+            `[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`
+        );
         return tx.id();
     }
 
@@ -771,23 +769,24 @@ export class StellarNetworkEmulator implements Emulator {
         );
 
         if (this.mempool.length > 0) {
+            const txIds = this.mempool.map((tx) => tx.id().toString().substring(0, 8))
             this.pushBlock(this.mempool);
 
             this.mempool = [];
 
-            console.log(`█  #${this.id} @ht=${height}`);
+            console.log(magenta(`█  #${this.id} @ht=${height}`));
             console.log(
-                `█${"▒".repeat(
+                magenta(`█${"▒".repeat(
                     count
-                )} ${count} txns -> slot ${this.currentSlot.toString()} = ${formatDate(
+                )} ${count} txns (${txIds.join(",")}) -> slot ${this.currentSlot.toString()} = ${formatDate(
                     time
-                )}`
+                )}`)
             );
         } else {
             console.log(
-                `tick -> slot ${this.currentSlot.toString()} = ${formatDate(
+                magenta(`tick -> slot ${this.currentSlot.toString()} = ${formatDate(
                     time
-                )} (no txns)`
+                )} (no txns)`)
             );
         }
     }

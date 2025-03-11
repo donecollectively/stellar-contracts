@@ -378,7 +378,7 @@ export abstract class StateMachine<
      * transitions the state-machine through the indicated tx name
      * @public
      */
-    transition(tn: TRANSITIONS) {
+    transition(tn: TRANSITIONS) : Promise<void>{
         const currentState = this.$state;
         const foundTransition = this.transitionTable[currentState][tn];
         if (!foundTransition) {
@@ -410,7 +410,7 @@ export abstract class StateMachine<
             nextState = false;
             error = e.message || e;
         }
-        return this.finishTransition(tn, targetState, currentState, nextState, error);
+        return this.finishTransition(tn, targetState, currentState, nextState, error) as any
     }
 
     finishTransition(
@@ -420,7 +420,7 @@ export abstract class StateMachine<
         nextState: string | false | DeferredState<this>,
         error: string
     ) {
-        if (this.destroyed) return;
+        if (this.destroyed) return undefined;
 
         let wasCancelled = false;
         if (!error) this.ignoringListenerErrors("transition", () => {

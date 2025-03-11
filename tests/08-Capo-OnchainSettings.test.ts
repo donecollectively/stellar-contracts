@@ -146,7 +146,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
     });
 
     describe("mkTxnUpdateSettings(): can update the settings", () => {
-        it("can update the settings data with a separate UpdatingSettings Activity on the Settings", async (context: localTC) => {
+        it("can update the settings data with the basic UpdatingRecord Activity on the Settings", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
             await h.bootstrap();

@@ -352,33 +352,32 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
         let txBody: TxBody | undefined = undefined
         let validFrom=0, validTo=0;
+        let targetTime: number = futureDate?.getTime() || Date.now();
+        let targetSlot = this.netPHelper.timeToSlot(BigInt(targetTime));
+        const nph = this.netPHelper;
+
         if (tcx.isFacade && !futureDate) {
             console.log("not advancing network time for facade tx")
             return
         } else if (!tcx.isFacade) {
-            const tx = await tcx.builtTx;
 
-            txBody = tx.body;
-            function txnAttr(x: string) {
-                return txBody![x];
-            }
-            validFrom = txnAttr("firstValidSlot");
-            validTo = txnAttr("lastValidSlot");
+            validFrom = ( () => {
+                //@ts-expect-error on internal prop
+                const {slot, timestamp} = tcx.txb.validFrom?.left || {}
+                if (slot) return slot
+                if (!timestamp) return undefined
+                return nph.timeToSlot(BigInt(timestamp))
+            })();
+            validTo = ( () => {
+                //@ts-expect-error on internal prop
+                const {slot, timestamp} = tcx.txb.validFrom?.left || {}
+                if (slot) return slot
+                if (!timestamp) return undefined
+                return nph.timeToSlot(BigInt(timestamp))
+            })();
         }
-        let targetTime: number = futureDate?.getTime() || Date.now();
-        let targetSlot = this.netPHelper.timeToSlot(BigInt(targetTime));
 
-        tcx.logger.logPrint(
-            "\n  ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: " + (tcx.txnName || "")
-        );
-        if (futureDate) {
-            debugger;
-            tcx.logger.logPrint(
-                `\n    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`
-            );
-        }
         const currentSlot = this.network.currentSlot;
-        const nph = this.netPHelper;
         const nowSlot = nph.timeToSlot(BigInt(Date.now()));
         const slotDiff = targetSlot - currentSlot;
 
@@ -411,11 +410,22 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                     } from now`
             );
         }
-        tcx.logger.logPrint(
-            `\n    ---- ⚗️ 🐞🐞 current slot ${currentSlot} ${currentToNowDiff} = now slot ${nowSlot} \n` +
-                `                    current ${currentToTargetDiff} = targetSlot ${targetSlot}`
-        );
+    
         if (validInPast || validInFuture) {
+            tcx.logger.logPrint(
+                "\n  ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: " + (tcx.txnName || "")
+            );
+            if (futureDate) {
+                debugger;
+                tcx.logger.logPrint(
+                    `\n    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`
+                );
+            }
+    
+            tcx.logger.logPrint(
+                `\n    ---- ⚗️ 🐞🐞 current slot ${currentSlot} ${currentToNowDiff} = now slot ${nowSlot} \n` +
+                    `                    current ${currentToTargetDiff} = targetSlot ${targetSlot}`
+            );
             if (futureDate) {
                 // ":info:ℹ️"
                 // ":test: ⚗️"
@@ -549,6 +559,39 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     //     }
     // }
 
+    setup!: SetupInfo
+    initSetup(setup: SetupInfo = undefined as any) {
+        setup = setup || {
+            actorContext: this.actorContext,
+            networkParams: this.networkParams,
+            uh: undefined as any,
+            isTest: true,
+            isMainnet: false,
+            optimize: process.env.OPTIMIZE ? true : this.optimize,
+        } as any
+
+        const getNetwork = () => { return this.network };
+        const getActor = () => { return this.actorContext.wallet! };
+
+        Object.defineProperty(setup, "network", {
+            get: getNetwork,
+            configurable: true
+        });
+        setup.txBatcher = new TxBatcher({              
+            setup,
+            submitters:  {
+               get emulator() { return getNetwork() } 
+            },
+            get signingStrategy() { return new GenericSigner( getActor()) }                
+        }),
+
+        setup.txBatcher.setup = setup;
+        setup.uh = new UtxoHelper(setup);
+
+        return this.setup = setup
+    }
+
+
     /**
      * @public
      */
@@ -562,25 +605,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         } else {
             console.warn(`using env OPTIMIZE=${envOptimize}`)
         }
-        const getNetwork = () => { return this.network };
-        const getActor = () => { return this.actorContext.wallet! };
-        const setup: SetupInfo = {
-            get network() { return getNetwork() },
-            actorContext: this.actorContext,
-            networkParams: this.networkParams,
-            uh: undefined as any,
-            isTest: true,
-            isMainnet: false,
-            txBatcher: new TxBatcher({              
-                submitters:  {
-                   get emulator() { return getNetwork() } 
-                },
-                get signingStrategy() { return new GenericSigner( getActor()) }                
-            }),
-            optimize: process.env.OPTIMIZE ? true : this.optimize,
-        };
-        setup.txBatcher.setup = setup;
-        setup.uh = new UtxoHelper(setup);
+
+        const setup = this.initSetup()
 
         let cfg: StellarSetupDetails<ConfigFor<SC>> = {
             setup,

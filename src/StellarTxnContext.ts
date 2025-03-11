@@ -22,6 +22,7 @@ import {
 } from "@helios-lang/tx-utils";
 import {
     decodeTx,
+    makeAssets,
     makeNetworkParamsHelper,
     makeTx,
     makeTxBody,
@@ -30,6 +31,7 @@ import {
     makeTxRewardingRedeemer,
     makeTxSpendingRedeemer,
     makeTxWitnesses,
+    makeValue,
     type Address,
     type NetworkParams,
     type PubKeyHash,
@@ -903,6 +905,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     get builtTx() {
         this.noFacade("builtTx");
         if (!this._builtTx) {
+            throw new Error(`can't go building the tx willy-nilly`);
             return (this._builtTx = this.build().then(({ tx }) => {
                 return (this._builtTx = tx);
             }));
@@ -1069,6 +1072,22 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 total: { cpu: 0n, mem: 0n },
                 slush: { cpu: 0n, mem: 0n },
             };
+
+            const inputValues = this.inputs
+                .map((i) => i.value.assets)
+                .reduce((a, b) => a.add(b), makeAssets());
+            const outputValues = this.outputs
+                .map((o) => o.value.assets)
+                .reduce((a, b) => a.add(b), makeAssets());
+            const mintValues = this.txb.mintedTokens;
+            const netTxAssets = inputValues
+                .add(mintValues)
+                .subtract(outputValues);
+            if (!netTxAssets.isZero()) {
+                console.log(
+                    "tx imbalance=" + dumpAny(netTxAssets, this.networkParams)
+                );
+            }
             try {
                 
                 // the transaction can fail validation without throwing an error
@@ -1118,6 +1137,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         return costs;
                     },
                 });
+                this._builtTx = tx;
 
                 this.txb.validToTime;
 
@@ -1137,17 +1157,25 @@ export class StellarTxnContext<S extends anyState = anyState> {
             } catch (e: any) {
                 // buildUnsafe shouldn't throw errors.
 
-                logger.logError(`txn build failed: ${e.message}`);
-                if (tx!) logger.logPrint(dumpAny(tx!) as string);
+                e.message +=
+                    "; txn build failed (debugging breakpoint available)\n" +
+                    (netTxAssets.isZero()
+                        ? ""
+                        : "tx imbalance=" +
+                          dumpAny(netTxAssets, this.networkParams)) +
+                    `  inputs: ${dumpAny(this.inputs)}\n` +
+                    `  outputs: ${dumpAny(this.outputs)}\n` +
+                    `  mint: ${dumpAny(this.txb.mintedTokens)}\n` +
+                    `  refInputs: ${dumpAny(this.txRefInputs)}\n`;
 
-                logger.logError(
-                    `  (it shouldn't be possible for buildUnsafe to be throwing errors!)`
-                );
-                logger.flushError();
-                console.warn(
-                    "^^^^ txn build failed (debugging breakpoint avaialble)"
-                );
-                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+                    logger.logError(`txn build failed: ${e.message}`);
+                    if (tx!) logger.logPrint(dumpAny(tx!) as string);
+
+                    logger.logError(
+                        `  (it shouldn't be possible for buildUnsafe to be throwing errors!)`
+                    );
+                    logger.flushError();
+
                 throw e;
             }
 
@@ -1303,7 +1331,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         //!!! ^^^ remove?
 
         return this.buildAndQueueAll(options).then(() => {
-            return currentBatch.$signAndSubmitAll().then(() => true)
+            return currentBatch.$signAndSubmitAll().then(() => true);
         });
     }
 
@@ -1347,8 +1375,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         `🎄⛄🎁 ${this.id}   -- B&QA - registering addl txns`
                     );
                     return this.queueAddlTxns(options).then(() => {
-                        return true   
-                    })
+                        return true;
+                    });
 
                     // .then((x) => {
                     //     return this.currentBatch.$signAndSubmitAll()
@@ -1363,8 +1391,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 `🎄⛄🎁 ${this.id}   -- B&QA - registering txns in facade`
             );
             return this.queueAddlTxns(generalSubmitOptions).then(() => {
-                return true
-            })
+                return true;
+            });
         }
         console.warn(`⚠️  submitAll(): no txns to queue/submit`, this);
         throw new Error(
@@ -1536,15 +1564,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
         currentBatch.$addTxns(txDescr);
         this.setup.chainBuilder?.with(txDescr.tx);
         await whenBuilt?.(txDescr);
-
-        let txId: TxId | undefined;
-
-        if (this.setup.isTest) {
-            return wallet.submitTx(tx).then(() => {
-                //@ts-expect-error emulator-specific method
-                network.tick?.(1n);
-            });
-        }
     }
     emitCostDetails(tx: Tx, costs: { total: Cost; [key: string]: Cost }) {
         const { logger } = this;
@@ -1636,16 +1655,23 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (nCpu > oMaxCpu || nMem > oMaxMem || txSize > oMaxSize) {
             logger.logPrint(
                 "🔥🔥🔥🔥  THIS TX EXCEEDS default (overridden in test env) limits on network params  🔥🔥🔥🔥\n" +
-                    `  -- cpu ${intWithGrouping(nCpu)} = ${((100 * nCpu) / oMaxCpu).toFixed(
-                        1
-                    )}% of ${intWithGrouping(oMaxCpu)} (patched to ${intWithGrouping(maxTxExCpu)})\n` +
+                    `  -- cpu ${intWithGrouping(nCpu)} = ${(
+                        (100 * nCpu) /
+                        oMaxCpu
+                    ).toFixed(1)}% of ${intWithGrouping(
+                        oMaxCpu
+                    )} (patched to ${intWithGrouping(maxTxExCpu)})\n` +
                     `  -- mem ${nMem} = ${((100 * nMem) / oMaxMem).toFixed(
                         1
-                    )}% of ${intWithGrouping(oMaxMem)} (patched to ${intWithGrouping(maxTxExMem)})\n` +
+                    )}% of ${intWithGrouping(
+                        oMaxMem
+                    )} (patched to ${intWithGrouping(maxTxExMem)})\n` +
                     `  -- tx size ${intWithGrouping(txSize)} = ${(
                         (100 * txSize) /
                         oMaxSize
-                    ).toFixed(1)}% of ${intWithGrouping(oMaxSize)} (patched to ${intWithGrouping(maxTxSize)})\n`
+                    ).toFixed(1)}% of ${intWithGrouping(
+                        oMaxSize
+                    )} (patched to ${intWithGrouping(maxTxSize)})\n`
             );
         }
         const scriptBreakdown =
@@ -1670,15 +1696,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 : "";
 
         logger.logPrint(
-            `costs: ${lovelaceToAda(txFee)}`+
+            `costs: ${lovelaceToAda(txFee)}` +
                 `\n  -- fixed fee = ${lovelaceToAda(txFeeFixed)}` +
                 `\n  -- tx size fee = ${lovelaceToAda(sizeFee)}` +
-                ` (${intWithGrouping(txSize)} bytes = ${(Number((1000 * txSize) / oMaxSize) / 10).toFixed(
-                    1
-                )}% of tx size limit)` +
-                `\n  -- refScripts fee = ${lovelaceToAda(
-                    refScriptsFee
-                )}` +
+                ` (${intWithGrouping(txSize)} bytes = ${(
+                    Number((1000 * txSize) / oMaxSize) / 10
+                ).toFixed(1)}% of tx size limit)` +
+                `\n  -- refScripts fee = ${lovelaceToAda(refScriptsFee)}` +
                 refScriptCostDetails.join("") +
                 `\n  -- scripting costs` +
                 `\n    -- cpu units ${intWithGrouping(total.cpu)}` +
@@ -1721,7 +1745,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this.submitTxnChain({
             ...pipelineOptions,
             txns: Object.values(addlTxns),
-        })
+        });
     }
 
     /**
@@ -1796,7 +1820,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                               tcx.alreadyPresent = alreadyPresent;
                               return tcx;
                           }
-                        throw e
+                          throw e;
                       })
                     : (() => {
                           console.log(
@@ -1818,7 +1842,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     "  -- tx effects are already present; skipping: " +
                         txName || description
                 );
-                debugger;
                 this.currentBatch.$addTxns(txInfoResolved);
                 continue;
             }
@@ -1924,13 +1947,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
             onSubmitError,
             // txns,  // see newTxns
             fixupBeforeSubmit: (txinfo) => {
-                //@ts-expect-error triggering the test-network-emulator's tick
                 //   ... in regular execution environment, this is a no-op by default
-                this.setup.network.tick?.(1);
                 options.fixupBeforeSubmit?.(txinfo);
             },
             whenBuilt: async (txinfo) => {
-                const { id: parentId } = txinfo;
+                const { id: parentId, tx } = txinfo;
                 const stackedPromise = options.whenBuilt?.(txinfo);
                 const more: Record<string, TxDescription<any, "buildLater!">> =
                     //@ts-expect-error on optional prop

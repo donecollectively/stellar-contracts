@@ -314,6 +314,18 @@ export class /* BatchSubmitController */ SubmitterMultiClient {
         return this.$txStates[id] || this.$registeredTxs[id];
     }
 
+    submitToTestnet(txd: TxDescription<any, "built">, tracker: TxSubmissionTracker) {
+        if (!this.setup.isTest) return
+        
+        const {network} = this.setup
+        const {tcx, tx, tcx:{logger, _builtTx}} = txd
+        tracker.isSigned = true; // bit of a fib, but in test-env is ok
+        const t = network.submitTx(tx)
+        this.setup.network?.tick(1)
+
+        tracker._emulatorConfirmed()
+    }
+
     addTxDescr(
         txd: TxDescription<any, any>
         // options: TxBatchOptions = this.defaultTxBatchOptions
@@ -342,6 +354,8 @@ export class /* BatchSubmitController */ SubmitterMultiClient {
             this.$txStates[id] = pendingTracker;
             if (txd.tcx?.alreadyPresent) {
                 pendingTracker.transition("alreadyDone")
+            } else {
+                this.submitToTestnet(txd as TxDescription<any, "built">, pendingTracker);
             }
         } else if (!builtTracker) {
             const {
@@ -361,6 +375,7 @@ export class /* BatchSubmitController */ SubmitterMultiClient {
                 // adds resolved txs to the end of 
                 // the tx-trackers list
                 this.$txStates[id]= tracker
+                this.submitToTestnet(txd as TxDescription<any, "built">, tracker);
             } else {
                 // splits $registeredTxs into two lists: one having txns with this same parentId
                 // and one with any other parent-ids.  Both must preserve the order of the original list.
