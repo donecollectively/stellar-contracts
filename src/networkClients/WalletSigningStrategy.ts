@@ -1,5 +1,5 @@
 import type { Cip30Wallet, Wallet, WalletHelper } from "@helios-lang/tx-utils";
-import type { SubmitterMultiClient } from "./SubmitterMultiClient.js";
+import type { BatchSubmitController } from "./BatchSubmitController.js";
 import {
     decodeTxWitnesses,
     makeSignature,
@@ -34,7 +34,7 @@ export abstract class WalletSigningStrategy {
      * in case that's helpful.
      */
     async signTxBatch(
-        batch: SubmitterMultiClient
+        batch: BatchSubmitController
     ): Promise<(undefined | Signature[])[]> {
         if (this.canBatch) {
             throw new Error(
@@ -86,7 +86,7 @@ export class GenericSigner extends WalletSigningStrategy {
 export class DraftEternlMultiSigner extends GenericSigner {
     canBatch = true;
 
-    async signTxBatch(batch: SubmitterMultiClient) {
+    async signTxBatch(batch: BatchSubmitController) {
         debugger;
         const w = (this.wallet as any).handle
         return (w.experimental as any)

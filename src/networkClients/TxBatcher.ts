@@ -1,14 +1,14 @@
 import { makeTxChainBuilder, type TxChainBuilder } from "@helios-lang/tx-utils";
 import type { SetupInfo } from "../StellarContract.js";
 import {
-    SubmitterMultiClient,
+    BatchSubmitController,
     type namedSubmitters,
-} from "./SubmitterMultiClient.js";
+} from "./BatchSubmitController.js";
 import { EventEmitter } from "eventemitter3";
 import type { WalletSigningStrategy } from "./WalletSigningStrategy.js";
 
 type TxBatcherChanges = {
-    rotated: [SubmitterMultiClient];
+    rotated: [BatchSubmitController];
 };
 
 export type TxBatcherOptions = {
@@ -21,8 +21,8 @@ export type TxBatcherOptions = {
  * @public
  */
 export class TxBatcher {
-    previous?: SubmitterMultiClient;
-    _current?: SubmitterMultiClient;
+    previous?: BatchSubmitController;
+    _current?: BatchSubmitController;
     signingStrategy?: WalletSigningStrategy;
     submitters: namedSubmitters;
     setup?: SetupInfo;
@@ -59,7 +59,7 @@ export class TxBatcher {
             }
             const chainBuilder = this.setup.isTest ? undefined : makeTxChainBuilder(this.setup.network);
             this.setup.chainBuilder = chainBuilder
-            this._current = new SubmitterMultiClient({
+            this._current = new BatchSubmitController({
                 submitters: this.submitters,
                 setup: this.setup,
                 signingStrategy: this.signingStrategy,
@@ -96,7 +96,7 @@ export class TxBatcher {
         this.previous?.destroy();
         this.previous = this.current;
 
-        this._current = new SubmitterMultiClient({
+        this._current = new BatchSubmitController({
             submitters: this.submitters,
             setup: {
                 ...this.setup,

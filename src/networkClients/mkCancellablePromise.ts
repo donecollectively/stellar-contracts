@@ -1,4 +1,4 @@
-import type { TimeoutId } from "./SubmitterMultiClient.js";
+import type { TimeoutId } from "./BatchSubmitController.js";
 
 if (typeof Promise.withResolvers !== 'function') {
     //@ts-expect-error

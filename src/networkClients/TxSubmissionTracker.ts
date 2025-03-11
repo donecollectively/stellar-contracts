@@ -2,7 +2,7 @@ import { bytesToHex } from "@helios-lang/codec-utils";
 import { StateMachine, type StateTransitionTable } from "../StateMachine.js";
 import type { SetupInfo } from "../StellarContract.js";
 import type { TxDescription } from "../StellarTxnContext.js";
-import type { namedSubmitters } from "./SubmitterMultiClient.js";
+import type { namedSubmitters } from "./BatchSubmitController.js";
 import { TxSubmitMgr, type SubmitManagerState } from "./TxSubmitMgr.js";
 
 type SubmissionsStates =
