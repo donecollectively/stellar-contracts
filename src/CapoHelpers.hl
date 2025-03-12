@@ -1134,8 +1134,9 @@ struct CapoCtx {
             },
             None => {                
                 error(
-                    "_❌ ➡️ 📀💁💣💥💣💥💣💥  missing expected '"+key+"' entry in the capo manifest ^^^ in "+
-                    which.switch{RefInput => "ref_inputs", Input => "inputs"}+
+                    "_❌ ➡️ 📀💁💣💥💣💥💣💥  missing required "+
+                    which.switch{RefInput => "ref_input", Input => "input"}+
+                    " for manifest's '"+key+"' data="+tnStr+
                     "\n   -- this really shouldn't happen unless the tx-builder is doing a very wrong thing"
                     // lifecycle management should always ensure a good linkage between
                     // the capo's manifest entry and the matching utxo having that uut.

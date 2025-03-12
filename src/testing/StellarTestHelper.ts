@@ -297,7 +297,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //@ts-expect-error on our synthetic property
         preProdParams.origMaxTxExMem = origMaxMem;
 
-        const maxMem = Math.floor(origMaxMem * 7);
+        const maxMem = Math.floor(origMaxMem * 8);
         console.log(
             "test env: 🔧🔧🔧 fixup max memory",
             origMaxMem,
@@ -310,7 +310,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //@ts-expect-error on our synthetic property
         preProdParams.origMaxTxExCpu = origMaxCpu;
 
-        const maxCpu = Math.floor(origMaxCpu * 3);
+        const maxCpu = Math.floor(origMaxCpu * 3.1);
         console.log(
             "test env: 🔧🔧🔧 fixup max cpu",
             origMaxCpu,
@@ -360,6 +360,14 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             console.log("not advancing network time for facade tx")
             return
         } else if (!tcx.isFacade) {
+            //XX@ts-expect-error on internal prop
+            // if (!tcx.txb.validTo) {
+            //     debugger
+            //     // just to verify what it looks like
+            //     tcx.txb.validFromSlot(targetSlot)
+            //     tcx.txb.validToTime(Date.now())
+            //     debugger
+            // }
 
             validFrom = ( () => {
                 //@ts-expect-error on internal prop

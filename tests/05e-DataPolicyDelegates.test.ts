@@ -85,7 +85,8 @@ describe("Capo", async () => {
             await h.snapToInstallingTestDataPolicy()
 
             const charterData = await capo.findCharterData();
-
+            vi.spyOn(capo, "findPendingChange").mockImplementation(() => undefined);
+            
             const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
                 idPrefix: "tData",
                 policyName: "testData",

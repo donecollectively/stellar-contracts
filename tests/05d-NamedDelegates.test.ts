@@ -101,7 +101,13 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
             // noDefault: defineRole("", CapoMinter, {}),
             mintDelegate,
             failsWhenBad,
-            myNamedDgt: defineRole("other", TestNamedDelegate, {})
+            myNamedDgt: defineRole("other", TestNamedDelegate, {
+                partialConfig: {
+                    rev: 1n,
+                    isMintDelegate: false,
+                    isSpendDelegate: false,
+                }
+            })
             
         })// as any; // TODO - update types so this structure fits the expected type
     }
@@ -111,7 +117,7 @@ export class TestNamedDelegate extends ContractBasedDelegate {
     get delegateName() { return "myNamedDgt" }
     dataBridgeClass = UnspecializedDelegateBridge
     scriptBundle() {
-        debugger
+        //todo: change this to use a different bundle class
         return UnspecializedDgtBundle.create()
     }
 }
@@ -135,8 +141,11 @@ describe("Capo", async () => {
         );
     });
 
-    describe("Named delegates", () => {
-        describe("the charter has a namedDelegates data structure for semantic delegate links", () => {
+    describe("Named delegates: not supported for now", () => {
+        describe("Named delegates was an earlier feature that may never be needed since DgDataContract became available", () =>{
+            it.skip("not supported for now", async (context: localTC) => {})
+        })
+        describe.skip("the charter has a namedDelegates data structure for semantic delegate links", () => {
             let capo : NamedDelegateTestCapo
             beforeEach<localTC>(async (context) => {
                 const {h, h:{network, actors, delay, state} } = context;

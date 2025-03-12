@@ -191,7 +191,7 @@ export abstract class HeliosScriptBundle {
     init(setupDetails: StellarBundleSetupDetails<any>) {
         if (this.debug) debugger;
 
-        const { deployedDetails, params: { variant = "singleton" } = {} } =
+        const { deployedDetails, params: { delegateName, variant = "singleton" } = {} } =
             setupDetails;
 
         if (deployedDetails) {

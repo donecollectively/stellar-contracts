@@ -409,7 +409,7 @@ describe("Capo", async () => {
                 strella.minter.compiledScript.toString()
             );
 
-            const tx = await tcx3.builtTx;
+            const {tx} = await tcx3.build()
             expect(tx.witnesses.v2RefScripts.length).toBe(2);
         });
     });

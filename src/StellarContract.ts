@@ -981,7 +981,9 @@ export class StellarContract<
                 if (bundle.setup && bundle.configuredParams) {
                     try {
                         // eager compile for early feedback on errors
-                        this._compiledScript = await bundle.compiledScript(true);
+                        this._compiledScript = await bundle.compiledScript(
+                            true
+                        );
                     } catch (e: any) {
                         console.warn(
                             "while setting compiledScript: ",
@@ -997,7 +999,9 @@ export class StellarContract<
         } else {
             const bundle = this.getBundle();
             if (bundle.isPrecompiled) {
-                console.log(`${bundle.displayName}: will use precompiled script on-demand`);
+                console.log(
+                    `${bundle.displayName}: will use precompiled script on-demand`
+                );
                 // this.compiledScript = await bundle.compiledScript();
             } else {
                 console.log(
@@ -1010,14 +1014,16 @@ export class StellarContract<
     }
 
     _compiledScript!: anyUplcProgram; // initialized in compileWithScriptParams()
-    get compiledScript() : anyUplcProgram {
+    get compiledScript(): anyUplcProgram {
         if (!this._compiledScript) {
-            throw new Error(`${this.constructor.name}: compiledScript not yet initialized; call asyncCompiledScript() first`);
+            throw new Error(
+                `${this.constructor.name}: compiledScript not yet initialized; call asyncCompiledScript() first`
+            );
         }
         return this._compiledScript;
     }
     async asyncCompiledScript() {
-        const s = await this.getBundle().compiledScript(true)
+        const s = await this.getBundle().compiledScript(true);
         this._compiledScript = s;
         return s;
     }

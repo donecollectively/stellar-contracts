@@ -201,14 +201,14 @@ describe("Capo", async () => {
             ).mkAuthorityTokenPredicate();
             newerPredicate.predicateValue
 
-            const txnDump = await tcx2.dump();
-            tcx2.log(`${tcx2.txnName}: `+ txnDump as string).flush();
-            tcx2.log("(NOT SUBMITTED)");
-            tcx2.log(
-                "  --- test ensures the second mint delegate was used in the replacement txn ----"
-            ).log(
-                dumpAny(newerPredicate.predicateValue) as string
-            ).finish()
+            // const txnDump = await tcx2.dump();
+            // tcx2.log(`${tcx2.txnName}: `+ txnDump as string).flush();
+            // tcx2.log("(NOT SUBMITTED)");
+            // tcx2.log(
+            //     "  --- test ensures the second mint delegate was used in the replacement txn ----"
+            // ).log(
+            //     dumpAny(newerPredicate.predicateValue) as string
+            // ).finish()
             expect(tcx2.outputs.find(oldPredicate)).toBeFalsy();
             expect(tcx2.inputs.find(newerPredicate)).toBeTruthy();
 

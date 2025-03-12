@@ -410,3 +410,5 @@ export type FindableViaCharterData = {
     optional?: true;
 };
 
+export type CapoFeatureFlags = Record<string, boolean>;
+

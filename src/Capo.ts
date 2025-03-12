@@ -212,9 +212,12 @@ import type { DeployedProgramBundle } from "./helios/CachedHeliosProgram.js";
  * @public
  */
 export abstract class Capo<
-    SELF extends Capo<any /*, roleMap */>
+    SELF extends Capo<any /*, roleMap */>,
+    featureFlags extends CapoFeatureFlags = {}
     // roleMap extends DelegateMap<any>
-> extends StellarContract<CapoConfig> {
+> extends StellarContract<
+    CapoConfig & { featureFlags?: Partial<featureFlags> }
+> {
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
     static async currentConfig() {}
@@ -323,7 +326,7 @@ export abstract class Capo<
         return params;
     }
 
-    async init(args: StellarSetupDetails<CapoConfig>) {
+    async init(args: StellarSetupDetails<CapoConfig & featureFlags>) {
         await super.init(args);
 
         const {
@@ -505,8 +508,10 @@ export abstract class Capo<
 
         return makeValue(0, makeAssets([[this.mintingPolicyHash!, vEntries]]));
     }
+
     /**
-     * mockable
+     * mockable method to make testing easier
+     * @internal
      */
     mkUutValuesEntries(uutNameOrMap: UutName[] | uutPurposeMap<any>) {
         return mkUutValuesEntries(uutNameOrMap);
@@ -1026,7 +1031,10 @@ export abstract class Capo<
         if (!capoUtxos) {
             debugger;
             capoUtxos = await this.findCapoUtxos();
-            charterData = await this.findCharterData(undefined, {optional: false, capoUtxos});
+            charterData = await this.findCharterData(undefined, {
+                optional: false,
+                capoUtxos,
+            });
             // throw new Error(
             //     `charterData must be provided or found in the transaction context`
             // );
@@ -2289,8 +2297,8 @@ export abstract class Capo<
 
             await this.prepareBundleWithScriptParams(params);
             // this.scriptProgram = this.loadProgramScript();
-            await this.asyncCompiledScript()
-            
+            await this.asyncCompiledScript();
+
             capoParams.rootCapoScriptHash = makeValidatorHash(
                 this.compiledScript.hash()
             );
@@ -2443,7 +2451,8 @@ export abstract class Capo<
         const tcx2 = await this.addTxnBootstrappingSettings(tcx, charterData);
         tcx2.includeAddlTxn("check for updates", {
             description: `capo-specific txns for deploying any missing or upgraded delegates`,
-            moreInfo: "if any delegates are missing or need to be upgraded, these txns will take care of it",
+            moreInfo:
+                "if any delegates are missing or need to be upgraded, these txns will take care of it",
             mkTcx: async () => {
                 const tcx3 = this.mkTcx("addl txns for capo").facade();
                 const capoUtxos = await this.findCapoUtxos();
@@ -2455,19 +2464,21 @@ export abstract class Capo<
                     charterData,
                     capoUtxos,
                 });
-                return tcx3                
-            }
-        })
+                return tcx3;
+            },
+        });
 
-        return tcx2        
+        return tcx2;
     }
 
-    async findCapoUtxos(option?: Required<Pick<UtxoSearchScope, "dumpDetail">>) {
+    async findCapoUtxos(
+        option?: Required<Pick<UtxoSearchScope, "dumpDetail">>
+    ) {
         const utxos = await this.network.getUtxos(this.address);
         if ("always" === option?.dumpDetail) {
-            console.log("Capo utxos:", dumpAny(utxos, this.networkParams))
+            console.log("Capo utxos:", dumpAny(utxos, this.networkParams));
         }
-        return utxos
+        return utxos;
     }
 
     async tcxWithCharterData<TCX extends StellarTxnContext>(
@@ -3879,14 +3890,18 @@ export abstract class Capo<
             pendingChange.delegateChange!
         );
 
-        const isAlreadyPresent = charterData.pendingChanges.find((pc) => {
+        const changingThisRole = (pc): boolean => {
             const dgc = pc.delegateChange;
             if (!dgc) return false;
             const existingRole = dgc.role.DgDataPolicy;
             if (policyName != existingRole) return false;
             const existingChangeAction = Object.keys(dgc.action)[0];
             return change == existingChangeAction;
-        });
+        };
+        const isAlreadyPresent = this.findPendingChange(
+            charterData,
+            changingThisRole
+        );
 
         if (isAlreadyPresent) {
             throw new AlreadyPendingError(
@@ -3918,6 +3933,17 @@ export abstract class Capo<
         );
         return tcx6 as typeof tcx6 & hasUutContext<"dgDataPolicy" | RoLabel>;
     }
+
+    /**
+     * mockable helper for finding a pending change in the charter, to make it easier to test
+     */
+    findPendingChange(
+        charterData: CapoDatum$Ergo$CharterData,
+        changingThisRole: (pc: any) => boolean
+    ) {
+        return charterData.pendingChanges.find(changingThisRole);
+    }
+
     async tempMkDelegateLinkForQueuingDgtChange(
         seedUtxo: TxInput,
         mintDgtActivity: SomeDgtActivityHelper,
