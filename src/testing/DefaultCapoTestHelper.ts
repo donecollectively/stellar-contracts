@@ -9,6 +9,7 @@ import type {
     DelegateSetup,
     UutName,
     SubmitOptions,
+    CapoConfig,
 } from "@donecollectively/stellar-contracts";
 import {
     Capo,
@@ -19,6 +20,7 @@ import {
 import { ADA } from "./types.js";
 import type {
     DefaultCapoTestHelperClass,
+    TestHelperState,
     canHaveRandomSeed,
     stellarTestHelperSubclass,
 } from "./types.js";
@@ -92,6 +94,26 @@ export class DefaultCapoTestHelper<
     get stellarClass(): stellarSubclass<CAPO> {
         //@ts-expect-error
         return CapoWithoutSettings;
+    }
+    _start: number;
+    constructor(
+        config?: CAPO extends Capo<any, infer FF>
+            ? ConfigFor<CAPO> & CapoConfig<FF>
+            : ConfigFor<CAPO>,
+        helperState?: TestHelperState<CAPO>
+    ) {
+        super(config, helperState);
+        this._start = new Date().getTime();
+    }
+
+    ts(...args: any[]) {
+        console.log(this.relativeTs, ...args);
+    }
+
+    get relativeTs() {
+        const ms = new Date().getTime() - this._start;
+        const s = ms / 1000;
+        return `@ ${s}s`;
     }
 
     //!!! todo: create type-safe ActorMap helper hasActors(), on same pattern as hasRequirements
