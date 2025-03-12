@@ -1,7 +1,4 @@
-import { 
-    Capo,
-    StellarTxnContext,
-} from "@donecollectively/stellar-contracts";
+import { Capo, StellarTxnContext } from "@donecollectively/stellar-contracts";
 import type {
     hasBootstrappedCapoConfig,
     hasUutContext,
@@ -9,9 +6,14 @@ import type {
     anyState,
     hasAddlTxns,
     SubmitOptions,
+    ConfigFor,
+    CapoConfig,
+    CapoFeatureFlags,
 } from "@donecollectively/stellar-contracts";
 
 import { StellarTestHelper } from "./StellarTestHelper.js";
+import { canHaveRandomSeed, canSkipSetup, TestHelperState } from "./types.js";
+import { MintingPolicyHash } from "@helios-lang/ledger";
 
 const ACTORS_ALREADY_MOVED =
     "NONE! all actors were moved from a different network via snapshot";
@@ -29,8 +31,32 @@ export const SNAP_BOOTSTRAP = "bootstrapped";
 export abstract class CapoTestHelper<
     SC extends Capo<any>
 > extends StellarTestHelper<SC> {
+    declare config?: canHaveRandomSeed & SC extends Capo<any, infer FF>
+        ? ConfigFor<SC> & CapoConfig<FF>
+        : never;
     get capo() {
         return this.strella;
+    }
+    featureFlags: CapoFeatureFlags | undefined = undefined;
+    constructor(
+        config?: SC extends Capo<any, infer FF>
+            ? ConfigFor<SC> & CapoConfig<FF>
+            : ConfigFor<SC>,
+        helperState?: TestHelperState<SC>
+    ) {
+        if (!config) {
+            super(config, helperState);
+        } else {
+            const { featureFlags, ...otherConfig } = config;
+            if (Object.keys(otherConfig).length) {
+                super(config as any, helperState);
+            } else {
+                super(undefined, helperState);
+            }
+            if (featureFlags) {
+                this.featureFlags = featureFlags;
+            }
+        }
     }
     async initialize(
         { randomSeed = 42 }: { randomSeed?: number } = {},
@@ -88,7 +114,14 @@ export abstract class CapoTestHelper<
         if (!this.config) {
             console.log("  -- Capo not yet bootstrapped");
             const ts1 = Date.now();
-            this.strella = await this.initStrella(this.stellarClass);
+            const {featureFlags} = this;
+            if (featureFlags) {
+                this.strella = await this.initStrella(this.stellarClass, {featureFlags} as any);
+                //@ts-ignore
+                this.strella.featureFlags = this.featureFlags
+            } else {
+                this.strella = await this.initStrella(this.stellarClass);
+            }
 
             const ts2 = Date.now();
             console.log(
@@ -102,7 +135,7 @@ export abstract class CapoTestHelper<
                 return this.strella;
             });
         }
-        throw new Error(`unreachable pre-bootstrapped capo?`);
+        // throw new Error(`unreachable pre-bootstrapped capo?`);
 
         console.log("  -- Capo already bootstrapped");
         const strella = await this.initStrella(this.stellarClass, this.config);
@@ -162,6 +195,7 @@ export abstract class CapoTestHelper<
         let capo;
         const helperState = this.helperState!;
         if (helperState.bootstrapped) {
+            // debugger
             console.log("  ---  ⚗️🐞🐞 already bootstrapped");
             if (!helperState.previousHelper) {
                 debugger;
@@ -313,14 +347,14 @@ export abstract class CapoTestHelper<
         }
         const { parsedConfig } = previousHelper.state;
 
-        const { 
-            networkCtx: oldNetworkEnvelope, 
+        const {
+            networkCtx: oldNetworkEnvelope,
             actorContext: oldActorContext,
-            setup:previousSetup 
+            setup: previousSetup,
         } = previousHelper;
         const { network: previousNetwork } = oldNetworkEnvelope;
         const { network: newNet } = this.networkCtx;
-        this.initSetup(previousSetup)
+        this.initSetup(previousSetup);
 
         // hacky load of the indicator of already having restored details from the prievous helper
         const otherNet: number = previousHelper.actors[
@@ -343,8 +377,9 @@ export abstract class CapoTestHelper<
 
                 // swaps out the previous helper's envelopes for network & actor
                 previousHelper.networkCtx = { network: previousNetwork };
-                //@ts-expect-error
-                previousHelper.actorContext = { address: "previous network retired" }
+                previousHelper.actorContext = {
+                    wallet: "previous network retired" as any,
+                };
 
                 // uses the old envelope (that the Capo/etc classes used on the old network)
                 this.networkCtx = oldNetworkEnvelope;
@@ -398,9 +433,9 @@ export abstract class CapoTestHelper<
         const options = {
             ...submitOptions,
             onSubmitted: () => {
-                this.network.tick(1)
-            }
-        }
+                this.network.tick(1);
+            },
+        };
         await this.mintCharterToken(args, options);
         console.log(
             "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter"
@@ -415,11 +450,20 @@ export abstract class CapoTestHelper<
         args?: Partial<MinimalCharterDataArgs>,
         submitOptions: SubmitOptions = {}
     ) {
-        const tcx = this.mkTcx("extra bootstrapping").facade()
+        const tcx = this.mkTcx("extra bootstrapping").facade();
         const capoUtxos = await this.capo.findCapoUtxos();
-        const charterData = await this.capo.findCharterData(undefined, {optional: false, capoUtxos});
-        const tcx2 = await this.capo.mkTxnUpgradeIfNeeded(charterData)
-        await this.submitTxnWithBlock(tcx2, submitOptions)
+        const charterData = await this.capo.findCharterData(undefined, {
+            optional: false,
+            capoUtxos,
+        });
+        const tcx2 = await this.capo.mkTxnUpgradeIfNeeded(charterData);
+        // const tcx2 = await this.capo.addTxnBootstrappingSettings(tcx, charterData);
+        // const tcx3 = await this.capo.mkAdditionalTxnsForCharter(tcx, {
+        //     charterData,
+        //     capoUtxos
+        // })
+
+        await this.submitTxnWithBlock(tcx2, submitOptions);
         return this.strella;
     }
 

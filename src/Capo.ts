@@ -122,6 +122,7 @@ import type { isActivity } from "./ActivityTypes.js";
 import type { DelegateDatum$capoStoredDataLike } from "./delegation/UnspecializedDelegate.typeInfo.js";
 import type {
     CapoConfig,
+    CapoFeatureFlags,
     CharterData,
     CharterDataLike,
     DelegateSetupWithoutMintDelegate,
@@ -245,6 +246,34 @@ export abstract class Capo<
         return this.onchain.datum;
     }
 
+    // /**
+    //  * @internal
+    //  */
+    // api-extractor doesn't like this : (
+    // private featureFlags: Record<string, boolean> = {};
+    /**
+     * @internal
+     */
+    get defaultFeatureFlags(): featureFlags {
+        return {} as any;
+    }
+    
+    /**
+     * @internal
+     */
+    featureEnabled(f: keyof featureFlags): boolean {
+        //@ts-ignore
+        return this.featureFlags[f] ?? false;
+        // return (
+        //     (
+        //         {
+        //             ...this.defaultFeatureFlags,
+        //             ...(this.featureFlags ?? {}),
+        //         } as featureFlags
+        //     )[f] ?? false
+        // );
+    }
+
     get canPartialConfig() {
         return true;
     }
@@ -326,8 +355,22 @@ export abstract class Capo<
         return params;
     }
 
-    async init(args: StellarSetupDetails<CapoConfig & featureFlags>) {
-        await super.init(args);
+    async init(
+        args: StellarSetupDetails<
+            CapoConfig & { featureFlags?: Partial<featureFlags> }
+        >
+    ) {
+        const {config, config: {featureFlags={}, ...otherConfig} = {}, ...otherArgs} = args
+        //@ts-ignore because api-extractor can't handle it
+        this.featureFlags = {
+            ... this.defaultFeatureFlags,
+            ... featureFlags as any
+        }
+        
+        await super.init({
+            ...otherArgs,
+            ...(Object.keys(otherConfig).length === 0 ? {} : {config: otherConfig} as any),
+        });
 
         const {
             scriptDatumName: onChainDatumName,
@@ -519,6 +562,7 @@ export abstract class Capo<
 
     @Activity.redeemer
     activityUsingAuthority(): isActivity {
+        // throw new Error("deprecated manual activity; use bridge activity instead")
         return {
             redeemer: this.activityVariantToUplc("usingAuthority", {}),
         };
@@ -1745,6 +1789,7 @@ export abstract class Capo<
 
     @Activity.redeemer
     activityUpdatingCharter(): isActivity {
+        // throw new Error(`use bridge activity instead`)
         return {
             redeemer: this.activityVariantToUplc("updatingCharter", {}),
         };
@@ -1752,6 +1797,7 @@ export abstract class Capo<
 
     @Activity.redeemer
     activitySpendingDelegatedDatum() {
+        // throw new Error(`use bridge activity instead`)
         return {
             redeemer: this.activityVariantToUplc("spendingDelegatedDatum", {}),
         };
@@ -2099,6 +2145,7 @@ export abstract class Capo<
         const chD = charterData || (await this.findCharterData());
         const foundME = chD.manifest.get(roleName);
         if (!foundME) {
+            // debugger;
             if (optional) return undefined as any;
             await this.findCharterData();
             throw new Error(
@@ -2361,6 +2408,7 @@ export abstract class Capo<
             "mintDelegate",
             charterDataArgs.mintDelegateLink
         );
+        // debugger
 
         const spendDelegate = await this.txnCreateOffchainDelegateLink(
             tcx2,
@@ -2575,8 +2623,7 @@ export abstract class Capo<
 
                         const ma =
                             settingsController.activity.MintingActivities;
-                        
-                        
+
                         //@ts-expect-error because we don't yet have a sufficiently-specific
                         // generic type for delegated data controllers that require the basic
                         // seeded-creating-record activity
@@ -2965,6 +3012,8 @@ export abstract class Capo<
             throw new Error("Cannot provide both id and predicate");
         }
         if (!capoUtxos) {
+            // check to see if this can be more efficient
+            // debugger;
             capoUtxos = await this.findCapoUtxos();
         }
 

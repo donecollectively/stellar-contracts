@@ -280,13 +280,15 @@ export type rootCapoConfig = {
  * Configuration details for a Capo
  * @public
  */
-export type CapoConfig = configBaseWithRev &
+export type CapoConfig<FF extends CapoFeatureFlags={}> = 
+    configBaseWithRev &
     rootCapoConfig &
     SeedTxnScriptParams & {
         mph: MintingPolicyHash;
         rev: bigint;
         bootstrapping?: true;
-    };
+    } &
+    {featureFlags? : Partial<FF>}
 
 type bootstrappedCapoConfig = {
     bsc: CapoConfig;

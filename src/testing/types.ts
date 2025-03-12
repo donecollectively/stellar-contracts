@@ -4,12 +4,16 @@ import type {
     StellarContract,
     ConfigFor,
     configBase,
+    SeedTxnScriptParams,
+    CapoFeatureFlags,
+    rootCapoConfig,
+    CapoConfig,
 } from "@donecollectively/stellar-contracts";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
-import { 
+import {
     SimpleWallet_stellar as emulatedWallet,
-    type NetworkSnapshot 
+    type NetworkSnapshot,
 } from "./StellarNetworkEmulator.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
 // import type {
@@ -31,15 +35,25 @@ export type enhancedNetworkParams = NetworkParams & {
  */
 export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
     stConfig: ConfigFor<SC> & canHaveRandomSeed,
-    helperState: any
+    helperState?: TestHelperState<SC>
 ) => StellarTestHelper<SC>;
+
+// export type allCapoConfigDetails<SC extends Capo<any>> =
+// ConfigFor<SC> & rootCapoConfig & CapoFeatureFlags &
+//         SeedTxnScriptParams & {
+//             mph: MintingPolicyHash;
+//         };
 
 /**
  * @public
  */
 export type DefaultCapoTestHelperClass<SC extends Capo<any>> = new (
-    config: ConfigFor<SC> & canHaveRandomSeed
-) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC>;
+    config?: canHaveRandomSeed & SC extends Capo<any, infer FF>
+        ? ConfigFor<SC> & CapoConfig<FF>
+        : ConfigFor<SC>,
+    helperState?: TestHelperState<SC>
+) => // StellarTestHelper<SC> &
+DefaultCapoTestHelper<SC>;
 
 /**
  * @public
@@ -78,8 +92,12 @@ export async function addTestContext<
     ST_CONFIG extends configBase & ConfigFor<SC> = ConfigFor<SC>
 >(
     context: StellarTestContext<any, SC>,
-    TestHelperClass: stellarTestHelperSubclass<SC>,
-    stConfig?: ST_CONFIG,
+    TestHelperClass: SC extends Capo<any>
+        ? DefaultCapoTestHelperClass<SC>
+        : stellarTestHelperSubclass<SC>,
+    stConfig?: Partial<
+        SC extends Capo<any, infer FF> ? FF & ST_CONFIG : ST_CONFIG
+    >,
     helperState?: TestHelperState<SC>
 ) {
     console.log(" ======== ======== ======== +test context");
@@ -89,8 +107,9 @@ export async function addTestContext<
         },
     });
 
+    //@ts-expect-error on matchiness of the SC type
     context.initHelper = async (stConfig, helperState) => {
-        //@ts-expect-error
+        //@ts-expect-error on matchiness of helperState
         const helper = new TestHelperClass(stConfig, helperState);
         // await helper.setupPending;
         if (context.h) {
