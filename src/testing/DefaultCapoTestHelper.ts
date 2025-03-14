@@ -110,6 +110,14 @@ export class DefaultCapoTestHelper<
         console.log(this.relativeTs, ...args);
     }
 
+    requiresActorRole(roleName: string, firstLetter: string) {
+        if (this.actorName[0] != firstLetter) {
+            throw new Error(
+                `expected current actor name (${this.actorName}) to be one of the ${roleName} profiles starting with '${firstLetter}' in the test helper`
+            );
+        }
+    }
+    
     get relativeTs() {
         const ms = new Date().getTime() - this._start;
         const s = ms / 1000;

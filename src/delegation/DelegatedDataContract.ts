@@ -1,7 +1,13 @@
-import { makeTxOutput, makeValue, type Value } from "@helios-lang/ledger";
+import {
+    makeTxOutput,
+    makeValue,
+    type TxInput,
+    type Value,
+} from "@helios-lang/ledger";
 import { makeIntData } from "@helios-lang/uplc";
 
 import type {
+    CharterData,
     FoundDatumUtxo,
     hasCharterRef,
     hasUutContext,
@@ -88,7 +94,7 @@ export abstract class DelegatedDataContract<
 > extends ContractBasedDelegate {
     static isDgDataPolicy = true;
     static isMintDelegate = false;
-    
+
     usesWrappedData?: boolean;
     dgDatumHelper = this.dataBridgeClass?.prototype.DelegateDatum;
 
@@ -153,16 +159,16 @@ export abstract class DelegatedDataContract<
 
         throw new Error(
             `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
-            `\nThat method should \`return YourScriptBundle.create()\`\n` +
-            `\n  ... where YourScriptBundle is a subclass of CapoDelegateBundle that you've created.\n` +
-            `\nDefined in a \`*.hlb.ts\` file, it should have at minimum:\n` +
+                `\nThat method should \`return YourScriptBundle.create()\`\n` +
+                `\n  ... where YourScriptBundle is a subclass of CapoDelegateBundle that you've created.\n` +
+                `\nDefined in a \`*.hlb.ts\` file, it should have at minimum:\n` +
                 `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
                 `    import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";\n\n` +
                 `    export default class SomeDelegateBundle extends CapoHeliosBundle {\n` +
                 `        get specializedDelegateModule() { return SomeSpecializedDelegate; }\n` +
                 `    }\n\n` +
                 `We'll generate types in a .typeInfo.ts file, based on the types in your Helios sources,\n` +
-                `  ... and a .bridge.ts file having data-conversion classes for your on-chain types.`+
+                `  ... and a .bridge.ts file having data-conversion classes for your on-chain types.` +
                 `\nWhen your delegated-data controller is used within your Capo, your bundle will\n` +
                 `have access via import {...} to any helios modules provided by that Capo's .hlb.ts. `
         );
@@ -275,10 +281,10 @@ export abstract class DelegatedDataContract<
         const activity: isActivity =
             //@ts-expect-error hitting up the SeedActivity object with a conditional func call
             // ... that might be just an activity object
-            options.activity.mkRedeemer?.(tcx2)
+            options.activity.mkRedeemer?.(tcx2) ??
             // ^ this probes for SeedActivity, producing an activity with redeemer.
             // vv this expects there to be a 'redeemer' attribute on the activity object.
-             ?? options.activity
+            options.activity;
 
         // ... now the transaction has what it needs to trigger the creation policy
         // ... and be approved by it creation policy.
@@ -334,9 +340,8 @@ export abstract class DelegatedDataContract<
             otherDetails: makeIntData(0),
         });
         console.log(
-            `🏒 creating ${newType} -> `+
-            uplcDataSerializer(newType, fullRecord, 1)
-
+            `🏒 creating ${newType} -> ` +
+                uplcDataSerializer(newType, fullRecord, 1)
         );
         let tcx3 = tcx2;
         if (this.needsGovAuthority) {
@@ -445,7 +450,6 @@ export abstract class DelegatedDataContract<
 
         // const patchedRecord = beforeSave(recordWithUpdates);
 
-
         let tcx2c = tcx2b;
         if (this.needsGovAuthority) {
             tcx2c = await this.capo.txnAddGovAuthority(tcx2b);
@@ -482,12 +486,15 @@ export abstract class DelegatedDataContract<
         const fullUpdatedRecord: TLike = {
             ...(item.data as TLike),
             ...updatedRecord,
-        }
+        };
 
         console.log(
             `🏒 updating ${recType} ->`,
-            uplcDataSerializer(recType,
-                JSON.parse(JSON.stringify(updatedRecord, betterJsonSerializer, 2)),
+            uplcDataSerializer(
+                recType,
+                JSON.parse(
+                    JSON.stringify(updatedRecord, betterJsonSerializer, 2)
+                ),
                 1
             )
         );
@@ -502,7 +509,7 @@ export abstract class DelegatedDataContract<
             dumpAny(addedUtxoValue)
         );
         return this.returnUpdatedRecord(
-            tcx, 
+            tcx,
             item.utxo.value.add(addedUtxoValue), // .add(this.mkMinTv(this.capo.mph, id))
             fullUpdatedRecord
         );
@@ -510,9 +517,11 @@ export abstract class DelegatedDataContract<
     getReturnAddress() {
         return this.capo.address;
     }
-    returnUpdatedRecord<
-        TCX extends StellarTxnContext & hasCharterRef
-    >(tcx: TCX, returnedValue: Value, updatedRecord: TLike): TCX {
+    returnUpdatedRecord<TCX extends StellarTxnContext & hasCharterRef>(
+        tcx: TCX,
+        returnedValue: Value,
+        updatedRecord: TLike
+    ): TCX {
         return tcx.addOutput(
             makeTxOutput(
                 this.getReturnAddress(),
@@ -525,7 +534,69 @@ export abstract class DelegatedDataContract<
 
                 // this.mkDatumDelegatedDataRecord(beforeSave(record))
             )
-        )
+        );
+    }
+
+    moreInfo(): string {
+        return `This delegate helps manage the on-chain delegated data store for ${this.idPrefix}-* records with type=${this.recordTypeName}`;
+    }
+
+    /**
+     * Generates any needed transactions for updating the Capo manifest
+     * to install or (todo: support for update) the policy for this delegate.
+     * @remarks
+     * The default implementation checks for the presence of the delegate policy
+     * in the Capo's manifest, and if not found, creates a transaction to install it.
+     *
+     * The data-controller class's recordTypeName and idPrefix are used to
+     * initialize the Capo's registry of data-controllers.  You may also implement
+     * a moreInfo() method to provide more on-screen context about the
+     * data-controller's role for administrators and/or end-users; the moreInfo
+     * will be displayed in the Capo's on-screen policy-management (administrative)
+     * interface, and you may also display it elsewhere in your application.
+     *
+     * To add any other transactions that may be needed for the delegate to operate
+     * effectively, override this method, call `super(...args)`, and then add your
+     * additional transactions using tcx.includeAddlTxn(...).  In that case, be sure to
+     * perform any needed queries for ***fresh state of the on-chain data***, such as
+     * for settings or the Capo's fresh charter data, INSIDE your mkTcx() function.
+     */
+    async setupCapoPolicy(
+        tcx: StellarTxnContext,
+        policyName: string,
+        options: {
+            charterData: CharterData;
+            capoUtxos: TxInput[];
+        }
+    ) {
+        const { charterData, capoUtxos } = options;
+        const { recordTypeName, idPrefix } = this;
+
+        if (this.capo.featureEnabled(policyName)) {
+            const existing = await this.capo.getDgDataController(
+                recordTypeName,
+                {
+                    charterData,
+                    optional: true,
+                }
+            );
+            if (!existing) {
+                tcx.includeAddlTxn(`create ${recordTypeName} delegate`, {
+                    description: `create on-chain policy for ${idPrefix}-* records`,
+                    moreInfo: this.moreInfo(),
+                    mkTcx: async () => {
+                        const charterData = await this.capo.findCharterData();
+                        const tcx2 =
+                            await this.capo.mkTxnInstallingPolicyDelegate({
+                                policyName,
+                                idPrefix,
+                                charterData,
+                            });
+                        return tcx2;
+                    },
+                });
+            }
+        }
     }
 }
 

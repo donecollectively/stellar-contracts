@@ -327,26 +327,27 @@ export type PreconfiguredDelegate<T extends StellarDelegate> = Omit<
     "delegate" | "delegateValidatorHash"
 >;
 
+export type basicDelegateRoles = {
+    govAuthority: DelegateSetup<"authority", StellarDelegate, any>;
+    mintDelegate: DelegateSetup<"mintDgt", BasicMintDelegate, any>;
+    spendDelegate: DelegateSetup<"spendDgt", ContractBasedDelegate, any>;
+}
+
 /**
  * @public
  */
 export type basicDelegateMap<
     anyOtherRoles extends {
         [k: string]: DelegateSetup<any, StellarDelegate, any>;
-    } = {},
-    defaultRoles = {
-        govAuthority: DelegateSetup<"authority", StellarDelegate, any>;
-        mintDelegate: DelegateSetup<"mintDgt", BasicMintDelegate, any>;
-        spendDelegate: DelegateSetup<"spendDgt", ContractBasedDelegate, any>;
-    }
+    } = {}
 > = {
     [k in
         | keyof anyOtherRoles
-        | keyof defaultRoles]: k extends keyof anyOtherRoles
-        ? anyOtherRoles[k]
-        : k extends keyof defaultRoles
-        ? defaultRoles[k]
-        : never;
+        | keyof basicDelegateRoles]: (k extends keyof anyOtherRoles
+        ? anyOtherRoles[k] //& DelegateSetup<any,any,any> 
+        : k extends keyof basicDelegateRoles
+        ? basicDelegateRoles[k] // & DelegateSetup<any,any,any> 
+        : never)
 };
 
 /**

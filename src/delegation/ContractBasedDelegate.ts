@@ -118,8 +118,8 @@ export class ContractBasedDelegate extends StellarDelegate {
         return readDatum as any;
     }
 
-    get capo(): Capo<any> {
-        return this.configIn?.capo as unknown as Capo<any>;
+    get capo(): Capo<any, any> {
+        return this.configIn?.capo as unknown as Capo<any, any>;
     }
 
     // mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {

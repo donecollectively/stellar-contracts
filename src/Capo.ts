@@ -114,7 +114,7 @@ import type {
     PendingDelegateAction$AddLike,
     PendingCharterChangeLike,
 } from "./helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
-import type { IntersectedEnum } from "./helios/typeUtils.js";
+import type { IF_ISANY, IntersectedEnum } from "./helios/typeUtils.js";
 import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.js";
 import type { DelegatedDataContract } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
@@ -138,6 +138,7 @@ import type {
     PreconfiguredDelegate,
     UutCreationAttrsWithSeed,
     basicDelegateMap,
+    basicDelegateRoles,
     charterDataState,
     hasBootstrappedCapoConfig,
     hasCharterRef,
@@ -360,16 +361,22 @@ export abstract class Capo<
             CapoConfig & { featureFlags?: Partial<featureFlags> }
         >
     ) {
-        const {config, config: {featureFlags={}, ...otherConfig} = {}, ...otherArgs} = args
+        const {
+            config,
+            config: { featureFlags = {}, ...otherConfig } = {},
+            ...otherArgs
+        } = args;
         //@ts-ignore because api-extractor can't handle it
         this.featureFlags = {
-            ... this.defaultFeatureFlags,
-            ... featureFlags as any
-        }
-        
+            ...this.defaultFeatureFlags,
+            ...(featureFlags as any),
+        };
+
         await super.init({
             ...otherArgs,
-            ...(Object.keys(otherConfig).length === 0 ? {} : {config: otherConfig} as any),
+            ...(Object.keys(otherConfig).length === 0
+                ? {}
+                : ({ config: otherConfig } as any)),
         });
 
         const {
@@ -1825,12 +1832,12 @@ export abstract class Capo<
         throw new Error(`use the delegateRoles getter instead`); // for javascript devs
     }
 
-    get delegateRoles() {
+    get delegateRoles(): basicDelegateMap<any> {
         return this._delegateRoles;
     }
 
     _delegateRoles!: basicDelegateMap<any> &
-        ReturnType<SELF["initDelegateRoles"]>;
+        IF_ISANY<ReturnType<SELF["initDelegateRoles"]>, basicDelegateRoles>;
     abstract initDelegateRoles(): // THISTYPE extends Capo<any>, //<
     // myDelegateRoles extends basicRoleMap
     //        >(

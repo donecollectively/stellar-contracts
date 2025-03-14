@@ -18,7 +18,6 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
 ) {
     _start: number;
     constructor(config, helperState) {
-        //@ts-expect-error - typescript, why are you wrong about the constructor-arg count?
         super(config, helperState);
         // debugger
         // generateContractTypes()
@@ -36,7 +35,6 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return `@ ${s}s`;
     }
 
-    //@ts-expect-error - why does it expect this is a property, when it's defined as a getter everywhere?
     get stellarClass() {
         return CapoCanMintGenericUuts;
     }
@@ -67,15 +65,6 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         ...args: Parameters<DefaultCapoTestHelper["bootstrap"]>
     ) {
         return super.bootstrap(...args);
-    }
-
-    //!! todo move to library
-    requiresActorRole(roleName: string, firstLetter: string) {
-        if (this.actorName[0] != firstLetter) {
-            throw new Error(
-                `expected current actor name (${this.actorName}) to be one of the ${roleName} profiles starting with '${firstLetter}' in the test helper`
-            );
-        }
     }
 
     async extraBootstrapping(args?: Partial<MinimalCharterDataArgs>) {
