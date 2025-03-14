@@ -1,0 +1,367 @@
+module ReqtsPolicy
+
+import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash,
+    get_cont_outputs
+} from ScriptContext
+
+// this module provides the basic interface needed for a Capo delegate.
+//  ... see ./ReqtsDelegate.hl to see how the delegate interface is provided 
+//  ... for that usage case (with a generic module name).
+
+// it is also packaged (with a unique module name above) to enable access 
+// ...from other helios scopes.
+
+// THIS MODULE has been specialized to ...
+//  - do requirements-management kinds of things
+// ... more details here
+
+// original notes about (un)specialization follow:
+//  //! provides a basic version, ~~not yet specialized,~~
+//  // of the "specializedDelegate" interface, which simply
+//  // exports a DelegateDatum enum and DelegateActivities (redeemer enum).  
+
+//  //! Your specialization MUST include the enum variants found in this
+//  //  ... unspecialized version.  It MAY include additional Datum variants.
+//  // Any additional Redeemer/Activity variants should be added underneath 
+//  // the SpendingActivity / MintingActivity top-level enum variants, instead 
+//  // of adding new top-level enum variants to DelegateActivity.
+
+//  // The DelegateActivity (redeemer) enum conforms to the 
+//  // Delegate Redeemer protocol, in which enum 0 is reserved for
+//  // lifecycle activities, enum 1 is used for spend-related activities 
+//  // (if the delegate is used as a spend delegate), and enum 2 is called
+//  // for authorizing minting.  Enum 3 and beyond are reserved for
+//  // extensions to the Delegate Redeemer protocol.
+
+//  // Within the minting and spending activities, the specialization can 
+//  // indicate a nested activity enum to support various dApp-specific
+//  // activities.  
+
+//  // Activities that validate minting of UUTs should contain enum fields 
+//  // to identify the seed-transaction details needed for properly validating 
+//  // UUT mints fitting the use-case.
+
+//  //! Your specialization MAY include any additional functions, imports or 
+//  //  methods defined on any of the types in this file.
+
+
+import {
+    DelegationDetail,
+    mustReturnValueToScript,
+    DelegateLifecycleActivity,
+    CapoLifecycleActivity,
+    unmodifiedDelegation
+} from CapoDelegateHelpers
+
+import {
+    validateUutMinting,
+    tnCip68ref100,
+    tnCip68nft222,
+    mkUutTnFactory
+} from CapoMintHelpers
+
+// import {
+//     ProtocolSettings
+// } from ProtocolSettings
+
+import {
+    CapoCtx,
+    mkCapoCtx,
+    mkTv,
+    AnyData 
+} from CapoHelpers
+
+// import {
+//     TierLookupResult
+// } from TieredScale
+
+import {
+    TODO,
+    REQT
+} from StellarHeliosHelpers
+
+import { 
+    ReqtData, 
+    DelegateDatum, 
+    MintingActivity, 
+    SpendingActivity, 
+    BurningActivity 
+} from ReqtsData
+
+
+func ensureConstrainedTxValidity() -> () {
+    assert(
+        tx.time_range.end - tx.time_range.start 
+            <= Duration::HOUR,
+        "txn duration err"
+    )
+}
+
+func daysInFuture(nowPlusDays: Int) -> TimeRange {
+    ensureConstrainedTxValidity();
+    expiryDuration : Duration = Duration::DAY * nowPlusDays;
+    leeway : Duration = 1 * Duration::HOUR;
+    latestAcceptable : Time = tx.time_range.end + expiryDuration + leeway;
+    
+    TimeRange::new(
+        tx.time_range.start + expiryDuration,
+        latestAcceptable
+    )
+}
+
+enum DelegateActivity {
+    // must ALWAYS be at Enum position 0
+    CapoLifecycleActivities {
+        activity: CapoLifecycleActivity
+    }
+
+    // must ALWAYS be at Enum position 1
+    DelegateLifecycleActivities {
+        // administrative activities for the delegate lifecycle, enforced
+        //  by the basic mint delegate code.  Specializations can add more 
+        //  restrictions, but in many/most cases they will not need to.
+        activity: DelegateLifecycleActivity
+    }
+
+    // application-specific spending activities, ALWAYS at Enum position 2
+    SpendingActivities {
+        activity: SpendingActivity
+    }
+
+    // application-specific minting activities, ALWAYS at Enum position 3
+    // remember:M and 3 have a similar shape.
+    MintingActivities {
+        activity: MintingActivity
+    }
+
+    BurningActivities {
+        // application-specific burning activities, ALWAYS at Enum position 4
+        activity: BurningActivity
+    }
+
+    CreatingDelegatedData {
+        seed: TxOutputId
+        dataType: String
+        // id from seed
+    }
+
+    UpdatingDelegatedData {
+        // seed not used
+        dataType: String
+        recId: ByteArray
+    }
+
+    DeletingDelegatedData {
+        // seed not used
+        dataType: String
+        recId: ByteArray
+    }
+
+    MultipleDelegateActivities {
+        activities: []Data // actually a []DelegateActivity
+        // todo: change this back when the recursive enum's `__is_valid_data not found` error is resolved
+    }
+
+    // this function gives a general-purpose implementation of checking for 
+    // valid uut minting. 
+    //
+    // A specialization might modify it to use different policies
+    // or enforce additional requirements
+    // 
+    // func genericUutMinting(self, 
+    //     mdd: DelegateDatum,
+    // ) -> Bool {
+    //     //!!! replace with an activity using the same seed-txn pattern:
+    //     // MintingActivities::SomethingMintingUuts{sTxId, sIdx, purposes} = self;
+    //     DelegateDatum::IsDelegation{dd} = mdd;
+    //     returnsAuthzToken : Bool = mustReturnValueToScript(dd.tvAuthorityToken());
+
+    //     o : []TxOutput = get_cont_outputs();
+    //     if (o.length != 1) { error("single utxo only") };
+
+    //     print ("in unsp_MD");
+    //     isOk : Bool = returnsAuthzToken && 
+
+    //     unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize()) &&
+
+    //     // This call can serve as a template for enforcing expected mints 
+    //     // of uuts (and additional token values) in validation of application-
+    //     // specific activities, given (mph, sTxId, sIdx, purposes)
+    //     validateUutMinting(
+    //         mph: dd.mph,
+    //         seed: seed,
+    //         purposes: purposes,
+    //         //otherMintedValue: ()
+    //         mkTokenName: mkUutTnFactory(seed)
+    //     );
+
+    //     isOk
+    // }
+
+    //! used only for validating IsDelegation datum, that is,
+    //   ... to approve minting requests or any customize spending modes 
+    //   ... of that datum.  
+    
+    //  Note that the basic delegate already enforces some basic
+    //    administrative expectations for DelegateLifecycleActivities and CapoLifecycleActivities
+    //    so a specialization doesn't need to re-implement those checks.
+    func additionalDelegateValidation( self,
+        priorMddd: DelegateDatum::IsDelegation,
+        cctx: CapoCtx
+    ) -> Bool {
+        print("  -- addl dgt validity check");
+        self.switch {
+            // generic DelegateLifecycleActivities is already validated, but 
+            //  ... you can add more constraints here if needed
+            DelegateLifecycleActivities => true,
+            // non-mintDelegate can't trigger these activities
+            CapoLifecycleActivities => error("unreachable"),
+            MintingActivities{VMA} => VMA.switch {
+                CreatingRecord{seed} => {
+                    print("creating reqt record...\n");
+
+                    mkTn : (String) -> String = mkUutTnFactory(seed);
+                    assert(cctx.withCharterRef().orFail(), "can't");
+
+                    // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
+
+                    tokenName = mkTn("reqt");
+                    depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
+
+                    newReqt : TxOutput = cctx.delegatedTxOutput(tokenName.encode_utf8());
+
+                    // print("required listing fee: " + fee.show());
+                    assert(
+                        newReqt.value.contains(depositedValue),
+                        "missing reqt token"
+                    );
+
+                    reqtData: ReqtData = ReqtData::from_data(
+                        newReqt.datum.inline
+                    );
+
+                    assert(
+                        tx.time_range.end - tx.time_range.start 
+                            <= Duration::HOUR,
+                        "txn duration err"
+                    );
+                    // has the right expiration date from settings
+                    // !!! todo get from settings                    
+                    acceptableExpiry : TimeRange = daysInFuture(73);
+
+                    discountEnds : Time = reqtData.mustFreshenBy;
+
+                    assert(
+                        acceptableExpiry.contains(discountEnds),
+                        "wrong discount expiry date too late seconds: " + (( discountEnds - acceptableExpiry.end) / Duration::SECOND).show() 
+                    );
+
+                    // has the member-token reference
+                    // memberToken : String = reqtData.memberToken;
+                    // if (!reqtData.memberToken.starts_with("member-")) { 
+                    //     error("invalid member token name"
+                    // ) };
+                    // expectedMemberToken : Value = mkTv(
+                    //     priorMddd.dd.mph, reqtData.memberToken
+                    // );
+
+                    // has the member-token in the txn
+                    // tx.inputs.find_safe((i: TxInput) -> Bool {
+                    //     i.value.contains(expectedMemberToken)
+                    // }).switch {
+                    //     None => error("missing member token"),
+                    //     Some => true
+                    // } &&
+                    reqtData.validate() &&
+                    // mints a reqt UUT
+                    validateUutMinting(
+                        mph: priorMddd.dd.mph,
+                        seed: seed,
+                        purposes: []String{"reqt"},
+                        // otherMintedValue: ... ,
+                        mkTokenName: mkTn,
+                        // WE ARE the mint delegate.
+                        needsMintDelegateApproval: false 
+                    )
+                }
+            },
+            SpendingActivities{VSA} => {
+                print("capo mph: " + priorMddd.dd.mph.show());
+                // cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
+                assert(cctx.withCharterRef().orFail(), "can't");
+                print( "\ncapo addr" + cctx.resolveCharterUtxo().address.show());
+                print("\n");
+
+                VSA.switch {                    
+                    UpdatingRecord{recId} => {
+                        hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("reqt", recId);
+                        // settings: ProtocolSettings = ccts.getManifestDatum[ProtocolSettings]("settings");
+                        hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("reqt", recId);
+    
+                        tx.inputs.filter(hasDD).for_each( (utxo : TxInput) -> () {
+                            // they're all reqts, because of the above filter
+                            reqtData : ReqtData = ReqtData::from_data(utxo.datum.inline);
+                            updatedUtxo : TxOutput = tx.outputs.find(hasDDOutput);
+                            updatedReqt : ReqtData = ReqtData::from_data(updatedUtxo.datum.inline);
+
+                            _previousDeposit : Int = utxo.value.get_lovelace(); 
+                            _newDepositTotal : Int = updatedUtxo.value.get_lovelace();  
+
+                                                        
+                            freshExpiry : TimeRange = daysInFuture(73); // todo get from settings
+                            
+                            REQT("changes the expiration date on each update");
+                            REQT("uses the expiration-date policy from settings");
+                            if (tx.time_range.end > reqtData.mustFreshenBy) {
+                                print("  -- reqt expired.  freshening.\n");
+                                REQT("updates the expiration date if it's expired");
+                                assert( 
+                                    freshExpiry.contains(updatedReqt.mustFreshenBy), 
+                                    "wrong expiry date @expired"
+                                )
+                            }
+                        });
+                        true
+                    }
+                }
+            },        
+            _ => false
+        } || tx.serialize() == priorMddd.serialize()        
+    }
+
+    func supportedCapoDelegatePurposes(self) -> []String {
+        assert(true || /* prevent unused variable */ self == self, "no way t" );
+        []String{ 
+            // "nothingHereYet",
+        }
+    }
+
+    //! Used only for validating non-IsDelegation datum types and activities.
+    // if you have any special admininstrative data structures that inform 
+    // ...  your minting policy, this might be useful.  Otherwise, and typically,
+    // ... you should look to Activity validations above in additionalDelegateValidation,
+    // ...  in which the isDelegation token is being spent with an application-specific
+    // ...  activity/redeemer
+    func otherDatumValidation( self,
+        _priorMdd: DelegateDatum
+    ) -> Bool {
+        neverTriggered = () -> {  error("never called") };
+        self.switch{
+            // Note: this set of DelegateActivities is reserved for the IsDelegation datum.
+            //  Using it on any other Datum type will always fail and execution will never arrive here.
+            DelegateLifecycleActivities => neverTriggered(),
+            CapoLifecycleActivities => neverTriggered(),
+
+            // -- Application-specific activities can be added here 
+            // -- for special & app-specific types of datum in a delegate,
+            // -- for EXCEPTIONAL cases, if you really know what you're doing.  
+            //  -- see above for normal cases
+
+            _ => false  // prevents non-exhaustive match errors, even if you remove the above neverTriggered() calls
+        }
+    }
+}
+

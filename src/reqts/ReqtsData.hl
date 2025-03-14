@@ -1,0 +1,104 @@
+module ReqtsData
+
+import {
+    AnyData
+} from StellarHeliosHelpers
+import {
+    DelegationDetail
+} from CapoDelegateHelpers
+
+// !!! reqts data is stored in the Capo, 
+//   ... but controlled, via the reqtsPolicy-* UUT. by the reqts delegate script 
+//   ... which uses the code in this module (see DelegateActivity::additionalDelegateValidation below)
+struct ReqtData {
+    id : ByteArray "@id" // = "reqt-XXXXyyyyZZZZ"
+    type : String "tpe" // = "reqt"
+    category: String "cat" // e.g. "security", "usability", "performance", "compliance"   
+    // for CIP-68 tokens issued from this requirement
+    name: String // e.g. "Reqt XyZ"
+    image: String // svg data for requirement graphic
+    description: String  // "Holder of this token has a stake in the success of this requirement"
+
+    mustFreshenBy: Time  "exp"
+    target: ByteArray  "tgt"
+    purpose: String   "prps"
+    details: []String  "dtls"
+    mech: []String  
+    impl: String
+    requires: []String
+    
+    // files: []AnyData optional
+
+    func validate(self) -> Bool {
+        assert(true || ( /* never executed*/ self.serialize() == self.serialize()), "no");
+        true
+    }
+}
+
+enum DelegateDatum {
+    Cip68RefToken {  
+        // NOTE: this datum contains reference details for a user-facing token minted according to the cip-68 standard 
+        //  - the asset name (in the Value of this UTXO) MUST be:  #000643b0 + tokenName
+        //     - this asset name can serve user-side tokens using the CIP-68 "222", "333" or other token types.
+        //     - the user-side asset name with its (222/333/etc) CIP-67 prefix and 
+        //       ... its remaining tokenName will be matched to this asset name (#000643b0 +tokenName)
+        //       ... to locate this reference datum; this datum content will be interpreted
+        //       ... according to the semantics implied by the user-side asset-name prefix.
+        //
+        //  - The attached 'meta' field in this Datum variant contains the relevant data, depending on the token type
+        //    - for "222" tokens, the meta field should contain the following fields:
+        //        - "name" : String
+        //        - "description" : String 
+        //        - "files" :   // {mediaType, src (url), name?, ... otherFields)
+        //        - "image": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)
+        //    - for "333" tokens, the meta field should contain the following fields:
+        //        - "name" : String
+        //        - "description" : String 
+        //        - "ticker" : String
+        //        - "url": String  // project URL
+        //        - "logo": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)
+        //                    - it must have a mime type `image/png`, `image/jpeg` or `image/svg+xml`
+        //        - "decimals" : Int
+
+        cip68meta: AnyData
+        cip68version: Int
+        otherDetails: Data // can be Unit () or anything else
+    }
+
+    IsDelegation {
+        dd: DelegationDetail
+    }
+    // same variant-index as Capo's DelegatedData
+    capoStoredData {
+        data: ReqtData
+        version: Int
+        otherDetails: Data 
+    }
+
+    // func validateSettings(self, _settings: ProtocolSettings) -> Bool{
+    //   ... get the settings from the manifest via cctx
+    //     assert(false, "not valid (stubbed)");
+    //     // settings.serialize() != self.serialize() &&
+    //     true
+    // }
+
+}
+
+enum MintingActivity {
+    CreatingRecord {
+        seed: TxOutputId
+    }
+}
+
+enum SpendingActivity {
+    UpdatingRecord {
+        id: ByteArray
+    }
+
+}
+
+enum BurningActivity {
+    DeletingRecord {
+        id: ByteArray
+    }
+}
