@@ -1,5 +1,5 @@
 import { DelegatedDataBundle } from "../helios/scriptBundling/DelegatedDataBundle.js"
-
+import type { Source } from "@helios-lang/compiler-utils";
 import ReqtsPolicy from "./ReqtsPolicy.hl"
 import ReqtsData from "./ReqtsData.hl"
 
@@ -14,9 +14,11 @@ import ReqtsData from "./ReqtsData.hl"
 // bundle, but it would be fine for it to do that.
 
 export abstract class ReqtsBundle extends DelegatedDataBundle {
-    specializedDelegateModule = ReqtsPolicy
+    get specializedDelegateModule(): Source {
+        return ReqtsPolicy;
+    }
     
-    get modules() {
+    get modules(): Source[] {
         return [
             ...super.modules,
             ReqtsData

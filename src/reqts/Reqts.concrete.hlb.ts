@@ -1,4 +1,4 @@
-
+import type { Source } from "@helios-lang/compiler-utils";
 import { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js"
 import ReqtsPolicy from "./ReqtsPolicy.hl"
 import ReqtsData from "./ReqtsData.hl"
@@ -14,5 +14,7 @@ import { ReqtsBundle } from "./ReqtsBundle.js"
  * other scripts in your smart contract.
  */
 export default class ReqtsConcreteBundle extends ReqtsBundle.usingCapoBundleClass(CapoHeliosBundle) {
-    specializedDelegateModule = ReqtsPolicy
+    get specializedDelegateModule(): Source {
+        return ReqtsPolicy;
+    }
 }

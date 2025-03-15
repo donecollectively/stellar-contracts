@@ -163,7 +163,7 @@ export class CapoMinter
      * @public
      **/
     @Activity.redeemer
-    activityForcingNewMintDelegate(seedFrom: hasSeed) {
+    activityForcingNewMintDelegate(seedFrom: hasSeed): isActivity {
         console.warn(
             "NOTE: REPLACING THE MINT DELEGATE USING A DIRECT MINTER ACTIVITY\n" +
                 "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"

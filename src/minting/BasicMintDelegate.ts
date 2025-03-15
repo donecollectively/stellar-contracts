@@ -68,7 +68,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      * @public
      */
     @Activity.redeemer
-    activityCreatingDelegatedData(seedFrom: hasSeed, uutPurpose: string) {
+    activityCreatingDelegatedData(seedFrom: hasSeed, uutPurpose: string): isActivity {
         throw new Error(`deprecated: explicit activity helper`);
         const seed = this.getSeed(seedFrom);        
         const redeemer = this.activityVariantToUplc("CreatingDelegatedData", {
@@ -95,7 +95,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      * {@link DelegatedDataContract} class to create the off-chain data controller and its on-chain policy.
      */
     @Activity.redeemer
-    activityCreatingDataDelegate(seedFrom: hasSeed, uutPurpose: string) {
+    activityCreatingDataDelegate(seedFrom: hasSeed, uutPurpose: string): isActivity {
         throw new Error(`deprecated: explicit activity helper`);
 
         const seed = this.getSeed(seedFrom);

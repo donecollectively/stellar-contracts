@@ -20,6 +20,7 @@ import type {
     Value,
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
+import type { Source } from "@helios-lang/compiler-utils";
 
 import UnspecializedDelegateScript from "../delegation/UnspecializedDelegate.hl";
 import { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
@@ -31,7 +32,10 @@ import { CapoHeliosBundle } from "../helios/scriptBundling/CapoHeliosBundle.js";
 /* prettier-ignore */
 export class UnspecializedDgtBundle 
 extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
-    specializedDelegateModule = UnspecializedDelegateScript;
+    get specializedDelegateModule(): Source {
+        return UnspecializedDelegateScript;
+    }
+
     get rev() {
         return 1n
     }

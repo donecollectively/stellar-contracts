@@ -1,3 +1,4 @@
+import type { Source } from "@helios-lang/compiler-utils";
 import { CapoHeliosBundle } from "../helios/scriptBundling/CapoHeliosBundle.js";
 import type { CapoConfig } from "../CapoTypes.js";
 import type { RequiredDeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
@@ -67,7 +68,7 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     //     this.capoBundle = capoBundle;
     // }
 
-    get main() {
+    get main(): Source {
         return CapoMinterScript;
     }    
 
