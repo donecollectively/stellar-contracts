@@ -223,6 +223,7 @@ export abstract class Capo<
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
     static async currentConfig() {}
+    autoSetup = false;
     isChartered: boolean = false;
     dataBridgeClass = CapoDataBridge;
 
@@ -258,7 +259,7 @@ export abstract class Capo<
     get defaultFeatureFlags(): featureFlags {
         return {} as any;
     }
-    
+
     /**
      * @internal
      */
@@ -1839,6 +1840,7 @@ export abstract class Capo<
 
     _delegateRoles!: basicDelegateMap<any> &
         IF_ISANY<ReturnType<SELF["initDelegateRoles"]>, basicDelegateRoles>;
+    // IF_ISANY<ReturnType<SELF["initDelegateRoles"]>, never>;
     abstract initDelegateRoles(): // THISTYPE extends Capo<any>, //<
     // myDelegateRoles extends basicRoleMap
     //        >(
@@ -2517,6 +2519,39 @@ export abstract class Capo<
                     capoUtxos,
                     optional: false,
                 });
+                if (this.autoSetup) {
+                    for (const [policyName, details] of Object.entries(
+                        this.delegateRoles
+                    )) {
+                        const ds: DelegateSetup<any, any, any> = details;
+
+                        const {
+                            delegateClass,
+                            config,
+                            delegateType,
+                            uutPurpose,
+                        } = ds;
+                        //@ts-expect-error on the type probe
+                        if (!delegateClass.isDgDataPolicy) continue;
+
+                        const dgDataControllerClass: stellarSubclass<
+                            DelegatedDataContract<any, any>
+                        > = delegateClass as any;
+                        debugger;
+                        const delegate = await dgDataControllerClass.createWith(
+                            {
+                                setup: this.setup,
+                                partialConfig: {
+                                    capo: this,
+                                },
+                            }
+                        );
+                        await delegate.setupCapoPolicy(tcx3, policyName, {
+                            charterData,
+                            capoUtxos,
+                        });
+                    }
+                }
                 await this.mkAdditionalTxnsForCharter(tcx3, {
                     charterData,
                     capoUtxos,
