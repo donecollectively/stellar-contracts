@@ -646,7 +646,8 @@ export abstract class HeliosScriptBundle {
                 //     withAlt: true,
                 // });
                 this.alreadyCompiledScript = uplcProgram;
-                console.log(`compiled in ${new Date().getTime() - t}ms`);
+                const scriptHash = bytesToHex(uplcProgram.hash());
+                console.log(`compiled in ${new Date().getTime() - t}ms -> ${scriptHash}`);
                 // if (globalThis.document) {
                 //     console.log({
                 //         uplcProgram,

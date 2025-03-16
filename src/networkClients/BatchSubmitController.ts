@@ -151,6 +151,7 @@ export type BatchSubmitControllerOptions = {
  * purposes.
  * @public
  */
+/* was SubmitterMultiClient */
 export class BatchSubmitController {
     readonly submitters: namedSubmitters;
     setup: SetupInfo;

@@ -1455,12 +1455,12 @@ export class StellarContract<
         }
 
         let bundle = this.getBundle();
-        if (bundle.isPrecompiled) {
-            debugger;
-            console.warn(
-                `deployed script shouldn't need to compile (debugging breakpoint available)`
-            );
-        }
+        // if (bundle.isPrecompiled) {
+        //     debugger;
+        //     console.warn(
+        //         `deployed script shouldn't need to compile (debugging breakpoint available)`
+        //     );
+        // }
         if (!this.setup) {
             console.warn(
                 `compileWithScriptParams() called before setup is available`
