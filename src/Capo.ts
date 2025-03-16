@@ -457,6 +457,7 @@ export abstract class Capo<
 
     /**
      * Creates any additional transactions needed during charter creation
+     * @public
      * @remarks
      *
      * This method is a hook for subclasses to add extra transactions during the
@@ -470,8 +471,8 @@ export abstract class Capo<
      * This method should use {@link StellarTxnContext.includeAddlTxn} to add transactions
      * to the context.
      *
-     * @public
-     **/
+    **/
+       /* No-op by default */
     async mkAdditionalTxnsForCharter<
         TCX extends hasAddlTxns<StellarTxnContext<any>>
     >(
@@ -1935,6 +1936,7 @@ export abstract class Capo<
                 `${this.constructor.name}: the leader contract script '${this.program.name}', or one of its dependencies, has been modified`
             );
         }
+        await this.asyncCompiledScript();
 
         let charter: CapoDatum$Ergo$CharterData;
         {
