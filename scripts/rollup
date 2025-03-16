@@ -1,14 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-if [[ -z $DEBUG ]] ; then
-  node node_modules/rollup/dist/bin/rollup --config rollup.config.ts \
+[[ -n $DEBUGGER ]] && {
+    exec scripts/debugRollup $@
+}
+
+node_modules/rollup/dist/bin/rollup --config rollup.config.ts \
     --importAttributesKey "with" \
       --configPlugin 'esbuild={loaders:{".json":"json"},target:"esnext",tsconfig:"./tsconfig.rollupconfig.json"}' \
-  $@
-#   --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
-else
-    scripts/debugRollup $@
-fi
+    $@
+# --configPlugin 'esbuild={sourcemap:true,supported:{"import-assertions":false},loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
 
-
+exit $?
 

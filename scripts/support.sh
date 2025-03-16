@@ -1,5 +1,5 @@
 TF="%E seconds"
-hasProblem=$(mktemp /tmp/stellar-contracts.XXXXXX.hasProblem.txt)
+hasProblem=$(mktemp /tmp/stellar-contracts.hasProblem.XXXXXX)
 
 TEMP_FILES=()
 # Cleanup function to remove all temporary files
@@ -8,6 +8,11 @@ cleanup() {
         rm -f $file
     done
     rm -f $hasProblem
+}
+
+WITHDOCS=${DOCS:-1}
+withDocs() {
+    [[ $WITHDOCS -eq 0 ]] || $*
 }
 
 ESBUILD_EXTERNALS=$(cat <<EOF
@@ -25,7 +30,9 @@ makeRollupPlugin() {
     $ESBUILD $WATCH --platform=node $ESBUILD_EXTERNALS \
         --drop-labels=__BROWSER_ONLY__ \
         --outfile=dist/rollup-plugins.mjs \
-        index-rollup-plugins.ts
+        index-rollup-plugins.ts || {
+            logProblemWith "rollup plugin"
+        }
 
     # raw DTS to be fed to api-extractor 
     inBackground "updating rollup-plugin.d.ts..." \
@@ -130,8 +137,8 @@ inBackground() {
     # creates two tempfiles (stdout/stderr), and runs the command in the background.
     # when the background job finishes, the content is emitted and 
     # the tempfiles are removed.
-    local outFile=$(mktemp /tmp/stellar-contracts.XXXXXX.stdout.txt)
-    local errFile=$(mktemp /tmp/stellar-contracts.XXXXXX.stderr.txt)
+    local outFile=$(mktemp /tmp/stellar-contracts.stdout.XXXXXX)
+    local errFile=$(mktemp /tmp/stellar-contracts.stdout.XXXXXX)
 
     # add tempfiles to list for cleanup
     TEMP_FILES+=($outFile $errFile)

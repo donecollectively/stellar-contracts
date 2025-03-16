@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 DIAGS=""
 # DIAGS="--diagnostics"  # for api-extractor troubleshooting if needed
@@ -17,7 +17,7 @@ tsc > $tmpfile1 2>&1 &
 typecheck=$!
 
 # make a temp file
-tmpfile2=$(mktemp /tmp/XXXXXX.api-extractor.txt)
+tmpfile2=$(mktemp /tmp/api-extractor.XXXXXX)
 
 if [ "$SMOKE" != "" ]; then {
     playSound hum &

@@ -1,9 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 srcDir=$(dirname $0)
 . $srcDir/support.sh
 
-# note this is a snapshot of what the main build
-makeRollupPlugin --watch
+WATCH="--watch"
+[[ $1 == "--nowatch" ]] && {
+    echo "🔍  esbuild-rollup-dev: --nowatch"
+     WATCH=""
+}
+
+# note this duplicates what the main build does for building the rollup plugin
+makeRollupPlugin $WATCH
 sleep 0.5
 echo "------------------------------ waiting ------------------------------"
 wait

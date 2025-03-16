@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # set -x # debug mode
 #set -e # exit on error
 #//! EXPECTS to be run in context of `pnpm exec`
@@ -7,12 +7,8 @@ srcDir=$(dirname $0)
 STC_PROJECT_PITCH=0
 . $srcDir/support.sh
 
-WITHDOCS=${DOCS:-1}
 startTime=$(date)
 
-withDocs() {
-    [[ $WITHDOCS -eq 0 ]] || $*
-}
 
 
 programDTS() {
@@ -55,13 +51,16 @@ playStartSound &
 }  
 
 echo "In foreground: rollup main code bundle" 
-./scripts/rollup
+./scripts/rollup || {
+    echo "error in rollup main code bundle"
+    logProblemWith "rollup main code bundle"
+    wait
+    exit 42
+}
 
 sleep 0.5
 echo "------------------------------ waiting ------------------------------"
 wait
-
-exitIfError
 playCheckpointSound
 
 {
