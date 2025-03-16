@@ -22,6 +22,7 @@ import CapoMinterScript from "./CapoMinter.hl";
  **/
 export class CapoMinterBundle 
 extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
+    static needsSpecializedDelegateModule = false
     static needsCapoConfiguration = true
     
     declare capoBundle: CapoHeliosBundle;
@@ -33,7 +34,7 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     get params() {
         const {configuredScriptDetails, configuredParams } = this.capoBundle || {}
         //  
-        const noConfig = `${this.constructor.name}: capoMph not found in deployed capo bundle; can't make config yet`;
+        const noConfig = `${this.constructor.name}: capoMph not found in deployed capo bundle; can't make config yet (dbpa)`;
         if (!configuredScriptDetails) {
             
             if (configuredParams) {                
@@ -50,6 +51,8 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
         } = capoConfig
         if (!mph) {
             console.warn(noConfig);
+            debugger
+            throw new Error(noConfig) // ????
             return undefined
         }
 

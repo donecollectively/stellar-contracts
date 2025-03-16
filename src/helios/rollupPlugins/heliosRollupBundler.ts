@@ -844,6 +844,7 @@ export function heliosRollupBundler(
             this.addWatchFile(resolvedDeployConfig.id);
 
             debugger;
+            console.log(deployDetails)
             const capoConfig = parseCapoJSONConfig(deployDetails.capo.config);
             const { seedIndex, seedTxn } = capoConfig;
             const hlBundler: CapoHeliosBundle = await SomeBundleClass.create({
@@ -911,8 +912,8 @@ export function heliosRollupBundler(
 
             const s = new MagicString(code);
             s.replace(capoConfigRegex, `$1 ${typedDeployDetailsText}`);
-            console.log(s.toString());
-            debugger;
+            // console.log(s.toString());
+            // debugger;
             this.debug(`[transform] <- Capo (w/ deployment)`);
             return {
                 code: s.toString(),
@@ -933,12 +934,14 @@ export function heliosRollupBundler(
         }
         // 1. matches one of the following patterns in the bundle code:
         //  - specializedDelegateModule = ...
-        //  - get main()
+        //  - static needsSpecializedDelegateModule = false
         // 2. inserts precompiled: { [variant]: {scriptHash, programBundle} } details
         //     ... with one entry per variant found in the SomeBundleClass
 
+
+        
         const regex =
-            /(\s*specializedDelegateModule\s*=\s*)|(\bget\s+main\s*\(\)\s*{)/;
+            /(\s*specializedDelegateModule\s*=\s*)|(static needsSpecializedDelegateModule = false)/m;
         if (code.match(regex)) {
             const SomeBundleClass: typeof HeliosScriptBundle =
                 state.bundleClassById[id];
@@ -981,7 +984,7 @@ export function heliosRollupBundler(
                     hlBundler.capoBundle = configuredCapo;
                     this.debug(`[transform]  -- configured capo ready`);
                 } else {
-                    this.info(
+                    this.warn(
                         `[transform]  ---- no capo deployment; not inserting compiled script for ${relativePath(
                             id
                         )}`
@@ -1066,10 +1069,12 @@ export function heliosRollupBundler(
                 };
             }
         }
-        this.warn(
+        throw new Error(
             `bundle module format error\n` +
-                ` ... non-Capo must define 'specializedDelegateModule = ...`
+                ` ... non-Capo must define 'specializedDelegateModule = ...\n`+
+                ` ... or EXACTLY AND VERBATIM: \`static needsSpecializedDelegateModule = false\``
         );
+
         return null;
     }
 
