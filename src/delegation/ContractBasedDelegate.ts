@@ -140,7 +140,7 @@ export class ContractBasedDelegate extends StellarDelegate {
                 `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
                 `    import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";\n\n` +
                 `    export default class SomeDelegateBundle extends CapoDelegateBundle.using(YourAppCapo) {\n` +
-                `        get specializedDelegateModule() { return SomeSpecializedDelegate; }\n` +
+                `        specializedDelegateModule = SomeSpecializedDelegate; \n` +
                 `    }\n\n` +
                 `We'll generate an additional .typeInfo.ts, based on the types in your Helios sources,\n` +
                 `  ... and a .bridge.ts with generated data-conversion code for bridging between off-chain` +

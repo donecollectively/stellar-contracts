@@ -14,9 +14,7 @@ import ReqtsData from "./ReqtsData.hl"
 // bundle, but it would be fine for it to do that.
 
 export abstract class ReqtsBundle extends DelegatedDataBundle {
-    get specializedDelegateModule(): Source {
-        return ReqtsPolicy;
-    }
+    specializedDelegateModule = ReqtsPolicy;
     
     get modules(): Source[] {
         return [

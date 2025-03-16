@@ -4,9 +4,7 @@ import BadProtocolSettings from "./TestBadSettings.hl";
 
 export default class BadSettingsBundle 
 extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle) {
-    get specializedDelegateModule() {
-        return BadSettingsPolicy
-    }
+    specializedDelegateModule = BadSettingsPolicy
 
     get modules() {
         return [

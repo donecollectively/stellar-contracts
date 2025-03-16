@@ -165,7 +165,7 @@ export abstract class DelegatedDataContract<
                 `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
                 `    import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";\n\n` +
                 `    export default class SomeDelegateBundle extends CapoHeliosBundle {\n` +
-                `        get specializedDelegateModule() { return SomeSpecializedDelegate; }\n` +
+                `        specializedDelegateModule = SomeSpecializedDelegate;\n` +
                 `    }\n\n` +
                 `We'll generate types in a .typeInfo.ts file, based on the types in your Helios sources,\n` +
                 `  ... and a .bridge.ts file having data-conversion classes for your on-chain types.` +

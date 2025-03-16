@@ -48,8 +48,4 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
             purpose,
         });
     }
-
-    // get specializedDelegateModule() {
-    //     return uutMintingMintDelegate;
-    // }
 }

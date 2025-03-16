@@ -14,7 +14,5 @@ import { ReqtsBundle } from "./ReqtsBundle.js"
  * other scripts in your smart contract.
  */
 export default class ReqtsConcreteBundle extends ReqtsBundle.usingCapoBundleClass(CapoHeliosBundle) {
-    get specializedDelegateModule(): Source {
-        return ReqtsPolicy;
-    }
+    specializedDelegateModule = ReqtsPolicy;
 }

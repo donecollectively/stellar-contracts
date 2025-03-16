@@ -32,12 +32,10 @@ import { CapoHeliosBundle } from "../helios/scriptBundling/CapoHeliosBundle.js";
 /* prettier-ignore */
 export class UnspecializedDgtBundle 
 extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
-    get specializedDelegateModule(): Source {
-        return UnspecializedDelegateScript;
-    }
+    specializedDelegateModule = UnspecializedDelegateScript;
 
     get rev() {
-        return 1n
+        return 1n;
     }
 
     get params() {

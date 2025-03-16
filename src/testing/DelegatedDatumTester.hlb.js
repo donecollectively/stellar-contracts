@@ -12,8 +12,6 @@ import {
 
 export default class DelegatedDatumTesterBundle 
 extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle){
-    get specializedDelegateModule() {
-        return TesterPolicy
-    }
+    specializedDelegateModule = TesterPolicy
 }
 

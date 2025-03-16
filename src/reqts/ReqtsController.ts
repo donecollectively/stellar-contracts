@@ -84,10 +84,6 @@ export class ReqtsController extends DelegatedDataContract<
     //     return new ReqtsAdapter(this);
     // }
 
-    // get specializedDelegateModule() {
-    //     return ReqtsPolicyScript;
-    // }
-
     scriptBundle() {    
         return ReqtsConcreteBundle.create()
     }

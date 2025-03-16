@@ -44,7 +44,7 @@ type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle &
  * @public
  **/
 export abstract class CapoDelegateBundle extends HeliosScriptBundle {
-    abstract get specializedDelegateModule(): Source;
+    abstract specializedDelegateModule: Source;
     declare capoBundle: CapoHeliosBundle;
     isConcrete = false;
 

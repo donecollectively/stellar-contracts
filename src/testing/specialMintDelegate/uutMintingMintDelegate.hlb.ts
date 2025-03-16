@@ -11,10 +11,7 @@ import { CapoHeliosBundle } from "../../helios/scriptBundling/CapoHeliosBundle.j
  */
 export default class BundleMintDelegateWithGenericUuts 
 extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle) {
-    get specializedDelegateModule() {
-        return uutMintingMintDelegate;
-    }
-
+    specializedDelegateModule = uutMintingMintDelegate;
 }
 
 // if (false) {
