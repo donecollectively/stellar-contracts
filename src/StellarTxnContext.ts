@@ -1168,13 +1168,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     `  mint: ${dumpAny(this.txb.mintedTokens)}\n` +
                     `  refInputs: ${dumpAny(this.txRefInputs)}\n`;
 
-                    logger.logError(`txn build failed: ${e.message}`);
-                    if (tx!) logger.logPrint(dumpAny(tx!) as string);
+                logger.logError(`txn build failed: ${e.message}`);
+                if (tx!) logger.logPrint(dumpAny(tx!) as string);
 
-                    logger.logError(
-                        `  (it shouldn't be possible for buildUnsafe to be throwing errors!)`
-                    );
-                    logger.flushError();
+                logger.logError(
+                    `  (it shouldn't be possible for buildUnsafe to be throwing errors!)`
+                );
+                logger.flushError();
 
                 throw e;
             }
@@ -1386,6 +1386,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 }
             });
         } else if (this.state.addlTxns) {
+            if (this.isFacade) {
+                this.currentBatch.$txInfo(this.id)?.transition("isFacade")
+            }
+
             // this gives early registration of nested txns from top-level txns
             console.log(
                 `🎄⛄🎁 ${this.id}   -- B&QA - registering txns in facade`
@@ -1801,8 +1805,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                           tcx.parentId = parentId || "";
                           tcx.depth = depth;
                           if (id) {
-                              tcx.id = id;
-                          } else {
+                            this.currentBatch.changeTxId(id, tcx.id)
+                            txInfoResolved.id = tcx.id
+                        } else {
                               addlTxInfo.id = tcx.id;
                               console.warn(
                                   `expected id to be set on addlTxInfo; falling back to JIT-generated id in new tcx`
@@ -1871,23 +1876,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             // console.log("   ----> effective tx", effectiveTcx);
 
             txInfoResolved.tcx = effectiveTcx;
-            if (txInfoResolved.id !== id) {
-                alert(`bad way 1`);
-            }
-            if (txInfoResolved.id != txInfoResolved.tcx.id) {
-                alert(`bad way 2`);
-            }
-            // debugger
-            if (!this.currentBatch.$txInfo(id)) {
-                debugger;
-                throw new Error(`unreachable - right?`);
-                await this.currentBatch.$addTxns(txInfoResolved);
-                /* yield to allow rendering */
-                await new Promise((res) => setTimeout(res, 5));
 
-                // debugger
-                // throw new Error("no matching tx tracker (dbpa)")
-            }
 
             //!!! was just buildAndQueue, but that was executing
             // in "breadth-first" order (good for registration)

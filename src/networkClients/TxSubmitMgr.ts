@@ -869,6 +869,7 @@ export class TxSubmitMgr extends StateMachine<
         },
         [`softConfirmed`]: {
             ...noTransitionsExcept,
+            timeout: { to: "confirming" },
             confirmed: {
                 to: "softConfirmed",
                 onTransition: () => {
@@ -880,11 +881,10 @@ export class TxSubmitMgr extends StateMachine<
             hardConfirm: {
                 to: "confirmed",
             },
-            failed: null,
-            notOk: null,
-            submitted: null,
-            txExpired: null,
-            timeout: null,
+            // failed: null,
+            // notOk: null,
+            // submitted: null,
+            // txExpired: null,
             otherSubmitterProblem: {
                 to: "confirming",
                 onTransition: () => {

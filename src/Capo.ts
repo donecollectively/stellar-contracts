@@ -2506,7 +2506,7 @@ export abstract class Capo<
             });
         }
         const tcx2 = await this.addTxnBootstrappingSettings(tcx, charterData);
-        tcx2.includeAddlTxn("check for updates", {
+        tcx.includeAddlTxn("check for updates", {
             description: `capo-specific txns for deploying any missing or upgraded delegates`,
             moreInfo:
                 "if any delegates are missing or need to be upgraded, these txns will take care of it",

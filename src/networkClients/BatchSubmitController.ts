@@ -160,12 +160,11 @@ export class BatchSubmitController {
     $stateShortSummary: stateSummary;
     $txStates: AllTxSubmissionStates = {};
     $registeredTxs: AllTxSubmissionStates = {};
-        // txSubmitMgrs: Record<txIdString, namedTxSubmitMgrs>;
     isOpen = false;
     isConfirmationComplete = false;
     readonly _mainnet: boolean;
     nextUpdate?: TimeoutId;
-    signingStrategy: WalletSigningStrategy
+    signingStrategy: WalletSigningStrategy;
     $txChanges: EventEmitter<TxBatchChangeNotifier>;
     // releaseAllOption?: TxBatchOptions["releaseAll"];
     destroyed = false;
@@ -177,12 +176,14 @@ export class BatchSubmitController {
     //       };
 
     get chainBuilder() {
-        return this.setup.chainBuilder
+        return this.setup.chainBuilder;
     }
-    
+
     destroy() {
         // cleans up all the notifiers
-        for (const [txIdStr, submitTracker] of Object.entries(this.$registeredTxs)) {
+        for (const [txIdStr, submitTracker] of Object.entries(
+            this.$registeredTxs
+        )) {
             submitTracker.destroy();
         }
         for (const [txIdStr, submitTracker] of Object.entries(this.$txStates)) {
@@ -204,12 +205,12 @@ export class BatchSubmitController {
             submitters,
             setup,
             signingStrategy,
-            submitOptions={},
-        } = options
+            submitOptions = {},
+        } = options;
         this.submitters = submitters;
         this.setup = setup;
         if (!this.setup.network) {
-            debugger
+            debugger;
         }
         this.signingStrategy = signingStrategy;
         this.submitOptions = submitOptions;
@@ -244,14 +245,27 @@ export class BatchSubmitController {
         return id.toHex();
     }
 
+    changeTxId(oldId: string, newId: string) {
+        const where = this.$txStates[oldId]
+            ? this.$txStates
+            : this.$registeredTxs;
+        const tracker = where[oldId];
+        if (!tracker) {
+            throw new Error(`no tracker found for tx '${oldId}'`);
+        }
+        tracker.txd.id = newId;
+        delete where[oldId];
+        where[newId] = tracker;
+    }
+
     map<T>(
         fn:
             | ((txd: TxSubmissionTracker, i: number) => T)
             | ((txd: TxSubmissionTracker) => T)
     ) {
-        return [ 
+        return [
             ...Object.values(this.$txStates),
-            ...Object.values(this.$registeredTxs)
+            ...Object.values(this.$registeredTxs),
         ].map(fn);
     }
 
@@ -273,13 +287,13 @@ export class BatchSubmitController {
         // const { releaseEach, releaseAll } = options;
         //@ts-expect-error on type probe
         if (!tcxd.isFacade && !!tcxd.state) {
-            // when there's not a wrapper TxDescription, 
+            // when there's not a wrapper TxDescription,
             // then this is a StellarTxnContext. We construct a TxDescription
             // ... based on the already-existing
             const tcx: StellarTxnContext = tcxd as any;
             const tx = tcx._builtTx ? await tcx._builtTx : undefined;
-            const id = tcx?.id  ?? nanoid(5);
-            debugger
+            const id = tcx?.id ?? nanoid(5);
+            debugger;
             this.addTxDescr({
                 description: tcx.txnName || "‹unnamed txn›",
                 id,
@@ -318,13 +332,20 @@ export class BatchSubmitController {
         return this.$txStates[id] || this.$registeredTxs[id];
     }
 
-    submitToTestnet(txd: TxDescription<any, "built">, tracker: TxSubmissionTracker) {
-        if (!this.setup.isTest) return
-        
-        const {network} = this.setup
-        const {tcx, tx, tcx:{logger, _builtTx}} = txd
+    submitToTestnet(
+        txd: TxDescription<any, "built">,
+        tracker: TxSubmissionTracker
+    ) {
+        if (!this.setup.isTest) return;
+
+        const { network } = this.setup;
+        const {
+            tcx,
+            tx,
+            tcx: { logger, _builtTx },
+        } = txd;
         tracker.isSigned = true; // bit of a fib, but in test-env is ok
-        const t = network.submitTx(tx)
+        const t = network.submitTx(tx);
         // //@ts-expect-error
         // if (t.then) {
         //     debugger
@@ -332,9 +353,9 @@ export class BatchSubmitController {
         // }
         //@ts-expect-error probing for the test-network-emulator's tick
         //   ... in regular execution environment, this is a no-op
-        this.setup.network?.tick(1)
+        this.setup.network?.tick(1);
 
-        tracker._emulatorConfirmed()
+        tracker._emulatorConfirmed();
     }
 
     addTxDescr(
@@ -352,26 +373,30 @@ export class BatchSubmitController {
                 `impossible membership in both registered- and built-tx list: ${id}`
             );
         }
-        let tracker: TxSubmissionTracker = builtTracker || pendingTracker
+        let tracker: TxSubmissionTracker = builtTracker || pendingTracker;
         if (tracker) {
             if (Object.keys(tracker.txSubmitters).length) {
                 throw new Error(`tx '${id}' already present and submitting`);
             }
-        }  
+        }
         if (pendingTracker && txd.tcx) {
             // move a "was-pending" tx to the "built" list
             delete this.$registeredTxs[id];
 
             this.$txStates[id] = pendingTracker;
             if (txd.tcx?.alreadyPresent) {
-                pendingTracker.transition("alreadyDone")
+                pendingTracker.transition("alreadyDone");
+            } else if (txd.tcx?.isFacade) {
+                // this isn't the expected path for a facade txn, but for completeness...
+                pendingTracker.transition("isFacade");
             } else {
-                this.submitToTestnet(txd as TxDescription<any, "built">, pendingTracker);
+                this.submitToTestnet(
+                    txd as TxDescription<any, "built">,
+                    pendingTracker
+                );
             }
         } else if (!builtTracker) {
-            const {
-                parentId, depth
-            } = txd
+            const { parentId, depth } = txd;
             tracker = new TxSubmissionTracker({
                 txd,
                 submitters: this.submitters,
@@ -383,14 +408,19 @@ export class BatchSubmitController {
                 this.updateAggregateState.bind(this)
             );
             if (txd.tcx) {
-                // adds resolved txs to the end of 
+                // adds resolved txs to the end of
                 // the tx-trackers list
-                this.$txStates[id]= tracker
-                this.submitToTestnet(txd as TxDescription<any, "built">, tracker);
+                this.$txStates[id] = tracker;
+                this.submitToTestnet(
+                    txd as TxDescription<any, "built">,
+                    tracker
+                );
             } else {
                 // splits $registeredTxs into two lists: one having txns with this same parentId
                 // and one with any other parent-ids.  Both must preserve the order of the original list.
-                const [others, sameParentId] = Object.entries(this.$registeredTxs).reduce(
+                const [others, sameParentId] = Object.entries(
+                    this.$registeredTxs
+                ).reduce(
                     ([others, sameParentId], [k, v]) => {
                         if (v.txd.parentId == parentId) {
                             sameParentId[k] = v;
@@ -400,14 +430,14 @@ export class BatchSubmitController {
                         return [others, sameParentId];
                     },
                     [{} as AllTxSubmissionStates, {} as AllTxSubmissionStates]
-                )                
+                );
                 // adds newly registered txs at the
                 // top of known-txs list
                 this.$registeredTxs = {
                     ...sameParentId,
                     [id]: tracker,
-                    ... others
-                }
+                    ...others,
+                };
             }
             this.$txChanges.emit("txAdded", tracker);
             this.$txChanges.emit("txListUpdated", this);
@@ -459,15 +489,14 @@ export class BatchSubmitController {
      * @public
      */
 
-    async $signAndSubmitAll(
-        // txd: TxDescription<any, "built">,
-        // submitOptions: SubmitOptions & TxSubmitCallbacks = {}
-    ) {
+    async $signAndSubmitAll() // txd: TxDescription<any, "built">,
+    // submitOptions: SubmitOptions & TxSubmitCallbacks = {}
+    {
         // debugger
         if (!this.setup.isTest) {
             const result = await this.signingStrategy.signTxBatch(this);
             console.log("signingStrategy result: ", result);
-            debugger
+            debugger;
         }
     }
 
@@ -503,9 +532,9 @@ export class BatchSubmitController {
         // if all of them are confirmed, the aggregate state is confirmed
         // otherwise, the state is a summary with the the count of each state
         const txTrackers = [
-            ... Object.values(this.$registeredTxs),
-            ... Object.values(this.$txStates)
-        ]
+            ...Object.values(this.$registeredTxs),
+            ...Object.values(this.$txStates),
+        ];
         const count = txTrackers.length;
         const allConfirmed =
             count && txTrackers.every((t) => t.$state == "confirmed");
@@ -637,4 +666,3 @@ export class BatchSubmitController {
         };
     }
 }
-

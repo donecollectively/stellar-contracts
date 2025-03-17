@@ -8,7 +8,8 @@ import { TxSubmitMgr, type SubmitManagerState } from "./TxSubmitMgr.js";
 type SubmissionsStates =
     | "registered"
     | "building"
-    | "alreadyDone"
+    | "nested batch"
+    | "not needed"
     | "built"
     | "signingSingle"
     | "submitting"
@@ -17,13 +18,15 @@ type SubmissionsStates =
     | "failed"
     | "mostly confirmed";
 
-type SubmissionsTransitions = SubmissionsStates | "rebuild";
+type SubmissionsTransitions =
+    | Exclude<SubmissionsStates, "not needed" | "nested batch">
+    | "reconfirm"
+    | "alreadyDone"
+    | "isFacade";
 
 const noTransitionsExcept = {
     registered: null,
-    alreadyDone: null,
     building: null,
-    rebuild: null,
     built: null,
     signingSingle: null,
     submitting: null,
@@ -31,9 +34,12 @@ const noTransitionsExcept = {
     confirmed: null,
     failed: null,
     "mostly confirmed": null,
+    reconfirm: null,
+    alreadyDone: null,
+    isFacade: null,
 };
 const terminalState = noTransitionsExcept;
-const emulator = (process.env.NODE_ENV === "test");
+const emulator = process.env.NODE_ENV === "test";
 
 /**
  * Tracks the submission of a single tx via one or more submitter clients
@@ -163,7 +169,7 @@ export class TxSubmissionTracker extends StateMachine<
         }
     }
 
-    update(txd: TxDescription<any, any>, transition?: SubmissionsStates) {
+    update(txd: TxDescription<any, any>, transition?: SubmissionsTransitions) {
         const {
             txd: { tcx: { id: oldId } = {} },
         } = this;
@@ -199,37 +205,6 @@ export class TxSubmissionTracker extends StateMachine<
         this.$startSubmitting();
     }
 
-    /**
-     * indicates if the current state & tx-description affords a rebuild of the tx
-     * @public
-     */
-    $canRebuild() {
-        return !!this.txd.mkTcx && this.$canTransition("rebuild");
-    }
-
-    /**
-     * triggers a rebuild of the tx, if possible.
-     * @remarks
-     * If $canRebuild() returns false, it will throw an error.
-     * @public
-     */
-    async $rebuild() {
-        if (!this.$canRebuild()) {
-            throw new Error(`check $canRebuild() before calling $rebuild()`);
-        }
-        this.transition("rebuild");
-    }
-
-    async doRebuild() {
-        if (this.txd.mkTcx) {
-            const tcx = await this.txd.mkTcx();
-            const { tcx: _, tx, ...addlTxInfo } = this.txd;
-            this.txd.tcx = tcx;
-            await tcx.buildAndQueue({
-                addlTxInfo,
-            });
-        }
-    }
 
     $startSubmitting() {
         if (!this.isBuilt) {
@@ -272,34 +247,23 @@ export class TxSubmissionTracker extends StateMachine<
             ...noTransitionsExcept,
             built: { to: "built" },
             building: { to: "building" },
+            isFacade: { to: "nested batch" },
             failed: { to: "failed" },
         },
         [`building`]: {
             ...noTransitionsExcept,
-            rebuild: {
-                to: "building",
-                onTransition: () => {
-                    this.isBuilt = false;
-                    this.doRebuild();
-                },
-            },
-            alreadyDone: { to: "alreadyDone" },
+            alreadyDone: { to: "not needed" },
             built: { to: "built" },
+            isFacade: { to: "nested batch" },
             failed: { to: "failed" },
-            // this option is purposely left out of the types 
-            ... ( emulator ? { emulatorConfirmed: { to: "confirmed" } } : {} )
+            // this option is purposely left out of the types
+            ...(emulator ? { emulatorConfirmed: { to: "confirmed" } } : {}),
         },
-        [`alreadyDone`]: terminalState,
+        [`not needed`]: terminalState,
+        [`nested batch`]: terminalState,
         [`built`]: {
             ...noTransitionsExcept,
             signingSingle: { to: "signingSingle" },
-            rebuild: {
-                to: "building",
-                onTransition: () => {
-                    this.isBuilt = false;
-                    this.doRebuild();
-                },
-            },
             submitting: {
                 to: "submitting",
                 onTransition: () => {
@@ -335,20 +299,19 @@ export class TxSubmissionTracker extends StateMachine<
             confirmed: { to: "confirmed" },
             failed: { to: "failed" },
         },
-        // this option is purposely left out of the types 
-        ... ( emulator ? { emulatorConfirmed : {
-            emulatorConfirmed: { to: "emulatorConfirmed" } } 
-        }: {} ),
+        // this option is purposely left out of the types
+        ...(emulator
+            ? {
+                  emulatorConfirmed: {
+                    ...noTransitionsExcept,
+                      emulatorConfirmed: { to: "emulatorConfirmed" },
+                  },
+              }
+            : {}),
         [`confirmed`]: terminalState,
         [`failed`]: {
             ...noTransitionsExcept,
-            rebuild: {
-                to: "building",
-                onTransition: () => {
-                    this.isBuilt = false;
-                    this.doRebuild();
-                },
-            },
+            reconfirm: { to: "confirming" },
         },
     };
 
@@ -361,7 +324,7 @@ export class TxSubmissionTracker extends StateMachine<
      * If there is a failure detected in the submit-manager, the other submit
      * managers are notified of the problem, which typically triggers them to
      * re-confirm and/or re-submit the transaction to the network, to recover
-     * from txns that might otherwise have been dropped due to a slot/height 
+     * from txns that might otherwise have been dropped due to a slot/height
      * battle.
      *
      * Switches the tx-tracker's state to match the aggregated state of its
@@ -440,13 +403,12 @@ export class TxSubmissionTracker extends StateMachine<
         }
         //@ts-expect-error on this stuff that's only ever present in test env
         this.$state = "emulatorConfirmed";
-        this.isBuilt = true
+        this.isBuilt = true;
         //XXX not execution transition or its side effects
         // //@ts-expect-error here too
         // this.transition("emulatorConfirmed");
 
         this.log(` --  ⚗️ ⚗️  🥅 emulatorConfirmed ⚗️ ⚗️`);
-
     }
 }
 
