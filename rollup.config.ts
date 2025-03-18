@@ -1,4 +1,3 @@
-
 // seems to have a bug that deletes one of the pnpm modules :/
 // import { apiExtractor } from "rollup-plugin-api-extractor";
 import externals from "rollup-plugin-node-externals";
@@ -7,6 +6,8 @@ import { platformModulePaths } from "./rollup.lib.js";
 import esbuildPlugin from "rollup-plugin-esbuild";
 import resolve from "@rollup/plugin-node-resolve";
 import json from "@rollup/plugin-json";
+import svgr from '@svgr/rollup';
+import image from '@rollup/plugin-image';
 
 // const packageJson = await import("./package.json", { assert: { type: "json" } });
 import { createRequire } from 'node:module';
@@ -94,6 +95,7 @@ const platformIndependentEntryPoints = {
     "ContractBasedDelegate": "./src/delegation/ContractBasedDelegate.ts",
     "DelegatedDataContract": "./src/delegation/DelegatedDataContract.ts",
     "stellar-contracts": "./index.ts",
+    "ui": "./src/ui/index.ts",
 };
 
 // !restore the codeBundle() call below for this when needed
@@ -191,8 +193,10 @@ export default [
                 emitBundled: true,
             }),
             json(),
+            svgr(),
+            image(),
             resolve({
-                extensions: [".json", ".ts", ".js"],
+                extensions: [".json", ".ts", ".js", ".svg"],
             }),
             // sourcemaps(),
             esbuildPlugin({
@@ -208,6 +212,7 @@ export default [
                 chunkFileNames: "[name].mjs",
                 sourcemap: true,
                 format: "es",
+                assetFileNames: "assets/[name][extname]"
             }
         ]
     }),

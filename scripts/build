@@ -9,8 +9,6 @@ STC_PROJECT_PITCH=0
 
 startTime=$(date)
 
-
-
 programDTS() {
     tsc -p ./tsconfig.programWithCacheAPI.dts.json &&
     withDocs api-extractor run --local  -c api-extractor.programWithCacheAPI.json 
@@ -33,6 +31,13 @@ makeHeliosProgramWithCacheAPI() {
 testingDTS() {
     tsc -p ./tsconfig.testing.dts.json &&
     withDocs api-extractor run --local -c api-extractor.testing.json 
+}
+
+uiDTS() {
+    echo "Generating UI types..."
+    tsc -p ./tsconfig.ui.dts.json &&
+    withDocs api-extractor run --local -c api-extractor.ui.json &&
+    echo "UI types generated successfully"
 }
 
 playStartSound &
@@ -68,10 +73,19 @@ playCheckpointSound
         withDocs api-extractor run --local  &
 
     inBackground "testing.d.ts" \
-        testingDTS
+        testingDTS &
+
+    inBackground "ui.d.ts" \
+        uiDTS
 }
 
 wait
+
+# Verify UI types were generated
+if [ ! -f "dist/ui/index.d.ts" ]; then
+    echo "Error: UI types were not generated at dist/ui/index.d.ts"
+    exit 1
+fi
 
 exitIfError
 echo "build started at  $startTime"

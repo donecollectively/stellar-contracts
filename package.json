@@ -31,6 +31,10 @@
             "types": "./dist/HeliosProgramWithCacheAPI.d.ts",
             "node": "./dist/HeliosProgramWithFSCache.mjs",
             "import": "./dist/HeliosProgramWithMockCacheAPI.mjs"
+        },
+        "./ui": {
+            "types": "./dist/ui/index.d.ts",
+            "import": "./dist/ui/index.mjs"
         }
     },
     "type": "module",
@@ -51,6 +55,8 @@
     },
     "author": "Done Collectively LCA",
     "peerDependencies": {
+        "react": "^18.0.0",
+        "react-dom": "^18.0.0",
         "rollup-plugin-esbuild": "^6.1.0"
     },
     "devDependencies": {
@@ -64,11 +70,15 @@
         "@helios-lang/type-utils": "link:../helios/type-utils",
         "@helios-lang/uplc": "link:../helios/uplc",
         "@microsoft/api-extractor": "^7.47.11",
+        "@rollup/plugin-image": "^3.0.3",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
         "@rollup/pluginutils": "^5.0.2",
+        "@svgr/rollup": "^8.1.0",
         "@types/node": "^20.2.5",
         "@types/proper-lockfile": "^4.1.4",
+        "@types/react": "^18.0.0",
+        "@types/react-dom": "^18.0.0",
         "ansi-colors": "^4.1.3",
         "esbuild": "^0.25.0",
         "magic-string": "^0.30.17",
@@ -89,6 +99,7 @@
     },
     "dependencies": {
         "@cardano-ogmios/client": "^6.11.2",
+        "clsx": "^2.1.1",
         "eventemitter3": "^5.0.1",
         "nanoid": "^5.0.9"
     }

@@ -42,15 +42,15 @@
             "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI": ["./dist/programWIthFakeCacheAPI.mjs"],
             "@donecollectively/stellar-contracts": ["./src/index.ts"],
             "src/*": ["./src/*"]
-        }
-        // "typeRoots": ["./node_modules/@types", "./src/@types"],
+        },
+        "typeRoots": ["./node_modules/@types", "./src/@types"]
     },
     "files": [
          "index.ts", 
      //"src/helios/HeliosScriptBundle.js" 
      ],
     "include": [
-        "./src/@types/heliosModule.d.ts",
+        "./src/@types/**/*.d.ts",
         "./src/**/*.hl",
         "./src/**/*.ts", 
         "./src/**/*.js",

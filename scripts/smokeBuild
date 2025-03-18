@@ -11,7 +11,7 @@ playSound() {
 # rm dist/stellar-contracts.d.ts > /dev/null 2>&1
 playSound swing &
 
-tmpfile1=$(mktemp /tmp/XXXXXX.tsc.txt)
+tmpfile1=$(mktemp /tmp/tsc.XXXXXX)
 set -e
 tsc > $tmpfile1 2>&1 &
 typecheck=$!

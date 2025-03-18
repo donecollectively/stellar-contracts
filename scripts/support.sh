@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 TF="%E seconds"
 hasProblem=$(mktemp /tmp/stellar-contracts.hasProblem.XXXXXX)
 
