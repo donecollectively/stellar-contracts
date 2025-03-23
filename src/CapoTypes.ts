@@ -216,7 +216,7 @@ export type FoundDatumUtxo<
     dataWrapped?: WRAPPED_DatumType;
 };
 
-export type FoundCarterUtxo = {
+export type FoundCharterUtxo = {
     utxo: TxInput;
     datum: InlineDatum;
     data: CharterData

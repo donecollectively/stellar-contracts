@@ -656,12 +656,15 @@ export class UtxoHelper {
 
     /**
      * Locates a utxo in the current actor's wallet that matches the provided token predicate
+     * @remarks
+     * With the mode="multiple" option, it returns an array of matches if any are found, or undefined if none are found.
      * @public
      */
-    async findActorUtxo(
+    async findActorUtxo<T extends "single" | "multiple" = "single">(
         name: string,
         predicate: (u: TxInput) => TxInput | undefined,
-        options: UtxoSearchScope = {}
+        options: UtxoSearchScope = {},
+        mode: T = "single" as T
     ) {
         const wallet = options.wallet ?? this.wallet;
 
@@ -679,7 +682,7 @@ export class UtxoHelper {
             ...options,
             wallet,
             utxos,
-        });
+        }, mode);
     }
 
     /**
@@ -690,9 +693,10 @@ export class UtxoHelper {
      * Skips any utxos that are already being spent in the provided transaction context.
      * Skips any utxos that are marked as collateral in the wallet.
      *
+     * With the mode="multiple" option, it returns an array of matches if any are found, or undefined if none are found.
      * @public
      **/
-    async hasUtxo(
+    async hasUtxo<T extends "single" | "multiple" = "single">(
         semanticName: string,
         predicate: utxoPredicate,
         {
@@ -702,8 +706,9 @@ export class UtxoHelper {
             utxos,
             required,
             dumpDetail,
-        }: UtxoSearchScopeWithUtxos
-    ): Promise<TxInput | undefined> {
+        }: UtxoSearchScopeWithUtxos,
+        mode: T = "single" as T
+    ): Promise<T extends "single" ? TxInput | undefined : TxInput[] | undefined> {
         const collateral = ((wallet
             ? "handle" in wallet
                 ? await (wallet as any).handle.collateral
@@ -723,13 +728,14 @@ export class UtxoHelper {
               )
             : notCollateral;
 
-        const found = filtered.find(predicate);
-
+        const foundMultiple = filtered.filter(predicate)
+        const foundOne = foundMultiple[0];
+        
         const joiner = "\n   🔎  ";
         const detail = // true ||
             dumpDetail == "always" ||
             globalThis.utxoDump ||
-            (!found && dumpDetail == "onFail")
+            (!foundOne && dumpDetail == "onFail")
                 ? "\n  from set: " + joiner + utxosAsString(filtered, joiner)
                 : `(${filtered.length} candidates; show with globalThis.utxoDump or \`dumpDetail\` option)`;
         console.log(
@@ -745,11 +751,13 @@ export class UtxoHelper {
             //     : [])
         );
 
-        if (found) {
+
+        if (foundOne) {
+            const multiInfo = mode == "multiple" ? ` ${foundMultiple.length} matches; first: ` : "";
             console.log(
-                "   🎈found" +
+                "   🎈found" + multiInfo +
                     utxosAsString(
-                        [found],
+                        [foundOne],
                         undefined,
                         this.setup.uxtoDisplayCache
                     )
@@ -772,12 +780,19 @@ export class UtxoHelper {
                                   (await alreadyInTcx.dump()) +
                                   "\n\n 👁️   👁️ 👁️ ^^^^^^^ More details about the utxo search failure above ^^^^^^^ 👁️ 👁️   👁️"
                                 : "")
-                    );
-                    return undefined;
+                    );            
+                    return undefined as any;
                 }
             }
         }
-        return found;
+        if (mode == "multiple") {
+            if (!foundMultiple.length) {
+                return undefined as any;
+            }
+            return foundMultiple as any;
+        }
+
+        return foundOne as any;
     }
 
     async mustFindActorUtxo(

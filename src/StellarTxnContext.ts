@@ -930,9 +930,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
             this.utxoNotReserved.bind(this) || ((u: TxInput) => u);
 
         const uh = this.uh;
-        return this.wallet.utxos.then((utxos) => {
+        return uh.findActorUtxo("spares for tx balancing", notReserved, {wallet: this.wallet}, "multiple").then((utxos) => {
+            if (!utxos) {
+                throw new Error(`no utxos found for spares for tx balancing.  We can ask the user to send a series of 10, 11, 12, ... ADA to themselves or do it automatically`);
+            }
+
             const allSpares = utxos
-                .filter(notReserved)
                 .map(toSortInfo)
                 .filter(uh.utxoIsSufficient)
                 .sort(uh.utxoSortSmallerAndPureADA);
