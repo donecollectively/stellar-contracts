@@ -44,7 +44,8 @@ import { bytesToHex } from "@helios-lang/codec-utils";
 import type { UtxoHelper } from "./UtxoHelper.js";
 import type { IF_ISANY } from "./helios/typeUtils.js";
 import type { Expand } from "./helios/typeUtils.js";
-import { nanoid } from "nanoid";
+import { customAlphabet } from "nanoid";
+const nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
 import { TxNotNeededError } from "./utils.js";
 
 /**
@@ -1243,7 +1244,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
             }
 
             // tx.body.fee = tx.body.fee + BigInt(250_000n); // 25k lovelace
-
             return {
                 tx,
                 willSign,
@@ -1826,7 +1826,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                           console.log(
                               "  creating TCX just in time for: " + description
                           );
-                          
+
                           const tcx = await addlTxInfo.mkTcx();
                           tcx.parentId = parentId || "";
                           tcx.depth = depth;
@@ -1857,7 +1857,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                           console.log(
                               "  ---------------- warning!!!! addlTxInfo is already built!"
                           );
-                          debugger
+                          debugger;
                           throw new Error(" unreachable - right?");
                           return addlTxInfo.tcx;
                       })()

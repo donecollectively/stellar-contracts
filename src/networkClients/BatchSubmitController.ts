@@ -21,7 +21,8 @@ import {
     type dateAsMillis,
     type SubmitManagerState,
 } from "./TxSubmitMgr.js";
-import { nanoid } from "nanoid";
+import { customAlphabet } from "nanoid";
+const nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
 import {
     mkCancellablePromise,
     type ResolveablePromise,
@@ -194,6 +195,7 @@ export class BatchSubmitController {
         this.$txStates = {};
         this.destroyed = true;
     }
+    
     notDestroyed() {
         if (this.destroyed) {
             throw new Error("submitter-multi-client has been destroyed");
