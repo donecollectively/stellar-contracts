@@ -82,8 +82,8 @@ playCheckpointSound
 wait
 
 # Verify UI types were generated
-if [ ! -f "dist/ui/index.d.ts" ]; then
-    echo "Error: UI types were not generated at dist/ui/index.d.ts"
+if [ ! -f "dist/ui.d.ts" ]; then
+    echo "Error: UI types were not generated at dist/ui.d.ts"
     exit 1
 fi
 
