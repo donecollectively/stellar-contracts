@@ -472,8 +472,8 @@ export abstract class Capo<
      * This method should use {@link StellarTxnContext.includeAddlTxn} to add transactions
      * to the context.
      *
-    **/
-       /* No-op by default */
+     **/
+    /* No-op by default */
     async mkAdditionalTxnsForCharter<
         TCX extends hasAddlTxns<StellarTxnContext<any>>
     >(
@@ -2508,12 +2508,21 @@ export abstract class Capo<
             });
         }
         const tcx2 = await this.addTxnBootstrappingSettings(tcx, charterData);
-        tcx.includeAddlTxn("check for updates", {
+        const anyBootstrapping = Object.entries(tcx2.state.addlTxns).length > 0;
+        if (!anyBootstrapping) {
+            return this.mkAdditionalTxnsForCharter(tcx2, {
+                charterData,
+                capoUtxos,
+            });
+        }
+
+        return tcx2.includeAddlTxn("check for updates", {
             description: `capo-specific txns for deploying any missing or upgraded delegates`,
             moreInfo:
                 "if any delegates are missing or need to be upgraded, these txns will take care of it",
             mkTcx: async () => {
                 const tcx3 = this.mkTcx("addl txns for capo").facade();
+
                 const capoUtxos = await this.findCapoUtxos();
                 const charterData = await this.findCharterData(undefined, {
                     capoUtxos,
@@ -2556,11 +2565,9 @@ export abstract class Capo<
                     charterData,
                     capoUtxos,
                 });
-                return tcx3;
+                return tcx3
             },
         });
-
-        return tcx2;
     }
 
     async findCapoUtxos(
@@ -2599,16 +2606,16 @@ export abstract class Capo<
         });
     }
 
-    async addTxnBootstrappingSettings(
+    async addTxnBootstrappingSettings<TCX extends StellarTxnContext>(
         this: SELF,
-        tcx: StellarTxnContext,
+        tcx: TCX,
         charterData: CharterData
-    ) {
+    ): Promise<hasAddlTxns<TCX>> {
         if (!this.delegateRoles.settings) {
             console.warn(
                 ` 🐞🐞🐞🐞🐞 ${this.constructor.name} has no settings policy to initialize`
             );
-            return tcx;
+            return tcx.withAddlTxns();
         } else {
             const optional = true;
             const foundDelegate = await this.getDgDataController("settings", {
@@ -2726,7 +2733,7 @@ export abstract class Capo<
                 });
                 // return this.commitPendingChangesIfNeeded(tcx);
             }
-            return tcx;
+            return tcx.withAddlTxns();
         }
     }
 

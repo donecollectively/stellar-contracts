@@ -1338,6 +1338,29 @@ export class StellarTxnContext<S extends anyState = anyState> {
         });
     }
 
+    /**
+     * augments a transaction context with a type indicator
+     * that it has additional transactions to be submitted.
+     * @public
+     * @remarks
+     * The optional argument can also be used to include additional
+     * transactions to be chained after the current transaction.
+     */
+    withAddlTxns<
+        TCX extends StellarTxnContext<anyState>
+    >(
+        this: TCX, 
+        addlTxns: Record<string, TxDescription<any, "buildLater!">> = {}
+    ) : hasAddlTxns<TCX> {
+        //@ts-expect-error
+        this.state.addlTxns = this.state.addlTxns || {}
+        
+        for (const [name, txn] of Object.entries(addlTxns)) {
+            this.includeAddlTxn(name, txn)
+        }
+        return this as any
+    }
+
     async buildAndQueueAll(
         this: StellarTxnContext<any>,
         options: SubmitOptions = {}
