@@ -323,9 +323,13 @@ export class CapoDAppProvider<
         } = this.state;
         const { children = <></>, uiPortals, portalDelay } = this.props;
 
-        // console.warn(`-------------------------- RENDER ---------------------------\n ---> ${status}`);
-
-        if ("headless" == uiPortals) return children;
+        if ("headless" == uiPortals) {
+            return (
+                <CapoDappProviderContext.Provider value={this.state}>
+                    {children}
+                </CapoDappProviderContext.Provider>
+            );
+        }
 
         let results: React.ReactNode = children;
         // if (isError) {
@@ -394,13 +398,17 @@ export class CapoDAppProvider<
             "";
 
         return (
-            <ClientSideOnly>
-                <div>
-                    {renderedStatus}
-                    {userDetails}
-                    {results as any}
-                </div>
-            </ClientSideOnly>
+            <ClientSideOnly
+                children={
+                    <CapoDappProviderContext.Provider value={this.state}>
+                        <div>
+                            {renderedStatus}
+                            {userDetails}
+                            {results as any}
+                        </div>
+                    </CapoDappProviderContext.Provider>
+                }
+            />
         );
     }
 
@@ -416,7 +424,11 @@ export class CapoDAppProvider<
     ): React.ReactNode {
         const pp: any = progressPercent ? { progressPercent } : {};
 
-        return <Progress key="capoProgress" {...pp}>{progressLabel}</Progress>;
+        return (
+            <Progress key="capoProgress" {...pp}>
+                {progressLabel}
+            </Progress>
+        );
     }
 
     /**
@@ -453,20 +465,28 @@ export class CapoDAppProvider<
      */
     renderPersistentMessage(): React.ReactNode {
         const {
-            status: { moreInstructions, message },
+            status: { moreInstructions, message, isError },
         } = this.state;
+        const statusClass =
+            //  !isError
+            //     ? "font-bold bg-red-800 text-orange-200" :
+            "bg-blue-300 border-blue-500 text-black font-bold dark:bg-blue-900 dark:text-blue-300";
         return (
             <div
-                className="status border rounded relative left-0 top-0 mb-4 min-w-screen-md max-w-screen-md sm:max-w-screen-sm"
+                className={`status min-h-10 relative left-0 top-0 mb-4 flex w-full rounded border p-1 ${statusClass}`}
                 key="persistentMessage"
                 role="banner"
             >
-                {this._renderNextAction()}
-                <span key="status" className="block sm:inline">
-                    {message}
-                </span>
+                <div className="flex-grow">
+                    <span key="status" className="block sm:inline">
+                        {message}
+                    </span>
+                    <div className="text-sm text-gray-300 italic">
+                        {moreInstructions}
+                    </div>
+                </div>
 
-                <div>{moreInstructions}</div>
+                <div className="mr-2">{this._renderNextAction()}</div>
             </div>
         );
     }
@@ -524,7 +544,7 @@ export class CapoDAppProvider<
         } = this.state;
         return (
             <div
-                className="error border rounded relative left-0 top-0 mb-4 min-w-screen-md max-w-screen-md sm:max-w-screen-sm"
+                className="error min-w-screen-md relative left-0 top-0 mb-4 max-w-screen-md rounded border sm:max-w-screen-sm font-bold bg-red-800 text-orange-200"
                 role="alert"
                 key="errorStatus"
                 style={{ marginBottom: "0.75em" }}
@@ -570,16 +590,7 @@ export class CapoDAppProvider<
     ) {
         return (
             <button
-                className="btn border rounded float-right"
-                style={{
-                    float: "right",
-                    padding: "0.75em",
-                    marginLeft: "0.5em",
-                    // marginTop: '-0.75em',
-                    border: "1px solid #0000ff",
-                    borderRadius: "0.25em",
-                    backgroundColor: "#007",
-                }}
+                className="btn float-right ml-1 rounded-md border-2 border-amber-800 bg-blue-900 p-2 text-white hover:bg-blue-600 dark:border-amber-700 dark:bg-blue-200 dark:text-black dark:hover:bg-blue-50"
                 onClick={actionTrigger}
             >
                 {actionMessage || this.userActions[actionKey].label}
@@ -628,7 +639,7 @@ export class CapoDAppProvider<
      */
     renderRoleTag(role: string) {
         return (
-            <span className="ml-1 inline-block mb-0 rounded border border-slate-500 text-slate-400 text-sm px-2 py-0 bg-emerald-800 shadow-none outline-none transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] hover:cursor-text">
+            <span className="ml-1 mb-0 inline-block rounded border border-slate-500 bg-emerald-800 px-2 py-0 text-sm text-slate-400 shadow-none outline-none transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] hover:cursor-text">
                 {role}
             </span>
         );
@@ -661,7 +672,7 @@ export class CapoDAppProvider<
             return (
                 <span
                     key="chip-networkName"
-                    className="inline-block mb-0 rounded border border-slate-500 text-slate-400 text-sm px-2 py-0 bg-blue-900 shadow-none outline-none transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] hover:cursor-text"
+                    className="mb-0 inline-block rounded border border-slate-500 bg-blue-900 px-2 py-0 text-sm text-slate-400 shadow-none outline-none transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] hover:cursor-text"
                 >
                     {foundNetworkName}
                 </span>
@@ -728,7 +739,7 @@ export class CapoDAppProvider<
             return;
         }
 
-        this._isInitializing = this._isInitializing || this.doInitialize()
+        this._isInitializing = this._isInitializing || this.doInitialize();
     }
     _isInitializing: Promise<any> | undefined = undefined;
     async doInitialize() {
@@ -742,7 +753,7 @@ export class CapoDAppProvider<
                 await this.newWalletSelected(autoWallet, false);
             }
         }
-        
+
         // await this.updateState('connecting to wallet', {
         await this.updateStatus(
             "initializing on-chain contracts",
@@ -794,7 +805,7 @@ export class CapoDAppProvider<
             );
         }
         const { promise, resolve } = Promise.withResolvers();
-        const { networkParams, userInfo: {wallet}={} } = this.state;
+        const { networkParams, userInfo: { wallet } = {} } = this.state;
         if (!networkParams) {
             throw new Error("network params not available");
         }
@@ -805,12 +816,11 @@ export class CapoDAppProvider<
         //     txBatcher.signingStrategy = new GenericCip30Signer(wallet)
         // }
 
-
         const txBatcherOptions: TxBatcherOptions = {
             submitters: this.submitters,
-        }
+        };
         if (wallet) {
-            txBatcherOptions.signingStrategy = new GenericSigner(wallet)
+            txBatcherOptions.signingStrategy = new GenericSigner(wallet);
         }
         this.setState(
             {
@@ -986,16 +996,22 @@ export class CapoDAppProvider<
             return;
         }
         const wallet = makeCip30Wallet(walletHandle);
-        const {txBatcher} = this.state
+        const { txBatcher } = this.state;
 
-                if (txBatcher) {
-            txBatcher.signingStrategy = new GenericSigner(wallet)
+        if (txBatcher) {
+            txBatcher.signingStrategy = new GenericSigner(wallet);
         }
 
         const walletHelper = makeWalletHelper(wallet);
         if ("undefined" !== typeof window) {
-            if (window.localStorage.getItem("capoAutoConnectWalletName") !== walletName) {
-                window.localStorage.setItem("capoAutoConnectWalletName", walletName);
+            if (
+                window.localStorage.getItem("capoAutoConnectWalletName") !==
+                walletName
+            ) {
+                window.localStorage.setItem(
+                    "capoAutoConnectWalletName",
+                    walletName
+                );
             }
         }
 
@@ -1194,16 +1210,18 @@ export class CapoDAppProvider<
             return;
         }
         type t = ConfigFor<CapoType>;
-        let {txBatcher} = this.state
-        if( !txBatcher) {
-            const batcherOptions : TxBatcherOptions = {
+        let { txBatcher } = this.state;
+        if (!txBatcher) {
+            const batcherOptions: TxBatcherOptions = {
                 submitters: this.submitters,
-                ...(wallet ? {
-                    signingStrategy: new GenericSigner(wallet)
-                }: {})
-            }
+                ...(wallet
+                    ? {
+                          signingStrategy: new GenericSigner(wallet),
+                      }
+                    : {}),
+            };
 
-            txBatcher = new TxBatcher(batcherOptions)
+            txBatcher = new TxBatcher(batcherOptions);
         }
         const setup = {
             network: this.bf,
@@ -1225,13 +1243,13 @@ export class CapoDAppProvider<
             console.log("init with cfg", cfg);
             await this.updateStatus(
                 `connecting: ${this.dAppName}`,
-                {                    
+                {
                     developerGuidance:
-                        "wait for connection; possibly show a spinner",                    
+                        "wait for connection; possibly show a spinner",
                 },
                 "//init",
                 {
-                    txBatcher
+                    txBatcher,
                 }
             );
 
@@ -1241,19 +1259,18 @@ export class CapoDAppProvider<
             );
             const capoBundle = capo.getBundle();
             const configured = capoBundle.configuredParams;
-            const {isChartered} = capo;
+            const { isChartered } = capo;
 
             if (!configured || !isChartered) {
-                const problem = configured ? (
-                    isChartered ? "impossible" :
-                    "is preconfigured and ready to be chartered!")
-                    : (isChartered ? "impossible" : 
-                        "needs to be configured and chartered.   Add a configuration if you have it, or create the Capo charter now."
-                    )
+                const problem = configured
+                    ? isChartered
+                        ? "impossible"
+                        : "is preconfigured and ready to be chartered!"
+                    : isChartered
+                    ? "impossible"
+                    : "needs to be configured and chartered.   Add a configuration if you have it, or create the Capo charter now.";
 
-                const message = autoNext
-                    ? `The Capo contract ${problem} `
-                    : "";
+                const message = autoNext ? `The Capo contract ${problem} ` : "";
 
                 await this.updateStatus(
                     message,
@@ -1687,73 +1704,46 @@ export type DappUserInfo = {
     foundNetworkName: string;
 };
 
-// /**
-//  * Provides access to the CapoDappProvider instance, its state-updating methods and default renderers
-//  * @public
-//  */
-// export type CapoUIContext<CapoType extends Capo<any>> = {
-//     capo?: CapoType;
-//     provider: CapoDAppProvider<CapoType>;
+/**
+ * @public
+ */
+export type UserAction = {
+    label: string;
+    trigger: () => void;
+};
 
-//     /**
-//      * Updates the status of the CapoDappProvider
-//      * @public
-//      */
-//     updateStatus: stateUpdaterFunc;
-//     /**
-//      * Reports an error to the CapoDappProvider
-//      * @public
-//      */
-//     reportError: errorFunc;
+/**
+ * @public
+ */
+export type BaseUserActionMap = {
+    initializeCapo: UserAction;
+    retryCreation: UserAction;
+};
 
-//     /**
-//      * Renders a list of chips indicating the roles recognized for the current user
-//      * @public
-//      */
-//     renderRoleInfo: renderFunc;
-//     /**
-//      * Renders a button for triggering any next-action indicated by the provider
-//      * or other caller to the updateStatus() method.
-//      * @public
-//      */
-//     renderNextAction: renderFunc;
-//     /**
-//      * Renders a button for connecting the wallet, or a message indicating the wallet is connected
-//      * @public
-//      */
-//     renderWalletInfo: renderFunc;
+/**
+ * @public
+ */
+export type UserActionMap<actions extends string> = Record<
+    actions,
+    UserAction
+> &
+    BaseUserActionMap;
 
-//     /**
-//      * Renders a progress bar with a label and optional percentage
-//      * @public
-//      */
-//     renderProgressBar: renderFunc;
-//     /**
-//      * Renders a persistent status message, if any
-//      * @public
-//      */
-//     renderPersistentMessage: CapoDAppProvider<any>["renderPersistentMessage"];
-//     /**
-//      * Renders a notification message, if any
-//      * @public
-//      */
-//     renderNotification: CapoDAppProvider<any>["renderNotification"];
-//     /**
-//      * Renders an error message, if any
-//      * @public
-//      */
-//     renderErrorStatus: CapoDAppProvider<any>["renderErrorStatus"];
-//     /**
-//      * Renders a button for the indicated action
-//      * @public
-//      */
-//     renderActionButton: CapoDAppProvider<any>["renderActionButton"];
-//     /**
-//      * Renders a tag for the indicated role
-//      * @public
-//      */
+/**
+ * @public
+ */
+export const CapoDappProviderContext =
+    React.createContext<CapoDappProviderState<Capo<any, any>> | null>(null);
 
-// };
+export function useCapoDappProvider() {
+    const context = React.useContext(CapoDappProviderContext);
+    if (!context) {
+        throw new Error(
+            "useCapoDappProvider must be used within a CapoDappProvider"
+        );
+    }
+    return context;
+}
 
 /**
  * Status details emitted by the CapoDappProvider to indicate progress and current state
@@ -1903,38 +1893,3 @@ export type CapoDappStatus<T extends UserActionMap<any> = BaseUserActionMap> = {
      */
     busy?: true;
 };
-
-/**
- * @public
- */
-export type UserAction = {
-    label: string;
-    trigger: () => void;
-};
-
-/**
- * @public
- */
-export type BaseUserActionMap = {
-    initializeCapo: UserAction;
-    retryCreation: UserAction;
-};
-
-/**
- * @public
- */
-export type UserActionMap<actions extends string> = Record<
-    actions,
-    UserAction
-> &
-    BaseUserActionMap;
-
-const CapoDappProviderContext = React.createContext<CapoDappProviderState<Capo<any, any>> | null>(null);
-
-export function useCapoDappProvider() {
-    const context = React.useContext(CapoDappProviderContext);
-    if (!context) {
-        throw new Error("useCapoDappProvider must be used within a CapoDappProvider");
-    }
-    return context;
-}

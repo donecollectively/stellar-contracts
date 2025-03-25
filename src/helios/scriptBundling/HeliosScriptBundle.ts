@@ -38,6 +38,7 @@ import { bytesToHex } from "@helios-lang/codec-utils";
 import { makeCast } from "@helios-lang/contract-utils";
 import { uplcDataSerializer } from "../../delegation/jsonSerializers.js";
 import { makeMintingPolicyHash } from "@helios-lang/ledger";
+import { environment } from "../../environment.js";
 
 /**
  * @internal
@@ -49,7 +50,7 @@ export const defaultNoDefinedModuleName = "‹default-needs-override›";
  */
 export const placeholderSetupDetails = {
     setup: {
-        isMainnet: "mainnet" === process.env.CARDANO_NETWORK,
+        isMainnet: "mainnet" === environment.CARDANO_NETWORK,
         isPlaceholder: "for abstract bundleClass",
     },
 };

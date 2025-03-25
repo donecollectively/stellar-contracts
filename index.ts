@@ -1,4 +1,5 @@
 import type { CharterDataLike } from "./src/CapoTypes.js";
+export { environment } from "./src/environment.js";
 export { DelegateConfigNeeded } from "./src/delegation/RolesAndDelegates.js";
 export { UnspecializedMintDelegate } from "./src/delegation/UnspecializedMintDelegate.js";
 export {UnspecializedDelegateBridge} from "./src/delegation/UnspecializedDelegate.bridge.js";
@@ -58,6 +59,7 @@ export {
     abbreviatedDetail,
     abbreviatedDetailBytes,    
 } from "./src/delegation/jsonSerializers.js";
+
 
 export { UutName } from "./src/delegation/UutName.js";
 export {

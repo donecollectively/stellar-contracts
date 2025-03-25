@@ -1334,7 +1334,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         //!!! ^^^ remove?
 
         return this.buildAndQueueAll(options).then(() => {
-            return currentBatch.$signAndSubmitAll().then(() => true);
+//            return currentBatch.$signAndSubmitAll().then(() => true);
         });
     }
 

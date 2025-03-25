@@ -8,7 +8,7 @@ export function InPortal(props: {
     fallbackHelp?: string;
     delay?: number;
     maxRetries?: number;
-    children: ReactNode | typeof React.Children;
+    children: ReactNode;
 }) {
     const {
         domId,
@@ -18,7 +18,10 @@ export function InPortal(props: {
         maxRetries = 1,
         children,
     } = props;
-    if ("undefined" == typeof window) return <ClientSideOnly />;
+    
+    const childrenAsNode = children as React.ReactNode;
+
+    if ("undefined" == typeof window) return <ClientSideOnly children={childrenAsNode} />;
     const [renderCount, updateRenderCount] = useState(1);
     const reRender = () => updateRenderCount(renderCount + 1);
 
@@ -34,12 +37,12 @@ export function InPortal(props: {
         foundPortalTarget || document.getElementById(fallbackId);
     if (foundPortalTarget) {
         return createPortal(
-            <ClientSideOnly>{children}</ClientSideOnly>,
+            <ClientSideOnly children={childrenAsNode} />,
             foundPortalTarget
         );
     } else if (fallbackPortalHost) {
         return createPortal(
-            <ClientSideOnly>{children}</ClientSideOnly>,
+            <ClientSideOnly children={childrenAsNode} />,
             fallbackPortalHost
         );
     }
@@ -96,5 +99,5 @@ export function InPortal(props: {
             reRender();
         }, delay);
 
-    return <ClientSideOnly />;
+    return <ClientSideOnly children={null} />;
 }

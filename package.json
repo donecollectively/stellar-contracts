@@ -54,12 +54,8 @@
         "test:run": "vitest run"
     },
     "author": "Done Collectively LCA",
-    "peerDependencies": {
-        "react": "^18.0.0",
-        "react-dom": "^18.0.0",
-        "rollup-plugin-esbuild": "^6.1.0"
-    },
-    "devDependencies": {
+    "dependencies": {
+        "@cardano-ogmios/client": "^6.11.2",
         "@helios-lang/codec-utils": "link:../helios/codec-utils",
         "@helios-lang/compiler": "link:../helios/compiler",
         "@helios-lang/compiler-utils": "link:../helios/compiler-utils",
@@ -69,6 +65,17 @@
         "@helios-lang/tx-utils": "link:../helios/tx-utils",
         "@helios-lang/type-utils": "link:../helios/type-utils",
         "@helios-lang/uplc": "link:../helios/uplc",
+        "clsx": "^2.1.1",
+        "eventemitter3": "^5.0.1",
+        "nanoid": "^5.0.9",
+        "proper-lockfile": "^4.1.2"
+    },
+    "peerDependencies": {
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "rollup-plugin-esbuild": "^6.1.0"
+    },
+    "devDependencies": {
         "@microsoft/api-extractor": "^7.47.11",
         "@rollup/plugin-image": "^3.0.3",
         "@rollup/plugin-json": "^6.0.1",
@@ -82,7 +89,8 @@
         "ansi-colors": "^4.1.3",
         "esbuild": "^0.25.0",
         "magic-string": "^0.30.17",
-        "proper-lockfile": "^4.1.2",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
         "rollup": "^4.34.6",
         "rollup-plugin-api-extractor": "^0.2.5",
         "rollup-plugin-esbuild": "^6.1.0",
@@ -96,11 +104,5 @@
         "typescript": "5.6.2",
         "vite": "^6.0.7",
         "vitest": "^3.0.2"
-    },
-    "dependencies": {
-        "@cardano-ogmios/client": "^6.11.2",
-        "clsx": "^2.1.1",
-        "eventemitter3": "^5.0.1",
-        "nanoid": "^5.0.9"
     }
 }
