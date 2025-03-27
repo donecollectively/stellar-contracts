@@ -98,10 +98,13 @@ describe("Capo", async () => {
             const utxos = await h.wallet.utxos;
             const tcx = h.mkTcx().withName("creates a high-indexed utxo");
             let totalHeld: Value = makeValue(0n * ADA);
-            for (const u of utxos) {
-                tcx.addInput(u);
-                totalHeld = totalHeld.add(u.value);
-            }
+
+            // no need to add a bunch of inputs; the wallet will find "spares" to serve the needed value
+            //xxx for (const u of utxos) {
+            //xxx     tcx.addInput(u);
+            //xxx     totalHeld = totalHeld.add(u.value);
+            //xxx }
+            
             const tinyValue = 1n * ADA;
             const collateralValue = 5n * ADA;
             for (let i = 0; i < 44; i++) {
