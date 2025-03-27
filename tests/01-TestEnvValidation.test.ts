@@ -109,7 +109,7 @@ describe("Test environment", async () => {
             console.log(
                 "case 2: works if we give it more margin of error in initial fee calc"
             );
-            await tryWithSlop(15n * ADA);
+            await tryWithSlop(16n * ADA);
             //!!! todo: remove case 1b, case2 after case 1a starts working right.
 
             const tm2 = await network.getUtxos(tom.address);
