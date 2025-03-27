@@ -931,23 +931,35 @@ export class StellarTxnContext<S extends anyState = anyState> {
             this.utxoNotReserved.bind(this) || ((u: TxInput) => u);
 
         const uh = this.uh;
-        return uh.findActorUtxo("spares for tx balancing", notReserved, {wallet: this.wallet}, "multiple").then((utxos) => {
-            if (!utxos) {
-                throw new Error(`no utxos found for spares for tx balancing.  We can ask the user to send a series of 10, 11, 12, ... ADA to themselves or do it automatically`);
-            }
+        return uh
+            .findActorUtxo(
+                "spares for tx balancing",
+                notReserved,
+                {
+                    wallet: this.wallet,
+                    dumpDetail: "onFail",
+                },
+                "multiple"
+            )
+            .then(async (utxos) => {
+                if (!utxos) {
+                    throw new Error(
+                        `no utxos found for spares for tx balancing.  We can ask the user to send a series of 10, 11, 12, ... ADA to themselves or do it automatically`
+                    );
+                }
 
-            const allSpares = utxos
-                .map(toSortInfo)
-                .filter(uh.utxoIsSufficient)
-                .sort(uh.utxoSortSmallerAndPureADA);
+                const allSpares = utxos
+                    .map(toSortInfo)
+                    .filter(uh.utxoIsSufficient)
+                    .sort(uh.utxoSortSmallerAndPureADA);
 
-            if (allSpares.reduce(uh.reduceUtxosCountAdaOnly, 0) > 0) {
-                return allSpares
-                    .filter(uh.utxoIsPureADA)
-                    .map(uh.sortInfoBackToUtxo);
-            }
-            return allSpares.map(uh.sortInfoBackToUtxo);
-        });
+                if (allSpares.reduce(uh.reduceUtxosCountAdaOnly, 0) > 0) {
+                    return allSpares
+                        .filter(uh.utxoIsPureADA)
+                        .map(uh.sortInfoBackToUtxo);
+                }
+                return allSpares.map(uh.sortInfoBackToUtxo);
+            });
     }
 
     async findChangeAddr(): Promise<Address> {
@@ -1093,7 +1105,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 );
             }
             try {
-                
                 // the transaction can fail validation without throwing an error
                 tx = await this.txb.buildUnsafe({
                     changeAddress,
@@ -1334,7 +1345,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         //!!! ^^^ remove?
 
         return this.buildAndQueueAll(options).then(() => {
-//            return currentBatch.$signAndSubmitAll().then(() => true);
+            return true;
+            //            return currentBatch.$signAndSubmitAll().then(() => true);
         });
     }
 
@@ -1346,19 +1358,17 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * The optional argument can also be used to include additional
      * transactions to be chained after the current transaction.
      */
-    withAddlTxns<
-        TCX extends StellarTxnContext<anyState>
-    >(
-        this: TCX, 
+    withAddlTxns<TCX extends StellarTxnContext<anyState>>(
+        this: TCX,
         addlTxns: Record<string, TxDescription<any, "buildLater!">> = {}
-    ) : hasAddlTxns<TCX> {
+    ): hasAddlTxns<TCX> {
         //@ts-expect-error
-        this.state.addlTxns = this.state.addlTxns || {}
-        
+        this.state.addlTxns = this.state.addlTxns || {};
+
         for (const [name, txn] of Object.entries(addlTxns)) {
-            this.includeAddlTxn(name, txn)
+            this.includeAddlTxn(name, txn);
         }
-        return this as any
+        return this as any;
     }
 
     async buildAndQueueAll(
@@ -1413,7 +1423,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             });
         } else if (this.state.addlTxns) {
             if (this.isFacade) {
-                this.currentBatch.$txInfo(this.id)?.transition("isFacade")
+                this.currentBatch.$txInfo(this.id)?.transition("isFacade");
             }
 
             // this gives early registration of nested txns from top-level txns
@@ -1620,7 +1630,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const txSize = tx.calcSize();
         const txFeeCalc = Number(tx.calcMinFee(this.networkParams));
         const txFee = tx.body.fee;
-        
+
         const cpuFee = BigInt((Number(total.cpu) * exCpuFeePerUnit).toFixed(0));
         const memFee = BigInt((Number(total.mem) * exMemFeePerUnit).toFixed(0));
         const sizeFee = BigInt(txSize * txFeePerByte);
@@ -1831,9 +1841,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                           tcx.parentId = parentId || "";
                           tcx.depth = depth;
                           if (id) {
-                            this.currentBatch.changeTxId(id, tcx.id)
-                            txInfoResolved.id = tcx.id
-                        } else {
+                              this.currentBatch.changeTxId(id, tcx.id);
+                              txInfoResolved.id = tcx.id;
+                          } else {
                               addlTxInfo.id = tcx.id;
                               console.warn(
                                   `expected id to be set on addlTxInfo; falling back to JIT-generated id in new tcx`
@@ -1902,7 +1912,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
             // console.log("   ----> effective tx", effectiveTcx);
 
             txInfoResolved.tcx = effectiveTcx;
-
 
             //!!! was just buildAndQueue, but that was executing
             // in "breadth-first" order (good for registration)
