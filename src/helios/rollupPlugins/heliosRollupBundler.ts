@@ -1,9 +1,9 @@
-import { inspect } from "util";
-import { blake2b } from "@helios-lang/crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { createFilter } from "rollup-pluginutils";
 import MagicString from "magic-string";
+import { inspect } from "util";
+import colors from "ansi-colors";
 import {
     type InputOptions,
     type ResolveIdHook,
@@ -19,8 +19,9 @@ import {
     type ResolvedId,
 } from "rollup";
 
-import { StellarHeliosProject } from "./StellarHeliosProject.js";
+import { blake2b } from "@helios-lang/crypto";
 import { bytesToHex } from "@helios-lang/codec-utils";
+import { StellarHeliosProject } from "./StellarHeliosProject.js";
 import { bytesToText, textToBytes } from "../../HeliosPromotedTypes.js";
 import { rollupCreateHlbundledClass } from "../rollupPlugins/rollupCreateHlbundledClass.js";
 import type { HeliosScriptBundle } from "../scriptBundling/HeliosScriptBundle.js";
@@ -751,11 +752,14 @@ export function heliosRollupBundler(
                     looksLikeCapo = null;
 
                 const capoConfigRegex =
-                    /^(\s*preConfigured *= )*(?:capoConfigurationDetails)(?:\s|$)/m;
+                    /^(\s*preConfigured *= )*(?:capoConfigurationDetails)\s*;?\s*$/m;
                 // const tester = `            preConfigured = mkCapoDeployment`
+                // const tester2 = `            preConfigured = mkCapoDeployment; `
+                // const tester3 = `            preConfigured = mkCapoDeployment ;`
+                // const tester4 = `            preConfigured = mkCapoDeployment  ;  `
                 const filenameBase = id.replace(/.*\/([^.]+)\..*$/, "$1");
                 const deployDetailsFile = `./${filenameBase}.hlDeploy.${networkId}.json`;
-
+                const hlbFile = id.replace(/.*\/([^.]+)\..*$/, "$1");
 
                 const SomeBundleClass: typeof CapoHeliosBundle =
                     state.bundleClassById[id];
@@ -772,13 +776,16 @@ export function heliosRollupBundler(
                             );
                             return null;
                         }
+                        const msg = `${SomeBundleClass.name}: this looks like a Capo bundle class without a currentDeploymentConfig\n`+
+                        `  in ${hlbFile}\n` +
+                        `  import {currentDeploymentConfig} from "@donecollectively/stellar-contracts"\n` +
+                        `  ... and add  'preConfigured = capoConfigurationDetails' to your class.\n` +
+                        `This will use deployment details from ${deployDetailsFile}\n` +
+                        `  ... or another json file when deploying to a different network`
                         this.warn(
-                            `${SomeBundleClass.name}: this looks like a Capo bundle class without a currentDeploymentConfig in ${id}\n` +
-                                `  import {currentDeploymentConfig} from "@donecollectively/stellar-contracts"\n` +
-                                `  ... and add  'preConfigured = capoConfigurationDetails' to your class.\n` +
-                                `This will use configuration details from its ${deployDetailsFile}\n` +
-                                `  ... or another json file when deploying to a different network`
+                            msg
                         );
+                        console.log(colors.red(msg));
                         return null;
                     }
                 } else if (code.match(capoConfigRegex)) {
@@ -822,12 +829,13 @@ export function heliosRollupBundler(
         );
         if (!resolvedDeployConfig) {
             this.warn(
-                `no ${networkId} deployDetails for Capo bundle: ${deployDetailsFile}`
+                `no ${networkId} setup for Capo bundle: ${deployDetailsFile}`
             );
             if (SomeBundleClass.name == state.project.capoBundleName) {
                 state.project.configuredCapo.resolve(undefined);
             }
         } else {
+            this.info("building with Capo setup: " + deployDetailsFile);
             const deployDetailsConfigJSON = readFileSync(
                 resolvedDeployConfig.id
             );
