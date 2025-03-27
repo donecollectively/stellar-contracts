@@ -1073,14 +1073,19 @@ export abstract class Capo<
         // return this.parseDelegateLinksInCharter(charterData);
     }
 
-    async findSettingsInfo(
+    async findSettingsInfo<T extends boolean = false>(
         this: SELF,
         options: {
             charterData: CharterData;
             capoUtxos?: TxInput[];
+            optional?: T;
         }
-    ): Promise<FoundDatumUtxo<any, any>> {
-        let { charterData, capoUtxos } = options;
+    ): Promise<
+        T extends false
+            ? FoundDatumUtxo<any, any>
+            : FoundDatumUtxo<any, any> | undefined
+    > {
+        let { charterData, capoUtxos, optional } = options;
         if (!capoUtxos) {
             debugger;
             capoUtxos = await this.findCapoUtxos();
@@ -1094,6 +1099,8 @@ export abstract class Capo<
         }
         const currentSettings = charterData.manifest.get("currentSettings");
         if (!currentSettings) {
+            if (optional) return undefined as any;
+
             throw new Error(
                 `there is no currentSettings in the Capo's manifest`
             );
@@ -2565,7 +2572,7 @@ export abstract class Capo<
                     charterData,
                     capoUtxos,
                 });
-                return tcx3
+                return tcx3;
             },
         });
     }
