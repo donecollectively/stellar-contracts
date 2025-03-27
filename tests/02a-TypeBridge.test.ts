@@ -40,7 +40,7 @@ import StructDatumTesterBundle from "../src/testing/StructDatumTester.hlb.js";
 import DelegatedDatumTesterBundle from "../src/testing/DelegatedDatumTester.hlb.js";
 import UnspecializedDgtBundle from "../src/delegation/UnspecializedDelegate.hlb.js";
 import BundleMintDelegateWithGenericUuts from "../src/testing/specialMintDelegate/uutMintingMintDelegate.hlb.js";
-import { decodePubKeyHash, decodeStakingCredential, makeAddress, makePubKey, makePubKeyHash } from "@helios-lang/ledger";
+import { decodePubKeyHash, makeAddress, makePubKey, makePubKeyHash } from "@helios-lang/ledger";
 
 
 type localTC = StellarTestContext<
@@ -166,24 +166,21 @@ describe("Type Bridge", async () => {
                 expect(result.justATag).toStrictEqual({});
             });
         });
-        it(
+        it.todo(
             "TODO: allows creating a data type having a Map to a custom data-type",
             () => {},
-            { todo: true }
         );
-        it(
+        it.todo(
             "TODO: allows creating a data type having a List of a custom data-type",
             () => {},
-            { todo: true }
         );
     });
 
     describe("provides a mkDatum proxy for creating Datums for the contract script", () => {
         describe("when the datum is not an Enum", () => {
-            it(
+            it.todo(
                 "TODO: TEST: test with single data element and struct cases",
-                () => {},
-                { todo: true }
+                () => {}
             );
         });
 
@@ -336,10 +333,9 @@ describe("Type Bridge", async () => {
                     });
                 });
                 describe("... L2: TODO: with a multi-field variant and a recursive Enum", () => {
-                    it(
+                    it.todo(
                         "TODO: make it work with multi-field variant and recursive Enum",
                         () => {},
-                        { todo: true }
                     );
                 });
             });
