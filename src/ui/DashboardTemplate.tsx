@@ -29,10 +29,8 @@ export function DashboardTemplate(props: { title: string; children: React.ReactN
 export function DashboardRow(props: { title?: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="grid gap-4">
         {props.title && <h4 className="text-lg font-semibold">{props.title}</h4>}
         <div className="grid grid-cols-3 gap-x-4 rounded-3xl h-88">{props.children}</div>
-      </div>
     </div>
   )
 }

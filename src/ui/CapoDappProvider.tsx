@@ -1,5 +1,5 @@
 "use client";
-import React, { type MouseEventHandler, Component, Fragment } from "react";
+import React, { type MouseEventHandler, type ReactNode, Component, Fragment } from "react";
 import type {
     BlockfrostV0Client,
     CardanoClient,
@@ -129,6 +129,7 @@ export type propsType<CapoType extends Capo<any>> = {
     capoClass: stellarSubclass<CapoType>;
     targetNetwork: "preview" | "preprod" | "mainnet";
     dAppName?: string;
+    supportedWallets?: string[];
     blockfrostKey: string;
     ogmiosConnections?: Record<submitterName, simpleOgmiosConn>;
     otherSubmitters?: namedSubmitters;
@@ -302,6 +303,20 @@ export class CapoDAppProvider<
         ) {
             this.props.onWalletChange(userInfo.wallet);
         }
+    }
+
+    supportedWallets() {
+        return ["eternl"]
+    }
+
+    isWalletSupported(wallet: string) {
+        const supported = this.props.supportedWallets ?? this.supportedWallets();
+
+        return supported.includes(wallet);
+    }
+
+    walletIsAvailable(wallet: string) {
+        return !! (window as any).cardano?.[wallet]
     }
 
     render() {
@@ -544,22 +559,26 @@ export class CapoDAppProvider<
         } = this.state;
         return (
             <div
-                className="error min-w-screen-md relative left-0 top-0 mb-4 max-w-screen-md rounded border sm:max-w-screen-sm font-bold bg-red-800 text-orange-200"
+                className="error min-h-10 relative left-0 top-0 mb-4 flex w-full rounded border p-1 font-bold bg-red-800 text-orange-200"
                 role="alert"
                 key="errorStatus"
-                style={{ marginBottom: "0.75em" }}
             >
-                {this._renderNextAction()}
-                <strong className="font-bold">Whoops! &nbsp;&nbsp;</strong>
-                <span key="status-err" className="block inline font-mono">
-                    {message!.split("\n").flatMap((line, i) => (
-                        <>
-                            {line}
-                            <br />
-                        </>
-                    ))}
-                </span>
-                <div>{moreInstructions}</div>
+                <div className="flex-grow">
+                    <strong className="font-bold">Whoops! &nbsp;&nbsp;</strong>
+                    <span key="status-err" className="block sm:inline">
+                        {message!.split("\n").map((line, i) => (
+                            <React.Fragment key={`line-${i}`}>
+                                {line}
+                                <br />
+                            </React.Fragment>
+                        ))}
+                    </span>
+                    <div className="text-sm text-red-200 italic">
+                        {moreInstructions}
+                    </div>
+                </div>
+
+                <div className="mr-2">{this._renderNextAction()}</div>
             </div>
         );
     }
@@ -848,10 +867,21 @@ export class CapoDAppProvider<
      * @internal
      */
     newWalletSelected(selectedWallet: string = "eternl", autoNext = true) {
-        if (!(window as any).cardano?.[selectedWallet]) {
+    if (!this.isWalletSupported(selectedWallet)) {
+        this.reportError(
+            new Error("wallet not supported"),
+            `selected wallet '${selectedWallet}' not supported`,
+            {
+                developerGuidance: "let the user know to install the wallet plugin",
+            }
+        );
+        return;
+    }
+
+        if (!this.walletIsAvailable(selectedWallet)) {
             this.reportError(
-                new Error("wallet not found"),
-                `selected wallet '${selectedWallet}' not found`,
+                new Error(`wallet '${selectedWallet}' not available`),
+                `selected wallet '${selectedWallet}' isn't activated - enable the browser extension to continue`,
                 {
                     developerGuidance:
                         "let the user know to install the wallet plugin",
@@ -894,6 +924,27 @@ export class CapoDAppProvider<
         }
         if (alreadyConnected) return true;
 
+        if (!this.isWalletSupported(selectedWallet)) {
+            this.reportError(
+                new Error(`wallet '${selectedWallet}' not supported`),
+                `selected wallet '${selectedWallet}' isn't supported`,
+                {
+                    developerGuidance: "let the user know to install the wallet plugin",
+                }
+            );
+            return;
+        }
+        if (!this.walletIsAvailable(selectedWallet)) {
+            this.reportError(
+                new Error(`wallet '${selectedWallet}' not available`),
+                `selected wallet '${selectedWallet}' isn't activated - enable the browser extension to continue`,
+                {
+                    developerGuidance:
+                        "let the user know to install the wallet plugin",
+                }
+            );
+            return;
+        }
         //! it suppresses lame nextjs/react-sourced double-trigger of mount sequence
         // if (this._unmounted) return
         // debugger
@@ -1121,11 +1172,9 @@ export class CapoDAppProvider<
 
         const message =
             roles.includes("member") ||
-            roles.includes("muNodeOp") ||
-            roles.includes("artist")
+            roles.includes("admin")
                 ? ""
-                : `Start a Listener vault or other vault to get started ` +
-                  `or connect a WALLET having a member-* token`;
+                : this.getStartedMessage()
 
         this.updateStatus(
             message,
@@ -1144,6 +1193,10 @@ export class CapoDAppProvider<
                 },
             }
         );
+    }
+
+    getStartedMessage() : string {
+        return `Hurray!  Users can now start doing their thing. Customize this content in your CapoDappProvider's getStartedMessage() method.`
     }
 
     // -- step 3 - check if the Capo is configured and ready for use
