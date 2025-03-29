@@ -192,7 +192,7 @@ export class TxSubmitMgr extends StateMachine<
         this.retryIntervals = {
             reconfirm: 10000,
             submit: 5000,
-            confirm: 3000,
+            confirm: 7000,
             startup: 0,
             maximum: 60 * 1000,
             ...retryIntervals,
@@ -835,7 +835,7 @@ export class TxSubmitMgr extends StateMachine<
                             "will resubmit",
                             this.retryIntervals.submit
                         );
-                    } else if (confirmationFailures > 5) {
+                    } else if (confirmationFailures > 10) {
                         // marker "7" in diagram
                         // the pool no longer has a tx it once had
                         // resubmit right away (after finishing the state-change)

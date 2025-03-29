@@ -263,6 +263,7 @@ export class TxSubmissionTracker extends StateMachine<
         [`nested batch`]: terminalState,
         [`built`]: {
             ...noTransitionsExcept,
+            isFacade: { to: "nested batch" },
             signingSingle: { to: "signingSingle" },
             submitting: {
                 to: "submitting",
