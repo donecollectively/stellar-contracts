@@ -576,7 +576,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     OdgtLink //: Option[RelativeDelegateLink]
                                 }
                             } = newChange;
-                            name = role.switch {
+                            newDgtRoleName = role.switch {
                                 DgDataPolicy{dgtName} => dgtName,
                                 _ => error("only DgDataPolicy is yet supported in queuePendingChange")
                             };
@@ -687,7 +687,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                             Replace => {
                                                 REQT("Replace: the queued change must match the idPrefix of the current delegate ");
                                                 TODO("VALIDATE this through a unit-test ^");
-                                                charterData.manifest.get_safe(name).switch {
+                                                charterData.manifest.get_safe(newDgtRoleName).switch {
                                                     Some{dde} => {
                                                         CapoManifestEntry{entryType, _tn, _mph} = dde;
                                                         entryType.switch {
@@ -700,10 +700,10 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                                     "idPrefix mismatch"
                                                                 )
                                                             },
-                                                            _ => error("invalid Replace; the matching manifest entry for '"+name+"' isn't a DgDataPolicy.")
+                                                            _ => error("invalid Replace; the matching manifest entry for '"+newDgtRoleName+"' isn't a DgDataPolicy.")
                                                         }
                                                     },
-                                                    None => error("no existing dgDataPolicy found with key: "+name)
+                                                    None => error("no existing dgDataPolicy found with key: "+newDgtRoleName)
                                                 };
                                                 true
                                             },
@@ -733,7 +733,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                 } => {
                                                     pendingRole.switch {
                                                         DgDataPolicy{changingDgtName} => {
-                                                            changingDgtName != name
+                                                            changingDgtName != newDgtRoleName
                                                         },
                                                         _ => error("only DgDataPolicy is yet supported in queuePendingChange")
                                                     }
@@ -741,7 +741,15 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                 _ => error("otherManifestChange not yet supported")
                                             }
                                     });
-                                    assert(isNotADuplicate, "already has a pending change for this delegate: "+name);
+                                    assert(isNotADuplicate, "already has a pending change for this delegate: "+newDgtRoleName);
+
+                                    REQT("doesn't allow an Add for an existing policy name");
+                                    charterData.manifest.get_safe(newDgtRoleName).switch {
+                                        Some => error(
+                                            "queuing Add failed: already has a delegate for policy name: "+ 
+                                            newDgtRoleName
+                                        )
+                                    };
 
                                     possibleReplacementIsCorrect: Bool = action.switch {
                                         Remove => error("unreachable"),

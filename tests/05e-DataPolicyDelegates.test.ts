@@ -10,11 +10,19 @@ import {
 
 import { ADA, addTestContext, TestHelperState } from "../src/testing/types";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
-import { CapoForDgDataPolicy_testHelper, helperState, TestContext_CapoForDgData } from "./CapoForDgDataPolicyTestHelper.js";
+import {
+    CapoForDgDataPolicy_testHelper,
+    helperState,
+    TestContext_CapoForDgData,
+} from "./CapoForDgDataPolicyTestHelper.js";
 
 const it = itWithContext<localTC>;
-function TEST_REQT(s: string) { return it.todo(`TEST: ${s}`, {todo:true})}
-function TODO_REQT(s: string) { return it.todo(`TODO: ${s}`, {todo:true})}
+function TEST_REQT(s: string) {
+    return it.todo(`TEST: ${s}`, { todo: true });
+}
+function TODO_REQT(s: string) {
+    return it.todo(`TODO: ${s}`, { todo: true });
+}
 const fit = it.only;
 const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTestingContext>
 //!!! until then, we need to use if(0) it(...) : (
@@ -22,7 +30,7 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 
 const describe = descrWithContext<localTC>;
 
-type localTC = TestContext_CapoForDgData
+type localTC = TestContext_CapoForDgData;
 // let helperState: TestHelperState<CapoCanMintGenericUuts> = {
 //     snapshots: {},
 // } as any;
@@ -31,16 +39,20 @@ describe("Capo", async () => {
     beforeEach<localTC>(async (context) => {
         await new Promise((res) => setTimeout(res, 10));
         await addTestContext(
-            context, CapoForDgDataPolicy_testHelper, 
+            context,
+            CapoForDgDataPolicy_testHelper,
             undefined,
             helperState
         );
     });
 
     describe("Creating data-policy delegate", () => {
-        let capo : CapoCanMintGenericUuts;
+        let capo: CapoCanMintGenericUuts;
         beforeEach<localTC>(async (context) => {
-            const {h, h:{network, actors, delay, state} } = context;
+            const {
+                h,
+                h: { network, actors, delay, state },
+            } = context;
             await h.reusableBootstrap();
             capo = h.strella;
             // capo = await h.bootstrap({
@@ -48,7 +60,7 @@ describe("Capo", async () => {
             //         config: {}
             //     }
             // });
-        })
+        });
 
         it("registers the pending installation in the Capo charter's pendingChanges queue", async (context: localTC) => {
             // prettier-ignore
@@ -60,42 +72,77 @@ describe("Capo", async () => {
                 expect(charter.otherNamedDelegates.size).toBe(0);
                 expect(charter.manifest.size).toBe(0);
                 expect(charter.pendingChanges.length).toBe(0);
-                
+
                 // const tcx = await capo.mkTxnInstallingPolicyDelegate("inventionPolicy");
                 // expect(tcx.state).toBeTruthy()
                 // await tcx.submit();
                 // network.tick(1);
-                await h.snapToInstallingTestDataPolicy()
+                await h.snapToInstallingTestDataPolicy();
             }
 
             {
                 const charter2 = await capo.findCharterData();
                 expect(charter2.pendingChanges).toBeTruthy();
-                console.log("charter2.namedDelegates", charter2.otherNamedDelegates);
+                console.log(
+                    "charter2.namedDelegates",
+                    charter2.otherNamedDelegates
+                );
                 expect(charter2.pendingChanges.length).toBe(1);
                 expect(charter2.otherNamedDelegates.size).toBe(0);
                 expect(charter2.manifest.size).toBe(0);
             }
         });
 
-        it("refuses to queue an additional change for the same policy name", async (context: localTC) => {
+        it("refuses to queue an Add for an existing policy name", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            await h.snapToInstallingTestDataPolicy()
+            await h.snapToInstalledTestDataPolicy();
 
             const charterData = await capo.findCharterData();
-            vi.spyOn(capo, "findPendingChange").mockImplementation(() => undefined);
-            
+
             const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
                 idPrefix: "tData",
                 policyName: "testData",
                 charterData,
             });
-            const submitting = tcx2.submitAll();
+
+            const submitting = tcx2.submitAll({
+                expectError: true,
+            });
             // await submitting
-            await expect(submitting).rejects.toThrow("already has a pending change for this delegate");
-        })
+            await expect(submitting).rejects.toThrow(
+                "already has a delegate for policy name: testData"
+            );
+        });
+
+        it("refuses to queue an additional change a policy already in pendingChanges", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            await h.snapToInstallingTestDataPolicy();
+
+            const charterData = await capo.findCharterData();
+
+            // allows the txn-builder to get past its guard for a pending change:
+            vi.spyOn(capo, "findPendingChange").mockImplementation(
+                () => undefined
+            );
+
+            const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
+                idPrefix: "tData",
+                policyName: "testData",
+                charterData,
+            });
+
+            const submitting = tcx2.submitAll({
+                expectError: true,
+            });
+            // await submitting
+            await expect(submitting).rejects.toThrow(
+                "already has a pending change for this delegate"
+            );
+        });
 
         it("commits pending changes and installs the new policy delegate", async (context: localTC) => {
             // prettier-ignore
@@ -107,17 +154,22 @@ describe("Capo", async () => {
             expect(charter.pendingChanges.length).toBe(0);
             expect(charter.otherNamedDelegates.size).toBe(0);
             expect(charter.manifest.size).toBe(1);
-        })
-        it.todo("TODO: test that a delegate can be REPLACED", {todo: true});
+        });
+        it.todo("TODO: test that a delegate can be REPLACED", { todo: true });
 
-        //!!! switch reqts to "FAILS IF" phrasing for ultimate clarity
         TEST_REQT("the next-changes list must be empty");
-        TEST_REQT("dgt-change: Remove: verifies that the delegate queued for removal is now removed from the Capo manifest");
-        TEST_REQT("verifies that added & replaced entries are present in the updated map (at its next position)");
-        TEST_REQT("Replace: verifies that the next-manifest no longer has the replaced entry");
-        TEST_REQT("verifies that a delegate queued for removal or replacement is burned");
-        it.todo("enforces ref sripts creating and burning")
-    })
-
-
+        TEST_REQT(
+            "dgt-change: Remove: verifies that the delegate queued for removal is now removed from the Capo manifest"
+        );
+        TEST_REQT(
+            "verifies that added & replaced entries are present in the updated map (at its next position)"
+        );
+        TEST_REQT(
+            "Replace: verifies that the next-manifest no longer has the replaced entry"
+        );
+        TEST_REQT(
+            "verifies that a delegate queued for removal or replacement is burned"
+        );
+        it.todo("enforces ref sripts creating and burning");
+    });
 });
