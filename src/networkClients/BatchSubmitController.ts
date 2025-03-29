@@ -365,7 +365,7 @@ export class BatchSubmitController {
         // options: TxBatchOptions = this.defaultTxBatchOptions
     ) {
         this.notDestroyed();
-        const { id } = txd;
+        const { id, depth, parentId } = txd;
 
         this.isOpen = true;
         const pendingTracker = this.$registeredTxs[id];
@@ -397,10 +397,22 @@ export class BatchSubmitController {
                     pendingTracker
                 );
             }
+            tracker.update(txd);
         } else if (!builtTracker) {
             const { parentId, depth } = txd;
+            const patchedTxd = (() => {
+                if (!parentId) return txd
+                const parent = this.$txInfo(parentId);
+                if (!parent) {
+                    debugger
+                    console.warn("tx batcher: no parent", parentId);
+                    return txd
+                }
+                const pDepth = parent.txd.depth 
+                return { ... txd, depth: 1+pDepth }
+            })();
             tracker = new TxSubmissionTracker({
-                txd,
+                txd: patchedTxd,
                 submitters: this.submitters,
                 setup: this.setup,
             });
@@ -441,11 +453,11 @@ export class BatchSubmitController {
                     ...others,
                 };
             }
+            tracker.update(patchedTxd);
             this.$txChanges.emit("txAdded", tracker);
             this.$txChanges.emit("txListUpdated", this);
         }
 
-        tracker.update(txd);
         this.$txChanges.emit("txListUpdated", this);
     }
 
