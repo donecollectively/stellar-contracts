@@ -2578,6 +2578,7 @@ export abstract class Capo<
                         });
                     }
                 }
+                this.commitPendingChangesIfNeeded(tcx3);
                 await this.mkAdditionalTxnsForCharter(tcx3, {
                     charterData,
                     capoUtxos,
