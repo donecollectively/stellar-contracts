@@ -63,10 +63,12 @@ export class CapoMinter
     extends StellarContract<BasicMinterParams>
     implements MinterBaseMethods
 {
+
     currentRev: bigint = 1n;
     scriptBundle() {
         return CapoMinterBundle.create({
-            setup: this.setup
+            setup: this.setup,
+            params: this.configIn
         });
     }
 

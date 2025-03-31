@@ -323,7 +323,10 @@ export abstract class Capo<
         console.warn(
             "using a generic Capo bundle - just enough for getting started."
         );
-        return CapoHeliosBundle.create();
+        return CapoHeliosBundle.create({
+            setup: this.setup,
+            params: this.configIn,
+        });
     }
 
     /**
@@ -1531,6 +1534,9 @@ export abstract class Capo<
                 config: configForOnchainRelativeDelegateLink,
             };
             delegate = await this.mustGetDelegate<DT>(role, delegateSettings);
+            if (delegate.usesContractScript) {
+                await delegate.asyncCompiledScript()
+            }
         } catch (e: any) {
             console.log("error: unable to create delegate: ", e.stack);
             debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
@@ -2347,6 +2353,7 @@ export abstract class Capo<
                 seedTxn,
             }));
 
+        await minter.asyncCompiledScript()
         const { mintingPolicyHash: mph } = minter;
         if (!didHaveDryRun) {
             const csp = this.partialConfig;
@@ -2359,6 +2366,9 @@ export abstract class Capo<
             } as CapoConfig;
             // this.scriptProgram = this.loadProgramScript({ ...csp, mph });
             const params = capoParams;
+            // put params back into configIn, so this.scriptBundle() can use them
+            this.configIn = capoParams;
+            debugger
 
             await this.prepareBundleWithScriptParams(params);
             // this.scriptProgram = this.loadProgramScript();

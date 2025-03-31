@@ -112,7 +112,8 @@ export abstract class HeliosScriptBundle {
         //@ts-expect-error returning a subclass without concrete implementations
         // of the abstract members; hopefully the subclass will error if they're missing
         const cb = new c(placeholderSetupDetails);
-        const newClass = class aCapoBoundBundle extends HeliosScriptBundle {
+
+        abstract class aCapoBoundBundle extends HeliosScriptBundle {
             capoBundle = cb;
             constructor(
                 setupDetails: StellarBundleSetupDetails<any> = placeholderSetupDetails
@@ -121,9 +122,10 @@ export abstract class HeliosScriptBundle {
             }
 
             isConcrete = true;
-        } as HeliosBundleClassWithCapo & typeof newClass;
+        }
 
-        return newClass;
+        return aCapoBoundBundle as HeliosBundleClassWithCapo &
+            typeof aCapoBoundBundle;
     }
 
     static create<THIS extends typeof HeliosScriptBundle>(
@@ -136,6 +138,7 @@ export abstract class HeliosScriptBundle {
         created.init(setupDetails);
         return created;
     }
+    abstract scriptParamsSource: "config" | "bundle";
 
     capoBundle?: CapoHeliosBundle;
     isConcrete = false;
@@ -192,92 +195,97 @@ export abstract class HeliosScriptBundle {
     init(setupDetails: StellarBundleSetupDetails<any>) {
         if (this.debug) debugger;
 
-        const { deployedDetails, params: { delegateName, variant = "singleton" } = {} } =
-            setupDetails;
+        const {
+            deployedDetails,
+            params,
+            params: { delegateName, variant = "singleton" } = {},
+            setup
+        } = setupDetails;
+        const { config, programBundle, scriptHash } = deployedDetails || {};
 
-        if (deployedDetails) {
-            const { config, programBundle, scriptHash } = deployedDetails;
-
-            if (!programBundle)
-                throw new Error(
-                    `${this.constructor.name} missing deployedDetails.programBundle`
-                );
-            if (!scriptHash)
-                throw new Error(
-                    `${this.constructor.name}: missing deployedDetails.scriptHash`
-                );
-            // debugger; // do we need to cross-check config <=> params ?
-            this.configuredParams = config;
-            this.configuredUplcParams = this.paramsToUplc(config);
-            this.preCompiled = {
-                singleton: { scriptHash, programBundle, config },
-            };
-        } else if (setupDetails?.params) {
-            if (this.preCompiled) {
-                const thisVariant = this.preCompiled[variant];
-                if (!thisVariant) {
-                    const msg = `${this.constructor.name}: no precompiled variant '${variant}'`;
-                    console.warn(
-                        `${msg}\n  -- available variants: ${Object.keys(
-                            this.preCompiled
-                        ).join(", ")}`
+        if (this.scriptParamsSource === "config") {
+            if (programBundle) {
+                if (!scriptHash)
+                    throw new Error(
+                        `${this.constructor.name}: missing deployedDetails.scriptHash`
                     );
-                    console.log(
-                        "configured variant should be in scriptBundle's 'params'"
-                    );
-                    throw new Error(msg);
-                }
-                this._selectedVariant = variant;
-                const preConfig = thisVariant.config;
-                preConfig.rev = BigInt(preConfig.rev);
-
-                if (preConfig.capoMph?.bytes) {
-                    preConfig.capoMph = makeMintingPolicyHash(
-                        preConfig.capoMph.bytes
-                    );
-                }
-                const uplcPreConfig = this.paramsToUplc(preConfig);
-                // omits delegateName from the strict checks
-                //  ... it's provided by the bundle, which the
-                //  ... off-chain wrapper class may not have access to.
-                const {
-                    params: { delegateName, ...params },
-                } = setupDetails;
-                const uplcRuntimeConfig = this.paramsToUplc(params);
-                let didFindProblem: string = "";
-                for (const k of Object.keys(uplcPreConfig)) {
-                    const runtime = uplcRuntimeConfig[k];
-                    // skips past any runtime setting that was not explicitly set
-                    if (!runtime) continue;
-                    const pre = uplcPreConfig[k];
-                    if (!runtime.isEqual(pre)) {
-                        if (!didFindProblem) {
-                            console.warn(
-                                `${this.constructor.name}: config mismatch between pre-config and runtime-config`
-                            );
-                            didFindProblem = k;
-                        }
-                        debugger;
+                this.configuredParams = config;
+                this.configuredUplcParams = this.paramsToUplc(config);
+                this.preCompiled = {
+                    singleton: { scriptHash, programBundle, config },
+                };
+            } else if (params) {
+                if (this.preCompiled) {
+                    const thisVariant = this.preCompiled[variant];
+                    if (!thisVariant) {
+                        const msg = `${this.constructor.name}: no precompiled variant '${variant}'`;
                         console.warn(
-                            `• ${k}:  pre-config: `,
-                            preConfig[k] || (pre.rawData ?? pre),
-                            ` at runtime:`,
-                            params[k] || (runtime.rawData ?? runtime)
+                            `${msg}\n  -- available variants: ${Object.keys(
+                                this.preCompiled
+                            ).join(", ")}`
+                        );
+                        console.log(
+                            "configured variant should be in scriptBundle's 'params'"
+                        );
+                        throw new Error(msg);
+                    }
+                    this._selectedVariant = variant;
+                    const preConfig = thisVariant.config;
+                    preConfig.rev = BigInt(preConfig.rev);
+
+                    if (preConfig.capoMph?.bytes) {
+                        preConfig.capoMph = makeMintingPolicyHash(
+                            preConfig.capoMph.bytes
+                        );
+                    }
+                    const uplcPreConfig = this.paramsToUplc(preConfig);
+                    // omits delegateName from the strict checks
+                    //  ... it's provided by the bundle, which the
+                    //  ... off-chain wrapper class may not have access to.
+                    const {
+                        params: { delegateName, ...params },
+                    } = setupDetails;
+                    const uplcRuntimeConfig = this.paramsToUplc(params);
+                    let didFindProblem: string = "";
+                    for (const k of Object.keys(uplcPreConfig)) {
+                        const runtime = uplcRuntimeConfig[k];
+                        // skips past any runtime setting that was not explicitly set
+                        if (!runtime) continue;
+                        const pre = uplcPreConfig[k];
+                        if (!runtime.isEqual(pre)) {
+                            if (!didFindProblem) {
+                                console.warn(
+                                    `${this.constructor.name}: config mismatch between pre-config and runtime-config`
+                                );
+                                didFindProblem = k;
+                            }
+                            console.warn(
+                                `• ${k}:  pre-config: `,
+                                preConfig[k] || (pre.rawData ?? pre),
+                                ` at runtime:`,
+                                params[k] || (runtime.rawData ?? runtime)
+                            );
+                        }
+                    }
+                    if (didFindProblem) {
+                        throw new Error(
+                            `runtime-config conflicted with pre-config (see logged details) at key ${didFindProblem}`
                         );
                     }
                 }
-                if (didFindProblem) {
-                    throw new Error(
-                        `runtime-config conflicted with pre-config (see logged details) at key ${didFindProblem}`
-                    );
-                }
+                this.configuredParams = setupDetails.params;
+                this.configuredUplcParams = this.paramsToUplc(
+                    setupDetails.params
+                );
+            } else if ( !setup.isPlaceholder) {
+                throw new Error(
+                    `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
+                );
             }
-            this.configuredParams = setupDetails.params;
-            this.configuredUplcParams = this.paramsToUplc(setupDetails.params);
         } else if (this.configuredParams) {
             debugger;
             throw new Error(
-                `where is configuredParameters used without deployedDetails? (dbpa)`
+                `unreachable: configuredParameters used without deployedDetails? (dbpa)`
             );
         } else {
             // temp singleton
@@ -568,7 +576,7 @@ export abstract class HeliosScriptBundle {
     compiledScript(): anyUplcProgram;
     compiledScript(asyncOk: true): anyUplcProgram | Promise<anyUplcProgram>;
     compiledScript(asyncOk?: true): anyUplcProgram | Promise<anyUplcProgram> {
-        const { configuredUplcParams: params, setup, program } = this;
+        let { configuredUplcParams: params, setup, program } = this;
 
         if (this.alreadyCompiledScript) {
             return this.alreadyCompiledScript;
@@ -578,7 +586,7 @@ export abstract class HeliosScriptBundle {
             debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
             // theoretically only here for type-narrowing
             throw new Error(
-                `(unreachable?): missing required params or setup for compiledScript() (debugging breakpoint available)`
+                `${this.constructor.name}: missing required params or setup for compiledScript() (debugging breakpoint available)`
             );
         }
         if (this.isPrecompiled) {
@@ -598,6 +606,8 @@ export abstract class HeliosScriptBundle {
                 ));
                 return p;
             }
+        } else if (!params) {
+            params = this.params;
         }
         console.warn(
             `${this.constructor.name}: compiling helios script.  This could take 30s or more... `
@@ -612,9 +622,11 @@ export abstract class HeliosScriptBundle {
         // or only used in special cases of capo deployment (with its configuredScriptDetails)
         const t = new Date().getTime();
         const rawValues: Record<string, any> = {};
-        for (const [p, v] of Object.entries(params)) {
-            program.changeParam(p, v);
-            rawValues[p] = v.rawData;
+        if (params) {
+            for (const [p, v] of Object.entries(params)) {
+                program.changeParam(p, v);
+                rawValues[p] = v.rawData;
+            }
         }
 
         const net = this.isMainnet ? "mainnet" : "testnet";
@@ -648,7 +660,9 @@ export abstract class HeliosScriptBundle {
                 // });
                 this.alreadyCompiledScript = uplcProgram;
                 const scriptHash = bytesToHex(uplcProgram.hash());
-                console.log(`compiled in ${new Date().getTime() - t}ms -> ${scriptHash}`);
+                console.log(
+                    `compiled in ${new Date().getTime() - t}ms -> ${scriptHash}`
+                );
                 // if (globalThis.document) {
                 //     console.log({
                 //         uplcProgram,

@@ -491,7 +491,7 @@ export class StellarContract<
                 `    export default class MyScriptBundle extends HeliosScriptBundle { ... }\n` +
                 ` or export default CapoDelegateBundle.usingCapoBundleClass(SomeCapoBundleClass) { ... }\n\n` +
                 `We'll generate TS types and other utilities for connecting to the data-types in your Helios sources.\n` +
-                `Your scriptBundle() method can return \`new MyScriptBundle();\``
+                `Your scriptBundle() method can return \`MyScriptBundle.create();\``
         );
     }
 
@@ -942,22 +942,36 @@ export class StellarContract<
             //@ts-expect-error on probe for possible but not
             //   required variant config
             const variant = config.variant;
-            const params = this.getContractScriptParams(config);
+            // const params = this.getContractScriptParams(config);
             if (this.usesContractScript) {
+                const genericBundle = this.scriptBundle();
                 if (programBundle) {
                     const deployedDetails = {
                         config,
                         programBundle,
                         scriptHash,
                     };
-                    this._bundle = this.scriptBundle().withSetupDetails({
+                    const params =
+                        genericBundle.scriptParamsSource == "config"
+                            ? { params: this.getContractScriptParams(config) }
+                            : {};
+                    this._bundle = genericBundle.withSetupDetails({
+                        ...params,
                         setup: this.setup,
-                        params,
                         deployedDetails,
                         variant,
                     });
+                } else if (genericBundle.scriptParamsSource == "config") {
+                    console.log(
+                        `  -- 🐞🐞🐞 🐞 ${this.constructor.name}: no programBundle; will use JIT compilation`
+                    );
+                    debugger;
+                    // await this.prepareBundleWithScriptParams(params);
                 } else {
-                    await this.prepareBundleWithScriptParams(params);
+                    this._bundle = genericBundle.withSetupDetails({
+                        setup: this.setup,
+                        variant,
+                    });
                 }
             } else if (partialConfig) {
                 // if (this.canPartialConfig) {
@@ -1003,9 +1017,13 @@ export class StellarContract<
                     `${bundle.displayName}: will use precompiled script on-demand`
                 );
                 // this.compiledScript = await bundle.compiledScript();
-            } else {
+            } else if (bundle.scriptParamsSource == "config") {
                 console.log(
-                    "no config, no precompiled bundle... we'll try to compile what's needed!"
+                    `${this.constructor.name}: not preconfigured; will use JIT compilation`
+                );
+            } else if (bundle.scriptParamsSource == "bundle") {
+                throw new Error(
+                    `missing required on-chain script params in bundle`
                 );
             }
         }

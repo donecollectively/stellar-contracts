@@ -33,6 +33,7 @@ import { CapoHeliosBundle } from "../helios/scriptBundling/CapoHeliosBundle.js";
 export class UnspecializedDgtBundle 
 extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
     specializedDelegateModule = UnspecializedDelegateScript;
+    requiresGovAuthority = true;
 
     get rev() {
         return 1n;
@@ -45,6 +46,7 @@ extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
             isMintDelegate: true,
             isSpendDelegate: true,
             isDgDataPolicy: false,
+            requiresGovAuthority: this.requiresGovAuthority,
         }
     }
 

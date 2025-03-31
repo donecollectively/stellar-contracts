@@ -31,7 +31,7 @@ export class DelegatedDatumTester extends DelegatedDataContract<
     dataBridgeClass = DelegateDatumTesterDataBridge
 
     scriptBundle() {
-        return new DelegatedDatumTesterBundle()
+        return DelegatedDatumTesterBundle.create()
     }
 
     get delegateName() {

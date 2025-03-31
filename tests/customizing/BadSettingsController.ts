@@ -16,7 +16,6 @@ export class BadSettingsController extends DelegatedDataContract<
     ProtocolSettings, ProtocolSettingsLike
 > {
     dataBridgeClass = BadSettingsPolicyDataBridge;
-    needsGovAuthority = true;
 
     scriptBundle() {
         return BadSettingsBundle.create()

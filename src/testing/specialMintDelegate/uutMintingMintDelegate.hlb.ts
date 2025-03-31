@@ -1,5 +1,5 @@
 import uutMintingMintDelegate from "./uutMintingMintDelegate.hl";
-import { CapoDelegateBundle } from "../../helios/scriptBundling/CapoDelegateBundle.js";
+import { MintSpendDelegateBundle } from "../../helios/scriptBundling/MintSpendDelegateBundle.js";
 import { CapoHeliosBundle } from "../../helios/scriptBundling/CapoHeliosBundle.js";
 
 
@@ -10,8 +10,10 @@ import { CapoHeliosBundle } from "../../helios/scriptBundling/CapoHeliosBundle.j
  * A specialized minting delegate for testing purposes
  */
 export default class BundleMintDelegateWithGenericUuts 
-extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle) {
+extends MintSpendDelegateBundle.usingCapoBundleClass(CapoHeliosBundle) {
     specializedDelegateModule = uutMintingMintDelegate;
+
+    requiresGovAuthority = true;
 }
 
 // if (false) {

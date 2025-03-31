@@ -15,4 +15,6 @@ import { ReqtsBundle } from "./ReqtsBundle.js"
  */
 export default class ReqtsConcreteBundle extends ReqtsBundle.usingCapoBundleClass(CapoHeliosBundle) {
     specializedDelegateModule = ReqtsPolicy;
+    
+    requiresGovAuthority = true;
 }

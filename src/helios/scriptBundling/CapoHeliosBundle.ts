@@ -39,6 +39,7 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     configuredScriptDetails?: DeployedScriptDetails;
     static isPreconfigured = false;
     preConfigured: CapoDeployedDetails<any> = {capo: undefined};
+    scriptParamsSource = "config" as const
 
     get hasAnyVariant() {
         if (this.preConfigured?.capo?.config) return true;

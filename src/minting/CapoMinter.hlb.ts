@@ -6,6 +6,7 @@ import { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.
 import { HeliosScriptBundle } from "../helios/scriptBundling/HeliosScriptBundle.js";
 
 import CapoMinterScript from "./CapoMinter.hl";
+import type { StellarBundleSetupDetails } from "../StellarContract.js";
 
 
 // this class expresses a "has dependences from the Capo" semantic,
@@ -22,6 +23,8 @@ import CapoMinterScript from "./CapoMinter.hl";
  **/
 export class CapoMinterBundle 
 extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
+    scriptParamsSource = "config" as const
+
     static needsSpecializedDelegateModule = false
     static needsCapoConfiguration = true
     

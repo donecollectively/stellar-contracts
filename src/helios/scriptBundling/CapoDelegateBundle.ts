@@ -45,6 +45,19 @@ type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle &
  **/
 export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     abstract specializedDelegateModule: Source;
+    scriptParamsSource = "bundle" as const
+    
+    /**
+     * when set to true, the controller class will include the Capo's
+     * gov authority in the transaction, to ease transaction setup.
+     * @remarks
+     * If you set this to false, a delegated-data script will not 
+     * require governance authority for its transactions, and you will
+     * need to explicitly enforce any user-level permissions needed
+     * for authorizing delegated-data transactions.
+     * @public
+     */
+    abstract requiresGovAuthority: boolean;
     declare capoBundle: CapoHeliosBundle;
     isConcrete = false;
 
@@ -90,10 +103,12 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
             isMintDelegate: false,
             isSpendDelegate: false,
             isDgDataPolicy: false,
+            requiresGovAuthority: this.requiresGovAuthority,
         }
     }
 
     get moduleName() {
+        debugger
         const specialDgt = this.specializedDelegateModule;
         if (!specialDgt.moduleName) {
             throw new Error(

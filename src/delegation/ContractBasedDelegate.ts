@@ -171,54 +171,15 @@ export class ContractBasedDelegate extends StellarDelegate {
         return params;
     }
     static mkDelegateWithArgs(a: capoDelegateConfig) {}
-    /**
-     * when set to true, the controller class will include the Capo's
-     * gov authority in the transaction, to ease transaction setup.
-     * @remarks
-     * If you set this to false, a delegated-data script will not 
-     * require governance authority for its transactions, and you will
-     * need to explicitly enforce any user-level permissions needed
-     * for authorizing delegated-data transactions.
-     * @public
-     */
-    needsGovAuthority = true;
 
     getContractScriptParams(config: capoDelegateConfig) {
         const { capoAddr, mph, tn, capo, ...otherConfig } = config;
 
+        debugger
         return {
             ...otherConfig,
             delegateName: this.delegateName,
-            requiresGovAuthority: this.needsGovAuthority,
         }
-        // console.log(`${this.constructor.name} config:`, otherConfig);
-        // const namespace = this.scriptProgram!.name;
-        // const {paramTypes} = this.scriptProgram!;
-        // const {isMainnet=false} = this.setup
-        // return Object.fromEntries(
-        //     Object.entries(otherConfig).map(([k, v]) => {
-        //         const fullName = `${namespace}::${k}`;
-        //         const thatType = paramTypes[fullName];
-        //         if (!thatType) {
-        //             throw new Error(
-        //                 `missing type for ${fullName} in ${this.constructor.name}\n`+
-        //                 `  ... available types: ${Object.keys(paramTypes).join(", ")}`
-        //             );
-        //         }
-        //         const schema = thatType.toSchema();
-        //         const cast = new Cast(schema, {
-        //             isMainnet
-        //         });
-        //         try {
-        //             return [
-        //                 fullName, this.typeToUplc(thatType, v, `params[${fullName}]`)
-        //             ];
-        //         } catch (e:any) {
-        //             debugger;
-        //             throw new Error(`error casting script param ${k} in ${this.constructor.name}: ${e.message}`);
-        //         }
-        //     })
-        // ) as UplcRecord<CT>
     }
 
     tcxWithCharterRef<TCX extends StellarTxnContext | hasCharterRef>(tcx: TCX) {
