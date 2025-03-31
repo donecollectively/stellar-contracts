@@ -945,34 +945,28 @@ export class StellarContract<
             // const params = this.getContractScriptParams(config);
             if (this.usesContractScript) {
                 const genericBundle = this.scriptBundle();
-                if (programBundle) {
-                    const deployedDetails = {
-                        config,
-                        programBundle,
-                        scriptHash,
-                    };
-                    const params =
-                        genericBundle.scriptParamsSource == "config"
-                            ? { params: this.getContractScriptParams(config) }
-                            : {};
-                    this._bundle = genericBundle.withSetupDetails({
-                        ...params,
-                        setup: this.setup,
-                        deployedDetails,
-                        variant,
-                    });
-                } else if (genericBundle.scriptParamsSource == "config") {
+                const params =
+                    genericBundle.scriptParamsSource != "bundle"
+                        ? { params: this.getContractScriptParams(config) }
+                        : {};
+                const deployedDetails = {
+                    config,
+                    programBundle,
+                    scriptHash,
+                };
+                if (!programBundle) {
                     console.log(
                         `  -- 🐞🐞🐞 🐞 ${this.constructor.name}: no programBundle; will use JIT compilation`
                     );
-                    debugger;
-                    // await this.prepareBundleWithScriptParams(params);
-                } else {
-                    this._bundle = genericBundle.withSetupDetails({
-                        setup: this.setup,
-                        variant,
-                    });
                 }
+                this._bundle = genericBundle.withSetupDetails({
+                    ...params,
+                    setup: this.setup,
+                    deployedDetails,
+                    variant,
+                });
+                // await this.prepareBundleWithScriptParams(params);
+                
             } else if (partialConfig) {
                 // if (this.canPartialConfig) {
                 throw new Error(

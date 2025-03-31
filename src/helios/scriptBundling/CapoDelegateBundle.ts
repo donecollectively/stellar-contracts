@@ -57,7 +57,6 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
      * for authorizing delegated-data transactions.
      * @public
      */
-    abstract requiresGovAuthority: boolean;
     declare capoBundle: CapoHeliosBundle;
     isConcrete = false;
 

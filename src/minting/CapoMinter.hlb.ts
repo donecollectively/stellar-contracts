@@ -24,6 +24,8 @@ import type { StellarBundleSetupDetails } from "../StellarContract.js";
 export class CapoMinterBundle 
 extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     scriptParamsSource = "config" as const
+    //pro-forma to make TypeScript happy
+    requiresGovAuthority = true;
 
     static needsSpecializedDelegateModule = false
     static needsCapoConfiguration = true

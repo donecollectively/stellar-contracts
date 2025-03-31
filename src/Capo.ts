@@ -2368,7 +2368,7 @@ export abstract class Capo<
             const params = capoParams;
             // put params back into configIn, so this.scriptBundle() can use them
             this.configIn = capoParams;
-            debugger
+            // debugger
 
             await this.prepareBundleWithScriptParams(params);
             // this.scriptProgram = this.loadProgramScript();

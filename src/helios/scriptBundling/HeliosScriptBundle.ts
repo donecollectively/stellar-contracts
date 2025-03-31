@@ -70,7 +70,7 @@ export abstract class HeliosScriptBundle {
      * @internal
      */
     static isCapoBundle = false;
-
+    abstract requiresGovAuthority: boolean;
     /**
      * set to true if the bundle depends on having a deployed capo's configuration details
      * @public
@@ -138,8 +138,7 @@ export abstract class HeliosScriptBundle {
         created.init(setupDetails);
         return created;
     }
-    abstract scriptParamsSource: "config" | "bundle";
-
+    abstract scriptParamsSource: "config" | "bundle" | "mixed";
     capoBundle?: CapoHeliosBundle;
     isConcrete = false;
 
@@ -193,13 +192,11 @@ export abstract class HeliosScriptBundle {
     _didInit = false;
     debug = false;
     init(setupDetails: StellarBundleSetupDetails<any>) {
-        if (this.debug) debugger;
-
         const {
             deployedDetails,
             params,
             params: { delegateName, variant = "singleton" } = {},
-            setup
+            setup,
         } = setupDetails;
         const { config, programBundle, scriptHash } = deployedDetails || {};
 
@@ -209,6 +206,7 @@ export abstract class HeliosScriptBundle {
                     throw new Error(
                         `${this.constructor.name}: missing deployedDetails.scriptHash`
                     );
+                // debugger; // do we need to cross-check config <=> params ?
                 this.configuredParams = config;
                 this.configuredUplcParams = this.paramsToUplc(config);
                 this.preCompiled = {
@@ -277,18 +275,24 @@ export abstract class HeliosScriptBundle {
                 this.configuredUplcParams = this.paramsToUplc(
                     setupDetails.params
                 );
-            } else if ( !setup.isPlaceholder) {
+            } else if (!setup.isPlaceholder) {
                 throw new Error(
                     `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
                 );
             }
-        } else if (this.configuredParams) {
+        } else if (this.scriptParamsSource == "mixed") {
             debugger;
-            throw new Error(
-                `unreachable: configuredParameters used without deployedDetails? (dbpa)`
-            );
-        } else {
+            const {params} = setupDetails
+            
+            if (this.configuredParams) {
+                debugger;
+                throw new Error(
+                    `unreachable: configuredParameters used without deployedDetails? (dbpa)`
+                );
+            }
+        } else if (this.scriptParamsSource == "bundle") {
             // the bundle has its own built-in params
+
             // temp singleton
             const selectedVariant = "singleton";
             this.configuredParams =
@@ -297,6 +301,8 @@ export abstract class HeliosScriptBundle {
                 this.configuredUplcParams =
                     this.getPreconfiguredUplcParams(selectedVariant);
             }
+        } else {
+            throw new Error(`unknown scriptParamsSource: ${this.scriptParamsSource}`);
         }
         this._didInit = true;
     }
@@ -335,7 +341,7 @@ export abstract class HeliosScriptBundle {
             );
         }
         //@ts-expect-error with dynamic creation
-        const created = new this.constructor(details);
+        const created = new this.constructor(details) as this;
         created.init(details);
         return created;
     }
@@ -583,13 +589,6 @@ export abstract class HeliosScriptBundle {
             return this.alreadyCompiledScript;
         }
 
-        if (!params || !setup) {
-            debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
-            // theoretically only here for type-narrowing
-            throw new Error(
-                `${this.constructor.name}: missing required params or setup for compiledScript() (debugging breakpoint available)`
-            );
-        }
         if (this.isPrecompiled) {
             const { singleton } = this.preCompiled!;
             if (singleton && !this._selectedVariant) {
@@ -607,8 +606,18 @@ export abstract class HeliosScriptBundle {
                 ));
                 return p;
             }
-        } else if (!params) {
-            params = this.params;
+        } else {
+            if (!params || !setup) {
+                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+                // theoretically only here for type-narrowing
+                throw new Error(
+                    `${this.constructor.name}: missing required params or setup for compiledScript() (debugging breakpoint available)`
+                );
+            }
+
+            if (!params) {
+                params = this.params;
+            }
         }
         console.warn(
             `${this.constructor.name}: compiling helios script.  This could take 30s or more... `

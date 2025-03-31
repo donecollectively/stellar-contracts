@@ -106,7 +106,10 @@ export abstract class DelegatedDataContract<
      * the appropriate on-chain policy to require the gov token's presence.
      * @public
      */
-    needsGovAuthority = true;
+    get needsGovAuthority() {
+        return this._bundle!.requiresGovAuthority;
+    }
+    
     abstract get recordTypeName(): string;
     abstract get idPrefix(): string;
 
