@@ -288,6 +288,7 @@ export abstract class HeliosScriptBundle {
                 `unreachable: configuredParameters used without deployedDetails? (dbpa)`
             );
         } else {
+            // the bundle has its own built-in params
             // temp singleton
             const selectedVariant = "singleton";
             this.configuredParams =

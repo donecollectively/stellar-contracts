@@ -96,7 +96,7 @@ export async function addTestContext<
         ? DefaultCapoTestHelperClass<SC>
         : stellarTestHelperSubclass<SC>,
     stConfig?: Partial<
-        SC extends Capo<any, infer FF> ? FF & ST_CONFIG : ST_CONFIG
+        SC extends Capo<any, infer FF> ? {featureFlags: FF} & ST_CONFIG : ST_CONFIG
     >,
     helperState?: TestHelperState<SC>
 ) {

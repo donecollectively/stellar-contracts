@@ -108,7 +108,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     }
 
     get moduleName() {
-        debugger
+        
         const specialDgt = this.specializedDelegateModule;
         if (!specialDgt.moduleName) {
             throw new Error(

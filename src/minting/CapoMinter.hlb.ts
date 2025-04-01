@@ -29,6 +29,12 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     static needsCapoConfiguration = true
     
     declare capoBundle: CapoHeliosBundle;
+    // constructor(
+    //     setupDetails?: StellarBundleSetupDetails<any>
+    // ) {
+    //     super(setupDetails);
+    //     //@ts-expect-error setting the required property
+    // }
 
     get rev(): bigint {
         return 1n
@@ -36,7 +42,8 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
 
     get params() {
         const {configuredScriptDetails, configuredParams } = this.capoBundle || {}
-        //  
+        
+        debugger
         const noConfig = `${this.constructor.name}: capoMph not found in deployed capo bundle; can't make config yet (dbpa)`;
         if (!configuredScriptDetails) {
             
