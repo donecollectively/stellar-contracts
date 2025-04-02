@@ -63,12 +63,12 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
         if (this.preConfigured.capo) {
             this.configuredScriptDetails = deployedDetails = this.preConfigured.capo
             const {
-                config, programBundle, scriptHash
+                config, programBundle
             } = deployedDetails;
             if (!programBundle) throw new Error(`${this.constructor.name} missing deployedDetails.programBundle`);
-            if (!scriptHash) throw new Error(`${this.constructor.name}: missing deployedDetails.scriptHash`);
+            // if (!scriptHash) throw new Error(`${this.constructor.name}: missing deployedDetails.scriptHash`);
 
-            this.preCompiled = { singleton: { scriptHash, programBundle, config } };
+            this.preCompiled = { singleton: { programBundle, config } };
         } else if (setupDetails.deployedDetails) {
             this.configuredScriptDetails = deployedDetails = setupDetails.deployedDetails
         } else if (!this.configuredScriptDetails) {

@@ -73,8 +73,6 @@ export class ContractBasedDelegate extends StellarDelegate {
         );
     }
 
-    // dataBridgeClass = CapoDataBridge;
-
     get onchain(): mustFindConcreteContractBridgeType<this> {
         return this.getOnchainBridge() as any;
     }
@@ -87,12 +85,6 @@ export class ContractBasedDelegate extends StellarDelegate {
         return super.offchain as any;
     }
 
-    // get activity(): IFISNEVER<
-    //     mustFindActivityType<this>,
-    //     IFISNEVER<findActivityType<this>,
-    //         ContractDataBridge["activity"]
-    //     >
-    // > {
     get activity(): mustFindActivityType<this> {
         const bridge = this.onchain;
         return bridge.activity as any;
@@ -185,11 +177,6 @@ export class ContractBasedDelegate extends StellarDelegate {
     tcxWithCharterRef<TCX extends StellarTxnContext | hasCharterRef>(tcx: TCX) {
         return this.capo.tcxWithCharterRef(tcx);
     }
-    // tcxWithSettingsRef<TCX extends StellarTxnContext | hasSettingsRef>(
-    //     tcx: TCX
-    // ) {
-    //     return this.capo.tcxWithSettingsRef(tcx);
-    // }
 
     /**
      * Adds a mint-delegate-specific authority token to the txn output

@@ -376,7 +376,10 @@ export type StellarSetupDetails<CT extends configBaseWithRev> = {
     config?: CT;
     partialConfig?: Partial<CT>;
     programBundle?: DeployedProgramBundle;
-    scriptHash?: string;
+    previousOnchainScript?: {
+        validatorHash: number[];
+        uplcProgram: anyUplcProgram;
+    };
 };
 
 export type SetupOrMainnetSignalForBundle = Partial<
@@ -386,6 +389,10 @@ export type SetupOrMainnetSignalForBundle = Partial<
 
 export type StellarBundleSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupOrMainnetSignalForBundle;
+    previousOnchainScript?: {
+        validatorHash: number[];
+        uplcProgram: anyUplcProgram;
+    };
     params?: CT;
     /**
      * used only for Capo bundles, to initialize them based on
@@ -849,7 +856,12 @@ export class StellarContract<
         args: StellarSetupDetails<configType>
     ): Promise<StellarContract<configType> & InstanceType<typeof this>> {
         const Class = this;
-        const { setup, config, partialConfig } = args;
+        const {
+            setup,
+            config,
+            partialConfig,
+            previousOnchainScript: program,
+        } = args;
         const c: StellarContract<configType> = new Class(setup);
 
         // now all internal property assignments have been triggered,
@@ -936,8 +948,26 @@ export class StellarContract<
         //      - the minter MPH (for a Capo)
         //      - derived details for delegates
 
-        const { config, partialConfig, programBundle, scriptHash } = args;
-        if (config) {
+        const {
+            config,
+            partialConfig,
+            programBundle,
+            previousOnchainScript,
+            previousOnchainScript: { validatorHash, uplcProgram } = {},
+        } = args;
+        if (uplcProgram) {
+            // with a rawProgram, the contract script is used directly
+            // to make a HeliosScriptBundle with that rawProgram
+            // as an override.
+            this._bundle = this.scriptBundle().withSetupDetails({
+                setup: this.setup,
+                previousOnchainScript: previousOnchainScript,
+                // params: this.getContractScriptParams(config),
+                // deployedDetails: {
+                //     config,
+                // },
+            });
+        } else if (config) {
             this.configIn = config;
             //@ts-expect-error on probe for possible but not
             //   required variant config
@@ -952,7 +982,7 @@ export class StellarContract<
                 const deployedDetails = {
                     config,
                     programBundle,
-                    scriptHash,
+                    // scriptHash,
                 };
                 if (!programBundle) {
                     console.log(
@@ -1020,6 +1050,7 @@ export class StellarContract<
                     `missing required on-chain script params in bundle`
                 );
             }
+            this.partialConfig = partialConfig;
         }
 
         return this;
@@ -1034,6 +1065,7 @@ export class StellarContract<
         }
         return this._compiledScript;
     }
+
     async asyncCompiledScript() {
         const s = await this.getBundle().compiledScript(true);
         this._compiledScript = s;

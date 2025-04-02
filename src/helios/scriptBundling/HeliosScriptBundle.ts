@@ -1,6 +1,7 @@
 import type { DataType, Program } from "@helios-lang/compiler";
 import type { Source } from "@helios-lang/compiler-utils";
 import {
+    makeUplcProgramV2,
     type UplcData,
     type UplcProgramV2,
     type UplcProgramV3,
@@ -34,10 +35,14 @@ import type {
     DeployedScriptDetails,
     RequiredDeployedScriptDetails,
 } from "../../configuration/DeployedScriptConfigs.js";
-import { bytesToHex } from "@helios-lang/codec-utils";
+import { bytesToHex, equalsBytes, hexToBytes } from "@helios-lang/codec-utils";
 import { makeCast } from "@helios-lang/contract-utils";
 import { uplcDataSerializer } from "../../delegation/jsonSerializers.js";
-import { makeMintingPolicyHash } from "@helios-lang/ledger";
+import {
+    makeMintingPolicyHash,
+    makeValidatorHash,
+    type ValidatorHash,
+} from "@helios-lang/ledger";
 import { environment } from "../../environment.js";
 
 /**
@@ -161,6 +166,10 @@ export abstract class HeliosScriptBundle {
     redeemerTypeName: string = "";
     isMainnet: boolean;
     _program: HeliosProgramWithCacheAPI | undefined = undefined;
+    previousOnchainScript: {
+        validatorHash: number[];
+        uplcProgram: anyUplcProgram;
+    } | undefined = undefined;
     _progIsPrecompiled = false;
     setup: SetupOrMainnetSignalForBundle;
     configuredUplcParams: UplcRecord<any> | undefined = undefined;
@@ -191,26 +200,38 @@ export abstract class HeliosScriptBundle {
     }
     _didInit = false;
     debug = false;
+    scriptHash?: number[] | undefined;
+
     init(setupDetails: StellarBundleSetupDetails<any>) {
         const {
             deployedDetails,
             params,
             params: { delegateName, variant = "singleton" } = {},
             setup,
+            previousOnchainScript
         } = setupDetails;
-        const { config, programBundle, scriptHash } = deployedDetails || {};
+        const { config, programBundle } = deployedDetails || {};
+        if (previousOnchainScript) {
+            this.previousOnchainScript = previousOnchainScript;
+            this.scriptHash = previousOnchainScript.uplcProgram.hash();
+                // "string" === typeof deployedDetails?.scriptHash
+                //     ? hexToBytes(deployedDetails.scriptHash)
+                //     : deployedDetails?.scriptHash;
+            return;
+        }
 
         if (this.scriptParamsSource === "config") {
             if (programBundle) {
-                if (!scriptHash)
-                    throw new Error(
-                        `${this.constructor.name}: missing deployedDetails.scriptHash`
-                    );
+            //     if (!scriptHash)
+            //         throw new Error(
+            //     `${this.constructor.name}: missing deployedDetails.scriptHash`
+            // );
+            
                 // debugger; // do we need to cross-check config <=> params ?
                 this.configuredParams = config;
                 this.configuredUplcParams = this.paramsToUplc(config);
                 this.preCompiled = {
-                    singleton: { scriptHash, programBundle, config },
+                    singleton: {programBundle, config },
                 };
             } else if (params) {
                 if (this.preCompiled) {
@@ -308,7 +329,7 @@ export abstract class HeliosScriptBundle {
     }
 
     get isPrecompiled() {
-        return !!this.preCompiled;
+        return !!this.preCompiled
     }
 
     getPreCompiledBundle(variant: string) {
@@ -318,8 +339,10 @@ export abstract class HeliosScriptBundle {
                 `${this.constructor.name}: variant ${variant} not found in preCompiled scripts`
             );
         }
+
         return foundVariant.programBundle;
     }
+
     getPreconfiguredVariantParams(variantName: string) {
         const p = this.variants?.[variantName] || this.params;
         return p;
@@ -583,7 +606,26 @@ export abstract class HeliosScriptBundle {
     compiledScript(): anyUplcProgram;
     compiledScript(asyncOk: true): anyUplcProgram | Promise<anyUplcProgram>;
     compiledScript(asyncOk?: true): anyUplcProgram | Promise<anyUplcProgram> {
-        let { configuredUplcParams: params, setup, program } = this;
+        const {
+            configuredUplcParams: params,
+            setup,
+            previousOnchainScript,
+            program,
+        } = this;
+
+        debugger
+        if (previousOnchainScript) {
+            const { validatorHash, uplcProgram } = previousOnchainScript;
+            const actualHash = uplcProgram.hash();
+            if (!equalsBytes(validatorHash, actualHash)) {
+                throw new Error(
+                    `script hash mismatch: ${bytesToHex(
+                        validatorHash
+                    )} != ${bytesToHex(actualHash)}`
+                );
+            }
+            return uplcProgram;
+        }
 
         if (this.alreadyCompiledScript) {
             return this.alreadyCompiledScript;
@@ -615,9 +657,6 @@ export abstract class HeliosScriptBundle {
                 );
             }
 
-            if (!params) {
-                params = this.params;
-            }
         }
         console.warn(
             `${this.constructor.name}: compiling helios script.  This could take 30s or more... `
@@ -681,6 +720,21 @@ export abstract class HeliosScriptBundle {
                 // }
                 return uplcProgram;
             });
+    }
+
+    get preBundledScript() {
+        if (!this.isPrecompiled) return undefined;
+        const { singleton } = this.preCompiled!;
+        if (singleton && !this._selectedVariant) {
+            this.withVariant("singleton");
+        }
+        const bundleForVariant = this.preCompiled?.[this._selectedVariant!];
+        if (!bundleForVariant) {
+            throw new Error(
+                `${this.constructor.name}: variant ${this._selectedVariant} not found in preCompiled`
+            );
+        }
+        return programFromCacheEntry(bundleForVariant.programBundle);
     }
 
     async getSerializedProgramBundle() {

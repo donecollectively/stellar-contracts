@@ -20,7 +20,7 @@ import {
 } from "rollup";
 
 import { blake2b } from "@helios-lang/crypto";
-import { bytesToHex } from "@helios-lang/codec-utils";
+import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
 import { StellarHeliosProject } from "./StellarHeliosProject.js";
 import { bytesToText, textToBytes } from "../../HeliosPromotedTypes.js";
 import { rollupCreateHlbundledClass } from "../rollupPlugins/rollupCreateHlbundledClass.js";
@@ -915,7 +915,7 @@ export function heliosRollupBundler(
     } 
             static isPreconfigured = true;
             `;
-            deployDetails.capo.scriptHash = scriptHash;
+            // deployDetails.capo.scriptHash = hexToBytes(scriptHash);
             deployDetails.capo.programBundle = programBundle;
 
             const s = new MagicString(code);

@@ -31,10 +31,10 @@ import type { isActivity } from "./ActivityTypes.js";
 import type { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import type { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import type { UutName } from "./delegation/UutName.js";
-import type { valuesEntry, InlineDatum } from "./HeliosPromotedTypes.js";
+import type { valuesEntry, InlineDatum, anyUplcProgram } from "./HeliosPromotedTypes.js";
 import type { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
-
+import type { Program } from "@helios-lang/compiler";
 /**
  * @public
  */
@@ -325,7 +325,12 @@ export type charterDataState = {
 export type PreconfiguredDelegate<T extends StellarDelegate> = Omit<
     ConfiguredDelegate<T>,
     "delegate" | "delegateValidatorHash"
->;
+> & {
+    previousOnchainScript?: {
+        validatorHash: number[];
+        uplcProgram: anyUplcProgram;
+    };
+};
 
 export type basicDelegateRoles = {
     govAuthority: DelegateSetup<"authority", StellarDelegate, any>;

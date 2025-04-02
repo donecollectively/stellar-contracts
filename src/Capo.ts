@@ -14,6 +14,7 @@ import {
     makeDummyMintingPolicyHash,
     type TxId,
     type ScriptHash,
+    type ValidatorHash,
 } from "@helios-lang/ledger";
 import { blake2b } from "@helios-lang/crypto";
 
@@ -155,6 +156,7 @@ import type {
     DeployedScriptDetails,
 } from "./configuration/DeployedScriptConfigs.js";
 import type { DeployedProgramBundle } from "./helios/CachedHeliosProgram.js";
+import type { Program } from "@helios-lang/compiler";
 
 /**
  * Base class for leader contracts, with predefined roles for cooperating/delegated policies
@@ -226,6 +228,7 @@ export abstract class Capo<
     autoSetup = false;
     isChartered: boolean = false;
     dataBridgeClass = CapoDataBridge;
+    needsCoreDelegateUpdates = false;
 
     get onchain(): mustFindConcreteContractBridgeType<this> {
         return this.getOnchainBridge() as any;
@@ -417,27 +420,25 @@ export abstract class Capo<
                 minter: {
                     config: minterConfig,
                     programBundle: minterProgramBundle,
-                    scriptHash: mph,
                 } = {},
             },
         } = bundle;
 
+        let expectedMph: MintingPolicyHash | undefined = undefined;
         if (configuredParams) {
             seedTxn = configuredParams.seedTxn;
             seedIndex = configuredParams.seedIndex;
-            mph = configuredParams.mph;
+            expectedMph = configuredParams.mph;
             minterConfig = configuredParams; // ??
         } else if (this.configIn && !this.configIn.bootstrapping) {
             seedTxn = this.configIn.seedTxn;
             seedIndex = this.configIn.seedIndex;
         }
+
         if (seedTxn) {
-            await this.connectMintingScript(
-                minterConfig,
-                minterProgramBundle,
-                mph
-            );
+            await this.connectMintingScript(minterConfig, minterProgramBundle);
         }
+
         //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
         this._delegateRoles = this.initDelegateRoles();
 
@@ -1091,6 +1092,8 @@ export abstract class Capo<
         let { charterData, capoUtxos, optional } = options;
         if (!capoUtxos) {
             debugger;
+            // ^ ideally we always have a stash of capo utxos ...
+            // ... or a place we can get it from without async delays
             capoUtxos = await this.findCapoUtxos();
             charterData = await this.findCharterData(undefined, {
                 optional: false,
@@ -1128,13 +1131,16 @@ export abstract class Capo<
         TargetClass: stellarSubclass<SC>,
         config: SC extends StellarContract<infer iCT> ? iCT : never,
         programBundle?: DeployedProgramBundle,
-        scriptHash?: string
+        previousOnchainScript?: {
+            validatorHash: number[];
+            uplcProgram: anyUplcProgram;
+        }
     ) {
         const args: StellarSetupDetails<ConfigFor<SC>> = {
             config,
             setup: this.setup,
             programBundle,
-            scriptHash,
+            previousOnchainScript,
         };
 
         const strella = await TargetClass.createWith(args);
@@ -1143,8 +1149,7 @@ export abstract class Capo<
 
     async connectMintingScript(
         params: SeedTxnScriptParams,
-        programBundle?: DeployedProgramBundle,
-        mph?: string
+        programBundle?: DeployedProgramBundle
     ): Promise<CapoMinter> {
         if (this.minter)
             throw new Error(`just use this.minter when it's already present`);
@@ -1155,28 +1160,20 @@ export abstract class Capo<
                 mph: undefined,
                 ...(this.constructor as typeof Capo).defaultParams,
             };
-
-        if (
-            mph &&
-            expectedMph &&
-            !expectedMph.isEqual(makeMintingPolicyHash(mph))
-        ) {
-            throw new Error(
-                `minting policy hash mismatch: expected ${expectedMph.toHex()}, got ${mph}`
-            );
-        }
         const config = {
             rev,
             seedTxn,
             seedIndex,
             capo: this,
         };
+        // the minter can't be upgraded, so the previousOnchainScript arg isn't relevant
+        const noPreviousOnchainScript = undefined;
 
         const minter = await this.addStrellaWithConfig(
             minterClass,
             config,
             programBundle,
-            mph
+            noPreviousOnchainScript
         );
 
         if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
@@ -1641,7 +1638,7 @@ export abstract class Capo<
         const {
             // strategyName,
             uutName,
-            delegateValidatorHash: expectedDvh,
+            delegateValidatorHash: onchainValidatorHash,
             // addrHint,  //moved to config
             // reqdAddress,  // removed
             config: configBytesFromLink,
@@ -1685,13 +1682,6 @@ export abstract class Capo<
             delegateLinkSerializer,
             4
         );
-        if (serializedCfg1 !== serializedCfg2) {
-            console.warn(
-                `mismatched or modified delegate configuration for role '${role}'\n` +
-                    `  ...expected: ${serializedCfg1}\n` +
-                    `  ...got: ${serializedCfg2}`
-            );
-        }
 
         //@xxxts-expect-error because this stack of generically partial
         //  ... config elements isn't recognized as adding up to a full config type.
@@ -1717,6 +1707,10 @@ export abstract class Capo<
         //      reqdAddress?: Address;
         //      addrHint?: Address[];
 
+        // first, use the bundled script, which is likely pre-compiled.  If this turns out to be
+        // right, it's the fastest path, and we're done.  If not, it's fine to spend a little extra
+        // time re-creating the delegate with the on-chain-script, to use for executing an
+        // upgrade to replace the delegate.
         const delegate = await this.mustGetDelegate(role, {
             delegateClass,
             fullCapoDgtConfig,
@@ -1728,15 +1722,57 @@ export abstract class Capo<
             // addrHint,
         });
 
-        const dvh = delegate.delegateValidatorHash!;
+        const previousOnchainScript = await (async () => {
+            if (!onchainValidatorHash) return undefined;
 
-        if (expectedDvh && dvh && !expectedDvh.isEqual(dvh)) {
-            throw new Error(
-                `${
-                    this.constructor.name
-                }: ${role}: mismatched or modified delegate: expected validator ${expectedDvh?.toHex()}, got ${dvh.toHex()}`
+            let needsUpgrade = false;
+            // if (serializedCfg1 !== serializedCfg2) hasExistingOnchainScript = true;
+            if (delegate.delegateValidatorHash && !onchainValidatorHash) {
+                needsUpgrade = true;
+            } else if (
+                delegate.delegateValidatorHash &&
+                !onchainValidatorHash
+            ) {
+                needsUpgrade = true;
+            } else if (
+                !delegate.delegateValidatorHash?.isEqual(onchainValidatorHash)
+            ) {
+                needsUpgrade = true;
+            }
+            if (!needsUpgrade) return undefined;
+
+            const refScriptUtxo = await this.findRefScriptUtxo(
+                onchainValidatorHash!.bytes,
+                await this.findCapoUtxos()
             );
+
+            if (!refScriptUtxo?.output.refScript) {
+                throw new Error(`unexpected: refScript for ${role} not found`);
+            }
+            if (!onchainValidatorHash) {
+                throw new Error(
+                    `unexpected: on-chain delegateValidatorHash for ${role} not found`
+                );
+            }
+
+            return {
+                validatorHash: onchainValidatorHash.bytes,
+                uplcProgram: refScriptUtxo?.output.refScript as anyUplcProgram,
+            };
+        })();
+
+        if (previousOnchainScript) {
+            console.warn(
+                `Delegate configuration for role '${role}' requires upgrade\n` +
+                    `  Previous config: ${serializedCfg2}\n` +
+                    `  Next config: ${serializedCfg1}\n`
+            );
+            delegate._bundle!.previousOnchainScript = previousOnchainScript;
+            this.needsCoreDelegateUpdates = true;
         }
+
+        const bundledValidatorHash = delegate.delegateValidatorHash!;
+
         console.log(
             `   ✅ 💁 ${role}  (now cached) ` // +Debug info: +` @ key = ${cacheKey}`
         );
@@ -1775,14 +1811,34 @@ export abstract class Capo<
         configuredDelegate: PreconfiguredDelegate<T>,
         deployedName?: string
     ): Promise<T> {
-        const { delegateClass, fullCapoDgtConfig: config } = configuredDelegate;
+        const {
+            delegateClass,
+            fullCapoDgtConfig: config,
+            previousOnchainScript,
+            config: t,
+        } = configuredDelegate;
+
+        // when useOnchainScript is true, the delegate config is used to
+        // resolve the script hash and find the on-chain refScript in the Capo's address.
+        // then the refScript is used as rawProgram for
+
         try {
-            // delegate
-            const configured = await this.addStrellaWithConfig(
-                delegateClass,
-                config as any
-            );
-            return configured as T;
+            if (previousOnchainScript) {
+                // delegate
+                const configured = await this.addStrellaWithConfig(
+                    delegateClass,
+                    config as any,
+                    undefined,
+                    previousOnchainScript
+                );
+                return configured as T;
+            } else {
+                const configured = await this.addStrellaWithConfig(
+                    delegateClass,
+                    config as any
+                );
+                return configured as T;
+            }
         } catch (e: any) {
             const t = e.message.match(/invalid parameter name '([^']+)'$/);
 
@@ -2525,13 +2581,6 @@ export abstract class Capo<
             });
         }
         const tcx2 = await this.addTxnBootstrappingSettings(tcx, charterData);
-        const anyBootstrapping = Object.entries(tcx2.state.addlTxns).length > 0;
-        if (!anyBootstrapping) {
-            return this.mkAdditionalTxnsForCharter(tcx2, {
-                charterData,
-                capoUtxos,
-            });
-        }
 
         return tcx2.includeAddlTxn("check for updates", {
             description: `capo-specific txns for deploying any missing or upgraded delegates`,
@@ -2563,7 +2612,6 @@ export abstract class Capo<
                         const dgDataControllerClass: stellarSubclass<
                             DelegatedDataContract<any, any>
                         > = delegateClass as any;
-                        debugger;
                         const delegate = await dgDataControllerClass.createWith(
                             {
                                 setup: this.setup,
@@ -2900,19 +2948,12 @@ export abstract class Capo<
         let expectedVh = program2.hash();
 
         const capoUtxos = await this.findCapoUtxos();
-        const matchesRefScript = this.uh.mkRefScriptPredicate(expectedVh);
-        if (tcx.txRefInputs.find(matchesRefScript)) {
-            console.warn("suppressing second add of refScript");
-            return tcx;
-        }
-        const scriptReferences = useRefScript
-            ? await this.findScriptReferences(capoUtxos)
-            : [];
-        // for (const [txin, refScript] of scriptReferences) {
-        //     console.log("refScript", dumpAny(txin));
+        const matchingScriptRef = await this.findRefScriptUtxo(
+            expectedVh,
+            capoUtxos
+        );
         // }
 
-        const matchingScriptRef = scriptReferences.find(matchesRefScript);
         if (!matchingScriptRef) {
             console.warn(
                 new Error(
@@ -2926,6 +2967,20 @@ export abstract class Capo<
         }
         // console.log("------------------- REF SCRIPT")
         return tcx.addRefInput(matchingScriptRef, program2);
+    }
+
+    async findRefScriptUtxo(
+        expectedVh: number[],
+        capoUtxos: TxInput[]
+    ): Promise<TxInput | undefined> {
+        const matchesRefScript = this.uh.mkRefScriptPredicate(expectedVh);
+        const refScriptUtxos = await this.findScriptReferences(capoUtxos);
+
+        const matchingScriptRef = refScriptUtxos.find(matchesRefScript);
+        if (!matchingScriptRef) {
+            return undefined;
+        }
+        return matchingScriptRef;
     }
 
     /** finds UTXOs in the capo that are of tnhe ReferenceScript variety of its datum

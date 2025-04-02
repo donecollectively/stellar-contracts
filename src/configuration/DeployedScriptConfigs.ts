@@ -122,7 +122,7 @@ export type DeployedScriptDetails<
 > =
     | {
           config: form extends "json" ? any : CT;
-          scriptHash?: string;
+          scriptHash?: number[];
           programBundle?: DeployedProgramBundle;
       }
     | RequiredDeployedScriptDetails<CT>;
@@ -135,7 +135,7 @@ export type RequiredDeployedScriptDetails<
     form extends "json" | "native" = "native"
 > = {
     config: form extends "json" ? any : CT;
-    scriptHash: string;
+    // scriptHash: string;
     programBundle: DeployedProgramBundle;
 };
 
