@@ -91,9 +91,9 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
     } else if ("number" == typeof value) {
         return value.toString();
     } else if (value instanceof Map) {
-        return `map‹${value.size}›: ${
+        return `map‹${value.size}›: { ${
             uplcDataSerializer("", Object.fromEntries(value.entries()), Math.max(depth,3))
-        }`
+        }    }`
     } else if (Array.isArray(value) && value.length == 0) {
         return "[]";
     } else if (Array.isArray(value) && value.every((v) => typeof v === "number")) {
@@ -149,14 +149,17 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
     //    JSON.stringify(value[k], datumSerializer, 4)
 // }`).join(`,\nz${indent}`);
     }`)
-    const multiLine = s.map((s) => {
-        if ( s.length > 40 && !s.includes("\n")) {
+    const multiLineItems = s.map((s) => {
+        if ( s.length < 40 && !s.includes("\n")) {
+            return `${s}`
+        } else {
             extraNewLine = "\n"
             usesOutdent = outdent
             return `${s}`
         }
         return s
-    }).join(`, ${extraNewLine}`);
+    })
+    const multiLine = multiLineItems.join(`, ${extraNewLine}`);
     s = `${multiLine}${extraNewLine}${usesOutdent}`
 
     if (key) return `{${extraNewLine}${s}}`

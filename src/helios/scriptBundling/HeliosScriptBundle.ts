@@ -591,7 +591,24 @@ export abstract class HeliosScriptBundle {
         return this;
     }
 
-    /**
+    previousCompiledScript() {
+        const { uplcProgram, validatorHash } = this.previousOnchainScript || {};
+        if (!uplcProgram) return undefined;
+        if (!validatorHash) return undefined;
+
+        const actualHash = uplcProgram.hash();
+        if (!equalsBytes(validatorHash, actualHash)) {
+            throw new Error(
+                `script hash mismatch: ${bytesToHex(
+                    validatorHash
+                )} != ${bytesToHex(actualHash)}`
+            );
+        }
+
+        return uplcProgram
+    }
+
+        /**
      * resolves the compiled script for this class with its provided
      * configuration details
      * @remarks
@@ -612,20 +629,6 @@ export abstract class HeliosScriptBundle {
             previousOnchainScript,
             program,
         } = this;
-
-        debugger
-        if (previousOnchainScript) {
-            const { validatorHash, uplcProgram } = previousOnchainScript;
-            const actualHash = uplcProgram.hash();
-            if (!equalsBytes(validatorHash, actualHash)) {
-                throw new Error(
-                    `script hash mismatch: ${bytesToHex(
-                        validatorHash
-                    )} != ${bytesToHex(actualHash)}`
-                );
-            }
-            return uplcProgram;
-        }
 
         if (this.alreadyCompiledScript) {
             return this.alreadyCompiledScript;

@@ -191,6 +191,7 @@ import {
 
 func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
     print(" 🚥❓delegate: "+delegateName + "\n");
+    assert(rev >= 1, "rev must be at least 1");
 
     // input = get_current_input();
     result :Bool = mdd.switch{
@@ -557,6 +558,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 _ => error("unreachable wrong role for CreatingDelegate")
                             }
                         },
+
                         queuePendingChange => {
                             REQT("... for the addingPendingDgt activity:");
 
@@ -743,40 +745,64 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     });
                                     assert(isNotADuplicate, "already has a pending change for this delegate: "+newDgtRoleName);
 
-                                    REQT("doesn't allow an Add for an existing policy name");
-                                    charterData.manifest.get_safe(newDgtRoleName).switch {
-                                        Some => error(
-                                            "queuing Add failed: already has a delegate for policy name: "+ 
-                                            newDgtRoleName
-                                        )
-                                    };
-
+                                    existingRoleEntryMaybe : Option[CapoManifestEntry] = charterData.manifest.get_safe(newDgtRoleName);
                                     possibleReplacementIsCorrect: Bool = action.switch {
-                                        Remove => error("unreachable"),
-                                        Add => true, // doesn't need to replace anything
-                                        Replace{_seed, _purpose, _recPrefix, acExistingDgt} => { 
-                                            REQT("... when queuing a replacement delegate: ");
-                                            REQT("invariants cannot be replaced");
+                                        Add => {
+                                            REQT("doesn't allow an Add for an existing policy name");
+                                            existingRoleEntryMaybe.switch {
+                                                Some =>  error(
+                                                    "queuing Add failed: already has a delegate for policy name: "+ 
+                                                    newDgtRoleName
+                                                )
+                                            };
+
+                                            true
+                                        },
+                                        Replace{_seed, _purpose, _idPrefix, replacesDgt} => {
+                                            REQT("For Replace on an existing delegate... ");
+
+                                            REQT("  -- Replace: invariants cannot be replaced");
                                             role.switch {
                                                 MintInvariant => error("cannot Replace role: MintInvariant"),
                                                 SpendInvariant => error("cannot Replace role: SpendInvariant"),
                                                 HandledByCapoOnly => error("HandledByCapoOnly role is not applicable in delegate context"),
                                                 _ => print("  -- ok (not trying to replace an invariant)")
                                             };
+    
+                                            REQT("  -- doesn't allow a Replace if the policy-name doesn't already exist");
 
-                                            mkSome = (ac: AssetClass) -> Option[AssetClass] { Option[AssetClass]::Some{ac} };
-                                            REQT("the PendingDelegateAction's role + replacesDgt must match the existing delegate's authority token");
-                                            replacesDgTkn : Option[AssetClass] = role.switch {
-                                                MintDgt => mkSome(charterData.mintDelegateLink.acAuthorityToken(dd.mph)),
-                                                SpendDgt => mkSome(charterData.spendDelegateLink.acAuthorityToken(dd.mph)),
-                                                DgDataPolicy => {
-                                                    REQT("to Replace a dgDataPolicy, the named policy must be present in the Capo manifest");
-                                                    error("todo: get authority-token for this dgDataPolicy")
+                                            existingDgtLink : RelativeDelegateLink = existingRoleEntryMaybe.switch {
+                                                None => error("queuing Replace failed: the policy-name doesn't exist: "+ 
+                                                    newDgtRoleName
+                                                ),
+                                                Some{CapoManifestEntry{entryType, _tn, _mph}} => {
+                                                    entryType.switch {
+                                                        DgDataPolicy{existingDgtLink, _idp, _refCount} => existingDgtLink,
+                                                        _ => error("invalid Replace; the matching manifest entry for '"+newDgtRoleName+"' isn't a DgDataPolicy.")
+                                                    }
+                                                }
+                                            };
+                                            // RelativeDelegateLink{existingUutName, _dvh, _cfg} = existingDgtLink;
 
+                                            REQT("  -- Replace: the PendingDelegateAction's role + replacesDgt must match the existing delegate's authority token");
+                                            existingDgTkn : Option[AssetClass] = role.switch {
+                                                MintDgt => Option[AssetClass]::Some{
+                                                    charterData.mintDelegateLink.acAuthorityToken(dd.mph)
+                                                },
+                                                SpendDgt => Option[AssetClass]::Some{
+                                                    charterData.spendDelegateLink.acAuthorityToken(dd.mph)
+                                                },                                                
+                                                DgDataPolicy{_policyName} /* DelegateRole::DgDataPolicy */ => {
+                                                    REQT("  -- Replace: dgDataPolicy: the named policy must be present in the Capo manifest");
+
+                                                    Option[AssetClass]::Some{
+                                                        existingDgtLink.acAuthorityToken(dd.mph)
+                                                    }
                                                 },
                                                 OtherNamedDgt => {
-                                                    REQT("to Replace a named delegate, the named delegate must already be present");
-                                                    error("todo: get authority-token for this named delegate")
+                                                    error("unreachable: OtherNamedDgt deprecated")
+                                                    // REQT("  -- Replace: OtherNamedDgt: the named delegate must already be present");
+                                                    // error("todo: get authority-token for this named delegate")
                                                 },
                                                 BothMintAndSpendDgt => error(
                                                     "DelegateRole::BothMintAndSpend not applicable in queuePendingChange activity"
@@ -786,16 +812,26 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                 HandledByCapoOnly => error("unreachable")
                                             };
                                             assert(
-                                                acExistingDgt == replacesDgTkn.unwrap(),
+                                                replacesDgt == existingDgTkn.unwrap(),
                                                 "the current "+role.switch{
                                                     MintDgt => "mint", SpendDgt => "spend", 
                                                     DgDataPolicy => "dgDataPolicy", OtherNamedDgt => "named",
                                                     _ => "‹incontheeiieivable›"
-                                                }+" delegate's authority token doesn't match "+acExistingDgt.show()
+                                                }+" delegate's authority token doesn't match the queued action's token name "+replacesDgt.show()
                                             );
 
-                                            true
-                                        } 
+                                            true    
+                                        },
+                                        Remove => {
+                                            REQT("doesn't allow a Remove if the policy-name doesn't already exist");
+                                            existingRoleEntryMaybe.switch {
+                                                None => error(
+                                                    "queuing Remove failed: the policy-name doesn't exist: "+ 
+                                                    newDgtRoleName
+                                                )
+                                            };
+                                            error("unreachable: Remove not yet supported")
+                                        }
                                     }; // -> possibleReplacementIsCorrect
 
                                     true
@@ -889,6 +925,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                 assert(pendingTypeName == CME_key,
                                                     "queued change: name mismatch with next-manifest item"
                                                 );
+                                                print("  -- ME policy link " + ME_policyLink.uutName.show());
+                                                print("  -- pdChange policy link " + pdChange.dgtLink.unwrap().uutName.show());
+
                                                 assert(ME_policyLink == pdChange.dgtLink.unwrap(),
                                                     "queued change: policyLink mismatch with next-manifest item"
                                                 );
@@ -935,14 +974,16 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 REQT("mintDgt: committing pending delegates: validates that all the removed dgTkns are burned");
                                 
                                 REQT("the txn must have all the expected burns");
-                                observedTokenBurn = if( tx.minted.contains_policy(dd.mph) ) {
-                                    minted = tx.minted;
-                                    if (minted.to_map().length > 1) {
-                                        error("currently supporting only one minting policy being burned in the tx")
-                                    };
-                                    tx.minted.get_policy(dd.mph)
-                                } else {
-                                    Map[ByteArray]Int{} // no burns expected
+                                mint = tx.minted.to_map();
+                                mintThisPolicy = mint.get_safe(dd.mph);
+                                len = mint.length - 1; // ignores the "0 ada minted" that's always present
+                                if ( len > 1) {
+                                    print(tx.minted.show());
+                                    error("currently supporting only one minting policy being burned in the tx " + len.show())
+                                };
+                                observedTokenBurn = mintThisPolicy.switch {
+                                    Some{minted} => minted,
+                                    None => Map[ByteArray]Int{} // no burns expected
                                 };
 
                                 remainingMint: Map[ByteArray]Int = pendingChangesList.fold[ Map[ByteArray]Int ]( 

@@ -13,5 +13,9 @@ import {
 export default class DelegatedDatumTesterBundle 
 extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle){
     specializedDelegateModule = TesterPolicy
+    scriptParamsSource = "config" as const
+
+    requiresGovAuthority = true
+    
 }
 

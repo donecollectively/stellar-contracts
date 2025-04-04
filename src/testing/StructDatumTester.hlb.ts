@@ -8,6 +8,9 @@ export default class StructDatumTesterBundle
 extends HeliosScriptBundle.usingCapoBundleClass(
     CapoHeliosBundle
 ) {
+    scriptParamsSource = "config" as const
+    requiresGovAuthority = true
+
     get main() {
         return StructDatumTesterScript;
     }

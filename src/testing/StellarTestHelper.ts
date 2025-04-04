@@ -25,6 +25,7 @@ import {
     UtxoHelper,
     TxBatcher,
     GenericSigner,
+    environment,
 } from "@donecollectively/stellar-contracts";
 import type {
     stellarSubclass,
@@ -575,7 +576,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             uh: undefined as any,
             isTest: true,
             isMainnet: false,
-            optimize: process.env.OPTIMIZE ? true : this.optimize,
+            optimize: environment.OPTIMIZE ? true : this.optimize,
         } as any
 
         const getNetwork = () => { return this.network };
@@ -607,12 +608,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         TargetClass: stellarSubclass<SC>,
         config?: ConfigFor<SC>
     ) {
-        const envOptimize = !! parseInt(process.env.OPTIMIZE || "0")
-        if ("undefined" == typeof process.env.OPTIMIZE) {
-            console.warn(`OPTIMIZE is not set; using this.optimize = ${this.optimize}`)
-        } else {
-            console.warn(`using env OPTIMIZE=${envOptimize}`)
-        }
+        const envOptimize = environment.OPTIMIZE
+        // console.warn(`using env OPTIMIZE=${envOptimize}`)
 
         const setup = this.initSetup()
 

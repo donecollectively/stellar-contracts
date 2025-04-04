@@ -45,7 +45,7 @@ type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle &
  **/
 export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     abstract specializedDelegateModule: Source;
-    scriptParamsSource = "bundle" as const
+    scriptParamsSource : "bundle" | "config" = "bundle" as const
     
     /**
      * when set to true, the controller class will include the Capo's
@@ -77,7 +77,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
                 super(setupDetails);
             }
             isConcrete = true;
-        } as ConcreteCapoDelegateBundle & typeof newClass
+        } as typeof newClass
         // as typeof CapoDelegateBundle & CapoDelegateBundleClass // & CB
 
         return newClass

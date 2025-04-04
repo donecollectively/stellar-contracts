@@ -320,64 +320,45 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const strella = await h.bootstrap();
+            const capo = await h.bootstrap();
             const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
                 h.state.mintedCharterToken;
-            const minter = strella.minter;
+            const minter = capo.minter;
             // console.log("             ---------- ", mintDelegate.compiledScript.toString());
             const refScriptTxD: TxDescription<any, "submitted"> = tcx.state
                 .addlTxns.refScriptMinter as any;
-            expect(
-                refScriptTxD.tcx.outputs.find((txo) => {
-                    return (
-                        txo.refScript?.toString() ==
-                        minter.compiledScript.toString()
-                    );
-                })
-            ).toBeTruthy();
+
+            const utxos = await capo.findCapoUtxos()
+            const refScriptUtxo = await capo.findRefScriptUtxo(minter.compiledScript.hash(), utxos)
+            expect(refScriptUtxo).toBeTruthy()
         });
 
         it("creates refScript for capo during charter creation", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const strella = await h.bootstrap();
+            const capo = await h.bootstrap();
             const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
                 h.state.mintedCharterToken;
 
-            const refScriptTxD: TxDescription<any, "submitted"> = tcx.state
-                .addlTxns.refScriptCapo as any;
-
-            expect(
-                refScriptTxD.tcx.outputs.find((txo) => {
-                    return (
-                        txo.refScript?.toString() ==
-                        strella.compiledScript.toString()
-                    );
-                })
-            ).toBeTruthy();
+            const utxos = await capo.findCapoUtxos()
+            const refScriptUtxo = await capo.findRefScriptUtxo(capo.compiledScript.hash(), utxos)
+            expect(refScriptUtxo).toBeTruthy()
         });
 
         it("creates refScript for mintDgt during charter creation", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const strella = await h.bootstrap();
+            const capo = await h.bootstrap();
             const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
                 h.state.mintedCharterToken;
-            const mintDelegate = await strella.getMintDelegate();
+            const mintDelegate = await capo.getMintDelegate();
 
-            const refScriptTxD: TxDescription<any, "submitted"> = tcx.state
-                .addlTxns.refScriptMintDelegate as any;
+            const utxos = await capo.findCapoUtxos()
+            const refScriptUtxo = await capo.findRefScriptUtxo(mintDelegate.compiledScript.hash(), utxos)
 
-            expect(
-                refScriptTxD.tcx.outputs.find((txo) => {
-                    return (
-                        txo.refScript?.toString() ==
-                        mintDelegate.compiledScript.toString()
-                    );
-                })
-            ).toBeTruthy();
+            expect(refScriptUtxo).toBeTruthy()
         });
 
         it("finds refScripts in the Capo's utxos", async (context: localTC) => {

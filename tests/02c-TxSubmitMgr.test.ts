@@ -273,7 +273,7 @@ describe("TxSubmitMgr", async () => {
             expect(submitCount).toBe(4);
             expect(confirmCount).toBeGreaterThan(6)
             // each time in te confirmation state has its own limited number of backoffs
-            expect(confirmBackoffs.length).toBe(10);
+            expect(confirmBackoffs.length).toBe(20);
             const firstBackoff = confirmBackoffs[0];
             const lastBackoff = confirmBackoffs[confirmBackoffs.length - 1];
             expect(lastBackoff, "backoff should be increasing significantly").toBeGreaterThan(firstBackoff * 2);

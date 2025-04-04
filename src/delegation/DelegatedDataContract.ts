@@ -577,28 +577,28 @@ export abstract class DelegatedDataContract<
 
         if (this.capo.featureEnabled(policyName)) {
             const existing = await this.capo.getDgDataController(
-                recordTypeName,
+                // recordTypeName,  // xxx
+                policyName, // yes
                 {
                     charterData,
                     optional: true,
                 }
             );
-            if (!existing) {
-                tcx.includeAddlTxn(`create ${recordTypeName} delegate`, {
-                    description: `create on-chain policy for ${idPrefix}-* records`,
-                    moreInfo: this.moreInfo(),
-                    mkTcx: async () => {
-                        const charterData = await this.capo.findCharterData();
-                        const tcx2 =
-                            await this.capo.mkTxnInstallingPolicyDelegate({
-                                policyName,
-                                idPrefix,
-                                charterData,
-                            });
-                        return tcx2;
-                    },
-                });
-            }
+            const action = existing ? "update" : "create";
+            tcx.includeAddlTxn(`${action} ${policyName} delegate`, {
+                description: `${action} on-chain policy for ${idPrefix}-* records of type ${recordTypeName}`,
+                moreInfo: this.moreInfo(),
+                mkTcx: async () => {
+                    const charterData = await this.capo.findCharterData();
+                    const tcx2 =
+                        await this.capo.mkTxnInstallingPolicyDelegate({
+                            policyName,
+                            idPrefix,
+                            charterData,
+                        });
+                    return tcx2;
+                },
+            });
         }
     }
 }

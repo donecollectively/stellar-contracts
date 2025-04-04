@@ -1,4 +1,4 @@
-import { bytesToHex, equalsBytes } from "@helios-lang/codec-utils";
+import { bytesToHex, encodeUtf8, equalsBytes } from "@helios-lang/codec-utils";
 import { makeIntData, type UplcData } from "@helios-lang/uplc";
 import {
     type MintingPolicyHash,
@@ -120,7 +120,10 @@ import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.j
 import type { DelegatedDataContract } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
 import type { isActivity } from "./ActivityTypes.js";
-import type { DelegateDatum$capoStoredDataLike } from "./delegation/UnspecializedDelegate.typeInfo.js";
+import type {
+    DelegateDatum$capoStoredDataLike,
+    ErgoPendingCharterChange,
+} from "./delegation/UnspecializedDelegate.typeInfo.js";
 import type {
     CapoConfig,
     CapoFeatureFlags,
@@ -1532,7 +1535,7 @@ export abstract class Capo<
             };
             delegate = await this.mustGetDelegate<DT>(role, delegateSettings);
             if (delegate.usesContractScript) {
-                await delegate.asyncCompiledScript()
+                await delegate.asyncCompiledScript();
             }
         } catch (e: any) {
             console.log("error: unable to create delegate: ", e.stack);
@@ -3836,7 +3839,11 @@ export abstract class Capo<
         // console.log("   --spendDgt", spendDelegate.constructor.name);
 
         const tcx1 = await this.tcxWithSeedUtxo(this.mkTcx());
-        return this.mkTxnQueuingDelegateChange("Add", options, tcx1);
+        if (options.charterData.manifest.get(options.policyName)) {
+            return this.mkTxnQueuingDelegateChange("Replace", options, tcx1);
+        } else {
+            return this.mkTxnQueuingDelegateChange("Add", options, tcx1);
+        }
     }
 
     // async mkTxnQueuingDelegateRemoval<
@@ -3990,18 +3997,24 @@ export abstract class Capo<
             // delegateValidatorHash: tempOCDPLink.delegateValidatorHash,
             // config: tempOCDPLink.config,
         };
-        const policyNameBytes = textToBytes(policyName);
-        const replacesDgtME = [...charterData.manifest.values()].find((m) => {
-            !!m.entryType.DgDataPolicy && m.tokenName == policyNameBytes;
-        });
-        const acReplacesDgt = replacesDgtME?.tokenName;
+
+        const replacesDgtME = [...charterData.manifest.entries()].find(
+            ([manifestPolicyName, m]) => {
+                debugger;
+                return (
+                    !!m.entryType.DgDataPolicy &&
+                    manifestPolicyName == policyName
+                );
+            }
+        );
+        const [manifestPolicyName, m] = replacesDgtME || [];
+        const acReplacesDgt = m?.tokenName;
         if (acReplacesDgt) {
             if ("Add" === change) {
                 throw new Error(
                     `Cannot add a policy with the same name as an existing one: ${policyName} (use Replace activity)`
                 );
             }
-            throw new Error(`TODO: delegate-replacement support (test needed)`);
         } else {
             if ("Replace" === change) {
                 throw new Error(
@@ -4018,8 +4031,9 @@ export abstract class Capo<
                 : {
                       Replace: {
                           ...addDetails,
-                          replacesDgt:
-                              this.uh.acAuthorityToken(policyNameBytes),
+                          replacesDgt: this.uh.acAuthorityToken(
+                              charterData.manifest.get(policyName)!.tokenName
+                          ),
                       },
                   };
 
@@ -4112,7 +4126,7 @@ export abstract class Capo<
      */
     findPendingChange(
         charterData: CapoDatum$Ergo$CharterData,
-        changingThisRole: (pc: any) => boolean
+        changingThisRole: (pc: ErgoPendingCharterChange) => boolean
     ) {
         return charterData.pendingChanges.find(changingThisRole);
     }
@@ -4170,11 +4184,9 @@ export abstract class Capo<
             tcx,
             spendDgt.activity.CapoLifecycleActivities.commitPendingChanges
         );
-        const tcx1b = await mintDgt.txnGrantAuthority(
-            tcx1a,
-            mintDgt.activity.CapoLifecycleActivities.commitPendingChanges
-        );
-        const tcx1c = await this.txnAddGovAuthority(tcx1b);
+        const tcx1b = await this.txnAddGovAuthority(tcx1a);
+        let tcx3 = tcx1b;
+        let isReplacing = false;
 
         const currentManifest = currentCharter.manifest;
         const newManifestEntries = new Map();
@@ -4216,6 +4228,7 @@ export abstract class Capo<
                         `only Add and Replace actions are supported here`
                     );
                 }
+                isReplacing = true;
                 const {
                     purpose,
                     seed,
@@ -4245,24 +4258,71 @@ export abstract class Capo<
                 },
             });
         }
+        if (!isReplacing) {
+            tcx3 = await mintDgt.txnGrantAuthority(
+                tcx1b,
+                mintDgt.activity.CapoLifecycleActivities.commitPendingChanges
+            );
+    
+        } else {
+            const tcx2 = await this.tcxWithCharterRef(tcx);
+            const tcx2a = await this.txnAddGovAuthority(tcx2);
+            let tcx2b = tcx2a;
+            const mintDgt = await this.getMintDelegate();
+            const minter = this.minter;
+            const toBurn = await Promise.all([...currentManifest.entries()]
+                .filter(([name, _]) => newManifestEntries.has(name))
+                .map(async ([name, { mph, tokenName, entryType }]) => {
+                    if (mph && !mph.isEqual(minter.mintingPolicyHash)) {
+                        throw new Error(
+                            `Replace: for now, this only works with a minting policy from this Capo`
+                        );
+                    }
+                    if (entryType.DgDataPolicy) {
+                        const previousDgt = await (this as unknown as SELF).getDgDataController(name)
+                        if (!previousDgt) {
+                            throw new Error(`can't find previous dgDataPolicy: ${name}`);
+                        }
+                        debugger
+                        tcx2b = await previousDgt.txnGrantAuthority(
+                            tcx2a,
+                            previousDgt.activity.DelegateLifecycleActivities.Retiring,
+                            "skipDelegateReturn"
+                        );
+                    }
+                    return mkValuesEntry(tokenName, -1n);
+                })
+            );
+
+            tcx3 = await minter.txnMintWithDelegateAuthorizing(
+                tcx2a,
+                toBurn,
+                mintDgt,
+                // ????
+                mintDgt.activity.CapoLifecycleActivities.commitPendingChanges
+            );
+        }
+
         // new manifest entries must be at the front of the list, and in the same
         // order as the pending changes
         const updatedManifest = new Map([
             ...newManifestEntries.entries(),
-            ...currentManifest.entries(),
+            ...[...currentManifest.entries()].filter(
+                ([name, _]) => !newManifestEntries.has(name)
+            ),
         ]);
 
-        const tcx2 = await this.mkTxnUpdateCharter(
+        const tcx4 = await this.mkTxnUpdateCharter(
             {
                 ...currentCharter,
                 manifest: updatedManifest,
                 pendingChanges: [],
             },
             this.activity.capoLifecycleActivity.commitPendingChanges,
-            tcx1c
+            tcx3
         );
 
-        return tcx2;
+        return tcx4;
     }
 
     /**

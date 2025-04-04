@@ -167,7 +167,6 @@ export class ContractBasedDelegate extends StellarDelegate {
     getContractScriptParams(config: capoDelegateConfig) {
         const { capoAddr, mph, tn, capo, ...otherConfig } = config;
 
-        debugger
         return {
             ...otherConfig,
             delegateName: this.delegateName,
@@ -587,9 +586,15 @@ export class ContractBasedDelegate extends StellarDelegate {
         redeemer: isActivity
     ): Promise<TCX> {
         const { capo } = this.configIn!;
+
+        // when there is a delegate upgrade in progress, we must 
+        // use the previous script, not the next script, to locate 
+        // the authority token.
+
+        const script = this._bundle?.previousCompiledScript() || this.compiledScript
         const tcx2 = await capo.txnAttachScriptOrRefScript(
             tcx,
-            this.compiledScript
+            script
         );
         if (!redeemer.redeemer) debugger
         return tcx2.addInput(uutxo, redeemer);

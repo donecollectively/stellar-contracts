@@ -1,9 +1,9 @@
-import { CapoHeliosBundle, MintSpendDelegateBundle } from "@donecollectively/stellar-contracts";
+import { CapoHeliosBundle, DelegatedDataBundle, MintSpendDelegateBundle } from "@donecollectively/stellar-contracts";
 import BadSettingsPolicy from "./BadSettingsPolicy.hl";
 import BadProtocolSettings from "./TestBadSettings.hl";
 
 export default class BadSettingsBundle 
-extends MintSpendDelegateBundle.usingCapoBundleClass(CapoHeliosBundle) {
+extends DelegatedDataBundle.usingCapoBundleClass(CapoHeliosBundle) {
     specializedDelegateModule = BadSettingsPolicy
     requiresGovAuthority = true;
     

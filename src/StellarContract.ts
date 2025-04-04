@@ -7,13 +7,10 @@ import {
     type NetworkParams,
     type TxInput,
     type ValidatorHash,
-    type TxOutput,
-    type TxOutputDatum,
     type Value,
     makeMintingPolicyHash,
     makeInlineTxOutputDatum,
     type TxOutputId,
-    type ScriptHash,
 } from "@helios-lang/ledger";
 
 import type {
@@ -1106,6 +1103,10 @@ export class StellarContract<
     //  todo: stakingAddress?: Address or credential or whatever;
 
     get address(): Address {
+        const prevVh = this._bundle?.previousOnchainScript?.validatorHash
+        if (prevVh) {
+            return makeAddress(this.setup.isMainnet, makeValidatorHash(prevVh))
+        }
         const { addr } = this._cache;
         if (addr) return addr;
         if (!this.validatorHash) {

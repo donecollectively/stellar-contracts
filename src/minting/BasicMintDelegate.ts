@@ -25,7 +25,9 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     static isMintDelegate = true;
     declare dataBridgeClass : GenericDelegateBridgeClass
 
-    needsGovAuthority = true;
+    get needsGovAuthority() {
+        return true;
+    }
 
     get delegateName() {
         return "mintDelegate";
@@ -134,7 +136,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
             );
 
         const { capo } = this.configIn!;
-        await capo.txnAttachScriptOrRefScript(tcx, this.compiledScript);
+        // await capo.txnAttachScriptOrRefScript(tcx, this.compiledScript);
 
         return super.txnGrantAuthority(tcx, redeemer, skipReturningDelegate);
     }

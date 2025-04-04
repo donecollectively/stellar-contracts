@@ -167,9 +167,14 @@ func requiresMintDelegateApproval(
 
                 mintDgtInput.requiresValidOutput() && 
                 true
-            },
+            }, 
             queuePendingChange => {
                 print("  -- ok: mintDgt using CapoLifecycle.queuePendingChange)\n");
+                mintDgtInput.requiresValidOutput() && 
+                true
+            },
+            commitPendingChanges => {
+                print("  -- ok: mintDgt using CapoLifecycle.commitPendingChanges)\n");
                 mintDgtInput.requiresValidOutput() && 
                 true
             },
