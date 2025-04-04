@@ -192,8 +192,8 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 }
             };
             REQT("guards against updating a record if its id doesn't match its token-name");
-            hasMatchingValue : Bool = input.value.contains(mkTv(mph: mph, tnBytes: datumId));
-                        
+            datumAc : AssetClass = AssetClass::new(mph, datumId);
+            hasMatchingValue : Bool = input.value.get_safe(datumAc) > 0;                        
 
             TODO("deal with DeletingDelegatedData activity (ensure spendDgt AND mintDgt do their parts)");
             // Note: CreatingDelegatedData activity doesn't involve the Capo at all; instead,

@@ -203,15 +203,9 @@ enum DelegateActivity {
                     assert(cctx.withCharterRef().orFail(), "can't");
                     // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
                     tokenName = mkTn("set");
-                    depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
+                    // depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
 
                     newRec : TxOutput = cctx.delegatedTxOutput( tokenName.encode_utf8() );
-
-                    // print("required listing fee: " + fee.show());
-                    assert(
-                        newRec.value.contains(depositedValue),
-                        "missing id token"
-                    );
 
                     recData: ProtocolSettings = ProtocolSettings::from_data(
                         fromCip68Wrapper( newRec.datum.inline )

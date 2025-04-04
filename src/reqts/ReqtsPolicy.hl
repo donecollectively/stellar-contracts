@@ -229,15 +229,10 @@ enum DelegateActivity {
                     // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
 
                     tokenName = mkTn("reqt");
-                    depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
+                    // depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
+                    // depositedAc : AssetClass = AssetClass::new(priorMddd.dd.mph, tokenName.encode_utf8());
 
                     newReqt : TxOutput = cctx.delegatedTxOutput(tokenName.encode_utf8());
-
-                    // print("required listing fee: " + fee.show());
-                    assert(
-                        newReqt.value.contains(depositedValue),
-                        "missing reqt token"
-                    );
 
                     reqtData: ReqtData = ReqtData::from_data(
                         newReqt.datum.inline

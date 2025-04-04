@@ -267,11 +267,14 @@ struct RelativeDelegateLink {
                 // if we arrived here, then we have a delegate that's supposed to be at a specific address.
                 // if we can't find an input with that address, it's an error condition.
                 // we need an input with this address, having the expected UUT.
-                expectedUut : Value = mkTv(mph, uutName);
+
+                ac = AssetClass::new(mph, uutName.encode_utf8());
+                // expectedUut : Value = mkTv(mph, uutName);
+
                 print("  -- seeking input dgTkn: "+ uutName);
                 inputs.find_safe((i: TxInput) -> Bool {
                     i.address.credential == needsAddrWithCred &&
-                    i.value.contains(expectedUut)
+                    i.value.get_safe(ac) > 0
                 }).switch {
                     foundGood: Some => {
                         print ("  ✅ ➡️  💁 found ^ input dgTkn" );
@@ -303,7 +306,9 @@ struct RelativeDelegateLink {
             _ /* configJson */
         } = self;
     
-        v : Value = mkTv(mph, uut);
+        // v : Value = mkTv(mph, uut);
+        ac = AssetClass::new(mph, uut.encode_utf8());
+
         cOrR : String = createdOrReturned.switch{
             Returned => "returned",
             Created => "created"
@@ -312,13 +317,13 @@ struct RelativeDelegateLink {
         hasDelegate : Bool = validatorHash.switch{
             Some{vh} => {
                 print( "  ... ^ sent to validator: "+vh.show()+"\n");
-                tx.value_locked_by(vh).contains(v)
+                tx.value_locked_by(vh).get_safe(ac) > 0
             },
             None => {
                 print("   (to anywhere)");
 
                 tx.outputs.find_safe((o : TxOutput) -> Bool {
-                    o.value.contains(v)
+                    o.value.get_safe(ac) > 0
                 }).switch{
                     Some => true, 
                     None => false
@@ -475,16 +480,15 @@ func requiresNoDelegateInput(
     delegateLink: RelativeDelegateLink, 
     mph: MintingPolicyHash
 ) -> Bool {
-    v : Value = mkTv(mph, delegateLink.uutName);
+    // v : Value = mkTv(mph, delegateLink.uutName);
+    ac : AssetClass = delegateLink.acAuthorityToken(mph);
     if (tx.inputs.any((i: TxInput) -> Bool {
-        i.value.contains(v)
+        i.value.get_safe(ac) > 0
     })) {
         error("must not have dgTkn input: "+delegateLink.uutName)
     } else {
-    print("ok: no dgTkn input: ");
-    print(delegateLink.uutName);
-    print("\n");
-    true
+        print("ok: no dgTkn input: "+delegateLink.uutName);
+        true
     }
 }
 

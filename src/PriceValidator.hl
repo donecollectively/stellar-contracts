@@ -43,6 +43,10 @@ enum PriceNeeded {
         price: Value
         label: String
     }
+    showUniqueToken {
+        required: AssetClass
+        label: String
+    }
     // showControlOf: a value that must be spendable, but which must not
     //    be paid into the contract.
     showControlOf {        

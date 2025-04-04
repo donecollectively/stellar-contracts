@@ -205,15 +205,9 @@ enum DelegateActivity {
                     
                     // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
                     tokenName = mkTn("tData");
-                    depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
+                    // depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
 
                     newRec : TxOutput = cctx.delegatedTxOutput( tokenName.encode_utf8() );
-
-                    // print("required listing fee: " + fee.show());
-                    assert(
-                        newRec.value.contains(depositedValue),
-                        "missing tData token"
-                    );
 
                     recData: DgDatumTestData = DgDatumTestData::from_data(
                         newRec.datum.inline

@@ -59,13 +59,14 @@ func requiresDelegateAuthorizingMint(
     extraMintDelegateRedeemerCheck: Bool = true,
     checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported
 ) -> Bool {
-    authzVal : Value = Value::new(AssetClass::new(mph, delegateLink.uutName.encode_utf8()), 1);
+    // authzVal : Value = Value::new(AssetClass::new(mph, delegateLink.uutName.encode_utf8()), 1);
+    authzAc : AssetClass = delegateLink.acAuthorityToken(mph);
     REQT("requires the charter's mint-delegate to authorize this mint activity");
     print("  -- finding input dgTkn: " + delegateLink.uutName);
 
     targetId: TxOutputId = tx.inputs.find_safe((i: TxInput) -> {
         // print("   ?  in "+i.value.show());
-        i.value.contains(authzVal) // find my authority token
+        i.value.get_safe(authzAc) > 0 // find my authority token
     }).switch{
         Some{x} => x.output_id,
         None => error("  ❌❌ missing dgTkn "+delegateLink.uutName)
