@@ -1,174 +1,244 @@
 import React from "react"
-import ellipse from './assets/ellipse.svg'
+import ellipse from "./assets/ellipse.svg"
 
-export function DashboardTemplate(props: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="w-full flex flex-col my-4 mx-8 gap-10 relative">
-      <img
-        alt="blurred background"
-        height={260}
-        width={260}
-        src={ellipse}
-        className="size-40 absolute -z-10 -left-44 top-20 opacity-50 w-96 h-96 overflow-hidden bg-[#cb157c] blur-[344px]"
-      />
-      <img
-        alt="blurred background"
-        height={260}
-        width={260}
-        src={ellipse}
-        className="size-40 absolute -z-10 -right-44 top-20 opacity-50 w-96 h-96 overflow-hidden bg-[#cb157c] blur-[344px]"
-      />
-      <div className="self-start font-semibold text-2xl">
-        <h3>{props.title}</h3>
-      </div>
-      {props.children}
-    </div>
-  )
+export function DashboardTemplate(props: {
+    title: string
+    children: React.ReactNode
+}) {
+    return (
+        <div className="relative my-4 mx-8 flex w-full flex-col gap-10">
+            <img
+                alt="blurred background"
+                height={260}
+                width={260}
+                src={ellipse}
+                className="size-40 absolute -left-44 top-20 -z-10 h-96 w-96 overflow-hidden bg-black/20 opacity-50 blur-[344px]"
+            />
+            <img
+                alt="blurred background"
+                height={260}
+                width={260}
+                src={ellipse}
+                className="size-40 absolute -right-44 top-20 -z-10 h-96 w-96 overflow-hidden bg-black/20 opacity-50 blur-[344px]"
+            />
+            <div className="self-start text-2xl font-semibold">
+                <h3>{props.title}</h3>
+            </div>
+            {props.children}
+        </div>
+    )
 }
 
-export function DashboardRow(props: { title?: string; children: React.ReactNode }) {
-  return (
-    <div>
-        {props.title && <h4 className="text-lg font-semibold">{props.title}</h4>}
-        <div className="grid grid-cols-3 gap-x-4 rounded-3xl h-88">{props.children}</div>
-    </div>
-  )
+export function DashboardRow(props: {
+    title?: string
+    children: React.ReactNode
+}) {
+    return (
+        <div>
+            {props.title && (
+                <h4 className="text-lg font-semibold">{props.title}</h4>
+            )}
+            <div className="h-88 grid grid-cols-3 gap-x-4 rounded-3xl">
+                {props.children}
+            </div>
+        </div>
+    )
 }
 
 /**
  * children should be <li> elements or <DashSummaryItem> elements
  */
-export function DashboardSummary(props: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col items-start justify-between col-span-1 bg-background h-full p-6 rounded-3xl border border-white/10">
-      <h5 className="text-lg">{props.title}</h5>
-      <ul className="grid grid-cols-2 grid-rows-3 w-full gap-4">{props.children}</ul>
-    </div>
-  )
+export function DashboardSummary(props: {
+    title: string
+    children: React.ReactNode
+}) {
+    return (
+        <div className="bg-background/20 col-span-1 flex h-full flex-col items-start justify-between rounded-3xl border border-white/10 p-6">
+            <h5 className="text-lg">{props.title}</h5>
+            <ul className="grid w-full grid-cols-2 grid-rows-3 gap-4">
+                {props.children}
+            </ul>
+        </div>
+    )
 }
 
-export function DashSummaryItem(props: { title: string; children: React.ReactNode }) {
-  const firstChild = Array.isArray(props.children) ? props.children[0] : props.children
-  const otherChildren = Array.isArray(props.children) ? props.children.slice(1) : []
-  return (
-    <li>
-      <span className="inline-flex items-baseline gap-x-1">
-        <h6 className="text-2xl leading-[30px]">{firstChild}</h6>
-        {otherChildren}
-      </span>
-      <p className="font-light text-sm leading-[17px] opacity-90">{props.title}</p>
-    </li>
-  )
+export function DashSummaryItem(props: {
+    title: string
+    children: React.ReactNode
+}) {
+    const firstChild = Array.isArray(props.children)
+        ? props.children[0]
+        : props.children
+    const otherChildren = Array.isArray(props.children)
+        ? props.children.slice(1)
+        : []
+    return (
+        <li>
+            <span className="inline-flex items-baseline gap-x-1">
+                <h6 className="text-2xl leading-[30px]">{firstChild}</h6>
+                {otherChildren}
+            </span>
+            <p className="text-sm font-light leading-[17px] opacity-90">
+                {props.title}
+            </p>
+        </li>
+    )
 }
 
 /**
  * children should be <li> elements
  */
 export function DashboardHighlights(props: {
-  title?: string
-  className?: string
-  colSpan?: string
-  children: React.ReactNode
+    title?: string
+    className?: string
+    colSpan?: string
+    footer?: string | React.ReactNode
+    children: React.ReactNode
 }) {
-  const { title, className = "", colSpan = "2", children } = props
-  const normalClasses =
-    "justify-between p-3 px-4 bg-background h-full " +
-    "rounded-2xl border border-white/10"
-  return (
-    <div className={`${className} col-span-${colSpan} ${normalClasses}`}>
-      {title && <h5 className="text-lg">{title}</h5>}
-      <ul className="grid grid-cols-3 w-full gap-4">{children}</ul>
-    </div>
-  )
+    const { title, className = "", colSpan = "2", footer, children } = props
+    const colSpanClasses = [
+        "col-span-2",
+        "col-span-3",
+        "col-span-4",
+        "col-span-5",
+        "col-span-6",
+        "col-span-7",
+        "col-span-8",
+        "col-span-9",
+        "col-span-10",
+    ]
+    const normalClasses =
+        "flex flex-col justify-between p-3 px-4 bg-background/20 h-full " +
+        "rounded-2xl border border-white/10"
+    const titleMarkup = title ? <h5 className="text-lg">{title}</h5> : null
+    const footerContent = footer ? (
+        <div className="flex flex-row w-full justify-between mt-auto">
+            <div className="text-sm text-gray-500 flex-1 text-right">
+                {footer}
+            </div>
+        </div>
+    ) : null
+    return (
+        <div key="dash-highlight-box" className={`${className} col-span-${colSpan} ${normalClasses}`}>
+            {titleMarkup}
+            <ul className="grid w-full grid-cols-3 gap-4">{children}</ul>
+            {footerContent}
+        </div>
+    )
 }
 
 export function DashHighlightItem(props: {
-  title?: string
-  button?: string
-  onClick?: () => void
-  titleClassName?: string
-  children: React.ReactNode
+    title?: string
+    button?: string
+    onClick?: () => void
+    titleClassName?: string
+    className?: string
+    style?: React.CSSProperties
+    children: React.ReactNode
+    footer?: string | React.ReactNode
 }) {
-  const { title, button, onClick, titleClassName = "text-lg", children } = props
-  const firstChild = Array.isArray(children) ? children[0] : children
-  const otherChildren = Array.isArray(children) ? children.slice(1) : []
-  return (
-    <li className="flex flex-col content-end rounded-xl border border-white/10 p-2">
-      <span className="flex flex-col items-baseline gap-x-1">
-        <h6 className="text-md leading-[30px]">{firstChild}</h6>
-        <div className="text-sm">{otherChildren}</div>
-      </span>
-      <p className={`${titleClassName} font-light gap-y-1 opacity-90 text-right`}>
-        {title}
-        {button && <ActionButton {...{ onClick }}>{button}</ActionButton>}
-      </p>
-    </li>
-  )
+    const {
+        title,
+        button,
+        onClick,
+        titleClassName = "text-lg",
+        children,
+        className = `rounded-lg border border-(--color-border)/20 bg-(--color-card)/50 text-(--color-card-foreground) p-2`,
+        style = {},
+        footer,
+    } = props
+    const firstChild = Array.isArray(children) ? children[0] : children
+    const otherChildren = Array.isArray(children) ? children.slice(1) : []
+    return (
+        <li className={`flex flex-col h-full ${className}`} style={style}>
+            <div className="flex-none">
+                <h6 className="text-md leading-[15px]">{firstChild}</h6>
+                <div className="text-sm">{otherChildren}</div>
+            </div>
+            {footer && <Softlight className="text-right text-sm italic text-gray-500">{footer}</Softlight>}
+            <div
+                id="labelAndButton"
+                className={`${titleClassName} mt-auto gap-y-1 text-right justify-end`}
+            >
+                {title}
+                {button && (
+                    <ActionButton {...{ onClick }}>{button}</ActionButton>
+                )}
+            </div>
+        </li>
+    )
 }
 
 export function ActionButton(props: {
-  className?: string
-  onClick?: () => void
-  size?: "xs" | "sm" | "md" | "lg"
-  children: React.ReactNode
+    className?: string
+    onClick?: () => void
+    size?: "xs" | "sm" | "md" | "lg"
+    children: React.ReactNode
 }) {
-  const { children, onClick, className = "", size="lg" } = props
-  return (
-    <button      
-      onClick={onClick}
-      className={`${className} bg-brand-orange/50 text-${size} text-white rounded-${size} px-2 py-1 cursor-pointer`}
-    >
-      {children}
-    </button>
-  )
+    const { children, onClick, className = "", size = "md" } = props
+    return (
+        <button
+            onClick={onClick}
+            className={`${className} bg-(--color-primary) text-(--color-primary-foreground) text-${size} rounded-${size} cursor-pointer px-2 py-1`}
+        >
+            {children}
+        </button>
+    )
 }
 
-export function Column(props: { widthPercent: number; children: React.ReactNode }) {
-  const { widthPercent, children } = props
-  return (
-    <div
-      className={`flex flex-col ${
-        widthPercent ? "w-" + widthPercent.toString() : ""
-      } p-8`}
-    >
-      {children}
-    </div>
-  )
+export function Column(props: {
+    widthPercent: number
+    children: React.ReactNode
+}) {
+    const { widthPercent, children } = props
+    return (
+        <div
+            className={`flex flex-col ${
+                widthPercent ? "w-" + widthPercent.toString() : ""
+            } p-8`}
+        >
+            {children}
+        </div>
+    )
 }
 
 export function Highlight(props: {
-  as?: keyof JSX.IntrinsicElements
-  className?: string
-  children: React.ReactNode
+    as?: keyof JSX.IntrinsicElements
+    className?: string
+    children: React.ReactNode
 }) {
-  const { as: As = "p", className = "", children } = props
-  return (
-    <As className={`${className} text-brand-orange font-normal text-[13px]`}>
-      {children}
-    </As>
-  )
+    const { as: As = "p", className = "", children } = props
+    return (
+        <As
+            className={`${className} text-(--color-accent-foreground) text-[13px] font-normal`}
+        >
+            {children}
+        </As>
+    )
 }
 
 export function Lowlight(props: {
-  as?: keyof JSX.IntrinsicElements
-  className?: string
-  children: React.ReactNode
+    as?: keyof JSX.IntrinsicElements
+    className?: string
+    children: React.ReactNode
 }) {
-  const { as: As = "div", className = "", children } = props
-  return (
-    <As className={`${className} text-brand-orange font-normal text-[13px] opacity-50`}>
-      {children}
-    </As>
-  )
+    const { as: As = "div", className = "", children } = props
+    return (
+        <As
+            className={`${className} text-(--color-accent-foreground) font-normal opacity-50`}
+        >
+            {children}
+        </As>
+    )
 }
 
 export function Softlight(props: {
-  as?: keyof JSX.IntrinsicElements
-  className?: string
-  children: React.ReactNode
+    as?: keyof JSX.IntrinsicElements
+    className?: string
+    children: React.ReactNode
 }) {
-  const { as = "p", children, className = "" } = props
-  const As = as as keyof JSX.IntrinsicElements
+    const { as = "span", children, className = "" } = props
+    const As = as as keyof JSX.IntrinsicElements
 
-  return <As className={`${className} font-normal text-[13px] opacity-50`}>{children}</As>
+    return <As className={`${className} font-normal opacity-50`}>{children}</As>
 }

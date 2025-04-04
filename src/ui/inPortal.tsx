@@ -6,6 +6,7 @@ export function InPortal(props: {
     domId: string;
     fallbackLocation?: "top" | "bottom" | "none";
     fallbackHelp?: string;
+    fallbackComponent?: React.ComponentType<any>;
     delay?: number;
     maxRetries?: number;
     children: ReactNode;
@@ -17,6 +18,7 @@ export function InPortal(props: {
         delay = 150,
         maxRetries = 1,
         children,
+        fallbackComponent : FallbackComponent,
     } = props;
     
     const childrenAsNode = children as React.ReactNode;
@@ -41,6 +43,12 @@ export function InPortal(props: {
             foundPortalTarget
         );
     } else if (fallbackPortalHost) {
+        if (FallbackComponent) {
+            return createPortal(
+                <ClientSideOnly children={<FallbackComponent>{childrenAsNode}</FallbackComponent>} />,
+                fallbackPortalHost
+            );
+        }
         return createPortal(
             <ClientSideOnly children={childrenAsNode} />,
             fallbackPortalHost
@@ -84,6 +92,7 @@ export function InPortal(props: {
                     `if your app needs more time to render the target portal, you can add a delay=‹ms› prop` +
                     (fallbackHelp ? `\n  ${fallbackHelp}` : "")
             );
+
             const someDiv = document.createElement("div");
             someDiv.id = fallbackId;
             someDiv.style.width = "100%";

@@ -1,5 +1,5 @@
 "use client";
-import React, { type MouseEventHandler, type ReactNode, Component, Fragment } from "react";
+import React, { type MouseEventHandler, Component, Fragment } from "react";
 import type {
     BlockfrostV0Client,
     CardanoClient,
@@ -53,6 +53,7 @@ import { Button } from "./Button.js";
 import { InPortal } from "./inPortal.js";
 import { Progress } from "./Progress.js";
 import { ClientSideOnly } from "./ClientSideOnly.js";
+import { TxBatchUI } from "./TxBatchUI.js";
 
 // Making your own dApp using Stellar Contracts?  Here's how to get started:
 //   First, use the "null" config here.
@@ -149,6 +150,7 @@ export type propsType<CapoType extends Capo<any>> = {
         | {
               capoStatus: string;
               capoUserDetails: string;
+              txBatchUI: string;
           };
 
     /**
@@ -319,6 +321,8 @@ export class CapoDAppProvider<
         return !! (window as any).cardano?.[wallet]
     }
 
+    
+
     render() {
         let {
             tcx,
@@ -385,6 +389,16 @@ export class CapoDAppProvider<
             </InPortal>
         );
 
+        const txBatchUI = (
+            <InPortal
+                key="txBatchUI"
+                domId={uiPortals?.txBatchUI ?? "txBatchUI"}
+                fallbackLocation="top"
+            >
+                <TxBatchUI />
+            </InPortal>
+        );
+
         const progressLabel = "string" == typeof progressBar ? progressBar : "";
 
         const renderedStatus =
@@ -419,6 +433,7 @@ export class CapoDAppProvider<
                         <div>
                             {renderedStatus}
                             {userDetails}
+                            {txBatchUI}
                             {results as any}
                         </div>
                     </CapoDappProviderContext.Provider>
@@ -488,20 +503,20 @@ export class CapoDAppProvider<
             "bg-blue-300 border-blue-500 text-black font-bold dark:bg-blue-900 dark:text-blue-300";
         return (
             <div
-                className={`status min-h-10 relative left-0 top-0 mb-4 flex w-full rounded border p-1 ${statusClass}`}
+                className={`flex flex-row w-full status min-h-10 relative left-0 top-0 mb-4 rounded border p-1 ${statusClass}`}
                 key="persistentMessage"
                 role="banner"
             >
-                <div className="flex-grow">
+                <div className="">
                     <span key="status" className="block sm:inline">
                         {message}
                     </span>
-                    <div className="text-sm text-gray-300 italic">
+                    <div className="text-sm text-gray-700 dark:text-gray-300 italic">
                         {moreInstructions}
                     </div>
                 </div>
 
-                <div className="mr-2">{this._renderNextAction()}</div>
+                <div className="mr-2 flex-grow">{this._renderNextAction()}</div>
             </div>
         );
     }
@@ -559,11 +574,11 @@ export class CapoDAppProvider<
         } = this.state;
         return (
             <div
-                className="error min-h-10 relative left-0 top-0 mb-4 flex w-full rounded border p-1 font-bold bg-red-800 text-orange-200"
+                className="flex flex-row w-full error min-h-10 relative left-0 top-0 mb-4 rounded border p-1 font-bold bg-[#e7560a] text-black"
                 role="alert"
                 key="errorStatus"
             >
-                <div className="flex-grow">
+                <div className="">
                     <strong className="font-bold">Whoops! &nbsp;&nbsp;</strong>
                     <span key="status-err" className="block sm:inline">
                         {message!.split("\n").map((line, i) => (
@@ -573,12 +588,12 @@ export class CapoDAppProvider<
                             </React.Fragment>
                         ))}
                     </span>
-                    <div className="text-sm text-red-200 italic">
+                    <div className="text-sm italic">
                         {moreInstructions}
                     </div>
                 </div>
 
-                <div className="mr-2">{this._renderNextAction()}</div>
+                <div className="mr-2 flex-grow text-nowrap">{this._renderNextAction()}</div>
             </div>
         );
     }
@@ -1171,8 +1186,8 @@ export class CapoDAppProvider<
         if (!!isAdmin) roles.push("admin");
 
         const message =
-            roles.includes("member") ||
-            roles.includes("admin")
+            roles.includes("member") 
+            // || roles.includes("admin")
                 ? ""
                 : this.getStartedMessage()
 
