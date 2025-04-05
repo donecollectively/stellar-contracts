@@ -1,7 +1,7 @@
 import { BatchSubmitController } from "@donecollectively/stellar-contracts";
 import React from "react";
-import { useCapoDappProvider } from "./CapoDappProvider.jsx";
-import { TxBatchViewer } from "./TxBatchViewer.jsx";
+import { useCapoDappProvider } from "./CapoDappProvider.js";
+import { TxBatchViewer } from "./TxBatchViewer.js";
 
 export function TxBatchUI() {
     const provider = useCapoDappProvider();
@@ -40,7 +40,7 @@ export function TxBatchUI() {
     if (!hasBatch) return null;
     return (
         <div className="z-100 bg-background/66 absolute top-10 right-4 w-[80vw] rounded-lg border border-white/10 backdrop-blur-md">
-            <TxBatchViewer batch={currentBatch} {...{ initialId }} />   
+            <TxBatchViewer batch={currentBatch} {...{ initialId }} />
         </div>
-    )
+    );
 }

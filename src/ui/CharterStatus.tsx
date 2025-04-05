@@ -393,7 +393,18 @@ function DelegatedDataPolicyItem({
 }) {
     debugger;
     return (
-        <DashHighlightItem title={roleName} footer={`Governs record updates`}>
+        <DashHighlightItem
+            title={roleName}
+            footer={
+                <>
+                    Governs all{" "}
+                    <Lowlight as="span">
+                        <b>{delegate?.recordTypeName}</b>
+                    </Lowlight>{" "}
+                    records
+                </>
+            }
+        >
             <div className="flex flex-row justify-between w-full">
                 <div>
                     <Softlight>
@@ -411,11 +422,16 @@ function DelegatedDataPolicyItem({
                     </Highlight>
                 </div>
             </div>
-            <Highlight className="text-xs mt-2 w-full text-right">
-                {delegate?.getBundle().previousOnchainScript
-                    ? "update needed"
-                    : ""}
-            </Highlight>
+            {delegate?.getBundle().previousOnchainScript ? (
+                <div className="text-xs mt-2 w-full text-right">
+                    <Highlight as="span">update needed </Highlight>
+                    <Softlight className="italic">
+                        to apply pending code changes to on-chain policy
+                    </Softlight>
+                </div>
+            ) : (
+                ""
+            )}
         </DashHighlightItem>
     );
 }
@@ -449,7 +465,10 @@ function CoreDelegateHighlightItem({
             <Lowlight className="text-right">{addr}</Lowlight>
 
             {delegate?.getBundle().previousOnchainScript ? (
-                <Highlight className="text-right">update needed</Highlight>
+                <Highlight className="text-right">
+                    update needed{" "}
+                    <Softlight>to apply changes to on-chain policy</Softlight>
+                </Highlight>
             ) : null}
         </DashHighlightItem>
     );
