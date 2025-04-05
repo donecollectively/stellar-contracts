@@ -1,11 +1,9 @@
-import { bytesToHex, encodeUtf8, equalsBytes } from "@helios-lang/codec-utils";
+import { bytesToHex, equalsBytes } from "@helios-lang/codec-utils";
 import { makeIntData, type UplcData } from "@helios-lang/uplc";
 import {
     type MintingPolicyHash,
     type TxInput,
     type Value,
-    makeTxId,
-    makeMintingPolicyHash,
     makeValidatorHash,
     makeAssets,
     makeValue,
@@ -13,8 +11,6 @@ import {
     type TxOutputDatum,
     makeDummyMintingPolicyHash,
     type TxId,
-    type ScriptHash,
-    type ValidatorHash,
 } from "@helios-lang/ledger";
 import { blake2b } from "@helios-lang/crypto";
 
@@ -30,10 +26,8 @@ import {
 
 import type {
     StellarSetupDetails,
-    configBaseWithRev,
     stellarSubclass,
     ConfigFor,
-    UplcRecord,
 } from "./StellarContract.js";
 import type { anyUplcProgram } from "./HeliosPromotedTypes.js";
 import {
@@ -115,7 +109,7 @@ import type {
     PendingDelegateAction$AddLike,
     PendingCharterChangeLike,
 } from "./helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
-import type { IF_ISANY, IntersectedEnum } from "./helios/typeUtils.js";
+import type { IF_ISANY } from "./helios/typeUtils.js";
 import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.js";
 import type { DelegatedDataContract } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
@@ -154,12 +148,8 @@ import type {
     uutPurposeMap,
 } from "./CapoTypes.js";
 import { mkDgtStateKey } from "./CapoTypes.js";
-import type {
-    CapoConfigJSON,
-    DeployedScriptDetails,
-} from "./configuration/DeployedScriptConfigs.js";
+
 import type { DeployedProgramBundle } from "./helios/CachedHeliosProgram.js";
-import type { Program } from "@helios-lang/compiler";
 
 /**
  * Base class for leader contracts, with predefined roles for cooperating/delegated policies
