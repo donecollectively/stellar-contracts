@@ -431,6 +431,31 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         withCharterInput().
                         requiresGovAuthority();                    
 
+                    // the Capo policy already requires that this activity is identical
+                    // to the capo's own triggered lifecycle activity, given that the
+                    // capoLifecycleActivity is what's involved on that end.  We
+                    // ensure that is true here:
+                    REQT("requires the Capo's CharterData activity to match this delegate's activity");
+                    cctx.getCharterRedeemer().switch {
+                        capoLifecycleActivity{cCLA} => {
+                            assert(
+                                cCLA == dCLA,
+                                "activity mismatch with Capo's CharterData activity"
+                            );
+                            print("  -- ok, CharterData capoLifecycleActivity matches ours\n")
+
+                        },
+                        updatingCharter => {
+                            dCLA.switch {
+                                CreatingDelegate => {
+                                    print("ok, Capo:updatingCharter works for now with CreatingDelegate\n")
+                                },
+                                _ => error("when Capo is UpdatingCharter, the mintDelegate must be CreatingDelegate")
+                            }
+                        },
+                        _ => error("this activity must match the capo's own CharterData activity")
+                    };
+
                     // wantsRole : DelegateRole = CLA.switch {
                     //     forcingNewSpendDelegate => error("the forcingNewSpendDelegate escape-hatch activity is always handled directly by the Capo"),
                     //     forcingNewMintDelegate => error("the forcingNewMintDelegate escape-hatch activity is always handled directly by the Capo"),
@@ -486,30 +511,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         _ => error("no way k") // unreachable
                     };
 
-                    // the Capo policy already requires that this activity is identical
-                    // to the capo's own triggered lifecycle activity, given that the
-                    // capoLifecycleActivity is what's involved on that end.  We
-                    // ensure that is true here:
-                    REQT("requires the Capo's CharterData activity to match this delegate's activity");
-                    cctx.getCharterRedeemer().switch {
-                        capoLifecycleActivity{cCLA} => {
-                            assert(
-                                cCLA == dCLA,
-                                "activity mismatch with Capo's CharterData activity"
-                            );
-                            print("  -- ok, CharterData capoLifecycleActivity matches ours\n")
-
-                        },
-                        updatingCharter => {
-                            dCLA.switch {
-                                CreatingDelegate => {
-                                    print("ok, Capo:updatingCharter works for now with CreatingDelegate\n")
-                                },
-                                _ => error("when Capo is UpdatingCharter, the mintDelegate must be CreatingDelegate")
-                            }
-                        },
-                        _ => error("this activity must match the capo's own CharterData activity")
-                    };
 
                     dCLA.switch {
                         // the mint delegate is validating a mint that CREATES A NEW DELEGATE
@@ -520,7 +521,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             // print("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this\n");
                             // assert(false, "obsolete CLA::CreatingDelegate?");
                             TODO("XXX it should output the new delegate token to the Capo as a PendingDelegate datum");
-                            REQT("validates creation of UUT for the new delegate, aligned to the purpose indicated");
+                            REQT("... here in the MintDgt: validates creation of UUT for the new delegate, aligned to the purpose indicated");
 
                             mkTn = mkUutTnFactory(seed);
                             myCurrentRole.switch {
@@ -696,7 +697,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                             DgDataPolicy{_polLink, idPrefix, _refCount} => {
                                                                 REQT("expects the queued idPrefix to match the existing policy's idPrefix");
                                                                 print("   -- expected: " + idPrefix);
-                                                                print("   --     actual:"+pendingActionIdPrefix);
+                                                                print("   --   actual: "+pendingActionIdPrefix);
                                                                 assert(
                                                                     idPrefix == pendingActionIdPrefix,
                                                                     "idPrefix mismatch"
@@ -853,6 +854,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             false
                         },
                         commitPendingChanges => {
+                            REQT("... To commit pending changes:");
                             // this code-path has one leg in the spend-delegate
                             // and one leg in the mint-delegate
                             REQT("invariants cannot be replaced");
@@ -868,7 +870,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             );
 
                             if (cctx.nowActingAsSpendDgt(required: false)) {
-                                REQT("spendDgt: committing pending delegates: validates that all the pending delegates are installed");
+                                REQT("...spendDgt: validates that all the pending delegates are installed");
                                 // the pending changes are moved into the nextManifest
 
                                 // walks through the pending changes and next-manifest entries
@@ -971,7 +973,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 nextManifestRemainder == prevManifestRemainder
                             } // spendDgt
                             else if (cctx.nowActingAsMintDgt(required: false)) {
-                                REQT("mintDgt: committing pending delegates: validates that all the removed dgTkns are burned");
+                                REQT("... mintDgt: validates that all the removed dgTkns are burned");
                                 
                                 REQT("the txn must have all the expected burns");
                                 mint = tx.minted.to_map();
@@ -996,14 +998,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         };
                                         pdChange.role.switch {
                                             DgDataPolicy{typeName} => {
-                                                print("  -- ok: DgDataPolicy in commitPendingChanges");
+                                                print("  -- ok: DgDataPolicy in commitPendingChanges: "+typeName);
                                                 PendingDelegateChange{action, role, _dgtLinkMaybe} = pdChange;
-                                                REQT("each pending change must have a name, which must be found in the current manifest");
-                                                print( "     -- ok: name");
-                                                role.switch {
-                                                    DgDataPolicy => print("  -- ok: DgDataPolicy role"),
-                                                    _ => error("delegate changes only recognize DgDataPolicy role for now")
-                                                };
                                                 action.switch {
                                                     Add => {
                                                         // doesn't accumulate any expected mints or burns for Add 
@@ -1022,6 +1018,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                                         burning
                                                                     },
                                                                     _ => {
+                                                                        REQT("each pending change must have a name recognized by the manifest");
                                                                         ManifestEntryType::DgDataPolicy{_ME_policyLink, _ME_recPrefix, refCount} = ME_type;
                                                                         tnStr = tn.decode_utf8();
                                                                         burning.get_safe(tn).switch {
@@ -1052,6 +1049,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 REQT("requires all the burns of our policy-id to be accounted for");
                                 assert(remainingMint.length == 0, 
                                     "extra burns found in the transaction: \n"+remainingMint.show());
+                                REQT("... -- end of commitPendingChanges");
                                 true
                             } /* mintDgt */ 
                             else {
@@ -1313,13 +1311,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 BurningActivities => true // handled by the specialized delegate
             };
             assert(checkNonDelegatedActivities, "checkNonDelegatedActivities failed");
-
+            REQT("... final checks:");
             cctx : CapoCtx = mkCapoCtx(isD.dd.mph).needsCharter();
             if (!isDgDataPolicy) {true} else {
                 if (!requiresGovAuthority) {true} else {
                     cctx.requiresGovAuthority().orFail()
                 }
-            } && if (activity.additionalDelegateValidation(isD, cctx)) {
+            } && if (bREQT("... additionalDelegateValidation") && activity.additionalDelegateValidation(isD, cctx)) {
                 print ("delegate: "+ delegateName + ": additionalDelegateValidation ok!\n");
                 true
             } else {

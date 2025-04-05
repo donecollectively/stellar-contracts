@@ -450,7 +450,7 @@ struct DelegateInput {
         inputData.switch {
             ConstrData{index, fields} => {
                 // ladybug emoji: "🐞"
-                print("    --🐞 generic delegate activity at index "+ index.show() )
+                print("    --🐞 generic delegate activity at index "+ index.show() );
                 fields.head.switch {
                     ConstrData{index2, _fields2} => {
                         print("    --🐞 nested activity at index "+ index2.show() )
