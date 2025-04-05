@@ -3952,6 +3952,11 @@ export abstract class Capo<
                     `   ... adjust this separately from the policyName with options.uutName`
             );
         }
+
+        const existingDelegate = await this.getDgDataController(policyName, {
+            charterData,
+            optional: true
+        });
         // const newDgPolicy = await this.txnCreateOffchainDelegateLink(
         //     tcx,
         //     policyName,
@@ -3997,13 +4002,67 @@ export abstract class Capo<
                 );
             }
         );
-        const [manifestPolicyName, m] = replacesDgtME || [];
-        const acReplacesDgt = m?.tokenName;
-        if (acReplacesDgt) {
+        const [manifestPolicyName, existingDgtEntry] = replacesDgtME || [];
+        const existingDgtLink =
+            existingDgtEntry?.entryType.DgDataPolicy?.policyLink;
+        debugger;
+        if (existingDgtEntry?.mph) {
+            throw new Error(
+                `Replace: for now, this only works with a minting policy from this Capo`
+            );
+        }
+        const replacesDgtTokenName = existingDgtEntry?.tokenName;
+        const existingDvh = existingDgtLink?.delegateValidatorHash;
+
+        if (replacesDgtTokenName) {
             if ("Add" === change) {
                 throw new Error(
                     `Cannot add a policy with the same name as an existing one: ${policyName} (use Replace activity)`
                 );
+            }
+            if (!existingDelegate) {
+                throw new Error(
+                    `Cannot replace a policy that doesn't exist: ${policyName} (use Add activity)`
+                );
+            }
+
+            const previousCompiledScript = existingDelegate
+                .getBundle()
+                .previousCompiledScript();
+            if (!previousCompiledScript) {
+                // when no previous script is there, it means an existing policy is fine as-is
+                if (existingDvh) {              
+                    throw new TxNotNeededError(
+                        `Policy doesn't need an update: ${policyName}`
+                    );
+                }
+                // however, if the previous delegate had no script but the new one does, 
+                // it means that we're switching from a non-contract (e.g. AnyAddressAuthority),
+                // token-based policy to a contract-based one.
+                // In that case, it's ok to queue the change.
+            } else {
+                if (!existingDvh) {
+                    throw new Error(`incontheeivable! -- on-chain manifest has no validator hash for ${policyName}, but the offchain bundle has a previous compiled script`);
+                }
+
+                const previousDvh = makeValidatorHash(
+                    previousCompiledScript.hash()
+                );
+                if (!previousDvh.isEqual(existingDvh)) {
+                    throw new Error(
+                        `Unexpected mismatch between onchain and offchain: ${policyName}\n` +
+                            `   ... onchain: ${existingDvh}\n` +
+                            `   ... offchain: ${previousDvh}`
+                    );
+                }
+                const nextScript = existingDelegate.getBundle().compiledScript();
+                const nextDvh = makeValidatorHash( nextScript.hash() );
+                if (nextDvh.isEqual(existingDvh)) {
+                    console.warn("this is not the path we'd ever expect to take");
+                    throw new TxNotNeededError(
+                        `Policy doesn't need an update: ${policyName}`
+                    );
+                }
             }
         } else {
             if ("Replace" === change) {
@@ -4022,7 +4081,7 @@ export abstract class Capo<
                       Replace: {
                           ...addDetails,
                           replacesDgt: this.uh.acAuthorityToken(
-                              charterData.manifest.get(policyName)!.tokenName
+                              replacesDgtTokenName!
                           ),
                       },
                   };
@@ -4260,28 +4319,33 @@ export abstract class Capo<
             let tcx2b = tcx2a;
             const mintDgt = await this.getMintDelegate();
             const minter = this.minter;
-            const toBurn = await Promise.all([...currentManifest.entries()]
-                .filter(([name, _]) => newManifestEntries.has(name))
-                .map(async ([name, { mph, tokenName, entryType }]) => {
-                    if (mph && !mph.isEqual(minter.mintingPolicyHash)) {
-                        throw new Error(
-                            `Replace: for now, this only works with a minting policy from this Capo`
-                        );
-                    }
-                    if (entryType.DgDataPolicy) {
-                        const previousDgt = await (this as unknown as SELF).getDgDataController(name)
-                        if (!previousDgt) {
-                            throw new Error(`can't find previous dgDataPolicy: ${name}`);
+            const toBurn = await Promise.all(
+                [...currentManifest.entries()]
+                    .filter(([name, _]) => newManifestEntries.has(name))
+                    .map(async ([name, { mph, tokenName, entryType }]) => {
+                        if (mph && !mph.isEqual(minter.mintingPolicyHash)) {
+                            throw new Error(
+                                `Replace: for now, this only works with a minting policy from this Capo`
+                            );
                         }
-                        debugger
-                        tcx2b = await previousDgt.txnGrantAuthority(
-                            tcx2a,
-                            previousDgt.activity.DelegateLifecycleActivities.Retiring,
-                            "skipDelegateReturn"
-                        );
-                    }
-                    return mkValuesEntry(tokenName, -1n);
-                })
+                        if (entryType.DgDataPolicy) {
+                            const previousDgt = await (
+                                this as unknown as SELF
+                            ).getDgDataController(name);
+                            if (!previousDgt) {
+                                throw new Error(
+                                    `can't find previous dgDataPolicy: ${name}`
+                                );
+                            }
+                            tcx2b = await previousDgt.txnGrantAuthority(
+                                tcx2a,
+                                previousDgt.activity.DelegateLifecycleActivities
+                                    .Retiring,
+                                "skipDelegateReturn"
+                            );
+                        }
+                        return mkValuesEntry(tokenName, -1n);
+                    })
             );
 
             tcx3 = await minter.txnMintWithDelegateAuthorizing(
