@@ -3,7 +3,7 @@ import type { UplcData } from "@helios-lang/uplc";
 import type { StellarContract } from "../../StellarContract.js";
 import type { AbstractNew, IF } from "../typeUtils.js";
 import type { ContractDataBridge, DataBridge } from "./DataBridge.js";
-export type { ErgoCapoManifestEntry, ErgoPendingCharterChange } from "../scriptBundling/CapoHeliosBundle.typeInfo.js";
+export type { ErgoCapoManifestEntry, ErgoPendingCharterChange, RelativeDelegateLink } from "../scriptBundling/CapoHeliosBundle.typeInfo.js";
 
 /**
  * @public
