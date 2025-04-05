@@ -406,7 +406,58 @@ function ShowTxDescription({
                         {tcx?.logger?.formattedHistory && (
                             <code>
                                 <pre className="mt-4 max-h-[90vh] overflow-auto bg-neutral-200 text-xs text-black">
-                                    {tcx.logger.formattedHistory}
+                                    {tcx.logger.formattedHistory?.map((line1) =>
+                                        line1?.split("\n").map((line2) => {
+                                            let prefix:
+                                                    | React.ReactNode
+                                                    | string = <></>,
+                                                rest: React.ReactNode | string =
+                                                    <></>
+                                            /*.replaceAll("", "<span className=font-formal")*/
+                                            ;[prefix, rest] = line2.split(
+                                                "❗",
+                                                2
+                                            )
+                                            if (rest) {
+                                                let size = ""
+                                                if (
+                                                    (rest as string).match(
+                                                        /^\s+\.\.\./
+                                                    )
+                                                ) {
+                                                    rest = (rest as string).replace(
+                                                        /^\s+\.\.\.\s+/,
+                                                        "…"
+                                                    )
+                                                    size = "text-[1.35em] -ml-2"
+                                                }
+                                                rest = (
+                                                    <span
+                                                        className={`text-[1.6em] font-formal -ml-5 font-bold`}
+                                                    >
+                                                        ❗
+                                                        <span
+                                                            className={`${size}`}
+                                                        >
+                                                            {rest}
+                                                        </span>
+                                                    </span>
+                                                )
+                                            } else {
+                                                prefix = (
+                                                    <span className="text-gray-600">
+                                                        {prefix}
+                                                    </span>
+                                                )
+                                            }
+                                            return (
+                                                <>
+                                                    {prefix} {rest}
+                                                    <br />{" "}
+                                                </>
+                                            )
+                                        })
+                                    )}
                                 </pre>
                             </code>
                         )}
@@ -416,15 +467,17 @@ function ShowTxDescription({
                 {/* Structure tab */}
                 {tab === "structure" && tx && (
                     <>
-                        <h3>Unsigned Tx</h3>
-                        <h4>{tx.id?.()?.toString?.() || "Unknown ID"}</h4>
+                        <h4 className="text-sm">
+                            Unsigned Tx:{" "}
+                            {tx.id?.()?.toString?.() || "Unknown ID"}
+                        </h4>
 
-                        <code className="text-xs">
-                            <pre className="max-h-64 overflow-auto">
-                                {dumpAny(tx)}
+                        <code className="text-sm">
+                            <pre className="font-formal text-[1.30em]/4.5 tracking-wide max-h-[80vh] overflow-auto">
+                                {dumpAny(tx, txTracker.setup.networkParams)}
                             </pre>
                             {txCborHex && (
-                                <div className="mt-2">
+                                <div className="mt-2 text-xs">
                                     CBOR Hex:{" "}
                                     <span className="break-all">
                                         {txCborHex}
@@ -448,7 +501,10 @@ function ShowTxDescription({
 
                                 <code className="text-xs">
                                     <pre className="max-h-64 overflow-auto">
-                                        {dumpAny(signedTx)}
+                                        {dumpAny(
+                                            signedTx,
+                                            txTracker.setup.networkParams
+                                        )}
                                     </pre>
                                     {signedTxCborHex ? (
                                         <div className="mt-2">
