@@ -12,7 +12,7 @@ Parameters
 Licensor:             Done Collectively LCA
 
 Licensed Work:        Stellar Contracts
-                      The Licensed Work is (c) 2023, (c) 2024 Done Collectively LCA
+                      The Licensed Work is (c) 2023, 2024, 2025 Done Collectively LCA
 
 Additional Use Grant: 
 
@@ -23,10 +23,26 @@ Additional Use Grant:
         You may use the Licensed Work without commercial licensing when all of
         the following conditions are met:
 
-          - your usage creates only transactions not collecting or distributing commercial fees of their own
-          - -OR- they do not mediate a monthly aggregate value-transfer of more than 3000 ADA or USD equivalent
+          - The application in which the software is used creates only transactions 
+            not collecting or distributing any commercial fees of their own -OR-
+            they do not mediate a monthly aggregate value-transfer of more 
+            than 3000 ADA-equivalent or 3000 USD-equivalent in assets (without
+            regard to the demonination of assets transferred) 
 
-Change Date:          2028-07-03
+          - The entities creating and/or operating the application have an annual 
+            operating budget of less than USD$5 Million or other-asset equivalent
+
+          - All customers using the application have an annual operating
+            budget of less than USD$5 Million or other-asset equivalent
+
+          - You do not provide software as a service
+
+          - You do not provide the software for remuneration
+
+        If any of these conditions are not met, you must receive a
+        commercial license, or you may not use the software.
+
+Change Date:          2029-05-01
 
 Change License:       Version 2 or later of the GNU General Public License as
                       published by the Free Software Foundation.
@@ -38,8 +54,18 @@ please review the FAQ urls from MariaDB below, and also visit:
 
 Notice
 
-The Business Source License (this document, or the “License”) is not an Open
-Source license. However, the Licensed Work will eventually be made available
+In order to conserve value within the Cardano Community and, particularly,
+for contributors to this project itself, the Business Source License (this 
+document, or the “License”) does not directly meet the criteria of the Open 
+Source Definition [https://opensource.org/osd]. 
+
+The Cardano Community Source license is designed to address the naturally
+extractive dynamics of Open Source, and is aligned in spirit with the
+Post Open [https://postopen.org/about-post-open] movement from Bruce Perens, 
+also the creator of the Open Source Definition. 
+
+The Licensed Work's entire source code is available, and the
+current version of the code will automatically become available later,
 under an Open Source License, as stated in this License.
 
 For more information on the use of the Business Source License for MariaDB
