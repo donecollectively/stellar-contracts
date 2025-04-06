@@ -989,7 +989,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 };
 
                                 remainingMint: Map[ByteArray]Int = pendingChangesList.fold[ Map[ByteArray]Int ]( 
-                                    (burning: Map[ByteArray]Int, pcChange: PendingCharterChange) -> Map[ByteArray]Int {
+                                    (foldingBurn: Map[ByteArray]Int, pcChange: PendingCharterChange) -> Map[ByteArray]Int {
                                         REQT("EXPECTS the spendDgt to check details of Replace activities");
                                         // ignores the dgtLink details if present in a Replace activity
                                         pdChange : PendingDelegateChange = pcChange.switch {
@@ -999,12 +999,11 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         pdChange.role.switch {
                                             DgDataPolicy{typeName} => {
                                                 print("  -- ok: DgDataPolicy in commitPendingChanges: "+typeName);
-                                                PendingDelegateChange{action, role, _dgtLinkMaybe} = pdChange;
-                                                action.switch {
+                                                pdChange.action.switch {
                                                     Add => {
                                                         // doesn't accumulate any expected mints or burns for Add 
                                                         // (the mint happens in a previous transaction while queueing the change
-                                                        burning
+                                                        foldingBurn
                                                     },
                                                     _ => { // Replace, Remove => {
                                                         REQT("verifies that a delegate queued for removal or replacement is burned");
@@ -1015,13 +1014,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                                     Some => {
                                                                         print( "    -- TODO: manifest entry with other-mph: allow optional burn");
                                                                         // doesn't accumulate any additional expected burns
-                                                                        burning
+                                                                        foldingBurn
                                                                     },
                                                                     _ => {
                                                                         REQT("each pending change must have a name recognized by the manifest");
                                                                         ManifestEntryType::DgDataPolicy{_ME_policyLink, _ME_recPrefix, refCount} = ME_type;
                                                                         tnStr = tn.decode_utf8();
-                                                                        burning.get_safe(tn).switch {
+                                                                        foldingBurn.get_safe(tn).switch {
                                                                             None => error("queued Remove/Replace failed: no burn, or double-burn: "+ tnStr),
                                                                             Some{burningCount} => {
                                                                                 print("    -- ok: BURN 🔥"+ burningCount.show() + "×💴 "+ tnStr);
@@ -1030,7 +1029,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                                                         refCount.show() + "×💴 "+ tnStr
                                                                                     )
                                                                                 };
-                                                                                burning.delete(tn)
+                                                                                foldingBurn.delete(tn)
                                                                             } // burningCount
                                                                         } // check burn quantity
                                                                     }
@@ -1043,7 +1042,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                             _ => error("invalid delegate-change role (for now) in commitPendingChanges")
                                         } // role
                                     },  // reducer
-                                    observedTokenBurn // initial value
+                                    observedTokenBurn // initial value for 'foldingBurn'
                                 );
 
                                 REQT("requires all the burns of our policy-id to be accounted for");
