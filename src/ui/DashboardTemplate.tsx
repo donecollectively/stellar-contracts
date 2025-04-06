@@ -38,7 +38,7 @@ export function DashboardRow(props: {
             {props.title && (
                 <h4 className="text-lg font-semibold">{props.title}</h4>
             )}
-            <div className="h-88 grid grid-cols-3 gap-x-4 rounded-3xl">
+            <div className="grid grid-cols-3 gap-x-4 rounded-3xl">
                 {props.children}
             </div>
         </div>
