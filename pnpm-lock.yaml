@@ -38,6 +38,9 @@ importers:
       '@helios-lang/uplc':
         specifier: link:../helios/uplc
         version: link:../helios/uplc
+      ansi-colors:
+        specifier: ^4.1.3
+        version: 4.1.3
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -81,9 +84,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.0.0
         version: 18.3.5(@types/react@18.3.18)
-      ansi-colors:
-        specifier: ^4.1.3
-        version: 4.1.3
       esbuild:
         specifier: ^0.25.0
         version: 0.25.0
