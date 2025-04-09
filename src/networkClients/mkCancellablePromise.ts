@@ -59,6 +59,9 @@ export function mkCancellablePromise<T>(
 
     const { promise, resolve, reject } = Promise.withResolvers();
     const cancel = () => {
+        cpObj.status = "cancelled"
+        if (timeoutId) clearTimeout(timeoutId);
+
         reject(new Error("cancelled"))
         // controller.abort();
     }
@@ -80,9 +83,11 @@ export function mkCancellablePromise<T>(
 
     let timeoutId: TimeoutId | undefined = timeout ? setTimeout(() => {
         // controller.abort();
-        cpObj.status = "timeout"
-        onTimeout?.();
-        reject(new Error("timeout"));
+        if (cpObj.status !== "cancelled") {
+            cpObj.status = "timeout"
+            onTimeout?.();
+            reject(new Error("timeout"));
+        }
     }, timeout) : undefined;
 
 
