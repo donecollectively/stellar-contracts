@@ -297,6 +297,7 @@ export class TxSubmissionTracker extends StateMachine<
         [`mostly confirmed`]: {
             ...noTransitionsExcept,
             confirming: { to: "confirming" },
+            "mostly confirmed": { to: "mostly confirmed" },
             confirmed: { to: "confirmed" },
             failed: { to: "failed" },
         },

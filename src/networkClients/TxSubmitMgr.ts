@@ -37,7 +37,6 @@ export type SubmitManagerState = {
     lastSubmissionAttempt?: dateAsMillis;
     // nextSubmissionAttempt?: dateAsMillis;
     isBadTx?: Error;
-
     failedSubmissions: number;
     successfulSubmitAt?: number;
     expirationDetected: boolean;
@@ -367,6 +366,7 @@ export class TxSubmitMgr extends StateMachine<
     done(activityName: string) {
         if (this.pending && this.pending.activity == activityName) {
             this.pending.status;
+            this.pending.cancel();
             this.pending = undefined;
             this.$mgrState.pendingActivity = "";
         } else {
@@ -479,6 +479,24 @@ export class TxSubmitMgr extends StateMachine<
         }
     }
 
+    async inputUtxosAreResolvable() {
+        // todo: get each txn mentioned in one of the tx inputs
+        // if any of them are unknown txns, return false.
+        // if all of them are known, return true.
+        const inputTxns = this.txd.tcx.inputs.map(input => input.id.txId)
+        if (!this.submitter?.getTx) {
+            throw new Error(`submitter ${this.name} has no getTx method`)
+        }
+        return Promise.all(inputTxns.map(txId => {
+            return this.submitter!.getTx!(txId)
+        })).then(txns => {
+            return txns.every(tx => !!tx)
+        }).catch(e => {
+            // console.error(`error getting txns for input utxos:`, e)
+            return false
+        })
+    }
+
     async notSubmitted(problem: Error) {
         const { stack, message, ...details } = problem;
         this.log(`submission failed with this error:`, {
@@ -489,19 +507,20 @@ export class TxSubmitMgr extends StateMachine<
             if (this.isTxExpired(this.tx)) {
                 return this.transition("txExpired");
             }
-            this.$mgrState.failedSubmissions++;
             this.submitIssue = "wait for validity period";
             return this.transition("notOk");
         }
 
-        if (this.isUnknownUtxoError(problem)) {
-            this.$mgrState.failedSubmissions++;
-
+        if (this.isUnknownUtxoError(problem)) {            
             if (await this.confirmTx()) {
                 return this.transition("confirmed");
             }
-
-            this.submitIssue = "wait for available utxo";
+            if (await this.inputUtxosAreResolvable()) {
+                this.submitIssue = "input utxo already spent";
+                this.$mgrState.isBadTx = problem;
+            } else {
+                this.submitIssue = "wait for available utxo";
+            }
             return this.transition("notOk");
         }
         this.log(
@@ -510,7 +529,6 @@ export class TxSubmitMgr extends StateMachine<
             "\n\n   ... if this error is really not an expired tx or not-yet-valid, \n" +
                 "    ... then the tx is almost certainly invalid and will never work"
         );
-        debugger;
         this.$mgrState.isBadTx = problem;
 
         this.transition("failed");
@@ -687,10 +705,12 @@ export class TxSubmitMgr extends StateMachine<
                     if (!this.submitIssue) {
                         throw new Error(`must have a submitIssue`);
                     }
+                    if (this.$mgrState.isBadTx) {
+                        return "failed";
+                    }
                     this.scheduleAnotherSubmit(
                         "notOk",
                         this.submitIssue,
-                        this.retryIntervals.submit
                     );
                     // const interval = this.gradualBackoff(
                     //     this.$mgrState.lastSubmissionAttempt,
@@ -923,6 +943,9 @@ export class TxSubmitMgr extends StateMachine<
         },
         [`failed`]: {
             ...noTransitionsExcept,
+            failed: {
+                to: "failed",
+            },
             otherSubmitterProblem: {
                 // nothing special to do, since we're already in a failed state
                 // ... we'll still do the periodic attempt to reconfirm
