@@ -323,7 +323,7 @@ function ShowTxDescription({
                             className="mt-2 self-start"
                             onClick={() => txTracker.$signAndSubmit?.()}
                         >
-                            Sign &amp; Submit
+                            Sign&nbsp;&amp;&nbsp;Submit
                         </ActionButton>
                     )}
                 </div>
