@@ -218,6 +218,15 @@ export abstract class Capo<
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
     static async currentConfig() {}
+    /**
+     * Enable auto-setup for delegates in the Capo contract.
+     * @remarks
+     * 
+     * This is a flag that can be set to true to enable auto-setup for delegates in the Capo contract.
+     * It is currently false by default, meaning that the Capo contract will not automatically setup any delegates.
+     * 
+     * We'll change that to true real soon now.
+     */
     autoSetup = false;
     isChartered: boolean = false;
     dataBridgeClass = CapoDataBridge;
