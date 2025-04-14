@@ -525,6 +525,7 @@ export class StellarContract<
      * ### Low-level type access
      * For low-level access (it's likely you don't need to use this) for on-chain types, the `reader` attribute (aka `offchain`) exists: .
      *  - `reader` - a collection of data-reading helpers for the on-chain types, given UPLC data known to be of that type
+     * @public
      */
     get onchain(): possiblyAbstractContractBridgeType<this> {
         return this.getOnchainBridge();
@@ -546,6 +547,7 @@ export class StellarContract<
      * and note that the `readDatum` helper provides a shortcut for this most-common use-case.
      *
      * If you're not sure what you're doing, it's likely that this is not the right tool for your job.
+     * @public
      */
     get offchain(): possiblyAbstractContractBridgeType<this>["reader"] {
         // ensures the dataBridge is initialized by accessing the 'onchain' getter

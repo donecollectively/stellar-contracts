@@ -236,14 +236,40 @@ export abstract class Capo<
         return this.getOnchainBridge() as any;
     }
 
+    // /**
+    //  * Advanced accessor for reading arbitrary onchain data known to be of specific types.
+    //  * @remarks
+    //  * The returned object provides accessors for reading onchain data of each specific type
+    //  * defined in the contract's on-chain scripts.
+    //  * 
+    //  * Normally, you can just use the findDelegatedDataUtxos() method or other helpers to 
+    //  * locate and implicilty decode data.
+    //  */
     get offchain(): mustFindConcreteContractBridgeType<this>["reader"] {
         return super.offchain as any;
     }
 
+    /**
+     * @internal
+     */
     get reader(): mustFindConcreteContractBridgeType<this>["reader"] {
         return super.offchain as any;
     }
 
+    /**
+     * Accessor for generating activity-data ("redeemer") values for use in transactions.
+     * @remarks
+     * This object contains named accessors for generating activity-data values for each
+     * activity type defined in the contract's on-chain scripts.
+     * 
+     * Most activity types on the Capo are used implicitly by the other methods on the Capo,
+     * so you may seldom need to use this object directly.
+     * 
+     * @example
+     * ```typescript
+     * const activity = capo.activity.usingAuthority;
+     * ```
+     */
     get activity(): mustFindActivityType<this> {
         const bridge = this.onchain;
         return bridge.activity as any;

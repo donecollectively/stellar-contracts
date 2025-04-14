@@ -67,7 +67,18 @@ import type * as types from "./CapoMinter.typeInfo.js";
 /**
  * GENERATED data bridge for **CapoMinter** script (defined in class ***CapoMinterBundle***)
  * main: **src/minting/CapoMinter.hl**, project: **stellar-contracts**
- * @remarks - note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
+ * @remarks
+* This class doesn't need to be used directly.  Its methods are available through the ***contract's methods***:
+*  - `get mkDatum` - returns the datum-building bridge for the contract's datum type
+*  - `get activity` - returns an activity-building bridge for the contract's activity type
+*  - `get reader` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types
+*  - `get onchain` - (advanced) returns a data-encoding bridge for types defined in the contract's script
+* The advanced methods are not typically needed - mkDatum and activity should normally provide all the
+* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's `findDelegatedDataUtxos()` 
+* method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
+* 
+* ##### customizing the bridge class name
+* Note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
 * @public
  */
 export class CapoMinterDataBridge extends ContractDataBridge {
@@ -127,7 +138,7 @@ export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
     /**
         * reads UplcData *known to fit the **MinterActivity*** enum type,
         * for the CapoMinter script.
-        * ### Standard WARNING
+        * #### Standard WARNING
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
@@ -148,7 +159,7 @@ export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
     /**
         * reads UplcData *known to fit the **RelativeDelegateLink*** struct type,
         * for the CapoMinter script.
-        * ### Standard WARNING
+        * #### Standard WARNING
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
@@ -169,10 +180,12 @@ export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
 /**
  * Helper class for generating UplcData for variants of the ***MinterActivity*** enum type.
  * @public
- */
+ * @remarks
+ * this class is not intended to be used directly.  Its methods are available through automatic accesors in the parent struct, contract-datum- or contract-activity-bridges. */
 export class MinterActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
+            * @internal
             *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<MinterActivity, MinterActivityLike>(
         MinterActivitySchema,
@@ -205,7 +218,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingMintInvariant"***, 
     * given a transaction-context (or direct arg) with a ***seed utxo*** 
     * @remarks
-    * ### Seeded activity
+    * ##### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
     *  - to get a transaction context having the seed needed for this argument, 
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
@@ -226,12 +239,12 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingMintInvariant"***
      * @remarks
-    * ### Seeded activity
+    * ##### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
-     * ### Activity contains implied seed
+     * ##### Activity contains implied seed
      * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
      * provided implicitly by a SeedActivity-supporting library function. 
-     * ## Usage
+     * #### Usage
      * Access the activity-creator as a getter: `$seeded$addingMintInvariant`
      *
      * Use the resulting activity-creator in a seed-providing context, such as the delegated-data-controller's
@@ -246,7 +259,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingSpendInvariant"***, 
     * given a transaction-context (or direct arg) with a ***seed utxo*** 
     * @remarks
-    * ### Seeded activity
+    * ##### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
     *  - to get a transaction context having the seed needed for this argument, 
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
@@ -267,12 +280,12 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingSpendInvariant"***
      * @remarks
-    * ### Seeded activity
+    * ##### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
-     * ### Activity contains implied seed
+     * ##### Activity contains implied seed
      * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
      * provided implicitly by a SeedActivity-supporting library function. 
-     * ## Usage
+     * #### Usage
      * Access the activity-creator as a getter: `$seeded$addingSpendInvariant`
      *
      * Use the resulting activity-creator in a seed-providing context, such as the delegated-data-controller's
@@ -287,7 +300,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.forcingNewMintDelegate"***, 
     * given a transaction-context (or direct arg) with a ***seed utxo*** 
     * @remarks
-    * ### Seeded activity
+    * ##### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
     *  - to get a transaction context having the seed needed for this argument, 
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
@@ -308,12 +321,12 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.forcingNewMintDelegate"***
      * @remarks
-    * ### Seeded activity
+    * ##### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
-     * ### Activity contains implied seed
+     * ##### Activity contains implied seed
      * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
      * provided implicitly by a SeedActivity-supporting library function. 
-     * ## Usage
+     * #### Usage
      * Access the activity-creator as a getter: `$seeded$forcingNewMintDelegate`
      *
      * Use the resulting activity-creator in a seed-providing context, such as the delegated-data-controller's
@@ -368,13 +381,13 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"***, 
      * @param fields - \{ replacingUut: number[] | undefined \}
      * @remarks
-    * ### Seeded activity
+    * ##### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
-     * ### Activity contains implied seed
+     * ##### Activity contains implied seed
      * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
      * provided implicitly by a SeedActivity-supporting library function. 
      *
-     * ## Usage
+     * #### Usage
      *   1. Call the `$seeded$CreatingNewSpendDelegate({ replacingUut })`
       *       method with the indicated (non-seed) details.
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
@@ -397,6 +410,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
 export class RelativeDelegateLinkHelper extends DataBridge {
     isCallable = true
    /**
+            * @internal
             * uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<RelativeDelegateLink, RelativeDelegateLinkLike>(
         RelativeDelegateLinkSchema,

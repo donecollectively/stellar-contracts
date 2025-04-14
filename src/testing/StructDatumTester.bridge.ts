@@ -67,7 +67,18 @@ import type * as types from "./StructDatumTester.typeInfo.js";
 /**
  * GENERATED data bridge for **StructDatumTester** script (defined in class ***StructDatumTesterBundle***)
  * main: **src/testing/StructDatumTester.hl**, project: **stellar-contracts**
- * @remarks - note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
+ * @remarks
+* This class doesn't need to be used directly.  Its methods are available through the ***contract's methods***:
+*  - `get mkDatum` - returns the datum-building bridge for the contract's datum type
+*  - `get activity` - returns an activity-building bridge for the contract's activity type
+*  - `get reader` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types
+*  - `get onchain` - (advanced) returns a data-encoding bridge for types defined in the contract's script
+* The advanced methods are not typically needed - mkDatum and activity should normally provide all the
+* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's `findDelegatedDataUtxos()` 
+* method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
+* 
+* ##### customizing the bridge class name
+* Note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
 * @public
  */
 export class StructDatumTesterDataBridge extends ContractDataBridge {
@@ -189,6 +200,7 @@ export default StructDatumTesterDataBridge;
 export class OtherActivityTypeHelper extends DataBridge {
     isCallable = true
         /**
+        * @internal
         * uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<
         bigint, IntLike
@@ -210,7 +222,7 @@ export class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     /**
         * reads UplcData *known to fit the **SomeKindaEnum*** enum type,
         * for the StructDatumTester script.
-        * ### Standard WARNING
+        * #### Standard WARNING
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
@@ -231,7 +243,7 @@ export class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     /**
         * reads UplcData *known to fit the **struct3*** struct type,
         * for the StructDatumTester script.
-        * ### Standard WARNING
+        * #### Standard WARNING
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
@@ -250,7 +262,7 @@ export class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     /**
         * reads UplcData *known to fit the **OtherStruct*** struct type,
         * for the StructDatumTester script.
-        * ### Standard WARNING
+        * #### Standard WARNING
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
@@ -270,7 +282,7 @@ datum = (d: UplcData) => { return this.DatumStruct(d) }
     /**
         * reads UplcData *known to fit the **DatumStruct*** struct type,
         * for the StructDatumTester script.
-        * ### Standard WARNING
+        * #### Standard WARNING
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
@@ -295,6 +307,7 @@ datum = (d: UplcData) => { return this.DatumStruct(d) }
 export class struct3Helper extends DataBridge {
     isCallable = true
    /**
+            * @internal
             * uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<struct3, struct3Like>(
         struct3Schema,
@@ -320,6 +333,7 @@ export class struct3Helper extends DataBridge {
 export class OtherStructHelper extends DataBridge {
     isCallable = true
    /**
+            * @internal
             * uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<OtherStruct, OtherStructLike>(
         OtherStructSchema,
@@ -341,10 +355,12 @@ export class OtherStructHelper extends DataBridge {
 /**
  * Helper class for generating UplcData for variants of the ***SomeKindaEnum*** enum type.
  * @public
- */
+ * @remarks
+ * this class is not intended to be used directly.  Its methods are available through automatic accesors in the parent struct, contract-datum- or contract-activity-bridges. */
 export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
     /**
+            * @internal
             *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<SomeKindaEnum, SomeKindaEnumLike>(
         SomeKindaEnumSchema,
@@ -382,6 +398,7 @@ export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
 export class DatumStructHelper extends DataBridge {
     isCallable = true
    /**
+            * @internal
             * uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast = makeCast<DatumStruct, DatumStructLike>(
         DatumStructSchema,

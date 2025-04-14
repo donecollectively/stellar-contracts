@@ -185,7 +185,7 @@ ${this.generateNamedDependencyTypes()}
             ` * - **Note**: Stellar Contracts provides a higher-level \`${name}Helper\` class\n` +
             ` *     for generating UPLC data for this enum type\n` +
             ` *\n` +
-            ` * ### Permissive Type\n` +
+            ` * #### Permissive Type\n` +
             ` * This is a permissive type that allows additional input data types, which are \n` +
             ` * converted by convention to the canonical types used in the on-chain context.\n` +
             ` */\n` +
@@ -205,9 +205,9 @@ ${this.generateNamedDependencyTypes()}
             `export type minimal${typeInfo.canonicalTypeName} = minimalData<${typeInfo.permissiveTypeName}>` : "";
 
         return (
-            `export type ${typeInfo.canonicalTypeName || name} = ${typeInfo.canonicalType}\n` +
+            `export interface ${typeInfo.canonicalTypeName || name} ${typeInfo.canonicalType}\n` +
             `export type ${typeInfo.ergoCanonicalTypeName} = ${typeInfo.ergoCanonicalType}\n` +
-            `export type ${typeInfo.permissiveTypeName} = ${typeInfo.permissiveType}\n`+
+            `export interface ${typeInfo.permissiveTypeName} ${typeInfo.permissiveType}\n`+
             minimalTypeInfo
         );
     }

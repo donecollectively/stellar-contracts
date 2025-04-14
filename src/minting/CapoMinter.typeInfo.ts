@@ -45,13 +45,13 @@ import type { IntersectedEnum } from "../helios/typeUtils.js"
                 
 
 
-export type MinterActivity$CreatingNewSpendDelegate = {
+export interface MinterActivity$CreatingNewSpendDelegate {
     seed: TxOutputId  /*minVariantField*/ ,
     replacingUut: number[] | undefined  /*minVariantField*/ 
 }
 
 export type MinterActivity$Ergo$CreatingNewSpendDelegate = MinterActivity$CreatingNewSpendDelegate/*ergo like-canonical-this-variant*/
-export type MinterActivity$CreatingNewSpendDelegateLike = {
+export interface MinterActivity$CreatingNewSpendDelegateLike {
     seed: TxOutputId | string  /*minVariantField*/ ,
     replacingUut: number[] | undefined  /*minVariantField*/ 
 }
@@ -129,7 +129,7 @@ export type ErgoMinterActivity = IntersectedEnum<
  * - **Note**: Stellar Contracts provides a higher-level `MinterActivityHelper` class
  *     for generating UPLC data for this enum type
  *
- * ### Permissive Type
+ * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
  */
@@ -146,14 +146,14 @@ export type MinterActivityLike = IntersectedEnum<
         | { CreatingNewSpendDelegate: MinterActivity$CreatingNewSpendDelegateLike /*minEnumVariant*/ }
 >
 
-export type RelativeDelegateLink = {
+export interface RelativeDelegateLink {
     uutName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ ValidatorHash | undefined
     config: /*minStructField*/ number[]
 }
 
 export type ErgoRelativeDelegateLink = RelativeDelegateLink/*like canon-other*/
-export type RelativeDelegateLinkLike = {
+export interface RelativeDelegateLinkLike {
     uutName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ ValidatorHash | string | number[] | undefined
     config: /*minStructField*/ number[]

@@ -227,7 +227,18 @@ ${this.includeScriptNamedTypes(inputFile)}
  * main: **${this.bundle.main.name}**, project: **${
             this.bundle.main.project || "‹local proj›"
         }**
- * @remarks - note that you may override \`get dataBridgeName() { return "..." }\` to customize the name of this bridge class
+ * @remarks
+* This class doesn't need to be used directly.  Its methods are available through the ***contract's methods***:
+*  - \`get mkDatum\` - returns the datum-building bridge for the contract's datum type
+*  - \`get activity\` - returns an activity-building bridge for the contract's activity type
+*  - \`get reader\` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types
+*  - \`get onchain\` - (advanced) returns a data-encoding bridge for types defined in the contract's script
+* The advanced methods are not typically needed - mkDatum and activity should normally provide all the
+* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's \`findDelegatedDataUtxos()\` 
+* method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
+* 
+* ##### customizing the bridge class name
+* Note that you may override \`get dataBridgeName() { return "..." }\` to customize the name of this bridge class
 * @public
  */
 export class ${bridgeClassName} extends ContractDataBridge {
@@ -288,7 +299,7 @@ ${this.includeStructReaders()}
                 const generateFunc = /* -------------enum-reader-func--------------*/ `    /**
         * reads UplcData *known to fit the **${typeName}*** enum type,
         * for the ${this.bundle.program.name} script.
-        * ### Standard WARNING
+        * #### Standard WARNING
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
@@ -330,7 +341,7 @@ ${this.includeStructReaders()}
                 const func = /*-------------struct-reader-func--------------*/ `    /**
         * reads UplcData *known to fit the **${typeName}*** struct type,
         * for the ${this.bundle.program.name} script.
-        * ### Standard WARNING
+        * #### Standard WARNING
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
@@ -513,6 +524,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             activityDetails.permissiveType;
         const activityTypeName = activityDetails.canonicalTypeName!;
         const castDef = `
+    /**
+     * @internal
+    */        
     ᱺᱺactivityCast = makeCast<
         ${canonicalType}, ${permissiveType}
     >(${schemaName}, { 
@@ -714,6 +728,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const { canonicalType, permissiveType, typeSchema } = details;
         const castDef =
             `    /**
+        * @internal
         * uses unicode U+1c7a - sorts to the end */\n` +
             `    ᱺᱺcast = makeCast<
         ${canonicalType}, ${permissiveType}
@@ -818,6 +833,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `export class ${structName}Helper extends DataBridge {\n` +
             `    isCallable = true\n` +
             `   /**
+            * @internal
             * uses unicode U+1c7a - sorts to the end */\n` +
             `    ᱺᱺcast = makeCast<${typeDetails.canonicalTypeName}, ${typeDetails.permissiveTypeName}>(\n` +
             `        ${structName}Schema,\n` +
@@ -858,10 +874,13 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `/**\n` +
             ` * Helper class for generating ${normalType} for variants of the ***${enumName}*** enum type.\n` +
             ` * @public\n` +
+            ` * @remarks\n`+
+            ` * this class is not intended to be used directly.  Its methods are available through automatic accesors in the parent struct, contract-datum- or contract-activity-bridges.`+
             ` */\n` +
             `export class ${helperClassName} extends ${parentClass} {\n` +
             `    /*mkEnumHelperClass*/\n` +
             `    /**
+            * @internal
             *  uses unicode U+1c7a - sorts to the end */\n` +
             `    ᱺᱺcast = makeCast<${typeDetails.canonicalTypeName}, ${typeDetails.permissiveTypeName}>(\n` +
             `        ${enumName}Schema,\n` +
@@ -1056,7 +1075,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `     * See \`$seeded$${variantName}}\` for use in a context\n` +
                 `     * providing an implicit seed utxo. \n` +
                 (isNested
-                    ? `    * ### Nested activity: \n` +
+                    ? `    * ##### Nested activity: \n` +
                       `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
                       `    * the parent's uplc-encoder, producing a single uplc object with \n` +
                       `    * a complete wrapper for this inner activity detail.\n`
@@ -1102,13 +1121,13 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 ) +
                 ` \\}\n` +
                 `     * @remarks\n` +
-                `    * ### Seeded activity\n` +
+                `    * ##### Seeded activity\n` +
                 `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n` +
-                `     * ### Activity contains implied seed\n` +
+                `     * ##### Activity contains implied seed\n` +
                 `     * Creates a SeedActivity based on the provided args, reserving space for a seed to be \n` +
                 `     * provided implicitly by a SeedActivity-supporting library function. \n` +
                 `     *\n` +
-                `     * ## Usage\n` +
+                `     * #### Usage\n` +
                 `     *   1. Call the \`$seeded$${variantName}({ ` +
                 filteredFields(0, (fn) => fn, ", ") +
                 ` })\`\n ` +
@@ -1116,7 +1135,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `     *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's\n` +
                 `     *       \`mkTxnCreateRecord({activity})\` method.\n` +
                 (isNested
-                    ? `    * ## Nested activity: \n` +
+                    ? `    * ##### Nested activity: \n` +
                       `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
                       `    * the parent's uplc-encoder, producing a single uplc object with \n` +
                       `    * a complete wrapper for this inner activity detail.\n`
@@ -1140,7 +1159,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             } for ***${enumPathExpr}***\n` +
             `     * @remarks - ***${permissiveTypeName}*** is the same as the expanded field-types.\n` +
             (isNested
-                ? `    * ### Nested activity: \n` +
+                ? `    * ##### Nested activity: \n` +
                   `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
                   `    * the parent's uplc-encoder, producing a single uplc object with \n` +
                   `    * a complete wrapper for this inner activity detail.\n`
@@ -1200,7 +1219,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 } UplcData for ***${enumPathExpr}***, \n` +
                 `    * given a transaction-context (or direct arg) with a ***seed utxo*** \n` +
                 `    * @remarks\n` +
-                `    * ### Seeded activity\n` +
+                `    * ##### Seeded activity\n` +
                 `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n` +
                 `    *  - to get a transaction context having the seed needed for this argument, \n` +
                 `    *    see the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.\n` +
@@ -1209,7 +1228,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    *    the \`$seeded$${variantName}}\` variant of this activity instead\n` +
                 `    *\n ` +
                 (isNested
-                    ? `    * ## Nested activity: \n` +
+                    ? `    * ##### Nested activity: \n` +
                       `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
                       `    * the parent's uplc-encoder, producing a single uplc object with \n` +
                       `    * a complete wrapper for this inner activity detail.\n`
@@ -1231,18 +1250,18 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                     isActivity ? "isActivity/redeemer wrapper with" : ""
                 } UplcData for ***${enumPathExpr}***\n` +
                 `     * @remarks\n` +
-                `    * ### Seeded activity\n` +
+                `    * ##### Seeded activity\n` +
                 `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n` +
-                `     * ### Activity contains implied seed\n` +
+                `     * ##### Activity contains implied seed\n` +
                 `     * Creates a SeedActivity based on the provided args, reserving space for a seed to be \n` +
                 `     * provided implicitly by a SeedActivity-supporting library function. \n` +
-                `     * ## Usage\n` +
+                `     * #### Usage\n` +
                 `     * Access the activity-creator as a getter: \`$seeded$${variantName}\`\n` +
                 `     *\n` +
                 `     * Use the resulting activity-creator in a seed-providing context, such as the delegated-data-controller's\n` +
                 `     * \`mkTxnCreateRecord({activity, ...})\` method.\n` +
                 (isNested
-                    ? `    * ## Nested activity: \n` +
+                    ? `    * #### Nested activity: \n` +
                       `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
                       `    * the parent's uplc-encoder, producing a single uplc object with \n` +
                       `    * a complete wrapper for this inner activity detail.\n`
@@ -1268,7 +1287,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 isDatum ? "InlineTxOutputDatum" : "UplcData"
             } for ***${enumPathExpr}***\n${expandedTypeNote}` +
             (isNested
-                ? `    * ## Nested activity: \n` +
+                ? 
+                 `    * @remarks\n`+
+                  `    * #### Nested activity: \n` +
                   `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
                   `    * the parent's uplc-encoder, producing a single uplc object with \n` +
                   `    * a complete wrapper for this inner activity detail.\n`

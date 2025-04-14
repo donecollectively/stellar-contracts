@@ -46,17 +46,17 @@ import type {
 } from "@donecollectively/stellar-contracts"
 
 
-export type struct3 = {
+export interface struct3 {
     thirdLevelF1: /*minStructField*/ bigint
 }
 
 export type Ergostruct3 = struct3/*like canon-other*/
-export type struct3Like = {
+export interface struct3Like {
     thirdLevelF1: /*minStructField*/ IntLike
 }
 
 
-export type OtherStruct = {
+export interface OtherStruct {
     secondLevelF1: /*minStructField*/ bigint
     secondLevelF2: /*minStructField*/ struct3
 }
@@ -66,7 +66,7 @@ export type ErgoOtherStruct = {
     secondLevelF2: /*minStructField*/ Ergostruct3
 }
 
-export type OtherStructLike = {
+export interface OtherStructLike {
     secondLevelF1: /*minStructField*/ IntLike
     secondLevelF2: /*minStructField*/ struct3Like
 }
@@ -110,7 +110,7 @@ export type ErgoSomeKindaEnum = IntersectedEnum<SomeKindaEnum/*like canon enum*/
  * - **Note**: Stellar Contracts provides a higher-level `SomeKindaEnumHelper` class
  *     for generating UPLC data for this enum type
  *
- * ### Permissive Type
+ * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
  */
@@ -120,7 +120,7 @@ export type SomeKindaEnumLike = IntersectedEnum<
 			IntLike    /*minEnumVariant*/ }
 >
 
-export type DatumStruct = {
+export interface DatumStruct {
     field1: /*minStructField*/ bigint
     field2: /*minStructField*/ string
     field3: /*minStructField*/ Map<string, OtherStruct>
@@ -134,7 +134,7 @@ export type ErgoDatumStruct = {
     field4: /*minStructField*/ ErgoSomeKindaEnum
 }
 
-export type DatumStructLike = {
+export interface DatumStructLike {
     field1: /*minStructField*/ IntLike
     field2: /*minStructField*/ string
     field3: /*minStructField*/ Map<string, OtherStructLike>
