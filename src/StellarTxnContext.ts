@@ -403,7 +403,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         this.txb = makeTxBuilder({
             isMainnet,
-            additionalFee: 6_500n,
         });
         // const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error
