@@ -729,7 +729,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return (this._txnTime = d);
     }
 
-    /**
+    _txnEndTime?: Date;
+    get txnEndTime() {
+        if (this._txnEndTime) return this._txnEndTime;
+        throw new Error("call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime")
+    }
+        
+   /**
      * Sets an on-chain validity period for the transaction, in miilliseconds
      *
      * @remarks if futureDate() has been set on the transaction, that

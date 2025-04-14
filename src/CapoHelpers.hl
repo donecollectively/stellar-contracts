@@ -1041,18 +1041,6 @@ struct CapoCtx {
         input : TxInput = self.delegatedDataTxInput(recIdBytes: recIdBytes);
         DgDataDetails::updating(recIdBytes, input, output, self.mph)
     }
-
-    func now(self, granularity: Duration = Duration::HOUR) -> Time {
-        validity : TimeRange = tx.time_range;
-        assert(true || /* never executed */ self.serialize() == self.serialize(), "no way l");
-        
-        assert(
-            validity.end - validity.start 
-                <= granularity,
-            "txn duration must be at most "+granularity.show() + "ms"
-        );
-        validity.start
-    }
     
     func getCharterRedeemer(self) -> CapoActivity {
         e : String = "requires charter as input";

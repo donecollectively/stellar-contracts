@@ -171,3 +171,53 @@ func fromCip68Wrapper(value: Data) -> Data {
         _ => error("bad cast to mStruct from non-ConstrData")
     }
 }
+
+func getTimeRange(granularity: Duration = Duration::HOUR) -> TimeRange {
+    validity : TimeRange = tx.time_range
+    assert(
+        validity.end - validity.start 
+            <= granularity,
+        "txn duration must be at most "+granularity.show() + "ms"
+    );
+    validity
+}
+
+// use `tcx.txnTime` to synchronize an off-chain variable with the validity.start 
+// seen here. 
+func isEarliestNow(t: Time, granularity: Duration = Duration::HOUR) -> Bool{
+    validity : TimeRange = getTimeRange(granularity);
+    t == validity.start
+}
+
+// use [optional: tcx.futureData() and] txn.validFor(), then tcx.txnEndTime()
+// to synchronize an off-chain variable with the validity.end seen here.
+func isLatestNow(t: Time, granularity: Duration = Duration::HOUR) -> Bool{
+    validity : TimeRange = getTimeRange(granularity);
+    t == validity.end
+}
+
+func isBeforeNow(t : Time, granularity: Duration = Duration::HOUR) -> Bool{
+    validity : TimeRange = getTimeRange(granularity);
+    validity.start > t
+}
+
+func isAfterNow(t : Time, granularity: Duration = Duration::HOUR) -> Bool{
+    validity : TimeRange = getTimeRange(granularity);
+    validity.end < t
+}
+
+func isNowish(t : Time, granularity: Duration = Duration::HOUR) -> Bool {
+    validity : TimeRange = getTimeRange(granularity);
+    assert(
+        validity.end - validity.start 
+            <= granularity,
+        "txn duration must be at most "+granularity.show() + "ms"
+    );
+    validity.contains(t)
+}
+
+func now(granularity: Duration = Duration::HOUR) -> Time {
+    validity : TimeRange = getTimeRange(granularity);
+    validity.start
+}        
+
