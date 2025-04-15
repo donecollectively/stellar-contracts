@@ -221,10 +221,10 @@ export abstract class Capo<
     /**
      * Enable auto-setup for delegates in the Capo contract.
      * @remarks
-     * 
+     *
      * This is a flag that can be set to true to enable auto-setup for delegates in the Capo contract.
      * It is currently false by default, meaning that the Capo contract will not automatically setup any delegates.
-     * 
+     *
      * We'll change that to true real soon now.
      */
     autoSetup = false;
@@ -241,8 +241,8 @@ export abstract class Capo<
     //  * @remarks
     //  * The returned object provides accessors for reading onchain data of each specific type
     //  * defined in the contract's on-chain scripts.
-    //  * 
-    //  * Normally, you can just use the findDelegatedDataUtxos() method or other helpers to 
+    //  *
+    //  * Normally, you can just use the findDelegatedDataUtxos() method or other helpers to
     //  * locate and implicilty decode data.
     //  */
     get offchain(): mustFindConcreteContractBridgeType<this>["reader"] {
@@ -1754,17 +1754,16 @@ export abstract class Capo<
             if (!onchainValidatorHash) return undefined;
 
             let needsUpgrade = false;
+            const currentDvh = delegate.delegateValidatorHash;
             // if (serializedCfg1 !== serializedCfg2) hasExistingOnchainScript = true;
-            if (delegate.delegateValidatorHash && !onchainValidatorHash) {
-                needsUpgrade = true;
-            } else if (
-                delegate.delegateValidatorHash &&
-                !onchainValidatorHash
-            ) {
-                needsUpgrade = true;
-            } else if (
-                !delegate.delegateValidatorHash?.isEqual(onchainValidatorHash)
-            ) {
+            if (!currentDvh) {
+                // when the delegate doesn't use a script, it doesn't need an upgrade
+                // (unless maybe it's change from having a script, to having none?)
+                // ... if you need that case, ask for support
+                return undefined;
+            }
+
+            if (!currentDvh.isEqual(onchainValidatorHash)) {
                 needsUpgrade = true;
             }
             if (!needsUpgrade) return undefined;
@@ -1776,11 +1775,6 @@ export abstract class Capo<
 
             if (!refScriptUtxo?.output.refScript) {
                 throw new Error(`unexpected: refScript for ${role} not found`);
-            }
-            if (!onchainValidatorHash) {
-                throw new Error(
-                    `unexpected: on-chain delegateValidatorHash for ${role} not found`
-                );
             }
 
             return {
@@ -2437,7 +2431,7 @@ export abstract class Capo<
                 seedTxn,
             }));
 
-        await minter.asyncCompiledScript()
+        await minter.asyncCompiledScript();
         const { mintingPolicyHash: mph } = minter;
         if (!didHaveDryRun) {
             const csp = this.partialConfig;
@@ -3864,7 +3858,13 @@ export abstract class Capo<
         // console.log("   --spendDgt", spendDelegate.constructor.name);
 
         const tcx1 = await this.tcxWithSeedUtxo(this.mkTcx());
-        if (options.charterData.manifest.get(options.policyName)) {
+
+        const existingDgtEntry = this.hasPolicyInManifest(
+            options.policyName,
+            options.charterData
+        );
+
+        if (existingDgtEntry) {
             return this.mkTxnQueuingDelegateChange("Replace", options, tcx1);
         } else {
             return this.mkTxnQueuingDelegateChange("Add", options, tcx1);
@@ -3990,7 +3990,7 @@ export abstract class Capo<
 
         const existingDelegate = await this.getDgDataController(policyName, {
             charterData,
-            optional: true
+            optional: true,
         });
         // const newDgPolicy = await this.txnCreateOffchainDelegateLink(
         //     tcx,
@@ -4028,15 +4028,7 @@ export abstract class Capo<
             // config: tempOCDPLink.config,
         };
 
-        const replacesDgtME = [...charterData.manifest.entries()].find(
-            ([manifestPolicyName, m]) => {
-                debugger;
-                return (
-                    !!m.entryType.DgDataPolicy &&
-                    manifestPolicyName == policyName
-                );
-            }
-        );
+        const replacesDgtME = this.hasPolicyInManifest(policyName, charterData);
         const [manifestPolicyName, existingDgtEntry] = replacesDgtME || [];
         const existingDgtLink =
             existingDgtEntry?.entryType.DgDataPolicy?.policyLink;
@@ -4066,18 +4058,20 @@ export abstract class Capo<
                 .previousCompiledScript();
             if (!previousCompiledScript) {
                 // when no previous script is there, it means an existing policy is fine as-is
-                if (existingDvh) {              
+                if (existingDvh) {
                     throw new TxNotNeededError(
                         `Policy doesn't need an update: ${policyName}`
                     );
                 }
-                // however, if the previous delegate had no script but the new one does, 
+                // however, if the previous delegate had no script but the new one does,
                 // it means that we're switching from a non-contract (e.g. AnyAddressAuthority),
                 // token-based policy to a contract-based one.
                 // In that case, it's ok to queue the change.
             } else {
                 if (!existingDvh) {
-                    throw new Error(`incontheeivable! -- on-chain manifest has no validator hash for ${policyName}, but the offchain bundle has a previous compiled script`);
+                    throw new Error(
+                        `incontheeivable! -- on-chain manifest has no validator hash for ${policyName}, but the offchain bundle has a previous compiled script`
+                    );
                 }
 
                 const previousDvh = makeValidatorHash(
@@ -4090,10 +4084,14 @@ export abstract class Capo<
                             `   ... offchain: ${previousDvh}`
                     );
                 }
-                const nextScript = existingDelegate.getBundle().compiledScript();
-                const nextDvh = makeValidatorHash( nextScript.hash() );
+                const nextScript = existingDelegate
+                    .getBundle()
+                    .compiledScript();
+                const nextDvh = makeValidatorHash(nextScript.hash());
                 if (nextDvh.isEqual(existingDvh)) {
-                    console.warn("this is not the path we'd ever expect to take");
+                    console.warn(
+                        "this is not the path we'd ever expect to take"
+                    );
                     throw new TxNotNeededError(
                         `Policy doesn't need an update: ${policyName}`
                     );
@@ -4203,6 +4201,26 @@ export abstract class Capo<
             tempDataPolicyLink.delegate.compiledScript
         );
         return tcx6 as typeof tcx6 & hasUutContext<"dgDataPolicy" | RoLabel>;
+    }
+
+    /**
+     * Looks up a policy in the manifest, returning the policy name and the manifest entry if found.
+     * @remarks
+     * Returns a pair of [ policyName, manifestEntry ] if found.  Returns undefined if the policy is not found.  
+     * @public
+     */
+    hasPolicyInManifest<
+        const RoLabel extends string & keyof SELF["delegateRoles"]
+    >(policyName: RoLabel, charterData: CapoDatum$Ergo$CharterData) {
+        return [...charterData.manifest.entries()].find(
+            ([manifestPolicyName, m]) => {
+                debugger;
+                return (
+                    !!m.entryType.DgDataPolicy &&
+                    manifestPolicyName == policyName
+                );
+            }
+        );
     }
 
     /**

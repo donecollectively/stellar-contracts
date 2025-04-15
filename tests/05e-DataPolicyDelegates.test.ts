@@ -15,6 +15,8 @@ import {
     helperState,
     TestContext_CapoForDgData,
 } from "./CapoForDgDataPolicyTestHelper.js";
+import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
+import { bytesToText } from "@donecollectively/stellar-contracts";
 
 const it = itWithContext<localTC>;
 function TEST_REQT(s: string) {
@@ -101,6 +103,7 @@ describe("Capo", async () => {
 
             const charterData = await capo.findCharterData();
 
+            vi.spyOn(capo, "hasPolicyInManifest").mockReturnValue(undefined);
             const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
                 idPrefix: "tData",
                 policyName: "testData",
