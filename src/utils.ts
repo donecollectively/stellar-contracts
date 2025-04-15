@@ -1,3 +1,4 @@
+import { isValidUtf8 } from "@helios-lang/codec-utils";
 import type { uutPurposeMap } from "./CapoTypes.js";
 import { textToBytes, type valuesEntry } from "./HeliosPromotedTypes.js";
 import { UutName } from "./delegation/UutName.js";
@@ -164,3 +165,28 @@ export class AlreadyPendingError extends TxNotNeededError {
         this.name = "AlreadyPendingError";
     }
 }
+
+export function checkValidUTF8(data: number[]) {
+  // quickly check, without throwing errors, for invalid UTF-8 sequences:
+  let i = 0;
+  while (i < data.length) {
+    if ((data[i] & 0x80) === 0x00) {
+      i++;
+    } else if ((data[i] & 0xE0) === 0xC0) {
+      if (i + 1 >= data.length || (data[i + 1] & 0xC0) !== 0x80) return false;
+      i += 2;
+    } else if ((data[i] & 0xF0) === 0xE0) {
+      if (i + 2 >= data.length || (data[i + 1] & 0xC0) !== 0x80 || (data[i + 2] & 0xC0) !== 0x80) return false;
+      i += 3
+    } else if ((data[i] & 0xF8) === 0xF0) {
+      if (i + 3 >= data.length || (data[i + 1] & 0xC0) !== 0x80 || (data[i + 2] & 0xC0) !== 0x80 || (data[i + 3] & 0xC0) !== 0x80) return false;
+      i += 4;
+    } else {
+      return false;
+    }
+  }
+  // if it didn't fail above, fine - but still defer to isValidUtf8.  it CAN throw (and catch) an error,
+  // but the above checks are much likelier to return false with NO caught error.
+  return isValidUtf8(data);
+}
+

@@ -1,4 +1,4 @@
-import { bytesToHex, isValidUtf8 } from "@helios-lang/codec-utils";
+import { bytesToHex } from "@helios-lang/codec-utils";
 import { encodeBech32 } from "@helios-lang/crypto";
 import { type Address, type AssetClass } from "@helios-lang/ledger";
 import { type MintingPolicyHash } from "@helios-lang/ledger";
@@ -11,6 +11,7 @@ import {
     displayTokenName,
 } from "../diagnostics.js";
 import type { ByteArrayData, IntData } from "@helios-lang/uplc";
+import { checkValidUTF8 } from "../utils.js";
 
 /**
  * toJSON adapter for delegate links
@@ -214,7 +215,7 @@ export function abbreviatedDetailBytes(
 ) {
     const hext = bytesToHex(value);
     const Len = value.length;
-    const text = isValidUtf8(value)
+    const text = checkValidUTF8(value)
         ? ` ‹"${abbreviatedDetail(bytesToText(value), initLength)}"›`
         : ``;
 
