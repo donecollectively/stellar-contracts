@@ -391,7 +391,6 @@ function DelegatedDataPolicyItem({
     mainnet: boolean;
     foundRole: ErgoCapoManifestEntry;
 }) {
-    debugger;
     return (
         <DashHighlightItem
             title={roleName}

@@ -160,8 +160,21 @@ export class TxSubmissionTracker extends StateMachine<
             txd.signedTxCborHex = bytesToHex(tx.toCbor());
             const txdSigned: TxDescription<any, "signed"> = txd as any;
             txdSigned.signedTxCborHex = bytesToHex(tx.toCbor());
-            debugger;
+
             this.$didSignTx();
+            setTimeout(() => {
+                wallet.submitTx(tx).then((txid) => {
+                    console.log(`submitted signed tx ${txid} via wallet`);
+                }, (e) => {
+                    if (e.message.includes("UtxoFailure")) {
+                        console.warn(`error submitting signed tx via wallet`, e);
+                        console.warn("^^ probably this means the tx is already submitted")
+                    } else {
+                        console.error(`error submitting signed tx via wallet`, e);
+                    }
+                });
+            }, 3000);
+
             // this.notifier.emit("changed", this)
         } else {
             options.onSubmitError?.({
