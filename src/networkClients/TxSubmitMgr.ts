@@ -258,12 +258,6 @@ export class TxSubmitMgr extends StateMachine<
         this.$mgrState = {
             ...this.$mgrState,
         };
-        this.ignoringListenerErrors("changed", () => {
-            this.$notifier.emit("changed", this);
-        });
-        console.log("!!! ensure Batch-controller gets the news");
-        // ^ then delete vvvvvv
-        // this.txDetails.onStateChanged(this.mgrState);
     }
 
     get initialState() {
@@ -272,7 +266,6 @@ export class TxSubmitMgr extends StateMachine<
 
     resetState() {
         // this.state = this.initialState;
-        console.log("SM: RESET");
         this.$mgrState = {
             pendingActivity: "none",
             lastSubmissionAttempt: undefined,

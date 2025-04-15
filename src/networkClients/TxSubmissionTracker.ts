@@ -121,6 +121,9 @@ export class TxSubmissionTracker extends StateMachine<
         [`signingSingle`]: () => {
             this.$signAndSubmit();
         },
+        [`submitting`]: () => {
+            this.$signAndSubmit();
+        },
         [`building`]: () => {
             // debugger
         },
@@ -202,7 +205,7 @@ export class TxSubmissionTracker extends StateMachine<
      */
     $didSignTx() {
         this.isSigned = true;
-        this.$startSubmitting();
+        this.transition("submitting");
     }
 
 
@@ -260,7 +263,10 @@ export class TxSubmissionTracker extends StateMachine<
             ...(emulator ? { emulatorConfirmed: { to: "confirmed" } } : {}),
         },
         [`not needed`]: terminalState,
-        [`nested batch`]: terminalState,
+        [`nested batch`]: {
+            ... noTransitionsExcept,
+            isFacade: { to: "nested batch" },
+        },
         [`built`]: {
             ...noTransitionsExcept,
             isFacade: { to: "nested batch" },
