@@ -151,6 +151,15 @@ import { mkDgtStateKey } from "./CapoTypes.js";
 
 import type { DeployedProgramBundle } from "./helios/CachedHeliosProgram.js";
 
+type InstallPolicyDgtOptions<
+    CAPO extends Capo<any>,
+    RoLabel extends string & keyof CAPO["delegateRoles"]
+> = {
+    policyName: RoLabel;
+    idPrefix: string;
+    charterData: CapoDatum$Ergo$CharterData;
+};
+
 /**
  * Base class for leader contracts, with predefined roles for cooperating/delegated policies
  * @remarks
@@ -1753,6 +1762,7 @@ export abstract class Capo<
         const previousOnchainScript = await (async () => {
             if (!onchainValidatorHash) return undefined;
 
+            const hasOnchainVH = !!onchainValidatorHash;
             let needsUpgrade = false;
             const currentDvh = delegate.delegateValidatorHash;
             // if (serializedCfg1 !== serializedCfg2) hasExistingOnchainScript = true;
@@ -2617,6 +2627,9 @@ export abstract class Capo<
                     optional: false,
                 });
                 if (this.autoSetup) {
+                    console.log("autoSetup: checking delegate roles for policies needing creation or update:\n"+
+                        Object.keys(this.delegateRoles).map(k => `- ${k}`).join("\n")
+                    )
                     for (const [policyName, details] of Object.entries(
                         this.delegateRoles
                     )) {
@@ -2715,12 +2728,13 @@ export abstract class Capo<
                     description: `create settings-policy dgt`,
                     optional: false,
                     mkTcx: () =>
-                        this.mkTxnInstallingPolicyDelegate({
+                        this.mkTxnInstallPolicyDelegate({
                             policyName: "settings",
                             idPrefix: "set",
                             charterData,
                         }),
                 });
+                console.warn("---- vvv   this redundant commitPendingChangesIfNeeded becomes applicable when multiple policies can be queued and installed at once");
                 this.commitPendingChangesIfNeeded(tcx);
             }
 
@@ -3831,7 +3845,6 @@ export abstract class Capo<
      * @remarks
      *
      * Creates a transaction for adding a delegate-data-policy to the Capo.
-     * TODO: support also updating an existing delegate to a new policy script.
      *
      * The designated role name refers to the a key in the Capo's delegateRoles list -
      * typically the full `typename` of a delegated-data-policy.
@@ -3839,6 +3852,9 @@ export abstract class Capo<
      * The idPrefix refers to the short prefix used for UUT id's for this data-type.
      *
      * An addlTxn for ref-script creation is included.
+     * 
+     * An addlTxn for committing pending changes is NOT included, leaving pendingChange queued in the Capo's charter.
+     * Use mkTxnInstallPolicyDelegate to also ***commit*** pending changes.
      */
     @txn
     async mkTxnInstallingPolicyDelegate<
@@ -3846,11 +3862,7 @@ export abstract class Capo<
         THIS extends Capo<any>
     >(
         this: THIS,
-        options: {
-            policyName: RoLabel;
-            idPrefix: string;
-            charterData: CapoDatum$Ergo$CharterData;
-        }
+        options: InstallPolicyDgtOptions<THIS, RoLabel>
     ) {
         // const mintDelegate = await this.getMintDelegate(charter);
         // console.log("   --mintDgt", mintDelegate.constructor.name);
@@ -3869,6 +3881,34 @@ export abstract class Capo<
         } else {
             return this.mkTxnQueuingDelegateChange("Add", options, tcx1);
         }
+
+    }
+
+    /**
+     * Helper for installing a named policy delegate
+     * @remarks
+     * 
+     * Creates a transaction for adding a delegate-data-policy to the Capo, using the same logic as mkTxnInstallingPolicyDelegate.
+     * 
+     * In addition, it also commits the pending changes to the Capo's charter.
+     * 
+     * Use mkTxnInstallingPolicyDelegate to queue a pending change without committing it (useful 
+     * for tests, or when multiple policies can be queued and installed at once).
+     * 
+     * Note that deploying multiple policies at once is currently disabled, to help prevent resource-exhaustion attacks.
+     * 
+     * @public
+     */
+    async mkTxnInstallPolicyDelegate<
+        const RoLabel extends string & keyof SELF["delegateRoles"],
+        THIS extends Capo<any>
+    >(
+        this: THIS,
+        options: InstallPolicyDgtOptions<THIS, RoLabel>
+    ) {
+        const tcx1 = await this.mkTxnInstallingPolicyDelegate(options);
+
+        return this.commitPendingChangesIfNeeded(tcx1);
     }
 
     // async mkTxnQueuingDelegateRemoval<
@@ -3992,11 +4032,6 @@ export abstract class Capo<
             charterData,
             optional: true,
         });
-        // const newDgPolicy = await this.txnCreateOffchainDelegateLink(
-        //     tcx,
-        //     policyName,
-        //     options
-        // );
 
         const mintDgt = await this.getMintDelegate(charterData);
         const mintDgtActivity = mintDgt.activity as SomeDgtActivityHelper;
@@ -4020,19 +4055,12 @@ export abstract class Capo<
         const tempOCDPLink =
             this.mkOnchainRelativeDelegateLink(tempDataPolicyLink);
 
-        const addDetails: PendingDelegateAction$AddLike = {
-            seed: tcx1.state.seedUtxo.id,
-            purpose,
-            idPrefix,
-            // delegateValidatorHash: tempOCDPLink.delegateValidatorHash,
-            // config: tempOCDPLink.config,
-        };
 
         const replacesDgtME = this.hasPolicyInManifest(policyName, charterData);
         const [manifestPolicyName, existingDgtEntry] = replacesDgtME || [];
         const existingDgtLink =
             existingDgtEntry?.entryType.DgDataPolicy?.policyLink;
-        debugger;
+
         if (existingDgtEntry?.mph) {
             throw new Error(
                 `Replace: for now, this only works with a minting policy from this Capo`
@@ -4108,11 +4136,21 @@ export abstract class Capo<
         const dgtAction: PendingDelegateActionLike =
             change === "Add"
                 ? {
-                      Add: addDetails,
+                      Add: {
+                        seed: tcx1.state.seedUtxo.id,
+                        purpose,
+                        idPrefix,
+                        // delegateValidatorHash: tempOCDPLink.delegateValidatorHash,
+                        // config: tempOCDPLink.config,
+                    },
                   }
                 : {
                       Replace: {
-                          ...addDetails,
+                          ...{
+                              seed: tcx1.state.seedUtxo.id,
+                              purpose,
+                              idPrefix,
+                          },
                           replacesDgt: this.uh.acAuthorityToken(
                               replacesDgtTokenName!
                           ),
@@ -4214,7 +4252,6 @@ export abstract class Capo<
     >(policyName: RoLabel, charterData: CapoDatum$Ergo$CharterData) {
         return [...charterData.manifest.entries()].find(
             ([manifestPolicyName, m]) => {
-                debugger;
                 return (
                     !!m.entryType.DgDataPolicy &&
                     manifestPolicyName == policyName

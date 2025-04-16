@@ -8,6 +8,7 @@ import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
 import { StellarTestContext } from "../src/testing/StellarTestContext.js";
 import { ADA, TestHelperState } from "../src/testing/types.js";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
+import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
 
 export let helperState: TestHelperState<CapoCanMintGenericUuts> = {
     snapshots: {},
@@ -111,6 +112,30 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         await this.snapToInstallingTestDataPolicy();
 
         const tcx = await this.capo.mkTxnCommittingPendingChanges();
+        return this.submitTxnWithBlock(tcx);
+    }
+
+    @CapoTestHelper.hasNamedSnapshot("replacingTestDataPolicy", "tina")
+    async snapToReplacingTestDataPolicy() {
+        console.log("never called");
+        return this.replacingTestDataPolicy();
+    }
+
+    async replacingTestDataPolicy() {
+        await this.snapToInstalledTestDataPolicy();
+
+        this.capo._delegateCache["testData"] = {};
+        DelegatedDatumTester.currentRev = 2n;
+        
+        console.log("        --- ⚗️🐞🐞🐞🐞🐞🐞🐞🐞 ⚗️🐞 ⚗️🐞 ⚗️🐞 ")
+
+        const charterData = await this.capo.findCharterData();
+        const tcx = await this.capo.mkTxnInstallingPolicyDelegate({
+            policyName: "testData",
+            idPrefix: "tData",
+            charterData,
+        });
+        
         return this.submitTxnWithBlock(tcx);
     }
 }

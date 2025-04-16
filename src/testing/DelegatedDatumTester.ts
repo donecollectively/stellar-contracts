@@ -76,7 +76,7 @@ export class DelegatedDatumTester extends DelegatedDataContract<
         TCX extends StellarTxnContext &
             hasSeedUtxo &
             hasSettingsRef &
-            hasUutContext<"tData">
+            hasUutContext<this["idPrefix"]>
     >(
         this: DelegatedDatumTester,
         tcx: TCX, 
@@ -89,10 +89,10 @@ export class DelegatedDatumTester extends DelegatedDataContract<
 
         const testDataOutput = makeTxOutput(
             this.capo.address,
-            this.uh.mkMinTv(this.capo.mph, tcx2.state.uuts.tData),
+            this.uh.mkMinTv(this.capo.mph, tcx2.state.uuts[this.idPrefix] as any),
             this.mkDgDatum({
                 ...testData,
-                id: tcx.state.uuts.tData.toString(),
+                id: tcx.state.uuts[this.idPrefix]!.toString(),
             }as any /* !!!!!!! */ )
         );
         console.log("tData: ", dumpAny(testDataOutput));
@@ -103,5 +103,17 @@ export class DelegatedDatumTester extends DelegatedDataContract<
     requirements() {
         return hasReqts({
         });
+    }
+}
+
+export class DelegatedDatumTester2 extends DelegatedDatumTester {
+    get idPrefix() {
+        return "tData2";
+    }
+    get delegateName() {
+        return "TestDataDgt2";
+    }
+    get recordTypeName() {
+        return "testData2";
     }
 }

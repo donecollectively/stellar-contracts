@@ -7,10 +7,12 @@ import {
 
 // import CapoBundleWithGenericUuts from "./CapoWithGenericUuts.hlb.js";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
-import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
+import { DelegatedDatumTester, DelegatedDatumTester2 } from "../src/testing/DelegatedDatumTester.js";
 import StructDatumTester from "../src/testing/StructDatumTester.hlb.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
+    static useExtraModel = false;
+
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
         return super.getMintDelegate() as any
     }
@@ -52,6 +54,16 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
             }
         });
 
+        const {useExtraModel} = CapoCanMintGenericUuts;
+
+        const testData2 =  useExtraModel ? {
+            testData2: defineRole("dgDataPolicy", DelegatedDatumTester2, {
+                delegateClass: DelegatedDatumTester2,
+                validateConfig(args) {
+                }
+            })
+        } : {};
+
         return delegateRoles({
             ...inherited,
             // noDefault: defineRole("", CapoMinter, {}),
@@ -60,7 +72,7 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
             reqts,
             // inventionPolicy: defineRole("dgDataPolicy", InventionPolicy, {})
             testData: defineRole("dgDataPolicy", DelegatedDatumTester, {}),
-            
+            ...testData2,
         })
     }
 }

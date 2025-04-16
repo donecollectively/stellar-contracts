@@ -590,13 +590,12 @@ export abstract class DelegatedDataContract<
                 moreInfo: this.moreInfo(),
                 mkTcx: async () => {
                     const charterData = await this.capo.findCharterData();
-                    const tcx2 =
-                        await this.capo.mkTxnInstallingPolicyDelegate({
-                            policyName,
-                            idPrefix,
-                            charterData,
-                        });
-                    return tcx2;
+                    console.warn("---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead" );
+                    return this.capo.mkTxnInstallPolicyDelegate({
+                        policyName,
+                        idPrefix,
+                        charterData,
+                    });
                 },
             });
         }
