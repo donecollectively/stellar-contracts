@@ -115,6 +115,9 @@ export class TxSubmissionTracker extends StateMachine<
         [`registered`]: () => {
             // debugger
         },
+        [`building`]: () => {
+            // debugger
+        },
         [`built`]: () => {
             this.isBuilt = true;
         },
@@ -122,10 +125,7 @@ export class TxSubmissionTracker extends StateMachine<
             this.$signAndSubmit();
         },
         [`submitting`]: () => {
-            this.$signAndSubmit();
-        },
-        [`building`]: () => {
-            // debugger
+            this.$startSubmitting();
         },
     };
 
@@ -145,6 +145,9 @@ export class TxSubmissionTracker extends StateMachine<
         if (!wallet) {
             throw new Error(`no wallet available for signing`);
         }
+        if (this.isSigned) {
+            return;
+        }
         const walletSign = wallet.signTx(tx);
         const sigs = await walletSign.catch((e) => {
             logger.logError("signing via wallet failed: " + e.message);
@@ -157,6 +160,7 @@ export class TxSubmissionTracker extends StateMachine<
             //! doesn't need to re-verify a sig it just collected
             //   (sig verification is ~2x the cost of signing)
             tx.addSignatures(sigs, false);
+            this.isSigned = true
             txd.signedTxCborHex = bytesToHex(tx.toCbor());
             const txdSigned: TxDescription<any, "signed"> = txd as any;
             txdSigned.signedTxCborHex = bytesToHex(tx.toCbor());
@@ -246,6 +250,7 @@ export class TxSubmissionTracker extends StateMachine<
                     txd,
                     setup: this.setup,
                 });
+
                 mgr.$notifier.on(
                     "changed",
                     this.updateSubmitterState.bind(this, name)
