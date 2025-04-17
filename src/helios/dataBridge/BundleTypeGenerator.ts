@@ -164,8 +164,16 @@ ${this.generateNamedDependencyTypes()}
             ` * \n` +
             ` * - **Note**: Stellar Contracts provides a higher-level \`${name}Helper\` class\n` +
             ` *     for generating UPLC data for this enum type\n` +
+            ` * @public\n`+
             ` */\n` +
             `export type ${name} = ${typeInfo.canonicalType}\n` +
+            `/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */\n`+
             `export type ${typeInfo.ergoCanonicalTypeName} = IntersectedEnum<${typeInfo.ergoCanonicalType}>\n` +
             // `// factory signatures for this Enum: \n` +
             // `// makesUplcEnumData<${name}Like>;\n` +
@@ -188,6 +196,7 @@ ${this.generateNamedDependencyTypes()}
             ` * #### Permissive Type\n` +
             ` * This is a permissive type that allows additional input data types, which are \n` +
             ` * converted by convention to the canonical types used in the on-chain context.\n` +
+            ` * @public\n` +
             ` */\n` +
             `export type ${name}Like = IntersectedEnum<${typeInfo.permissiveType}>\n` +
             ""
@@ -202,13 +211,44 @@ ${this.generateNamedDependencyTypes()}
         !! schema.fieldTypes.find((f) => f.name === "id" && f.type.kind == "internal" && f.type.name == "ByteArray") &&
         !! schema.fieldTypes.find((f) => f.name === "type" && f.type.kind == "internal" && f.type.name == "String") 
         ?
-            `export type minimal${typeInfo.canonicalTypeName} = minimalData<${typeInfo.permissiveTypeName}>` : "";
+            `
+/**
+ * expresses the essential fields needed for initiating creation of a ${typeInfo.canonicalTypeName}
+ * @public
+ */
+export type minimal${typeInfo.canonicalTypeName} = minimalData<${typeInfo.permissiveTypeName}>` : "";
 
         return (
-            `export interface ${typeInfo.canonicalTypeName || name} ${typeInfo.canonicalType}\n` +
-            `export type ${typeInfo.ergoCanonicalTypeName} = ${typeInfo.ergoCanonicalType}\n` +
-            `export interface ${typeInfo.permissiveTypeName} ${typeInfo.permissiveType}\n`+
-            minimalTypeInfo
+`/**
+ * A strong type for the canonical form of ${typeInfo.canonicalTypeName || name}
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ${typeInfo.ergoCanonicalTypeName} instead.
+ * @public
+ */
+export interface ${typeInfo.canonicalTypeName || name} ${typeInfo.canonicalType}
+
+/**
+ * An ergonomic, though less strictly-safe form of ${typeInfo.canonicalTypeName || name}
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the ${typeInfo.permissiveTypeName} type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type ${typeInfo.ergoCanonicalTypeName} = ${typeInfo.ergoCanonicalType}
+
+/**
+ * A strong type for the permissive form of ${typeInfo.canonicalTypeName || name}
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
+export interface ${typeInfo.permissiveTypeName} ${typeInfo.permissiveType}
+${minimalTypeInfo}
+`
         );
     }
 

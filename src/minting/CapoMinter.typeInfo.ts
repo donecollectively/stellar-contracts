@@ -45,16 +45,42 @@ import type { IntersectedEnum } from "../helios/typeUtils.js"
                 
 
 
+/**
+ * A strong type for the canonical form of MinterActivity$CreatingNewSpendDelegate
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see MinterActivity$Ergo$CreatingNewSpendDelegate instead.
+ * @public
+ */
 export interface MinterActivity$CreatingNewSpendDelegate {
     seed: TxOutputId  /*minVariantField*/ ,
     replacingUut: number[] | undefined  /*minVariantField*/ 
 }
 
-export type MinterActivity$Ergo$CreatingNewSpendDelegate = MinterActivity$CreatingNewSpendDelegate/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of MinterActivity$CreatingNewSpendDelegate
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the MinterActivity$CreatingNewSpendDelegateLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type MinterActivity$Ergo$CreatingNewSpendDelegate = MinterActivity$CreatingNewSpendDelegate  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of MinterActivity$CreatingNewSpendDelegate
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface MinterActivity$CreatingNewSpendDelegateLike {
     seed: TxOutputId | string  /*minVariantField*/ ,
     replacingUut: number[] | undefined  /*minVariantField*/ 
 }
+
 
 
 export type MinterActivityMeta = EnumTypeMeta<
@@ -94,6 +120,7 @@ export type MinterActivityMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `MinterActivityHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type MinterActivity = 
         | { mintingCharter: /* implied wrapper { owner: ... } for singleVariantField */ 
@@ -107,6 +134,13 @@ export type MinterActivity =
 			TxOutputId    /*minEnumVariant*/ }
         | { CreatingNewSpendDelegate: MinterActivity$CreatingNewSpendDelegate /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoMinterActivity = IntersectedEnum<
         | { mintingCharter: /* implied wrapper { owner: ... } for singleVariantField */ 
 			Address    /*minEnumVariant*/ }
@@ -132,6 +166,7 @@ export type ErgoMinterActivity = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type MinterActivityLike = IntersectedEnum<
         | { mintingCharter: /* implied wrapper { owner: ... } for singleVariantField */ 
@@ -146,17 +181,43 @@ export type MinterActivityLike = IntersectedEnum<
         | { CreatingNewSpendDelegate: MinterActivity$CreatingNewSpendDelegateLike /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of RelativeDelegateLink
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoRelativeDelegateLink instead.
+ * @public
+ */
 export interface RelativeDelegateLink {
     uutName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ ValidatorHash | undefined
     config: /*minStructField*/ number[]
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of RelativeDelegateLink
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the RelativeDelegateLinkLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoRelativeDelegateLink = RelativeDelegateLink/*like canon-other*/
+
+/**
+ * A strong type for the permissive form of RelativeDelegateLink
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface RelativeDelegateLinkLike {
     uutName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ ValidatorHash | string | number[] | undefined
     config: /*minStructField*/ number[]
 }
+
 
 

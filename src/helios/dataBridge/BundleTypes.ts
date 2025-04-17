@@ -354,7 +354,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             canonicalType: canonType,
             ergoCanonicalType:
                 ergoType == canonType
-                    ? `${enumId.enumName}$${variantName}/*ergo like-canonical-this-variant*/`
+                    ? `${enumId.enumName}$${variantName}  /*ergo like-canonical-this-variant*/`
                     : ergoType,
             permissiveType: this.mkMinimalType(
                 "permissive",

@@ -45,30 +45,86 @@ import type { IntersectedEnum } from "../helios/typeUtils.js"
                 
 
 
+/**
+ * A strong type for the canonical form of AnyData
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoAnyData instead.
+ * @public
+ */
 export interface AnyData {
     id: /*minStructField*/ number[]
     type: /*minStructField*/ string
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of AnyData
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the AnyDataLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoAnyData = AnyData/*like canon-other*/
+
+/**
+ * A strong type for the permissive form of AnyData
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface AnyDataLike {
     id: /*minStructField*/ number[]
     type: /*minStructField*/ string
 }
 
+
+/**
+ * expresses the essential fields needed for initiating creation of a AnyData
+ * @public
+ */
 export type minimalAnyData = minimalData<AnyDataLike>
+
+/**
+ * A strong type for the canonical form of DelegateDatum$Cip68RefToken
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see DelegateDatum$Ergo$Cip68RefToken instead.
+ * @public
+ */
 export interface DelegateDatum$Cip68RefToken {
     cip68meta: AnyData  /*minVariantField*/ ,
     cip68version: bigint  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of DelegateDatum$Cip68RefToken
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DelegateDatum$Cip68RefTokenLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type DelegateDatum$Ergo$Cip68RefToken = {
     cip68meta: ErgoAnyData  /*minVariantField*/ ,
     cip68version: bigint  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
 
+
+/**
+ * A strong type for the permissive form of DelegateDatum$Cip68RefToken
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface DelegateDatum$Cip68RefTokenLike {
     cip68meta: AnyDataLike  /*minVariantField*/ ,
     cip68version: IntLike  /*minVariantField*/ ,
@@ -76,13 +132,39 @@ export interface DelegateDatum$Cip68RefTokenLike {
 }
 
 
+
+/**
+ * A strong type for the canonical form of DelegationDetail
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoDelegationDetail instead.
+ * @public
+ */
 export interface DelegationDetail {
     capoAddr: /*minStructField*/ Address
     mph: /*minStructField*/ MintingPolicyHash
     tn: /*minStructField*/ number[]
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of DelegationDetail
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DelegationDetailLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoDelegationDetail = DelegationDetail/*like canon-other*/
+
+/**
+ * A strong type for the permissive form of DelegationDetail
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface DelegationDetailLike {
     capoAddr: /*minStructField*/ Address | string
     mph: /*minStructField*/ MintingPolicyHash | string | number[]
@@ -90,6 +172,15 @@ export interface DelegationDetailLike {
 }
 
 
+
+/**
+ * A strong type for the canonical form of ReqtData
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoReqtData instead.
+ * @public
+ */
 export interface ReqtData {
     id: /*minStructField*/ number[]
     type: /*minStructField*/ string
@@ -106,7 +197,24 @@ export interface ReqtData {
     requires: /*minStructField*/ Array<string>
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of ReqtData
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the ReqtDataLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoReqtData = ReqtData/*like canon-other*/
+
+/**
+ * A strong type for the permissive form of ReqtData
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface ReqtDataLike {
     id: /*minStructField*/ number[]
     type: /*minStructField*/ string
@@ -123,24 +231,56 @@ export interface ReqtDataLike {
     requires: /*minStructField*/ Array<string>
 }
 
+
+/**
+ * expresses the essential fields needed for initiating creation of a ReqtData
+ * @public
+ */
 export type minimalReqtData = minimalData<ReqtDataLike>
+
+/**
+ * A strong type for the canonical form of DelegateDatum$capoStoredData
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see DelegateDatum$Ergo$capoStoredData instead.
+ * @public
+ */
 export interface DelegateDatum$capoStoredData {
     data: ReqtData  /*minVariantField*/ ,
     version: bigint  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of DelegateDatum$capoStoredData
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DelegateDatum$capoStoredDataLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type DelegateDatum$Ergo$capoStoredData = {
     data: ErgoReqtData  /*minVariantField*/ ,
     version: bigint  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
 
+
+/**
+ * A strong type for the permissive form of DelegateDatum$capoStoredData
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface DelegateDatum$capoStoredDataLike {
     data: ReqtDataLike  /*minVariantField*/ ,
     version: IntLike  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
+
 
 
 export type DelegateDatumMeta = EnumTypeMeta<
@@ -169,6 +309,7 @@ export type DelegateDatumMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateDatumHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type DelegateDatum = 
         | { Cip68RefToken: DelegateDatum$Cip68RefToken /*minEnumVariant*/ }
@@ -176,6 +317,13 @@ export type DelegateDatum =
 			DelegationDetail    /*minEnumVariant*/ }
         | { capoStoredData: DelegateDatum$capoStoredData /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoDelegateDatum = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Ergo$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
@@ -195,6 +343,7 @@ export type ErgoDelegateDatum = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type DelegateDatumLike = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Cip68RefTokenLike /*minEnumVariant*/ }
@@ -203,16 +352,42 @@ export type DelegateDatumLike = IntersectedEnum<
         | { capoStoredData: DelegateDatum$capoStoredDataLike /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of CapoLifecycleActivity$CreatingDelegate
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see CapoLifecycleActivity$Ergo$CreatingDelegate instead.
+ * @public
+ */
 export interface CapoLifecycleActivity$CreatingDelegate {
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ 
 }
 
-export type CapoLifecycleActivity$Ergo$CreatingDelegate = CapoLifecycleActivity$CreatingDelegate/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of CapoLifecycleActivity$CreatingDelegate
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the CapoLifecycleActivity$CreatingDelegateLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type CapoLifecycleActivity$Ergo$CreatingDelegate = CapoLifecycleActivity$CreatingDelegate  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of CapoLifecycleActivity$CreatingDelegate
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface CapoLifecycleActivity$CreatingDelegateLike {
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ 
 }
+
 
 
 export type DelegateRoleMeta = EnumTypeMeta<
@@ -255,6 +430,7 @@ export type DelegateRoleMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateRoleHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type DelegateRole = 
         | { MintDgt: tagOnly /*minEnumVariant*/ }
@@ -268,6 +444,13 @@ export type DelegateRole =
         | { BothMintAndSpendDgt: tagOnly /*minEnumVariant*/ }
         | { HandledByCapoOnly: tagOnly /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoDelegateRole = IntersectedEnum<DelegateRole/*like canon enum*/>
 
 /**
@@ -282,6 +465,7 @@ export type ErgoDelegateRole = IntersectedEnum<DelegateRole/*like canon enum*/>
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type DelegateRoleLike = IntersectedEnum<
         | { MintDgt: tagOnly /*minEnumVariant*/ }
@@ -296,76 +480,232 @@ export type DelegateRoleLike = IntersectedEnum<
         | { HandledByCapoOnly: tagOnly /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of CapoLifecycleActivity$forcingNewSpendDelegate
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see CapoLifecycleActivity$Ergo$forcingNewSpendDelegate instead.
+ * @public
+ */
 export interface CapoLifecycleActivity$forcingNewSpendDelegate {
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ 
 }
 
-export type CapoLifecycleActivity$Ergo$forcingNewSpendDelegate = CapoLifecycleActivity$forcingNewSpendDelegate/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of CapoLifecycleActivity$forcingNewSpendDelegate
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the CapoLifecycleActivity$forcingNewSpendDelegateLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type CapoLifecycleActivity$Ergo$forcingNewSpendDelegate = CapoLifecycleActivity$forcingNewSpendDelegate  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of CapoLifecycleActivity$forcingNewSpendDelegate
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface CapoLifecycleActivity$forcingNewSpendDelegateLike {
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ 
 }
 
 
+
+/**
+ * A strong type for the canonical form of CapoLifecycleActivity$forcingNewMintDelegate
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see CapoLifecycleActivity$Ergo$forcingNewMintDelegate instead.
+ * @public
+ */
 export interface CapoLifecycleActivity$forcingNewMintDelegate {
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ 
 }
 
-export type CapoLifecycleActivity$Ergo$forcingNewMintDelegate = CapoLifecycleActivity$forcingNewMintDelegate/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of CapoLifecycleActivity$forcingNewMintDelegate
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the CapoLifecycleActivity$forcingNewMintDelegateLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type CapoLifecycleActivity$Ergo$forcingNewMintDelegate = CapoLifecycleActivity$forcingNewMintDelegate  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of CapoLifecycleActivity$forcingNewMintDelegate
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface CapoLifecycleActivity$forcingNewMintDelegateLike {
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ 
 }
 
 
+
+/**
+ * A strong type for the canonical form of ManifestActivity$updatingEntry
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ManifestActivity$Ergo$updatingEntry instead.
+ * @public
+ */
 export interface ManifestActivity$updatingEntry {
     key: string  /*minVariantField*/ ,
     tokenName: number[]  /*minVariantField*/ 
 }
 
-export type ManifestActivity$Ergo$updatingEntry = ManifestActivity$updatingEntry/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of ManifestActivity$updatingEntry
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the ManifestActivity$updatingEntryLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type ManifestActivity$Ergo$updatingEntry = ManifestActivity$updatingEntry  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of ManifestActivity$updatingEntry
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface ManifestActivity$updatingEntryLike {
     key: string  /*minVariantField*/ ,
     tokenName: number[]  /*minVariantField*/ 
 }
 
 
+
+/**
+ * A strong type for the canonical form of ManifestActivity$addingEntry
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ManifestActivity$Ergo$addingEntry instead.
+ * @public
+ */
 export interface ManifestActivity$addingEntry {
     key: string  /*minVariantField*/ ,
     tokenName: number[]  /*minVariantField*/ 
 }
 
-export type ManifestActivity$Ergo$addingEntry = ManifestActivity$addingEntry/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of ManifestActivity$addingEntry
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the ManifestActivity$addingEntryLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type ManifestActivity$Ergo$addingEntry = ManifestActivity$addingEntry  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of ManifestActivity$addingEntry
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface ManifestActivity$addingEntryLike {
     key: string  /*minVariantField*/ ,
     tokenName: number[]  /*minVariantField*/ 
 }
 
 
+
+/**
+ * A strong type for the canonical form of ManifestActivity$forkingThreadToken
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ManifestActivity$Ergo$forkingThreadToken instead.
+ * @public
+ */
 export interface ManifestActivity$forkingThreadToken {
     key: string  /*minVariantField*/ ,
     newThreadCount: bigint  /*minVariantField*/ 
 }
 
-export type ManifestActivity$Ergo$forkingThreadToken = ManifestActivity$forkingThreadToken/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of ManifestActivity$forkingThreadToken
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the ManifestActivity$forkingThreadTokenLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type ManifestActivity$Ergo$forkingThreadToken = ManifestActivity$forkingThreadToken  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of ManifestActivity$forkingThreadToken
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface ManifestActivity$forkingThreadTokenLike {
     key: string  /*minVariantField*/ ,
     newThreadCount: IntLike  /*minVariantField*/ 
 }
 
 
+
+/**
+ * A strong type for the canonical form of ManifestActivity$burningThreadToken
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ManifestActivity$Ergo$burningThreadToken instead.
+ * @public
+ */
 export interface ManifestActivity$burningThreadToken {
     key: string  /*minVariantField*/ ,
     burnedThreadCount: bigint  /*minVariantField*/ 
 }
 
-export type ManifestActivity$Ergo$burningThreadToken = ManifestActivity$burningThreadToken/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of ManifestActivity$burningThreadToken
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the ManifestActivity$burningThreadTokenLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type ManifestActivity$Ergo$burningThreadToken = ManifestActivity$burningThreadToken  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of ManifestActivity$burningThreadToken
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface ManifestActivity$burningThreadTokenLike {
     key: string  /*minVariantField*/ ,
     burnedThreadCount: IntLike  /*minVariantField*/ 
 }
+
 
 
 export type ManifestActivityMeta = EnumTypeMeta<
@@ -402,6 +742,7 @@ export type ManifestActivityMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `ManifestActivityHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type ManifestActivity = 
         | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
@@ -411,6 +752,13 @@ export type ManifestActivity =
         | { forkingThreadToken: ManifestActivity$forkingThreadToken /*minEnumVariant*/ }
         | { burningThreadToken: ManifestActivity$burningThreadToken /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoManifestActivity = IntersectedEnum<
         | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
@@ -432,6 +780,7 @@ export type ErgoManifestActivity = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type ManifestActivityLike = IntersectedEnum<
         | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
@@ -482,6 +831,7 @@ export type CapoLifecycleActivityMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `CapoLifecycleActivityHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type CapoLifecycleActivity = 
         | { CreatingDelegate: CapoLifecycleActivity$CreatingDelegate /*minEnumVariant*/ }
@@ -494,6 +844,13 @@ export type CapoLifecycleActivity =
         | { updatingManifest: /* implied wrapper { activity: ... } for singleVariantField */ 
 			ManifestActivity    /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoCapoLifecycleActivity = IntersectedEnum<
         | { CreatingDelegate: CapoLifecycleActivity$Ergo$CreatingDelegate /*minEnumVariant*/ }
         | { queuePendingChange: tagOnly /*minEnumVariant*/ }
@@ -518,6 +875,7 @@ export type ErgoCapoLifecycleActivity = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type CapoLifecycleActivityLike = IntersectedEnum<
         | { CreatingDelegate: CapoLifecycleActivity$CreatingDelegateLike /*minEnumVariant*/ }
@@ -531,16 +889,42 @@ export type CapoLifecycleActivityLike = IntersectedEnum<
 			ManifestActivityLike    /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of DelegateLifecycleActivity$ReplacingMe
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see DelegateLifecycleActivity$Ergo$ReplacingMe instead.
+ * @public
+ */
 export interface DelegateLifecycleActivity$ReplacingMe {
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ 
 }
 
-export type DelegateLifecycleActivity$Ergo$ReplacingMe = DelegateLifecycleActivity$ReplacingMe/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of DelegateLifecycleActivity$ReplacingMe
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DelegateLifecycleActivity$ReplacingMeLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type DelegateLifecycleActivity$Ergo$ReplacingMe = DelegateLifecycleActivity$ReplacingMe  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of DelegateLifecycleActivity$ReplacingMe
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface DelegateLifecycleActivity$ReplacingMeLike {
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ 
 }
+
 
 
 export type DelegateLifecycleActivityMeta = EnumTypeMeta<
@@ -567,12 +951,20 @@ export type DelegateLifecycleActivityMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateLifecycleActivityHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type DelegateLifecycleActivity = 
         | { ReplacingMe: DelegateLifecycleActivity$ReplacingMe /*minEnumVariant*/ }
         | { Retiring: tagOnly /*minEnumVariant*/ }
         | { ValidatingSettings: tagOnly /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoDelegateLifecycleActivity = IntersectedEnum<
         | { ReplacingMe: DelegateLifecycleActivity$Ergo$ReplacingMe /*minEnumVariant*/ }
         | { Retiring: tagOnly /*minEnumVariant*/ }
@@ -591,6 +983,7 @@ export type ErgoDelegateLifecycleActivity = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type DelegateLifecycleActivityLike = IntersectedEnum<
         | { ReplacingMe: DelegateLifecycleActivity$ReplacingMeLike /*minEnumVariant*/ }
@@ -616,11 +1009,19 @@ export type SpendingActivityMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `SpendingActivityHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type SpendingActivity = 
         | { UpdatingRecord: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoSpendingActivity = IntersectedEnum<SpendingActivity/*like canon enum*/>
 
 /**
@@ -635,6 +1036,7 @@ export type ErgoSpendingActivity = IntersectedEnum<SpendingActivity/*like canon 
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type SpendingActivityLike = IntersectedEnum<
         | { UpdatingRecord: /* implied wrapper { id: ... } for singleVariantField */ 
@@ -659,11 +1061,19 @@ export type MintingActivityMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `MintingActivityHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type MintingActivity = 
         | { CreatingRecord: /* implied wrapper { seed: ... } for singleVariantField */ 
 			TxOutputId    /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoMintingActivity = IntersectedEnum<MintingActivity/*like canon enum*/>
 
 /**
@@ -678,6 +1088,7 @@ export type ErgoMintingActivity = IntersectedEnum<MintingActivity/*like canon en
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type MintingActivityLike = IntersectedEnum<
         | { CreatingRecord: /* implied wrapper { seed: ... } for singleVariantField */ 
@@ -702,11 +1113,19 @@ export type BurningActivityMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `BurningActivityHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type BurningActivity = 
         | { DeletingRecord: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoBurningActivity = IntersectedEnum<BurningActivity/*like canon enum*/>
 
 /**
@@ -721,46 +1140,125 @@ export type ErgoBurningActivity = IntersectedEnum<BurningActivity/*like canon en
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type BurningActivityLike = IntersectedEnum<
         | { DeletingRecord: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of DelegateActivity$CreatingDelegatedData
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see DelegateActivity$Ergo$CreatingDelegatedData instead.
+ * @public
+ */
 export interface DelegateActivity$CreatingDelegatedData {
     seed: TxOutputId  /*minVariantField*/ ,
     dataType: string  /*minVariantField*/ 
 }
 
-export type DelegateActivity$Ergo$CreatingDelegatedData = DelegateActivity$CreatingDelegatedData/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of DelegateActivity$CreatingDelegatedData
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DelegateActivity$CreatingDelegatedDataLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type DelegateActivity$Ergo$CreatingDelegatedData = DelegateActivity$CreatingDelegatedData  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of DelegateActivity$CreatingDelegatedData
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface DelegateActivity$CreatingDelegatedDataLike {
     seed: TxOutputId | string  /*minVariantField*/ ,
     dataType: string  /*minVariantField*/ 
 }
 
 
+
+/**
+ * A strong type for the canonical form of DelegateActivity$UpdatingDelegatedData
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see DelegateActivity$Ergo$UpdatingDelegatedData instead.
+ * @public
+ */
 export interface DelegateActivity$UpdatingDelegatedData {
     dataType: string  /*minVariantField*/ ,
     recId: number[]  /*minVariantField*/ 
 }
 
-export type DelegateActivity$Ergo$UpdatingDelegatedData = DelegateActivity$UpdatingDelegatedData/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of DelegateActivity$UpdatingDelegatedData
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DelegateActivity$UpdatingDelegatedDataLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type DelegateActivity$Ergo$UpdatingDelegatedData = DelegateActivity$UpdatingDelegatedData  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of DelegateActivity$UpdatingDelegatedData
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface DelegateActivity$UpdatingDelegatedDataLike {
     dataType: string  /*minVariantField*/ ,
     recId: number[]  /*minVariantField*/ 
 }
 
 
+
+/**
+ * A strong type for the canonical form of DelegateActivity$DeletingDelegatedData
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see DelegateActivity$Ergo$DeletingDelegatedData instead.
+ * @public
+ */
 export interface DelegateActivity$DeletingDelegatedData {
     dataType: string  /*minVariantField*/ ,
     recId: number[]  /*minVariantField*/ 
 }
 
-export type DelegateActivity$Ergo$DeletingDelegatedData = DelegateActivity$DeletingDelegatedData/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of DelegateActivity$DeletingDelegatedData
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DelegateActivity$DeletingDelegatedDataLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type DelegateActivity$Ergo$DeletingDelegatedData = DelegateActivity$DeletingDelegatedData  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of DelegateActivity$DeletingDelegatedData
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface DelegateActivity$DeletingDelegatedDataLike {
     dataType: string  /*minVariantField*/ ,
     recId: number[]  /*minVariantField*/ 
 }
+
 
 
 export type DelegateActivityMeta = EnumTypeMeta<
@@ -813,6 +1311,7 @@ export type DelegateActivityMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateActivityHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type DelegateActivity = 
         | { CapoLifecycleActivities: /* implied wrapper { activity: ... } for singleVariantField */ 
@@ -831,6 +1330,13 @@ export type DelegateActivity =
         | { MultipleDelegateActivities: /* implied wrapper { activities: ... } for singleVariantField */ 
 			Array<UplcData>    /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoDelegateActivity = IntersectedEnum<
         | { CapoLifecycleActivities: /* implied wrapper { activity: ... } for singleVariantField */ 
 			ErgoCapoLifecycleActivity    /*minEnumVariant*/ }
@@ -861,6 +1367,7 @@ export type ErgoDelegateActivity = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type DelegateActivityLike = IntersectedEnum<
         | { CapoLifecycleActivities: /* implied wrapper { activity: ... } for singleVariantField */ 
@@ -880,13 +1387,38 @@ export type DelegateActivityLike = IntersectedEnum<
 			Array<UplcData>    /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of PendingDelegateAction$Add
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see PendingDelegateAction$Ergo$Add instead.
+ * @public
+ */
 export interface PendingDelegateAction$Add {
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
     idPrefix: string  /*minVariantField*/ 
 }
 
-export type PendingDelegateAction$Ergo$Add = PendingDelegateAction$Add/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of PendingDelegateAction$Add
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the PendingDelegateAction$AddLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type PendingDelegateAction$Ergo$Add = PendingDelegateAction$Add  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of PendingDelegateAction$Add
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface PendingDelegateAction$AddLike {
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
@@ -894,6 +1426,15 @@ export interface PendingDelegateAction$AddLike {
 }
 
 
+
+/**
+ * A strong type for the canonical form of PendingDelegateAction$Replace
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see PendingDelegateAction$Ergo$Replace instead.
+ * @public
+ */
 export interface PendingDelegateAction$Replace {
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
@@ -901,13 +1442,31 @@ export interface PendingDelegateAction$Replace {
     replacesDgt: AssetClass  /*minVariantField*/ 
 }
 
-export type PendingDelegateAction$Ergo$Replace = PendingDelegateAction$Replace/*ergo like-canonical-this-variant*/
+
+/**
+ * An ergonomic, though less strictly-safe form of PendingDelegateAction$Replace
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the PendingDelegateAction$ReplaceLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type PendingDelegateAction$Ergo$Replace = PendingDelegateAction$Replace  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of PendingDelegateAction$Replace
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface PendingDelegateAction$ReplaceLike {
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
     idPrefix: string  /*minVariantField*/ ,
     replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ 
 }
+
 
 
 export type PendingDelegateActionMeta = EnumTypeMeta<
@@ -935,12 +1494,20 @@ export type PendingDelegateActionMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `PendingDelegateActionHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type PendingDelegateAction = 
         | { Add: PendingDelegateAction$Add /*minEnumVariant*/ }
         | { Remove: tagOnly /*minEnumVariant*/ }
         | { Replace: PendingDelegateAction$Replace /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoPendingDelegateAction = IntersectedEnum<
         | { Add: PendingDelegateAction$Ergo$Add /*minEnumVariant*/ }
         | { Remove: tagOnly /*minEnumVariant*/ }
@@ -959,6 +1526,7 @@ export type ErgoPendingDelegateAction = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type PendingDelegateActionLike = IntersectedEnum<
         | { Add: PendingDelegateAction$AddLike /*minEnumVariant*/ }
@@ -966,13 +1534,38 @@ export type PendingDelegateActionLike = IntersectedEnum<
         | { Replace: PendingDelegateAction$ReplaceLike /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of RelativeDelegateLink
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoRelativeDelegateLink instead.
+ * @public
+ */
 export interface RelativeDelegateLink {
     uutName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ ValidatorHash | undefined
     config: /*minStructField*/ number[]
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of RelativeDelegateLink
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the RelativeDelegateLinkLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoRelativeDelegateLink = RelativeDelegateLink/*like canon-other*/
+
+/**
+ * A strong type for the permissive form of RelativeDelegateLink
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface RelativeDelegateLinkLike {
     uutName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ ValidatorHash | string | number[] | undefined
@@ -980,18 +1573,44 @@ export interface RelativeDelegateLinkLike {
 }
 
 
+
+/**
+ * A strong type for the canonical form of PendingDelegateChange
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoPendingDelegateChange instead.
+ * @public
+ */
 export interface PendingDelegateChange {
     action: /*minStructField*/ PendingDelegateAction
     role: /*minStructField*/ DelegateRole
     dgtLink: /*minStructField*/ RelativeDelegateLink | undefined
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of PendingDelegateChange
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the PendingDelegateChangeLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoPendingDelegateChange = {
     action: /*minStructField*/ ErgoPendingDelegateAction
     role: /*minStructField*/ ErgoDelegateRole
     dgtLink: /*minStructField*/ ErgoRelativeDelegateLink | undefined
 }
 
+
+/**
+ * A strong type for the permissive form of PendingDelegateChange
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface PendingDelegateChangeLike {
     action: /*minStructField*/ PendingDelegateActionLike
     role: /*minStructField*/ DelegateRoleLike
@@ -999,18 +1618,44 @@ export interface PendingDelegateChangeLike {
 }
 
 
+
+/**
+ * A strong type for the canonical form of ManifestEntryType$DgDataPolicy
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ManifestEntryType$Ergo$DgDataPolicy instead.
+ * @public
+ */
 export interface ManifestEntryType$DgDataPolicy {
     policyLink: RelativeDelegateLink  /*minVariantField*/ ,
     idPrefix: string  /*minVariantField*/ ,
     refCount: bigint  /*minVariantField*/ 
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of ManifestEntryType$DgDataPolicy
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the ManifestEntryType$DgDataPolicyLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ManifestEntryType$Ergo$DgDataPolicy = {
     policyLink: ErgoRelativeDelegateLink  /*minVariantField*/ ,
     idPrefix: string  /*minVariantField*/ ,
     refCount: bigint  /*minVariantField*/ 
 }
 
+
+/**
+ * A strong type for the permissive form of ManifestEntryType$DgDataPolicy
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface ManifestEntryType$DgDataPolicyLike {
     policyLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
     idPrefix: string  /*minVariantField*/ ,
@@ -1018,20 +1663,47 @@ export interface ManifestEntryType$DgDataPolicyLike {
 }
 
 
+
+/**
+ * A strong type for the canonical form of ManifestEntryType$DelegateThreads
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ManifestEntryType$Ergo$DelegateThreads instead.
+ * @public
+ */
 export interface ManifestEntryType$DelegateThreads {
     role: DelegateRole  /*minVariantField*/ ,
     refCount: bigint  /*minVariantField*/ 
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of ManifestEntryType$DelegateThreads
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the ManifestEntryType$DelegateThreadsLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ManifestEntryType$Ergo$DelegateThreads = {
     role: ErgoDelegateRole  /*minVariantField*/ ,
     refCount: bigint  /*minVariantField*/ 
 }
 
+
+/**
+ * A strong type for the permissive form of ManifestEntryType$DelegateThreads
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface ManifestEntryType$DelegateThreadsLike {
     role: DelegateRoleLike  /*minVariantField*/ ,
     refCount: IntLike  /*minVariantField*/ 
 }
+
 
 
 export type ManifestEntryTypeMeta = EnumTypeMeta<
@@ -1065,6 +1737,7 @@ export type ManifestEntryTypeMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `ManifestEntryTypeHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type ManifestEntryType = 
         | { NamedTokenRef: tagOnly /*minEnumVariant*/ }
@@ -1073,6 +1746,13 @@ export type ManifestEntryType =
         | { MerkleMembership: tagOnly /*minEnumVariant*/ }
         | { MerkleStateRoot: tagOnly /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoManifestEntryType = IntersectedEnum<
         | { NamedTokenRef: tagOnly /*minEnumVariant*/ }
         | { DgDataPolicy: ManifestEntryType$Ergo$DgDataPolicy /*minEnumVariant*/ }
@@ -1093,6 +1773,7 @@ export type ErgoManifestEntryType = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type ManifestEntryTypeLike = IntersectedEnum<
         | { NamedTokenRef: tagOnly /*minEnumVariant*/ }
@@ -1102,18 +1783,43 @@ export type ManifestEntryTypeLike = IntersectedEnum<
         | { MerkleStateRoot: tagOnly /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of CapoManifestEntry
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoCapoManifestEntry instead.
+ * @public
+ */
 export interface CapoManifestEntry {
     entryType: /*minStructField*/ ManifestEntryType
     tokenName: /*minStructField*/ number[]
     mph: /*minStructField*/ MintingPolicyHash | undefined
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of CapoManifestEntry
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the CapoManifestEntryLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoCapoManifestEntry = {
     entryType: /*minStructField*/ ErgoManifestEntryType
     tokenName: /*minStructField*/ number[]
     mph: /*minStructField*/ MintingPolicyHash | undefined
 }
 
+
+/**
+ * A strong type for the permissive form of CapoManifestEntry
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface CapoManifestEntryLike {
     entryType: /*minStructField*/ ManifestEntryTypeLike
     tokenName: /*minStructField*/ number[]
@@ -1121,20 +1827,47 @@ export interface CapoManifestEntryLike {
 }
 
 
+
+/**
+ * A strong type for the canonical form of PendingCharterChange$otherManifestChange
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see PendingCharterChange$Ergo$otherManifestChange instead.
+ * @public
+ */
 export interface PendingCharterChange$otherManifestChange {
     activity: ManifestActivity  /*minVariantField*/ ,
     remainingDelegateValidations: Array<DelegateRole>  /*minVariantField*/ 
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of PendingCharterChange$otherManifestChange
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the PendingCharterChange$otherManifestChangeLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type PendingCharterChange$Ergo$otherManifestChange = {
     activity: ErgoManifestActivity  /*minVariantField*/ ,
     remainingDelegateValidations: Array<ErgoDelegateRole>  /*minVariantField*/ 
 }
 
+
+/**
+ * A strong type for the permissive form of PendingCharterChange$otherManifestChange
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface PendingCharterChange$otherManifestChangeLike {
     activity: ManifestActivityLike  /*minVariantField*/ ,
     remainingDelegateValidations: Array<DelegateRoleLike>  /*minVariantField*/ 
 }
+
 
 
 export type PendingCharterChangeMeta = EnumTypeMeta<
@@ -1159,12 +1892,20 @@ export type PendingCharterChangeMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `PendingCharterChangeHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type PendingCharterChange = 
         | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
 			PendingDelegateChange    /*minEnumVariant*/ }
         | { otherManifestChange: PendingCharterChange$otherManifestChange /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoPendingCharterChange = IntersectedEnum<
         | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
 			ErgoPendingDelegateChange    /*minEnumVariant*/ }
@@ -1183,6 +1924,7 @@ export type ErgoPendingCharterChange = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type PendingCharterChangeLike = IntersectedEnum<
         | { delegateChange: /* implied wrapper { change: ... } for singleVariantField */ 
@@ -1190,6 +1932,14 @@ export type PendingCharterChangeLike = IntersectedEnum<
         | { otherManifestChange: PendingCharterChange$otherManifestChangeLike /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of CapoDatum$CharterData
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see CapoDatum$Ergo$CharterData instead.
+ * @public
+ */
 export interface CapoDatum$CharterData {
     spendDelegateLink: RelativeDelegateLink  /*minVariantField*/ ,
     spendInvariants: Array<RelativeDelegateLink>  /*minVariantField*/ ,
@@ -1201,6 +1951,16 @@ export interface CapoDatum$CharterData {
     pendingChanges: Array<PendingCharterChange>  /*minVariantField*/ 
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of CapoDatum$CharterData
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the CapoDatum$CharterDataLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type CapoDatum$Ergo$CharterData = {
     spendDelegateLink: ErgoRelativeDelegateLink  /*minVariantField*/ ,
     spendInvariants: Array<ErgoRelativeDelegateLink>  /*minVariantField*/ ,
@@ -1212,6 +1972,13 @@ export type CapoDatum$Ergo$CharterData = {
     pendingChanges: Array<ErgoPendingCharterChange>  /*minVariantField*/ 
 }
 
+
+/**
+ * A strong type for the permissive form of CapoDatum$CharterData
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface CapoDatum$CharterDataLike {
     spendDelegateLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
     spendInvariants: Array<RelativeDelegateLinkLike>  /*minVariantField*/ ,
@@ -1224,36 +1991,89 @@ export interface CapoDatum$CharterDataLike {
 }
 
 
+
+/**
+ * A strong type for the canonical form of cctx_CharterInputType$RefInput
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see cctx_CharterInputType$Ergo$RefInput instead.
+ * @public
+ */
 export interface cctx_CharterInputType$RefInput {
     datum: CapoDatum$CharterData  /*minVariantField*/ ,
     utxo: TxInput  /*minVariantField*/ 
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of cctx_CharterInputType$RefInput
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the cctx_CharterInputType$RefInputLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type cctx_CharterInputType$Ergo$RefInput = {
     datum: CapoDatum$Ergo$CharterData  /*minVariantField*/ ,
     utxo: TxInput  /*minVariantField*/ 
 }
 
+
+/**
+ * A strong type for the permissive form of cctx_CharterInputType$RefInput
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface cctx_CharterInputType$RefInputLike {
     datum: CapoDatum$CharterDataLike  /*minVariantField*/ ,
     utxo: TxInput  /*minVariantField*/ 
 }
 
 
+
+/**
+ * A strong type for the canonical form of cctx_CharterInputType$Input
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see cctx_CharterInputType$Ergo$Input instead.
+ * @public
+ */
 export interface cctx_CharterInputType$Input {
     datum: CapoDatum$CharterData  /*minVariantField*/ ,
     utxo: TxInput  /*minVariantField*/ 
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of cctx_CharterInputType$Input
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the cctx_CharterInputType$InputLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type cctx_CharterInputType$Ergo$Input = {
     datum: CapoDatum$Ergo$CharterData  /*minVariantField*/ ,
     utxo: TxInput  /*minVariantField*/ 
 }
 
+
+/**
+ * A strong type for the permissive form of cctx_CharterInputType$Input
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface cctx_CharterInputType$InputLike {
     datum: CapoDatum$CharterDataLike  /*minVariantField*/ ,
     utxo: TxInput  /*minVariantField*/ 
 }
+
 
 
 export type cctx_CharterInputTypeMeta = EnumTypeMeta<
@@ -1281,12 +2101,20 @@ export type cctx_CharterInputTypeMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `cctx_CharterInputTypeHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type cctx_CharterInputType = 
         | { Unk: tagOnly /*minEnumVariant*/ }
         | { RefInput: cctx_CharterInputType$RefInput /*minEnumVariant*/ }
         | { Input: cctx_CharterInputType$Input /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type Ergocctx_CharterInputType = IntersectedEnum<
         | { Unk: tagOnly /*minEnumVariant*/ }
         | { RefInput: cctx_CharterInputType$Ergo$RefInput /*minEnumVariant*/ }
@@ -1305,6 +2133,7 @@ export type Ergocctx_CharterInputType = IntersectedEnum<
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type cctx_CharterInputTypeLike = IntersectedEnum<
         | { Unk: tagOnly /*minEnumVariant*/ }
@@ -1312,19 +2141,45 @@ export type cctx_CharterInputTypeLike = IntersectedEnum<
         | { Input: cctx_CharterInputType$InputLike /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of CapoCtx
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoCapoCtx instead.
+ * @public
+ */
 export interface CapoCtx {
     mph: /*minStructField*/ MintingPolicyHash
     charter: /*minStructField*/ cctx_CharterInputType
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of CapoCtx
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the CapoCtxLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoCapoCtx = {
     mph: /*minStructField*/ MintingPolicyHash
     charter: /*minStructField*/ Ergocctx_CharterInputType
 }
 
+
+/**
+ * A strong type for the permissive form of CapoCtx
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface CapoCtxLike {
     mph: /*minStructField*/ MintingPolicyHash | string | number[]
     charter: /*minStructField*/ cctx_CharterInputTypeLike
 }
+
 
 
