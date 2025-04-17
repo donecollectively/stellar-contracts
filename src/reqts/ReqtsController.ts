@@ -45,11 +45,7 @@ export class ReqtsController extends DelegatedDataContract<
         return "ReqtsPolicy";
     }
 
-    get capo(): Capo<any> {
-        // type S = CapoOffchainSettingsType<DEMUTokenomicsCapo>;
 
-        return this.configIn?.capo as unknown as Capo<any>;
-    }
     get idPrefix() {
         return "reqt";
     }
