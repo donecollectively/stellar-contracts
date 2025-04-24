@@ -690,9 +690,10 @@ export function heliosRollupBundler(
                                 "src/helios/scriptBundling/CapoHeliosBundle.ts",
                                 bundle.capoBundle.constructor
                             );
-                            state.project.generateBundleTypes(
-                                "src/helios/scriptBundling/CapoHeliosBundle.ts"
-                            );
+                            this.warn("skipping type-gen for default Capo bundle")
+                            // state.project.generateBundleTypes(
+                            //     "src/helios/scriptBundling/CapoHeliosBundle.ts"
+                            // );
                         } else {
                             console.log(
                                 `  -- 📦 Your project's Capo bundle: ${capoName}`
