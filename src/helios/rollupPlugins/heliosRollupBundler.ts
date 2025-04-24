@@ -513,6 +513,7 @@ export function heliosRollupBundler(
                 // ->   things are already up-to-date.
                 let SomeBundleClass = state.bundleClassById[id];
 
+                this.addWatchFile(id);
                 if (!SomeBundleClass) {
                     if (pluginOptions.emitBundled) {
                         this.warn(
