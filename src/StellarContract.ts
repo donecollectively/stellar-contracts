@@ -954,6 +954,9 @@ export class StellarContract<
             previousOnchainScript,
             previousOnchainScript: { validatorHash, uplcProgram } = {},
         } = args;
+        this.partialConfig = partialConfig;
+        this.configIn = config;
+
         if (uplcProgram) {
             // with a rawProgram, the contract script is used directly
             // to make a HeliosScriptBundle with that rawProgram
@@ -966,18 +969,22 @@ export class StellarContract<
                 //     config,
                 // },
             });
-        } else if (config) {
-            this.configIn = config;
+        } else if (config || partialConfig) {
             //@ts-expect-error on probe for possible but not
             //   required variant config
-            const variant = config.variant;
+            const variant = (config || partialConfig).variant;
+
             // const params = this.getContractScriptParams(config);
             if (this.usesContractScript) {
                 const genericBundle = this.scriptBundle();
+                if (!config) {
+                    debugger
+                    console.warn(`${this.constructor.name}: no config provided`)
+                }
                 const params =
                     genericBundle.scriptParamsSource != "bundle"
-                        ? { params: this.getContractScriptParams(config) }
-                        : {};
+                        ? config ? { params: this.getContractScriptParams(config) }
+                        : {} : {};
                 const deployedDetails = {
                     config,
                     programBundle,
