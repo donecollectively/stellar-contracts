@@ -481,7 +481,11 @@ export abstract class HeliosScriptBundle {
         ];
 
         const unsatisfiedIncludes = new Set(includeList);
-        const capoIncludedModules = this.capoBundle!.modules.filter((x) => {
+        const capoModules =this.capoBundle!.modules
+        if (!capoModules) {
+            throw new Error(`${this.capoBundle!.constructor.name}: no modules() list defined`)
+        }
+        const capoIncludedModules = capoModules.filter((x) => {
             const mName = x.moduleName!;
             const found = includeList.includes(mName);
             unsatisfiedIncludes.delete(mName);
