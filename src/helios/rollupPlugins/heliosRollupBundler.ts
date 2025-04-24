@@ -70,12 +70,14 @@ export function heliosRollupBundler(
         vite?: boolean;
         emitBundled?: boolean;
         compile?: boolean;
+        exportPrefix?: string;
     } = {}
 ) {
     const pluginOptions = {
         vite: false,
         project: "",
         compile: false,
+        exportPrefix: "",
         ...opts,
         ...{
             include: /.*\.hlb\.[jt]s$/,
@@ -116,6 +118,11 @@ export function heliosRollupBundler(
         StellarHeliosProject.findProjectDetails();
 
     const thisPackageName = packageJSON.name;
+    const packageWithPrefix =
+        `${thisPackageName}/${pluginOptions.exportPrefix}/`
+            .replace(/\/+/g, "/")
+            .replace(/\/$/, "");
+
     //read package.json from project root, parse and check its package name
     // const packageJsonPath = path.join(projectRoot, "package.json");
     // const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
@@ -277,7 +284,7 @@ export function heliosRollupBundler(
                             : `-${networkId}`;
 
                         const packageRelativeName = `contracts${netIdSuffix}/${name}.hlb`;
-                        const bundledExportName = `${thisPackageName}/${packageRelativeName}`;
+                        const bundledExportName = `${packageWithPrefix}/${packageRelativeName}`;
                         //This arranges a convention for emitting a predictable
                         // exported file, used to connect the importer with emitted code
                         // using an expected import name
@@ -690,7 +697,9 @@ export function heliosRollupBundler(
                                 "src/helios/scriptBundling/CapoHeliosBundle.ts",
                                 bundle.capoBundle.constructor
                             );
-                            this.warn("skipping type-gen for default Capo bundle")
+                            this.warn(
+                                "skipping type-gen for default Capo bundle"
+                            );
                             // state.project.generateBundleTypes(
                             //     "src/helios/scriptBundling/CapoHeliosBundle.ts"
                             // );
@@ -766,8 +775,10 @@ export function heliosRollupBundler(
                 const SomeBundleClass: typeof CapoHeliosBundle =
                     state.bundleClassById[id];
                 if (!SomeBundleClass) {
-                    this.warn(`skipping config insertion (no emitBundle in this env?) ${filenameBase}`)
-                    return null
+                    this.warn(
+                        `skipping config insertion (no emitBundle in this env?) ${filenameBase}`
+                    );
+                    return null;
                 }
                 if (looksLikeCapo) {
                     if (!code.match(capoConfigRegex)) {
@@ -778,15 +789,14 @@ export function heliosRollupBundler(
                             );
                             return null;
                         }
-                        const msg = `${SomeBundleClass.name}: this looks like a Capo bundle class without a currentDeploymentConfig\n`+
-                        `  in ${hlbFile}\n` +
-                        `  import {currentDeploymentConfig} from "@donecollectively/stellar-contracts"\n` +
-                        `  ... and add  'preConfigured = capoConfigurationDetails' to your class.\n` +
-                        `This will use deployment details from ${deployDetailsFile}\n` +
-                        `  ... or another json file when deploying to a different network`
-                        this.warn(
-                            msg
-                        );
+                        const msg =
+                            `${SomeBundleClass.name}: this looks like a Capo bundle class without a currentDeploymentConfig\n` +
+                            `  in ${hlbFile}\n` +
+                            `  import {currentDeploymentConfig} from "@donecollectively/stellar-contracts"\n` +
+                            `  ... and add  'preConfigured = capoConfigurationDetails' to your class.\n` +
+                            `This will use deployment details from ${deployDetailsFile}\n` +
+                            `  ... or another json file when deploying to a different network`;
+                        this.warn(msg);
                         console.log(colors.red(msg));
                         return null;
                     }
@@ -820,7 +830,7 @@ export function heliosRollupBundler(
         const SomeBundleClass: typeof CapoHeliosBundle =
             state.bundleClassById[id];
 
-        if (!SomeBundleClass) return null
+        if (!SomeBundleClass) return null;
 
         const resolvedDeployConfig = await this.resolve(
             deployDetailsFile,
@@ -854,7 +864,7 @@ export function heliosRollupBundler(
             this.addWatchFile(resolvedDeployConfig.id);
 
             debugger;
-            console.log(deployDetails)
+            console.log(deployDetails);
             const capoConfig = parseCapoJSONConfig(deployDetails.capo.config);
             const { seedIndex, seedTxn } = capoConfig;
             const hlBundler: CapoHeliosBundle = await SomeBundleClass.create({
@@ -948,8 +958,6 @@ export function heliosRollupBundler(
         // 2. inserts precompiled: { [variant]: {scriptHash, programBundle} } details
         //     ... with one entry per variant found in the SomeBundleClass
 
-
-        
         const regex =
             /(\s*specializedDelegateModule\s*=\s*)|(static needsSpecializedDelegateModule = false)/m;
         if (code.match(regex)) {
@@ -1081,7 +1089,7 @@ export function heliosRollupBundler(
         }
         throw new Error(
             `bundle module format error\n` +
-                ` ... non-Capo must define 'specializedDelegateModule = ...\n`+
+                ` ... non-Capo must define 'specializedDelegateModule = ...\n` +
                 ` ... or EXACTLY AND VERBATIM: \`static needsSpecializedDelegateModule = false\``
         );
 
