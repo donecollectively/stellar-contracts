@@ -46,30 +46,82 @@ import type {
 } from "@donecollectively/stellar-contracts"
 
 
+/**
+ * A strong type for the canonical form of struct3
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see Ergostruct3 instead.
+ * @public
+ */
 export interface struct3 {
     thirdLevelF1: /*minStructField*/ bigint
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of struct3
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the struct3Like type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type Ergostruct3 = struct3/*like canon-other*/
+
+/**
+ * A strong type for the permissive form of struct3
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface struct3Like {
     thirdLevelF1: /*minStructField*/ IntLike
 }
 
 
+
+/**
+ * A strong type for the canonical form of OtherStruct
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoOtherStruct instead.
+ * @public
+ */
 export interface OtherStruct {
     secondLevelF1: /*minStructField*/ bigint
     secondLevelF2: /*minStructField*/ struct3
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of OtherStruct
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the OtherStructLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoOtherStruct = {
     secondLevelF1: /*minStructField*/ bigint
     secondLevelF2: /*minStructField*/ Ergostruct3
 }
 
+
+/**
+ * A strong type for the permissive form of OtherStruct
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface OtherStructLike {
     secondLevelF1: /*minStructField*/ IntLike
     secondLevelF2: /*minStructField*/ struct3Like
 }
+
 
 
 export type SomeKindaEnumMeta = EnumTypeMeta<
@@ -93,12 +145,20 @@ export type SomeKindaEnumMeta = EnumTypeMeta<
  * 
  * - **Note**: Stellar Contracts provides a higher-level `SomeKindaEnumHelper` class
  *     for generating UPLC data for this enum type
+ * @public
  */
 export type SomeKindaEnum = 
         | { case1: tagOnly /*minEnumVariant*/ }
         | { case2: /* implied wrapper { f1: ... } for singleVariantField */ 
 			bigint    /*minEnumVariant*/ }
 
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
 export type ErgoSomeKindaEnum = IntersectedEnum<SomeKindaEnum/*like canon enum*/>
 
 /**
@@ -113,6 +173,7 @@ export type ErgoSomeKindaEnum = IntersectedEnum<SomeKindaEnum/*like canon enum*/
  * #### Permissive Type
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
+ * @public
  */
 export type SomeKindaEnumLike = IntersectedEnum<
         | { case1: tagOnly /*minEnumVariant*/ }
@@ -120,6 +181,14 @@ export type SomeKindaEnumLike = IntersectedEnum<
 			IntLike    /*minEnumVariant*/ }
 >
 
+/**
+ * A strong type for the canonical form of DatumStruct
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoDatumStruct instead.
+ * @public
+ */
 export interface DatumStruct {
     field1: /*minStructField*/ bigint
     field2: /*minStructField*/ string
@@ -127,6 +196,16 @@ export interface DatumStruct {
     field4: /*minStructField*/ SomeKindaEnum
 }
 
+
+/**
+ * An ergonomic, though less strictly-safe form of DatumStruct
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DatumStructLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
 export type ErgoDatumStruct = {
     field1: /*minStructField*/ bigint
     field2: /*minStructField*/ string
@@ -134,11 +213,19 @@ export type ErgoDatumStruct = {
     field4: /*minStructField*/ ErgoSomeKindaEnum
 }
 
+
+/**
+ * A strong type for the permissive form of DatumStruct
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
 export interface DatumStructLike {
     field1: /*minStructField*/ IntLike
     field2: /*minStructField*/ string
     field3: /*minStructField*/ Map<string, OtherStructLike>
     field4: /*minStructField*/ SomeKindaEnumLike
 }
+
 
 
