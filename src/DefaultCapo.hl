@@ -37,7 +37,6 @@ import {
 import {
     getTxCharterData,
     mkCapoCtx,
-    mkTokenShow,
     mustHaveGovAuthority,
     CapoDatum,
     CapoActivity
@@ -111,9 +110,9 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
     // now: Time = tx.time_range.start;
     print("🚥❓Capo\n");
 
-    showMyTokens : (Value) -> String = mkTokenShow(mph);
     input : TxInput = get_current_input();
-    print("  -- Capo: checks spend of " + showMyTokens(input.value));
+    // showMyTokens : (Value) -> String = mkTokenShow(mph);
+    print("  -- Capo: checks spend of " + input.value.show())
     
     capoDatum : CapoDatum = CapoDatum::from_data(datum);
     allDatumSpecificChecks: Bool = capoDatum.switch {

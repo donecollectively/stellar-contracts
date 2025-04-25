@@ -33,7 +33,6 @@ import {
     getTxCharterData,
     mkCapoCtx,
     CapoCtx,
-    mkTokenShow,
     CapoDatum,
     CapoManifestEntry,
     ManifestEntryType
@@ -213,8 +212,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
             assert(dd.tn != instance, "uniqueness");
             assert(dd.tn != delegateName.encode_utf8(), "uniqueness");
 
-            showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
-            myDgTkn = showMyTokens(get_current_input().value);
+            // showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
+            myDgTkn = // showMyTokens(get_current_input().value);
+            get_current_input().value.show();
             print("  -- is spending dgTkn "+ myDgTkn);
 
             checkNonDelegatedActivities: Bool = activity.switch {

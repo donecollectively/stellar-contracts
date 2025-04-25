@@ -112,28 +112,29 @@ struct CapoManifestEntry {
     }
 }
 
-func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
-    (v: Value) -> String {
-        others : String = Value::from_map(
-            v.get_assets().to_map().filter( (someMph: MintingPolicyHash, _) -> Bool {
-                mph != someMph
-            })
-        ).show();
-        ada : String = (
-            (
-                (0.0 + v.get_lovelace()) / 1_000.0
-            ).round() / 1_000.0
-        ).show() + " ADA";
-        mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {
-            []String{
-                c.show(), "×💴 ", tokenName.decode_utf8()
-            } + previous
-        }, []String{}).join(" + ");
-        // v.assets()
+// func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
+//     (v: Value) -> String {
+//         others : String = Value::from_map(
+//             v.get_assets().to_map().filter( (someMph: MintingPolicyHash, _) -> Bool {
+//                 mph != someMph
+//             })
+//         ).show();
+//         ada : String = (
+//             (
+//                 (0.0 + v.get_lovelace()) / 1_000.0
+//             ).round() / 1_000.0
+//         ).show() + " ADA";
+//         mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {
+//             tn = tokenName.decode_utf8();
+//             []String{
+//                 c.show(), "×💴 ", tn
+//             } + previous
+//         }, []String{}).join(" + ");
+//         // v.assets()
 
-        mine + " + " + ada  + others
-    }
-}
+//         mine + " + " + ada  + others
+//     }
+// }
 
 /**************************************************************
       ************************************************************
@@ -488,11 +489,12 @@ struct DelegateInput {
     func error(self, msg: String) -> () {
         assert(true || /* never executed */ self.serialize() == self.serialize(), msg);
         // warning emoji: "⚠️"
-        print("⚠️ ⚠️ ⚠️ error executing policy for dgTkn: ");
-        print( mkTokenShow(self.mph)(
-                (self.input.unwrap().value)
-            )
-        );
+        print("⚠️ ⚠️ ⚠️ error executing policy for dgTkn: "+ self.link.uutName);
+        print("     ---- with input value: "+ self.input.unwrap().value.show());
+        // print( mkTokenShow(self.mph)(
+        //         (self.input.unwrap().value)
+        //     )
+        // );
         print("\n");
         assert(false, msg)
     }
