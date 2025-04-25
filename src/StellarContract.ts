@@ -323,6 +323,11 @@ export async function findInputsInWallets(
     );
 }
 
+export type HeliosOptimizeOptions = Exclude<Pick<Exclude<
+    Parameters<Program["compile"]>[0], undefined | boolean
+>, "optimize"
+>["optimize"], undefined | boolean>
+
 export type UtxoDisplayCache = Map<TxOutputId, string>;
 /**
  * standard setup for any Stellar Contract class
@@ -346,7 +351,7 @@ export type SetupInfo = {
     /** helper for finding utxos and related utility functions */
     uh?: UtxoHelper;
     /** global setting for script-compile optimization, only used when a compilation is triggered, can be overridden per script-bundle  */
-    optimize?: boolean;
+    optimize?: boolean | HeliosOptimizeOptions;
     /** presentation-cache indicates utxos whose details have already been emitted to the console */
     uxtoDisplayCache?: UtxoDisplayCache;
 };

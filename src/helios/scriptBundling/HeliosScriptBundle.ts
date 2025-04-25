@@ -15,12 +15,13 @@ import { HeliosProgramWithCacheAPI } from "@donecollectively/stellar-contracts/H
 import type { CapoHeliosBundle } from "./CapoHeliosBundle.js";
 import type {
     configBaseWithRev,
+    HeliosOptimizeOptions,
     SetupInfo,
     SetupOrMainnetSignalForBundle,
     StellarBundleSetupDetails,
     UplcRecord,
 } from "../../StellarContract.js";
-import type { anyUplcProgram } from "../../HeliosPromotedTypes.js";
+import type { anyUplcProgram, CompileOptionsForCachedHeliosProgram } from "../../HeliosPromotedTypes.js";
 import type {
     CapoBundleClass,
     HeliosBundleClassWithCapo,
@@ -561,7 +562,7 @@ export abstract class HeliosScriptBundle {
      * Defaults to the general optimize setting provided by the factoryArgs.
      * Override to force optimization on or off.
      */
-    get optimize() {
+    get optimize() : HeliosOptimizeOptions | boolean | undefined {
         return this.setup!.optimize ?? true;
     }
 

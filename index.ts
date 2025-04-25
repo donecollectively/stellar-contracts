@@ -156,6 +156,7 @@ export type {
     NetworkContext,
     SetupInfo,
     ConfigFor,
+    HeliosOptimizeOptions,
 } from "./src/StellarContract.js";
 
 export {
