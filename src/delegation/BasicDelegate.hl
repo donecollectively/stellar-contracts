@@ -33,6 +33,7 @@ import {
     getTxCharterData,
     mkCapoCtx,
     CapoCtx,
+    // mkTokenShow,
     CapoDatum,
     CapoManifestEntry,
     ManifestEntryType
@@ -190,7 +191,6 @@ import {
 
 func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
     print(" 🚥❓delegate: "+delegateName + "\n");
-    assert(rev >= 1, "rev must be at least 1");
 
     // input = get_current_input();
     result :Bool = mdd.switch{
@@ -237,14 +237,19 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
 
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
 
-                    activities.all( (rawActivity: Data) -> Bool {
-                        a : DelegateActivity = DelegateActivity::from_data(rawActivity);
+                    mintDgtCheck : Bool = if (!isMintDelegate) {
+                        true 
+                    } else if (!cctx.nowActingAsMintDgt(required: false)) {
+                        true
+                    } else {
+                        activities.all( (rawActivity: Data) -> Bool {
+                            a : DelegateActivity = DelegateActivity::from_data(rawActivity);
 
-                        if (isMintDelegate && cctx.nowActingAsMintDgt(required: false)) {
                             // probably can't fail here:
                             // assert(isMintDelegate, "ack! non-MintDelegate can't act as mintDgt");
                             print("  -- mintDgt checking multi-activity");
                             REQT("in the mint delegate, only {Create,Delete}DelegatedData activities are valid in multi-activities");
+
                             a.switch {
                                 // in the Mint and Spend delegates, these nested activities are expected to re-delegate 
                                 // to delegated-data controllers, which will use Mint/Spend/Burn activities on the data-controller tokens.
@@ -278,9 +283,18 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
     
                                 _ => error("multi:non-minting activities are invalid for mintDgt")
                             }
-                        } else if (isSpendDelegate && cctx.nowActingAsSpendDgt(required: false)) {
-                            // probably can't fail here:
-                            // assert(isSpendDelegate, "ack! non-SpendDelegate can't act as spendDgt");
+                        })
+                    };
+
+                    spendDgtCheck : Bool = if (!isSpendDelegate) {
+                        true 
+                    } else if (!cctx.nowActingAsSpendDgt(required: false)) {
+                        true
+                    } else {
+                        // probably can't fail here:
+                        // assert(isSpendDelegate, "ack! non-SpendDelegate can't act as spendDgt");
+                        activities.all( (rawActivity: Data) -> Bool {
+                            a : DelegateActivity = DelegateActivity::from_data(rawActivity);
                             print("  -- spendDgt checking multi-activity");
                             REQT("in the spend delegate, only {Updating,Deleting}DelegatedData activities are valid in multi-activities");
                             a.switch {
@@ -307,9 +321,17 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 MultipleDelegateActivities => error("multi:multi: nesting not ok"),
                                 _ => error("multi: non-spending activities are invalid for spendDgt")
                             }
-                        } else {
-                            assert(!isMintDelegate && !isSpendDelegate, "ack! delegated-data policy can't be a mint/spend delegate");
-                            TODO("assert isDgDataPolicy"); // assert(isDgDataPolicy, "invalid use of multiActivity by non-DgDataPolicy");
+                        })
+                    };
+                
+                    dgDataPolicyCheck : Bool = if (isMintDelegate || isSpendDelegate) {
+                        assert(isDgDataPolicy, "ack! delegated-data policy can't be a mint/spend delegate");
+                        true 
+                    } else {
+                        TODO("assert isDgDataPolicy"); // assert(isDgDataPolicy, "invalid use of multiActivity by non-DgDataPolicy");
+                        activities.all( (rawActivity: Data) -> Bool {
+                            a : DelegateActivity = DelegateActivity::from_data(rawActivity);
+
                             print("  -- dgDataPolicy checking multi-activity");
                             // WHEN this code is supporting a DgDataPolicy (with its own specializedDelegate module),
                             //   the multi-activity expects Minting/Spending/Burning activities, not *DelegatedData activities.
@@ -338,8 +360,10 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 MultipleDelegateActivities => error("multi:multi: nesting not ok")
                                 // _ => error("multi: invalid other activity for non-mint/spend delegate")
                             }
-                        }
-                    })
+                        })
+                    };
+
+                    mintDgtCheck && spendDgtCheck && dgDataPolicyCheck
                 },
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
@@ -878,110 +902,124 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 "pendingChanges must be emptied"
                             );
 
-                            if (cctx.nowActingAsSpendDgt(required: false)) {
-                                REQT("...spendDgt: validates that all the pending delegates are installed");
-                                // the pending changes are moved into the nextManifest
+                            spendDgtCheck: Bool = if (!isSpendDelegate) {
+                                true
+                            } else {
+                                if (!cctx.nowActingAsSpendDgt(required: false)) {
+                                    true
+                                } else {
+                                    REQT("...spendDgt: validates that all the pending delegates are installed");
+                                    // the pending changes are moved into the nextManifest
 
-                                // walks through the pending changes and next-manifest entries
-                                // ... and also holds a temporary picture of previous-manifest entries.
-                                //  - verifies that each next change is reflected in the next-manifest's next entry
-                                //  - verifies at the end that the remainder of the next-manifest-tail (after verifying changes added in its "head" section) 
-                                //    ... contains all the entries expected (from the previous-manifest-remainder,
-                                //    ...   == previous-manifest, when no Remove/Replace actions are present);
-                                //  - verifies that any Removed entries are missing from the next-manifest-map
-                                //    ... while removing them from the previous-manifest-remainder's "expected remaining entries"
-                                //  - verifies any Replaced entries have been added at the next-manifest's next entry
-                                //    ... AND that they're removed from the remainder of the next-manifest-map,
-                                //    ... while removing them from the "expected remaining entries" in the previous-manifest-remainder.
-                                // At the end, it verifies that the two remaining partial-maps are identical.
-                                (
-                                    prevManifestRemainder, nextManifestRemainder: Map[String]CapoManifestEntry
-                                ) = pendingChangesList.fold2[ Map[String]CapoManifestEntry, Map[String]CapoManifestEntry ]( 
+                                    // walks through the pending changes and next-manifest entries
+                                    // ... and also holds a temporary picture of previous-manifest entries.
+                                    //  - verifies that each next change is reflected in the next-manifest's next entry
+                                    //  - verifies at the end that the remainder of the next-manifest-tail (after verifying changes added in its "head" section) 
+                                    //    ... contains all the entries expected (from the previous-manifest-remainder,
+                                    //    ...   == previous-manifest, when no Remove/Replace actions are present);
+                                    //  - verifies that any Removed entries are missing from the next-manifest-map
+                                    //    ... while removing them from the previous-manifest-remainder's "expected remaining entries"
+                                    //  - verifies any Replaced entries have been added at the next-manifest's next entry
+                                    //    ... AND that they're removed from the remainder of the next-manifest-map,
+                                    //    ... while removing them from the "expected remaining entries" in the previous-manifest-remainder.
+                                    // At the end, it verifies that the two remaining partial-maps are identical.
                                     (
-                                        prevManifestRemainder : Map[String]CapoManifestEntry, 
-                                        nextCMEs: Map[String]CapoManifestEntry, 
-                                        pcChange: PendingCharterChange
-                                    ) -> ( Map[String]CapoManifestEntry, Map[String]CapoManifestEntry ) {
-                                        pdChange : PendingDelegateChange = pcChange.switch {
-                                            delegateChange{dgtChange} => dgtChange,
-                                            otherManifestChange => error("otherManifestChange not yet supported")
-                                        };
-                                        pendingTypeName = pdChange.role.switch {
-                                            DgDataPolicy{typeName} => {
-                                                print("  -- ok: DgDataPolicy in commitPendingChanges");
-                                                typeName
-                                            },
-                                            _ => error("invalid delegate-change role (for now) in commitPendingChanges")
-                                        };
-                                        //void
-                                        pdChange.action.switch {
-                                            Remove => {
-                                                REQT("  -- Remove: verifies that the delegate queued for removal is now removed from the Capo manifest");
-                                                nextCMEs.get_safe(pendingTypeName).switch { 
-                                                    Some => error(
-                                                        "queued Remove failed: name still present in next-manifest item: "+ 
-                                                        pendingTypeName
+                                        prevManifestRemainder, nextManifestRemainder: Map[String]CapoManifestEntry
+                                    ) = pendingChangesList.fold2[ Map[String]CapoManifestEntry, Map[String]CapoManifestEntry ]( 
+                                        (
+                                            prevManifestRemainder : Map[String]CapoManifestEntry, 
+                                            nextCMEs: Map[String]CapoManifestEntry, 
+                                            pcChange: PendingCharterChange
+                                        ) -> ( Map[String]CapoManifestEntry, Map[String]CapoManifestEntry ) {
+                                            pdChange : PendingDelegateChange = pcChange.switch {
+                                                delegateChange{dgtChange} => dgtChange,
+                                                otherManifestChange => error("otherManifestChange not yet supported")
+                                            };
+                                            pendingTypeName = pdChange.role.switch {
+                                                DgDataPolicy{typeName} => {
+                                                    print("  -- ok: DgDataPolicy in commitPendingChanges");
+                                                    typeName
+                                                },
+                                                _ => error("invalid delegate-change role (for now) in commitPendingChanges")
+                                            };
+                                            //void
+                                            pdChange.action.switch {
+                                                Remove => {
+                                                    REQT("  -- Remove: verifies that the delegate queued for removal is now removed from the Capo manifest");
+                                                    nextCMEs.get_safe(pendingTypeName).switch { 
+                                                        Some => error(
+                                                            "queued Remove failed: name still present in next-manifest item: "+ 
+                                                            pendingTypeName
+                                                        )
+                                                    }
+                                                },
+                                                _ => {
+                                                    REQT("   -- verifies that added & replaced entries are present in the updated map (at its next position)");
+                                                    if (nextCMEs.length == 0) {
+                                                        error("queued Add/Replace failed: no more items in next-manifest map")
+                                                    };
+                                                    ( CME_key : String, CapoManifestEntry{ME_type, _tn, _mph} ) = nextCMEs.head;
+                                                    print("vv @CME entry: "+CME_key);
+                                                    ManifestEntryType::DgDataPolicy{ME_policyLink, ME_idPrefix, refCount} = ME_type;
+                                                    TODO("support minting multiple threads of a dgDataPolicy");
+                                                    assert(refCount == 1, "refCount must be 1 when adding a new dgDataPolicy");
+                                                    assert(pendingTypeName == CME_key,
+                                                        "queued change: name mismatch with next-manifest item"
+                                                    );
+                                                    ME_name = ME_policyLink.uutName.show()
+                                                    print("    -- ME policy link " + ME_name);
+                                                    pendingLink = pdChange.dgtLink.unwrap();
+                                                    pendingName = pendingLink.uutName.show()
+                                                    print("    -- pdChange policy link " + pendingName);
+
+                                                    assert(ME_policyLink == pendingLink,
+                                                        "queued change: policyLink mismatch with next-manifest item"
+                                                    );
+
+                                                    nextIdPrefix = pdChange.action.switch {
+                                                        Replace{_,_,idPrefix,_} => {
+                                                            REQT("    -- Replace: verifies that the next-manifest no longer has the replaced entry");
+
+                                                            nextCMEs.tail.get_safe(pendingTypeName).switch {
+                                                                Some => error(
+                                                                    "queued Replace failed: duplicate name remaining in next-manifest map: "+ 
+                                                                    pendingTypeName
+                                                                )
+                                                            };
+                                                            idPrefix
+                                                        },
+                                                        Add{_,_,idPrefix} => idPrefix,
+                                                        _ => error( "unreachable")
+                                                    };
+                                                    REQT("    -- @each manifest entry: next-manifest's idPrefix must match the queued change");
+                                                    assert(nextIdPrefix == ME_idPrefix,
+                                                        "idPrefix mismatch with next-manifest's dgDataPolicy"
                                                     )
                                                 }
-                                            },
-                                            _ => {
-                                                REQT("   -- verifies that added & replaced entries are present in the updated map (at its next position)");
-                                                if (nextCMEs.length == 0) {
-                                                    error("queued Add/Replace failed: no more items in next-manifest map")
-                                                };
-                                                ( CME_key : String, CapoManifestEntry{ME_type, _tn, _mph} ) = nextCMEs.head;
-                                                print("vv @CME entry: "+CME_key);
-                                                ManifestEntryType::DgDataPolicy{ME_policyLink, ME_idPrefix, refCount} = ME_type;
-                                                TODO("support minting multiple threads of a dgDataPolicy");
-                                                assert(refCount == 1, "refCount must be 1 when adding a new dgDataPolicy");
-                                                assert(pendingTypeName == CME_key,
-                                                    "queued change: name mismatch with next-manifest item"
-                                                );
-                                                print("    -- ME policy link " + ME_policyLink.uutName.show());
-                                                print("    -- pdChange policy link " + pdChange.dgtLink.unwrap().uutName.show());
+                                            }; // void assertions; all needed checks are done ^^^^
 
-                                                assert(ME_policyLink == pdChange.dgtLink.unwrap(),
-                                                    "queued change: policyLink mismatch with next-manifest item"
-                                                );
-
-                                                nextIdPrefix = pdChange.action.switch {
-                                                    Replace{_,_,idPrefix,_} => {
-                                                        REQT("    -- Replace: verifies that the next-manifest no longer has the replaced entry");
-
-                                                        nextCMEs.tail.get_safe(pendingTypeName).switch {
-                                                            Some => error(
-                                                                "queued Replace failed: duplicate name remaining in next-manifest map: "+ 
-                                                                pendingTypeName
-                                                            )
-                                                        };
-                                                        idPrefix
-                                                    },
-                                                    Add{_,_,idPrefix} => idPrefix,
-                                                    _ => error( "unreachable")
-                                                };
-                                                REQT("    -- @each manifest entry: next-manifest's idPrefix must match the queued change");
-                                                assert(nextIdPrefix == ME_idPrefix,
-                                                    "idPrefix mismatch with next-manifest's dgDataPolicy"
-                                                )
+                                            // traverses to next state for the reducer:
+                                            pdChange.action.switch {
+                                                Add => {
+                                                    ( prevManifestRemainder, nextCMEs.tail )
+                                                },
+                                                _ => { // Remove, Replace => {
+                                                    ( prevManifestRemainder.delete(pendingTypeName), nextCMEs.tail )
+                                                }
                                             }
-                                        }; // void assertions; all needed checks are done ^^^^
+                                        }, // reducer
+                                        previousManifest, // init1
+                                        nextManifest // init2
+                                    );
+                                    nextManifestRemainder == prevManifestRemainder
+                                } // spendDgt
+                            };
 
-                                        // traverses to next state for the reducer:
-                                        pdChange.action.switch {
-                                            Add => {
-                                                ( prevManifestRemainder, nextCMEs.tail )
-                                            },
-                                            _ => { // Remove, Replace => {
-                                                ( prevManifestRemainder.delete(pendingTypeName), nextCMEs.tail )
-                                            }
-                                        }
-                                    }, // reducer
-                                    previousManifest, // init1
-                                    nextManifest // init2
-                                );
-                                nextManifestRemainder == prevManifestRemainder
-                            } // spendDgt
-                            else if (cctx.nowActingAsMintDgt(required: false)) {
+                            mintDgtCheck = if (!isMintDelegate) {
+                                true
+                            } else if (!cctx.nowActingAsMintDgt(required: false)) {
+                                true
+                            } else {
                                 REQT("... mintDgt: validates that all the removed dgTkns are burned");
                                 
                                 REQT("the txn must have all the expected burns");
@@ -1059,10 +1097,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     "extra burns found in the transaction: \n"+remainingMint.show());
                                 REQT("... -- end of commitPendingChanges");
                                 true
-                            } /* mintDgt */ 
-                            else {
+                            }; /* mintDgt */ 
+
+                            if(!isMintDelegate && !isSpendDelegate) {
                                 error("unreachable? not mintDgt or spendDgt")
-                            }
+                            };
+
+                            mintDgtCheck && spendDgtCheck
                         }, // commitPendingChanges
 
                         updatingManifest{manifestActivity} => {
@@ -1145,10 +1186,12 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 // ... context and using its separate specialization module.
                 // In each of those cases, it follows the same high-level logic, hitting different paths through this file, 
                 // ... while processing different tokens for each zone of authority/responsibility.
-                CreatingDelegatedData{seed, dataTypePurpose} => {
+                CreatingDelegatedData{seed, dataTypePurpose} => if (!isMintDelegate) {
+                    error("CreatingDelegatedData activity is only allowed in the mint delegate")
+                } else {
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+                    assert(cctx.nowActingAsMintDgt(), "<---- fails in there, not here");
                     REQT("context: CreatingDelegatedData");
-                    assert(isMintDelegate && cctx.nowActingAsMintDgt(), "<---- fails in there, not here");
 
                     REQT("  -- ensures the data-controller is invoked with its minting activity for the indicated recId");
                     policyDelegateInput = cctx.
@@ -1203,7 +1246,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         orFail()
 
                     // assert(false, "^^^ does it implement the generic data-controller re-delegation convention? ^^");
-
                 },
                 // This is a Spend delegate activity on the spendDgt-* token, 
                 // ... used within a Capo's SPEND delegate (which code may also govern 
@@ -1218,7 +1260,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 // ... and using its separate specialization module.
                 // In each of those cases, it follows the same high-level logic, hitting different paths through this file, 
                 // ... while processing different tokens for each zone of authority/responsibility.
-                UpdatingDelegatedData{dDataType, recId} => {
+                UpdatingDelegatedData{dDataType, recId} => if (!isSpendDelegate) {
+                    error("UpdatingDelegatedData activity is only allowed in the spend delegate")
+                } else {
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
                     assert(cctx.nowActingAsSpendDgt(), "<---- fails in there, not here");
                     REQT("EXPECTS j6bmfv: all and ONLY DelegatedData datums must be spent with the Capo's spendingDelegatedData activity");
@@ -1284,8 +1328,11 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 },
 
                 // only used in mint/spend Delegate, not the delegated-data policy
-                DeletingDelegatedData {_dataType, recId} => {
+                DeletingDelegatedData {_dataType, recId} => if (!isMintDelegate) {
+                    error("DeletingDelegatedData activity is only allowed in the mint delegate")
+                } else {
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+                    assert(cctx.nowActingAsMintDgt(), "<---- fails in there, not here");
 
                     REQT("this code is triggered by both the mintDgt and spendDgt, with each doing their parts of the job");
                     REQT("the spendDgt allows the spending of the utxo");
@@ -1302,7 +1349,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     TODO("implement the generic data-controller re-delegation convention here");
                     TODO("ensure that the right delegate is consulted with its BurningActivities.*");
 
-                    cctx.nowActingAsMintDgt() &&
                     false
                 },
                 // the following activities are NOT done in the mint/spend delegate,
