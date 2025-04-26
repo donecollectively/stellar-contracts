@@ -313,6 +313,10 @@ export abstract class DelegatedDataContract<
         return {};
     }
 
+    beforeCreate(record: TLike): TLike {
+        return record;
+    }
+
     async txnCreatingRecord<
         TCX extends StellarTxnContext &
             hasCharterRef &
@@ -339,12 +343,12 @@ export abstract class DelegatedDataContract<
         let newRecord: DgDataTypeLike<this> = typedData as any;
 
         const defaults = this.creationDefaultDetails() || {};
-        const fullRecord = {
+        const fullRecord = this.beforeCreate({
             id: textToBytes(uut.toString()),
             type: newType,
             ...defaults,
             ...newRecord,
-        } as DgDataTypeLike<this>;
+        } as DgDataTypeLike<this>);
 
         const newDatum = this.mkDatum.capoStoredData({
             // data: new Map(Object.entries(beforeSave(fullRecord) as any)),
