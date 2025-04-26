@@ -660,8 +660,8 @@ type hasRecId = string | number[] | UutName;
  * @public
  */
 export type DgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> = {
-    activity: isActivity | SeedActivity<any>;
     data: minimalData<TLike>;
+    activity?: isActivity | SeedActivity<any>;
     // beforeSave?(x: DT): DT;
 
     addedUtxoValue?: Value;
