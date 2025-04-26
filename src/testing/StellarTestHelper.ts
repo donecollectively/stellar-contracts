@@ -65,6 +65,10 @@ export const expectTxnError = {
     expectError: true as const,
 } as Partial<SubmitOptions>;
 
+export type TestHelperSubmitOptions = SubmitOptions & {
+    futureDate?: Date;
+};
+
 /**
  * Base class for test-helpers on generic Stellar contracts
  * @remarks
@@ -332,9 +336,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
      */
     async submitTxnWithBlock<TCX extends StellarTxnContext>(
         tcx: TCX | Promise<TCX>,
-        options: SubmitOptions & {
-            futureDate?: Date;
-        } = {}
+        options: TestHelperSubmitOptions = {}
     ): Promise<TCX> {
         const t = await tcx;
         await this.advanceNetworkTimeForTx(t, options.futureDate);
