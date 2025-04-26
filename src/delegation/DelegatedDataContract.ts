@@ -109,7 +109,7 @@ export abstract class DelegatedDataContract<
     get needsGovAuthority() {
         return this._bundle!.requiresGovAuthority;
     }
-    
+
     abstract get recordTypeName(): string;
     abstract get idPrefix(): string;
 
@@ -281,13 +281,23 @@ export abstract class DelegatedDataContract<
             ),
         });
 
+        const effectiveActivity: isActivity | SeedActivity<any> =
+        options.activity ??
+        //@ts-expect-error on a default activity name that SHOULD be there by convention
+            this.activity.MintingActivities.$seeded$CreatingRecord;
+
         const activity: isActivity =
+            effectiveActivity &&
             //@ts-expect-error hitting up the SeedActivity object with a conditional func call
             // ... that might be just an activity object
-            options.activity.mkRedeemer?.(tcx2) ??
-            // ^ this probes for SeedActivity, producing an activity with redeemer.
-            // vv this expects there to be a 'redeemer' attribute on the activity object.
-            options.activity;
+            (effectiveActivity.mkRedeemer?.(tcx2) ?? effectiveActivity);
+        // ^ this probes for SeedActivity, producing an activity with redeemer.
+        if (!activity) {
+            throw new Error(
+                `no activity provided, and the default activity name (this.activity.MintingActivities.$seeded$CreatingRecord) is missing from the type bridge`
+            );
+        }
+        // vv this expects there to be a 'redeemer' attribute on the activity object.
 
         // ... now the transaction has what it needs to trigger the creation policy
         // ... and be approved by it creation policy.
@@ -590,7 +600,9 @@ export abstract class DelegatedDataContract<
                 moreInfo: this.moreInfo(),
                 mkTcx: async () => {
                     const charterData = await this.capo.findCharterData();
-                    console.warn("---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead" );
+                    console.warn(
+                        "---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead"
+                    );
                     return this.capo.mkTxnInstallPolicyDelegate({
                         policyName,
                         idPrefix,
@@ -621,12 +633,16 @@ export class UpdateActivity<
         : never
 > {
     args: ARGS;
+    host: DelegatedDataContract<any, any>;
+    factoryFunc: FactoryFunc;
     constructor(
-        private host: DelegatedDataContract<any, any>,
-        private factoryFunc: updateActivityFunc<any>,
+        host: DelegatedDataContract<any, any>,
+        factoryFunc: FactoryFunc,
         args: ARGS
     ) {
         this.args = args;
+        this.host = host;
+        this.factoryFunc = factoryFunc;
     }
 
     mkRedeemer(recId: hasRecId) {
