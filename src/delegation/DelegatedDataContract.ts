@@ -185,6 +185,26 @@ export abstract class DelegatedDataContract<
      * Returns a record list when no ID is provided, or a single record when an ID is provided.
      */
     async findRecords<
+        THIS extends DelegatedDataContract<any, any>
+    >(this: THIS) : Promise<FoundDatumUtxo<T, TLike>[]>
+    /**
+     * Finds one record of this delegate's type by id
+     * @remarks
+     * Returns a record list when no ID is provided, or a single record when an ID is provided.
+     */
+    async findRecords<
+        THIS extends DelegatedDataContract<any, any>,
+        ID extends undefined | string | UutName | number[]
+    >(
+    this: THIS,
+    options: {
+        id: T;
+        // TODO: support single/predicate/query options by passing them through
+        // single : boolean
+        // predicate: ...
+        // query
+    })  : Promise<FoundDatumUtxo<T, TLike>>
+    async findRecords<
         THIS extends DelegatedDataContract<any, any>,
         ID extends undefined | string | UutName | number[]
     >(
