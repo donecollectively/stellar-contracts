@@ -344,7 +344,7 @@ export class CapoDAppProvider<
 
         if ("headless" == uiPortals) {
             return (
-                <CapoDappProviderContext.Provider value={this.state}>
+                <CapoDappProviderContext.Provider value={this}>
                     {children}
                 </CapoDappProviderContext.Provider>
             );
@@ -429,7 +429,7 @@ export class CapoDAppProvider<
         return (
             <ClientSideOnly
                 children={
-                    <CapoDappProviderContext.Provider value={this.state}>
+                    <CapoDappProviderContext.Provider value={this}>
                         <div>
                             {renderedStatus}
                             {userDetails}
@@ -1801,7 +1801,7 @@ export type UserActionMap<actions extends string> = Record<
  * @public
  */
 export const CapoDappProviderContext =
-    React.createContext<CapoDappProviderState<Capo<any, any>> | null>(null);
+    React.createContext<CapoDAppProvider<any> | null>(null);
 
 export function useCapoDappProvider() {
     const context = React.useContext(CapoDappProviderContext);
