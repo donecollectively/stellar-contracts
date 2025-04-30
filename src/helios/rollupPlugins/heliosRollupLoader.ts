@@ -2,7 +2,7 @@ import { readFileSync } from "fs";
 import path from "path";
 
 import { createFilter } from "rollup-pluginutils";
-import type { LoadResult, ResolveIdResult } from "rollup";
+import type { LoadResult, PluginContext, ResolveIdResult } from "rollup";
 
 /**
  * Rollup loader for Helios source files
@@ -42,7 +42,7 @@ export function heliosRollupLoader(
         map: { mappings: string };
     };
     let esbuildApi;
-    const resolveId = (source, importer, options) => {
+    function resolveId(this: PluginContext, source: string, importer: string | undefined, options: any) {
         // the source is a relative path name
         // the importer is an a fully resolved id of the imported module
         const where = new Error(`here!`).stack;
@@ -58,18 +58,22 @@ export function heliosRollupLoader(
             // );
             return null;
         }
+        this.addWatchFile(source);
+
         return {
-            id: source,
+            id: source,            
         } as ResolveIdResult;
     };
     return {
         name: "helios",
         resolveId, // the resolver hook from above
 
-        load(id): LoadResult {
+        
+        load(this: PluginContext, id: string): LoadResult {
             if (filter(id)) {
                 const relPath = path.relative(".", id);
-
+                this.warn(`.hl watch: ${id}`);
+                this.addWatchFile(id);
                 const content = readFileSync(relPath, "utf-8");
                 // console.warn(
                 //     `heliosLoader: ${relPath}`
@@ -100,7 +104,7 @@ export function heliosRollupLoader(
                     `})\n` +
                     `\nexport default ${moduleName}_hl\n`;
                 return {
-                    code: code,
+                    code: code,                    
                     // id: `${id}‹generated›.ts`,
                     map: { mappings: "" },
                 };

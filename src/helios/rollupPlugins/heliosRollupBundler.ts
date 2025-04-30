@@ -520,6 +520,7 @@ export function heliosRollupBundler(
                 // ->   things are already up-to-date.
                 let SomeBundleClass = state.bundleClassById[id];
 
+                this.warn(`watch: ${id}`);
                 this.addWatchFile(id);
                 if (!SomeBundleClass) {
                     if (pluginOptions.emitBundled) {
@@ -860,6 +861,7 @@ export function heliosRollupBundler(
                 );
             }
 
+            this.warn(`watch2: ${id}`);
             this.addWatchFile(id);
             this.addWatchFile(resolvedDeployConfig.id);
 
