@@ -432,7 +432,7 @@ func validateUutMinting(
         get_policy(mph).
         sort(sortPolicyValuesPredictably);
     expectedValuesSorted.for_each( (tn : ByteArray, i: Int) -> {
-        tnStr = tn.decode_utf8();
+        tnStr = tn.decode_utf8_safe();
         print( "    ℹ️ 🐞 expected: "+ i.show() + "x " + tnStr )
     });
 
@@ -442,7 +442,7 @@ func validateUutMinting(
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
     if (true) {
         actualThisPolicyMintSorted.for_each( (tn : ByteArray, i: Int) -> {
-            tnStr = tn.decode_utf8();
+            tnStr = tn.decode_utf8_safe();  
             print( "    ℹ️ 🐞   actual: " + i.show() + "x " + tnStr )
         });
         print("other policy values minted: \n");
@@ -496,7 +496,7 @@ func validateUutMinting(
                                 Some{actualCount} => actualCount == expectedCount
                             }
                         ) {
-                            tnString = tokenName.decode_utf8();
+                            tnString = tokenName.decode_utf8_safe();
                             error(
                                 "❌❌ validateUutMinting(): wrong mint for "+ otherMph.show() + ":" + tnString
                             )

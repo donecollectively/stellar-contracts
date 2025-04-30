@@ -382,7 +382,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             BURNED
                         );
                     
-                        tnStr : String = dd.tn.decode_utf8();
+                        tnStr : String = dd.tn.decode_utf8_safe();
                         print("checking ReplacingMe on "+purpose + ": "+ tnStr);
                         REQT("needs the charter to be approving the the new mint-delegate");
                         TODO("  ^^^ should queue the new delegate in pendingChanges");
@@ -1066,7 +1066,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                                     _ => {
                                                                         REQT("each pending change must have a name recognized by the manifest");
                                                                         ManifestEntryType::DgDataPolicy{_ME_policyLink, _ME_recPrefix, refCount} = ME_type;
-                                                                        tnStr = tn.decode_utf8();
+                                                                        tnStr = tn.decode_utf8_safe();
                                                                         foldingBurn.get_safe(tn).switch {
                                                                             None => error("queued Remove/Replace failed: no burn, or double-burn: "+ tnStr),
                                                                             Some{burningCount} => {
@@ -1316,8 +1316,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 );
                                 print( " <- ")
                             } else {
-                                recIdStr = recId.decode_utf8();
-                                curSettingsIdStr = curSettingsId.decode_utf8();
+                                recIdStr = recId.decode_utf8_safe();
+                                curSettingsIdStr = curSettingsId.decode_utf8_safe();
                                 print("  -- NOTE: updating "+ recIdStr +", which isn't currentSettings="+curSettingsIdStr)
                             }
                         }

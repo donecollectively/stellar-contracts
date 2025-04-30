@@ -449,7 +449,7 @@ func mustReturnValueToScript(
         print("failed matching value: ");
         print(value.show());
         print("\n");
-        error(" ❌ dgTkn not returned: " + tokenName.decode_utf8())
+        error(" ❌ dgTkn not returned: " + tokenName.decode_utf8_safe())
         // error("the authZor token MUST be returned")
     } else { 
     true

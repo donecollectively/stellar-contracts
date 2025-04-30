@@ -30,7 +30,7 @@ func TODO(task: String) -> () {
 
 func TRACE(id: ByteArray, message: String) -> () {
     // todo: how to prevent the id from being optimized out?
-    print(id.decode_utf8());
+    print(id.decode_utf8_safe());
     print(message)
 }
 
