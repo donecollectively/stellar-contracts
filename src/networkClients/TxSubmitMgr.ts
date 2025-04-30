@@ -6,7 +6,7 @@ import {
     type Tx,
     type TxId,
 } from "@helios-lang/ledger";
-import type { CardanoClient, CardanoTxSubmitter } from "@helios-lang/tx-utils";
+import type { CardanoClient, CardanoTxSubmitter, SubmissionExpiryError, SubmissionUtxoError } from "@helios-lang/tx-utils";
 import {
     mkCancellablePromise,
     type WrappedPromise,
@@ -582,15 +582,23 @@ export class TxSubmitMgr extends StateMachine<
      * tell the difference.  In any case, a truthy response indicates that the
      * tx is not yet submittable.
      */
-    isUnknownUtxoError(problem: Error) {
-        return this.submitter.isUnknownUtxoError(problem);
+    isUnknownUtxoError(problem: Error | SubmissionUtxoError) {
+        //@ts-expect-error - Error doesn't have kind
+        if (problem.kind == "SubmissionUtxoError") {
+            return true;
+        }
+        return false
     }
 
     /**
-     * ?? can the expiry error indicate not-yet-valid?  Or only no-longer-valid??
+     * ?? can the expiry error indicate not-yet-valid?  Or only no-longer-valid??  
      */
-    isExpiryError(problem: Error) {
-        return this.submitter.isSubmissionExpiryError(problem);
+    isExpiryError(problem: Error | SubmissionExpiryError) {
+        //@ts-expect-error - Error doesn't have kind
+        if (problem.kind == "SubmissionExpiryError") {
+            return true;
+        }
+        return false
     }
 
     gradualBackoff(
