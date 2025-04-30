@@ -180,6 +180,7 @@ export {
 export {
     WrappedDgDataContract,
     type WrappedDgDataType,
+    type someDataWrapper,
 } from "./src/delegation/WrappedDgDataContract.js";
 
 export * from "./src/helios/dataBridge/BridgeTypes.js";
