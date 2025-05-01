@@ -2691,6 +2691,14 @@ export abstract class Capo<
         return tcx2;
     }
 
+    /**
+     * Adds an additional txn to the transaction context, committing any pending manifest changes
+     * @remarks
+     *
+     * If the capo manifest has any pending changes, this tx makes them active.
+     * Use this after each queued manifest update
+     * @public
+     */
     async commitPendingChangesIfNeeded(this: SELF, tcx: StellarTxnContext) {
         return tcx.includeAddlTxn("commit pending charter changes", {
             description: `commit pending changes if needed`,
