@@ -1,6 +1,7 @@
 // src/helios/CachedHeliosProgramFS.ts
 import * as lockfile from "proper-lockfile";
 import { readFile, writeFile } from "fs/promises";
+import { existsSync, mkdirSync } from "fs";
 
 // src/helios/CachedHeliosProgram.ts
 import {
@@ -27,8 +28,9 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
   props;
   locks = /* @__PURE__ */ new Map();
   programElements;
+  cacheEntry;
   sources;
-  static id = global?.id || Math.floor(Math.random() * 1e3).toString();
+  static id = globalThis?.id || Math.floor(Math.random() * 1e3).toString();
   id;
   /**
    * Creates a new CachedHeliosProgram.
@@ -89,51 +91,6 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
   static async cacheStore(key, value, raw) {
     throw new Error(redirecToCorrectConstructor);
   }
-  static programFromCacheEntry(fromCache) {
-    const {
-      optimized,
-      optimizedIR,
-      unoptimized,
-      unoptimizedIR,
-      version,
-      optimizedSmap,
-      unoptimizedSmap
-    } = fromCache;
-    if (version !== "PlutusV2")
-      throw new Error(`pv3supportpending`);
-    const o = optimized ? decodeUplcProgramV2FromCbor(optimized, {
-      ir: optimizedIR,
-      sourceMap: optimizedSmap
-    }) : void 0;
-    const u = unoptimized ? decodeUplcProgramV2FromCbor(unoptimized, {
-      ir: unoptimizedIR,
-      sourceMap: unoptimizedSmap
-    }) : void 0;
-    if (o) {
-      if (u) {
-        return o.withAlt(u);
-      }
-      return o;
-    }
-    if (!u) {
-      throw new Error(
-        `\u{1F422}${this.id}: No optimized or unoptimized program in cache entry: ${fromCache}`
-      );
-    }
-    return u;
-  }
-  static serializeCacheEntry(entry) {
-    const { optimized, unoptimized } = entry;
-    return JSON.stringify(
-      {
-        ...entry,
-        ...optimized ? { optimized: bytesToHex(optimized.toCbor()) } : {},
-        ...unoptimized ? { unoptimized: bytesToHex(unoptimized.toCbor()) } : {}
-      },
-      null,
-      2
-    );
-  }
   static async initCacheFromBundle(cacheEntries) {
     for (const [key, value] of Object.entries(cacheEntries)) {
       const found = await this.ifCached(key);
@@ -157,7 +114,7 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
           continue;
         }
         try {
-          this.programFromCacheEntry(value);
+          programFromCacheEntry(value);
         } catch (e) {
           console.log(e.message);
           console.log(
@@ -257,8 +214,7 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
   }
   textOptimizeOptions(options) {
     let optimize = this.optimizeOptions(options);
-    if (false == optimize)
-      return "unoptimized";
+    if (false == optimize) return "unoptimized";
     let o = optimize;
     return this.objectToText(
       // sort the keys in optimize.
@@ -321,7 +277,7 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
    * to access this method.  In the web environment, that import returns a different
    * class with the same interface.
    */
-  async compileCached(optimizeOrOptions) {
+  async compileWithCache(optimizeOrOptions) {
     const options = typeof optimizeOrOptions === "boolean" ? { optimize: optimizeOrOptions } : optimizeOrOptions;
     const optimize = this.optimizeOptions(optimizeOrOptions);
     const programElements = this.programElements = this.gatherProgramElements();
@@ -339,7 +295,10 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
       );
       try {
         const cacheEntry = await this.waitForCaching(cacheKey);
-        return this.programFromCacheEntry(cacheEntry);
+        const program = programFromCacheEntry(cacheEntry);
+        this.cacheEntry = deserializeHeliosCacheEntry(cacheEntry);
+        debugger;
+        return program;
       } catch (e) {
         console.log(
           `\u{1F422}${this.id}: Failed getting cache-awaited program with cacheKey: ${cacheKey}; will compile in-process`
@@ -386,12 +345,13 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
           cacheEntry.optimizedSmap = sourceMap.toJsonSafe();
         }
       }
+      this.cacheEntry = cacheEntry;
       this.storeInCache(cacheKey, cacheEntry);
       return uplcProgram;
     } catch (e) {
       debugger;
       console.log(
-        `\u{1F422}${this.id}: compiler cache: throwing compile error: ${e.message} (not caching)`
+        `\u{1F422}${this.id}: compiler cache: throwing compile error: ${e.message} (not caching) (dbpa)`
       );
       this.releaseLock(cacheKey);
       throw e;
@@ -420,8 +380,10 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
   }
   async getFromCache(cacheKey) {
     const cacheEntry = await this.ifCached(cacheKey);
-    if (cacheEntry)
-      return this.programFromCacheEntry(cacheEntry);
+    if (cacheEntry) {
+      this.cacheEntry = deserializeHeliosCacheEntry(cacheEntry);
+      return programFromCacheEntry(cacheEntry);
+    }
     return void 0;
   }
   get subclass() {
@@ -511,7 +473,7 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
     }
     return this.subclass.cacheStore(
       cacheKey,
-      this.subclass.serializeCacheEntry(value),
+      stringifyCacheEntry(value),
       value
     ).then(() => {
       this.releaseLock(cacheKey);
@@ -531,13 +493,87 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
       throw new Error(`releaseLock: no lock found for ${cacheKey}`);
     }
   }
-  programFromCacheEntry(fromCache) {
-    return this.subclass.programFromCacheEntry(fromCache);
-  }
 };
+function stringifyCacheEntry(entry) {
+  return JSON.stringify(
+    serializeCacheEntry(entry),
+    null,
+    2
+  );
+}
+function serializeCacheEntry(entry) {
+  const { optimized, unoptimized } = entry;
+  return {
+    ...entry,
+    ...optimized ? { optimized: bytesToHex(optimized.toCbor()) } : {},
+    ...unoptimized ? { unoptimized: bytesToHex(unoptimized.toCbor()) } : {}
+  };
+}
+function programFromCacheEntry(fromCache) {
+  const {
+    optimized,
+    optimizedIR,
+    unoptimized,
+    unoptimizedIR,
+    version,
+    optimizedSmap,
+    unoptimizedSmap,
+    // optimizeOptions,
+    // createdBy,
+    programElements
+  } = fromCache;
+  if (version !== "PlutusV2") throw new Error(`pv3supportpending`);
+  const o = optimized ? decodeUplcProgramV2FromCbor(optimized, {
+    ir: optimizedIR,
+    sourceMap: optimizedSmap
+  }) : void 0;
+  const u = unoptimized ? decodeUplcProgramV2FromCbor(unoptimized, {
+    ir: unoptimizedIR,
+    sourceMap: unoptimizedSmap
+  }) : void 0;
+  if (o) {
+    if (u) {
+      return o.withAlt(u);
+    }
+    return o;
+  }
+  if (!u) {
+    throw new Error(
+      `\u{1F422} No optimized or unoptimized program in cache entry: ${fromCache}`
+    );
+  }
+  return u;
+}
+function deserializeHeliosCacheEntry(entry) {
+  const {
+    optimized,
+    optimizedIR,
+    unoptimized,
+    unoptimizedIR,
+    version,
+    optimizedSmap,
+    unoptimizedSmap,
+    optimizeOptions,
+    createdBy,
+    programElements
+  } = entry;
+  return {
+    optimized: optimized ? decodeUplcProgramV2FromCbor(optimized) : void 0,
+    unoptimized: unoptimized ? decodeUplcProgramV2FromCbor(unoptimized) : void 0,
+    optimizedSmap: optimizedSmap || void 0,
+    //XXX it's already json-safe. deserializeUplcSourceMap(optimizedSmap).toJsonSafe() : undefined,
+    unoptimizedSmap: unoptimizedSmap || void 0,
+    //XXX it's already json-safe. deserializeUplcSourceMap(unoptimizedSmap).toJsonSafe(): undefined,
+    optimizeOptions,
+    version,
+    createdBy,
+    programElements,
+    optimizedIR,
+    unoptimizedIR
+  };
+}
 
 // src/helios/CachedHeliosProgramFS.ts
-import { existsSync, mkdirSync } from "fs";
 var cacheStore = ".hltemp/cache";
 var CachedHeliosProgramFS = class extends CachedHeliosProgram {
   constructor(mainSource, props) {
@@ -548,6 +584,9 @@ var CachedHeliosProgramFS = class extends CachedHeliosProgram {
       mkdirSync(cacheStore, { recursive: true });
     }
     super(mainSource, props);
+  }
+  static checkFile(srcFilename) {
+    return existsSync(srcFilename);
   }
   static async ifCached(cacheKey) {
     if (existsSync(`${cacheStore}/${cacheKey}`)) {
@@ -625,7 +664,6 @@ var CachedHeliosProgramFS = class extends CachedHeliosProgram {
       console.log(
         `\u{1F422}${this.id}: compiler cache: lock acquired for ${cacheKey}`
       );
-      debugger;
       return {
         lock: null,
         cacheKey,

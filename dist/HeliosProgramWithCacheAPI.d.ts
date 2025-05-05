@@ -1,8 +1,9 @@
-import type { CompileOptions } from '@helios-lang/compiler';
+import { CompileOptions } from '@helios-lang/compiler';
 import { Program } from '@helios-lang/compiler';
 import { ProgramProps } from '@helios-lang/compiler';
 import type { Source } from '@helios-lang/compiler-utils';
-import type { UplcProgramV2 } from '@helios-lang/uplc';
+import { UplcProgramV2 } from '@helios-lang/uplc';
+import { UplcSourceMapJsonSafe } from '@helios-lang/uplc';
 
 /**
  * @public
@@ -10,6 +11,7 @@ import type { UplcProgramV2 } from '@helios-lang/uplc';
 export declare type anyUplcProgram = UplcProgramV2;
 
 declare type CacheableProgramProps = ProgramProps & {
+    isTestnet: boolean;
     /**
      * The cache key for the program. Defaults to the hash of the source code.
      * If there is no source code, the cacheKey is required
@@ -44,6 +46,22 @@ export declare type CompileOptionsForCachedHeliosProgram = CompileOptions & {
 };
 
 /**
+ * @internal
+ */
+declare type HeliosProgramCacheEntry = {
+    version: "PlutusV2" | "PlutusV3";
+    createdBy: string;
+    programElements: Record<string, string | Object>;
+    optimizeOptions: OptimizeOptions;
+    optimized?: UplcProgramV2;
+    unoptimized?: UplcProgramV2;
+    optimizedIR?: string;
+    unoptimizedIR?: string;
+    optimizedSmap?: UplcSourceMapJsonSafe;
+    unoptimizedSmap?: UplcSourceMapJsonSafe;
+};
+
+/**
  * Provides an interface for building Helios programs that may be cached
  * @remarks
  * When building through this interface in the browser, the async API is the
@@ -57,8 +75,12 @@ export declare type CompileOptionsForCachedHeliosProgram = CompileOptions & {
  * @public
  */
 export declare class HeliosProgramWithCacheAPI extends Program {
-    constructor(mainSource: string | Source, props?: CacheableProgramProps);
+    cacheEntry: HeliosProgramCacheEntry | undefined;
+    constructor(mainSource: string | Source, props: CacheableProgramProps);
+    static checkFile(srcFilename: string): boolean | null;
     compileWithCache(optimizeOrOptions: boolean | CompileOptionsForCachedHeliosProgram): Promise<anyUplcProgram>;
 }
+
+declare type OptimizeOptions = false | Omit<Exclude<CompileOptions["optimize"], boolean | undefined>, "iterSpecificOptions" | "commonSubExprCount">;
 
 export { }

@@ -1,13 +1,18 @@
 import { makeValue, makeTxOutput } from '@helios-lang/ledger';
 import { makeIntData } from '@helios-lang/uplc';
-import { b as ContractBasedDelegate, R as SeedActivity, u as uplcDataSerializer, O as betterJsonSerializer, e as dumpAny } from './ContractBasedDelegate2.mjs';
+import { C as ContractBasedDelegate } from './ContractBasedDelegate2.mjs';
+import { u as uplcDataSerializer, E as betterJsonSerializer, d as dumpAny } from './HeliosScriptBundle.mjs';
 import { encodeUtf8 } from '@helios-lang/codec-utils';
+import '@helios-lang/contract-utils';
+import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
+import '@helios-lang/compiler';
 import '@helios-lang/crypto';
 import '@helios-lang/tx-utils';
-import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
-import '@helios-lang/contract-utils';
+import 'nanoid';
 
 class DelegatedDataContract extends ContractBasedDelegate {
+  static isDgDataPolicy = true;
+  static isMintDelegate = false;
   usesWrappedData;
   dgDatumHelper = this.dataBridgeClass?.prototype.DelegateDatum;
   /**
@@ -16,8 +21,11 @@ class DelegatedDataContract extends ContractBasedDelegate {
    * @remarks
    * This is a convenience for the controller, and should be used along with
    * the appropriate on-chain policy to require the gov token's presence.
+   * @public
    */
-  needsGovAuthority = false;
+  get needsGovAuthority() {
+    return this._bundle.requiresGovAuthority;
+  }
   /**
    * Provides a customized label for the delegate, used in place of
    * a generic script name ("BasicDelegate").  DelegatedDataContract
@@ -46,7 +54,7 @@ class DelegatedDataContract extends ContractBasedDelegate {
         `${this.constructor.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.
 First, ensure you have derived a subclass for the controller, with a scriptBundle() method.
 
-That method should \`return new YourConcreteBundle()\`
+That method should \`return YourConcreteBundle.create()\`
 
   ... where YourConcreteBundle is a subclass of CapoDelegateBundle that you've created.
 
@@ -62,7 +70,11 @@ A concrete bundle class should be defined in \`${this.delegateName}.concrete.hlb
       );
     }
     throw new Error(
-      `${this.constructor.name}: missing required implementation of abstractBundleClass()
+      `${this.constructor.name}: missing required implementation of scriptBundle()
+
+That method should \`return YourScriptBundle.create()\`
+
+  ... where YourScriptBundle is a subclass of CapoDelegateBundle that you've created.
 
 Defined in a \`*.hlb.ts\` file, it should have at minimum:
     import {YourAppCapo} from "./YourAppCapo.js";
@@ -70,7 +82,7 @@ Defined in a \`*.hlb.ts\` file, it should have at minimum:
     import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";
 
     export default class SomeDelegateBundle extends CapoHeliosBundle {
-        get specializedDelegateModule() { return SomeSpecializedDelegate; }
+        specializedDelegateModule = SomeSpecializedDelegate;
     }
 
 We'll generate types in a .typeInfo.ts file, based on the types in your Helios sources,
@@ -79,11 +91,6 @@ When your delegated-data controller is used within your Capo, your bundle will
 have access via import {...} to any helios modules provided by that Capo's .hlb.ts. `
     );
   }
-  /**
-   * Finds records of this delegate's type, optionally by ID.
-   * @remarks
-   * Returns a record list when no ID is provided, or a single record when an ID is provided.
-   */
   async findRecords(options = {}) {
     const result = await this.capo.findDelegatedDataUtxos({
       type: this.recordTypeName
@@ -133,7 +140,16 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
         { dataType }
       )
     });
-    const activity = options.activity instanceof SeedActivity ? options.activity.mkRedeemer(tcx2) : options.activity;
+    const effectiveActivity = options.activity ?? //@ts-expect-error on a default activity name that SHOULD be there by convention
+    this.activity.MintingActivities.$seeded$CreatingRecord;
+    const activity = effectiveActivity && //@ts-expect-error hitting up the SeedActivity object with a conditional func call
+    // ... that might be just an activity object
+    (effectiveActivity.mkRedeemer?.(tcx2) ?? effectiveActivity);
+    if (!activity) {
+      throw new Error(
+        `no activity provided, and the default activity name (this.activity.MintingActivities.$seeded$CreatingRecord) is missing from the type bridge`
+      );
+    }
     return this.txnCreatingRecord(tcx2, {
       ...options,
       activity
@@ -141,6 +157,9 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
   }
   creationDefaultDetails() {
     return {};
+  }
+  beforeCreate(record) {
+    return record;
   }
   async txnCreatingRecord(tcx, options) {
     const newType = this.recordTypeName;
@@ -154,12 +173,12 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
     const uut = tcx.state.uuts[idPrefix];
     let newRecord = typedData;
     const defaults = this.creationDefaultDetails() || {};
-    const fullRecord = {
+    const fullRecord = this.beforeCreate({
       id: encodeUtf8(uut.toString()),
       type: newType,
       ...defaults,
       ...newRecord
-    };
+    });
     const newDatum = this.mkDatum.capoStoredData({
       // data: new Map(Object.entries(beforeSave(fullRecord) as any)),
       data: fullRecord,
@@ -276,7 +295,9 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
       `\u{1F3D2} updating ${recType} ->`,
       uplcDataSerializer(
         recType,
-        JSON.parse(JSON.stringify(updatedRecord, betterJsonSerializer, 2)),
+        JSON.parse(
+          JSON.stringify(updatedRecord, betterJsonSerializer, 2)
+        ),
         1
       )
     );
@@ -313,14 +334,70 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
       )
     );
   }
+  moreInfo() {
+    return `This delegate helps manage the on-chain delegated data store for ${this.idPrefix}-* records with type=${this.recordTypeName}`;
+  }
+  /**
+   * Generates any needed transactions for updating the Capo manifest
+   * to install or (todo: support for update) the policy for this delegate.
+   * @remarks
+   * The default implementation checks for the presence of the delegate policy
+   * in the Capo's manifest, and if not found, creates a transaction to install it.
+   *
+   * The data-controller class's recordTypeName and idPrefix are used to
+   * initialize the Capo's registry of data-controllers.  You may also implement
+   * a moreInfo() method to provide more on-screen context about the
+   * data-controller's role for administrators and/or end-users; the moreInfo
+   * will be displayed in the Capo's on-screen policy-management (administrative)
+   * interface, and you may also display it elsewhere in your application.
+   *
+   * To add any other transactions that may be needed for the delegate to operate
+   * effectively, override this method, call `super(...args)`, and then add your
+   * additional transactions using tcx.includeAddlTxn(...).  In that case, be sure to
+   * perform any needed queries for ***fresh state of the on-chain data***, such as
+   * for settings or the Capo's fresh charter data, INSIDE your mkTcx() function.
+   */
+  async setupCapoPolicy(tcx, policyName, options) {
+    const { charterData, capoUtxos } = options;
+    const { recordTypeName, idPrefix } = this;
+    if (this.capo.featureEnabled(policyName)) {
+      const existing = await this.capo.getDgDataController(
+        // recordTypeName,  // xxx
+        policyName,
+        // yes
+        {
+          charterData,
+          optional: true
+        }
+      );
+      const action = existing ? "update" : "create";
+      tcx.includeAddlTxn(`${action} ${policyName} delegate`, {
+        description: `${action} on-chain policy for ${idPrefix}-* records of type ${recordTypeName}`,
+        moreInfo: this.moreInfo(),
+        mkTcx: async () => {
+          const charterData2 = await this.capo.findCharterData();
+          console.warn(
+            "---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead"
+          );
+          return this.capo.mkTxnInstallPolicyDelegate({
+            policyName,
+            idPrefix,
+            charterData: charterData2
+          });
+        }
+      });
+    }
+  }
 }
 class UpdateActivity {
+  args;
+  host;
+  factoryFunc;
   constructor(host, factoryFunc, args) {
+    this.args = args;
     this.host = host;
     this.factoryFunc = factoryFunc;
-    this.args = args;
   }
-  args;
   mkRedeemer(recId) {
     return this.factoryFunc.call(this.host, recId, ...this.args);
   }

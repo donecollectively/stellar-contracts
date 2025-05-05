@@ -52,6 +52,8 @@ import type { SimpleWallet } from '@helios-lang/tx-utils';
 import type { Site } from '@helios-lang/compiler-utils';
 import { Source } from '@helios-lang/compiler-utils';
 import { StellarDelegate as StellarDelegate_2 } from './delegation/StellarDelegate.js';
+import type { SubmissionExpiryError } from '@helios-lang/tx-utils';
+import type { SubmissionUtxoError } from '@helios-lang/tx-utils';
 import { encodeUtf8 as textToBytes } from '@helios-lang/codec-utils';
 import { tokenPredicate as tokenPredicate_2 } from '../UtxoHelper.js';
 import { TransactionSubmissionClient } from '@cardano-ogmios/client/dist/TransactionSubmission/Client.js';
@@ -394,7 +396,6 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     //
     // (undocumented)
     get charterTokenPredicate(): tokenPredicate<any>;
-    // (undocumented)
     commitPendingChangesIfNeeded(this: SELF, tcx: StellarTxnContext): Promise<hasAddlTxns<StellarTxnContext<anyState>, anyState>>;
     // (undocumented)
     connectDelegateWithOnchainRDLink<RN extends string & keyof SELF["_delegateRoles"], DT extends StellarDelegate = ContractBasedDelegate>(role: RN, delegateLink: RelativeDelegateLinkLike): Promise<DT>;
@@ -441,12 +442,10 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     //
     // (undocumented)
     findCapoUtxos(option?: Required<Pick<UtxoSearchScope, "dumpDetail">>): Promise<TxInput[]>;
-    // (undocumented)
     findCharterData(currentCharterUtxo?: TxInput, options?: {
         optional: false;
         capoUtxos?: TxInput[];
     }): Promise<CharterData>;
-    // (undocumented)
     findCharterData(currentCharterUtxo: TxInput | undefined, options: {
         optional: true;
         capoUtxos?: TxInput[];
@@ -652,7 +651,7 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     uutsValue(uutName: UutName | number[]): Value;
     // (undocumented)
     verifyConfigs(): Promise<any>;
-    verifyCoreDelegates(): Promise<void>;
+    verifyCoreDelegates(): Promise<[BasicMintDelegate, AuthorityPolicy, ContractBasedDelegate] | undefined>;
 }
 
 // @public
@@ -1159,15 +1158,18 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     // (undocumented)
     get abstractBundleClass(): undefined | typeof CapoDelegateBundle;
     // (undocumented)
+    beforeCreate(record: TLike): TLike;
+    // (undocumented)
     creationDefaultDetails(): Partial<TLike>;
     get delegateName(): string;
     // (undocumented)
     dgDatumHelper: any;
     // (undocumented)
     abstract exampleData(): minimalData<TLike>;
-    findRecords<THIS extends DelegatedDataContract<any, any>, ID extends undefined | string | UutName | number[]>(this: THIS, options?: {
-        id?: T;
-    }): Promise<ID extends undefined ? FoundDatumUtxo<T, TLike>[] : FoundDatumUtxo<T, TLike>>;
+    findRecords<THIS extends DelegatedDataContract<any, any>>(this: THIS): Promise<FoundDatumUtxo<T, TLike>[]>;
+    findRecords<THIS extends DelegatedDataContract<any, any>, ID extends undefined | string | UutName | number[]>(this: THIS, options: {
+        id: T;
+    }): Promise<FoundDatumUtxo<T, TLike>>;
     // (undocumented)
     getReturnAddress(): Address;
     // (undocumented)
@@ -1211,7 +1213,7 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     usesSeedActivity<SA extends seedActivityFunc<any, any>>(a: SA, seedPlaceholder: "...seed", ...args: SeedActivityArg<SA>): void;
     // Warning: (ae-forgotten-export) The symbol "UpdateActivityArgs" needs to be exported by the entry point index.d.ts
     // Warning: (ae-forgotten-export) The symbol "UpdateActivity" needs to be exported by the entry point index.d.ts
-    usesUpdateActivity<UA extends updateActivityFunc<any>>(a: UA, _idPlaceholder: "...recId", ...args: UpdateActivityArgs<UA>): UpdateActivity<updateActivityFunc<any>, UpdateActivityArgs<UA>>;
+    usesUpdateActivity<UA extends updateActivityFunc<any>>(a: UA, _idPlaceholder: "...recId", ...args: UpdateActivityArgs<UA>): UpdateActivity<UA, UpdateActivityArgs<UA>>;
     // (undocumented)
     usesWrappedData?: boolean;
 }
@@ -1255,8 +1257,8 @@ export type DgDataCreationAttrs<T extends DelegatedDataContract<any, any>> = Omi
 
 // @public (undocumented)
 export type DgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> = {
-    activity: isActivity | SeedActivity<any>;
     data: minimalData<TLike>;
+    activity?: isActivity | SeedActivity<any>;
     addedUtxoValue?: Value;
 };
 
@@ -1512,6 +1514,9 @@ export type hasSpendDelegate = StellarTxnContext<anyState & {
 // @public
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<hasAllUuts<uutEntries>>;
 
+// @public (undocumented)
+export type HeliosOptimizeOptions = Exclude<Pick<Exclude<Parameters<Program["compile"]>[0], undefined | boolean>, "optimize">["optimize"], undefined | boolean>;
+
 // @public
 export abstract class HeliosScriptBundle {
     constructor(setupDetails?: StellarBundleSetupDetails<any>);
@@ -1600,7 +1605,7 @@ export abstract class HeliosScriptBundle {
     get moduleName(): string;
     get modules(): Source[];
     static needsCapoConfiguration: boolean;
-    get optimize(): boolean;
+    get optimize(): HeliosOptimizeOptions | boolean | undefined;
     // (undocumented)
     get params(): any;
     // (undocumented)
@@ -1825,7 +1830,7 @@ export function mkValuesEntry(tokenName: string | number[], count: bigint): valu
 // Warning: (ae-forgotten-export) The symbol "resolvedOrBetter" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export type MultiTxnCallback<T extends undefined | StellarTxnContext<any> = StellarTxnContext<any>, TXINFO extends TxDescription<any, resolvedOrBetter, any> = TxDescription<any, "resolved">> = ((tx: TXINFO) => void) | ((tx: TXINFO) => Promise<void>) | ((tx: TXINFO) => T | false) | ((tx: TXINFO) => Promise<T | false>);
+export type MultiTxnCallback<T extends undefined | StellarTxnContext<any> = StellarTxnContext<any>, TXINFO extends TxDescription<any, resolvedOrBetter, any> = TxDescription<any, "resolved">> = ((txd: TXINFO) => void) | ((txd: TXINFO) => Promise<void>) | ((txd: TXINFO) => T | false) | ((txd: TXINFO) => Promise<T | false>);
 
 // @public (undocumented)
 export type mustFindActivityType<T extends canHaveDataBridge, CBT extends someContractBridgeType = mustFindConcreteContractBridgeType<T>> = CBT["activity"];
@@ -2065,7 +2070,7 @@ export type SetupInfo = {
     actorContext: ActorContext;
     isTest?: boolean;
     uh?: UtxoHelper;
-    optimize?: boolean;
+    optimize?: boolean | HeliosOptimizeOptions;
     uxtoDisplayCache?: UtxoDisplayCache;
 };
 
@@ -2091,6 +2096,12 @@ export type someContractBridgeClass = AbstractNew<ContractDataBridge>;
 
 // @public (undocumented)
 export type someContractBridgeType = ContractDataBridge;
+
+// @public (undocumented)
+export interface someDataWrapper<wrappedType extends AnyDataTemplate<any, any>> {
+    // (undocumented)
+    unwrapData(): wrappedType;
+}
 
 // Warning: (ae-forgotten-export) The symbol "DelegateActivityHelper" needs to be exported by the entry point index.d.ts
 //
@@ -2792,10 +2803,10 @@ export class TxSubmitMgr extends StateMachine<TxSubmitterStates, TxSubmitterTran
     get initialState(): TxSubmitterStates;
     // (undocumented)
     inputUtxosAreResolvable(): Promise<boolean>;
-    isExpiryError(problem: Error): boolean;
+    isExpiryError(problem: Error | SubmissionExpiryError): boolean;
     // (undocumented)
     isTxExpired(tx: Tx): boolean;
-    isUnknownUtxoError(problem: Error): boolean;
+    isUnknownUtxoError(problem: Error | SubmissionUtxoError): boolean;
     // (undocumented)
     name: string;
     // (undocumented)
@@ -3119,8 +3130,6 @@ export abstract class WalletSigningStrategy {
     wallet: Wallet;
 }
 
-// Warning: (ae-forgotten-export) The symbol "someDataWrapper" needs to be exported by the entry point index.d.ts
-//
 // @public
 export abstract class WrappedDgDataContract<T extends AnyDataTemplate<any, any>, TLike extends AnyDataTemplate<any, any>, WRAPPER extends someDataWrapper<TLike>> extends DelegatedDataContract<T, TLike> {
     abstract mkDataWrapper(d: TLike): WRAPPER;
@@ -3149,9 +3158,9 @@ export type WrappedPromise<T> = {
 
 // Warnings were encountered during analysis:
 //
-// src/Capo.ts:1183:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
+// src/Capo.ts:1177:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
-// src/StellarContract.ts:351:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
+// src/StellarContract.ts:356:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
 // src/StellarTxnContext.ts:91:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:161:7 - (ae-forgotten-export) The symbol "DelegateRoleHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:165:7 - (ae-forgotten-export) The symbol "ManifestActivityHelper_2" needs to be exported by the entry point index.d.ts

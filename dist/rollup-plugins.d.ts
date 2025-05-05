@@ -2,21 +2,7 @@ import { LoadResult } from 'rollup';
 import { PluginContext } from 'rollup';
 import { ResolvedId } from 'rollup';
 import type { ResolveIdResult } from 'rollup';
-
-/**
- * Rollup loader for Helios source files
- * @public
- **/
-export declare function heliosRollupLoader(opts?: {
-    include?: string;
-    exclude?: string[];
-    project?: string;
-    resolve?: string | false | null;
-}): {
-    name: string;
-    resolveId: (source: any, importer: any, options: any) => ResolveIdResult;
-    load(id: any): LoadResult;
-};
+import { SourceMap } from 'magic-string';
 
 /**
  * Rollup loader for generating typescript types from Helios source files
@@ -32,11 +18,14 @@ export declare function heliosRollupLoader(opts?: {
  *   project to generate updated types if needed and available.
  * @public
  **/
-export declare function heliosRollupTypeGen(opts?: {
+export declare function heliosRollupBundler(opts?: {
     include?: string;
     exclude?: string[];
     project?: string;
+    vite?: boolean;
+    emitBundled?: boolean;
     compile?: boolean;
+    exportPrefix?: string;
 }): {
     name: string;
     buildEnd: {
@@ -45,12 +34,34 @@ export declare function heliosRollupTypeGen(opts?: {
     };
     resolveId: {
         order: string;
-        handler(this: PluginContext, source: any, importer: any, options: any): Promise<ResolvedId | undefined>;
+        handler(this: PluginContext, source: any, importer: any, options: any): Promise<string | ResolvedId | null>;
     };
     load: {
         order: string;
         handler: (this: PluginContext, id: string) => Promise<LoadResult>;
     };
+    transform: {
+        order: string;
+        handler: (this: PluginContext, code: string, id: string) => Promise<{
+            code: string;
+            map: SourceMap;
+        } | null | undefined> | null | undefined;
+    };
+};
+
+/**
+ * Rollup loader for Helios source files
+ * @public
+ **/
+export declare function heliosRollupLoader(opts?: {
+    include?: string;
+    exclude?: string[];
+    project?: string;
+    resolve?: string | false | null;
+}): {
+    name: string;
+    resolveId: (this: PluginContext, source: string, importer: string | undefined, options: any) => ResolveIdResult;
+    load(this: PluginContext, id: string): LoadResult;
 };
 
 export { }
