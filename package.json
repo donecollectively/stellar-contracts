@@ -1,6 +1,6 @@
 {
     "name": "@donecollectively/stellar-contracts",
-    "version": "0.9.0alpha4",
+    "version": "0.9.0beta1",
     "description": "Smart contract fusion for Cardano",
     "license": "SEE LICENSE IN LICENSE.TXT",
     "main": "./dist/stellar-contracts.mjs",
@@ -55,16 +55,6 @@
     },
     "author": "Done Collectively LCA",
     "dependencies": {
-        "@cardano-ogmios/client": "^6.11.2",
-        "@helios-lang/codec-utils": "link:../helios/codec-utils",
-        "@helios-lang/compiler": "link:../helios/compiler",
-        "@helios-lang/compiler-utils": "link:../helios/compiler-utils",
-        "@helios-lang/contract-utils": "link:../helios/contract-utils",
-        "@helios-lang/crypto": "link:../helios/crypto",
-        "@helios-lang/ledger": "link:../helios/ledger",
-        "@helios-lang/tx-utils": "link:../helios/tx-utils",
-        "@helios-lang/type-utils": "link:../helios/type-utils",
-        "@helios-lang/uplc": "link:../helios/uplc",
         "ansi-colors": "^4.1.3",
         "clsx": "^2.1.1",
         "eventemitter3": "^5.0.1",
@@ -72,6 +62,16 @@
         "proper-lockfile": "^4.1.2"
     },
     "peerDependencies": {
+        "@cardano-ogmios/client": "^6.11.2",
+        "@helios-lang/codec-utils": "~0.3.4",
+        "@helios-lang/compiler": "~0.17.19",
+        "@helios-lang/compiler-utils": "~0.5.15",
+        "@helios-lang/contract-utils": "~0.3.21",
+        "@helios-lang/crypto": "~0.2.3",
+        "@helios-lang/ledger": "~0.7.7",
+        "@helios-lang/tx-utils": "~0.6.7",
+        "@helios-lang/type-utils": "~0.3.0",
+        "@helios-lang/uplc": "~0.7.15",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "rollup-plugin-esbuild": "^6.1.0"
