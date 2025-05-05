@@ -7,6 +7,8 @@ License text copyright (c) 2020 MariaDB Corporation Ab, All Rights Reserved.
 
 The "Cardano Community Source License" is a trademark of Done Collectively LCA
 
+## PRE-RELEASE Parameters for feedback prior to first release
+
 Parameters
 
 Licensor:             Done Collectively LCA
@@ -50,7 +52,7 @@ Additional Use Grant:
           - You do not provide the software or application for remuneration, or in 
             connection with consulting for remuneration.
 
-Change Date:          2029-05-01
+Change Date:          2029-05-15
 
 Change License:       Version 2 or later of the GNU General Public License as
                       published by the Free Software Foundation.
