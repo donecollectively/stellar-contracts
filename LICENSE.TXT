@@ -2,10 +2,10 @@
 This software is licensed under the Cardano Community Source License, 
 which is identical in content to the "Business Source License".
 
-The "Cardano Community Source License" is a trademark of Done Collectively LCA
-
 License text copyright (c) 2020 MariaDB Corporation Ab, All Rights Reserved.
 “Business Source License” is a trademark of MariaDB Corporation Ab.
+
+The "Cardano Community Source License" is a trademark of Done Collectively LCA
 
 Parameters
 
@@ -16,31 +16,39 @@ Licensed Work:        Stellar Contracts
 
 Additional Use Grant: 
 
+        The Cardano Community Source license is designed to address the naturally 
+        extractive dynamics of Open Source as it has been previously defined, enabling
+        sustainabie functional and economic dynamics for projects while preserving the 
+        essential experience of source-code openness, transparency, and freedom to modify
+        and repair the software.  The Licensed Work's entire source code is available.
+        This paragraph, without augmenting or limiting your rights under the license, 
+        provides context for these conditions of non-commercial use.
+ 
         You may refer to this license using the trademark "Cardano Community 
         Source License", as long as you comply with the Covenants of Licensor
-        found in the license text.
+        found in the license text.  
 
-        You may use the Licensed Work without commercial licensing when all of
-        the following conditions are met:
+        You may use the Licensed Work without separate commercial licensing when 
+        all of the following conditions are met:
 
           - The application in which the software is used creates only transactions 
-            not collecting or distributing any commercial fees of their own -OR-
-            they do not mediate a monthly aggregate value-transfer of more 
-            than 3000 ADA-equivalent or 3000 USD-equivalent in assets (without
-            regard to the demonination of assets transferred) 
+            not collecting or distributing any commercial fees of its own.
+            
+         - The application or software mediates a monthly aggregate value-transfer 
+            of less than 3000 ADA or 3000 USD or equivalent market-value in other 
+            asset-denomination.
 
-          - The entities creating and/or operating the application have an annual 
-            operating budget of less than USD$5 Million or other-asset equivalent
+          - The entities creating and/or operating the software or application 
+            have an annual operating budget of less than USD$5 Million or 
+            other-asset equivalent.  "Annual operating budget" includes revenue, 
+            capital contributions from investors; grant money issued, received, or 
+            mediated; loans; and other forms of revenue or capital used for their 
+            operations.
 
-          - All customers using the application have an annual operating
-            budget of less than USD$5 Million or other-asset equivalent
+          - You do not provide the software or application as a service.
 
-          - You do not provide software as a service
-
-          - You do not provide the software for remuneration
-
-        If any of these conditions are not met, you must receive a
-        commercial license, or you may not use the software.
+          - You do not provide the software or application for remuneration, or in 
+            connection with consulting for remuneration.
 
 Change Date:          2029-05-01
 
@@ -54,18 +62,8 @@ please review the FAQ urls from MariaDB below, and also visit:
 
 Notice
 
-In order to conserve value within the Cardano Community and, particularly,
-for contributors to this project itself, the Business Source License (this 
-document, or the “License”) does not directly meet the criteria of the Open 
-Source Definition [https://opensource.org/osd]. 
-
-The Cardano Community Source license is designed to address the naturally
-extractive dynamics of Open Source, and is aligned in spirit with the
-Post Open [https://postopen.org/about-post-open] movement from Bruce Perens, 
-also the creator of the Open Source Definition. 
-
-The Licensed Work's entire source code is available, and the
-current version of the code will automatically become available later,
+The Business Source License (this document, or the “License”) is not an Open 
+Source license. However, the Licensed Work will eventually be made available 
 under an Open Source License, as stated in this License.
 
 For more information on the use of the Business Source License for MariaDB
