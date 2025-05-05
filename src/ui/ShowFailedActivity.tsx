@@ -1,6 +1,10 @@
 "use client";
 import * as React from "react";
 
+/**
+ * 
+ * @internal
+ */
 export function ShowFailedActivity(
     {
         failed, failure: { message, code, data, ...otherFailInfo } = {} as any, ...results

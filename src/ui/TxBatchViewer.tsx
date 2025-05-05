@@ -21,11 +21,16 @@ import {
     DashHighlightItem,
 } from "./DashboardTemplate.js"
 
-// Shows a master/detail view of the tx batch
-// includes a list of txns on the left
-// shows the details of the selected txn on the right
-// shows a summary of the batch status at the top
-
+/**
+ * Shows a master/detail view of the tx batch
+ * @remarks
+ * Includes a list of txns on the left
+ * 
+ * Shows the details of the selected txn on the right
+ * 
+ * Shows a summary of the batch status at the top
+ * @public
+ */
 export function TxBatchViewer({
     batch,
     initialId,

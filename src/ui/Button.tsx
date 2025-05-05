@@ -52,6 +52,13 @@ interface propsType {
     href?: string;
 }
 
+/**
+ * A button component
+ * @remarks
+ * Expects tailwind.
+ * 
+ * @public
+ */
 export const Button = function (props: SpecialButtonProps) {
     let {
         variant = "primary",

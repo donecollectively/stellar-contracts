@@ -48,6 +48,10 @@ type OptimizeOptions =
           Exclude<CompileOptions["optimize"], boolean | undefined>,
           "iterSpecificOptions" | "commonSubExprCount"
       >;
+
+/**
+ * @internal
+ */
 export type HeliosProgramCacheEntry = {
     version: "PlutusV2" | "PlutusV3";
     createdBy: string;
@@ -61,6 +65,9 @@ export type HeliosProgramCacheEntry = {
     unoptimizedSmap?: UplcSourceMapJsonSafe;
 };
 
+/**
+ * @internal
+ */
 export type SerializedHeliosCacheEntry = {
     version: "PlutusV2" | "PlutusV3";
     createdBy: string;
@@ -74,6 +81,9 @@ export type SerializedHeliosCacheEntry = {
     unoptimizedSmap?: UplcSourceMapJsonSafe;
 };
 
+/**
+ * @internal
+ */
 export type DeployedProgramBundle = Pick<
     SerializedHeliosCacheEntry,
     | "version"
@@ -86,11 +96,17 @@ export type DeployedProgramBundle = Pick<
     | "unoptimizedSmap"
 >;
 
+/**
+ * @internal
+ */
 export type lockInfo<T> = {
     lock: T;
     release: () => void;
 };
 
+/**
+ * @internal
+ */
 export type LockInfoForStrat<T extends CachedHeliosProgram> = Awaited<
     ReturnType<T["acquireLock"]>
 >;
@@ -106,6 +122,7 @@ const redirecToCorrectConstructor =
  *
  * ### Feedback please?
  * Probably nobody ever sees this doc?  If you do, please let us know!
+ * @public
  */
 export class CachedHeliosProgram extends Program {
     // static memoryCache = new Map<string, UplcProgramV2 | UplcProgramV3>();

@@ -31,6 +31,10 @@ import {
 import { useCapoDappProvider } from "./CapoDappProvider.js";
 import { TxBatchViewer } from "./TxBatchViewer.js";
 
+/**
+ * Shows a Capo-based dApp's charter status as a dashboard-style screen
+ * @public
+ */
 export function CharterStatus() {
     const provider = useCapoDappProvider();
     const blockfrost = provider?.bf;
@@ -251,6 +255,12 @@ export function CharterStatus() {
     );
 }
 
+/**
+ * Shows a highlights of various contract elements within a Capo-based dApp
+ * @remarks
+ * Includes mint and spend delegates, delegated data policies, and named manifest entries
+ * @public
+ */
 export function CharterHighlights({
     capo,
     charterData,

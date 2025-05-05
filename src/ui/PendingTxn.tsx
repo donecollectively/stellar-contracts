@@ -17,6 +17,10 @@ export type PendingTxn = {
   mgr?: TxSubmitMgr
 }
 
+/**
+ * @deprecated
+ * @internal the CharterStatus component is now preferred
+ */
 export function ShowPendingTxns({
   pendingTxns,
 }: {

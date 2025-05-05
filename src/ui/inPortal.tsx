@@ -2,6 +2,10 @@ import React, { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ClientSideOnly } from "./ClientSideOnly.js";
 
+/**
+ * Directs react contents into a portal, with simple interface and automatic fallback
+ * @public
+ */
 export function InPortal(props: {
     domId: string;
     fallbackLocation?: "top" | "bottom" | "none";

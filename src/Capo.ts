@@ -1044,6 +1044,9 @@ export abstract class Capo<
     }
 
     /**
+     * finds charter data for a capo.  
+     * @remarks
+     * Accepts a current utxo for that charter
      * @public
      */
     async findCharterData(
@@ -1054,7 +1057,8 @@ export abstract class Capo<
         }
     ): Promise<CharterData>;
     /**
-     * @private
+     * Finds charter data for a Capo, if available.  Otherwise, returns undefined.
+     * @public
      */
     async findCharterData(
         currentCharterUtxo: TxInput | undefined,

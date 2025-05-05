@@ -83,7 +83,11 @@ export interface MinterActivity$CreatingNewSpendDelegateLike {
 
 
 
-export type MinterActivityMeta = EnumTypeMeta<
+
+            /**
+            * @internal
+            */
+            export type MinterActivityMeta = EnumTypeMeta<
     {module: "CapoMintHelpers", enumName: "MinterActivity"}, {
         mintingCharter: singleEnumVariantMeta<MinterActivityMeta, "mintingCharter",
             "Constr#0", "singletonField", /* implied wrapper { owner: ... } for singleVariantField */ 

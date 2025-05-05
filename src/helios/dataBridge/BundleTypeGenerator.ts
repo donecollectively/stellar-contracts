@@ -153,7 +153,11 @@ ${this.generateNamedDependencyTypes()}
 
     generateEnumTypeSource(name: string, typeInfo: enumTypeDetails) {
         return (
-            `export type ${name}Meta = ${typeInfo.canonicalMetaType}\n` +
+            `
+            /**
+            * @internal
+            */
+            export type ${name}Meta = ${typeInfo.canonicalMetaType}\n` +
             `\n/**\n` +
             ` * ${name} enum variants\n` +
             ` * \n` +

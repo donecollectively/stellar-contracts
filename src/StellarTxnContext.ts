@@ -134,10 +134,10 @@ export type MultiTxnCallback<
         "resolved"
     >
 > =
-    | ((tx: TXINFO) => void)
-    | ((tx: TXINFO) => Promise<void>)
-    | ((tx: TXINFO) => T | false)
-    | ((tx: TXINFO) => Promise<T | false>);
+    | ((txd: TXINFO) => void)
+    | ((txd: TXINFO) => Promise<void>)
+    | ((txd: TXINFO) => T | false)
+    | ((txd: TXINFO) => Promise<T | false>);
 
 /**
  * A transaction context that includes additional transactions in its state for later execution
