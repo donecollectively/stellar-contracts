@@ -39,7 +39,9 @@
     },
     "type": "module",
     "pnpm": {
-        "overrides": {}
+        "overrides": {
+            "esbuild": "^0.25.0"
+        }
     },
     "scripts": {
         "build": "scripts/build",
