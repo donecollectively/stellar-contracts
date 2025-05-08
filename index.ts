@@ -26,7 +26,8 @@ export {
     realMul,
     toFixedReal,
     AlreadyPendingError,
-    TxNotNeededError
+    TxNotNeededError,
+    colors
 } from "./src/utils.js";
 
 export {

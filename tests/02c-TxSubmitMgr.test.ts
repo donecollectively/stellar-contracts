@@ -26,10 +26,12 @@ import {
     GenericSigner,
     SetupInfo,
     TxBatcher,
+    colors
 } from "@donecollectively/stellar-contracts";
+const { blue } = colors
+
 import { SubmitterRetryIntervals, TxSubmitMgr } from "../src/networkClients/TxSubmitMgr.js";
 
-import { blue } from "ansi-colors";
 import {
     ADA,
     StellarTestContext,

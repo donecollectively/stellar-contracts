@@ -5,6 +5,7 @@ import {
 import esbuild from "rollup-plugin-esbuild";
 import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import path from "path";
+import { colors } from "../../colors.js";
 
 export async function rollupCreateHlbundledClass(inputFile: string, projectRoot: string) {
     // writes the output file next to the input file as *.hlBundled.mjs

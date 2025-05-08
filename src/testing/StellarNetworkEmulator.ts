@@ -26,9 +26,9 @@ import {
 } from "@helios-lang/ledger";
 
 import { type BytesLike, type IntLike } from "@helios-lang/codec-utils";
-import {
-    magenta
-} from "ansi-colors"
+import {colors} from "../utils.js"
+const { magenta } = colors
+
 import {
     BIP39_DICT_EN,
     SECOND,

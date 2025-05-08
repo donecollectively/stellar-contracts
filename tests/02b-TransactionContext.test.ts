@@ -15,11 +15,11 @@ import {
     CapoWithoutSettings,
     type ConfigFor,
     TxDescription,
-    TxSubmitMgr
+    TxSubmitMgr,
+    colors
 } from "@donecollectively/stellar-contracts";
-import {
-    blue
-} from "ansi-colors"
+const { blue } = colors
+
 import { ADA, StellarTestContext, TestHelperState, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { expectTxnError } from "../src/testing/StellarTestHelper";

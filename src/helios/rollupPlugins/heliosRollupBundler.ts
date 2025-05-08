@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { createFilter } from "rollup-pluginutils";
 import MagicString from "magic-string";
 import { inspect } from "util";
-import colors from "ansi-colors";
+import { colors } from "../../utils.js";
+const { magenta } = colors;
 import {
     type InputOptions,
     type ResolveIdHook,
