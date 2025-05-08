@@ -16,6 +16,8 @@ export type {
     EnumTypeMeta, singleEnumVariantMeta, 
 } from "./src/helios/HeliosMetaTypes.js";
 
+import UnspecializedDelegateScript from "./src/delegation/UnspecializedDelegate.hl";
+export { UnspecializedDelegateScript }
 
 export * from "./src/configuration/DeployedScriptConfigs.js";
 export {
