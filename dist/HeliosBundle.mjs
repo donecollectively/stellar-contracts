@@ -1,6 +1,6 @@
 import '@helios-lang/uplc';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
-export { I as HeliosScriptBundle, J as defaultNoDefinedModuleName, K as placeholderSetupDetails } from './HeliosScriptBundle.mjs';
+export { J as HeliosScriptBundle, K as defaultNoDefinedModuleName, L as placeholderSetupDetails } from './HeliosScriptBundle.mjs';
 import '@helios-lang/codec-utils';
 import '@helios-lang/contract-utils';
 import '@helios-lang/crypto';

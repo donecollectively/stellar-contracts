@@ -44,8 +44,26 @@ type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle &
  * @public
  **/
 export abstract class CapoDelegateBundle extends HeliosScriptBundle {
+    /**
+     * The delegate module specialization for this script bundle.
+     * @remarks
+     * Basic mint/spend delegates can use the UnspecializedDelegateScript for this purpose.
+     * 
+     * Delegated-data policy bundles need to provide their own specialization, probably
+     * by using a template, or by copying the UnspecializedDelegateScript and adding any
+     * application-specific logic needed.
+     * @public
+     */
     abstract specializedDelegateModule: Source;
+
+    /**
+     * indicates where the script params are sourced from
+     * ### advanced usage
+     * use "config" to draw the script params from a json file
+     * use "bundle" to draw the script params from the bundle's params and/or defined variants
+     */
     scriptParamsSource : "bundle" | "config" = "bundle" as const
+    
     
     /**
      * when set to true, the controller class will include the Capo's

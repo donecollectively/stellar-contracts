@@ -28,7 +28,6 @@ function heliosRollupLoader(opts = {}) {
     if (!filter(source)) {
       return null;
     }
-    this.addWatchFile(source);
     return {
       id: source
     };
@@ -41,8 +40,9 @@ function heliosRollupLoader(opts = {}) {
     load(id) {
       if (filter(id)) {
         const relPath = path.relative(".", id);
-        this.warn(`.hl watch: ${id}`);
-        this.addWatchFile(id);
+        if (opts.onHeliosSource) {
+          opts.onHeliosSource(id);
+        }
         const content = readFileSync(relPath, "utf-8");
         const [_, purpose, moduleName] = content.match(
           /(module|minting|spending|endpoint)\s+([a-zA-Z0-9]+)/m
@@ -88,10 +88,126 @@ export default ${moduleName}_hl
 
 // src/helios/rollupPlugins/heliosRollupBundler.ts
 import path6 from "path";
-import { existsSync as existsSync3, mkdirSync, readFileSync as readFileSync4 } from "fs";
+import { existsSync as existsSync3, mkdirSync, readFileSync as readFileSync4, unlinkSync, utimesSync } from "fs";
 import { createFilter as createFilter2 } from "rollup-pluginutils";
 import MagicString from "magic-string";
-import colors from "ansi-colors";
+
+// src/utils.ts
+import { isValidUtf8 } from "@helios-lang/codec-utils";
+
+// src/HeliosPromotedTypes.ts
+import {
+  encodeUtf8,
+  decodeUtf8
+} from "@helios-lang/codec-utils";
+
+// src/utils.ts
+import {
+  makeAssets,
+  makeValue
+} from "@helios-lang/ledger";
+
+// src/colors.ts
+var p = process || {};
+var argv = p.argv || [];
+var env = p.env || {};
+var isColorSupported = !(!!env.NO_COLOR || argv.includes("--no-color")) && (!!env.FORCE_COLOR || argv.includes("--color") || p.platform === "win32" || true);
+var formatter = (open, close, replace = open) => {
+  const f = (input) => {
+    let string = "" + input, index = string.indexOf(close, open.length);
+    return ~index ? open + replaceClose(string, close, replace, index) + close : open + string + close;
+  };
+  f.start = open;
+  f.close = close;
+  return f;
+};
+var replaceClose = (string, close, replace, index) => {
+  let result = "", cursor = 0;
+  do {
+    result += string.substring(cursor, index) + replace;
+    cursor = index + close.length;
+    index = string.indexOf(close, cursor);
+  } while (~index);
+  return result + string.substring(cursor);
+};
+var createColors = (enabled = isColorSupported) => {
+  let f = enabled ? formatter : () => String;
+  return {
+    isColorSupported: enabled,
+    reset: f("\x1B[0m", "\x1B[0m"),
+    bold: f("\x1B[1m", "\x1B[22m", "\x1B[22m\x1B[1m"),
+    dim: f("\x1B[2m", "\x1B[22m", "\x1B[22m\x1B[2m"),
+    italic: f("\x1B[3m", "\x1B[23m"),
+    underline: f("\x1B[4m", "\x1B[24m"),
+    inverse: f("\x1B[7m", "\x1B[27m"),
+    hidden: f("\x1B[8m", "\x1B[28m"),
+    strikethrough: f("\x1B[9m", "\x1B[29m"),
+    black: f("\x1B[30m", "\x1B[39m"),
+    red: f("\x1B[31m", "\x1B[39m"),
+    green: f("\x1B[32m", "\x1B[39m"),
+    yellow: f("\x1B[33m", "\x1B[39m"),
+    blue: f("\x1B[34m", "\x1B[39m"),
+    magenta: f("\x1B[35m", "\x1B[39m"),
+    cyan: f("\x1B[36m", "\x1B[39m"),
+    white: f("\x1B[37m", "\x1B[39m"),
+    gray: f("\x1B[90m", "\x1B[39m"),
+    bgBlack: f("\x1B[40m", "\x1B[49m"),
+    bgRed: f("\x1B[41m", "\x1B[49m"),
+    bgGreen: f("\x1B[42m", "\x1B[49m"),
+    bgYellow: f("\x1B[43m", "\x1B[49m"),
+    bgBlue: f("\x1B[44m", "\x1B[49m"),
+    bgMagenta: f("\x1B[45m", "\x1B[49m"),
+    bgCyan: f("\x1B[46m", "\x1B[49m"),
+    bgWhite: f("\x1B[47m", "\x1B[49m"),
+    blackBright: f("\x1B[90m", "\x1B[39m"),
+    redBright: f("\x1B[91m", "\x1B[39m"),
+    greenBright: f("\x1B[92m", "\x1B[39m"),
+    yellowBright: f("\x1B[93m", "\x1B[39m"),
+    blueBright: f("\x1B[94m", "\x1B[39m"),
+    magentaBright: f("\x1B[95m", "\x1B[39m"),
+    cyanBright: f("\x1B[96m", "\x1B[39m"),
+    whiteBright: f("\x1B[97m", "\x1B[39m"),
+    bgBlackBright: f("\x1B[100m", "\x1B[49m"),
+    bgRedBright: f("\x1B[101m", "\x1B[49m"),
+    bgGreenBright: f("\x1B[102m", "\x1B[49m"),
+    bgYellowBright: f("\x1B[103m", "\x1B[49m"),
+    bgBlueBright: f("\x1B[104m", "\x1B[49m"),
+    bgMagentaBright: f("\x1B[105m", "\x1B[49m"),
+    bgCyanBright: f("\x1B[106m", "\x1B[49m"),
+    bgWhiteBright: f("\x1B[107m", "\x1B[49m")
+  };
+};
+var colors = createColors();
+
+// src/utils.ts
+var TxNotNeededError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "TxAlreadyPresentError";
+  }
+};
+function checkValidUTF8(data) {
+  let i = 0;
+  while (i < data.length) {
+    if ((data[i] & 128) === 0) {
+      i++;
+    } else if ((data[i] & 224) === 192) {
+      if (i + 1 >= data.length || (data[i + 1] & 192) !== 128) return false;
+      i += 2;
+    } else if ((data[i] & 240) === 224) {
+      if (i + 2 >= data.length || (data[i + 1] & 192) !== 128 || (data[i + 2] & 192) !== 128) return false;
+      i += 3;
+    } else if ((data[i] & 248) === 240) {
+      if (i + 3 >= data.length || (data[i + 1] & 192) !== 128 || (data[i + 2] & 192) !== 128 || (data[i + 3] & 192) !== 128) return false;
+      i += 4;
+    } else {
+      return false;
+    }
+  }
+  return isValidUtf8(data);
+}
+
+// src/helios/rollupPlugins/heliosRollupBundler.ts
 import "rollup";
 import { blake2b as blake2b2 } from "@helios-lang/crypto";
 import { bytesToHex as bytesToHex5 } from "@helios-lang/codec-utils";
@@ -2165,12 +2281,6 @@ ${[...this.bundleEntries.keys()].map((k) => `  - ${k}`).join("\n")}`
   }
 };
 
-// src/HeliosPromotedTypes.ts
-import {
-  encodeUtf8,
-  decodeUtf8
-} from "@helios-lang/codec-utils";
-
 // src/helios/rollupPlugins/rollupCreateHlbundledClass.ts
 import { existsSync as existsSync2, readFileSync as readFileSync3 } from "fs";
 import {
@@ -2178,7 +2288,8 @@ import {
 } from "rollup";
 import esbuild from "rollup-plugin-esbuild";
 import path5 from "path";
-async function rollupCreateHlbundledClass(inputFile, projectRoot) {
+var processStart = Date.now();
+async function rollupCreateHlbundledClass(inputFile, projectRoot, onHeliosSource) {
   const outputFile = inputFile.replace(
     /\.hlb\.[tj]s$/,
     ".hlBundled.mjs"
@@ -2210,10 +2321,12 @@ async function rollupCreateHlbundledClass(inputFile, projectRoot) {
       // stellarDeploymentHook("plugin"),
       heliosRollupLoader({
         // todo make this right for the context
-        project: "stellar-contracts"
-        // onLoadHeliosFile: (filename) => {
-        //   remember this list of files
-        // }
+        project: "stellar-contracts",
+        onHeliosSource(id) {
+          if (onHeliosSource) {
+            onHeliosSource(id, outputFile);
+          }
+        }
       }),
       // !!! figure out how to make the bundle include the compiled & optimized
       //   program, when options.compile is true.
@@ -2264,9 +2377,18 @@ async function rollupCreateHlbundledClass(inputFile, projectRoot) {
     );
   }
   bundle.close();
-  return import(outputFile).then((mod) => {
+  const content = readFileSync3(outputFile, "utf-8");
+  const data = new TextEncoder().encode(content);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 8);
+  return import(`${outputFile}?t=${Date.now()}`).then((mod) => {
     if (mod.default) {
       const BundleClass = mod.default;
+      BundleClass.hash = hashHex;
+      BundleClass.compileTime = buildStartTime;
+      BundleClass.afterDelay = (Date.now() - processStart) / 1e3;
+      debugger;
       return BundleClass;
     } else {
       throw new Error(`no default export in ${outputFile}`);
@@ -3026,41 +3148,6 @@ import {
 } from "@helios-lang/ledger";
 import { bytesToHex as bytesToHex2 } from "@helios-lang/codec-utils";
 import { customAlphabet } from "nanoid";
-
-// src/utils.ts
-import { isValidUtf8 } from "@helios-lang/codec-utils";
-import {
-  makeAssets,
-  makeValue
-} from "@helios-lang/ledger";
-var TxNotNeededError = class extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "TxAlreadyPresentError";
-  }
-};
-function checkValidUTF8(data) {
-  let i = 0;
-  while (i < data.length) {
-    if ((data[i] & 128) === 0) {
-      i++;
-    } else if ((data[i] & 224) === 192) {
-      if (i + 1 >= data.length || (data[i + 1] & 192) !== 128) return false;
-      i += 2;
-    } else if ((data[i] & 240) === 224) {
-      if (i + 2 >= data.length || (data[i + 1] & 192) !== 128 || (data[i + 2] & 192) !== 128) return false;
-      i += 3;
-    } else if ((data[i] & 248) === 240) {
-      if (i + 3 >= data.length || (data[i + 1] & 192) !== 128 || (data[i + 2] & 192) !== 128 || (data[i + 3] & 192) !== 128) return false;
-      i += 4;
-    } else {
-      return false;
-    }
-  }
-  return isValidUtf8(data);
-}
-
-// src/StellarTxnContext.ts
 var nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
 var emptyUuts = Object.freeze({});
 var StellarTxnContext = class _StellarTxnContext {
@@ -4386,8 +4473,8 @@ function assetsAsString(a, joiner = "\n    ", showNegativeAsBurn, mintRedeemers)
     )} ${tokenString} ${redeemerInfo}\u2992`;
   }) || []).join(joiner);
 }
-function policyIdAsString(p) {
-  const pIdHex = p.toHex();
+function policyIdAsString(p2) {
+  const pIdHex = p2.toHex();
   const abbrev = abbreviatedDetail(pIdHex);
   return `\u{1F3E6} ${abbrev}`;
 }
@@ -4939,6 +5026,7 @@ function abbreviatedDetail(hext, initLength = 8, countOmitted = false) {
 }
 
 // src/helios/rollupPlugins/heliosRollupBundler.ts
+var { magenta } = colors;
 function heliosRollupBundler(opts = {}) {
   const pluginOptions = {
     vite: false,
@@ -4959,6 +5047,7 @@ function heliosRollupBundler(opts = {}) {
     pluginOptions.include,
     pluginOptions.exclude
   );
+  const filterHeliosSources = createFilter2(["*.hl", "**/*.hl"]);
   const regexCurrentCapoConfig = /^@donecollectively\/stellar-contracts\/currentCapoConfig$/;
   const filterHlbundledImportName = createFilter2(/.*\.hlb\.[jt]s\?bundled/);
   const netName = process.env.CARDANO_NETWORK;
@@ -4979,7 +5068,10 @@ function heliosRollupBundler(opts = {}) {
     hasOtherBundles: false,
     project: new StellarHeliosProject(),
     bundleClassById: {},
-    emittedArtifacts: /* @__PURE__ */ new Set()
+    emittedArtifacts: /* @__PURE__ */ new Set(),
+    deps: /* @__PURE__ */ new Map(),
+    hlToOutputFiles: /* @__PURE__ */ new Map(),
+    hlToHlb: /* @__PURE__ */ new Map()
   };
   const firstImportFrom = {};
   function relativePath(id) {
@@ -4992,6 +5084,34 @@ function heliosRollupBundler(opts = {}) {
       isPlaceholder: "rollupBundlerPlugin for type-gen"
     }
   };
+  function findOrCreateDeps(importerId) {
+    if (state.deps.has(importerId)) {
+      return state.deps.get(importerId);
+    } else {
+      const newDeps = /* @__PURE__ */ new Set();
+      state.deps.set(importerId, newDeps);
+      return newDeps;
+    }
+  }
+  function addHlb(hlId, hlbId) {
+    if (!state.hlToHlb.has(hlId)) {
+      state.hlToHlb.set(hlId, /* @__PURE__ */ new Set());
+    }
+    state.hlToHlb.get(hlId).add(hlbId);
+  }
+  function addHlArtifact(hlId, filename) {
+    if (!state.hlToOutputFiles.has(hlId)) {
+      state.hlToOutputFiles.set(hlId, /* @__PURE__ */ new Set());
+    }
+    state.hlToOutputFiles.get(hlId).add(filename);
+  }
+  function removeOutputArtifact(hlId) {
+    if (state.hlToOutputFiles.has(hlId)) {
+      for (const filename of state.hlToOutputFiles.get(hlId)) {
+        unlinkSync(filename);
+      }
+    }
+  }
   return {
     name: "heliosBundler",
     buildEnd: {
@@ -5016,7 +5136,7 @@ function heliosRollupBundler(opts = {}) {
     resolveId: {
       order: "pre",
       async handler(source, importer, options) {
-        const interesting = !!source.match(/CapoMinter\.hlb\./);
+        const interesting = !!source.match(/Vesting.*\.hlb\./);
         if (source.match(regexCurrentCapoConfig)) {
           throw new Error(`hurray`);
         } else {
@@ -5052,6 +5172,12 @@ function heliosRollupBundler(opts = {}) {
           }
         }
         if (isEntry && !importer) {
+          if (resolved && filterHeliosSources(source)) {
+            const myDeps = findOrCreateDeps(importer);
+            myDeps.add(resolved.id);
+          } else {
+            this.warn("resolveId: not resolved or not a filter match: " + source + " " + resolved?.id);
+          }
           return resolved;
         }
         const r = await this.resolve(source, importer, {
@@ -5060,8 +5186,8 @@ function heliosRollupBundler(opts = {}) {
         });
         if (r) resolved = r;
         const id = resolved?.id || source;
-        const p = relativePath(id);
-        firstImportFrom[p] = firstImportFrom[p] || relativePath(importer);
+        const p2 = relativePath(id);
+        firstImportFrom[p2] = firstImportFrom[p2] || relativePath(importer);
         if (resolved && id && filterHLB(id)) {
           this.debug(
             `-> resolveId ${source} (from ${relativePath(
@@ -5098,9 +5224,17 @@ function heliosRollupBundler(opts = {}) {
               );
               if (actualResolutionResult?.id && !state.emittedArtifacts.has(bundledId)) {
                 state.emittedArtifacts.add(bundledId);
+                const myDeps = findOrCreateDeps(actualResolutionResult.id);
                 const SomeBundleClass = await rollupCreateHlbundledClass(
                   actualResolutionResult.id,
-                  projectRoot
+                  projectRoot,
+                  (heliosSourceId, outputFile) => {
+                    this.warn(" \u2022 \u{1F440}\u{1F440} " + heliosSourceId);
+                    myDeps.add(heliosSourceId);
+                    this.addWatchFile(heliosSourceId);
+                    addHlArtifact(heliosSourceId, outputFile);
+                    addHlb(heliosSourceId, id);
+                  }
                 );
                 const isMainnet = networkId === "mainnet";
                 state.bundleClassById[id] = SomeBundleClass;
@@ -5182,8 +5316,17 @@ function heliosRollupBundler(opts = {}) {
               `resolveId: got HLBundled: ${id}` + JSON.stringify(options)
             );
           }
+          const unbundledId = id.replace(/\?bundled$/, "");
+          if (filterHLB(unbundledId)) {
+            const myDeps = findOrCreateDeps(unbundledId);
+            for (const dep of myDeps) {
+              addHlArtifact(dep, unbundledId);
+              addHlb(dep, unbundledId);
+              this.addWatchFile(dep);
+            }
+          }
           const result = await this.resolve(
-            id.replace(/\?bundled$/, ""),
+            unbundledId,
             importer,
             {
               ...options,
@@ -5214,7 +5357,7 @@ function heliosRollupBundler(opts = {}) {
     load: {
       order: "pre",
       handler: async function(id) {
-        const interesting = !!id.match(/\.hlb\./);
+        const interesting = !!id.match(/Vesting.*\.hlb\./);
         const { project } = state;
         if (filterHlbundledImportName(id)) {
           throw new Error(
@@ -5246,15 +5389,25 @@ function heliosRollupBundler(opts = {}) {
             );
             debugger;
           }
+          const myDeps = findOrCreateDeps(id);
           SomeBundleClass = await rollupCreateHlbundledClass(
             id,
-            projectRoot
+            projectRoot,
+            (heliosSourceId, outputFile) => {
+              this.debug(`  \u2022 ${heliosSourceId} \u{1F440}\u{1F440} `);
+              this.addWatchFile(heliosSourceId);
+              addHlArtifact(heliosSourceId, outputFile);
+              addHlb(heliosSourceId, id);
+              myDeps.add(heliosSourceId);
+            }
           );
         }
         const relativeFilename = path6.relative(projectRoot, id);
         console.log(
           `   \u{1F441}\uFE0F  checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`
         );
+        const { hash, afterDelay } = SomeBundleClass;
+        this.debug(colors.cyanBright("create from " + id) + " " + hash + " " + afterDelay + "s");
         let bundle = SomeBundleClass.create({
           ...placeholderSetup,
           placeholderAt: "load() before type-gen"
@@ -5306,7 +5459,10 @@ function heliosRollupBundler(opts = {}) {
           if (!state.capoBundle) {
             console.log(
               "\nTroubleshooting first .hlb.ts imports?" + [...state.project.bundleEntries.keys()].map(
-                (existing) => `    \u2022 ${traceImportPath(existing)}`
+                (existing) => (
+                  // bullet: •
+                  `    \u2022 ${traceImportPath(existing)}`
+                )
               ).join("\n") + "\n"
             );
           } else {
@@ -5355,7 +5511,6 @@ function heliosRollupBundler(opts = {}) {
                 `looks like you're using the default Capo bundle! ${capoName}`
               );
               state.project.capoBundleName = capoName;
-              debugger;
               state.project.configuredCapo.resolve(void 0);
               state.project.loadBundleWithClass(
                 "src/helios/scriptBundling/CapoHeliosBundle.ts",
@@ -5406,6 +5561,27 @@ function heliosRollupBundler(opts = {}) {
         return null;
       }
     },
+    watchChange: {
+      order: "pre",
+      handler: function(id, change) {
+        this.warn("change: " + id + " " + change.event);
+        removeOutputArtifact(id);
+        const hlbs = state.hlToHlb.get(id);
+        debugger;
+        if (hlbs) {
+          for (const hlb of hlbs) {
+            utimesSync(hlb, /* @__PURE__ */ new Date(), /* @__PURE__ */ new Date());
+          }
+        }
+        return Promise.resolve();
+      }
+    },
+    shouldTransformCachedModule: {
+      handler: function(id) {
+        this.warn("shouldTransformCachedModule: " + id);
+        return true;
+      }
+    },
     transform: {
       order: "pre",
       handler: function(code, id) {
@@ -5413,6 +5589,16 @@ function heliosRollupBundler(opts = {}) {
         let looksLikeCapo = code.match(/extends .*Capo.*/);
         if (looksLikeCapo?.[0].match(/usingCapoBundle/))
           looksLikeCapo = null;
+        const myDeps = findOrCreateDeps(id);
+        if (myDeps.size > 0) {
+          this.debug(`---- watching helios sources for ${id}: `);
+          for (const dep of myDeps) {
+            this.debug(`  \u2022 \u{1F440}${dep} \u{1F440}`);
+            this.addWatchFile(dep);
+          }
+        } else {
+          this.warn(`----- no dependencies registered for ${id}`);
+        }
         const capoConfigRegex = /^(\s*preConfigured *= )*(?:capoConfigurationDetails)\s*;?\s*$/m;
         const filenameBase = id.replace(/.*\/([^.]+)\..*$/, "$1");
         const deployDetailsFile = `./${filenameBase}.hlDeploy.${networkId}.json`;
@@ -5497,6 +5683,10 @@ This will use deployment details from ${deployDetailsFile}
       this.addWatchFile(id);
       this.addWatchFile(resolvedDeployConfig.id);
       debugger;
+      const myDeps = findOrCreateDeps(id);
+      for (const dep of myDeps) {
+        this.addWatchFile(dep);
+      }
       console.log(deployDetails);
       const capoConfig = parseCapoJSONConfig(deployDetails.capo.config);
       const { seedIndex, seedTxn } = capoConfig;
@@ -5567,6 +5757,10 @@ This will use deployment details from ${deployDetailsFile}
     const r = filterHLB(id);
     if (!r) {
       return null;
+    }
+    const myDeps = findOrCreateDeps(id);
+    for (const dep of myDeps) {
+      this.addWatchFile(dep);
     }
     const regex = /(\s*specializedDelegateModule\s*=\s*)|(static needsSpecializedDelegateModule = false)/m;
     if (code.match(regex)) {
@@ -5688,8 +5882,8 @@ ${Object.entries(
   }
   function traceImportPath(existing) {
     let trace = [];
-    for (let p = existing; p; p = firstImportFrom[p]) {
-      trace.push(p);
+    for (let p2 = existing; p2; p2 = firstImportFrom[p2]) {
+      trace.push(p2);
     }
     const importTrace = trace.join("\n      imported by ");
     return importTrace;

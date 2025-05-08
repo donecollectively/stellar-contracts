@@ -1,5 +1,5 @@
 import { m as mkValuesEntry, d as dumpAny, S as StellarTxnContext, a as mkUutValuesEntries, b as delegateLinkSerializer, e as errorMapAsString, u as uplcDataSerializer, T as TxNotNeededError, A as AlreadyPendingError } from './HeliosScriptBundle.mjs';
-export { I as HeliosScriptBundle, F as abbrevAddress, G as abbreviatedDetail, H as abbreviatedDetailBytes, w as addrAsString, i as assetsAsString, E as betterJsonSerializer, x as byteArrayAsString, B as byteArrayListAsString, C as datumSummary, f as debugMath, J as defaultNoDefinedModuleName, h as displayTokenName, c as environment, D as hexToPrintableString, q as lovelaceToAda, K as placeholderSetupDetails, p as policyIdAsString, r as realDiv, g as realMul, s as stringToPrintableString, t as toFixedReal, j as txAsString, o as txInputAsString, n as txOutputAsString, z as txOutputIdAsString, y as txidAsString, k as utxoAsString, l as utxosAsString, v as valueAsString } from './HeliosScriptBundle.mjs';
+export { J as HeliosScriptBundle, G as abbrevAddress, H as abbreviatedDetail, I as abbreviatedDetailBytes, x as addrAsString, j as assetsAsString, F as betterJsonSerializer, y as byteArrayAsString, C as byteArrayListAsString, h as colors, D as datumSummary, f as debugMath, K as defaultNoDefinedModuleName, i as displayTokenName, c as environment, E as hexToPrintableString, w as lovelaceToAda, L as placeholderSetupDetails, p as policyIdAsString, r as realDiv, g as realMul, s as stringToPrintableString, t as toFixedReal, k as txAsString, q as txInputAsString, o as txOutputAsString, B as txOutputIdAsString, z as txidAsString, l as utxoAsString, n as utxosAsString, v as valueAsString } from './HeliosScriptBundle.mjs';
 import { C as ContractBasedDelegate, A as Activity, d as datum, D as DataBridge, a as ContractDataBridge, i as impliedSeedActivityMaker, b as DataBridgeReaderClass, S as StellarContract, c as StellarDelegate, U as UutName, h as hasReqts, p as partialTxn, t as txn } from './ContractBasedDelegate2.mjs';
 export { k as ContractDataBridgeWithEnumDatum, l as ContractDataBridgeWithOtherDatum, g as SeedActivity, e as UtxoHelper, f as findInputsInWallets, j as getSeed, m as mergesInheritedReqts } from './ContractBasedDelegate2.mjs';
 import { bytesToHex, decodeUtf8, encodeUtf8, equalsBytes } from '@helios-lang/codec-utils';
@@ -9,6 +9,7 @@ import UnspecializedDelegateBundle from '@donecollectively/stellar-contracts/con
 export { UnspecializedDgtBundle } from '@donecollectively/stellar-contracts/contracts/UnspecializedDelegate.hlb';
 import { makeCast } from '@helios-lang/contract-utils';
 import { CapoDelegateBundle } from './CapoDelegateHeliosBundle.mjs';
+import { U as UnspecializedDelegate_hl } from './UnspecializedDelegate.mjs';
 import { C as CapoHeliosBundle } from './CapoHeliosBundle2.mjs';
 export { a as mkCapoDeployment, b as mkDelegateDeployment, m as mkDeployedScriptConfigs, p as parseCapoJSONConfig, c as parseCapoMinterJSONConfig } from './CapoHeliosBundle2.mjs';
 import { makeIntData } from '@helios-lang/uplc';
@@ -8567,6 +8568,13 @@ __decorateClass$3([
 class MintSpendDelegateBundle extends CapoDelegateBundle {
   requiresGovAuthority = true;
   scriptParamsSource = "bundle";
+  /**
+   * returns an unspecialized module that works for basic use-cases of mint/spend delegate
+   * @public
+   */
+  get unspecializedDelegateModule() {
+    return UnspecializedDelegate_hl;
+  }
   get params() {
     if (!this.requiresGovAuthority) {
       throw new Error("MintSpendDelegateBundle requiresGovAuthority must not be false");
@@ -28305,5 +28313,5 @@ class DraftEternlMultiSigner extends GenericSigner {
   }
 }
 
-export { Activity, AlreadyPendingError, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, BatchSubmitController, Capo, CapoDelegateBundle, CapoHeliosBundle, CapoMinter, CapoWithoutSettings, ContractBasedDelegate, ContractDataBridge, DataBridge, DataBridgeReaderClass, DelegateConfigNeeded, DelegatedDataContract, DraftEternlMultiSigner, EnumBridge, GenericSigner, MintSpendDelegateBundle, OgmiosTxSubmitter, StellarContract, StellarDelegate, StellarTxnContext, TxBatcher, TxNotNeededError, TxSubmissionTracker, TxSubmitMgr, UnspecializedDelegateBridge, UnspecializedMintDelegate, UutName, WalletSigningStrategy, WrappedDgDataContract, capoConfigurationDetails, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, impliedSeedActivityMaker, makeOgmiosConnection, mkCancellablePromise, mkDgtStateKey, mkUutValuesEntries, mkValuesEntry, partialTxn, txn, uplcDataSerializer };
+export { Activity, AlreadyPendingError, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, BatchSubmitController, Capo, CapoDelegateBundle, CapoHeliosBundle, CapoMinter, CapoWithoutSettings, ContractBasedDelegate, ContractDataBridge, DataBridge, DataBridgeReaderClass, DelegateConfigNeeded, DelegatedDataContract, DraftEternlMultiSigner, EnumBridge, GenericSigner, MintSpendDelegateBundle, OgmiosTxSubmitter, StellarContract, StellarDelegate, StellarTxnContext, TxBatcher, TxNotNeededError, TxSubmissionTracker, TxSubmitMgr, UnspecializedDelegateBridge, UnspecializedDelegate_hl as UnspecializedDelegateScript, UnspecializedMintDelegate, UutName, WalletSigningStrategy, WrappedDgDataContract, capoConfigurationDetails, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, impliedSeedActivityMaker, makeOgmiosConnection, mkCancellablePromise, mkDgtStateKey, mkUutValuesEntries, mkValuesEntry, partialTxn, txn, uplcDataSerializer };
 //# sourceMappingURL=stellar-contracts.mjs.map

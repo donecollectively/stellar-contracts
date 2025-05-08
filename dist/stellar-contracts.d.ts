@@ -61,6 +61,7 @@ import { TxOutputDatum } from '@helios-lang/ledger';
 import { TxOutputId } from '@helios-lang/ledger';
 import { TxOutputIdLike } from '@helios-lang/ledger';
 import type { TypeSchema } from '@helios-lang/type-utils';
+import UnspecializedDelegateScript from './src/delegation/UnspecializedDelegate.hl';
 import { UplcData } from '@helios-lang/uplc';
 import type { UplcLogger } from '@helios-lang/uplc';
 import { UplcProgramV2 } from '@helios-lang/uplc';
@@ -2522,7 +2523,23 @@ declare class CapoDatumHelper extends EnumBridge<JustAnEnum> {
  * @public
  **/
 export declare abstract class CapoDelegateBundle extends HeliosScriptBundle {
+    /**
+     * The delegate module specialization for this script bundle.
+     * @remarks
+     * Basic mint/spend delegates can use the UnspecializedDelegateScript for this purpose.
+     *
+     * Delegated-data policy bundles need to provide their own specialization, probably
+     * by using a template, or by copying the UnspecializedDelegateScript and adding any
+     * application-specific logic needed.
+     * @public
+     */
     abstract specializedDelegateModule: Source;
+    /**
+     * indicates where the script params are sourced from
+     * ### advanced usage
+     * use "config" to draw the script params from a json file
+     * use "bundle" to draw the script params from the bundle's params and/or defined variants
+     */
     scriptParamsSource: "bundle" | "config";
     /**
      * when set to true, the controller class will include the Capo's
@@ -4784,6 +4801,53 @@ export declare type charterDataState = {
     uuts: uutMap;
 };
 
+declare interface Colors {
+    isColorSupported: boolean;
+    reset: Formatter;
+    bold: Formatter;
+    dim: Formatter;
+    italic: Formatter;
+    underline: Formatter;
+    inverse: Formatter;
+    hidden: Formatter;
+    strikethrough: Formatter;
+    black: Formatter;
+    red: Formatter;
+    green: Formatter;
+    yellow: Formatter;
+    blue: Formatter;
+    magenta: Formatter;
+    cyan: Formatter;
+    white: Formatter;
+    gray: Formatter;
+    bgBlack: Formatter;
+    bgRed: Formatter;
+    bgGreen: Formatter;
+    bgYellow: Formatter;
+    bgBlue: Formatter;
+    bgMagenta: Formatter;
+    bgCyan: Formatter;
+    bgWhite: Formatter;
+    blackBright: Formatter;
+    redBright: Formatter;
+    greenBright: Formatter;
+    yellowBright: Formatter;
+    blueBright: Formatter;
+    magentaBright: Formatter;
+    cyanBright: Formatter;
+    whiteBright: Formatter;
+    bgBlackBright: Formatter;
+    bgRedBright: Formatter;
+    bgGreenBright: Formatter;
+    bgYellowBright: Formatter;
+    bgBlueBright: Formatter;
+    bgMagentaBright: Formatter;
+    bgCyanBright: Formatter;
+    bgWhiteBright: Formatter;
+}
+
+export declare const colors: Colors;
+
 declare type ComputedScriptProperties = Partial<{
     vh: ValidatorHash;
     addr: Address;
@@ -5983,6 +6047,36 @@ declare class DelegateDatumHelper_2 extends EnumBridge<JustAnEnum> {
 
 export declare abstract class DelegatedDataBundle extends CapoDelegateBundle {
     scriptParamsSource: "bundle";
+    /**
+     * The delegate module specialization for this script bundle.
+     * @remarks
+     * Each delegated-data policy bundle needs to provide its own specialization, probably
+     * by using a template, or by copying the UnspecializedDelegateScript and adding any
+     * application-specific logic needed.
+     *
+     * The specialized module must export `DelegateActivity` and `DelegateDatum` enums,
+     * each of which follows the conventions seen in the UnspecializedDelegateScript.
+     * The DelegateActivity's additionalDelegateValidation() function must handle MintingActivities,
+     * BurningActivities, and SpendingActivities, to govern the creation, updating, and deletion of
+     * delegated-data records for defined variants of their nested enums indicating delegate-specific
+     * activities.
+     *
+     * For example, a Vesting delegate might have SpendingActivities::AddingFunds and
+     * SpendingActivities::WithdrawingVestedValue; its DelegateActivity::additionalDelegateValidation()
+     * would handle each of these cases according to the application's needs, along with any
+     * creation or deletion activities within those DelegateActivity variants.
+     *
+     * The `xxxLifecycleActivities` variants are not handled by DelegatedData specializations; the
+     * Capo's mint/spend delegate governs these variants of delegate behaviors.  A delegate bundle
+     * receiving these activities will throw errors by virtue of the BasicDelegate's logic.
+     *
+     * Likewise, the `xxxDelegateData` variants are not handled by DelegatedData specializations,
+     * but by the mint/spend delegate, which transfers its responsbility for these activities to your
+     * specialized delegate.
+     *
+     * @public
+     */
+    abstract specializedDelegateModule: Source;
     /**
      * when set to true, the controller class will include the Capo's
      * gov authority in the transaction, to ease transaction setup.
@@ -8202,6 +8296,11 @@ export declare function findInputsInWallets(v: Value, searchIn: WalletsAndAddres
  * @public
  */
 export declare type findReadDatumType<T extends canHaveDataBridge, CBT extends someContractBridgeType = possiblyAbstractContractBridgeType<T>> = IF<CBT["isAbstract"], readsUplcTo<any>, undefined extends CBT["datum"] ? never : undefined extends CBT["readDatum"] ? never : CBT["readDatum"]>;
+
+declare type Formatter = {
+    start: string;
+    end: string;
+} & ((input: string | number | null | undefined) => string);
 
 export declare type FoundCharterUtxo = {
     utxo: TxInput;
@@ -10838,8 +10937,24 @@ declare type MintingActivityLike_2 = IntersectedEnum<{
  * @public
  */
 export declare abstract class MintSpendDelegateBundle extends CapoDelegateBundle {
+    /**
+     * The delegate module specialization for this mint/spend delegate script.
+     * @remarks
+     * Basic mint/spend delegates can use the UnspecializedDelegateScript for this purpose.
+     *
+     * For more advanced mint/spend delegates, you may start from a template
+     * or copy the UnspecializedDelegateScript and add any application-specific logic needed.
+     *
+     * @public
+     */
+    abstract specializedDelegateModule: Source;
     requiresGovAuthority: boolean;
     scriptParamsSource: "bundle";
+    /**
+     * returns an unspecialized module that works for basic use-cases of mint/spend delegate
+     * @public
+     */
+    get unspecializedDelegateModule(): Source;
     get params(): {
         rev: bigint;
         delegateName: string;
@@ -15326,6 +15441,8 @@ declare class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
      */
     CapoCtx(d: UplcData): CapoCtx;
 }
+
+export { UnspecializedDelegateScript }
 
 /**
  * @public

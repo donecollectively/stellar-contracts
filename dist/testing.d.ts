@@ -174,7 +174,7 @@ export declare class DefaultCapoTestHelper<CAPO extends Capo<any> = CapoWithoutS
     [x: string]: unknown;
     };
     bootstrappedConfig: any;
-    }> & StellarTxnContext<charterDataState> & hasUutContext<"govAuthority" | "mintDelegate" | "capoGov" | "mintDgt" | "setting"> & hasUutContext<"govAuthority" | "mintDelegate" | "spendDelegate" | "capoGov" | "mintDgt" | "spendDgt"> & hasSeedUtxo>;
+    }> & StellarTxnContext<charterDataState> & hasUutContext<"govAuthority" | "mintDelegate" | "capoGov" | "mintDgt" | "setting"> & hasUutContext<"spendDelegate" | "govAuthority" | "mintDelegate" | "capoGov" | "mintDgt" | "spendDgt"> & hasSeedUtxo>;
     updateCharter(args: CharterDataLike, submitSettings?: SubmitOptions): Promise<StellarTxnContext>;
 }
 

@@ -701,6 +701,75 @@ class UplcConsoleLogger {
   }
 }
 
+let p = process || {}, argv = p.argv || [], env = p.env || {};
+let isColorSupported = !(!!env.NO_COLOR || argv.includes("--no-color")) && (!!env.FORCE_COLOR || argv.includes("--color") || p.platform === "win32" || true);
+let formatter = (open, close, replace = open) => {
+  const f = (input) => {
+    let string = "" + input, index = string.indexOf(close, open.length);
+    return ~index ? open + replaceClose(string, close, replace, index) + close : open + string + close;
+  };
+  f.start = open;
+  f.close = close;
+  return f;
+};
+let replaceClose = (string, close, replace, index) => {
+  let result = "", cursor = 0;
+  do {
+    result += string.substring(cursor, index) + replace;
+    cursor = index + close.length;
+    index = string.indexOf(close, cursor);
+  } while (~index);
+  return result + string.substring(cursor);
+};
+let createColors = (enabled = isColorSupported) => {
+  let f = enabled ? formatter : () => String;
+  return {
+    isColorSupported: enabled,
+    reset: f("\x1B[0m", "\x1B[0m"),
+    bold: f("\x1B[1m", "\x1B[22m", "\x1B[22m\x1B[1m"),
+    dim: f("\x1B[2m", "\x1B[22m", "\x1B[22m\x1B[2m"),
+    italic: f("\x1B[3m", "\x1B[23m"),
+    underline: f("\x1B[4m", "\x1B[24m"),
+    inverse: f("\x1B[7m", "\x1B[27m"),
+    hidden: f("\x1B[8m", "\x1B[28m"),
+    strikethrough: f("\x1B[9m", "\x1B[29m"),
+    black: f("\x1B[30m", "\x1B[39m"),
+    red: f("\x1B[31m", "\x1B[39m"),
+    green: f("\x1B[32m", "\x1B[39m"),
+    yellow: f("\x1B[33m", "\x1B[39m"),
+    blue: f("\x1B[34m", "\x1B[39m"),
+    magenta: f("\x1B[35m", "\x1B[39m"),
+    cyan: f("\x1B[36m", "\x1B[39m"),
+    white: f("\x1B[37m", "\x1B[39m"),
+    gray: f("\x1B[90m", "\x1B[39m"),
+    bgBlack: f("\x1B[40m", "\x1B[49m"),
+    bgRed: f("\x1B[41m", "\x1B[49m"),
+    bgGreen: f("\x1B[42m", "\x1B[49m"),
+    bgYellow: f("\x1B[43m", "\x1B[49m"),
+    bgBlue: f("\x1B[44m", "\x1B[49m"),
+    bgMagenta: f("\x1B[45m", "\x1B[49m"),
+    bgCyan: f("\x1B[46m", "\x1B[49m"),
+    bgWhite: f("\x1B[47m", "\x1B[49m"),
+    blackBright: f("\x1B[90m", "\x1B[39m"),
+    redBright: f("\x1B[91m", "\x1B[39m"),
+    greenBright: f("\x1B[92m", "\x1B[39m"),
+    yellowBright: f("\x1B[93m", "\x1B[39m"),
+    blueBright: f("\x1B[94m", "\x1B[39m"),
+    magentaBright: f("\x1B[95m", "\x1B[39m"),
+    cyanBright: f("\x1B[96m", "\x1B[39m"),
+    whiteBright: f("\x1B[97m", "\x1B[39m"),
+    bgBlackBright: f("\x1B[100m", "\x1B[49m"),
+    bgRedBright: f("\x1B[101m", "\x1B[49m"),
+    bgGreenBright: f("\x1B[102m", "\x1B[49m"),
+    bgYellowBright: f("\x1B[103m", "\x1B[49m"),
+    bgBlueBright: f("\x1B[104m", "\x1B[49m"),
+    bgMagentaBright: f("\x1B[105m", "\x1B[49m"),
+    bgCyanBright: f("\x1B[106m", "\x1B[49m"),
+    bgWhiteBright: f("\x1B[107m", "\x1B[49m")
+  };
+};
+const colors = createColors();
+
 function mkUutValuesEntries(uuts) {
   const uutNs = Array.isArray(uuts) ? uuts : Object.values(uuts);
   const uniqs = [];
@@ -733,9 +802,12 @@ function realMul(a, b) {
   return result2;
 }
 function realDiv(a, b) {
+  if (b === 0) {
+    throw new Error("Cannot divide by zero");
+  }
   const a2 = Math.trunc(1e6 * a);
   const result1 = a2 / b;
-  const result2 = Math.trunc(result1) / 1e6;
+  const result2 = Math.round(result1) / 1e6;
   if (debugRealMath) {
     console.log("    ---- realDiv", a, "/", b);
     console.log("    ---- realDiv", a2);
@@ -3517,5 +3589,5 @@ ${errorInfo}`;
   }
 }
 
-export { AlreadyPendingError as A, byteArrayListAsString as B, datumSummary as C, hexToPrintableString as D, betterJsonSerializer as E, abbrevAddress as F, abbreviatedDetail as G, abbreviatedDetailBytes as H, HeliosScriptBundle as I, defaultNoDefinedModuleName as J, placeholderSetupDetails as K, mkTv as L, StellarTxnContext as S, TxNotNeededError as T, mkUutValuesEntries as a, delegateLinkSerializer as b, environment as c, dumpAny as d, errorMapAsString as e, debugMath as f, realMul as g, displayTokenName as h, assetsAsString as i, txAsString as j, utxoAsString as k, utxosAsString as l, mkValuesEntry as m, txOutputAsString as n, txInputAsString as o, policyIdAsString as p, lovelaceToAda as q, realDiv as r, stringToPrintableString as s, toFixedReal as t, uplcDataSerializer as u, valueAsString as v, addrAsString as w, byteArrayAsString as x, txidAsString as y, txOutputIdAsString as z };
+export { AlreadyPendingError as A, txOutputIdAsString as B, byteArrayListAsString as C, datumSummary as D, hexToPrintableString as E, betterJsonSerializer as F, abbrevAddress as G, abbreviatedDetail as H, abbreviatedDetailBytes as I, HeliosScriptBundle as J, defaultNoDefinedModuleName as K, placeholderSetupDetails as L, mkTv as M, StellarTxnContext as S, TxNotNeededError as T, mkUutValuesEntries as a, delegateLinkSerializer as b, environment as c, dumpAny as d, errorMapAsString as e, debugMath as f, realMul as g, colors as h, displayTokenName as i, assetsAsString as j, txAsString as k, utxoAsString as l, mkValuesEntry as m, utxosAsString as n, txOutputAsString as o, policyIdAsString as p, txInputAsString as q, realDiv as r, stringToPrintableString as s, toFixedReal as t, uplcDataSerializer as u, valueAsString as v, lovelaceToAda as w, addrAsString as x, byteArrayAsString as y, txidAsString as z };
 //# sourceMappingURL=HeliosScriptBundle.mjs.map

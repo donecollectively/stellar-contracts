@@ -1,5 +1,5 @@
 import { makeSource } from '@helios-lang/compiler-utils';
-import { I as HeliosScriptBundle, K as placeholderSetupDetails } from './HeliosScriptBundle.mjs';
+import { J as HeliosScriptBundle, L as placeholderSetupDetails } from './HeliosScriptBundle.mjs';
 import './DefaultCapo.mjs';
 import '@helios-lang/ledger';
 import { B as BasicDelegate_hl } from './BasicDelegate.mjs';
@@ -13,6 +13,12 @@ import '@helios-lang/tx-utils';
 import 'nanoid';
 
 class CapoDelegateBundle extends HeliosScriptBundle {
+  /**
+   * indicates where the script params are sourced from
+   * ### advanced usage
+   * use "config" to draw the script params from a json file
+   * use "bundle" to draw the script params from the bundle's params and/or defined variants
+   */
   scriptParamsSource = "bundle";
   isConcrete = false;
   /**

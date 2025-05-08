@@ -1,6 +1,6 @@
 import { C as CapoHeliosBundle } from '../CapoHeliosBundle2.mjs';
 import { makeSource } from '@helios-lang/compiler-utils';
-import { I as HeliosScriptBundle } from '../HeliosScriptBundle.mjs';
+import { J as HeliosScriptBundle } from '../HeliosScriptBundle.mjs';
 import '../BasicDelegate.mjs';
 import '../DefaultCapo.mjs';
 import '@helios-lang/ledger';

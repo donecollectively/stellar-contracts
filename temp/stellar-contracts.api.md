@@ -67,6 +67,7 @@ import { TxOutputDatum } from '@helios-lang/ledger';
 import { TxOutputId } from '@helios-lang/ledger';
 import { TxOutputIdLike } from '@helios-lang/ledger';
 import type { TypeSchema } from '@helios-lang/type-utils';
+import UnspecializedDelegateScript from './src/delegation/UnspecializedDelegate.hl';
 import { UplcData } from '@helios-lang/uplc';
 import type { UplcLogger } from '@helios-lang/uplc';
 import { UplcProgramV2 } from '@helios-lang/uplc';
@@ -712,9 +713,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     };
     // (undocumented)
     get rev(): bigint;
-    // (undocumented)
     scriptParamsSource: "bundle" | "config";
-    // (undocumented)
     abstract specializedDelegateModule: Source;
     // Warning: (ae-forgotten-export) The symbol "CapoBundleClass" needs to be exported by the entry point index.d.ts
     // Warning: (ae-forgotten-export) The symbol "ConcreteCapoDelegateBundle" needs to be exported by the entry point index.d.ts
@@ -867,6 +866,11 @@ export type charterDataState = {
     charterData: CharterDataLike;
     uuts: uutMap;
 };
+
+// Warning: (ae-forgotten-export) The symbol "Colors" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export const colors: Colors;
 
 // @public
 export interface configBase {
@@ -1151,6 +1155,7 @@ export abstract class DelegatedDataBundle extends CapoDelegateBundle {
     abstract requiresGovAuthority: boolean;
     // (undocumented)
     scriptParamsSource: "bundle";
+    abstract specializedDelegateModule: Source;
 }
 
 // @public
@@ -1783,6 +1788,8 @@ export abstract class MintSpendDelegateBundle extends CapoDelegateBundle {
     requiresGovAuthority: boolean;
     // (undocumented)
     scriptParamsSource: "bundle";
+    abstract specializedDelegateModule: Source;
+    get unspecializedDelegateModule(): Source;
 }
 
 // @public
@@ -2947,6 +2954,8 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
     // Warning: (ae-forgotten-export) The symbol "RelativeDelegateLink_3" needs to be exported by the entry point index.d.ts
     ᱺᱺRelativeDelegateLinkCast: Cast<RelativeDelegateLink_3, RelativeDelegateLinkLike_3>;
 }
+
+export { UnspecializedDelegateScript }
 
 // Warning: (ae-forgotten-export) The symbol "UnspecializedDgtBundle_base" needs to be exported by the entry point index.d.ts
 //
