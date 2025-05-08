@@ -114,11 +114,14 @@ export function realMul(a: number, b: number) {
  * @public
  */
 export function realDiv(a: number, b: number) {
+    if (b === 0) {
+        throw new Error("Cannot divide by zero");
+    }
     const a2 = Math.trunc(1_000_000 * a);
     const b2 = Math.trunc(1_000_000 * b);
     const result1 = a2 / b;
     // const result2 = toFixedReal(result1 / 1_000_000);
-    const result2 = Math.trunc(result1) / 1_000_000;
+    const result2 = Math.round(result1) / 1_000_000;
     if (debugRealMath) {
         console.log("    ---- realDiv", a, "/", b);
         console.log("    ---- realDiv", a2);
@@ -190,3 +193,4 @@ export function checkValidUTF8(data: number[]) {
   return isValidUtf8(data);
 }
 
+export {colors} from "./colors.js"
