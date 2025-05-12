@@ -210,6 +210,19 @@ function DashSummaryItem(props) {
 }
 function DashboardHighlights(props) {
   const { title, className = "", colSpan = "2", footer, children } = props;
+  const colSpanClasses = [
+    void 0,
+    void 0,
+    "col-span-2",
+    "col-span-3",
+    "col-span-4",
+    "col-span-5",
+    "col-span-6",
+    "col-span-7",
+    "col-span-8",
+    "col-span-9",
+    "col-span-10"
+  ];
   const normalClasses = "flex flex-col justify-between p-3 px-4 bg-background/20 h-full rounded-2xl border border-white/10";
   const titleMarkup = title ? /* @__PURE__ */ React__default.createElement("h5", { className: "text-lg" }, title) : null;
   const footerContent = footer ? /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row w-full justify-between mt-auto" }, /* @__PURE__ */ React__default.createElement("div", { className: "text-sm text-gray-500 flex-1 text-right" }, footer)) : null;
@@ -217,7 +230,7 @@ function DashboardHighlights(props) {
     "div",
     {
       key: "dash-highlight-box",
-      className: `${className} col-span-${colSpan} ${normalClasses}`
+      className: `${className} ${colSpanClasses[colSpan]} ${normalClasses}`
     },
     titleMarkup,
     /* @__PURE__ */ React__default.createElement("ul", { className: "grid w-full grid-cols-3 gap-4" }, children),
