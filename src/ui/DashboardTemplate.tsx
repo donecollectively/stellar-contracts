@@ -130,6 +130,8 @@ export function DashboardHighlights(props: {
 }) {
     const { title, className = "", colSpan = "2", footer, children } = props;
     const colSpanClasses = [
+        undefined,
+        undefined,
         "col-span-2",
         "col-span-3",
         "col-span-4",
@@ -154,7 +156,7 @@ export function DashboardHighlights(props: {
     return (
         <div
             key="dash-highlight-box"
-            className={`${className} col-span-${colSpan} ${normalClasses}`}
+            className={`${className} ${colSpanClasses[colSpan]} ${normalClasses}`}
         >
             {titleMarkup}
             <ul className="grid w-full grid-cols-3 gap-4">{children}</ul>
