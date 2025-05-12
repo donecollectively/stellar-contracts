@@ -18,14 +18,14 @@ importers:
         specifier: ~0.3.4
         version: 0.3.4
       '@helios-lang/compiler':
-        specifier: ~0.17.19
-        version: 0.17.19
+        specifier: 0.17.20
+        version: 0.17.20
       '@helios-lang/compiler-utils':
         specifier: ~0.5.15
         version: 0.5.15
       '@helios-lang/contract-utils':
         specifier: ~0.3.21
-        version: 0.3.21(@helios-lang/compiler@0.17.19)
+        version: 0.3.21(@helios-lang/compiler@0.17.20)
       '@helios-lang/crypto':
         specifier: ~0.2.3
         version: 0.2.3
@@ -866,8 +866,8 @@ packages:
   '@helios-lang/compiler-utils@0.5.15':
     resolution: {integrity: sha512-tPI92av0d4eOR4a2U1ORNeT2Sanc9AvvoNQn9aZHSSn10rW1AvDnqd7L4Zj0cjc9uT6BD4wFv0jVdr3gECODVQ==}
 
-  '@helios-lang/compiler@0.17.19':
-    resolution: {integrity: sha512-n206gc+GEuicWoHPu0cYtc2DstrHCuLhes85ch4nJf+OuO8g363x5Q3ESLUQuAJ7OH10hkEKAJkaAYiKstDogA==}
+  '@helios-lang/compiler@0.17.20':
+    resolution: {integrity: sha512-w23Wxa7VE6tgjb8CLhR+C4Xw38ODdbLfxrAqPYM0zvlPQ9iKImFGxyUjCdi8clDJdYHBz6qyJ80Zn9F4Z5CMSA==}
 
   '@helios-lang/contract-utils@0.3.21':
     resolution: {integrity: sha512-zCfQD2jCPWfLGZJe0ZWBQrvKGk61iUbKXvHzx/yF5zeMHL0KiFSpERo8oddGTm77EqNOfnKjOjAd4EBvvS/AJw==}
@@ -3084,7 +3084,7 @@ snapshots:
       '@helios-lang/codec-utils': 0.3.4
       '@helios-lang/type-utils': 0.2.9
 
-  '@helios-lang/compiler@0.17.19':
+  '@helios-lang/compiler@0.17.20':
     dependencies:
       '@helios-lang/codec-utils': 0.3.4
       '@helios-lang/compiler-utils': 0.5.15
@@ -3092,11 +3092,11 @@ snapshots:
       '@helios-lang/type-utils': 0.2.9
       '@helios-lang/uplc': 0.7.15
 
-  '@helios-lang/contract-utils@0.3.21(@helios-lang/compiler@0.17.19)':
+  '@helios-lang/contract-utils@0.3.21(@helios-lang/compiler@0.17.20)':
     dependencies:
       '@helios-lang/cli-utils': 0.1.10
       '@helios-lang/codec-utils': 0.3.4
-      '@helios-lang/compiler': 0.17.19
+      '@helios-lang/compiler': 0.17.20
       '@helios-lang/compiler-utils': 0.5.15
       '@helios-lang/crypto': 0.2.3
       '@helios-lang/ledger': 0.7.8
