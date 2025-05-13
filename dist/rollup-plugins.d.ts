@@ -40,15 +40,6 @@ export declare function heliosRollupBundler(opts?: {
         order: string;
         handler: (this: PluginContext, id: string) => Promise<LoadResult>;
     };
-    watchChange: {
-        order: string;
-        handler: (this: PluginContext, id: string, change: {
-            event: "create" | "update" | "delete";
-        }) => Promise<void>;
-    };
-    shouldTransformCachedModule: {
-        handler: (this: PluginContext, id: string) => boolean;
-    };
     transform: {
         order: string;
         handler: (this: PluginContext, code: string, id: string) => Promise<{
@@ -67,7 +58,6 @@ export declare function heliosRollupLoader(opts?: {
     exclude?: string[];
     project?: string;
     resolve?: string | false | null;
-    onHeliosSource?: (heliosSourceId: string) => void;
 }): {
     name: string;
     resolveId: (this: PluginContext, source: string, importer: string | undefined, options: any) => ResolveIdResult;

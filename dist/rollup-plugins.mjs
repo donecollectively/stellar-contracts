@@ -28,6 +28,7 @@ function heliosRollupLoader(opts = {}) {
     if (!filter(source)) {
       return null;
     }
+    this.addWatchFile(source);
     return {
       id: source
     };
@@ -40,9 +41,8 @@ function heliosRollupLoader(opts = {}) {
     load(id) {
       if (filter(id)) {
         const relPath = path.relative(".", id);
-        if (opts.onHeliosSource) {
-          opts.onHeliosSource(id);
-        }
+        this.warn(`.hl watch: ${id}`);
+        this.addWatchFile(id);
         const content = readFileSync(relPath, "utf-8");
         const [_, purpose, moduleName] = content.match(
           /(module|minting|spending|endpoint)\s+([a-zA-Z0-9]+)/m
@@ -88,7 +88,7 @@ export default ${moduleName}_hl
 
 // src/helios/rollupPlugins/heliosRollupBundler.ts
 import path6 from "path";
-import { existsSync as existsSync3, mkdirSync, readFileSync as readFileSync4, unlinkSync, utimesSync } from "fs";
+import { existsSync as existsSync3, mkdirSync, readFileSync as readFileSync4 } from "fs";
 import { createFilter as createFilter2 } from "rollup-pluginutils";
 import MagicString from "magic-string";
 
@@ -2288,8 +2288,7 @@ import {
 } from "rollup";
 import esbuild from "rollup-plugin-esbuild";
 import path5 from "path";
-var processStart = Date.now();
-async function rollupCreateHlbundledClass(inputFile, projectRoot, onHeliosSource) {
+async function rollupCreateHlbundledClass(inputFile, projectRoot) {
   const outputFile = inputFile.replace(
     /\.hlb\.[tj]s$/,
     ".hlBundled.mjs"
@@ -2321,12 +2320,10 @@ async function rollupCreateHlbundledClass(inputFile, projectRoot, onHeliosSource
       // stellarDeploymentHook("plugin"),
       heliosRollupLoader({
         // todo make this right for the context
-        project: "stellar-contracts",
-        onHeliosSource(id) {
-          if (onHeliosSource) {
-            onHeliosSource(id, outputFile);
-          }
-        }
+        project: "stellar-contracts"
+        // onLoadHeliosFile: (filename) => {
+        //   remember this list of files
+        // }
       }),
       // !!! figure out how to make the bundle include the compiled & optimized
       //   program, when options.compile is true.
@@ -2377,18 +2374,9 @@ async function rollupCreateHlbundledClass(inputFile, projectRoot, onHeliosSource
     );
   }
   bundle.close();
-  const content = readFileSync3(outputFile, "utf-8");
-  const data = new TextEncoder().encode(content);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 8);
-  return import(`${outputFile}?t=${Date.now()}`).then((mod) => {
+  return import(outputFile).then((mod) => {
     if (mod.default) {
       const BundleClass = mod.default;
-      BundleClass.hash = hashHex;
-      BundleClass.compileTime = buildStartTime;
-      BundleClass.afterDelay = (Date.now() - processStart) / 1e3;
-      debugger;
       return BundleClass;
     } else {
       throw new Error(`no default export in ${outputFile}`);
@@ -5047,7 +5035,6 @@ function heliosRollupBundler(opts = {}) {
     pluginOptions.include,
     pluginOptions.exclude
   );
-  const filterHeliosSources = createFilter2(["*.hl", "**/*.hl"]);
   const regexCurrentCapoConfig = /^@donecollectively\/stellar-contracts\/currentCapoConfig$/;
   const filterHlbundledImportName = createFilter2(/.*\.hlb\.[jt]s\?bundled/);
   const netName = process.env.CARDANO_NETWORK;
@@ -5068,10 +5055,7 @@ function heliosRollupBundler(opts = {}) {
     hasOtherBundles: false,
     project: new StellarHeliosProject(),
     bundleClassById: {},
-    emittedArtifacts: /* @__PURE__ */ new Set(),
-    deps: /* @__PURE__ */ new Map(),
-    hlToOutputFiles: /* @__PURE__ */ new Map(),
-    hlToHlb: /* @__PURE__ */ new Map()
+    emittedArtifacts: /* @__PURE__ */ new Set()
   };
   const firstImportFrom = {};
   function relativePath(id) {
@@ -5084,34 +5068,6 @@ function heliosRollupBundler(opts = {}) {
       isPlaceholder: "rollupBundlerPlugin for type-gen"
     }
   };
-  function findOrCreateDeps(importerId) {
-    if (state.deps.has(importerId)) {
-      return state.deps.get(importerId);
-    } else {
-      const newDeps = /* @__PURE__ */ new Set();
-      state.deps.set(importerId, newDeps);
-      return newDeps;
-    }
-  }
-  function addHlb(hlId, hlbId) {
-    if (!state.hlToHlb.has(hlId)) {
-      state.hlToHlb.set(hlId, /* @__PURE__ */ new Set());
-    }
-    state.hlToHlb.get(hlId).add(hlbId);
-  }
-  function addHlArtifact(hlId, filename) {
-    if (!state.hlToOutputFiles.has(hlId)) {
-      state.hlToOutputFiles.set(hlId, /* @__PURE__ */ new Set());
-    }
-    state.hlToOutputFiles.get(hlId).add(filename);
-  }
-  function removeOutputArtifact(hlId) {
-    if (state.hlToOutputFiles.has(hlId)) {
-      for (const filename of state.hlToOutputFiles.get(hlId)) {
-        unlinkSync(filename);
-      }
-    }
-  }
   return {
     name: "heliosBundler",
     buildEnd: {
@@ -5136,7 +5092,7 @@ function heliosRollupBundler(opts = {}) {
     resolveId: {
       order: "pre",
       async handler(source, importer, options) {
-        const interesting = !!source.match(/Vesting.*\.hlb\./);
+        const interesting = !!source.match(/CapoMinter\.hlb\./);
         if (source.match(regexCurrentCapoConfig)) {
           throw new Error(`hurray`);
         } else {
@@ -5172,12 +5128,6 @@ function heliosRollupBundler(opts = {}) {
           }
         }
         if (isEntry && !importer) {
-          if (resolved && filterHeliosSources(source)) {
-            const myDeps = findOrCreateDeps(importer);
-            myDeps.add(resolved.id);
-          } else {
-            this.warn("resolveId: not resolved or not a filter match: " + source + " " + resolved?.id);
-          }
           return resolved;
         }
         const r = await this.resolve(source, importer, {
@@ -5224,17 +5174,9 @@ function heliosRollupBundler(opts = {}) {
               );
               if (actualResolutionResult?.id && !state.emittedArtifacts.has(bundledId)) {
                 state.emittedArtifacts.add(bundledId);
-                const myDeps = findOrCreateDeps(actualResolutionResult.id);
                 const SomeBundleClass = await rollupCreateHlbundledClass(
                   actualResolutionResult.id,
-                  projectRoot,
-                  (heliosSourceId, outputFile) => {
-                    this.warn(" \u2022 \u{1F440}\u{1F440} " + heliosSourceId);
-                    myDeps.add(heliosSourceId);
-                    this.addWatchFile(heliosSourceId);
-                    addHlArtifact(heliosSourceId, outputFile);
-                    addHlb(heliosSourceId, id);
-                  }
+                  projectRoot
                 );
                 const isMainnet = networkId === "mainnet";
                 state.bundleClassById[id] = SomeBundleClass;
@@ -5316,17 +5258,8 @@ function heliosRollupBundler(opts = {}) {
               `resolveId: got HLBundled: ${id}` + JSON.stringify(options)
             );
           }
-          const unbundledId = id.replace(/\?bundled$/, "");
-          if (filterHLB(unbundledId)) {
-            const myDeps = findOrCreateDeps(unbundledId);
-            for (const dep of myDeps) {
-              addHlArtifact(dep, unbundledId);
-              addHlb(dep, unbundledId);
-              this.addWatchFile(dep);
-            }
-          }
           const result = await this.resolve(
-            unbundledId,
+            id.replace(/\?bundled$/, ""),
             importer,
             {
               ...options,
@@ -5357,7 +5290,7 @@ function heliosRollupBundler(opts = {}) {
     load: {
       order: "pre",
       handler: async function(id) {
-        const interesting = !!id.match(/Vesting.*\.hlb\./);
+        const interesting = !!id.match(/\.hlb\./);
         const { project } = state;
         if (filterHlbundledImportName(id)) {
           throw new Error(
@@ -5389,25 +5322,15 @@ function heliosRollupBundler(opts = {}) {
             );
             debugger;
           }
-          const myDeps = findOrCreateDeps(id);
           SomeBundleClass = await rollupCreateHlbundledClass(
             id,
-            projectRoot,
-            (heliosSourceId, outputFile) => {
-              this.debug(`  \u2022 ${heliosSourceId} \u{1F440}\u{1F440} `);
-              this.addWatchFile(heliosSourceId);
-              addHlArtifact(heliosSourceId, outputFile);
-              addHlb(heliosSourceId, id);
-              myDeps.add(heliosSourceId);
-            }
+            projectRoot
           );
         }
         const relativeFilename = path6.relative(projectRoot, id);
         console.log(
           `   \u{1F441}\uFE0F  checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`
         );
-        const { hash, afterDelay } = SomeBundleClass;
-        this.debug(colors.cyanBright("create from " + id) + " " + hash + " " + afterDelay + "s");
         let bundle = SomeBundleClass.create({
           ...placeholderSetup,
           placeholderAt: "load() before type-gen"
@@ -5459,10 +5382,7 @@ function heliosRollupBundler(opts = {}) {
           if (!state.capoBundle) {
             console.log(
               "\nTroubleshooting first .hlb.ts imports?" + [...state.project.bundleEntries.keys()].map(
-                (existing) => (
-                  // bullet: •
-                  `    \u2022 ${traceImportPath(existing)}`
-                )
+                (existing) => `    \u2022 ${traceImportPath(existing)}`
               ).join("\n") + "\n"
             );
           } else {
@@ -5511,6 +5431,7 @@ function heliosRollupBundler(opts = {}) {
                 `looks like you're using the default Capo bundle! ${capoName}`
               );
               state.project.capoBundleName = capoName;
+              debugger;
               state.project.configuredCapo.resolve(void 0);
               state.project.loadBundleWithClass(
                 "src/helios/scriptBundling/CapoHeliosBundle.ts",
@@ -5561,27 +5482,6 @@ function heliosRollupBundler(opts = {}) {
         return null;
       }
     },
-    watchChange: {
-      order: "pre",
-      handler: function(id, change) {
-        this.warn("change: " + id + " " + change.event);
-        removeOutputArtifact(id);
-        const hlbs = state.hlToHlb.get(id);
-        debugger;
-        if (hlbs) {
-          for (const hlb of hlbs) {
-            utimesSync(hlb, /* @__PURE__ */ new Date(), /* @__PURE__ */ new Date());
-          }
-        }
-        return Promise.resolve();
-      }
-    },
-    shouldTransformCachedModule: {
-      handler: function(id) {
-        this.warn("shouldTransformCachedModule: " + id);
-        return true;
-      }
-    },
     transform: {
       order: "pre",
       handler: function(code, id) {
@@ -5589,16 +5489,6 @@ function heliosRollupBundler(opts = {}) {
         let looksLikeCapo = code.match(/extends .*Capo.*/);
         if (looksLikeCapo?.[0].match(/usingCapoBundle/))
           looksLikeCapo = null;
-        const myDeps = findOrCreateDeps(id);
-        if (myDeps.size > 0) {
-          this.debug(`---- watching helios sources for ${id}: `);
-          for (const dep of myDeps) {
-            this.debug(`  \u2022 \u{1F440}${dep} \u{1F440}`);
-            this.addWatchFile(dep);
-          }
-        } else {
-          this.warn(`----- no dependencies registered for ${id}`);
-        }
         const capoConfigRegex = /^(\s*preConfigured *= )*(?:capoConfigurationDetails)\s*;?\s*$/m;
         const filenameBase = id.replace(/.*\/([^.]+)\..*$/, "$1");
         const deployDetailsFile = `./${filenameBase}.hlDeploy.${networkId}.json`;
@@ -5683,10 +5573,6 @@ This will use deployment details from ${deployDetailsFile}
       this.addWatchFile(id);
       this.addWatchFile(resolvedDeployConfig.id);
       debugger;
-      const myDeps = findOrCreateDeps(id);
-      for (const dep of myDeps) {
-        this.addWatchFile(dep);
-      }
       console.log(deployDetails);
       const capoConfig = parseCapoJSONConfig(deployDetails.capo.config);
       const { seedIndex, seedTxn } = capoConfig;
@@ -5757,10 +5643,6 @@ This will use deployment details from ${deployDetailsFile}
     const r = filterHLB(id);
     if (!r) {
       return null;
-    }
-    const myDeps = findOrCreateDeps(id);
-    for (const dep of myDeps) {
-      this.addWatchFile(dep);
     }
     const regex = /(\s*specializedDelegateModule\s*=\s*)|(static needsSpecializedDelegateModule = false)/m;
     if (code.match(regex)) {
