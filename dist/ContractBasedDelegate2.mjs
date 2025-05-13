@@ -1,5 +1,5 @@
 import { makeTxOutput, makeValue, makeAssetClass, makeDummyAddress, makeTxOutputId, makeValidatorHash, makeAddress, makeMintingPolicyHash, makeInlineTxOutputDatum, makeTxInput } from '@helios-lang/ledger';
-import { n as utxosAsString, d as dumpAny, S as StellarTxnContext, M as mkTv } from './HeliosScriptBundle.mjs';
+import { l as utxosAsString, d as dumpAny, S as StellarTxnContext, L as mkTv } from './HeliosScriptBundle.mjs';
 import { decodeUtf8, equalsBytes, encodeUtf8 } from '@helios-lang/codec-utils';
 import { makeCast } from '@helios-lang/contract-utils';
 
@@ -1220,12 +1220,16 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
     }
     configuredNetwork = chosenNetwork;
     if (actorContext.wallet) {
-      const isMainnet2 = await actorContext.wallet.isMainnet();
-      const foundNetwork = isMainnet2 ? "mainnet" : "testnet";
-      if (foundNetwork !== chosenNetwork) {
-        throw new Error(
-          `wallet on ${foundNetwork} doesn't match network from setup`
-        );
+      const walletIsMainnet = await actorContext.wallet.isMainnet();
+      const foundNetwork = walletIsMainnet ? "mainnet" : "a testnet (preprod/preview)";
+      const chosenNetworkLabel = isMainnet ? "mainnet" : "a testnet (preprod/preview)";
+      if (walletIsMainnet !== isMainnet) {
+        const message = `The wallet is connected to ${foundNetwork}, doesn't match this app's target network  ${chosenNetworkLabel}`;
+        if (chosenNetwork == "mainnet") {
+          console.log(`${message}
+   ... have you provided env.TESTNET to the build to target a testnet?`);
+        }
+        throw new Error(message);
       }
       this.actorContext = actorContext;
     }

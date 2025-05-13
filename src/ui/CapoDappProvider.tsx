@@ -54,6 +54,7 @@ import { InPortal } from "./inPortal.js";
 import { Progress } from "./Progress.js";
 import { ClientSideOnly } from "./ClientSideOnly.js";
 import { TxBatchUI } from "./TxBatchUI.js";
+import { environment } from "../environment.js";
 
 // Making your own dApp using Stellar Contracts?  Here's how to get started:
 //   First, use the "null" config here.
@@ -1397,12 +1398,14 @@ export class CapoDAppProvider<
     }
 
     private isMainnet(): boolean {
-        return !(
-            "development" == process.env.NODE_ENV ||
-            "test" == process.env.NODE_ENV ||
-            "preview" == process.env.TESTNET ||
-            "preprod" == process.env.TESTNET
+        const isMainnet = !(
+            "development" == environment.NODE_ENV ||
+            "test" == environment.NODE_ENV ||
+            "preview" == environment.CARDANO_NETWORK ||
+            "preprod" == environment.CARDANO_NETWORK
         );
+        console.log("isMainnet", isMainnet, environment.NODE_ENV, environment.CARDANO_NETWORK);
+        return isMainnet;
     }
 
     async mkDefaultCharterArgs(): Promise<MinimalCharterDataArgs> {

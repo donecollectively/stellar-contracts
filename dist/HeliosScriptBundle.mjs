@@ -7,6 +7,7 @@ import { makeCast } from '@helios-lang/contract-utils';
 import { makeValue, makeAssets, makeNetworkParamsHelper, makeAddress, makeMintingPolicyHash } from '@helios-lang/ledger';
 import { makeTxBuilder, makeTxChainBuilder, makeWalletHelper } from '@helios-lang/tx-utils';
 import { customAlphabet } from 'nanoid';
+import { e as environment } from './environment.mjs';
 
 const redirecToCorrectConstructor = "\u{1F422}${this.id}: wrong direct use of new() constructor in CachedHeliosProgram; use forCurrentPlatform() instead";
 class CachedHeliosProgram extends Program {
@@ -2690,31 +2691,6 @@ function abbreviatedDetail(hext, initLength = 8, countOmitted = false) {
   }
 }
 
-let DEBUG;
-let CARDANO_NETWORK;
-let NODE_ENV;
-let OPTIMIZE;
-if (import.meta?.env && import.meta.env) {
-  console.log("VITE env");
-  DEBUG = parseInt(import.meta.env.VITE_DEBUG || "0");
-  CARDANO_NETWORK = import.meta.env.VITE_CARDANO_NETWORK || "preprod";
-  NODE_ENV = import.meta.env.DEV ? "development" : "production";
-  OPTIMIZE = parseInt(import.meta.env.VITE_OPTIMIZE || "0");
-} else {
-  console.log("non-vite - process.env");
-  DEBUG = parseInt(process.env.DEBUG || "0");
-  CARDANO_NETWORK = process.env.CARDANO_NETWORK || "preprod";
-  NODE_ENV = process.env.NODE_ENV || "development";
-  OPTIMIZE = parseInt(process.env.OPTIMIZE || "0");
-}
-console.log(DEBUG);
-const environment = {
-  DEBUG,
-  CARDANO_NETWORK,
-  NODE_ENV,
-  OPTIMIZE
-};
-
 const defaultNoDefinedModuleName = "\u2039default-needs-override\u203A";
 const placeholderSetupDetails = {
   setup: {
@@ -3589,5 +3565,5 @@ ${errorInfo}`;
   }
 }
 
-export { AlreadyPendingError as A, txOutputIdAsString as B, byteArrayListAsString as C, datumSummary as D, hexToPrintableString as E, betterJsonSerializer as F, abbrevAddress as G, abbreviatedDetail as H, abbreviatedDetailBytes as I, HeliosScriptBundle as J, defaultNoDefinedModuleName as K, placeholderSetupDetails as L, mkTv as M, StellarTxnContext as S, TxNotNeededError as T, mkUutValuesEntries as a, delegateLinkSerializer as b, environment as c, dumpAny as d, errorMapAsString as e, debugMath as f, realMul as g, colors as h, displayTokenName as i, assetsAsString as j, txAsString as k, utxoAsString as l, mkValuesEntry as m, utxosAsString as n, txOutputAsString as o, policyIdAsString as p, txInputAsString as q, realDiv as r, stringToPrintableString as s, toFixedReal as t, uplcDataSerializer as u, valueAsString as v, lovelaceToAda as w, addrAsString as x, byteArrayAsString as y, txidAsString as z };
+export { AlreadyPendingError as A, byteArrayListAsString as B, datumSummary as C, hexToPrintableString as D, betterJsonSerializer as E, abbrevAddress as F, abbreviatedDetail as G, abbreviatedDetailBytes as H, HeliosScriptBundle as I, defaultNoDefinedModuleName as J, placeholderSetupDetails as K, mkTv as L, StellarTxnContext as S, TxNotNeededError as T, mkUutValuesEntries as a, delegateLinkSerializer as b, debugMath as c, dumpAny as d, errorMapAsString as e, realMul as f, colors as g, displayTokenName as h, assetsAsString as i, txAsString as j, utxoAsString as k, utxosAsString as l, mkValuesEntry as m, txOutputAsString as n, txInputAsString as o, policyIdAsString as p, lovelaceToAda as q, realDiv as r, stringToPrintableString as s, toFixedReal as t, uplcDataSerializer as u, valueAsString as v, addrAsString as w, byteArrayAsString as x, txidAsString as y, txOutputIdAsString as z };
 //# sourceMappingURL=HeliosScriptBundle.mjs.map

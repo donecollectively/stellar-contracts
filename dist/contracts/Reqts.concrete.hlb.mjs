@@ -14,6 +14,7 @@ import '@helios-lang/crypto';
 import '@helios-lang/contract-utils';
 import '@helios-lang/tx-utils';
 import 'nanoid';
+import '../environment.mjs';
 import '../CapoDelegateHeliosBundle.mjs';
 
 class ReqtsBundle extends DelegatedDataBundle {

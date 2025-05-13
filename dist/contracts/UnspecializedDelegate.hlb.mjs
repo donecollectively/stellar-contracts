@@ -12,6 +12,7 @@ import '@helios-lang/contract-utils';
 import '@helios-lang/ledger';
 import '@helios-lang/tx-utils';
 import 'nanoid';
+import '../environment.mjs';
 import '../DefaultCapo.mjs';
 import '../BasicDelegate.mjs';
 

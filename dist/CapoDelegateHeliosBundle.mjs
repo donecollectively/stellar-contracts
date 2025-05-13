@@ -1,5 +1,5 @@
 import { makeSource } from '@helios-lang/compiler-utils';
-import { J as HeliosScriptBundle, L as placeholderSetupDetails } from './HeliosScriptBundle.mjs';
+import { I as HeliosScriptBundle, K as placeholderSetupDetails } from './HeliosScriptBundle.mjs';
 import './DefaultCapo.mjs';
 import '@helios-lang/ledger';
 import { B as BasicDelegate_hl } from './BasicDelegate.mjs';
@@ -11,6 +11,7 @@ import '@helios-lang/crypto';
 import '@helios-lang/contract-utils';
 import '@helios-lang/tx-utils';
 import 'nanoid';
+import './environment.mjs';
 
 class CapoDelegateBundle extends HeliosScriptBundle {
   /**

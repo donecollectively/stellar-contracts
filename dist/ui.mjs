@@ -6,6 +6,7 @@ import '@cardano-ogmios/client';
 import { dumpAny, OgmiosTxSubmitter, GenericSigner, TxBatcher, uplcDataSerializer, bytesToText, abbrevAddress } from '@donecollectively/stellar-contracts';
 import { createPortal } from 'react-dom';
 import { decodeTx, makeShelleyAddress } from '@helios-lang/ledger';
+import { e as environment } from './environment.mjs';
 
 const styles = {
   primary: {
@@ -1505,7 +1506,9 @@ class CapoDAppProvider extends Component {
     }
   }
   isMainnet() {
-    return !("development" == process.env.NODE_ENV || "test" == process.env.NODE_ENV || "preview" == process.env.TESTNET || "preprod" == process.env.TESTNET);
+    const isMainnet = !("development" == environment.NODE_ENV || "test" == environment.NODE_ENV || "preview" == environment.CARDANO_NETWORK || "preprod" == environment.CARDANO_NETWORK);
+    console.log("isMainnet", isMainnet, environment.NODE_ENV, environment.CARDANO_NETWORK);
+    return isMainnet;
   }
   async mkDefaultCharterArgs() {
     const { walletHelper } = this.state;

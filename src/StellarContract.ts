@@ -916,12 +916,15 @@ export class StellarContract<
         }
         configuredNetwork = chosenNetwork;
         if (actorContext.wallet) {
-            const isMainnet = await actorContext.wallet.isMainnet();
-            const foundNetwork = isMainnet ? "mainnet" : "testnet";
-            if (foundNetwork !== chosenNetwork) {
-                throw new Error(
-                    `wallet on ${foundNetwork} doesn't match network from setup`
-                );
+            const walletIsMainnet = await actorContext.wallet.isMainnet();
+            const foundNetwork = walletIsMainnet ? "mainnet" :"a testnet (preprod/preview)";
+            const chosenNetworkLabel = isMainnet ? "mainnet" : "a testnet (preprod/preview)";
+            if (walletIsMainnet !== isMainnet) {
+                const message = `The wallet is connected to ${foundNetwork}, doesn't match this app's target network  ${chosenNetworkLabel}`;
+                if (chosenNetwork == "mainnet") {
+                    console.log(`${message}\n   ... have you provided env.TESTNET to the build to target a testnet?`)
+                }
+                throw new Error( message );
             }
             // redundant
             this.actorContext = actorContext;

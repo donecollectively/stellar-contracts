@@ -9,4 +9,5 @@ import '@helios-lang/compiler';
 import '@helios-lang/crypto';
 import '@helios-lang/tx-utils';
 import 'nanoid';
+import './environment.mjs';
 //# sourceMappingURL=ContractBasedDelegate.mjs.map
