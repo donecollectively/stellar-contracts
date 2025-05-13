@@ -1,6 +1,6 @@
 {
     "name": "@donecollectively/stellar-contracts",
-    "version": "0.9.0-beta.4",
+    "version": "0.9.0-beta.5",
     "description": "Smart contract fusion for Cardano (BETA!)",
     "license": "SEE LICENSE IN LICENSE.TXT",
     "main": "./dist/stellar-contracts.mjs",
