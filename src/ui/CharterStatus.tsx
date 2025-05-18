@@ -36,12 +36,11 @@ import { TxBatchViewer } from "./TxBatchViewer.js";
  * @public
  */
 export function CharterStatus() {
-    const provider = useCapoDappProvider();
+    const {capo, provider} = useCapoDappProvider();
     const blockfrost = provider?.bf;
 
     const [charterData, setCharterData] = React.useState<CharterData>();
     const [statusMessage, setStatusMessage] = React.useState("");
-    const capo = provider?.capo;
 
     React.useEffect(() => {
         if (!provider?.userInfo?.wallet) {
@@ -78,7 +77,7 @@ export function CharterStatus() {
 
             setCharterData(cd);
         });
-    }, [capo, provider?.userInfo, provider]);
+    }, [provider, provider?.userInfo.wallet, capo]);
 
     const [upgradeTxn, setUpgradeTxn] = React.useState<
         hasAddlTxns<StellarTxnContext> | "ok" | undefined
@@ -322,6 +321,7 @@ export function CharterHighlights({
 
             return (
                 <DashHighlightItem
+                    key={`role-${roleName}`}
                     title={roleName}
                     footer={`manifest '${entryType}' entry`}
                 >
@@ -371,7 +371,10 @@ export function CharterHighlights({
                     const foundRole = charterData.manifest.get(roleName);
                     if (!foundRole)
                         return (
-                            <DashHighlightItem title={roleName}>
+                            <DashHighlightItem
+                                title={roleName}
+                                key={`mftRole-${roleName}`}
+                            >
                                 <Softlight>Delegated data policy</Softlight>
                                 <Highlight>needs deployment</Highlight>
                             </DashHighlightItem>

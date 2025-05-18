@@ -1969,17 +1969,37 @@ export type UserActionMap<actions extends string> = Record<
 /**
  * @public
  */
-export const CapoDappProviderContext =
-    React.createContext<CapoDAppProvider<any> | null>(null);
+export const CapoDappProviderContext = React.createContext<CapoDAppProvider<any> | null>(null);
 
-export function useCapoDappProvider() {
-    const context = React.useContext(CapoDappProviderContext);
-    if (!context) {
+/**
+ * React hook for accessing the CapoDappProvider context.
+ * @remarks
+ * The context data now includes the capo instance as well as the provider.  
+ * 
+ * Indicate your Capo's type in the type parameter to access your Capo's methods and properties.
+ * @typeParam C - the type of the capo instance
+ * @public
+ */
+export function useCapoDappProvider<C extends Capo<any, any> = Capo<any, any>>() {
+    const provider = React.useContext(CapoDappProviderContext as React.Context<CapoDAppProvider<C> | null>);
+    if (!provider) {
         throw new Error(
             "useCapoDappProvider must be used within a CapoDappProvider"
         );
     }
-    return context;
+    const [capo, setCapo] = React.useState<C>();
+    const [checking, keepChecking] = React.useState(1);
+
+    React.useEffect(() => {
+        setTimeout(() => {
+            if (capo !== provider?.capo) {
+                setCapo(provider?.capo);
+            }
+            keepChecking(1 + checking);
+        }, 2000);
+    }, [checking, provider, provider?.userInfo.wallet, capo]);
+
+    return {capo, provider};
 }
 
 /**
