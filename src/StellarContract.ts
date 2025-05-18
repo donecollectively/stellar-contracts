@@ -1651,10 +1651,11 @@ export class StellarContract<
             tcx2.state.seedUtxo = seedUtxo;
             return tcx2;
         } else {
-            const newSeedUtxo = await this.findUutSeedUtxo([], tcx);
-            const tcx2 = tcx.addInput(newSeedUtxo) as TCX & hasSeedUtxo;
-            tcx2.state.seedUtxo = newSeedUtxo;
-            return tcx2;
+            return this.findUutSeedUtxo([], tcx).then((newSeedUtxo) => {
+                const tcx2 = tcx.addInput(newSeedUtxo) as TCX & hasSeedUtxo;
+                tcx2.state.seedUtxo = newSeedUtxo;
+                return tcx2;
+            });
         }
     }
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
