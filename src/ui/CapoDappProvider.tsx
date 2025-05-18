@@ -1,17 +1,30 @@
 "use client";
-import React, { type MouseEventHandler, Component, Fragment } from "react";
-import type {
-    BlockfrostV0Client,
-    CardanoClient,
-    Cip30FullHandle,
-    Cip30Wallet,
-    TxChainBuilder,
-    WalletHelper,
+import React, {
+    type ChangeEventHandler,
+    type MouseEventHandler,
+    Component,
+    Fragment,
+} from "react";
+import {
+    makeHydraClient,
+    makeRandomRootPrivateKey,
+    makeRootPrivateKey,
+    type BlockfrostV0Client,
+    type CardanoClient,
+    type Cip30FullHandle,
+    type Cip30Wallet,
+    type HydraClientOptions,
+    type SimpleWallet,
+    type TxChainBuilder,
+    type Wallet,
+    type WalletHelper,
 } from "@helios-lang/tx-utils";
 import type { NetworkParams, Tx, TxInput } from "@helios-lang/ledger";
 import {
     makeBlockfrostV0Client,
     makeCip30Wallet,
+    makeRandomSimpleWallet,
+    makeSimpleWallet,
     makeTxChainBuilder,
     makeWalletHelper,
 } from "@helios-lang/tx-utils";
@@ -55,6 +68,7 @@ import { Progress } from "./Progress.js";
 import { ClientSideOnly } from "./ClientSideOnly.js";
 import { TxBatchUI } from "./TxBatchUI.js";
 import { environment } from "../environment.js";
+import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
 
 // Making your own dApp using Stellar Contracts?  Here's how to get started:
 //   First, use the "null" config here.
@@ -132,6 +146,7 @@ export type propsType<CapoType extends Capo<any>> = {
     targetNetwork: "preview" | "preprod" | "mainnet";
     dAppName?: string;
     supportedWallets?: string[];
+    hydra?: boolean | Omit<HydraClientOptions, "isForMainnet">;
     blockfrostKey: string;
     ogmiosConnections?: Record<submitterName, simpleOgmiosConn>;
     otherSubmitters?: namedSubmitters;
@@ -171,7 +186,7 @@ export type propsType<CapoType extends Capo<any>> = {
     // provider.mkCapoSiteCtx();onContextChange
 
     onContextChange?: (provider?: CapoDAppProvider<CapoType, any>) => void;
-    onWalletChange?: (wallet: Cip30Wallet | undefined) => void;
+    onWalletChange?: (wallet: Wallet | undefined) => void;
     children: React.ReactNode;
     // ??current-transaction display/state-change hook
 };
@@ -187,7 +202,7 @@ export type CapoDappProviderState<CapoType extends Capo<any>> = {
     status: CapoDappStatus<any>;
     userInfo: DappUserInfo;
 
-    walletHelper?: WalletHelper<Cip30Wallet>;
+    walletHelper?: WalletHelper<Wallet>;
     walletUtxos?: TxInput[];
     txBatcher?: TxBatcher;
     // showDetail?: string;
@@ -201,7 +216,8 @@ export type CapoDappProviderState<CapoType extends Capo<any>> = {
  */
 export type SetWalletDetails = {
     walletName: string;
-    walletHandle: Cip30FullHandle;
+    simpleWallet?: SimpleWallet;
+    cip30WalletHandle?: Cip30FullHandle;
     autoNext?: boolean;
 };
 
@@ -309,20 +325,22 @@ export class CapoDAppProvider<
     }
 
     supportedWallets() {
-        return ["eternl"]
+        return ["eternl", "zwallet"];
     }
 
     isWalletSupported(wallet: string) {
-        const supported = this.props.supportedWallets ?? this.supportedWallets();
+        const supported =
+            this.props.supportedWallets ?? this.supportedWallets();
 
         return supported.includes(wallet);
     }
 
     walletIsAvailable(wallet: string) {
-        return !! (window as any).cardano?.[wallet]
+        if (wallet === "zwallet") {
+            return true;
+        }
+        return !!(window as any).cardano?.[wallet];
     }
-
-    
 
     render() {
         let {
@@ -364,12 +382,21 @@ export class CapoDAppProvider<
         const showProgressBar = !!progressBar;
 
         const roleInfo = this.renderRoleInfo();
-        const addrInfo =
+        const capoInfo =
             "development" == process.env.NODE_ENV && capo?._compiledScript
-                ? capo.address.toString()
+                ? <div className="inline-block flex flex-row">
+                    {/* show a chip with the capo address, short until expanded on hover */}
+                    {/* leaves space for a hat icon on its left */}
+                    <span
+                        className="mb-0 pl-2 text-black overflow-hidden max-w-48 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
+                    >
+                        Capo&nbsp;{capo.address.toString()}
+                    </span>&nbsp;
+                    {roleInfo}
+                </div>
                 : "";
         {
-            addrInfo ? "address: " + addrInfo : "";
+            capoInfo ? "address: " + capoInfo : "";
         }
 
         const portalFallbackMessage = {
@@ -385,7 +412,8 @@ export class CapoDAppProvider<
                 fallbackLocation="top"
                 {...{ delay: portalDelay, portalFallbackMessage }}
             >
-                {addrInfo} {roleInfo} {walletInfo}
+                 {capoInfo} 
+                {walletInfo}
                 {/* {inviteLink} */}
             </InPortal>
         );
@@ -589,12 +617,12 @@ export class CapoDAppProvider<
                             </React.Fragment>
                         ))}
                     </span>
-                    <div className="text-sm italic">
-                        {moreInstructions}
-                    </div>
+                    <div className="text-sm italic">{moreInstructions}</div>
                 </div>
 
-                <div className="mr-2 flex-grow text-nowrap">{this._renderNextAction()}</div>
+                <div className="mr-2 flex-grow text-nowrap">
+                    {this._renderNextAction()}
+                </div>
             </div>
         );
     }
@@ -700,17 +728,36 @@ export class CapoDAppProvider<
      */
     renderWalletInfo() {
         const {
-            userInfo: { wallet, connectingWallet, foundNetworkName },
+            userInfo: {
+                wallet,
+                walletAddress,
+                connectingWallet,
+                foundNetworkName,
+            },
         } = this.state;
 
         if (wallet) {
             return (
-                <span
-                    key="chip-networkName"
-                    className="mb-0 inline-block rounded border border-slate-500 bg-blue-900 px-2 py-0 text-sm text-slate-400 shadow-none outline-none transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] hover:cursor-text"
-                >
-                    {foundNetworkName}
-                </span>
+                <div className="flex flex-row">
+                    {walletAddress && ( 
+                        <span
+                            key="chip-walletAddr"
+                            // make it small by default, but allow it to grow on hover
+                            // also, make it right-aligned and chop the overflow
+                            // color the text black
+                            className="mb-0 text-black overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
+                        >
+                            {walletAddress}
+                        </span>
+                    )}
+                    &nbsp;
+                    <span
+                        key="chip-networkName"
+                        className="mb-0 inline-block rounded border border-slate-500 bg-blue-900 px-2 py-0 text-sm text-slate-400 shadow-none outline-none transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] hover:cursor-text"
+                    >
+                        {foundNetworkName}
+                    </span>
+                </div>
             );
         } else if (connectingWallet) {
             return (
@@ -723,6 +770,10 @@ export class CapoDAppProvider<
         } else {
             return (
                 <div>
+                    <select onChange={this.onWalletChange}>
+                        <option value="zwallet">Zero Wallet</option>
+                        <option value="eternl">Eternl</option>
+                    </select>
                     <Button
                         variant="secondary"
                         className="-mt-3"
@@ -734,6 +785,10 @@ export class CapoDAppProvider<
             );
         }
     }
+
+    onWalletChange: ChangeEventHandler<HTMLSelectElement> = (event) => {
+        this.newWalletSelected(event.target.value);
+    };
 
     onConnectButton: MouseEventHandler<HTMLButtonElement> = async (event) => {
         this.connectWallet();
@@ -834,6 +889,7 @@ export class CapoDAppProvider<
                     `ogmios submitter ${name} conflicts with other implied or provided submitter`
                 );
             }
+
             this.submitters[name] = await OgmiosTxSubmitter.withOgmiosConn(
                 this.isMainnet(),
                 conn
@@ -883,16 +939,18 @@ export class CapoDAppProvider<
      * @internal
      */
     newWalletSelected(selectedWallet: string = "eternl", autoNext = true) {
-    if (!this.isWalletSupported(selectedWallet)) {
-        this.reportError(
-            new Error("wallet not supported"),
-            `selected wallet '${selectedWallet}' not supported`,
-            {
-                developerGuidance: "let the user know to install the wallet plugin",
-            }
-        );
-        return;
-    }
+        if (!this.isWalletSupported(selectedWallet)) {
+            debugger;
+            this.reportError(
+                new Error("wallet not supported"),
+                `selected wallet '${selectedWallet}' not supported`,
+                {
+                    developerGuidance:
+                        "let the user know to install the wallet plugin",
+                }
+            );
+            return;
+        }
 
         if (!this.walletIsAvailable(selectedWallet)) {
             this.reportError(
@@ -945,7 +1003,8 @@ export class CapoDAppProvider<
                 new Error(`wallet '${selectedWallet}' not supported`),
                 `selected wallet '${selectedWallet}' isn't supported`,
                 {
-                    developerGuidance: "let the user know to install the wallet plugin",
+                    developerGuidance:
+                        "let the user know to install the wallet plugin",
                 }
             );
             return;
@@ -983,28 +1042,70 @@ export class CapoDAppProvider<
                 userInfo: { ...userInfo, connectingWallet: true },
             }
         );
-        const connecting = (this.walletConnectPromise =
-            //@ts-expect-error on Cardano
-            window.cardano[selectedWallet]?.enable());
-        const handle: Cip30FullHandle = await connecting.catch((e: any) => {
-            this.walletConnectPromise = undefined;
-            // eternl plugin seems to have a race for initializing
-            // the wallet connection, when we do auto-connect.
-            if (!!retries && e.message.match(/no account set/)) {
-                const delay = Math.pow(1.6, 5 - retries) * 200;
-                return new Promise((res) => setTimeout(res, delay)).then(() => {
-                    return this.connectWallet(autoNext, retries - 1);
-                });
+        let simpleWallet: SimpleWallet | undefined;
+        let walletHandle: Cip30FullHandle | undefined;
+        if (selectedWallet === "zwallet") {
+            let privKeyHex = window.localStorage.getItem("zwk");
+            if (!privKeyHex) {
+                const entropy = makeRandomRootPrivateKey().entropy;
+                privKeyHex = bytesToHex(entropy);
+                window.localStorage.setItem("zwk", privKeyHex);
             }
-            this.reportError(e, "wallet connect", {
-                developerGuidance:
-                    "guide the user to get connected to a supported wallet plugin",
+            const privKey = makeRootPrivateKey(hexToBytes(privKeyHex));
+
+            // const capo = this.state.capo;
+            // if (!capo) {
+            //     throw new Error("capo not initialized")
+            // }
+            const isMainnet = this.props.targetNetwork === "mainnet";
+            const useHydra = !!this.props.hydra;
+            const hydraOptions: HydraClientOptions | undefined=
+                useHydra
+                    ? {
+                          ...(this.props.hydra === true ? {} : this.props.hydra),
+                          isForMainnet: isMainnet,
+                      }
+                    : undefined;
+            let networkClient = useHydra ? makeHydraClient(WebSocket, {
+                onReceive(message) {
+                    console.log("onReceive", message);
+                },
+                isForMainnet: isMainnet,
+                ...hydraOptions,
+            }) : this.bf;
+            simpleWallet = makeSimpleWallet(privKey, networkClient);
+        } else {
+            if (!!this.props.hydra) {
+                throw new Error("hydra not supported for this wallet");
+            }
+            const connecting = (this.walletConnectPromise =
+                //@ts-expect-error on Cardano
+                window.cardano[selectedWallet]?.enable());
+            walletHandle = await connecting.catch((e: any) => {
+                simpleWallet = undefined;
+
+                // eternl plugin seems to have a race for initializing
+                // the wallet connection, when we do auto-connect.
+                if (!!retries && e.message.match(/no account set/)) {
+                    const delay = Math.pow(1.6, 5 - retries) * 200;
+                    return new Promise((res) => setTimeout(res, delay)).then(
+                        () => {
+                            return this.connectWallet(autoNext, retries - 1);
+                        }
+                    );
+                }
+                this.reportError(e, "wallet connect", {
+                    developerGuidance:
+                        "guide the user to get connected to a supported wallet plugin",
+                });
             });
-        });
-        if (!handle) return;
+
+            if (!walletHandle) return;
+        }
 
         return this.setWallet({
-            walletHandle: handle,
+            cip30WalletHandle: walletHandle,
+            simpleWallet: simpleWallet,
             walletName: selectedWallet,
             autoNext,
         });
@@ -1018,51 +1119,102 @@ export class CapoDAppProvider<
      * @public
      */
     async setWallet(details: SetWalletDetails) {
-        const { walletName, walletHandle, autoNext = true } = details;
+        let {
+            walletName,
+            simpleWallet,
+            cip30WalletHandle: walletHandle,
+            autoNext = true,
+        } = details;
+        if (!simpleWallet && !walletHandle) {
+            debugger;
+            throw new Error("wallet or walletHandle is required");
+        }
+
+        let wallet: Wallet | undefined = simpleWallet;
+        let addrString: string | undefined;
         console.warn("CIP-30 Wallet Handle", walletHandle);
 
-        const netId = await walletHandle.getNetworkId();
-        const foundNetworkName = networkNames[netId];
-        if (foundNetworkName !== this.props.targetNetwork) {
-            return this.updateStatus(
-                `This application is only available on the ${this.props.targetNetwork} network.  Your wallet is connected to network ${netId} (${foundNetworkName})`,
-                {
-                    isError: true,
-                    developerGuidance:
-                        "when the user switches networks, the dApp should automatically(?) reconnect",
-                },
-                "//wallet not on expected network",
-                {
-                    userInfo: {
-                        ...this.userInfo,
-                        connectingWallet: false,
-                        foundNetworkName,
+        let foundNetworkName: string | undefined;
+        if (walletHandle) {
+            const netId = await walletHandle.getNetworkId();
+            const addr = (await walletHandle.getUsedAddresses())[0];
+            addrString = addr
+            foundNetworkName = networkNames[netId];
+            if (foundNetworkName !== this.props.targetNetwork) {
+                return this.updateStatus(
+                    `This application is only available on the ${this.props.targetNetwork} network.  Your wallet is connected to network ${netId} (${foundNetworkName})`,
+                    {
+                        isError: true,
+                        developerGuidance:
+                            "when the user switches networks, the dApp should automatically(?) reconnect",
                     },
-                }
-            );
-        }
+                    "//wallet not on expected network",
+                    {
+                        userInfo: {
+                            ...this.userInfo,
+                            connectingWallet: false,
+                            walletAddress: addrString,
+                            foundNetworkName: foundNetworkName || "‹unknown›",
+                        },
+                    }
+                );
+            }
 
-        if (this.bf.networkName !== foundNetworkName) {
-            //! checks that wallet network matches network params / bf
-            this.updateStatus(
-                `wallet network mismatch; expected ${this.bf.networkName}, wallet ${foundNetworkName}`,
+            if (this.bf.networkName !== foundNetworkName) {
+                //! checks that wallet network matches network params / bf
+                this.updateStatus(
+                    `wallet network mismatch; expected ${this.bf.networkName}, wallet ${foundNetworkName}`,
+                    {
+                        isError: true,
+                        developerGuidance:
+                            "the dApp should automatically(?) reconnect when the user switches networks",
+                    },
+                    "//wallet network doesn't match bf network",
+                    {
+                        userInfo: {
+                            ...this.userInfo,
+                            connectingWallet: false,                            
+                            walletAddress: addrString,
+                            foundNetworkName,
+                        },
+                    }
+                );
+                return;
+            }
+            wallet = makeCip30Wallet(walletHandle);
+        } else {
+            if (!simpleWallet) {
+                throw new Error("wallet not found"); // for TypeScript
+            }
+            wallet = simpleWallet;
+            foundNetworkName = this.props.targetNetwork;
+            if (this.capo) {
+                this.capo.setup.network = simpleWallet.cardanoClient;
+                this.capo.setup.actorContext.wallet = wallet;
+            }
+            const networkParams = await simpleWallet.cardanoClient.parameters;
+            const addr = (await wallet.usedAddresses)[0];
+            addrString = addr.toString();
+            await this.updateStatus(
+                "connected with zero-wallet",
                 {
-                    isError: true,
-                    developerGuidance:
-                        "the dApp should automatically(?) reconnect when the user switches networks",
+                    developerGuidance: "status message for the user",
                 },
-                "//wallet network doesn't match bf network",
+                "// zero-wallet connected",
                 {
+                    networkParams,
                     userInfo: {
                         ...this.userInfo,
                         connectingWallet: false,
-                        foundNetworkName,
+                        wallet,
+                        walletAddress: addrString,
                     },
                 }
             );
-            return;
         }
-        const wallet = makeCip30Wallet(walletHandle);
+        if (!wallet) {
+            throw new Error("wallet not found"); // for TypeScript
+        }
         const { txBatcher } = this.state;
 
         if (txBatcher) {
@@ -1086,6 +1238,7 @@ export class CapoDAppProvider<
             userInfo: {
                 ...this.userInfo,
                 wallet,
+                walletHandle,
                 selectedWallet: walletName,
                 connectingWallet: false,
                 foundNetworkName,
@@ -1105,7 +1258,7 @@ export class CapoDAppProvider<
 
         if (this.capo) this.capo.actorContext.wallet = wallet;
 
-        const collateralUtxos = await walletHandle.getCollateral();
+        const collateralUtxos = await wallet.collateral;
         if (!collateralUtxos?.length) {
             this.updateStatus(
                 `Error: no collateral UTxO set in wallet config`,
@@ -1186,11 +1339,10 @@ export class CapoDAppProvider<
         }
         if (!!isAdmin) roles.push("admin");
 
-        const message =
-            roles.includes("member") 
-            // || roles.includes("admin")
-                ? ""
-                : this.getStartedMessage()
+        const message = roles.includes("member")
+            ? // || roles.includes("admin")
+              ""
+            : this.getStartedMessage();
 
         this.updateStatus(
             message,
@@ -1211,8 +1363,8 @@ export class CapoDAppProvider<
         );
     }
 
-    getStartedMessage() : string {
-        return `Hurray!  Users can now start doing their thing. Customize this content in your CapoDappProvider's getStartedMessage() method.`
+    getStartedMessage(): string {
+        return `Hurray!  Users can now start doing their thing. Customize this content in your CapoDappProvider's getStartedMessage() method.`;
     }
 
     // -- step 3 - check if the Capo is configured and ready for use
@@ -1228,7 +1380,7 @@ export class CapoDAppProvider<
         // if ("create" == route || "edit" == route) {
         //     await this.connectWallet();
         // }
-        const {
+        let {
             networkParams,
             capo,
 
@@ -1292,8 +1444,15 @@ export class CapoDAppProvider<
 
             txBatcher = new TxBatcher(batcherOptions);
         }
+
+        let network: CardanoClient = this.bf;
+        //@ts-expect-error - sorry, typescript : /
+        if (this.state.userInfo.wallet?.cardanoClient) {
+            network = (this.state.userInfo.wallet! as SimpleWallet)
+                .cardanoClient;
+            networkParams = await network.parameters;
         const setup = {
-            network: this.bf,
+            network,
             networkParams,
             txBatcher,
             actorContext: {
@@ -1404,7 +1563,12 @@ export class CapoDAppProvider<
             "preview" == environment.CARDANO_NETWORK ||
             "preprod" == environment.CARDANO_NETWORK
         );
-        console.log("isMainnet", isMainnet, environment.NODE_ENV, environment.CARDANO_NETWORK);
+        console.log(
+            "isMainnet",
+            isMainnet,
+            environment.NODE_ENV,
+            environment.CARDANO_NETWORK
+        );
         return isMainnet;
     }
 
@@ -1768,7 +1932,9 @@ export class CapoDAppProvider<
 export type DappUserInfo = {
     selectedWallet?: string;
     connectingWallet: boolean;
-    wallet?: Cip30Wallet;
+    wallet?: Wallet;
+    walletHandle?: Cip30FullHandle;
+    walletAddress?: string;
 
     memberUut?: UutName;
     roles: ("member" | "admin" | "artist" | "muNodeOp")[];
