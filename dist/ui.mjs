@@ -843,7 +843,7 @@ class CapoDAppProvider extends Component {
         role: "banner"
       },
       /* @__PURE__ */ React__default.createElement("div", { className: "" }, /* @__PURE__ */ React__default.createElement("span", { key: "status", className: "block sm:inline" }, message), /* @__PURE__ */ React__default.createElement("div", { className: "text-sm text-gray-700 dark:text-gray-300 italic" }, moreInstructions)),
-      /* @__PURE__ */ React__default.createElement("div", { className: "mr-2 flex-grow" }, this._renderNextAction())
+      /* @__PURE__ */ React__default.createElement("div", { className: "mr-2 flex-grow" }, this.renderNextAction())
     );
   }
   /**
@@ -904,10 +904,10 @@ class CapoDAppProvider extends Component {
         key: "errorStatus"
       },
       /* @__PURE__ */ React__default.createElement("div", { className: "" }, /* @__PURE__ */ React__default.createElement("strong", { className: "font-bold" }, "Whoops! \xA0\xA0"), /* @__PURE__ */ React__default.createElement("span", { key: "status-err", className: "block sm:inline" }, message.split("\n").map((line, i) => /* @__PURE__ */ React__default.createElement(React__default.Fragment, { key: `line-${i}` }, line, /* @__PURE__ */ React__default.createElement("br", null)))), /* @__PURE__ */ React__default.createElement("div", { className: "text-sm italic" }, moreInstructions)),
-      /* @__PURE__ */ React__default.createElement("div", { className: "mr-2 flex-grow text-nowrap" }, this._renderNextAction())
+      /* @__PURE__ */ React__default.createElement("div", { className: "mr-2 flex-grow text-nowrap" }, this.renderNextAction())
     );
   }
-  _renderNextAction() {
+  renderNextAction() {
     const {
       status: {
         nextAction: {
@@ -1694,7 +1694,7 @@ class CapoDAppProvider extends Component {
     );
     let tcx;
     try {
-      const addresses = await wallet.usedAddresses;
+      const addresses = await wallet.unusedAddresses;
       tcx = await capo.mkTxnMintCharterToken(
         await this.mkDefaultCharterArgs()
       );
