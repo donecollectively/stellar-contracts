@@ -124,7 +124,11 @@ export interface OtherStructLike {
 
 
 
-export type SomeKindaEnumMeta = EnumTypeMeta<
+
+            /**
+            * @internal
+            */
+            export type SomeKindaEnumMeta = EnumTypeMeta<
     {module: "StructDatumTester", enumName: "SomeKindaEnum"}, {
         case1: singleEnumVariantMeta<SomeKindaEnumMeta, "case1",
             "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
