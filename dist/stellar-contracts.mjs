@@ -14116,6 +14116,9 @@ We suggest naming your Capo bundle class with your application's name.
       charterData,
       capoUtxos
     });
+    if (!settingsInfo) {
+      throw new Error("settingsInfo not found");
+    }
     tcx.addRefInput(settingsInfo.utxo);
     const tcx2 = tcx;
     tcx2.state.settingsInfo = settingsInfo;
@@ -14277,7 +14280,7 @@ We suggest naming your Capo bundle class with your application's name.
     return charterData;
   }
   async findSettingsInfo(options) {
-    let { charterData, capoUtxos, optional } = options;
+    let { charterData, capoUtxos, optional = false } = options;
     if (!capoUtxos) {
       debugger;
       capoUtxos = await this.findCapoUtxos();

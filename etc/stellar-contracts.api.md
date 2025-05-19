@@ -470,11 +470,11 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     findRefScriptUtxo(expectedVh: number[], capoUtxos: TxInput[]): Promise<TxInput | undefined>;
     findScriptReferences(capoUtxos: TxInput[]): Promise<TxInput[]>;
     // (undocumented)
-    findSettingsInfo<T extends boolean = false>(this: SELF, options: {
+    findSettingsInfo(this: SELF, options: {
         charterData: CharterData;
         capoUtxos?: TxInput[];
-        optional?: T;
-    }): Promise<T extends false ? FoundDatumUtxo<any, any> : FoundDatumUtxo<any, any> | undefined>;
+        optional?: boolean;
+    }): Promise<FoundDatumUtxo<any, any> | undefined>;
     // (undocumented)
     getBundle(): CapoHeliosBundle;
     // @deprecated
@@ -3167,7 +3167,7 @@ export type WrappedPromise<T> = {
 
 // Warnings were encountered during analysis:
 //
-// src/Capo.ts:1177:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
+// src/Capo.ts:1178:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
 // src/StellarContract.ts:356:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
 // src/StellarTxnContext.ts:91:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts

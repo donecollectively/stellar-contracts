@@ -1240,7 +1240,6 @@ class CapoDAppProvider extends Component {
       let privKeyHex = window.localStorage.getItem("zwk");
       if (!privKeyHex) {
         const entropy = makeRandomRootPrivateKey().entropy;
-        debugger;
         privKeyHex = bytesToHex(entropy);
         window.localStorage.setItem("zwk", privKeyHex);
       }
@@ -1365,7 +1364,6 @@ class CapoDAppProvider extends Component {
         this.capo.setup.actorContext.wallet = wallet;
       }
       const networkParams = await simpleWallet.cardanoClient.parameters;
-      debugger;
       const addr = (await wallet.usedAddresses)[0];
       addrString = addr.toString();
       await this.updateStatus(

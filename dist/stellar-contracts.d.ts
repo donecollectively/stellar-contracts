@@ -1290,11 +1290,11 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
         optional: true;
         capoUtxos?: TxInput[];
     }): Promise<CharterData | undefined>;
-    findSettingsInfo<T extends boolean = false>(this: SELF, options: {
+    findSettingsInfo(this: SELF, options: {
         charterData: CharterData;
         capoUtxos?: TxInput[];
-        optional?: T;
-    }): Promise<T extends false ? FoundDatumUtxo<any, any> : FoundDatumUtxo<any, any> | undefined>;
+        optional?: boolean;
+    }): Promise<FoundDatumUtxo<any, any> | undefined>;
     /**
      * @public
      */

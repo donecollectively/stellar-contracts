@@ -52,8 +52,8 @@ importers:
         specifier: ^0.7.11
         version: 0.7.11
       '@helios-lang/tx-utils':
-        specifier: ^0.6.12
-        version: 0.6.12
+        specifier: ^0.6.13
+        version: 0.6.13
       '@helios-lang/type-utils':
         specifier: ^0.3.0
         version: 0.3.0
@@ -890,8 +890,8 @@ packages:
   '@helios-lang/ledger@0.7.11':
     resolution: {integrity: sha512-67TTl4GjUVePOIMr1ZJLLBa1adjW9R4JiquTpSHkYF6kx7gSVd+qXh3DnrH2DUyox14ER//xtaTNnVYWqzR+6Q==}
 
-  '@helios-lang/tx-utils@0.6.12':
-    resolution: {integrity: sha512-i2ThoaVnP+rKMf03XvNU2038gZt63DzsgQBMKRaabcwy98NeM1FZQPTxdHjMXDTJNSi2a91QTgws7cNNJZ0tpw==}
+  '@helios-lang/tx-utils@0.6.13':
+    resolution: {integrity: sha512-9oXpC8/4JQTg3pgJjJtqb7P9O6verwMC1wrjGCnXHZpqF4AZl8gQrxU+DIQuuqoEH/zSMjjdt14PK4P5+vspTQ==}
 
   '@helios-lang/type-utils@0.1.25':
     resolution: {integrity: sha512-tOqyBWtaI6n/xhfaZr8cnL+Syv0X5whbxpzPLayfDwllI9el54fQ4P4e8CUUm2ls8WNSAgC9razCd2Q3qnMwlA==}
@@ -3128,7 +3128,7 @@ snapshots:
       '@helios-lang/type-utils': 0.3.0
       '@helios-lang/uplc': 0.7.17
 
-  '@helios-lang/tx-utils@0.6.12':
+  '@helios-lang/tx-utils@0.6.13':
     dependencies:
       '@helios-lang/cbor': 0.3.1
       '@helios-lang/codec-utils': 0.3.4
