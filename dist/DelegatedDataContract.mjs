@@ -135,12 +135,18 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
     const { capo } = this;
     const mintDelegate = await capo.getMintDelegate();
     const dataType = this.recordTypeName;
-    const tcx2 = await capo.txnMintingUuts(tcx1c, [this.idPrefix], {
-      mintDelegateActivity: mintDelegate.activity.CreatingDelegatedData(
-        tcx1c,
-        { dataType }
-      )
-    });
+    const tcx2 = await capo.txnMintingUuts(
+      tcx1c,
+      [this.idPrefix],
+      {
+        mintDelegateActivity: mintDelegate.activity.CreatingDelegatedData(tcx1c, {
+          dataType
+        })
+      },
+      {
+        recordId: this.idPrefix
+      }
+    );
     const effectiveActivity = options.activity ?? //@ts-expect-error on a default activity name that SHOULD be there by convention
     this.activity.MintingActivities.$seeded$CreatingRecord;
     const activity = effectiveActivity && //@ts-expect-error hitting up the SeedActivity object with a conditional func call
@@ -175,6 +181,7 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
     let newRecord = typedData;
     const defaults = this.creationDefaultDetails() || {};
     const fullRecord = this.beforeCreate({
+      // the type-name itself is sometimes const and fully type-safe, but sometimes is just stringy - but it's there
       id: encodeUtf8(uut.toString()),
       type: newType,
       ...defaults,

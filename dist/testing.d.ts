@@ -560,6 +560,9 @@ export declare type TestHelperState<SC extends StellarContract<any>> = {
     previousHelper: StellarTestHelper<any>;
 };
 
+/**
+ * @public
+ */
 export declare type TestHelperSubmitOptions = SubmitOptions & {
     futureDate?: Date;
 };

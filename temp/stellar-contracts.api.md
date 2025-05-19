@@ -1185,7 +1185,7 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     static isMintDelegate: boolean;
     // (undocumented)
     mkDgDatum<THIS extends DelegatedDataContract<any, any>>(this: THIS, record: TLike): InlineDatum;
-    mkTxnCreateRecord<TCX extends StellarTxnContext>(options: DgDataCreationOptions<TLike>, tcx?: TCX): Promise<TCX>;
+    mkTxnCreateRecord<THIS extends DelegatedDataContract<any, any>, TCX extends StellarTxnContext>(this: THIS, options: DgDataCreationOptions<TLike>, tcx?: TCX): Promise<hasUutContext<THIS["idPrefix"] | "recordId"> & TCX & hasCharterRef & hasSeedUtxo & hasUutContext<"recordId" | (string extends THIS["idPrefix"] ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›" : THIS["idPrefix"])>>;
     mkTxnUpdateRecord<TCX extends StellarTxnContext>(this: DelegatedDataContract<any, any>, txnName: string, item: FoundDatumUtxo<T, any>, options: DgDataUpdateOptions<TLike>, tcx?: TCX): Promise<TCX>;
     // (undocumented)
     moreInfo(): string;
@@ -1202,11 +1202,11 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
         charterData: CharterData;
         capoUtxos: TxInput[];
     }): Promise<void>;
-    // Warning: (ae-forgotten-export) The symbol "DelegatedDatumIdPrefix" needs to be exported by the entry point index.d.ts
     // Warning: (ae-forgotten-export) The symbol "CoreDgDataCreationOptions" needs to be exported by the entry point index.d.ts
+    // Warning: (ae-forgotten-export) The symbol "DelegatedDatumIdPrefix" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    txnCreatingRecord<TCX extends StellarTxnContext & hasCharterRef & hasSeedUtxo & hasUutContext<DelegatedDatumIdPrefix<this>>>(tcx: TCX, options: CoreDgDataCreationOptions<TLike>): Promise<TCX>;
+    txnCreatingRecord<THIS extends DelegatedDataContract<any, any>, TCX extends StellarTxnContext & hasCharterRef & hasSeedUtxo & hasUutContext<"recordId">>(this: THIS, tcx: TCX, options: CoreDgDataCreationOptions<TLike>): Promise<TCX & hasUutContext<"recordId" | (string extends DelegatedDatumIdPrefix<THIS> ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›" : DelegatedDatumIdPrefix<THIS>)>>;
     // Warning: (ae-forgotten-export) The symbol "hasRecId" needs to be exported by the entry point index.d.ts
     // Warning: (ae-forgotten-export) The symbol "CoreDgDataUpdateOptions" needs to be exported by the entry point index.d.ts
     //
@@ -1361,7 +1361,7 @@ export type Expand<T> = T extends (...args: infer A) => infer R ? (...args: Expa
 
 // @public (undocumented)
 export type FindableViaCharterData = {
-    charterData: CharterData;
+    charterData?: CharterData;
     optional?: true;
 };
 

@@ -1,7 +1,7 @@
 {
   "metadata": {
     "toolPackage": "@microsoft/api-extractor",
-    "toolVersion": "7.47.11",
+    "toolVersion": "7.48.1",
     "schemaVersion": 1011,
     "oldestForwardsCompatibleVersion": 1001,
     "tsdocConfig": {
@@ -594,7 +594,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!AlreadyPendingError:class",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -21838,7 +21838,20 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "mkTxnCreateRecord<TCX extends "
+                  "text": "mkTxnCreateRecord<THIS extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DelegatedDataContract",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DelegatedDataContract:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any, any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", TCX extends "
                 },
                 {
                   "kind": "Reference",
@@ -21847,7 +21860,15 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ">(options: "
+                  "text": ">(this: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "THIS"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", options: "
                 },
                 {
                   "kind": "Reference",
@@ -21877,7 +21898,43 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<TCX>"
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasUutContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<THIS[\"idPrefix\"] | \"recordId\"> & TCX & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasCharterRef",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasCharterRef:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasSeedUtxo",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasSeedUtxo:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasUutContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<\"recordId\" | (string extends THIS[\"idPrefix\"] ? \"‹idPrefix (hint: declare with 'idPrefix = \\\"...\\\" as const')›\" : THIS[\"idPrefix\"])>>"
                 },
                 {
                   "kind": "Content",
@@ -21886,10 +21943,21 @@
               ],
               "typeParameters": [
                 {
-                  "typeParameterName": "TCX",
+                  "typeParameterName": "THIS",
                   "constraintTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 2
+                    "endIndex": 3
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                },
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 4,
+                    "endIndex": 5
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
@@ -21899,26 +21967,34 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 8,
-                "endIndex": 10
+                "startIndex": 13,
+                "endIndex": 23
               },
               "releaseTag": "Public",
               "isProtected": false,
               "overloadIndex": 1,
               "parameters": [
                 {
+                  "parameterName": "this",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 6,
+                    "endIndex": 7
+                  },
+                  "isOptional": false
+                },
+                {
                   "parameterName": "options",
                   "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 5
+                    "startIndex": 8,
+                    "endIndex": 10
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "tcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 6,
-                    "endIndex": 7
+                    "startIndex": 11,
+                    "endIndex": 12
                   },
                   "isOptional": true
                 }
@@ -22472,7 +22548,20 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "txnCreatingRecord<TCX extends "
+                  "text": "txnCreatingRecord<THIS extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DelegatedDataContract",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DelegatedDataContract:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any, any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", TCX extends "
                 },
                 {
                   "kind": "Reference",
@@ -22508,20 +22597,19 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<"
-                },
-                {
-                  "kind": "Reference",
-                  "text": "DelegatedDatumIdPrefix",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~DelegatedDatumIdPrefix:type"
+                  "text": "<\"recordId\">"
                 },
                 {
                   "kind": "Content",
-                  "text": "<this>>"
+                  "text": ">(this: "
                 },
                 {
                   "kind": "Content",
-                  "text": ">(tcx: "
+                  "text": "THIS"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", tcx: "
                 },
                 {
                   "kind": "Content",
@@ -22551,7 +22639,34 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<TCX>"
+                  "text": "<TCX & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasUutContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<\"recordId\" | (string extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DelegatedDatumIdPrefix",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~DelegatedDatumIdPrefix:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<THIS> ? \"‹idPrefix (hint: declare with 'idPrefix = \\\"...\\\" as const')›\" : "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DelegatedDatumIdPrefix",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~DelegatedDatumIdPrefix:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<THIS>)>>"
                 },
                 {
                   "kind": "Content",
@@ -22560,10 +22675,21 @@
               ],
               "typeParameters": [
                 {
-                  "typeParameterName": "TCX",
+                  "typeParameterName": "THIS",
                   "constraintTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 11
+                    "endIndex": 3
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                },
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 4,
+                    "endIndex": 12
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
@@ -22573,26 +22699,34 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 17,
-                "endIndex": 19
+                "startIndex": 20,
+                "endIndex": 28
               },
               "releaseTag": "Public",
               "isProtected": false,
               "overloadIndex": 1,
               "parameters": [
                 {
+                  "parameterName": "this",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 13,
+                    "endIndex": 14
+                  },
+                  "isOptional": false
+                },
+                {
                   "parameterName": "tcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 12,
-                    "endIndex": 13
+                    "startIndex": 15,
+                    "endIndex": 16
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "options",
                   "parameterTypeTokenRange": {
-                    "startIndex": 14,
-                    "endIndex": 16
+                    "startIndex": 17,
+                    "endIndex": 19
                   },
                   "isOptional": false
                 }
@@ -24885,7 +25019,7 @@
             },
             {
               "kind": "Content",
-              "text": "{\n    charterData: "
+              "text": "{\n    charterData?: "
             },
             {
               "kind": "Reference",
@@ -34564,7 +34698,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!ResolveablePromise:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -46248,7 +46382,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!TxNotNeededError:class",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",

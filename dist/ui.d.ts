@@ -1,11 +1,12 @@
 import { BatchSubmitController } from '@donecollectively/stellar-contracts';
-import type { BlockfrostV0Client } from '@helios-lang/tx-utils';
+import { BlockfrostV0Client } from '@helios-lang/tx-utils';
 import { Capo } from '@donecollectively/stellar-contracts';
-import type { CardanoClient } from '@helios-lang/tx-utils';
+import { CardanoClient } from '@helios-lang/tx-utils';
+import { ChangeEventHandler } from 'react';
 import { CharterData } from '@donecollectively/stellar-contracts';
-import type { Cip30FullHandle } from '@helios-lang/tx-utils';
-import type { Cip30Wallet } from '@helios-lang/tx-utils';
+import { Cip30FullHandle } from '@helios-lang/tx-utils';
 import { Component } from 'react';
+import { HydraClientOptions } from '@helios-lang/tx-utils';
 import type { MinimalCharterDataArgs } from '@donecollectively/stellar-contracts';
 import { MouseEventHandler } from 'react';
 import type { namedSubmitters } from '@donecollectively/stellar-contracts';
@@ -14,6 +15,7 @@ import { default as React_2 } from 'react';
 import * as React_3 from 'react';
 import { ReactNode } from 'react';
 import type { simpleOgmiosConn } from '@donecollectively/stellar-contracts';
+import { SimpleWallet } from '@helios-lang/tx-utils';
 import type { stellarSubclass } from '@donecollectively/stellar-contracts';
 import { StellarTxnContext } from '@donecollectively/stellar-contracts';
 import type { submitterName } from '@donecollectively/stellar-contracts';
@@ -22,7 +24,8 @@ import type { TxDescription } from '@donecollectively/stellar-contracts';
 import type { TxInput } from '@helios-lang/ledger';
 import { TxSubmitMgr } from '@donecollectively/stellar-contracts';
 import { UutName } from '@donecollectively/stellar-contracts';
-import type { WalletHelper } from '@helios-lang/tx-utils';
+import { Wallet } from '@helios-lang/tx-utils';
+import { WalletHelper } from '@helios-lang/tx-utils';
 
 /**
  * A button that is styled to look like a primary action button
@@ -206,6 +209,7 @@ export declare class CapoDAppProvider<CapoType extends Capo<any>, UserActions ex
      * notify the dApp.
      */
     renderWalletInfo(): React_2.JSX.Element;
+    onWalletChange: ChangeEventHandler<HTMLSelectElement>;
     onConnectButton: MouseEventHandler<HTMLButtonElement>;
     componentDidMount(): Promise<void>;
     _isInitializing: Promise<any> | undefined;
@@ -286,7 +290,7 @@ export declare type CapoDappProviderState<CapoType extends Capo<any>> = {
     networkParams?: NetworkParams;
     status: CapoDappStatus<any>;
     userInfo: DappUserInfo;
-    walletHelper?: WalletHelper<Cip30Wallet>;
+    walletHelper?: WalletHelper<Wallet>;
     walletUtxos?: TxInput[];
     txBatcher?: TxBatcher;
     tcx?: StellarTxnContext<any>;
@@ -502,7 +506,9 @@ export declare function Column(props: {
 export declare type DappUserInfo = {
     selectedWallet?: string;
     connectingWallet: boolean;
-    wallet?: Cip30Wallet;
+    wallet?: Wallet;
+    walletHandle?: Cip30FullHandle;
+    walletAddress?: string;
     memberUut?: UutName;
     roles: ("member" | "admin" | "artist" | "muNodeOp")[];
     foundNetworkName: string;
@@ -647,6 +653,9 @@ export declare function Lowlight(props: {
     children: React_2.ReactNode;
 }): React_2.JSX.Element;
 
+/**
+ * @public
+ */
 export declare type OgmiosEvalFailure = {
     failed: string;
     failure: {
@@ -656,6 +665,9 @@ export declare type OgmiosEvalFailure = {
     };
 };
 
+/**
+ * @public
+ */
 export declare type PendingTxn = {
     txd: TxDescription<any, any>;
     statusSummary: string;
@@ -688,6 +700,7 @@ export declare type propsType<CapoType extends Capo<any>> = {
     targetNetwork: "preview" | "preprod" | "mainnet";
     dAppName?: string;
     supportedWallets?: string[];
+    hydra?: boolean | Omit<HydraClientOptions, "isForMainnet">;
     blockfrostKey: string;
     ogmiosConnections?: Record<submitterName, simpleOgmiosConn>;
     otherSubmitters?: namedSubmitters;
@@ -722,7 +735,7 @@ export declare type propsType<CapoType extends Capo<any>> = {
     onStatusChange?: (status: CapoDappStatus<any>) => void;
     onSubmitError?: (txd: TxDescription<any, "built">) => void;
     onContextChange?: (provider?: CapoDAppProvider<CapoType, any>) => void;
-    onWalletChange?: (wallet: Cip30Wallet | undefined) => void;
+    onWalletChange?: (wallet: Wallet | undefined) => void;
     children: React_2.ReactNode;
 };
 
@@ -736,19 +749,20 @@ export declare type renderFunc = () => JSX.Element | JSX.Element[] | string | vo
  */
 export declare type SetWalletDetails = {
     walletName: string;
-    walletHandle: Cip30FullHandle;
+    simpleWallet?: SimpleWallet;
+    cip30WalletHandle?: Cip30FullHandle;
     autoNext?: boolean;
 };
 
 /**
- *
- * @internal
+ * @deprecated - probably not needed anymore
+ * @public
  */
 export declare function ShowFailedActivity({ failed, failure: { message, code, data, ...otherFailInfo }, ...results }?: OgmiosEvalFailure): React_3.JSX.Element;
 
 /**
- * @deprecated
- * @internal the CharterStatus component is now preferred
+ * @deprecated - the CharterStatus component is now preferred
+ * @public
  */
 export declare function ShowPendingTxns({ pendingTxns, }: {
     pendingTxns: Map<string, PendingTxn>;
@@ -807,7 +821,19 @@ export declare type UpdateStatusProps<T extends UserActionMap<any>> = Omit<CapoD
     nextAction?: string & keyof T;
 };
 
-export declare function useCapoDappProvider(): CapoDAppProvider<any, BaseUserActionMap>;
+/**
+ * React hook for accessing the CapoDappProvider context.
+ * @remarks
+ * The context data now includes the capo instance as well as the provider.
+ *
+ * Indicate your Capo's type in the type parameter to access your Capo's methods and properties.
+ * @typeParam C - the type of the capo instance
+ * @public
+ */
+export declare function useCapoDappProvider<C extends Capo<any, any> = Capo<any, any>>(): {
+    capo: C | undefined;
+    provider: CapoDAppProvider<C, BaseUserActionMap>;
+};
 
 /**
  * @public

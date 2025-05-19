@@ -1742,10 +1742,11 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
       tcx2.state.seedUtxo = seedUtxo;
       return tcx2;
     } else {
-      const newSeedUtxo = await this.findUutSeedUtxo([], tcx);
-      const tcx2 = tcx.addInput(newSeedUtxo);
-      tcx2.state.seedUtxo = newSeedUtxo;
-      return tcx2;
+      return this.findUutSeedUtxo([], tcx).then((newSeedUtxo) => {
+        const tcx2 = tcx.addInput(newSeedUtxo);
+        tcx2.state.seedUtxo = newSeedUtxo;
+        return tcx2;
+      });
     }
   }
   async findUutSeedUtxo(uutPurposes, tcx) {

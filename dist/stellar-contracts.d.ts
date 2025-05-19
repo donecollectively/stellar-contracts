@@ -416,6 +416,9 @@ declare interface AllTxSubmissionStates {
     [txId: string]: TxSubmissionTracker;
 }
 
+/**
+ * @public
+ */
 export declare class AlreadyPendingError extends TxNotNeededError {
     constructor(message: string);
 }
@@ -6163,10 +6166,10 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
      * `this.activity.MintingActivities.$seeded$‹activityName›` accessors/methods,
      * which creates a record id based on the (unique) spend of a seed value.
      */
-    mkTxnCreateRecord<TCX extends StellarTxnContext>(options: DgDataCreationOptions<TLike>, tcx?: TCX): Promise<TCX>;
+    mkTxnCreateRecord<THIS extends DelegatedDataContract<any, any>, TCX extends StellarTxnContext>(this: THIS, options: DgDataCreationOptions<TLike>, tcx?: TCX): Promise<hasUutContext<THIS["idPrefix"] | "recordId"> & TCX & hasCharterRef & hasSeedUtxo & hasUutContext<"recordId" | (string extends THIS["idPrefix"] ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›" : THIS["idPrefix"])>>;
     creationDefaultDetails(): Partial<TLike>;
     beforeCreate(record: TLike): TLike;
-    txnCreatingRecord<TCX extends StellarTxnContext & hasCharterRef & hasSeedUtxo & hasUutContext<DelegatedDatumIdPrefix<this>>>(tcx: TCX, options: CoreDgDataCreationOptions<TLike>): Promise<TCX>;
+    txnCreatingRecord<THIS extends DelegatedDataContract<any, any>, TCX extends StellarTxnContext & hasCharterRef & hasSeedUtxo & hasUutContext<"recordId">>(this: THIS, tcx: TCX, options: CoreDgDataCreationOptions<TLike>): Promise<TCX & hasUutContext<"recordId" | (string extends DelegatedDatumIdPrefix<THIS> ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›" : DelegatedDatumIdPrefix<THIS>)>>;
     /**
      * Creates an indirect reference to an an update activity with arguments,
      * using a record-id placeholder.
@@ -8274,7 +8277,7 @@ declare type ExtractRestOfUnion<Union> = Exclude<Union, ExtractLastOfUnion<Union
  * @public
  */
 export declare type FindableViaCharterData = {
-    charterData: CharterData;
+    charterData?: CharterData;
     optional?: true;
 };
 
@@ -13153,6 +13156,9 @@ export declare type RequirementEntry<reqtName extends string, reqts extends stri
     requiresInherited?: inheritedNames[];
 };
 
+/**
+ * @public
+ */
 export declare type ResolveablePromise<T> = {
     promise: Promise<T>;
     status: "pending" | "fulfilled" | "rejected" | "cancelled" | "timeout";
@@ -14756,6 +14762,9 @@ export declare function txInputAsString(x: TxInput, prefix?: string, index?: num
  **/
 export declare function txn(proto: any, thingName: any, descriptor: any): any;
 
+/**
+ * @public
+ */
 export declare class TxNotNeededError extends Error {
     constructor(message: string);
 }
