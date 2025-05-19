@@ -429,7 +429,7 @@ function DelegatedDataPolicyItem({
                 </div>
                 <div className="flex flex-col items-end">
                     <Lowlight className="text-xs">for type</Lowlight>
-                    <Highlight as="span">
+                    <Highlight as="span" className="whitespace-nowrap">
                         {foundRole.entryType.DgDataPolicy?.idPrefix}-*
                     </Highlight>
                 </div>
