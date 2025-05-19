@@ -184,9 +184,9 @@ export abstract class DelegatedDataContract<
      * @remarks
      * Returns a record list when no ID is provided, or a single record when an ID is provided.
      */
-    async findRecords<
-        THIS extends DelegatedDataContract<any, any>
-    >(this: THIS) : Promise<FoundDatumUtxo<T, TLike>[]>
+    async findRecords<THIS extends DelegatedDataContract<any, any>>(
+        this: THIS
+    ): Promise<FoundDatumUtxo<T, TLike>[]>;
     /**
      * Finds one record of this delegate's type by id
      * @remarks
@@ -196,14 +196,15 @@ export abstract class DelegatedDataContract<
         THIS extends DelegatedDataContract<any, any>,
         ID extends undefined | string | UutName | number[]
     >(
-    this: THIS,
-    options: {
-        id: T;
-        // TODO: support single/predicate/query options by passing them through
-        // single : boolean
-        // predicate: ...
-        // query
-    })  : Promise<FoundDatumUtxo<T, TLike>>
+        this: THIS,
+        options: {
+            id: T;
+            // TODO: support single/predicate/query options by passing them through
+            // single : boolean
+            // predicate: ...
+            // query
+        }
+    ): Promise<FoundDatumUtxo<T, TLike>>;
     async findRecords<
         THIS extends DelegatedDataContract<any, any>,
         ID extends undefined | string | UutName | number[]
@@ -275,10 +276,11 @@ export abstract class DelegatedDataContract<
      * which creates a record id based on the (unique) spend of a seed value.
      */
     async mkTxnCreateRecord<
+        THIS extends DelegatedDataContract<any, any>,
         TCX extends StellarTxnContext
         // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
         // minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
-    >(options: DgDataCreationOptions<TLike>, tcx?: TCX): Promise<TCX> {
+    >(this: THIS, options: DgDataCreationOptions<TLike>, tcx?: TCX) {
         // ... it does the setup for the creation activity,
         //   so that the actual "creation" part of the transaction will be ready to go
 
@@ -294,16 +296,23 @@ export abstract class DelegatedDataContract<
         const dataType = this.recordTypeName;
         // mints the UUT needed to create the record, which triggers the mint delegate
         // to enforce the data delegate creation policy
-        const tcx2 = await capo.txnMintingUuts(tcx1c, [this.idPrefix], {
-            mintDelegateActivity: mintDelegate.activity.CreatingDelegatedData(
-                tcx1c,
-                { dataType }
-            ),
-        });
+        const tcx2 = await capo.txnMintingUuts(
+            tcx1c,
+            [this.idPrefix as THIS["idPrefix"]],
+            {
+                mintDelegateActivity:
+                    mintDelegate.activity.CreatingDelegatedData(tcx1c, {
+                        dataType,
+                    }),
+            },
+            {
+                recordId: this.idPrefix,
+            }
+        );
 
         const effectiveActivity: isActivity | SeedActivity<any> =
-        options.activity ??
-        //@ts-expect-error on a default activity name that SHOULD be there by convention
+            options.activity ??
+            //@ts-expect-error on a default activity name that SHOULD be there by convention
             this.activity.MintingActivities.$seeded$CreatingRecord;
 
         const activity: isActivity =
@@ -338,16 +347,24 @@ export abstract class DelegatedDataContract<
     }
 
     async txnCreatingRecord<
+        THIS extends DelegatedDataContract<any, any>,
         TCX extends StellarTxnContext &
             hasCharterRef &
             hasSeedUtxo &
             // hasSettingsRef &
-            hasUutContext<DelegatedDatumIdPrefix<this>>
+            hasUutContext<"recordId">
     >(
+        this: THIS,
         tcx: TCX,
         // record: minDDType,
         options: CoreDgDataCreationOptions<TLike>
-    ): Promise<TCX> {
+    ): Promise<TCX & hasUutContext<
+            | "recordId"
+            | (string extends DelegatedDatumIdPrefix<THIS>
+                  ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›"
+                  : DelegatedDatumIdPrefix<THIS>)
+        >
+    > {
         const newType = this.recordTypeName as DelegatedDatumTypeName<this>;
         const idPrefix = this.idPrefix as DelegatedDatumIdPrefix<this>;
 
@@ -359,11 +376,12 @@ export abstract class DelegatedDataContract<
 
         const tcx2 = await this.txnGrantAuthority(tcx, activity);
 
-        const uut = tcx.state.uuts[idPrefix];
+        const uut = tcx.state.uuts[idPrefix] as UutName
         let newRecord: DgDataTypeLike<this> = typedData as any;
 
         const defaults = this.creationDefaultDetails() || {};
         const fullRecord = this.beforeCreate({
+            // the type-name itself is sometimes const and fully type-safe, but sometimes is just stringy - but it's there
             id: textToBytes(uut.toString()),
             type: newType,
             ...defaults,
@@ -391,7 +409,7 @@ export abstract class DelegatedDataContract<
                 this.uh.mkMinTv(this.capo.mph, uut).add(extraCreationValue),
                 newDatum
             )
-        ) as TCX & typeof tcx2;
+        ) as any; // the return type above provides the result type directly to the caller.
     }
 
     /**

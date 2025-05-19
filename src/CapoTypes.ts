@@ -414,7 +414,7 @@ export type hasGovAuthority = StellarTxnContext<
  * @public
  */
 export type FindableViaCharterData = {
-    charterData: CharterData;
+    charterData?: CharterData;
     optional?: true;
 };
 
