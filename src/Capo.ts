@@ -753,6 +753,9 @@ export abstract class Capo<
             charterData,
             capoUtxos,
         });
+        if (!settingsInfo) {
+            throw new Error("settingsInfo not found");
+        }
         tcx.addRefInput(settingsInfo.utxo);
 
         const tcx2 = tcx as TCX & hasSettingsRef<any, any>;
@@ -1118,19 +1121,17 @@ export abstract class Capo<
         // return this.parseDelegateLinksInCharter(charterData);
     }
 
-    async findSettingsInfo<T extends boolean = false>(
+    async findSettingsInfo(
         this: SELF,
         options: {
             charterData: CharterData;
             capoUtxos?: TxInput[];
-            optional?: T;
+            optional?: boolean;
         }
     ): Promise<
-        T extends false
-            ? FoundDatumUtxo<any, any>
-            : FoundDatumUtxo<any, any> | undefined
+        FoundDatumUtxo<any, any> | undefined
     > {
-        let { charterData, capoUtxos, optional } = options;
+        let { charterData, capoUtxos, optional = false } = options;
         if (!capoUtxos) {
             debugger;
             // ^ ideally we always have a stash of capo utxos ...

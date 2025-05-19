@@ -1451,6 +1451,7 @@ export class CapoDAppProvider<
             network = (this.state.userInfo.wallet! as SimpleWallet)
                 .cardanoClient;
             networkParams = await network.parameters;
+        }
         const setup = {
             network,
             networkParams,
