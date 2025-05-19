@@ -11,6 +11,9 @@ import {
   Softlight,
 } from "./DashboardTemplate.js"
 
+/**
+ * @public
+ */
 export type PendingTxn = {
   txd: TxDescription<any, any>
   statusSummary: string
@@ -18,8 +21,8 @@ export type PendingTxn = {
 }
 
 /**
- * @deprecated
- * @internal the CharterStatus component is now preferred
+ * @deprecated - the CharterStatus component is now preferred
+ * @public
  */
 export function ShowPendingTxns({
   pendingTxns,

@@ -34,6 +34,10 @@ export type WrappedPromise<T> = {
     cancel: () => void;
     status: "pending" | "fulfilled" | "rejected" | "cancelled" | "timeout",
 }
+
+/**
+ * @public
+ */
 export type ResolveablePromise<T> = {
     promise: Promise<T>;
     status: "pending" | "fulfilled" | "rejected" | "cancelled" | "timeout",

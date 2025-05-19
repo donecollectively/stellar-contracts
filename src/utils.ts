@@ -155,6 +155,9 @@ let debugRealMath = false;
 
 
 
+/**
+ * @public
+ */
 export class TxNotNeededError extends Error {
     constructor(message: string) {
         super(message);
@@ -162,6 +165,9 @@ export class TxNotNeededError extends Error {
     }
 }
 
+/**
+ * @public
+ */
 export class AlreadyPendingError extends TxNotNeededError {
     constructor(message: string) {
         super(message);
@@ -169,6 +175,9 @@ export class AlreadyPendingError extends TxNotNeededError {
     }
 }
 
+/**
+ * @public
+ */
 export function checkValidUTF8(data: number[]) {
   // quickly check, without throwing errors, for invalid UTF-8 sequences:
   let i = 0;

@@ -2,8 +2,8 @@
 import * as React from "react";
 
 /**
- * 
- * @internal
+ * @deprecated - probably not needed anymore
+ * @public
  */
 export function ShowFailedActivity(
     {
@@ -73,7 +73,12 @@ export function ShowFailedActivity(
             {moreDetail}
         </div>
     );
-}export type OgmiosEvalFailure = {
+}
+
+/**
+ * @public
+ */
+export type OgmiosEvalFailure = {
     failed: string
     failure: {
         message: string

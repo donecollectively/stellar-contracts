@@ -65,6 +65,9 @@ export const expectTxnError = {
     expectError: true as const,
 } as Partial<SubmitOptions>;
 
+/**
+ * @public
+ */
 export type TestHelperSubmitOptions = SubmitOptions & {
     futureDate?: Date;
 };
