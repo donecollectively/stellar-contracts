@@ -235,7 +235,15 @@ export type SetWalletDetails = {
  * `onUserInfo=`, and `onSetCapo=` props.  Alternatively, it can be subclassed
  * and its default renderers overridden for another style of customizing.
  *
- * @public
+ * use the `uiPortals=` prop to provide dom id's for each type of UI element, if you want 
+ * to place or style them in a specific location in your layout.  Otherwise, you can simply 
+ * place (styled or unstyled) <div id="{capoStatus, capoUserDetails, txBatchUI}"> elements in your layout,
+*  and the provider's version of those elements will be rendered into your portals.
+* 
+* We recommend providing color themes matching your app's branding; all the provided 
+* UI elements are styled with tailwind classes that reference those theme colors.
+* 
+* @public
  */
 export class CapoDAppProvider<
     CapoType extends Capo<any>,
@@ -545,7 +553,7 @@ export class CapoDAppProvider<
                     </div>
                 </div>
 
-                <div className="mr-2 flex-grow">{this._renderNextAction()}</div>
+                <div className="mr-2 flex-grow">{this.renderNextAction()}</div>
             </div>
         );
     }
@@ -621,13 +629,13 @@ export class CapoDAppProvider<
                 </div>
 
                 <div className="mr-2 flex-grow text-nowrap">
-                    {this._renderNextAction()}
+                    {this.renderNextAction()}
                 </div>
             </div>
         );
     }
 
-    private _renderNextAction() {
+    renderNextAction() {
         const {
             status: {
                 nextAction: {
@@ -1645,7 +1653,7 @@ export class CapoDAppProvider<
 
         let tcx: Awaited<ReturnType<CapoType["mkTxnMintCharterToken"]>>;
         try {
-            const addresses = await wallet.usedAddresses;
+            const addresses = await wallet.unusedAddresses
             // type Expand<T> =  T extends infer O ? { [K in keyof O]: O[K] } : never;
             // type tt = Expand<typeof t.state>
             tcx = await capo.mkTxnMintCharterToken(
