@@ -41,22 +41,20 @@ export class StellarHeliosProject {
     static details: {
         projectRoot: string;
         packageJSON: {
-            name: string,
-            version: string,
-            dependencies: Record<string, string>,
-            devDependencies: Record<string, string>,
+            name: string;
+            version: string;
+            dependencies: Record<string, string>;
+            devDependencies: Record<string, string>;
         };
     };
-    configuredCapo = mkCancellablePromise<CapoHeliosBundle>()
+    configuredCapo = mkCancellablePromise<CapoHeliosBundle>();
     bundleEntries: Map<string, BundleStatusEntry>;
     capoBundleName?: string;
     capoBundle: CapoHeliosBundle | undefined = undefined;
     constructor() {
         this.bundleEntries = new Map();
-        const {
-            projectRoot,
-            packageJSON,
-        } = StellarHeliosProject.findProjectDetails();
+        const { projectRoot, packageJSON } =
+            StellarHeliosProject.findProjectDetails();
 
         this._isSC = packageJSON.name === "@donecollectively/stellar-contracts";
     }
@@ -74,7 +72,7 @@ export class StellarHeliosProject {
         absoluteFilename: string,
         newCapoClass: typeof HeliosScriptBundle
     ) {
-        throw new Error(`dead code?!?!`)
+        throw new Error(`dead code?!?!`);
         const replacement = new StellarHeliosProject();
         replacement.loadBundleWithClass(absoluteFilename, newCapoClass);
         replacement.generateBundleTypes(absoluteFilename);
@@ -127,16 +125,23 @@ export class StellarHeliosProject {
                 throw new Error(`only one CapoBundle is currently supported`);
             }
             // console.log(`Project: loading CapoBundle ${bundleClassName}`);
-            this.capoBundle = new (bundleClass as any)({setup: {isMainnet: false}});
+            this.capoBundle = new (bundleClass as any)({
+                setup: { isMainnet: false },
+            });
             const registeredCapoName = bundleClass.name;
             if (this.bundleEntries.size > 0) {
                 // debugger
                 for (const [filename, entry] of this.bundleEntries.entries()) {
-                    const thatCapoName = entry.bundle?.capoBundle?.constructor.name;
+                    const thatCapoName =
+                        entry.bundle?.capoBundle?.constructor.name;
                     if (thatCapoName !== registeredCapoName) {
-                        console.log("new capo bundle is "+registeredCapoName);
-                        console.log("pre-registered bundle uses capo "+thatCapoName);
-                        throw new Error(`mismatched capo bundle for ${filename} (see details above)`);
+                        console.log("new capo bundle is " + registeredCapoName);
+                        console.log(
+                            "pre-registered bundle uses capo " + thatCapoName
+                        );
+                        throw new Error(
+                            `mismatched capo bundle for ${filename} (see details above)`
+                        );
                     }
                 }
                 // throw new Error(`register capo first!! ??`);
@@ -167,7 +172,7 @@ export class StellarHeliosProject {
                 bundleClass,
             });
         } else if (isCapoBundle && harmlessSecondCapo) {
-            throw new Error("dead code path")
+            throw new Error("dead code path");
             console.log(`Project: loading CapoBundle ${bundleClassName}`);
             console.log(
                 `  (replaces existing capo ${this.capoBundle?.constructor.name})`
@@ -176,7 +181,9 @@ export class StellarHeliosProject {
             this.bundleEntries.set(filename, {
                 filename,
                 status: "loaded",
-                bundle: new (bundleClass as any)({setup: {isMainnet: false}}), // harmless second capo
+                bundle: new (bundleClass as any)({
+                    setup: { isMainnet: false },
+                }), // harmless second capo
                 bundleClassName: bundleClassName,
                 parentClassName,
                 bundleClass,
@@ -189,7 +196,7 @@ export class StellarHeliosProject {
                 bundleClassName: bundleClassName,
                 parentClassName,
             };
-            bundle = new (bundleClass as any)({setup: {isMainnet: false}});
+            bundle = new (bundleClass as any)({ setup: { isMainnet: false } });
             bundleEntry.bundle = bundle;
             bundleEntry.status = "loaded";
             this.bundleEntries.set(filename, bundleEntry);
@@ -263,7 +270,9 @@ export class StellarHeliosProject {
         const bridgeGenerator = dataBridgeGenerator.create(bundle);
         if (this.isStellarContracts()) {
             if (dataBridgeFn.match(/\b(testing|tests)\//)) {
-                console.log(`   ------- from testing package or tests: ${dataBridgeFn} -- uses @donecollectively/stellar-contracts for imports`);
+                console.log(
+                    `   ------- from testing package or tests: ${dataBridgeFn} -- uses @donecollectively/stellar-contracts for imports`
+                );
             } else {
                 bridgeGenerator._isInStellarContractsLib(true);
             }
@@ -331,7 +340,9 @@ export class StellarHeliosProject {
         const typeContext = BundleTypeGenerator.create(bundle);
         if (this.isStellarContracts()) {
             if (filename.match(/\b(testing|tests)\//)) {
-                console.log(`   ------- from testing package or tests: ${filename} -- uses @donecollectively/stellar-contracts for imports`);
+                console.log(
+                    `   ------- from testing package or tests: ${filename} -- uses @donecollectively/stellar-contracts for imports`
+                );
             } else {
                 typeContext._isInStellarContractsLib(true);
             }
@@ -361,7 +372,7 @@ export class StellarHeliosProject {
         const cwd = process.cwd();
         let dir = cwd;
         let found = false;
-        let packageJSON = {} as any
+        let packageJSON = {} as any;
         while (!found) {
             const fileName = path.join(dir, "package.json");
             if (existsSync(fileName)) {
@@ -377,11 +388,13 @@ export class StellarHeliosProject {
                 dir = parent;
             }
         }
-        console.log(`📦 StellarHeliosProject: found project root at ${dir}: ${packageJSON.name}`);
+        console.log(
+            `📦 StellarHeliosProject: found project root at ${dir}: ${packageJSON.name}`
+        );
         this.details = {
             packageJSON,
             projectRoot: dir,
-        }
+        };
         return this.details;
     }
 }

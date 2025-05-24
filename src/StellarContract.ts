@@ -323,10 +323,13 @@ export async function findInputsInWallets(
     );
 }
 
-export type HeliosOptimizeOptions = Exclude<Pick<Exclude<
-    Parameters<Program["compile"]>[0], undefined | boolean
->, "optimize"
->["optimize"], undefined | boolean>
+export type HeliosOptimizeOptions = Exclude<
+    Pick<
+        Exclude<Parameters<Program["compile"]>[0], undefined | boolean>,
+        "optimize"
+    >["optimize"],
+    undefined | boolean
+>;
 
 export type UtxoDisplayCache = Map<TxOutputId, string>;
 /**
@@ -391,6 +394,7 @@ export type SetupOrMainnetSignalForBundle = Partial<
 
 export type StellarBundleSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupOrMainnetSignalForBundle;
+    placeholderAt?: string;
     previousOnchainScript?: {
         validatorHash: number[];
         uplcProgram: anyUplcProgram;
@@ -917,14 +921,20 @@ export class StellarContract<
         configuredNetwork = chosenNetwork;
         if (actorContext.wallet) {
             const walletIsMainnet = await actorContext.wallet.isMainnet();
-            const foundNetwork = walletIsMainnet ? "mainnet" :"a testnet (preprod/preview)";
-            const chosenNetworkLabel = isMainnet ? "mainnet" : "a testnet (preprod/preview)";
+            const foundNetwork = walletIsMainnet
+                ? "mainnet"
+                : "a testnet (preprod/preview)";
+            const chosenNetworkLabel = isMainnet
+                ? "mainnet"
+                : "a testnet (preprod/preview)";
             if (walletIsMainnet !== isMainnet) {
                 const message = `The wallet is connected to ${foundNetwork}, doesn't match this app's target network  ${chosenNetworkLabel}`;
                 if (chosenNetwork == "mainnet") {
-                    console.log(`${message}\n   ... have you provided env.TESTNET to the build to target a testnet?`)
+                    console.log(
+                        `${message}\n   ... have you provided env.TESTNET to the build to target a testnet?`
+                    );
                 }
-                throw new Error( message );
+                throw new Error(message);
             }
             // redundant
             this.actorContext = actorContext;
@@ -986,13 +996,17 @@ export class StellarContract<
             if (this.usesContractScript) {
                 const genericBundle = this.scriptBundle();
                 if (!config) {
-                    debugger
-                    console.warn(`${this.constructor.name}: no config provided`)
+                    debugger;
+                    console.warn(
+                        `${this.constructor.name}: no config provided`
+                    );
                 }
                 const params =
                     genericBundle.scriptParamsSource != "bundle"
-                        ? config ? { params: this.getContractScriptParams(config) }
-                        : {} : {};
+                        ? config
+                            ? { params: this.getContractScriptParams(config) }
+                            : {}
+                        : {};
                 const deployedDetails = {
                     config,
                     programBundle,
@@ -1010,7 +1024,6 @@ export class StellarContract<
                     variant,
                 });
                 // await this.prepareBundleWithScriptParams(params);
-                
             } else if (partialConfig) {
                 // if (this.canPartialConfig) {
                 throw new Error(
@@ -1120,9 +1133,9 @@ export class StellarContract<
     //  todo: stakingAddress?: Address or credential or whatever;
 
     get address(): Address {
-        const prevVh = this._bundle?.previousOnchainScript?.validatorHash
+        const prevVh = this._bundle?.previousOnchainScript?.validatorHash;
         if (prevVh) {
-            return makeAddress(this.setup.isMainnet, makeValidatorHash(prevVh))
+            return makeAddress(this.setup.isMainnet, makeValidatorHash(prevVh));
         }
         const { addr } = this._cache;
         if (addr) return addr;

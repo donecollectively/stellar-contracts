@@ -393,9 +393,7 @@ export class UtxoHelper {
         }
     }
 
-    mkRefScriptPredicate(
-        expectedScriptHash: number[]
-    ) : utxoPredicate {
+    mkRefScriptPredicate(expectedScriptHash: number[]): utxoPredicate {
         return (txin: TxInput) => {
             const refScript = txin.output.refScript;
             if (!refScript) return false;
@@ -678,11 +676,16 @@ export class UtxoHelper {
             utxos.push(...addrUtxos);
         }
 
-        return this.hasUtxo(name, predicate, {
-            ...options,
-            wallet,
-            utxos,
-        }, mode);
+        return this.hasUtxo(
+            name,
+            predicate,
+            {
+                ...options,
+                wallet,
+                utxos,
+            },
+            mode
+        );
     }
 
     /**
@@ -751,11 +754,14 @@ export class UtxoHelper {
             //     : [])
         );
 
-
         if (foundOne) {
-            const multiInfo = mode == "multiple" ? ` ${foundMultiple.length} matches; first: ` : "";
+            const multiInfo =
+                mode == "multiple"
+                    ? ` ${foundMultiple.length} matches; first: `
+                    : "";
             console.log(
-                "   🎈found" + multiInfo +
+                "   🎈found" +
+                    multiInfo +
                     utxosAsString(
                         [foundOne],
                         undefined,
@@ -780,7 +786,7 @@ export class UtxoHelper {
                                   (await alreadyInTcx.dump()) +
                                   "\n\n 👁️   👁️ 👁️ ^^^^^^^ More details about the utxo search failure above ^^^^^^^ 👁️ 👁️   👁️"
                                 : "")
-                    );            
+                    );
                     return undefined as any;
                 }
             }
@@ -796,31 +802,36 @@ export class UtxoHelper {
     }
 
     async mustFindActorUtxo(
-        name: string, options: {
-            predicate: (u: TxInput) => TxInput | undefined,
-            exceptInTcx?: StellarTxnContext<any>,
-            extraErrorHint?: string
+        name: string,
+        options: {
+            predicate: (u: TxInput) => TxInput | undefined;
+            exceptInTcx?: StellarTxnContext<any>;
+            extraErrorHint?: string;
         }
     ): Promise<TxInput> {
         const wallet = this.wallet;
 
-        return this.mustFindUtxo(
-            name,
-            {
-                ...options,
-                wallet,
-            },
-        );
+        return this.mustFindUtxo(name, {
+            ...options,
+            wallet,
+        });
     }
 
     async mustFindUtxo(
-        semanticName: string, options: UtxoSearchScope & {
-            predicate: utxoPredicate,
-            extraErrorHint?: string
+        semanticName: string,
+        options: UtxoSearchScope & {
+            predicate: utxoPredicate;
+            extraErrorHint?: string;
         }
     ): Promise<TxInput> {
         // workaround for a failure in api-extractor to make this a separate assignment??
-        const { predicate, extraErrorHint ="", wallet, address, exceptInTcx } = options;
+        const {
+            predicate,
+            extraErrorHint = "",
+            wallet,
+            address,
+            exceptInTcx,
+        } = options;
         // const { address, exceptInTcx } = searchScope;
 
         const addrs = (await wallet?.usedAddresses) ?? [address];
@@ -847,7 +858,8 @@ export class UtxoHelper {
                 console.log(
                     // warning emoji: "⚠️"
                     " ⚠️ find failed in candidate utxos (debugging breakpoint available)\n",
-                    semanticName, dumpAny(utxos)
+                    semanticName,
+                    dumpAny(utxos)
                 );
             }
             debugger;
