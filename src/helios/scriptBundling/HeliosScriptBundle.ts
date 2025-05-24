@@ -1077,6 +1077,10 @@ export abstract class HeliosScriptBundle {
         return redeemerType;
     }
 
+    get includeEnums() : string[] {
+        return []
+    }
+
     getTopLevelTypes(): HeliosBundleTypes {
         const types = {
             datum: this.locateDatumType(),
@@ -1090,6 +1094,9 @@ export abstract class HeliosScriptBundle {
         for (const [typeName, type] of Object.entries(mainTypes)) {
             const s = type.toSchema();
             if (s.kind == "struct") {
+                types[typeName] = type;
+            }
+            if (s.kind == "enum" && this.includeEnums.includes(typeName)) {
                 types[typeName] = type;
             }
         }
@@ -1111,6 +1118,9 @@ export abstract class HeliosScriptBundle {
             )) {
                 const s = type.toSchema();
                 if (s.kind == "struct") {
+                    types[typeName] = type;
+                }
+                if (s.kind == "enum" && this.includeEnums.includes(typeName)) {
                     types[typeName] = type;
                 }
             }
