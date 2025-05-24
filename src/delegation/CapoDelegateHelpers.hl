@@ -206,16 +206,17 @@ struct RelativeDelegateLink {
     }
 
     func tvAuthorityToken(self, mph: MintingPolicyHash) -> Value {
-        mkTv(mph, self.uutName)
+        mkTv(mph: mph, tn: self.uutName)
     }
+
     func acAuthorityToken(self, mph: MintingPolicyHash) -> AssetClass {
         AssetClass::new(mph, self.uutName.encode_utf8())
     }
 
-    func getTv(self, mph: MintingPolicyHash) -> Value {
-        assert(false, "deprecated getTv(); use RDL.tvAuthorityToken instead");
-        mkTv(mph, self.uutName)
-    }
+    // func getTv(self, mph: MintingPolicyHash) -> Value {
+    //     assert(false, "deprecated getTv(); use RDL.tvAuthorityToken instead");
+    //     mkTv(mph: mph, tn: self.uutName)
+    // }
     
     func validatesUpdatedSettings(self,
         inputs: []TxInput,
@@ -269,7 +270,7 @@ struct RelativeDelegateLink {
                 // we need an input with this address, having the expected UUT.
 
                 ac = AssetClass::new(mph, uutName.encode_utf8());
-                // expectedUut : Value = mkTv(mph, uutName);
+                // expectedUut : Value = mkTv(mph: mph, tn: uutName);
 
                 print("  -- seeking input dgTkn: "+ uutName);
                 inputs.find_safe((i: TxInput) -> Bool {
@@ -480,7 +481,7 @@ func requiresNoDelegateInput(
     delegateLink: RelativeDelegateLink, 
     mph: MintingPolicyHash
 ) -> Bool {
-    // v : Value = mkTv(mph, delegateLink.uutName);
+    // v : Value = mkTv(mph: mph, tn: delegateLink.uutName);
     ac : AssetClass = delegateLink.acAuthorityToken(mph);
     if (tx.inputs.any((i: TxInput) -> Bool {
         i.value.get_safe(ac) > 0

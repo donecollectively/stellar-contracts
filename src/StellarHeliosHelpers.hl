@@ -60,7 +60,7 @@ func mkTv(
 
 //! returns the charter-token from our minter, as a Value
 func tvCharter(mph: MintingPolicyHash)  -> Value {
-    mkTv(mph, "charter")
+    mkTv(mph: mph, tn: "charter")
 }
 
 func returnsValueToScript(value : Value) -> Bool {

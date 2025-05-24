@@ -59,7 +59,7 @@ func main(r : MinterActivity) -> Bool {
 
     ok : Bool = r.switch {
         charter: mintingCharter => {
-            charterVal : Value = mkTv(mph, "charter");
+            charterVal : Value = mkTv(mph: mph, tn: "charter");
 
             // these must be sorted BY LENGTH FIRST, then lexicographically
             //   (actually byte-wise, but ~same diff)
@@ -158,7 +158,7 @@ func main(r : MinterActivity) -> Bool {
                 
                 //     // tx.outputs.find_safe( (output: TxOutput) -> Bool {
                 //     //     output.address == charter.owner &&
-                //     //         output.value.contains(mkTv(mph, mkUutName(settingsTnBase))
+                //     //         output.value.contains(mkTv(mph: mph, tn: mkUutName(settingsTnBase))
                 //     // }).switch {
                 //     //     None => error("missing required settings data"),
                 //     //     Some{output} => output

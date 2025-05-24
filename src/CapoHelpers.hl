@@ -42,6 +42,37 @@ enum dgd_DataSrc {
     // Reference { ref: TxInput }
 }
 
+/**
+ * Future: we can require for named tokens to be chartered explicitly
+ * by the protocol before they can be minted using this structure.  However,
+ * This would only be worthwhile if this structure provides a clear benefit,
+ * in terms of reliable enforcement of policy constraints such as supply limits.
+ * 
+ * For now, we leave it out (govAuthority can authorize arbitrary token minting),
+ * with a placeholder on the roadmap for a future extension to add
+ * constraint expression + enforcement.  In that future moment, we can 
+ * adopt this kind of extension to the manifest, or we can use a specific type of
+ * dgDataPolicy for this purpose, with this structure as a prototype to be pushed
+ * down into its internal structure.
+ */
+struct MftDetails {
+    // the token name is mapped to this ManifestEntryType
+    maxSupply: Option[Int]
+    // supplyMintingRecords: []SupplyMintingRecord // points to an aggregate receipt 
+
+    func validate(self) -> Bool {
+        REQT("MintsFungibleToken: has forward-looking/placeholder structure for future constraint enforcement");
+
+        self.maxSupply.switch {
+            Some => error("maxSupply not yet supported"),
+            None => true
+        } 
+        // && (
+        //     self.supplyMintingRecords.length > 0
+        // ).trace("empty supplyMintingRecords? ")
+    }
+}    
+
 enum ManifestEntryType {
     // the name (entry's key) is simply a reference to a specific token 
     // (typically a specific kind of dgData record 
@@ -67,8 +98,23 @@ enum ManifestEntryType {
     }
     // the referenced token is a merkle-root of a membership-proof-tree
     MerkleMembership 
+
     // the referenced token is a merkle-root of a state-root-tree
     MerkleStateRoot    
+
+    /** the referenced token name has been chartered as an "official" 
+     * asset class as part of this protocol.  See notes above for roadmap guidance.
+     */
+    // xxxMintsFungibleToken {
+    //     mftDetails: MftDetails
+    // }
+
+    // func validate(self) -> Bool {
+    //     self.switch {
+    //         MintsFungibleToken{mftDetails} => mftDetails.validate(),
+    //         _ => true
+    //     }
+    // }
 }
 
 /*
@@ -721,11 +767,10 @@ struct DelegateInput {
 
         RelativeDelegateLink{
             uut,
-            //  _ /* strategy */,
             validatorHash,
             _configJson
         } = link;
-        targetValue : Value = mkTv(mph, uut);
+        targetValue : Value = link.tvAuthorityToken(mph);
         returnedUnchanged : Bool = validatorHash.switch {
             Some{vh} => {
                 // print(" ⬅️ 🔎 💁 expect dgTkn "+uut + " sent to vh " + vh.show());
@@ -1014,14 +1059,22 @@ struct CapoCtx {
     charter: cctx_CharterInputType
 
     func mkTv(self,
-        tn: ByteArray,
+        tn: String = "",
+        tnBytes : ByteArray = tn.encode_utf8(),
         count : Int = 1
     ) -> Value {
-        assert(tn.length > 0, "missing reqd tn");
+        assert(tnBytes.length > 0, "missing reqd tn");
         Value::new(
-            AssetClass::new(self.mph, tn), 
+            AssetClass::new(self.mph, tnBytes), 
             count
         )
+    }
+
+    func mkAc(self, 
+        tn: String = "",
+        tnBytes : ByteArray = tn.encode_utf8()
+    ) -> AssetClass {
+        AssetClass::new(self.mph, tnBytes)
     }
 
     // use this or updatingDgData() instead of getDDOutput()

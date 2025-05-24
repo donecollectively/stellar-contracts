@@ -229,7 +229,7 @@ enum DelegateActivity {
                     // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
 
                     tokenName = mkTn("reqt");
-                    // depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
+                    // depositedValue: Value = mkTv(mph: priorMddd.dd.mph, tn: tokenName);
                     // depositedAc : AssetClass = AssetClass::new(priorMddd.dd.mph, tokenName.encode_utf8());
 
                     newReqt : TxOutput = cctx.delegatedTxOutput(tokenName.encode_utf8());

@@ -410,7 +410,7 @@ func validateUutMinting(
         purposes.map(
             (purpose: String) -> Value {
                 // print("purpose: " + purpose);
-                mkTv(mph, mkTokenName(purpose) /*, quantity=1 */)
+                mkTv(mph: mph, tn: mkTokenName(purpose) /*, => 1 */)
             }
         )
     );
