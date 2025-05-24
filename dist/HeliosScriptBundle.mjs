@@ -3467,6 +3467,9 @@ ${errorInfo}`;
     }
     return redeemerType;
   }
+  get includeEnums() {
+    return [];
+  }
   getTopLevelTypes() {
     const types = {
       datum: this.locateDatumType(),
@@ -3479,6 +3482,9 @@ ${errorInfo}`;
     for (const [typeName, type] of Object.entries(mainTypes)) {
       const s = type.toSchema();
       if (s.kind == "struct") {
+        types[typeName] = type;
+      }
+      if (s.kind == "enum" && this.includeEnums.includes(typeName)) {
         types[typeName] = type;
       }
     }
@@ -3499,6 +3505,9 @@ ${errorInfo}`;
       )) {
         const s = type.toSchema();
         if (s.kind == "struct") {
+          types[typeName] = type;
+        }
+        if (s.kind == "enum" && this.includeEnums.includes(typeName)) {
           types[typeName] = type;
         }
       }

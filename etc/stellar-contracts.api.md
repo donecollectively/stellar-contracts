@@ -1583,6 +1583,8 @@ export abstract class HeliosScriptBundle {
     // (undocumented)
     get hasAnyVariant(): boolean;
     protected implicitIncludedCapoModules(): string[];
+    // (undocumented)
+    get includeEnums(): string[];
     includeFromCapoModules(): string[];
     // (undocumented)
     init(setupDetails: StellarBundleSetupDetails<any>): void;

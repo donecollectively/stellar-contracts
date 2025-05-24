@@ -22,7 +22,6 @@ if (import.meta?.env && import.meta.env) {
   NODE_ENV = process.env.NODE_ENV || "development";
   OPTIMIZE = parseInt(process.env.OPTIMIZE || "0");
 }
-console.log(process.env);
 console.log("env:", { DEBUG, CARDANO_NETWORK, NODE_ENV, OPTIMIZE });
 const environment = {
   DEBUG,

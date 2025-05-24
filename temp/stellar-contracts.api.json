@@ -28363,6 +28363,36 @@
               "name": "implicitIncludedCapoModules"
             },
             {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#includeEnums:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get includeEnums(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "includeEnums",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#includeFromCapoModules:member(1)",
               "docComment": "/**\n * specifies a list module names to be included in the compilation of this script\n *\n * @remarks\n *\n * Only used in bundles created with `HeliosScriptBundle.usingCapoBundleClass()` or `CapoDelegateBundle.usingCapoBundleClass()`.\n *\n * Each of these module-names MUST be provided by the CapoHeliosBundle used for this script bundle (in its `get modules()`). CapoMintHelpers, CapoDelegateHelpers, StellarHeliosHelpers and CapoHelpers are always available for import to the policy script, and the module names you list here will be added to that list.\n *\n * These module names will then be available for `import { ... }` statements in your helios script.\n *\n * ### Beware of Shifting Sands\n *\n * If you include any modules provided by other scripts in your project, you should be aware that any material changes to those scripts will change your delegate's validator, resulting in a need to deploy new script contracts. This is why it's important to only include modules that are relatively stable, or whose changes SHOULD trigger a new deployment for this script.\n *\n * When you can use isolation techniques including abstract data definitions and/or granular code-modularization, you can reduce the incidence of such changes while ensuring that needed upgrades are easy to manage.\n *\n * @public\n */\n",

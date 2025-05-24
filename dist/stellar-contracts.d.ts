@@ -8748,6 +8748,7 @@ export declare abstract class HeliosScriptBundle {
     effectiveDatumTypeName(): string;
     locateDatumType(): DataType | undefined;
     locateRedeemerType(): DataType;
+    get includeEnums(): string[];
     getTopLevelTypes(): HeliosBundleTypes;
     paramsToUplc<ConfigType extends configBase>(params: Record<string, any>): UplcRecord_2<ConfigType>;
     typeToUplc(type: DataType, data: any, path?: string): UplcData;
