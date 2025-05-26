@@ -761,7 +761,6 @@ export class StellarNetworkEmulator implements Emulator {
         if (n < 1) throw new Error(`nSlots must be > 0, got ${n.toString()}`);
 
         const count = this.mempool.length;
-        const height = this.blocks.length;
 
         this.currentSlot += Number(n);
         const time = new Date(
@@ -769,18 +768,21 @@ export class StellarNetworkEmulator implements Emulator {
         );
 
         if (this.mempool.length > 0) {
-            const txIds = this.mempool.map((tx) => tx.id().toString().substring(0, 8))
+            const txIds = this.mempool.map((tx) => {
+                const t = tx.id().toString();
+                return `${t.substring(0, 2)}...${t.substring(t.length - 4)}`
+            })
             this.pushBlock(this.mempool);
+            const height = this.blocks.length;
 
             this.mempool = [];
 
-            console.log(magenta(`█  #${this.id} @ht=${height}`));
             console.log(
-                magenta(`█${"▒".repeat(
+                magenta(`███${"▒".repeat(
                     count
                 )} ${count} txns (${txIds.join(",")}) -> slot ${this.currentSlot.toString()} = ${formatDate(
                     time
-                )}`)
+                )} @ht=${height}`)
             );
         } else {
             console.log(

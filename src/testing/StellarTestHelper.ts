@@ -828,7 +828,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //! it makes collateral for each actor, above and beyond the initial balance,
         //  ... so that the full balance is spendable and the actor can immediately
         //  ... engage in smart-contract interactions.
-        this.network.tick(2);
+        // this.network.tick(2);
         const five = 5n * ADA;
         if (0 == moreUtxos.length) moreUtxos = [five, five, five];
         for (const moreLovelace of moreUtxos) {
@@ -836,7 +836,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                 this.network.createUtxo(a, moreLovelace);
             }
         }
-        this.network.tick(1);
+        // this.network.tick(1);
 
         this.actors[roleName] = a;
         return a;

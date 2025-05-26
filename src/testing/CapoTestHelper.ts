@@ -103,6 +103,7 @@ export abstract class CapoTestHelper<
             console.log("  -- 🎭🎭🎭 actor setup...");
             const actorSetup = this.setupActors();
             await actorSetup;
+            this.network.tick(1);
             await this.setDefaultActor();
         }
 
