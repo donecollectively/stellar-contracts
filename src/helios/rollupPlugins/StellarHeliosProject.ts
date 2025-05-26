@@ -6,6 +6,7 @@ import { BundleTypeGenerator } from "../dataBridge/BundleTypeGenerator.js";
 import { dataBridgeGenerator } from "../dataBridge/dataBridgeGenerator.js";
 import type { CapoHeliosBundle } from "../scriptBundling/CapoHeliosBundle.js";
 import { mkCancellablePromise } from "../../networkClients/mkCancellablePromise.js";
+import { environment } from "../../environment.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 
 const startTime = Date.now();
@@ -280,21 +281,20 @@ export class StellarHeliosProject {
         const bridgeSourceCode = this.isStellarContracts()
             ? bridgeGenerator.generateDataBridge(fn, "stellar-contracts")
             : bridgeGenerator.generateDataBridge(fn);
-        this.writeIfUnchanged(dataBridgeFn, bridgeSourceCode);
-        // console.log(`NOT writing data bridge code to ${dataBridgeFn}:${bridgeSourceCode}`);
-        writeFileSync(dataBridgeFn, bridgeSourceCode);
-        console.log(
-            `📦 ${bundle.moduleName}: generated data bridge: ${
-                Date.now() - ts1
-            }ms`
-        );
+        if (this.writeIfUnchanged(dataBridgeFn, bridgeSourceCode)) {
+            console.log(
+                `📦 ${bundle.moduleName}: create/update data bridge: ${
+                    Date.now() - ts1
+                }ms`
+            );
+        }
     }
 
     writeIfUnchanged(filename: string, source: string) {
         if (existsSync(filename)) {
             const existingSource = readFileSync(filename, "utf-8");
             if (existingSource === source) {
-                // console.log(`   -- unchanged: ${filename}`);
+                environment.DEBUG && console.log(`   -- unchanged: ${filename}`);
                 return;
             }
         }

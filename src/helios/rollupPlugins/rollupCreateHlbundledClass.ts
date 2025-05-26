@@ -6,8 +6,22 @@ import esbuild from "rollup-plugin-esbuild";
 import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import path from "path";
 import { colors } from "../../colors.js";
+import type { HeliosScriptBundle } from "../scriptBundling/HeliosScriptBundle.js";
+import type { CapoHeliosBundle } from "../scriptBundling/CapoHeliosBundle.js";
+import { environment } from "../../environment.js";
 
-export async function rollupCreateHlbundledClass(inputFile: string, projectRoot: string) {
+const processStart = Date.now();
+
+const { DEBUG } = environment;
+export type heliosSourceFileSeenHook = (heliosSourceId: string, outputFile: string) => void
+type hlBundleOptions = {
+    projectRoot: string,
+    onHeliosSource?: heliosSourceFileSeenHook
+}
+export async function rollupCreateHlbundledClass(
+    inputFile: string, 
+    options: hlBundleOptions
+) {
     // writes the output file next to the input file as *.hlBundled.mjs
     const outputFile = inputFile.replace(
         /\.hlb\.[tj]s$/,
@@ -16,12 +30,15 @@ export async function rollupCreateHlbundledClass(inputFile: string, projectRoot:
     if (inputFile == outputFile) {
         throw new Error(`inputFile cannot be the same as outputFile`);
     }
+    const { projectRoot, onHeliosSource } = options;
 
     const buildStartTime = Date.now();
 
     // throw new Error(inputFile);
-    console.log(`📦 StellarHeliosProject: loading ${inputFile}`);
+    DEBUG &&console.log(`📦 StellarHeliosProject: loading ${inputFile}`);
+
     let didWarn = false;
+    // console.log(colors.cyanBright( "-------------------------========================="))
     const bundle = await rollup({
         input: inputFile,
         external(id) {
@@ -58,9 +75,11 @@ export async function rollupCreateHlbundledClass(inputFile: string, projectRoot:
             heliosRollupLoader({
                 // todo make this right for the context
                 project: "stellar-contracts",
-                // onLoadHeliosFile: (filename) => {
-                //   remember this list of files
-                // }
+                onHeliosSource(id) {
+                    if (onHeliosSource) {
+                        onHeliosSource(id, outputFile);
+                    }
+                },
             }),
             // !!! figure out how to make the bundle include the compiled & optimized
             //   program, when options.compile is true.
@@ -97,7 +116,7 @@ export async function rollupCreateHlbundledClass(inputFile: string, projectRoot:
     if (existsSync(outputFile)) {
         const existing = readFileSync(outputFile, "utf-8");
         if (existing === compiled) {
-            console.log(
+            DEBUG && console.log(
                 `📦 StellarHeliosProject: unchanged bundle (${buildTime}ms): ${path.relative(projectRoot, outputFile)}`
             );
             needsWrite = false;
@@ -115,12 +134,36 @@ export async function rollupCreateHlbundledClass(inputFile: string, projectRoot:
         );
     }
     bundle.close();
-    return import(outputFile).then((mod) => {
+    // console.log(colors.cyanBright( "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"))
+
+    const content = readFileSync(outputFile, "utf-8");
+    // spawn a program that emits the hash of the output file
+    const data : BufferSource = new TextEncoder().encode(content);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+
+    const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
+    const hashHex = hashArray
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("").slice(0, 8); // convert bytes to hex string
+  
+    // console.log(colors.cyanBright( "--- "+outputFile) + " " + hashHex)
+
+    return import(`${outputFile}?t=${Date.now()}`).then((mod) => {
         if (mod.default) {
             const BundleClass = mod.default;
-            return BundleClass;
+            BundleClass.hash = hashHex;
+            BundleClass.compileTime = buildStartTime
+            BundleClass.afterDelay = (Date.now() - processStart )/1000
+            // debugger
+            return BundleClass as BundleClassWithLoadStats
         } else {
             throw new Error(`no default export in ${outputFile}`);
         }
     });
+}
+
+export type BundleClassWithLoadStats = (typeof CapoHeliosBundle | typeof HeliosScriptBundle) & {
+    hash: string;
+    compileTime: number;
+    afterDelay: number;
 }

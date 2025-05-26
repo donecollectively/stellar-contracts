@@ -14,6 +14,7 @@ export function heliosRollupLoader(
         exclude?: string[];
         project?: string;
         resolve?: string | false | null;
+        onHeliosSource?: (heliosSourceId: string) => void;
     } = {}
 ) {
     const filterOpts = {
@@ -58,7 +59,7 @@ export function heliosRollupLoader(
             // );
             return null;
         }
-        this.addWatchFile(source);
+        // this.addWatchFile(source);
 
         return {
             id: source,            
@@ -72,8 +73,15 @@ export function heliosRollupLoader(
         load(this: PluginContext, id: string): LoadResult {
             if (filter(id)) {
                 const relPath = path.relative(".", id);
-                this.warn(`.hl watch: ${id}`);
-                this.addWatchFile(id);
+                // this.warn(`.hl watch: ${id}`);
+
+                // when this loader is used within a nested self-compilation of a helios bundle,
+                // this hook informs the caller in the top-level Rollup instance about the presence 
+                // of a dependency file.  See rollupCreateHlbundledClass.ts 
+                // Not needed for general use in the top-level rollup config.
+                if (opts.onHeliosSource) {
+                    opts.onHeliosSource(id);
+                }
                 const content = readFileSync(relPath, "utf-8");
                 // console.warn(
                 //     `heliosLoader: ${relPath}`
