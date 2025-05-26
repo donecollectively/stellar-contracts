@@ -1,7 +1,7 @@
 {
   "metadata": {
     "toolPackage": "@microsoft/api-extractor",
-    "toolVersion": "7.47.11",
+    "toolVersion": "7.48.1",
     "schemaVersion": 1011,
     "oldestForwardsCompatibleVersion": 1001,
     "tsdocConfig": {
@@ -24715,7 +24715,7 @@
             },
             {
               "kind": "Content",
-              "text": "{\n    DEBUG: any;\n    CARDANO_NETWORK: any;\n    NODE_ENV: any;\n    OPTIMIZE: any;\n}"
+              "text": "{\n    DEBUG: number;\n    CARDANO_NETWORK: string;\n    NODE_ENV: string;\n    OPTIMIZE: number;\n    cwd: string;\n}"
             }
           ],
           "fileUrlPath": "src/environment.ts",

@@ -538,22 +538,24 @@ class StellarNetworkEmulator {
     const n = BigInt(nSlots);
     if (n < 1) throw new Error(`nSlots must be > 0, got ${n.toString()}`);
     const count = this.mempool.length;
-    const height = this.blocks.length;
     this.currentSlot += Number(n);
     const time = new Date(
       Number(this.netPHelper.slotToTime(this.currentSlot))
     );
     if (this.mempool.length > 0) {
-      const txIds = this.mempool.map((tx) => tx.id().toString().substring(0, 8));
+      const txIds = this.mempool.map((tx) => {
+        const t = tx.id().toString();
+        return `${t.substring(0, 2)}...${t.substring(t.length - 4)}`;
+      });
       this.pushBlock(this.mempool);
+      const height = this.blocks.length;
       this.mempool = [];
-      console.log(magenta(`\u2588  #${this.id} @ht=${height}`));
       console.log(
-        magenta(`\u2588${"\u2592".repeat(
+        magenta(`\u2588\u2588\u2588${"\u2592".repeat(
           count
         )} ${count} txns (${txIds.join(",")}) -> slot ${this.currentSlot.toString()} = ${formatDate(
           time
-        )}`)
+        )} @ht=${height}`)
       );
     } else {
       console.log(
@@ -784,7 +786,7 @@ class StellarTestHelper {
     if (preProdParams.isFixedUp) return preProdParams;
     const origMaxTxSize = preProdParams.maxTxSize;
     preProdParams.origMaxTxSize = origMaxTxSize;
-    const maxTxSize = Math.floor(origMaxTxSize * 4);
+    const maxTxSize = Math.floor(origMaxTxSize * 5);
     console.log(
       "test env: \u{1F527}\u{1F527}\u{1F527} fixup max tx size",
       origMaxTxSize,
@@ -1207,7 +1209,6 @@ class StellarTestHelper {
       )} ${lovelaceToAda(walletBalance)} (\u{1F511}#${a.address.spendingCredential?.toHex().substring(0, 8)}\u2026)`
     );
     //! it makes collateral for each actor, above and beyond the initial balance,
-    this.network.tick(2);
     const five = 5n * ADA;
     if (0 == moreUtxos.length) moreUtxos = [five, five, five];
     for (const moreLovelace of moreUtxos) {
@@ -1215,7 +1216,6 @@ class StellarTestHelper {
         this.network.createUtxo(a, moreLovelace);
       }
     }
-    this.network.tick(1);
     this.actors[roleName] = a;
     return a;
   }
@@ -1313,6 +1313,7 @@ class CapoTestHelper extends StellarTestHelper {
       console.log("  -- \u{1F3AD}\u{1F3AD}\u{1F3AD} actor setup...");
       const actorSetup = this.setupActors();
       await actorSetup;
+      this.network.tick(1);
       await this.setDefaultActor();
     }
     this.state.mintedCharterToken = void 0;

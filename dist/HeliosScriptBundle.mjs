@@ -1077,6 +1077,7 @@ class StellarTxnContext {
   }
   addCollateral(collateral) {
     this.noFacade("addCollateral");
+    console.warn("explicit addCollateral() should be unnecessary unless a babel payer is covering it");
     if (!collateral.value.assets.isZero()) {
       throw new Error(
         `invalid attempt to add non-pure-ADA utxo as collateral`

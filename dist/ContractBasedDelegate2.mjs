@@ -376,11 +376,16 @@ class UtxoHelper {
       const addrUtxos = await this.network.getUtxos(addr);
       utxos.push(...addrUtxos);
     }
-    return this.hasUtxo(name, predicate, {
-      ...options,
-      wallet,
-      utxos
-    }, mode);
+    return this.hasUtxo(
+      name,
+      predicate,
+      {
+        ...options,
+        wallet,
+        utxos
+      },
+      mode
+    );
   }
   /**
    * Try finding a utxo matching a predicate
@@ -401,11 +406,16 @@ class UtxoHelper {
     required,
     dumpDetail
   }, mode = "single") {
-    const collateral = ((wallet ? "handle" in wallet ? await wallet.handle.collateral : "collateral" in wallet ? wallet.collateral : void 0 : void 0) ?? [])[0];
-    const notCollateral = utxos.filter((u) => !collateral?.isEqual(u));
-    const filtered = exceptInTcx ? notCollateral.filter(
-      exceptInTcx.utxoNotReserved.bind(exceptInTcx)
-    ) : notCollateral;
+    let notCollateral = await (async () => {
+      let nc = utxos;
+      try {
+        const collateral = ((wallet ? "handle" in wallet ? await wallet.handle.collateral : "collateral" in wallet ? wallet.collateral : void 0 : void 0) ?? [])[0];
+        nc = utxos.filter((u) => !collateral?.isEqual(u));
+      } catch {
+      }
+      return nc;
+    })();
+    const filtered = exceptInTcx ? utxos.filter(exceptInTcx.utxoNotReserved.bind(exceptInTcx)) : notCollateral;
     const foundMultiple = filtered.filter(predicate);
     const foundOne = foundMultiple[0];
     const joiner = "\n   \u{1F50E}  ";
@@ -463,16 +473,19 @@ class UtxoHelper {
   }
   async mustFindActorUtxo(name, options) {
     const wallet = this.wallet;
-    return this.mustFindUtxo(
-      name,
-      {
-        ...options,
-        wallet
-      }
-    );
+    return this.mustFindUtxo(name, {
+      ...options,
+      wallet
+    });
   }
   async mustFindUtxo(semanticName, options) {
-    const { predicate, extraErrorHint = "", wallet, address, exceptInTcx } = options;
+    const {
+      predicate,
+      extraErrorHint = "",
+      wallet,
+      address,
+      exceptInTcx
+    } = options;
     const addrs = await wallet?.usedAddresses ?? [address];
     const utxos = [];
     for (const addr of addrs.flat(1)) {
@@ -1226,8 +1239,10 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
       if (walletIsMainnet !== isMainnet) {
         const message = `The wallet is connected to ${foundNetwork}, doesn't match this app's target network  ${chosenNetworkLabel}`;
         if (chosenNetwork == "mainnet") {
-          console.log(`${message}
-   ... have you provided env.TESTNET to the build to target a testnet?`);
+          console.log(
+            `${message}
+   ... have you provided env.TESTNET to the build to target a testnet?`
+          );
         }
         throw new Error(message);
       }
@@ -1257,7 +1272,9 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
         const genericBundle = this.scriptBundle();
         if (!config) {
           debugger;
-          console.warn(`${this.constructor.name}: no config provided`);
+          console.warn(
+            `${this.constructor.name}: no config provided`
+          );
         }
         const params = genericBundle.scriptParamsSource != "bundle" ? config ? { params: this.getContractScriptParams(config) } : {} : {};
         const deployedDetails = {

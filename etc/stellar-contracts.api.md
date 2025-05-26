@@ -1328,10 +1328,11 @@ export type EnumTypeMeta<EID extends EnumId, enumVariants extends VariantMap> = 
 
 // @public (undocumented)
 export const environment: {
-    DEBUG: any;
-    CARDANO_NETWORK: any;
-    NODE_ENV: any;
-    OPTIMIZE: any;
+    DEBUG: number;
+    CARDANO_NETWORK: string;
+    NODE_ENV: string;
+    OPTIMIZE: number;
+    cwd: string;
 };
 
 // @public
@@ -3171,7 +3172,7 @@ export type WrappedPromise<T> = {
 //
 // src/Capo.ts:1178:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
-// src/StellarContract.ts:356:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
+// src/StellarContract.ts:359:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
 // src/StellarTxnContext.ts:91:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:161:7 - (ae-forgotten-export) The symbol "DelegateRoleHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:165:7 - (ae-forgotten-export) The symbol "ManifestActivityHelper_2" needs to be exported by the entry point index.d.ts

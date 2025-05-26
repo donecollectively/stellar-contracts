@@ -7509,10 +7509,11 @@ export declare type EnumTypeMeta<EID extends EnumId, enumVariants extends Varian
 };
 
 export declare const environment: {
-    DEBUG: any;
-    CARDANO_NETWORK: any;
-    NODE_ENV: any;
-    OPTIMIZE: any;
+    DEBUG: number;
+    CARDANO_NETWORK: string;
+    NODE_ENV: string;
+    OPTIMIZE: number;
+    cwd: string;
 };
 
 /**
@@ -13685,6 +13686,7 @@ declare type StateTransitionTable<S extends string, T extends string> = {
 
 declare type StellarBundleSetupDetails<CT extends configBase> = {
     setup: SetupOrMainnetSignalForBundle;
+    placeholderAt?: string;
     previousOnchainScript?: {
         validatorHash: number[];
         uplcProgram: anyUplcProgram;
