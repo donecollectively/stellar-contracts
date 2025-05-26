@@ -1266,21 +1266,6 @@ export class CapoDAppProvider<
 
         if (this.capo) this.capo.actorContext.wallet = wallet;
 
-        const collateralUtxos = await wallet.collateral;
-        if (!collateralUtxos?.length) {
-            this.updateStatus(
-                `Error: no collateral UTxO set in wallet config`,
-                {
-                    isError: true,
-                    moreInstructions:
-                        "Ensure at least one small-ish pure-ADA utxo (<20 ADA) exists in your wallet.  You may also try marking one or more small-ish (~5 ada) utxos in your wallet as being reserved for collateral",
-                    developerGuidance:
-                        "let the user fix the problem.  Or, you may check for 'no collateral' in the error message and make a txn for creating some collateral < 20 ADA",
-                },
-                "//no collateral seen"
-            );
-            return;
-        }
 
         await walletHelper.utxos.then((walletUtxos) => {
             return this.updateStatus(

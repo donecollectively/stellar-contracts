@@ -711,29 +711,33 @@ export class UtxoHelper {
             dumpDetail,
         }: UtxoSearchScopeWithUtxos,
         mode: T = "single" as T
-    ): Promise<T extends "single" ? TxInput | undefined : TxInput[] | undefined> {
-        const collateral = ((wallet
-            ? "handle" in wallet
-                ? await (wallet as any).handle.collateral
-                : "collateral" in wallet
-                ? wallet.collateral
-                : undefined
-            : undefined) ?? [])[0];
-        // const filterUtxos = [
-        //     ...collateral,
-        //     ...(exceptInTcx?.reservedUtxos() || []),
-        // ];
-        const notCollateral = utxos.filter((u) => !collateral?.isEqual(u));
+    ): Promise<
+        T extends "single" ? TxInput | undefined : TxInput[] | undefined
+    > {
+        let notCollateral = await (async () => {
+            let nc = utxos
+            try {
+                const collateral = ((wallet
+                    ? "handle" in wallet
+                        ? await (wallet as any).handle.collateral
+                        : "collateral" in wallet
+                        ? wallet.collateral
+                        : undefined
+                    : undefined) ?? [])[0];
+                nc = utxos.filter((u) => !collateral?.isEqual(u));
+            } catch {
+                // ignore
+            }
+            return nc;
+        })();
 
         const filtered = exceptInTcx
-            ? notCollateral.filter(
-                  exceptInTcx.utxoNotReserved.bind(exceptInTcx)
-              )
+            ? utxos.filter(exceptInTcx.utxoNotReserved.bind(exceptInTcx))
             : notCollateral;
 
-        const foundMultiple = filtered.filter(predicate)
+        const foundMultiple = filtered.filter(predicate);
         const foundOne = foundMultiple[0];
-        
+
         const joiner = "\n   🔎  ";
         const detail = // true ||
             dumpDetail == "always" ||
