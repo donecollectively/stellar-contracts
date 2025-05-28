@@ -1281,8 +1281,10 @@ struct CapoCtx {
     }
 
     func requiresDgDataPolicyInput(self, typeName: String, required: Bool = true) -> DelegateInput {
+        REQT("  -- requiresDgDataPolicyInput(): locates the manifest's data-policy for this record-type");
+
         self.getCharterData().manifest.get_safe(typeName).switch{
-            None => error("missing required data policy with type: " + typeName),
+            None => error("missing data-policy manifest for record-type '" + typeName + "'"),
             Some{entry} => {
                 ( dgtLink : RelativeDelegateLink, idPrefix: String ) = entry.entryType.switch {
                     DgDataPolicy{policyLink, idPrefix, _refCount} => ( policyLink, idPrefix ),

@@ -358,12 +358,14 @@ export abstract class DelegatedDataContract<
         tcx: TCX,
         // record: minDDType,
         options: CoreDgDataCreationOptions<TLike>
-    ): Promise<TCX & hasUutContext<
-            | "recordId"
-            | (string extends DelegatedDatumIdPrefix<THIS>
-                  ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›"
-                  : DelegatedDatumIdPrefix<THIS>)
-        >
+    ): Promise<
+        TCX &
+            hasUutContext<
+                | "recordId"
+                | (string extends DelegatedDatumIdPrefix<THIS>
+                      ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›"
+                      : DelegatedDatumIdPrefix<THIS>)
+            >
     > {
         const newType = this.recordTypeName as DelegatedDatumTypeName<this>;
         const idPrefix = this.idPrefix as DelegatedDatumIdPrefix<this>;
@@ -376,7 +378,7 @@ export abstract class DelegatedDataContract<
 
         const tcx2 = await this.txnGrantAuthority(tcx, activity);
 
-        const uut = tcx.state.uuts[idPrefix] as UutName
+        const uut = tcx.state.uuts[idPrefix] as UutName;
         let newRecord: DgDataTypeLike<this> = typedData as any;
 
         const defaults = this.creationDefaultDetails() || {};
@@ -618,7 +620,7 @@ export abstract class DelegatedDataContract<
      */
     async setupCapoPolicy(
         tcx: StellarTxnContext,
-        policyName: string,
+        typeName: string,
         options: {
             charterData: CharterData;
             capoUtxos: TxInput[];
@@ -627,32 +629,34 @@ export abstract class DelegatedDataContract<
         const { charterData, capoUtxos } = options;
         const { recordTypeName, idPrefix } = this;
 
-        if (this.capo.featureEnabled(policyName)) {
-            const existing = await this.capo.getDgDataController(
-                // recordTypeName,  // xxx
-                policyName, // yes
-                {
-                    charterData,
-                    optional: true,
-                }
-            );
-            const action = existing ? "update" : "create";
-            tcx.includeAddlTxn(`${action} ${policyName} delegate`, {
-                description: `${action} on-chain policy for ${idPrefix}-* records of type ${recordTypeName}`,
-                moreInfo: this.moreInfo(),
-                mkTcx: async () => {
-                    const charterData = await this.capo.findCharterData();
-                    console.warn(
-                        "---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead"
-                    );
-                    return this.capo.mkTxnInstallPolicyDelegate({
-                        policyName,
-                        idPrefix,
-                        charterData,
-                    });
-                },
-            });
+        if (!this.capo.featureEnabled(typeName)) {
+            console.warn(`❌❌❌ ${this.constructor.name}: skipping setup for data-type '${typeName}' because it is not enabled in my featureFlags`)
+            return undefined;
         }
+
+        const existing = await this.capo.getDgDataController(
+            recordTypeName,
+            {
+                charterData,
+                optional: true,
+            }
+        );
+        const action = existing ? "update" : "create";
+        tcx.includeAddlTxn(`${action} ${typeName} delegate`, {
+            description: `${action} on-chain policy for ${idPrefix}-* records of type ${recordTypeName}`,
+            moreInfo: this.moreInfo(),
+            mkTcx: async () => {
+                const charterData = await this.capo.findCharterData();
+                console.warn(
+                    "---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead"
+                );
+                return this.capo.mkTxnInstallPolicyDelegate({
+                    typeName: recordTypeName,
+                    idPrefix,
+                    charterData,
+                });
+            },
+        });
     }
 }
 

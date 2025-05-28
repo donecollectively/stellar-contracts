@@ -240,7 +240,7 @@ describe("Capo Minter", async () => {
             // We can make this test better and prove the positive use-case end-to-end.
             const submitting = tcx1a.submitAll({ expectError: true });
             await expect(submitting).rejects.toThrow(
-                /missing required data policy.*fooPurpose/
+                /missing data-policy manifest.*fooPurpose/
             );
         });
 

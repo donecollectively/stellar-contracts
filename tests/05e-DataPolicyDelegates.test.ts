@@ -110,7 +110,7 @@ describe("Capo", async () => {
             vi.spyOn(capo, "hasPolicyInManifest").mockReturnValue(undefined);
             const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
                 idPrefix: "tData",
-                policyName: "testData",
+                typeName: "testData",
                 charterData,
             });
 
@@ -137,7 +137,7 @@ describe("Capo", async () => {
 
             const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
                 idPrefix: "tData",
-                policyName: "testData",
+                typeName: "testData",
                 charterData,
             });
 
@@ -192,7 +192,7 @@ describe("Capo", async () => {
 
             const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
                 idPrefix: "tData",
-                policyName: "testData",
+                typeName: "testData",
                 charterData,
             });
 
@@ -274,7 +274,7 @@ describe("Capo", async () => {
 
             const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
                 idPrefix: "tData",
-                policyName: "testData",
+                typeName: "testData",
                 charterData,
             });
 

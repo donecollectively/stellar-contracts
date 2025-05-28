@@ -95,7 +95,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
     async installingTestDataPolicy() {
         const charterData = await this.capo.findCharterData();
         const tcx = await this.capo.mkTxnInstallingPolicyDelegate({
-            policyName: "testData",
+            typeName: "testData",
             idPrefix: "tData",
             charterData,
         });
@@ -131,7 +131,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
 
         const charterData = await this.capo.findCharterData();
         const tcx = await this.capo.mkTxnInstallingPolicyDelegate({
-            policyName: "testData",
+            typeName: "testData",
             idPrefix: "tData",
             charterData,
         });

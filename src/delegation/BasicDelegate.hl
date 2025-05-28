@@ -253,7 +253,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             a.switch {
                                 // in the Mint and Spend delegates, these nested activities are expected to re-delegate 
                                 // to delegated-data controllers, which will use Mint/Spend/Burn activities on the data-controller tokens.
-                                CreatingDelegatedData/*{TxOutputId{seedTxn, seedIdx}, dataTypePurpose} */=> {
+                                CreatingDelegatedData/*{TxOutputId{seedTxn, seedIdx}, dDataTypeName} */=> {
                                     // Note: CreatingDelegatedData activity doesn't involve the Capo at all!
                                     // Instead, the minter creates a UUT for the data, on authority of the mintDgt;
                                     // ... and the mintDgt requires the presence of the corresponding dgDataPolicy (with its MintingActivity);
@@ -1186,7 +1186,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 // ... context and using its separate specialization module.
                 // In each of those cases, it follows the same high-level logic, hitting different paths through this file, 
                 // ... while processing different tokens for each zone of authority/responsibility.
-                CreatingDelegatedData{seed, dataTypePurpose} => if (!isMintDelegate) {
+                CreatingDelegatedData{seed, dDataTypeName} => if (!isMintDelegate) {
                     error("CreatingDelegatedData activity is only allowed in the mint delegate")
                 } else {
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
@@ -1195,7 +1195,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
 
                     REQT("  -- ensures the data-controller is invoked with its minting activity for the indicated recId");
                     policyDelegateInput = cctx.
-                        requiresDgDataPolicyInput(dataTypePurpose);
+                        requiresDgDataPolicyInput(dDataTypeName);
 
                     tnFactory : (String) -> String = mkUutTnFactory(seed);
                     purpose = policyDelegateInput.idPrefix.unwrap();
@@ -1206,18 +1206,18 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     //       (we haven't fully implemented generic data-controller registration, so that's a key limitation for now)
                     // xxx WE are the mint delegate : ) -  cctx.requiresMintDelegateInput().requiresValidOutput() 
                     // this needs to be done by the speciization for now
-                    // && cctx.requiresDelegatedDataController(dataTypePurpose).requiresDataMinting()                    
+                    // && cctx.requiresDelegatedDataController(dDataTypeName).requiresDataMinting()                    
 
-                    // dgDataPolicy = cctx.findManifestEntry(dataTypePurpose).switch {
+                    // dgDataPolicy = cctx.findManifestEntry(dDataTypeName).switch {
                     //     None => error(
                     //         "can't create delegatedData without a matching '"+
-                    //         dataTypePurpose+"' dgDataPolicy entry in the capo manifest"),
+                    //         dDataTypeName+"' dgDataPolicy entry in the capo manifest"),
                     //     Some{mEntry} => {
                     //         mEntry.entryType.switch {
                     //             DgDataPolicy{policyLink, _refCount} => policyLink,
                     //             _ => error(
                     //                 "can't create delegatedData type '"+
-                    //                 dataTypePurpose+
+                    //                 dDataTypeName+
                     //                 "'; its Capo manifest entry is not a DgDataPolicy"
                     //             )
                     //         }
@@ -1238,7 +1238,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     )
                     && bREQT("it outputs the new delegated-data record to the Capo address")
                     && cctx.mustOutputDelegatedData(
-                        newDataId, dataTypePurpose
+                        newDataId, dDataTypeName
                     )
                     && bREQT("ensures the data-controller is invoked with ONE minting activity for the indicated recId")
                     && policyDelegateInput.
@@ -1260,7 +1260,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 // ... and using its separate specialization module.
                 // In each of those cases, it follows the same high-level logic, hitting different paths through this file, 
                 // ... while processing different tokens for each zone of authority/responsibility.
-                UpdatingDelegatedData{dDataType, recId} => if (!isSpendDelegate) {
+                UpdatingDelegatedData{dDataTypeName, recId} => if (!isSpendDelegate) {
                     error("UpdatingDelegatedData activity is only allowed in the spend delegate")
                 } else {
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
@@ -1271,7 +1271,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
 
                     REQT("ensures the data-controller is invoked with ONE spending activity for the indicated recId");
                     assert( cctx.
-                        requiresDgDataPolicyInput(dDataType).
+                        requiresDgDataPolicyInput(dDataTypeName).
                         withUniqueDDSpendingActivity(recId).
                         orFail(),
                          "^^^ those can fail, this assert won't."
@@ -1280,14 +1280,14 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     inputDD : TxInput = cctx.delegatedDataTxInput(recIdBytes: recId);
                     assert(inputDD == inputDD, "no way m");
                     // ^^ same as vv
-                    // hasDDofType : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate(dDataType);
+                    // hasDDofType : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate(dDataTypeName);
                     // simply finding the input is enough to imply that the that those utxos are spend-governed by the Capo 
                     // ... which at j6bmfv, explicitly requires the token that leads to this code path
                     // ddInputs : []TxInput = ctx.tx.inputs.filter(hasDDofType);
                     // assert(ddInputs.length == 1, "extra DD input(s)");
 
 
-                    if ("settings" == dDataType) {
+                    if ("settings" == dDataTypeName) {
                         curSettingsId = cctx.getSettingsId(required: true).unwrap();
                         TODO(
                             "when updating the current Capo settings, the delegates must all "+
@@ -1323,7 +1323,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         }
                     };
 
-                    cctx.mustOutputDelegatedData(recId, dDataType).trace("  -- did output delegated data? ")
+                    cctx.mustOutputDelegatedData(recId, dDataTypeName).trace("  -- did output delegated data? ")
                     && true
                 },
 

@@ -153,9 +153,9 @@ import type { DeployedProgramBundle } from "./helios/CachedHeliosProgram.js";
 
 type InstallPolicyDgtOptions<
     CAPO extends Capo<any>,
-    RoLabel extends string & keyof CAPO["delegateRoles"]
+    TypeName extends string & keyof CAPO["delegateRoles"]
 > = {
-    policyName: RoLabel;
+    typeName: TypeName;
     idPrefix: string;
     charterData: CapoDatum$Ergo$CharterData;
 };
@@ -2255,29 +2255,35 @@ export abstract class Capo<
      */
     async getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(
         this: SELF,
-        roleName: RN,
+        recordTypeName: RN,
         options?: FindableViaCharterData
     ): Promise<undefined | DelegatedDataContract<any, any>> {
         const { charterData, optional } = options || {};
-        const chD = charterData || (await this.findCharterData());
-        const foundME = chD.manifest.get(roleName);
+        const chD = charterData || (await this.findCharterData( undefined, {
+            optional: optional || false
+        }));
+        const foundME = chD.manifest.get(recordTypeName);
         if (!foundME) {
             // debugger;
             if (optional) return undefined as any;
             await this.findCharterData();
             throw new Error(
-                `no manifest entry found with link to installed ${roleName} (debugging breakpoint available)`
+                `${this.constructor.name}.charter.manifest: unknown record type '${recordTypeName}' (debugging breakpoint available)\n`+
+                `Delegated-data-types registered in the manifest: \n ${Array.from(chD.manifest.entries()).map(
+                    // bullet-point: •
+                    ([k,v]) => v.entryType.DgDataPolicy ? `  • ${k}\n` : undefined
+                ).filter((x) => !!x).join("")}`
             );
         }
         if (foundME?.entryType.DgDataPolicy) {
             return this.connectDelegateWithOnchainRDLink<
                 RN,
                 DelegatedDataContract<any, any>
-            >(roleName, foundME.entryType.DgDataPolicy.policyLink); // as Promise<>;
+            >(recordTypeName, foundME.entryType.DgDataPolicy.policyLink); // as Promise<>;
         } else {
             const actualEntryType = Object.keys(foundME.entryType)[0];
             throw new Error(
-                `invalid data-controller name '${roleName}' is invalid as a data-controller name; \n"+
+                `${this.constructor.name}.charter.manifest: invalid data-type name '${recordTypeName}' for delegated-data-controller; \n"+
                 "  ... manifest entry has type '${actualEntryType}', not DgDataPolicy!`
             );
         }
@@ -2632,10 +2638,13 @@ export abstract class Capo<
                     optional: false,
                 });
                 if (this.autoSetup) {
+                    // tractor emoji: 🚜
+                    console.log("🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜")
                     console.log("autoSetup: checking delegate roles for policies needing creation or update:\n"+
                         Object.keys(this.delegateRoles).map(k => `- ${k}`).join("\n")
                     )
-                    for (const [policyName, details] of Object.entries(
+
+                    for (const [policyAndTypeName, details] of Object.entries(
                         this.delegateRoles
                     )) {
                         const ds: DelegateSetup<any, any, any> = details;
@@ -2647,7 +2656,10 @@ export abstract class Capo<
                             uutPurpose,
                         } = ds;
                         //@ts-expect-error on the type probe
-                        if (!delegateClass.isDgDataPolicy) continue;
+                        if (!delegateClass.isDgDataPolicy) {
+                            console.warn(`${delegateClass.name} is not a dgDataPolicy`);
+                            continue;
+                        }
 
                         const dgDataControllerClass: stellarSubclass<
                             DelegatedDataContract<any, any>
@@ -2660,13 +2672,20 @@ export abstract class Capo<
                                 },
                             }
                         );
-                        await delegate.setupCapoPolicy(tcx3, policyName, {
+                        if (delegate.recordTypeName !== policyAndTypeName) {
+                            throw new Error(`${this.constructor.name}:  delegateRoles.${policyAndTypeName} has class ${dgDataControllerClass.name},\n`+
+                                `whose \`get recordTypeName()\` '${delegate.recordTypeName}' is mismatched.\n`+
+                                `Use the recordTypeName in the delegateRoles map.`);
+                        }
+                        await delegate.setupCapoPolicy(tcx3, policyAndTypeName, {
                             charterData,
                             capoUtxos,
-                        });
+                        })
                     }
                 }
                 this.commitPendingChangesIfNeeded(tcx3);
+                console.log("🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 end autoSetup 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜")
+                console.log("🚜 Next: addlTxns... 🚜 🚜 ")
                 await this.mkAdditionalTxnsForCharter(tcx3, {
                     charterData,
                     capoUtxos,
@@ -2742,7 +2761,7 @@ export abstract class Capo<
                     optional: false,
                     mkTcx: () =>
                         this.mkTxnInstallPolicyDelegate({
-                            policyName: "settings",
+                            typeName: "settings",
                             idPrefix: "set",
                             charterData,
                         }),
@@ -3871,11 +3890,11 @@ export abstract class Capo<
      */
     @txn
     async mkTxnInstallingPolicyDelegate<
-        const RoLabel extends string & keyof SELF["delegateRoles"],
+        const TypeName extends string & keyof SELF["delegateRoles"],
         THIS extends Capo<any>
     >(
         this: THIS,
-        options: InstallPolicyDgtOptions<THIS, RoLabel>
+        options: InstallPolicyDgtOptions<THIS, TypeName>
     ) {
         // const mintDelegate = await this.getMintDelegate(charter);
         // console.log("   --mintDgt", mintDelegate.constructor.name);
@@ -3885,7 +3904,7 @@ export abstract class Capo<
         const tcx1 = await this.tcxWithSeedUtxo(this.mkTcx());
 
         const existingDgtEntry = this.hasPolicyInManifest(
-            options.policyName,
+            options.typeName,
             options.charterData
         );
 
@@ -3913,11 +3932,11 @@ export abstract class Capo<
      * @public
      */
     async mkTxnInstallPolicyDelegate<
-        const RoLabel extends string & keyof SELF["delegateRoles"],
+        const TypeName extends string & keyof SELF["delegateRoles"],
         THIS extends Capo<any>
     >(
         this: THIS,
-        options: InstallPolicyDgtOptions<THIS, RoLabel>
+        options: InstallPolicyDgtOptions<THIS, TypeName>
     ) {
         const tcx1 = await this.mkTxnInstallingPolicyDelegate(options);
 
@@ -4012,14 +4031,14 @@ export abstract class Capo<
     async mkTxnQueuingDelegateChange<
         DT extends StellarDelegate,
         THIS extends Capo<any>,
-        const RoLabel extends string & keyof SELF["delegateRoles"],
+        const TypeName extends string & keyof SELF["delegateRoles"],
         OPTIONS extends OffchainPartialDelegateLink,
         TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
     >(
         this: THIS,
         change: "Add" | "Replace",
         options: {
-            policyName: RoLabel;
+            typeName: TypeName;
             charterData: CharterData;
             idPrefix: string;
             dgtOptions?: OPTIONS; // & NamedPolicyCreationOptions<THIS, DT>,
@@ -4028,7 +4047,7 @@ export abstract class Capo<
     ) {
         const {
             idPrefix,
-            policyName,
+            typeName,
             charterData,
             dgtOptions = { config: {} } as OPTIONS,
         } = options;
@@ -4041,7 +4060,7 @@ export abstract class Capo<
             );
         }
 
-        const existingDelegate = await this.getDgDataController(policyName, {
+        const existingDelegate = await this.getDgDataController(typeName, {
             charterData,
             optional: true,
         });
@@ -4061,7 +4080,7 @@ export abstract class Capo<
                 tcx1.state.seedUtxo,
                 mintDgtActivity,
                 purpose,
-                policyName,
+                typeName,
                 idPrefix,
                 dgtOptions
             );
@@ -4069,7 +4088,7 @@ export abstract class Capo<
             this.mkOnchainRelativeDelegateLink(tempDataPolicyLink);
 
 
-        const replacesDgtME = this.hasPolicyInManifest(policyName, charterData);
+        const replacesDgtME = this.hasPolicyInManifest(typeName, charterData);
         const [manifestPolicyName, existingDgtEntry] = replacesDgtME || [];
         const existingDgtLink =
             existingDgtEntry?.entryType.DgDataPolicy?.policyLink;
@@ -4085,12 +4104,12 @@ export abstract class Capo<
         if (replacesDgtTokenName) {
             if ("Add" === change) {
                 throw new Error(
-                    `Cannot add a policy with the same name as an existing one: ${policyName} (use Replace activity)`
+                    `Cannot add a policy with the same name as an existing one: ${typeName} (use Replace activity)`
                 );
             }
             if (!existingDelegate) {
                 throw new Error(
-                    `Cannot replace a policy that doesn't exist: ${policyName} (use Add activity)`
+                    `Cannot replace a policy that doesn't exist: ${typeName} (use Add activity)`
                 );
             }
 
@@ -4101,7 +4120,7 @@ export abstract class Capo<
                 // when no previous script is there, it means an existing policy is fine as-is
                 if (existingDvh) {
                     throw new TxNotNeededError(
-                        `Policy doesn't need an update: ${policyName}`
+                        `Policy doesn't need an update: ${typeName}`
                     );
                 }
                 // however, if the previous delegate had no script but the new one does,
@@ -4111,7 +4130,7 @@ export abstract class Capo<
             } else {
                 if (!existingDvh) {
                     throw new Error(
-                        `incontheeivable! -- on-chain manifest has no validator hash for ${policyName}, but the offchain bundle has a previous compiled script`
+                        `incontheeivable! -- on-chain manifest has no validator hash for ${typeName}, but the offchain bundle has a previous compiled script`
                     );
                 }
 
@@ -4120,7 +4139,7 @@ export abstract class Capo<
                 );
                 if (!previousDvh.isEqual(existingDvh)) {
                     throw new Error(
-                        `Unexpected mismatch between onchain and offchain: ${policyName}\n` +
+                        `Unexpected mismatch between onchain and offchain: ${typeName}\n` +
                             `   ... onchain: ${existingDvh}\n` +
                             `   ... offchain: ${previousDvh}`
                     );
@@ -4134,14 +4153,14 @@ export abstract class Capo<
                         "this is not the path we'd ever expect to take"
                     );
                     throw new TxNotNeededError(
-                        `Policy doesn't need an update: ${policyName}`
+                        `Policy doesn't need an update: ${typeName}`
                     );
                 }
             }
         } else {
             if ("Replace" === change) {
                 throw new Error(
-                    `Cannot replace a policy that doesn't exist: ${policyName} (use Add activity)`
+                    `Cannot replace a policy that doesn't exist: ${typeName} (use Add activity)`
                 );
             }
         }
@@ -4184,20 +4203,20 @@ export abstract class Capo<
             {
                 // role / uut map
                 dgDataPolicy: purpose,
-                [policyName]: purpose,
+                [typeName]: purpose,
             }
         );
         const delegateLink = this.mkOnchainRelativeDelegateLink(
             await this.txnCreateOffchainDelegateLink(
                 tcx2,
-                policyName,
+                typeName,
                 dgtOptions
             )
         );
         const pendingChange: PendingCharterChangeLike = {
             delegateChange: {
                 action: dgtAction,
-                role: { DgDataPolicy: policyName },
+                role: { DgDataPolicy: typeName },
                 // idPrefix,
                 // dgtLink: tempOCDPLink,
                 dgtLink: delegateLink,
@@ -4214,7 +4233,7 @@ export abstract class Capo<
             const dgc = pc.delegateChange;
             if (!dgc) return false;
             const existingRole = dgc.role.DgDataPolicy;
-            if (policyName != existingRole) return false;
+            if (typeName != existingRole) return false;
             const existingChangeAction = Object.keys(dgc.action)[0];
             return change == existingChangeAction;
         };
@@ -4240,9 +4259,9 @@ export abstract class Capo<
             // ),
             await this.txnAddGovAuthority(tcx2)
         );
-        const stateKey = mkDgtStateKey<RoLabel>(policyName);
+        const stateKey = mkDgtStateKey<TypeName>(typeName);
         //@ts-expect-error "could be instantiated with different subtype"
-        const tcx5: TCX & hasNamedDelegate<DT, RoLabel, "dgData"> = tcx4;
+        const tcx5: TCX & hasNamedDelegate<DT, TypeName, "dgData"> = tcx4;
         // this type doesn't resolve because of abstract DT ^
         //  tcx5.state[stateKey] = delegateLink;
 
@@ -4251,7 +4270,7 @@ export abstract class Capo<
             stateKey,
             tempDataPolicyLink.delegate.compiledScript
         );
-        return tcx6 as typeof tcx6 & hasUutContext<"dgDataPolicy" | RoLabel>;
+        return tcx6 as typeof tcx6 & hasUutContext<"dgDataPolicy" | TypeName>;
     }
 
     /**
@@ -4287,7 +4306,7 @@ export abstract class Capo<
         seedUtxo: TxInput,
         mintDgtActivity: SomeDgtActivityHelper,
         purpose: string,
-        policyName: string,
+        typeName: string,
         idPrefix: string,
         options: OffchainPartialDelegateLink
     ) {
@@ -4319,10 +4338,10 @@ export abstract class Capo<
             },
             {
                 // role / uut map
-                [policyName]: purpose,
+                [typeName]: purpose,
             }
         );
-        return this.txnCreateOffchainDelegateLink(ttcx2, policyName, options);
+        return this.txnCreateOffchainDelegateLink(ttcx2, typeName, options);
     }
 
     async mkTxnCommittingPendingChanges<TCX extends StellarTxnContext>(
