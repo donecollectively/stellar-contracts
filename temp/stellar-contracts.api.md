@@ -18,15 +18,14 @@ import { CardanoClient } from '@helios-lang/tx-utils';
 import type { CardanoTxSubmitter } from '@helios-lang/tx-utils';
 import { Cast } from '@helios-lang/contract-utils';
 import { CompileOptions } from '@helios-lang/compiler';
+import { ConcreteCapoDelegateBundle as ConcreteCapoDelegateBundle_2 } from '../helios/scriptBundling/CapoDelegateBundle.js';
 import { ConnectionConfig } from '@cardano-ogmios/client';
-import { Constructor as Constructor_2 } from '../helios/HeliosMetaTypes.js';
 import { ContractBasedDelegate as ContractBasedDelegate_2 } from './delegation/ContractBasedDelegate.js';
 import type { Cost } from '@helios-lang/uplc';
 import type { DataType } from '@helios-lang/compiler';
 import { DeferredState as DeferredState_2 } from '../StateMachine.js';
 import { DelegateSetup as DelegateSetup_2 } from './delegation/RolesAndDelegates.js';
 import { DeployedProgramBundle as DeployedProgramBundle_2 } from '../CachedHeliosProgram.js';
-import { EmptyConstructor as EmptyConstructor_2 } from '../helios/HeliosMetaTypes.js';
 import { Emulator } from '@helios-lang/tx-utils';
 import type { EnumMemberType } from '@helios-lang/compiler';
 import { ErgoCapoManifestEntry as ErgoCapoManifestEntry_2 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
@@ -451,6 +450,11 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
         optional: true;
         capoUtxos?: TxInput[];
     }): Promise<CharterData | undefined>;
+    // (undocumented)
+    findCharterData(currentCharterUtxo?: TxInput, options?: {
+        optional: boolean;
+        capoUtxos?: TxInput[];
+    }): Promise<CharterData>;
     findDelegatedDataUtxos<const T extends undefined | (string & keyof SELF["_delegateRoles"]), RAW_DATUM_TYPE extends T extends string ? AnyDataTemplate<T, any> : never, PARSED_DATUM_TYPE>(this: SELF, { type, id, predicate, query, charterData, capoUtxos, }: {
         type?: T;
         id?: string | number[] | UutName;
@@ -469,9 +473,8 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     // (undocumented)
     findRefScriptUtxo(expectedVh: number[], capoUtxos: TxInput[]): Promise<TxInput | undefined>;
     findScriptReferences(capoUtxos: TxInput[]): Promise<TxInput[]>;
-    // (undocumented)
-    findSettingsInfo(this: SELF, options: {
-        charterData: CharterData;
+    findSettingsInfo(this: SELF, options?: {
+        charterData?: CharterData;
         capoUtxos?: TxInput[];
         optional?: boolean;
     }): Promise<FoundDatumUtxo<any, any> | undefined>;
@@ -479,7 +482,7 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     getBundle(): CapoHeliosBundle;
     // @deprecated
     getDelegateRoles(): void;
-    getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(this: SELF, roleName: RN, options?: FindableViaCharterData): Promise<undefined | DelegatedDataContract<any, any>>;
+    getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(this: SELF, recordTypeName: RN, options?: FindableViaCharterData): Promise<undefined | DelegatedDataContract<any, any>>;
     // (undocumented)
     getGovDelegate(charterData?: CharterData): Promise<void>;
     // (undocumented)
@@ -541,16 +544,16 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     // (undocumented)
     mkTxnCommittingPendingChanges<TCX extends StellarTxnContext>(tcx?: TCX): Promise<StellarTxnContext<anyState>>;
     // Warning: (ae-forgotten-export) The symbol "InstallPolicyDgtOptions" needs to be exported by the entry point index.d.ts
-    mkTxnInstallingPolicyDelegate<const RoLabel extends string & keyof SELF["delegateRoles"], THIS extends Capo<any>>(this: THIS, options: InstallPolicyDgtOptions<THIS, RoLabel>): Promise<hasAddlTxns<StellarTxnContext<anyState> & hasSeedUtxo & hasNamedDelegate<StellarDelegate, RoLabel, "dgData">> & hasUutContext<RoLabel | "dgDataPolicy">>;
-    mkTxnInstallPolicyDelegate<const RoLabel extends string & keyof SELF["delegateRoles"], THIS extends Capo<any>>(this: THIS, options: InstallPolicyDgtOptions<THIS, RoLabel>): Promise<hasAddlTxns<StellarTxnContext<anyState>, anyState>>;
+    mkTxnInstallingPolicyDelegate<const TypeName extends string & keyof SELF["delegateRoles"], THIS extends Capo<any>>(this: THIS, options: InstallPolicyDgtOptions<THIS, TypeName>): Promise<hasAddlTxns<StellarTxnContext<anyState> & hasSeedUtxo & hasNamedDelegate<StellarDelegate, TypeName, "dgData">> & hasUutContext<TypeName | "dgDataPolicy">>;
+    mkTxnInstallPolicyDelegate<const TypeName extends string & keyof SELF["delegateRoles"], THIS extends Capo<any>>(this: THIS, options: InstallPolicyDgtOptions<THIS, TypeName>): Promise<hasAddlTxns<StellarTxnContext<anyState>, anyState>>;
     mkTxnMintCharterToken<TCX extends undefined | StellarTxnContext<anyState>, TCX2 extends StellarTxnContext<anyState> = hasBootstrappedCapoConfig & (TCX extends StellarTxnContext<infer TCXT> ? StellarTxnContext<TCXT> : unknown), TCX3 = TCX2 & hasAddlTxns<TCX2> & StellarTxnContext<charterDataState> & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" | "setting">>(this: SELF, charterDataArgs: MinimalCharterDataArgs, existingTcx?: TCX, dryRun?: "DRY_RUN"): Promise<TCX3 & Awaited<hasUutContext<"spendDelegate" | "govAuthority" | "mintDelegate" | "capoGov" | "mintDgt" | "spendDgt"> & TCX2 & hasBootstrappedCapoConfig & hasSeedUtxo & StellarTxnContext<charterDataState>>>;
     // (undocumented)
-    mkTxnQueuingDelegateChange<DT extends StellarDelegate, THIS extends Capo<any>, const RoLabel extends string & keyof SELF["delegateRoles"], OPTIONS extends OffchainPartialDelegateLink, TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>>(this: THIS, change: "Add" | "Replace", options: {
-        policyName: RoLabel;
+    mkTxnQueuingDelegateChange<DT extends StellarDelegate, THIS extends Capo<any>, const TypeName extends string & keyof SELF["delegateRoles"], OPTIONS extends OffchainPartialDelegateLink, TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>>(this: THIS, change: "Add" | "Replace", options: {
+        typeName: TypeName;
         charterData: CharterData;
         idPrefix: string;
         dgtOptions?: OPTIONS;
-    }, tcx?: TCX): Promise<hasAddlTxns<TCX & hasNamedDelegate<DT, RoLabel, "dgData">> & hasUutContext<RoLabel | "dgDataPolicy">>;
+    }, tcx?: TCX): Promise<hasAddlTxns<TCX & hasNamedDelegate<DT, TypeName, "dgData">> & hasUutContext<TypeName | "dgDataPolicy">>;
     // (undocumented)
     mkTxnUpdateCharter<TCX extends StellarTxnContext>(args: CharterDataLike, activity?: isActivity, tcx?: TCX): Promise<StellarTxnContext>;
     mkTxnUpdatingMintDelegate<THIS extends Capo<any>, TCX extends hasSeedUtxo = hasSeedUtxo>(this: THIS, delegateInfo: MinimalDelegateUpdateLink, tcx?: TCX): Promise<TCX & hasUutContext<"mintDelegate" | "mintDgt"> & hasSeedUtxo>;
@@ -612,7 +615,7 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
         capoUtxos: TxInput[];
     }): Promise<TCX & hasSettingsRef<any, any>>;
     // (undocumented)
-    tempMkDelegateLinkForQueuingDgtChange(seedUtxo: TxInput, mintDgtActivity: SomeDgtActivityHelper, purpose: string, policyName: string, idPrefix: string, options: OffchainPartialDelegateLink): Promise<{
+    tempMkDelegateLinkForQueuingDgtChange(seedUtxo: TxInput, mintDgtActivity: SomeDgtActivityHelper, purpose: string, typeName: string, idPrefix: string, options: OffchainPartialDelegateLink): Promise<{
         delegateClass: stellarSubclass<ContractBasedDelegate>;
         delegate: ContractBasedDelegate;
         roleName: string;
@@ -716,7 +719,6 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     scriptParamsSource: "bundle" | "config";
     abstract specializedDelegateModule: Source;
     // Warning: (ae-forgotten-export) The symbol "CapoBundleClass" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-forgotten-export) The symbol "ConcreteCapoDelegateBundle" needs to be exported by the entry point index.d.ts
     static usingCapoBundleClass<THIS extends typeof CapoDelegateBundle, CB extends CapoBundleClass>(this: THIS, c: CB): ConcreteCapoDelegateBundle;
 }
 
@@ -871,6 +873,15 @@ export type charterDataState = {
 //
 // @public (undocumented)
 export const colors: Colors;
+
+// Warning: (ae-forgotten-export) The symbol "Constructor" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "EmptyConstructor" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle & Constructor<CapoDelegateBundle> & EmptyConstructor<CapoDelegateBundle> & {
+    capoBundle: CapoHeliosBundle;
+    isConcrete: true;
+};
 
 // @public
 export interface configBase {
@@ -1198,10 +1209,10 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     returnUpdatedRecord<TCX extends StellarTxnContext & hasCharterRef>(tcx: TCX, returnedValue: Value, updatedRecord: TLike): TCX;
     // (undocumented)
     scriptBundle(): CapoDelegateBundle;
-    setupCapoPolicy(tcx: StellarTxnContext, policyName: string, options: {
+    setupCapoPolicy(tcx: StellarTxnContext, typeName: string, options: {
         charterData: CharterData;
         capoUtxos: TxInput[];
-    }): Promise<void>;
+    }): Promise<undefined>;
     // Warning: (ae-forgotten-export) The symbol "CoreDgDataCreationOptions" needs to be exported by the entry point index.d.ts
     // Warning: (ae-forgotten-export) The symbol "DelegatedDatumIdPrefix" needs to be exported by the entry point index.d.ts
     //
@@ -1583,7 +1594,7 @@ export abstract class HeliosScriptBundle {
     getTopLevelTypes(): HeliosBundleTypes;
     // (undocumented)
     get hasAnyVariant(): boolean;
-    protected implicitIncludedCapoModules(): string[];
+    implicitIncludedCapoModules(): string[];
     // (undocumented)
     get includeEnums(): string[];
     includeFromCapoModules(): string[];
@@ -3170,7 +3181,7 @@ export type WrappedPromise<T> = {
 
 // Warnings were encountered during analysis:
 //
-// src/Capo.ts:1178:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
+// src/Capo.ts:1209:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
 // src/StellarContract.ts:359:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
 // src/StellarTxnContext.ts:91:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts

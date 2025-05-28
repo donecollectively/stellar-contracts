@@ -14279,9 +14279,33 @@ We suggest naming your Capo bundle class with your application's name.
     if (!charterData) throw Error(`invalid charter UTxO datum`);
     return charterData;
   }
+  /**
+   * Finds the currentSettings record for a Capo
+   * @remarks
+   * A Capo's currentSettings can be different in any deployment, but
+   * any deployment can have one.  This function finds the currentSettings
+   * as found in the Capo's `charterData.manifest`, and returns it with its 
+   * underlying `data` and possible application-layer `dataWrapped` object.
+   * 
+   * Provide charterData and capoUtxos to resolve the currentSettings without 
+   * extra queries.  
+   * 
+   * Define your SettingsController as a subclass of WrappedDgDataContract
+   * to provide a custom data-wrapper.
+   * 
+   * If your protocol doesn't use settings, you probably aren't using 
+   * this method.  If you are writing some protocol-independent code, be sure 
+   * to use the `optional` attribute and be robust to cases of "no settings yet" 
+   * and "the specific current protocol doesn't use settings at all".
+   * 
+   * Future: we will cache charterData and UTxOs so that this function will be
+   * simpler in its interface and fast to execute without external management 
+   * of `{charterData, capoUtxos}`.
+  * @public
+   */
   async findSettingsInfo(options) {
-    let { charterData, capoUtxos, optional = false } = options;
-    if (!capoUtxos) {
+    let { charterData, capoUtxos, optional = false } = options || {};
+    if (!capoUtxos || !charterData) {
       debugger;
       capoUtxos = await this.findCapoUtxos();
       charterData = await this.findCharterData(void 0, {
@@ -15050,23 +15074,31 @@ link details: ${this.showDelegateLink(delegateLink)}`
    * and that the off-chain Capo delegateMap provides an off-chain controller
    * for that typeName.
    */
-  async getDgDataController(roleName, options) {
+  async getDgDataController(recordTypeName, options) {
     const { charterData, optional } = options || {};
-    const chD = charterData || await this.findCharterData();
-    const foundME = chD.manifest.get(roleName);
+    const chD = charterData || await this.findCharterData(void 0, {
+      optional: optional || false
+    });
+    const foundME = chD.manifest.get(recordTypeName);
     if (!foundME) {
       if (optional) return void 0;
       await this.findCharterData();
       throw new Error(
-        `no manifest entry found with link to installed ${roleName} (debugging breakpoint available)`
+        `${this.constructor.name}.charter.manifest: unknown record type '${recordTypeName}' (debugging breakpoint available)
+Delegated-data-types registered in the manifest: 
+ ${Array.from(chD.manifest.entries()).map(
+          // bullet-point: •
+          ([k, v]) => v.entryType.DgDataPolicy ? `  \u2022 ${k}
+` : void 0
+        ).filter((x) => !!x).join("")}`
       );
     }
     if (foundME?.entryType.DgDataPolicy) {
-      return this.connectDelegateWithOnchainRDLink(roleName, foundME.entryType.DgDataPolicy.policyLink);
+      return this.connectDelegateWithOnchainRDLink(recordTypeName, foundME.entryType.DgDataPolicy.policyLink);
     } else {
       const actualEntryType = Object.keys(foundME.entryType)[0];
       throw new Error(
-        `invalid data-controller name '${roleName}' is invalid as a data-controller name; 
+        `${this.constructor.name}.charter.manifest: invalid data-type name '${recordTypeName}' for delegated-data-controller; 
 "+
                 "  ... manifest entry has type '${actualEntryType}', not DgDataPolicy!`
       );
@@ -15311,20 +15343,25 @@ link details: ${this.showDelegateLink(delegateLink)}`
           optional: false
         });
         if (this.autoSetup) {
+          console.log("\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}");
           console.log(
             "autoSetup: checking delegate roles for policies needing creation or update:\n" + Object.keys(this.delegateRoles).map((k) => `- ${k}`).join("\n")
           );
-          for (const [policyName, details] of Object.entries(
+          for (const [policyAndTypeName, details] of Object.entries(
             this.delegateRoles
           )) {
             const ds = details;
+            debugger;
             const {
               delegateClass,
               config,
               delegateType,
               uutPurpose
             } = ds;
-            if (!delegateClass.isDgDataPolicy) continue;
+            if (!delegateClass.isDgDataPolicy) {
+              console.warn(`${delegateClass.name} is not a dgDataPolicy`);
+              continue;
+            }
             const dgDataControllerClass = delegateClass;
             const delegate = await dgDataControllerClass.createWith(
               {
@@ -15334,13 +15371,20 @@ link details: ${this.showDelegateLink(delegateLink)}`
                 }
               }
             );
-            await delegate.setupCapoPolicy(tcx3, policyName, {
+            if (delegate.recordTypeName !== policyAndTypeName) {
+              throw new Error(`${this.constructor.name}:  delegateRoles.${policyAndTypeName} has class ${dgDataControllerClass.name},
+whose \`get recordTypeName()\` '${delegate.recordTypeName}' is mismatched.
+Use the recordTypeName in the delegateRoles map.`);
+            }
+            await delegate.setupCapoPolicy(tcx3, policyAndTypeName, {
               charterData: charterData2,
               capoUtxos: capoUtxos2
             });
           }
         }
         this.commitPendingChangesIfNeeded(tcx3);
+        console.log("\u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} end autoSetup \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C}");
+        console.log("\u{1F69C} Next: addlTxns... \u{1F69C} \u{1F69C} ");
         await this.mkAdditionalTxnsForCharter(tcx3, {
           charterData: charterData2,
           capoUtxos: capoUtxos2
@@ -15400,7 +15444,7 @@ link details: ${this.showDelegateLink(delegateLink)}`
           description: `create settings-policy dgt`,
           optional: false,
           mkTcx: () => this.mkTxnInstallPolicyDelegate({
-            policyName: "settings",
+            typeName: "settings",
             idPrefix: "set",
             charterData
           })
@@ -16022,7 +16066,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
   async mkTxnInstallingPolicyDelegate(options) {
     const tcx1 = await this.tcxWithSeedUtxo(this.mkTcx());
     const existingDgtEntry = this.hasPolicyInManifest(
-      options.policyName,
+      options.typeName,
       options.charterData
     );
     if (existingDgtEntry) {
@@ -16125,7 +16169,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
   async mkTxnQueuingDelegateChange(change, options, tcx = this.mkTcx()) {
     const {
       idPrefix,
-      policyName,
+      typeName,
       charterData,
       dgtOptions = { config: {} }
     } = options;
@@ -16136,7 +16180,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
    ... adjust this separately from the policyName with options.uutName`
       );
     }
-    const existingDelegate = await this.getDgDataController(policyName, {
+    const existingDelegate = await this.getDgDataController(typeName, {
       charterData,
       optional: true
     });
@@ -16146,16 +16190,17 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       //@ts-expect-error on checking for possible seedUtxo presence
       tcx.state.seedUtxo === void 0 ? await this.tcxWithSeedUtxo() : tcx
     );
+    debugger;
     const tempDataPolicyLink = await this.tempMkDelegateLinkForQueuingDgtChange(
       tcx1.state.seedUtxo,
       mintDgtActivity,
       purpose,
-      policyName,
+      typeName,
       idPrefix,
       dgtOptions
     );
     this.mkOnchainRelativeDelegateLink(tempDataPolicyLink);
-    const replacesDgtME = this.hasPolicyInManifest(policyName, charterData);
+    const replacesDgtME = this.hasPolicyInManifest(typeName, charterData);
     const [manifestPolicyName, existingDgtEntry] = replacesDgtME || [];
     const existingDgtLink = existingDgtEntry?.entryType.DgDataPolicy?.policyLink;
     if (existingDgtEntry?.mph) {
@@ -16168,25 +16213,25 @@ ADDING SCRIPT DIRECTLY TO TXN!`
     if (replacesDgtTokenName) {
       if ("Add" === change) {
         throw new Error(
-          `Cannot add a policy with the same name as an existing one: ${policyName} (use Replace activity)`
+          `Cannot add a policy with the same name as an existing one: ${typeName} (use Replace activity)`
         );
       }
       if (!existingDelegate) {
         throw new Error(
-          `Cannot replace a policy that doesn't exist: ${policyName} (use Add activity)`
+          `Cannot replace a policy that doesn't exist: ${typeName} (use Add activity)`
         );
       }
       const previousCompiledScript = existingDelegate.getBundle().previousCompiledScript();
       if (!previousCompiledScript) {
         if (existingDvh) {
           throw new TxNotNeededError(
-            `Policy doesn't need an update: ${policyName}`
+            `Policy doesn't need an update: ${typeName}`
           );
         }
       } else {
         if (!existingDvh) {
           throw new Error(
-            `incontheeivable! -- on-chain manifest has no validator hash for ${policyName}, but the offchain bundle has a previous compiled script`
+            `incontheeivable! -- on-chain manifest has no validator hash for ${typeName}, but the offchain bundle has a previous compiled script`
           );
         }
         const previousDvh = makeValidatorHash(
@@ -16194,7 +16239,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
         );
         if (!previousDvh.isEqual(existingDvh)) {
           throw new Error(
-            `Unexpected mismatch between onchain and offchain: ${policyName}
+            `Unexpected mismatch between onchain and offchain: ${typeName}
    ... onchain: ${existingDvh}
    ... offchain: ${previousDvh}`
           );
@@ -16206,14 +16251,14 @@ ADDING SCRIPT DIRECTLY TO TXN!`
             "this is not the path we'd ever expect to take"
           );
           throw new TxNotNeededError(
-            `Policy doesn't need an update: ${policyName}`
+            `Policy doesn't need an update: ${typeName}`
           );
         }
       }
     } else {
       if ("Replace" === change) {
         throw new Error(
-          `Cannot replace a policy that doesn't exist: ${policyName} (use Add activity)`
+          `Cannot replace a policy that doesn't exist: ${typeName} (use Add activity)`
         );
       }
     }
@@ -16250,20 +16295,20 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       {
         // role / uut map
         dgDataPolicy: purpose,
-        [policyName]: purpose
+        [typeName]: purpose
       }
     );
     const delegateLink = this.mkOnchainRelativeDelegateLink(
       await this.txnCreateOffchainDelegateLink(
         tcx2,
-        policyName,
+        typeName,
         dgtOptions
       )
     );
     const pendingChange = {
       delegateChange: {
         action: dgtAction,
-        role: { DgDataPolicy: policyName },
+        role: { DgDataPolicy: typeName },
         // idPrefix,
         // dgtLink: tempOCDPLink,
         dgtLink: delegateLink
@@ -16277,7 +16322,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       const dgc = pc.delegateChange;
       if (!dgc) return false;
       const existingRole = dgc.role.DgDataPolicy;
-      if (policyName != existingRole) return false;
+      if (typeName != existingRole) return false;
       const existingChangeAction = Object.keys(dgc.action)[0];
       return change == existingChangeAction;
     };
@@ -16301,7 +16346,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       // ),
       await this.txnAddGovAuthority(tcx2)
     );
-    const stateKey = mkDgtStateKey(policyName);
+    const stateKey = mkDgtStateKey(typeName);
     const tcx5 = tcx4;
     const tcx6 = await this.txnMkAddlRefScriptTxn(
       tcx5,
@@ -16329,7 +16374,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
   findPendingChange(charterData, changingThisRole) {
     return charterData.pendingChanges.find(changingThisRole);
   }
-  async tempMkDelegateLinkForQueuingDgtChange(seedUtxo, mintDgtActivity, purpose, policyName, idPrefix, options) {
+  async tempMkDelegateLinkForQueuingDgtChange(seedUtxo, mintDgtActivity, purpose, typeName, idPrefix, options) {
     const ttcx1 = await this.tcxWithSeedUtxo(this.mkTcx(), seedUtxo);
     const ttcx2 = await this.txnMintingUuts(
       ttcx1,
@@ -16352,10 +16397,10 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       },
       {
         // role / uut map
-        [policyName]: purpose
+        [typeName]: purpose
       }
     );
-    return this.txnCreateOffchainDelegateLink(ttcx2, policyName, options);
+    return this.txnCreateOffchainDelegateLink(ttcx2, typeName, options);
   }
   async mkTxnCommittingPendingChanges(tcx = this.mkTcx()) {
     const currentCharter = await this.findCharterData();

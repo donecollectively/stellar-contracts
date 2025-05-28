@@ -365,36 +365,36 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
    * perform any needed queries for ***fresh state of the on-chain data***, such as
    * for settings or the Capo's fresh charter data, INSIDE your mkTcx() function.
    */
-  async setupCapoPolicy(tcx, policyName, options) {
+  async setupCapoPolicy(tcx, typeName, options) {
     const { charterData, capoUtxos } = options;
     const { recordTypeName, idPrefix } = this;
-    if (this.capo.featureEnabled(policyName)) {
-      const existing = await this.capo.getDgDataController(
-        // recordTypeName,  // xxx
-        policyName,
-        // yes
-        {
-          charterData,
-          optional: true
-        }
-      );
-      const action = existing ? "update" : "create";
-      tcx.includeAddlTxn(`${action} ${policyName} delegate`, {
-        description: `${action} on-chain policy for ${idPrefix}-* records of type ${recordTypeName}`,
-        moreInfo: this.moreInfo(),
-        mkTcx: async () => {
-          const charterData2 = await this.capo.findCharterData();
-          console.warn(
-            "---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead"
-          );
-          return this.capo.mkTxnInstallPolicyDelegate({
-            policyName,
-            idPrefix,
-            charterData: charterData2
-          });
-        }
-      });
+    if (!this.capo.featureEnabled(typeName)) {
+      console.warn(`\u274C\u274C\u274C ${this.constructor.name}: skipping setup for data-type '${typeName}' because it is not enabled in my featureFlags`);
+      return void 0;
     }
+    const existing = await this.capo.getDgDataController(
+      recordTypeName,
+      {
+        charterData,
+        optional: true
+      }
+    );
+    const action = existing ? "update" : "create";
+    tcx.includeAddlTxn(`${action} ${typeName} delegate`, {
+      description: `${action} on-chain policy for ${idPrefix}-* records of type ${recordTypeName}`,
+      moreInfo: this.moreInfo(),
+      mkTcx: async () => {
+        const charterData2 = await this.capo.findCharterData();
+        console.warn(
+          "---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead"
+        );
+        return this.capo.mkTxnInstallPolicyDelegate({
+          typeName: recordTypeName,
+          idPrefix,
+          charterData: charterData2
+        });
+      }
+    });
   }
 }
 class UpdateActivity {

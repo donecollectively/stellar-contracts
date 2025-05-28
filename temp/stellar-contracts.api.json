@@ -1,7 +1,7 @@
 {
   "metadata": {
     "toolPackage": "@microsoft/api-extractor",
-    "toolVersion": "7.48.1",
+    "toolVersion": "7.47.11",
     "schemaVersion": 1011,
     "oldestForwardsCompatibleVersion": 1001,
     "tsdocConfig": {
@@ -6100,6 +6100,94 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#findCharterData:member(3)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findCharterData(currentCharterUtxo?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@helios-lang/ledger!TxInput:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", options?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "{\n        optional: boolean;\n        capoUtxos?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@helios-lang/ledger!TxInput:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[];\n    }"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CharterData",
+                  "canonicalReference": "@donecollectively/stellar-contracts!CharterData:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 7,
+                "endIndex": 11
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 3,
+              "parameters": [
+                {
+                  "parameterName": "currentCharterUtxo",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": true
+                },
+                {
+                  "parameterName": "options",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 6
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findCharterData"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#findDelegatedDataUtxos:member(1)",
               "docComment": "/**\n * Queries a chain-index to find utxos having a specific type of delegated datum\n *\n * @remarks\n *\n * Optionally filters records by `id`, `type` and/or `predicate`\n *\n * The `predicate` function, if provided, can implement any logic suitable for a specific case of data-finding.\n */\n",
               "excerptTokens": [
@@ -6585,7 +6673,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#findSettingsInfo:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * Finds the currentSettings record for a Capo\n *\n * @remarks\n *\n * A Capo's currentSettings can be different in any deployment, but any deployment can have one. This function finds the currentSettings as found in the Capo's `charterData.manifest`, and returns it with its underlying `data` and possible application-layer `dataWrapped` object.\n *\n * Provide charterData and capoUtxos to resolve the currentSettings without extra queries.\n *\n * Define your SettingsController as a subclass of WrappedDgDataContract to provide a custom data-wrapper.\n *\n * If your protocol doesn't use settings, you probably aren't using this method. If you are writing some protocol-independent code, be sure to use the `optional` attribute and be robust to cases of \"no settings yet\" and \"the specific current protocol doesn't use settings at all\".\n *\n * Future: we will cache charterData and UTxOs so that this function will be simpler in its interface and fast to execute without external management of `{charterData, capoUtxos}`.\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -6597,11 +6685,11 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", options: "
+                  "text": ", options?: "
                 },
                 {
                   "kind": "Content",
-                  "text": "{\n        charterData: "
+                  "text": "{\n        charterData?: "
                 },
                 {
                   "kind": "Reference",
@@ -6671,7 +6759,7 @@
                     "startIndex": 3,
                     "endIndex": 8
                   },
-                  "isOptional": false
+                  "isOptional": true
                 }
               ],
               "isOptional": false,
@@ -6764,7 +6852,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", roleName: "
+                  "text": ", recordTypeName: "
                 },
                 {
                   "kind": "Content",
@@ -6837,7 +6925,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "roleName",
+                  "parameterName": "recordTypeName",
                   "parameterTypeTokenRange": {
                     "startIndex": 5,
                     "endIndex": 6
@@ -9002,7 +9090,7 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "mkTxnInstallingPolicyDelegate<const RoLabel extends "
+                  "text": "mkTxnInstallingPolicyDelegate<const TypeName extends "
                 },
                 {
                   "kind": "Content",
@@ -9040,7 +9128,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<THIS, RoLabel>"
+                  "text": "<THIS, TypeName>"
                 },
                 {
                   "kind": "Content",
@@ -9107,7 +9195,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", RoLabel, \"dgData\">> & "
+                  "text": ", TypeName, \"dgData\">> & "
                 },
                 {
                   "kind": "Reference",
@@ -9116,7 +9204,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<RoLabel | \"dgDataPolicy\">>"
+                  "text": "<TypeName | \"dgDataPolicy\">>"
                 },
                 {
                   "kind": "Content",
@@ -9125,7 +9213,7 @@
               ],
               "typeParameters": [
                 {
-                  "typeParameterName": "RoLabel",
+                  "typeParameterName": "TypeName",
                   "constraintTokenRange": {
                     "startIndex": 1,
                     "endIndex": 2
@@ -9184,7 +9272,7 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "mkTxnInstallPolicyDelegate<const RoLabel extends "
+                  "text": "mkTxnInstallPolicyDelegate<const TypeName extends "
                 },
                 {
                   "kind": "Content",
@@ -9222,7 +9310,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<THIS, RoLabel>"
+                  "text": "<THIS, TypeName>"
                 },
                 {
                   "kind": "Content",
@@ -9280,7 +9368,7 @@
               ],
               "typeParameters": [
                 {
-                  "typeParameterName": "RoLabel",
+                  "typeParameterName": "TypeName",
                   "constraintTokenRange": {
                     "startIndex": 1,
                     "endIndex": 2
@@ -9675,7 +9763,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", const RoLabel extends "
+                  "text": ", const TypeName extends "
                 },
                 {
                   "kind": "Content",
@@ -9756,7 +9844,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "{\n        policyName: RoLabel;\n        charterData: "
+                  "text": "{\n        typeName: TypeName;\n        charterData: "
                 },
                 {
                   "kind": "Reference",
@@ -9804,7 +9892,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<DT, RoLabel, \"dgData\">> & "
+                  "text": "<DT, TypeName, \"dgData\">> & "
                 },
                 {
                   "kind": "Reference",
@@ -9813,7 +9901,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<RoLabel | \"dgDataPolicy\">>"
+                  "text": "<TypeName | \"dgDataPolicy\">>"
                 },
                 {
                   "kind": "Content",
@@ -9844,7 +9932,7 @@
                   }
                 },
                 {
-                  "typeParameterName": "RoLabel",
+                  "typeParameterName": "TypeName",
                   "constraintTokenRange": {
                     "startIndex": 6,
                     "endIndex": 7
@@ -11737,7 +11825,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", policyName: "
+                  "text": ", typeName: "
                 },
                 {
                   "kind": "Content",
@@ -11893,7 +11981,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "policyName",
+                  "parameterName": "typeName",
                   "parameterTypeTokenRange": {
                     "startIndex": 7,
                     "endIndex": 8
@@ -14959,7 +15047,7 @@
                 {
                   "kind": "Reference",
                   "text": "ConcreteCapoDelegateBundle",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ConcreteCapoDelegateBundle:type"
+                  "canonicalReference": "@donecollectively/stellar-contracts!ConcreteCapoDelegateBundle:type"
                 },
                 {
                   "kind": "Content",
@@ -17389,6 +17477,86 @@
           "variableTypeTokenRange": {
             "startIndex": 1,
             "endIndex": 2
+          }
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!ConcreteCapoDelegateBundle:type",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type ConcreteCapoDelegateBundle = "
+            },
+            {
+              "kind": "Content",
+              "text": "typeof "
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoDelegateBundle",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoDelegateBundle:class"
+            },
+            {
+              "kind": "Content",
+              "text": " & "
+            },
+            {
+              "kind": "Reference",
+              "text": "Constructor",
+              "canonicalReference": "@donecollectively/stellar-contracts!~Constructor:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoDelegateBundle",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoDelegateBundle:class"
+            },
+            {
+              "kind": "Content",
+              "text": "> & "
+            },
+            {
+              "kind": "Reference",
+              "text": "EmptyConstructor",
+              "canonicalReference": "@donecollectively/stellar-contracts!~EmptyConstructor:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoDelegateBundle",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoDelegateBundle:class"
+            },
+            {
+              "kind": "Content",
+              "text": "> & {\n    capoBundle: "
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoHeliosBundle",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle:class"
+            },
+            {
+              "kind": "Content",
+              "text": ";\n    isConcrete: true;\n}"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/helios/scriptBundling/CapoDelegateBundle.ts",
+          "releaseTag": "Public",
+          "name": "ConcreteCapoDelegateBundle",
+          "typeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 14
           }
         },
         {
@@ -22415,7 +22583,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", policyName: "
+                  "text": ", typeName: "
                 },
                 {
                   "kind": "Content",
@@ -22458,7 +22626,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<void>"
+                  "text": "<undefined>"
                 },
                 {
                   "kind": "Content",
@@ -22483,7 +22651,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "policyName",
+                  "parameterName": "typeName",
                   "parameterTypeTokenRange": {
                     "startIndex": 3,
                     "endIndex": 4
@@ -28338,7 +28506,7 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "protected implicitIncludedCapoModules(): "
+                  "text": "implicitIncludedCapoModules(): "
                 },
                 {
                   "kind": "Content",
@@ -28355,7 +28523,7 @@
                 "endIndex": 2
               },
               "releaseTag": "Public",
-              "isProtected": true,
+              "isProtected": false,
               "overloadIndex": 1,
               "parameters": [],
               "isOptional": false,

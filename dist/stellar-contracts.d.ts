@@ -12,15 +12,14 @@ import { CardanoClient } from '@helios-lang/tx-utils';
 import type { CardanoTxSubmitter } from '@helios-lang/tx-utils';
 import { Cast } from '@helios-lang/contract-utils';
 import { CompileOptions } from '@helios-lang/compiler';
+import { ConcreteCapoDelegateBundle as ConcreteCapoDelegateBundle_2 } from '../helios/scriptBundling/CapoDelegateBundle.js';
 import { ConnectionConfig } from '@cardano-ogmios/client';
-import { Constructor as Constructor_2 } from '../helios/HeliosMetaTypes.js';
 import { ContractBasedDelegate as ContractBasedDelegate_2 } from './delegation/ContractBasedDelegate.js';
 import type { Cost } from '@helios-lang/uplc';
 import type { DataType } from '@helios-lang/compiler';
 import { DeferredState as DeferredState_2 } from '../StateMachine.js';
 import { DelegateSetup as DelegateSetup_2 } from './delegation/RolesAndDelegates.js';
 import { DeployedProgramBundle as DeployedProgramBundle_2 } from '../CachedHeliosProgram.js';
-import { EmptyConstructor as EmptyConstructor_2 } from '../helios/HeliosMetaTypes.js';
 import { Emulator } from '@helios-lang/tx-utils';
 import type { EnumMemberType } from '@helios-lang/compiler';
 import { ErgoCapoManifestEntry as ErgoCapoManifestEntry_2 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
@@ -1290,8 +1289,36 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
         optional: true;
         capoUtxos?: TxInput[];
     }): Promise<CharterData | undefined>;
-    findSettingsInfo(this: SELF, options: {
-        charterData: CharterData;
+    findCharterData(currentCharterUtxo?: TxInput, options?: {
+        optional: boolean;
+        capoUtxos?: TxInput[];
+    }): Promise<CharterData>;
+    /**
+     * Finds the currentSettings record for a Capo
+     * @remarks
+     * A Capo's currentSettings can be different in any deployment, but
+     * any deployment can have one.  This function finds the currentSettings
+     * as found in the Capo's `charterData.manifest`, and returns it with its
+     * underlying `data` and possible application-layer `dataWrapped` object.
+     *
+     * Provide charterData and capoUtxos to resolve the currentSettings without
+     * extra queries.
+     *
+     * Define your SettingsController as a subclass of WrappedDgDataContract
+     * to provide a custom data-wrapper.
+     *
+     * If your protocol doesn't use settings, you probably aren't using
+     * this method.  If you are writing some protocol-independent code, be sure
+     * to use the `optional` attribute and be robust to cases of "no settings yet"
+     * and "the specific current protocol doesn't use settings at all".
+     *
+     * Future: we will cache charterData and UTxOs so that this function will be
+     * simpler in its interface and fast to execute without external management
+     * of `{charterData, capoUtxos}`.
+     * @public
+     */
+    findSettingsInfo(this: SELF, options?: {
+        charterData?: CharterData;
         capoUtxos?: TxInput[];
         optional?: boolean;
     }): Promise<FoundDatumUtxo<any, any> | undefined>;
@@ -1476,7 +1503,7 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      * and that the off-chain Capo delegateMap provides an off-chain controller
      * for that typeName.
      */
-    getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(this: SELF, roleName: RN, options?: FindableViaCharterData): Promise<undefined | DelegatedDataContract<any, any>>;
+    getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(this: SELF, recordTypeName: RN, options?: FindableViaCharterData): Promise<undefined | DelegatedDataContract<any, any>>;
     /**
      * @deprecated - use getOtherNamedDelegate() or getDgDataController() instead
      */
@@ -1654,7 +1681,7 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      * An addlTxn for committing pending changes is NOT included, leaving pendingChange queued in the Capo's charter.
      * Use mkTxnInstallPolicyDelegate to also ***commit*** pending changes.
      */
-    mkTxnInstallingPolicyDelegate<const RoLabel extends string & keyof SELF["delegateRoles"], THIS extends Capo<any>>(this: THIS, options: InstallPolicyDgtOptions<THIS, RoLabel>): Promise<hasAddlTxns<StellarTxnContext<anyState> & hasSeedUtxo & hasNamedDelegate<StellarDelegate, RoLabel, "dgData">> & hasUutContext<RoLabel | "dgDataPolicy">>;
+    mkTxnInstallingPolicyDelegate<const TypeName extends string & keyof SELF["delegateRoles"], THIS extends Capo<any>>(this: THIS, options: InstallPolicyDgtOptions<THIS, TypeName>): Promise<hasAddlTxns<StellarTxnContext<anyState> & hasSeedUtxo & hasNamedDelegate<StellarDelegate, TypeName, "dgData">> & hasUutContext<TypeName | "dgDataPolicy">>;
     /**
      * Helper for installing a named policy delegate
      * @remarks
@@ -1670,7 +1697,7 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      *
      * @public
      */
-    mkTxnInstallPolicyDelegate<const RoLabel extends string & keyof SELF["delegateRoles"], THIS extends Capo<any>>(this: THIS, options: InstallPolicyDgtOptions<THIS, RoLabel>): Promise<hasAddlTxns<StellarTxnContext<anyState>, anyState>>;
+    mkTxnInstallPolicyDelegate<const TypeName extends string & keyof SELF["delegateRoles"], THIS extends Capo<any>>(this: THIS, options: InstallPolicyDgtOptions<THIS, TypeName>): Promise<hasAddlTxns<StellarTxnContext<anyState>, anyState>>;
     /**
      * Adds a new entry to the Capo's manifest
      * @remarks
@@ -1682,12 +1709,12 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      * Other types can be eligible for adding to this API or to a different call.
      */
     mkTxnAddManifestEntry<THIS extends Capo<any>, TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>>(this: THIS, key: string, utxo: FoundDatumUtxo<any, any>, entry: ManifestEntryTokenRef, tcx?: TCX): Promise<StellarTxnContext<anyState>>;
-    mkTxnQueuingDelegateChange<DT extends StellarDelegate, THIS extends Capo<any>, const RoLabel extends string & keyof SELF["delegateRoles"], OPTIONS extends OffchainPartialDelegateLink, TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>>(this: THIS, change: "Add" | "Replace", options: {
-        policyName: RoLabel;
+    mkTxnQueuingDelegateChange<DT extends StellarDelegate, THIS extends Capo<any>, const TypeName extends string & keyof SELF["delegateRoles"], OPTIONS extends OffchainPartialDelegateLink, TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>>(this: THIS, change: "Add" | "Replace", options: {
+        typeName: TypeName;
         charterData: CharterData;
         idPrefix: string;
         dgtOptions?: OPTIONS;
-    }, tcx?: TCX): Promise<hasAddlTxns<TCX & hasNamedDelegate<DT, RoLabel, "dgData">> & hasUutContext<RoLabel | "dgDataPolicy">>;
+    }, tcx?: TCX): Promise<hasAddlTxns<TCX & hasNamedDelegate<DT, TypeName, "dgData">> & hasUutContext<TypeName | "dgDataPolicy">>;
     /**
      * Looks up a policy in the manifest, returning the policy name and the manifest entry if found.
      * @remarks
@@ -1702,7 +1729,7 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
         delegateChange: ErgoPendingDelegateChange_3;
         otherManifestChange: PendingCharterChange$Ergo$otherManifestChange_3;
     }> | undefined;
-    tempMkDelegateLinkForQueuingDgtChange(seedUtxo: TxInput, mintDgtActivity: SomeDgtActivityHelper, purpose: string, policyName: string, idPrefix: string, options: OffchainPartialDelegateLink): Promise<{
+    tempMkDelegateLinkForQueuingDgtChange(seedUtxo: TxInput, mintDgtActivity: SomeDgtActivityHelper, purpose: string, typeName: string, idPrefix: string, options: OffchainPartialDelegateLink): Promise<{
         delegateClass: stellarSubclass<ContractBasedDelegate>;
         delegate: ContractBasedDelegate;
         roleName: string;
@@ -4859,7 +4886,7 @@ declare type ComputedScriptProperties = Partial<{
     identity: string;
 }>;
 
-declare type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle & Constructor<CapoDelegateBundle> & EmptyConstructor<CapoDelegateBundle> & {
+export declare type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle & Constructor<CapoDelegateBundle> & EmptyConstructor<CapoDelegateBundle> & {
     capoBundle: CapoHeliosBundle;
     isConcrete: true;
 };
@@ -6223,10 +6250,10 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
      * perform any needed queries for ***fresh state of the on-chain data***, such as
      * for settings or the Capo's fresh charter data, INSIDE your mkTcx() function.
      */
-    setupCapoPolicy(tcx: StellarTxnContext, policyName: string, options: {
+    setupCapoPolicy(tcx: StellarTxnContext, typeName: string, options: {
         charterData: CharterData;
         capoUtxos: TxInput[];
-    }): Promise<void>;
+    }): Promise<undefined>;
 }
 
 /**
@@ -8645,7 +8672,7 @@ export declare abstract class HeliosScriptBundle {
      * A list of modules always available for import to Capo-hosted policy scripts
      * @public
      */
-    protected implicitIncludedCapoModules(): string[];
+    implicitIncludedCapoModules(): string[];
     /**
      * specifies a list module names to be included in the compilation of this script
      * @remarks
@@ -8797,8 +8824,8 @@ export declare type InlineDatum = InlineTxOutputDatum;
 
 declare type _inspectableUnionFuncs<U> = U extends any ? (k: U) => void : never;
 
-declare type InstallPolicyDgtOptions<CAPO extends Capo<any>, RoLabel extends string & keyof CAPO["delegateRoles"]> = {
-    policyName: RoLabel;
+declare type InstallPolicyDgtOptions<CAPO extends Capo<any>, TypeName extends string & keyof CAPO["delegateRoles"]> = {
+    typeName: TypeName;
     idPrefix: string;
     charterData: CapoDatum$Ergo$CharterData;
 };
@@ -15475,10 +15502,7 @@ export declare class UnspecializedDgtBundle extends UnspecializedDgtBundle_base 
     get bridgeClassName(): string;
 }
 
-declare const UnspecializedDgtBundle_base: typeof CapoDelegateBundle & Constructor_2<CapoDelegateBundle> & EmptyConstructor_2<CapoDelegateBundle> & {
-    capoBundle: CapoHeliosBundle;
-    isConcrete: true;
-};
+declare const UnspecializedDgtBundle_base: ConcreteCapoDelegateBundle_2;
 
 /**
  * @public
