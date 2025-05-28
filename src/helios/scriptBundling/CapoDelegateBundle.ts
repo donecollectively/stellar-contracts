@@ -29,7 +29,7 @@ export type CapoDelegateBundleClass = new () => CapoDelegateBundle;
 
 const USING_EXTENSION = Symbol("USING_EXTENSION");
 
-type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle &
+export type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle &
     Constructor<CapoDelegateBundle> & 
     EmptyConstructor<CapoDelegateBundle> &
 
