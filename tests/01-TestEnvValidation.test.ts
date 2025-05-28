@@ -74,7 +74,6 @@ describe("Test environment", async () => {
                 });
 
                 txb.spendUnsafe(firstUtxo);
-                txb.payUnsafe(tom.address, 3n * ADA);
                 txb.payUnsafe(
                     tom.address,
                     firstUtxo.value.lovelace - margin
