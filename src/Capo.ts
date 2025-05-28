@@ -1076,6 +1076,13 @@ export abstract class Capo<
             optional: boolean;
             capoUtxos?: TxInput[];
         }
+    ): Promise<CharterData>;
+    async findCharterData(
+        currentCharterUtxo?: TxInput,
+        options?: {
+            optional: boolean;
+            capoUtxos?: TxInput[];
+        }
     ): Promise<CharterData> {
         // const ts1 = Date.now();
         // if (globalThis.__profile__) {
@@ -1121,18 +1128,42 @@ export abstract class Capo<
         // return this.parseDelegateLinksInCharter(charterData);
     }
 
+    /**
+     * Finds the currentSettings record for a Capo
+     * @remarks
+     * A Capo's currentSettings can be different in any deployment, but
+     * any deployment can have one.  This function finds the currentSettings
+     * as found in the Capo's `charterData.manifest`, and returns it with its 
+     * underlying `data` and possible application-layer `dataWrapped` object.
+     * 
+     * Provide charterData and capoUtxos to resolve the currentSettings without 
+     * extra queries.  
+     * 
+     * Define your SettingsController as a subclass of WrappedDgDataContract
+     * to provide a custom data-wrapper.
+     * 
+     * If your protocol doesn't use settings, you probably aren't using 
+     * this method.  If you are writing some protocol-independent code, be sure 
+     * to use the `optional` attribute and be robust to cases of "no settings yet" 
+     * and "the specific current protocol doesn't use settings at all".
+     * 
+     * Future: we will cache charterData and UTxOs so that this function will be
+     * simpler in its interface and fast to execute without external management 
+     * of `{charterData, capoUtxos}`.
+    * @public
+     */
     async findSettingsInfo(
         this: SELF,
-        options: {
-            charterData: CharterData;
+        options?: {
+            charterData?: CharterData;
             capoUtxos?: TxInput[];
             optional?: boolean;
         }
     ): Promise<
         FoundDatumUtxo<any, any> | undefined
     > {
-        let { charterData, capoUtxos, optional = false } = options;
-        if (!capoUtxos) {
+        let { charterData, capoUtxos, optional = false } = options || {};
+        if (!capoUtxos || !charterData) {
             debugger;
             // ^ ideally we always have a stash of capo utxos ...
             // ... or a place we can get it from without async delays

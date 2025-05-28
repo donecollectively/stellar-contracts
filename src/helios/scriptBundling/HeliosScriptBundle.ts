@@ -420,7 +420,7 @@ export abstract class HeliosScriptBundle {
      * A list of modules always available for import to Capo-hosted policy scripts
      * @public
      */
-    protected implicitIncludedCapoModules() {
+    implicitIncludedCapoModules() : string[]{
         return [
             "CapoMintHelpers",
             "CapoDelegateHelpers",

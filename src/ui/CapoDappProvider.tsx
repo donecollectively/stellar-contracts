@@ -1266,8 +1266,7 @@ export class CapoDAppProvider<
 
         if (this.capo) this.capo.actorContext.wallet = wallet;
 
-
-        await walletHelper.utxos.then((walletUtxos) => {
+        await walletHelper.utxos.then((walletUtxos: TxInput[]) => {
             return this.updateStatus(
                 undefined,
                 {
