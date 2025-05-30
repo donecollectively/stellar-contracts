@@ -740,9 +740,15 @@ export class CapoDAppProvider<
                 wallet,
                 walletAddress,
                 connectingWallet,
-                foundNetworkName,
+                foundNetworkName,                
+                selectedWallet
             },
         } = this.state;
+
+        let autoWallet = selectedWallet;
+        if ("undefined" !== typeof window && typeof selectedWallet === "undefined") {
+            autoWallet = window.localStorage.getItem("capoAutoConnectWalletName") || ""
+        }
 
         if (wallet) {
             return (
@@ -753,9 +759,9 @@ export class CapoDAppProvider<
                             // make it small by default, but allow it to grow on hover
                             // also, make it right-aligned and chop the overflow
                             // color the text black
-                            className="mb-0 text-black overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
+                            className="mb-0 text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
                         >
-                            {walletAddress}
+                            {walletAddress} {selectedWallet}<a href="#" onClick={() => this.newWalletSelected("")}>✖️</a>
                         </span>
                     )}
                     &nbsp;
@@ -776,9 +782,11 @@ export class CapoDAppProvider<
                 </div>
             );
         } else {
+    
             return (
                 <div>
-                    <select onChange={this.onWalletChange}>
+                    <select value={autoWallet} onChange={this.onWalletChange}>
+                        <option value=""> -- choose wallet -- </option>
                         <option value="zwallet">Zero Wallet</option>
                         <option value="eternl">Eternl</option>
                     </select>
@@ -796,6 +804,7 @@ export class CapoDAppProvider<
 
     onWalletChange: ChangeEventHandler<HTMLSelectElement> = (event) => {
         this.newWalletSelected(event.target.value);
+        event.preventDefault();
     };
 
     onConnectButton: MouseEventHandler<HTMLButtonElement> = async (event) => {
@@ -947,6 +956,19 @@ export class CapoDAppProvider<
      * @internal
      */
     newWalletSelected(selectedWallet: string = "eternl", autoNext = true) {
+        if (selectedWallet === "") {
+            return this.updateStatus("disconnecting from wallet", {
+                developerGuidance: "just a status message for the user",
+            }, "//disconnecting wallet", {
+                userInfo: {
+                    ...this.state.userInfo,
+                    selectedWallet: "",
+                    wallet: undefined,
+                    walletAddress: undefined,
+                    walletHandle: undefined,
+                },
+            });
+        }
         if (!this.isWalletSupported(selectedWallet)) {
             debugger;
             this.reportError(
