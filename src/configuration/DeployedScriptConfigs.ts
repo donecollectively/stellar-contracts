@@ -135,8 +135,8 @@ export type RequiredDeployedScriptDetails<
     form extends "json" | "native" = "native"
 > = {
     config: form extends "json" ? any : CT;
-    // scriptHash: string;
     programBundle: DeployedProgramBundle;
+    scriptHash?: string;
 };
 
 /**

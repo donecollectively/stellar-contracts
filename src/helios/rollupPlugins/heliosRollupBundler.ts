@@ -124,7 +124,7 @@ export function heliosRollupBundler(
     const filterHlbundledImportName = createFilter(/.*\.hlb\.[jt]s\?bundled/);
     // const project = options.project ? `${options.project}` : "";
 
-    const netName = environment.CARDANO_NETWORK
+    const netName = environment.CARDANO_NETWORK;
     if (!netName) {
         console.warn(
             "missing CARDANO_NETWORK environment signal; building for 'preprod'"
@@ -1185,19 +1185,42 @@ export function heliosRollupBundler(
                         params,
                         setup: { isMainnet: networkId === "mainnet" },
                     });
-                    const t =
-                        await configuredBundle.getSerializedProgramBundle();
-                    const { scriptHash, programBundle } = t;
 
+                    const { scriptHash, programBundle, config } =
+                        await (async () => {
+                            if (configuredBundle.preCompiled?.[variant]) {
+                                const { scriptHash, programBundle, config } =
+                                    configuredBundle.preCompiled[variant];
+                                if (!scriptHash) {
+                                    throw new Error(
+                                        `${configuredBundle.displayName}: missing expected scriptHash for pre-compiled variant ${variant}`
+                                    );
+                                }
+                                return {
+                                    programBundle,
+                                    scriptHash,
+                                    config: JSON.stringify(config),
+                                };
+                            } else {
+                                const t =
+                                    await configuredBundle.getSerializedProgramBundle();
+                                const { scriptHash, programBundle } = t;
+                                return {
+                                    programBundle,
+                                    scriptHash,
+                                    config: JSON.stringify(
+                                        configuredBundle.configuredParams,
+                                        delegateLinkSerializer
+                                    ),
+                                };
+                            }
+                        })();
                     precompiledVariants[variant] = `{
                         programBundle: (${JSON.stringify(
                             programBundle
                         )} as never),
                         scriptHash: "${scriptHash}",
-                        config: ${JSON.stringify(
-                            configuredBundle.configuredParams,
-                            delegateLinkSerializer
-                        )},
+                        config: ${config},
                     }\n`;
                     scriptCount++;
                 } else {
