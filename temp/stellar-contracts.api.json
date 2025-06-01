@@ -34722,7 +34722,7 @@
             },
             {
               "kind": "Content",
-              "text": ";\n}"
+              "text": ";\n    scriptHash?: string;\n}"
             },
             {
               "kind": "Content",

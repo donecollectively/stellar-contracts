@@ -13158,6 +13158,7 @@ declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
 export declare type RequiredDeployedScriptDetails<CT extends configBase, form extends "json" | "native" = "native"> = {
     config: form extends "json" ? any : CT;
     programBundle: DeployedProgramBundle;
+    scriptHash?: string;
 };
 
 /**

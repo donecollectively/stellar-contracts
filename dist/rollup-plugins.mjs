@@ -1148,7 +1148,7 @@ ${this.includeScriptNamedTypes(inputFile)}
 * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
 * 
 * ##### customizing the bridge class name
-* Note that you may override \`get dataBridgeName() { return "..." }\` to customize the name of this bridge class
+* Note that you may override \`get bridgeClassName() { return "..." }\` to customize the name of this bridge class
 * @public
  */
 export class ${bridgeClassName} extends ContractDataBridge {
@@ -5864,17 +5864,38 @@ This will use deployment details from ${deployDetailsFile}
             params,
             setup: { isMainnet: networkId === "mainnet" }
           });
-          const t = await configuredBundle.getSerializedProgramBundle();
-          const { scriptHash, programBundle } = t;
+          const { scriptHash, programBundle, config } = await (async () => {
+            if (configuredBundle.preCompiled?.[variant]) {
+              const { scriptHash: scriptHash2, programBundle: programBundle2, config: config2 } = configuredBundle.preCompiled[variant];
+              if (!scriptHash2) {
+                throw new Error(
+                  `${configuredBundle.displayName}: missing expected scriptHash for pre-compiled variant ${variant}`
+                );
+              }
+              return {
+                programBundle: programBundle2,
+                scriptHash: scriptHash2,
+                config: JSON.stringify(config2)
+              };
+            } else {
+              const t = await configuredBundle.getSerializedProgramBundle();
+              const { scriptHash: scriptHash2, programBundle: programBundle2 } = t;
+              return {
+                programBundle: programBundle2,
+                scriptHash: scriptHash2,
+                config: JSON.stringify(
+                  configuredBundle.configuredParams,
+                  delegateLinkSerializer2
+                )
+              };
+            }
+          })();
           precompiledVariants[variant] = `{
                         programBundle: (${JSON.stringify(
             programBundle
           )} as never),
                         scriptHash: "${scriptHash}",
-                        config: ${JSON.stringify(
-            configuredBundle.configuredParams,
-            delegateLinkSerializer2
-          )},
+                        config: ${config},
                     }
 `;
           scriptCount++;

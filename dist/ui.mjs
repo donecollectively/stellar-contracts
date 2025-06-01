@@ -989,17 +989,25 @@ class CapoDAppProvider extends Component {
         wallet,
         walletAddress,
         connectingWallet,
-        foundNetworkName
+        foundNetworkName,
+        selectedWallet
       }
     } = this.state;
+    let autoWallet = selectedWallet;
+    if ("undefined" !== typeof window && typeof selectedWallet === "undefined") {
+      autoWallet = window.localStorage.getItem("capoAutoConnectWalletName") || "";
+    }
     if (wallet) {
       return /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row" }, walletAddress && /* @__PURE__ */ React__default.createElement(
         "span",
         {
           key: "chip-walletAddr",
-          className: "mb-0 text-black overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
+          className: "mb-0 text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
         },
-        walletAddress
+        walletAddress,
+        " ",
+        selectedWallet,
+        /* @__PURE__ */ React__default.createElement("a", { href: "#", onClick: () => this.newWalletSelected("") }, "\u2716\uFE0F")
       ), "\xA0", /* @__PURE__ */ React__default.createElement(
         "span",
         {
@@ -1011,7 +1019,7 @@ class CapoDAppProvider extends Component {
     } else if (connectingWallet) {
       return /* @__PURE__ */ React__default.createElement("div", null, /* @__PURE__ */ React__default.createElement(Button, { variant: "secondary", disabled: true, className: "-mt-3" }, "... connecting ..."));
     } else {
-      return /* @__PURE__ */ React__default.createElement("div", null, /* @__PURE__ */ React__default.createElement("select", { onChange: this.onWalletChange }, /* @__PURE__ */ React__default.createElement("option", { value: "zwallet" }, "Zero Wallet"), /* @__PURE__ */ React__default.createElement("option", { value: "eternl" }, "Eternl")), /* @__PURE__ */ React__default.createElement(
+      return /* @__PURE__ */ React__default.createElement("div", null, /* @__PURE__ */ React__default.createElement("select", { value: autoWallet, onChange: this.onWalletChange }, /* @__PURE__ */ React__default.createElement("option", { value: "" }, " -- choose wallet -- "), /* @__PURE__ */ React__default.createElement("option", { value: "zwallet" }, "Zero Wallet"), /* @__PURE__ */ React__default.createElement("option", { value: "eternl" }, "Eternl")), /* @__PURE__ */ React__default.createElement(
         Button,
         {
           variant: "secondary",
@@ -1024,6 +1032,7 @@ class CapoDAppProvider extends Component {
   }
   onWalletChange = (event) => {
     this.newWalletSelected(event.target.value);
+    event.preventDefault();
   };
   onConnectButton = async (event) => {
     this.connectWallet();
@@ -1145,6 +1154,19 @@ class CapoDAppProvider extends Component {
    * @internal
    */
   newWalletSelected(selectedWallet = "eternl", autoNext = true) {
+    if (selectedWallet === "") {
+      return this.updateStatus("disconnecting from wallet", {
+        developerGuidance: "just a status message for the user"
+      }, "//disconnecting wallet", {
+        userInfo: {
+          ...this.state.userInfo,
+          selectedWallet: "",
+          wallet: void 0,
+          walletAddress: void 0,
+          walletHandle: void 0
+        }
+      });
+    }
     if (!this.isWalletSupported(selectedWallet)) {
       debugger;
       this.reportError(

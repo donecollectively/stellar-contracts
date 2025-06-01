@@ -2005,6 +2005,7 @@ export type ReqtsMap<validReqts extends string, inheritedNames extends string | 
 export type RequiredDeployedScriptDetails<CT extends configBase, form extends "json" | "native" = "native"> = {
     config: form extends "json" ? any : CT;
     programBundle: DeployedProgramBundle;
+    scriptHash?: string;
 };
 
 // @public

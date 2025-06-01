@@ -1271,7 +1271,6 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
       if (this.usesContractScript) {
         const genericBundle = this.scriptBundle();
         if (!config) {
-          debugger;
           console.warn(
             `${this.constructor.name}: no config provided`
           );

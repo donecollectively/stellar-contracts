@@ -15351,7 +15351,6 @@ Delegated-data-types registered in the manifest:
             this.delegateRoles
           )) {
             const ds = details;
-            debugger;
             const {
               delegateClass,
               config,
@@ -16190,7 +16189,6 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       //@ts-expect-error on checking for possible seedUtxo presence
       tcx.state.seedUtxo === void 0 ? await this.tcxWithSeedUtxo() : tcx
     );
-    debugger;
     const tempDataPolicyLink = await this.tempMkDelegateLinkForQueuingDgtChange(
       tcx1.state.seedUtxo,
       mintDgtActivity,
@@ -27868,7 +27866,6 @@ class BatchSubmitController {
         if (!parentId2) return txd;
         const parent = this.$txInfo(parentId2);
         if (!parent) {
-          debugger;
           console.warn("tx batcher: no parent", parentId2);
           return txd;
         }
