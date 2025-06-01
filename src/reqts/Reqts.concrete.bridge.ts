@@ -116,7 +116,7 @@ import type * as types from "./Reqts.concrete.typeInfo.js";
 * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
 * 
 * ##### customizing the bridge class name
-* Note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
+* Note that you may override `get bridgeClassName() { return "..." }` to customize the name of this bridge class
 * @public
  */
 export class ReqtsPolicyDataBridge extends ContractDataBridge {
