@@ -996,7 +996,7 @@ export class StellarContract<
             if (this.usesContractScript) {
                 const genericBundle = this.scriptBundle();
                 if (!config) {
-                    debugger;
+                    // debugger;
                     console.warn(
                         `${this.constructor.name}: no config provided`
                     );
