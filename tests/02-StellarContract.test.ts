@@ -400,6 +400,52 @@ describe("StellarContract", async () => {
                     });
                 });
             });
+            
+            describe("findSufficientActorUtxos()", () => {
+                fit("finds a given amount of ada-only utxos, despite not having any single utxo with that amount", async (context: localTC) => {
+                    const {
+                        h,
+                        h: { network, actors, delay, state },
+                    } = context;
+                    const t: CapoWithoutSettings = await h.initialize();
+
+                    const uh = t.utxoHelper;
+                    const tcx = t.mkTcx();
+
+                    const tina = h.wallet;
+                    const tinaMoney = await tina.utxos;
+                    const firstUtxo = tinaMoney[0];
+
+                    console.log(" -------------------------- ")
+
+                    const targetAda = 11_002n * 1_000_000n;
+                    let steps = 0;
+                    // try {
+                        console.log("step1")
+                        uh.findActorUtxo("not found", (utxo) => utxo.value.lovelace > 42_000_000 ? utxo : undefined)
+                        steps++;
+                        console.log("step2")
+                        const nothing = await uh.findActorUtxo("not found", (utxo) => {
+                            console.log("step2.1 - utxo with ", Number(utxo.value.lovelace)/1_000_000, " ada")
+                            return ((utxo.value.lovelace > 2n*targetAda) ? utxo : undefined)
+                        })
+                        expect(nothing).toBeUndefined();
+                        // console.log("step2.2 - unexpected: ", weird )
+                        // steps++;
+                    // } catch (e) {
+                    console.log("step3")
+
+                    const f1 = await uh.findSufficientActorUtxos("finds two utxos",  makeValue(targetAda), {
+                        wallet: tina
+                    })                     
+                    console.log("step4")
+                    expect(f1.length).toBe(2);
+                    await expect(uh.findSufficientActorUtxos("doesn't find larger number", makeValue(2n*targetAda), {
+                        wallet: tina
+                    })).rejects.toThrow(/Insufficient funds error/);
+                });
+            });
+
             describe("with valuePredicate for ada-only", () => {
                 it("ignores utxos already in a tcx (inputs/collateral), if provided", async (context: localTC) => {
                     const {

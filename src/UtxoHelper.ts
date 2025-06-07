@@ -1,5 +1,9 @@
 import { equalsBytes, type BytesLike } from "@helios-lang/codec-utils";
-import type { SimpleWallet, Wallet } from "@helios-lang/tx-utils";
+import {
+    selectLargestFirst,
+    type SimpleWallet,
+    type Wallet,
+} from "@helios-lang/tx-utils";
 import {
     type Address,
     type AssetClass,
@@ -85,6 +89,8 @@ export type UtxoSearchScopeWithUtxos = UtxoSearchScope & {
     utxos: TxInput[];
     required?: true;
 };
+
+type CoinSelector = (utxos: TxInput[], amount: Value) => [TxInput[], TxInput[]];
 
 /**
  * A helper class for managing UTXOs in a Stellar contract
@@ -653,6 +659,45 @@ export class UtxoHelper {
     }
 
     /**
+     * finds utxos in the current actor's wallet that have enough ada to cover the given amount
+     * @remarks
+     * This method is useful for finding ADA utxos that can be used to pay for a transaction.
+     * 
+     * Other methods in the utxo helper are better for finding individual utxos.
+     * @public
+     */
+    async findSufficientActorUtxos(
+        name: string,
+        amount: Value,
+        options: UtxoSearchScope = {},
+        strategy: CoinSelector | CoinSelector[] = [
+            selectLargestFirst({ allowSelectingUninvolvedAssets: false }),
+            selectLargestFirst({ allowSelectingUninvolvedAssets: true }),
+        ]
+    ) : Promise<TxInput[]> {
+        const wallet = options.wallet ?? this.wallet;
+
+        const utxos = await wallet.utxos;
+        const filtered = options.exceptInTcx
+            ? utxos.filter(
+                  options.exceptInTcx.utxoNotReserved.bind(options.exceptInTcx)
+              )
+            : utxos;
+
+        if (!Array.isArray(strategy)) {
+            strategy = [strategy];
+        }
+        for (const s of strategy) {
+            const [selected, others] = s(filtered, amount);
+            if (selected.length > 0) {
+                return selected;
+            }
+        }
+        throw new Error(
+            `no sufficient utxos found using any of ${strategy.length} strategies`
+        );
+    }
+    /**
      * Locates a utxo in the current actor's wallet that matches the provided token predicate
      * @remarks
      * With the mode="multiple" option, it returns an array of matches if any are found, or undefined if none are found.
@@ -715,7 +760,7 @@ export class UtxoHelper {
         T extends "single" ? TxInput | undefined : TxInput[] | undefined
     > {
         let notCollateral = await (async () => {
-            let nc = utxos
+            let nc = utxos;
             try {
                 const collateral = ((wallet
                     ? "handle" in wallet
