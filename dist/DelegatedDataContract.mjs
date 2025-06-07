@@ -3,11 +3,11 @@ import { makeIntData } from '@helios-lang/uplc';
 import { C as ContractBasedDelegate } from './ContractBasedDelegate2.mjs';
 import { u as uplcDataSerializer, E as betterJsonSerializer, d as dumpAny } from './HeliosScriptBundle.mjs';
 import { encodeUtf8 } from '@helios-lang/codec-utils';
+import '@helios-lang/tx-utils';
 import '@helios-lang/contract-utils';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import '@helios-lang/compiler';
 import '@helios-lang/crypto';
-import '@helios-lang/tx-utils';
 import 'nanoid';
 import './environment.mjs';
 

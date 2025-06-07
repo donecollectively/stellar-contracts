@@ -47,7 +47,7 @@ import { PubKeyHash } from '@helios-lang/ledger';
 import { ReqtsMap as ReqtsMap_2 } from './Requirements.js';
 import { ReqtsMap as ReqtsMap_3 } from '../Requirements.js';
 import { Signature } from '@helios-lang/ledger';
-import type { SimpleWallet } from '@helios-lang/tx-utils';
+import { SimpleWallet } from '@helios-lang/tx-utils';
 import type { Site } from '@helios-lang/compiler-utils';
 import { Source } from '@helios-lang/compiler-utils';
 import { StellarDelegate as StellarDelegate_2 } from './delegation/StellarDelegate.js';
@@ -3031,6 +3031,8 @@ export class UtxoHelper {
     findActorUtxo<T extends "single" | "multiple" = "single">(name: string, predicate: (u: TxInput) => TxInput | undefined, options?: UtxoSearchScope, mode?: T): Promise<T extends "single" ? TxInput | undefined : TxInput[] | undefined>;
     // (undocumented)
     findSmallestUnusedUtxo(lovelace: bigint, utxos: TxInput[], tcx?: StellarTxnContext): TxInput | undefined;
+    // Warning: (ae-forgotten-export) The symbol "CoinSelector" needs to be exported by the entry point index.d.ts
+    findSufficientActorUtxos(name: string, amount: Value, options?: UtxoSearchScope, strategy?: CoinSelector | CoinSelector[]): Promise<TxInput[]>;
     // @internal
     hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: TxInput): TxInput | undefined;
     // Warning: (ae-forgotten-export) The symbol "canHaveToken" needs to be exported by the entry point index.d.ts

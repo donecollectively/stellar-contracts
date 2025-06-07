@@ -1,6 +1,7 @@
 import { makeTxOutput, makeValue, makeAssetClass, makeDummyAddress, makeTxOutputId, makeValidatorHash, makeAddress, makeMintingPolicyHash, makeInlineTxOutputDatum, makeTxInput } from '@helios-lang/ledger';
 import { l as utxosAsString, d as dumpAny, S as StellarTxnContext, L as mkTv } from './HeliosScriptBundle.mjs';
 import { decodeUtf8, equalsBytes, encodeUtf8 } from '@helios-lang/codec-utils';
+import { selectLargestFirst } from '@helios-lang/tx-utils';
 import { makeCast } from '@helios-lang/contract-utils';
 
 const maxUutName = 32;
@@ -360,6 +361,36 @@ class UtxoHelper {
    **/
   mkMinTokenValue(tokenName, quantity, mph) {
     return this.mkMinAssetValue(mph, tokenName, quantity);
+  }
+  /**
+   * finds utxos in the current actor's wallet that have enough ada to cover the given amount
+   * @remarks
+   * This method is useful for finding ADA utxos that can be used to pay for a transaction.
+   * 
+   * Other methods in the utxo helper are better for finding individual utxos.
+   * @public
+   */
+  async findSufficientActorUtxos(name, amount, options = {}, strategy = [
+    selectLargestFirst({ allowSelectingUninvolvedAssets: false }),
+    selectLargestFirst({ allowSelectingUninvolvedAssets: true })
+  ]) {
+    const wallet = options.wallet ?? this.wallet;
+    const utxos = await wallet.utxos;
+    const filtered = options.exceptInTcx ? utxos.filter(
+      options.exceptInTcx.utxoNotReserved.bind(options.exceptInTcx)
+    ) : utxos;
+    if (!Array.isArray(strategy)) {
+      strategy = [strategy];
+    }
+    for (const s of strategy) {
+      const [selected, others] = s(filtered, amount);
+      if (selected.length > 0) {
+        return selected;
+      }
+    }
+    throw new Error(
+      `no sufficient utxos found using any of ${strategy.length} strategies`
+    );
   }
   /**
    * Locates a utxo in the current actor's wallet that matches the provided token predicate

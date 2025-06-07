@@ -49668,7 +49668,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!UnspecializedDelegateBridge:class",
-          "docComment": "/**\n * GENERATED data bridge for **BasicDelegate** script (defined in class ***UnspecializedDgtBundle***) main: **src/delegation/BasicDelegate.hl**, project: **stellar-contracts**\n *\n * @remarks\n *\n * This class doesn't need to be used directly. Its methods are available through the ***contract's methods***: - `get mkDatum` - returns the datum-building bridge for the contract's datum type - `get activity` - returns an activity-building bridge for the contract's activity type - `get reader` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types - `get onchain` - (advanced) returns a data-encoding bridge for types defined in the contract's script The advanced methods are not typically needed - mkDatum and activity should normally provide all the type-safe data-encoding needed for the contract. For reading on-chain data, the Capo's `findDelegatedDataUtxos()` method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.\n *\n * ##### customizing the bridge class name Note that you may override `get dataBridgeName() { return \"...\" }` to customize the name of this bridge class\n *\n * @public\n */\n",
+          "docComment": "/**\n * GENERATED data bridge for **BasicDelegate** script (defined in class ***UnspecializedDgtBundle***) main: **src/delegation/BasicDelegate.hl**, project: **stellar-contracts**\n *\n * @remarks\n *\n * This class doesn't need to be used directly. Its methods are available through the ***contract's methods***: - `get mkDatum` - returns the datum-building bridge for the contract's datum type - `get activity` - returns an activity-building bridge for the contract's activity type - `get reader` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types - `get onchain` - (advanced) returns a data-encoding bridge for types defined in the contract's script The advanced methods are not typically needed - mkDatum and activity should normally provide all the type-safe data-encoding needed for the contract. For reading on-chain data, the Capo's `findDelegatedDataUtxos()` method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.\n *\n * ##### customizing the bridge class name Note that you may override `get bridgeClassName() { return \"...\" }` to customize the name of this bridge class\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -51738,6 +51738,132 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "findSmallestUnusedUtxo"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!UtxoHelper#findSufficientActorUtxos:member(1)",
+              "docComment": "/**\n * finds utxos in the current actor's wallet that have enough ada to cover the given amount\n *\n * @remarks\n *\n * This method is useful for finding ADA utxos that can be used to pay for a transaction.\n *\n * Other methods in the utxo helper are better for finding individual utxos.\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findSufficientActorUtxos(name: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", amount: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Value",
+                  "canonicalReference": "@helios-lang/ledger!Value:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", options?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UtxoSearchScope",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~UtxoSearchScope:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", strategy?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CoinSelector",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CoinSelector:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CoinSelector",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CoinSelector:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@helios-lang/ledger!TxInput:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[]>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 12,
+                "endIndex": 16
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "name",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "amount",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "options",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": true
+                },
+                {
+                  "parameterName": "strategy",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 7,
+                    "endIndex": 11
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findSufficientActorUtxos"
             },
             {
               "kind": "Method",

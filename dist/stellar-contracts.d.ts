@@ -41,7 +41,7 @@ import { PubKeyHash } from '@helios-lang/ledger';
 import { ReqtsMap as ReqtsMap_2 } from './Requirements.js';
 import { ReqtsMap as ReqtsMap_3 } from '../Requirements.js';
 import { Signature } from '@helios-lang/ledger';
-import type { SimpleWallet } from '@helios-lang/tx-utils';
+import { SimpleWallet } from '@helios-lang/tx-utils';
 import type { Site } from '@helios-lang/compiler-utils';
 import { Source } from '@helios-lang/compiler-utils';
 import { StellarDelegate as StellarDelegate_2 } from './delegation/StellarDelegate.js';
@@ -4423,7 +4423,7 @@ export declare class CapoMinter extends StellarContract<BasicMinterParams> imple
  * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
  *
  * ##### customizing the bridge class name
- * Note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
+ * Note that you may override `get bridgeClassName() { return "..." }` to customize the name of this bridge class
  * @public
  */
 declare class CapoMinterDataBridge extends ContractDataBridge {
@@ -4830,6 +4830,8 @@ export declare type charterDataState = {
     charterData: CharterDataLike;
     uuts: uutMap;
 };
+
+declare type CoinSelector = (utxos: TxInput[], amount: Value) => [TxInput[], TxInput[]];
 
 declare interface Colors {
     isColorSupported: boolean;
@@ -12675,7 +12677,7 @@ export declare type ReqtsMap<validReqts extends string, inheritedNames extends s
  * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
  *
  * ##### customizing the bridge class name
- * Note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
+ * Note that you may override `get bridgeClassName() { return "..." }` to customize the name of this bridge class
  * @public
  */
 declare class ReqtsPolicyDataBridge extends ContractDataBridge {
@@ -15041,7 +15043,7 @@ declare type TypeError_2<T extends string, moreInfo extends Object = {}> = {
  * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
  *
  * ##### customizing the bridge class name
- * Note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
+ * Note that you may override `get bridgeClassName() { return "..." }` to customize the name of this bridge class
  * @public
  */
 export declare class UnspecializedDelegateBridge extends ContractDataBridge {
@@ -15721,6 +15723,15 @@ export declare class UtxoHelper {
      * @public
      **/
     mkMinTokenValue(tokenName: string | number[], quantity: bigint, mph: MintingPolicyHash): Value;
+    /**
+     * finds utxos in the current actor's wallet that have enough ada to cover the given amount
+     * @remarks
+     * This method is useful for finding ADA utxos that can be used to pay for a transaction.
+     *
+     * Other methods in the utxo helper are better for finding individual utxos.
+     * @public
+     */
+    findSufficientActorUtxos(name: string, amount: Value, options?: UtxoSearchScope, strategy?: CoinSelector | CoinSelector[]): Promise<TxInput[]>;
     /**
      * Locates a utxo in the current actor's wallet that matches the provided token predicate
      * @remarks

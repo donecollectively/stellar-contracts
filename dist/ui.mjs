@@ -1277,9 +1277,15 @@ class CapoDAppProvider extends Component {
           console.log("onReceive", message);
         },
         isForMainnet: isMainnet,
+        l1client: this.bf,
         ...hydraOptions
       }) : this.bf;
       simpleWallet = makeSimpleWallet(privKey, networkClient);
+      debugger;
+      if (this.capo) {
+        this.capo.setup.network = networkClient;
+        debugger;
+      }
     } else {
       if (!!this.props.hydra) {
         throw new Error("hydra not supported for this wallet");
