@@ -314,7 +314,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     outputs: TxOutput[] = [];
     feeLimit?: bigint;
     state: S;
-    allNeededWitnesses: Address[] = [];
+    allNeededWitnesses: (Address | PubKeyHash)[] = [];
     otherPartySigners: PubKeyHash[] = [];
     parentTcx?: StellarTxnContext<any>;
     childReservedUtxos: TxInput[] = [];
@@ -993,6 +993,20 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return unused;
     }
 
+    /**
+     * Adds required signers to the transaction context
+     * @remarks
+     * Before a transaction can be submitted, signatures from each of its signers must be included.
+     * 
+     * Any inputs from the wallet are automatically added as signers, so addSigners() is not needed
+     * for those.
+     */
+    async addSigners(...signers: PubKeyHash[]) {
+        this.noFacade("addSigners");
+        
+        this.allNeededWitnesses.push(...signers);
+    }
+
     async build(
         this: StellarTxnContext<any>,
         {
@@ -1039,12 +1053,21 @@ export class StellarTxnContext<S extends anyState = anyState> {
             const spares = await this.findAnySpareUtxos();
 
             const willSign = [...signers, ...this.allNeededWitnesses]
-                .map((addr) =>
-                    addr.era == "Shelley" &&
-                    addr.spendingCredential.kind == "PubKeyHash"
-                        ? addr.spendingCredential
-                        : undefined
-                )
+                .map((addrOrPkh) => {
+                    if (addrOrPkh.kind == "PubKeyHash") {
+                        return addrOrPkh;
+                    } else if (addrOrPkh.kind == "Address") {
+                        if (addrOrPkh.era == "Shelley") {
+                            return addrOrPkh.spendingCredential.kind == "PubKeyHash"
+                                ? addrOrPkh.spendingCredential
+                                : undefined;
+                        } else {
+                            return undefined;
+                        }
+                    } else {
+                        return undefined;
+                    }
+                })
                 .filter((pkh) => !!pkh)
                 .flat(1) as PubKeyHash[];
             console.timeStamp?.(`submit(): addSIgners()`);

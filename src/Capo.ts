@@ -3192,7 +3192,7 @@ export abstract class Capo<
     singleItem<T>(xs: Array<T>): T {
         const [first, ...excess] = xs;
         if (excess.length) {
-            throw new Error("expected single item, got " + excess.length);
+            throw new Error("expected single item, got extra " + excess.length);
         }
         return first;
     }
