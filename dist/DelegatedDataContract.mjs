@@ -94,7 +94,8 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
   }
   async findRecords(options = {}) {
     const result = await this.capo.findDelegatedDataUtxos({
-      type: this.recordTypeName
+      type: this.recordTypeName,
+      id: options.id
       // single, // todo: support single in the options
       // predicate
     });

@@ -1840,9 +1840,19 @@ class StellarDelegate extends StellarContract {
    **/
   async txnGrantAuthority(tcx, redeemer, skipReturningDelegate) {
     const label = `${this.constructor.name} authority`;
-    const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
     const useMinTv = true;
     const authorityVal = this.tvAuthorityToken(useMinTv);
+    const existing = tcx.hasAuthorityToken(authorityVal);
+    if (existing) {
+      debugger;
+      console.error("This should be okay IF the redeemer on the txn is consistent with the redeemer being added");
+      console.error("can the delegate have multiple redeemers, covering both activities?");
+      throw new Error(`Delegate ${label}: already added: ${dumpAny(
+        authorityVal,
+        this.networkParams
+      )}`);
+    }
+    const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
     console.log(
       `   ------- delegate '${label}' grants authority with ${dumpAny(
         authorityVal,

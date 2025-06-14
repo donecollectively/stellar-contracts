@@ -343,7 +343,17 @@ class StellarNetworkEmulator {
       throw new Error(`can't snapshot with pending txns`);
     }
     console.log(
-      "            \u{1F4F8} \u{1F4F8} \u{1F4F8}   \u2588\u2588\u2588\u2588  \u{1F4F8} \u{1F4F8} \u{1F4F8}  #" + this.id,
+      `        .---.
+        |[X]|
+ _.==._.""""".___n__
+/ __ ___.-''-. _____b
+|[__]  /."""".\\ _   |
+|     // /""\\ \\\\_)  |
+|     \\\\ \\__/ //    |
+|      \\\`.__.'/     |
+\\=======\`-..-'======/
+ \`-----------------'   
+            \u{1F4F8} \u{1F4F8} \u{1F4F8}   \u2588\u2588\u2588\u2588  \u{1F4F8} \u{1F4F8} \u{1F4F8}  #` + this.id,
       ` - snapshot '${snapName}' at slot `,
       this.currentSlot.toString(),
       "height ",
@@ -383,7 +393,17 @@ class StellarNetworkEmulator {
     );
     this.initHelper();
     console.log(
-      "            \u{1F33A}\u{1F33A}\u{1F33A} \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  #" + this.id,
+      `
+      .--.             .--.             .--.             .--.       
+    .'_\\/_'.         .'_\\/_'.         .'_\\/_'.         .'_\\/_'.     
+    '. /\\ .'         '. /\\ .'         '. /\\ .'         '. /\\ .'     
+      "||"             "||"             "||"             "||"       
+       || /\\            || /\\            || /\\            || /\\     
+    /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)    
+   (/\\\\||/          (/\\\\||/          (/\\\\||/          (/\\\\||/       
+______\\||/_____________\\||/_____________\\||/_____________\\||/_______
+            \u{1F33A}\u{1F33A}\u{1F33A} \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  # ${this.id}
+`,
       ` - restored snapshot '${snapshot.name}' from #${snapshot.netNumber} at slot `,
       this.currentSlot.toString(),
       "height ",

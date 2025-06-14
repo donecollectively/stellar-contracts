@@ -15691,7 +15691,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
   singleItem(xs) {
     const [first, ...excess] = xs;
     if (excess.length) {
-      throw new Error("expected single item, got " + excess.length);
+      throw new Error("expected single item, got extra " + excess.length);
     }
     return first;
   }

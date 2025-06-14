@@ -6179,7 +6179,7 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
      * Returns a record list when no ID is provided, or a single record when an ID is provided.
      */
     findRecords<THIS extends DelegatedDataContract<any, any>, ID extends undefined | string | UutName | number[]>(this: THIS, options: {
-        id: T;
+        id: ID;
     }): Promise<FoundDatumUtxo<T, TLike>>;
     mkDgDatum<THIS extends DelegatedDataContract<any, any>>(this: THIS, record: TLike): InlineDatum;
     /**
@@ -14310,7 +14310,7 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
     outputs: TxOutput[];
     feeLimit?: bigint;
     state: S;
-    allNeededWitnesses: Address[];
+    allNeededWitnesses: (Address | PubKeyHash)[];
     otherPartySigners: PubKeyHash[];
     parentTcx?: StellarTxnContext<any>;
     childReservedUtxos: TxInput[];
@@ -14450,8 +14450,18 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
     _builtTx?: Tx | Promise<Tx>;
     get builtTx(): Tx | Promise<Tx>;
     addSignature(wallet: Wallet): Promise<void>;
+    hasAuthorityToken(authorityValue: Value): boolean;
     findAnySpareUtxos(): Promise<TxInput[] | never>;
     findChangeAddr(): Promise<Address>;
+    /**
+     * Adds required signers to the transaction context
+     * @remarks
+     * Before a transaction can be submitted, signatures from each of its signers must be included.
+     *
+     * Any inputs from the wallet are automatically added as signers, so addSigners() is not needed
+     * for those.
+     */
+    addSigners(...signers: PubKeyHash[]): Promise<void>;
     build(this: StellarTxnContext<any>, { signers, addlTxInfo, beforeValidate, paramsOverride, expectError, }?: {
         signers?: Address[];
         addlTxInfo?: Pick<TxDescription<any, "buildLater!">, "description">;

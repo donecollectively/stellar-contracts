@@ -1184,7 +1184,7 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     abstract exampleData(): minimalData<TLike>;
     findRecords<THIS extends DelegatedDataContract<any, any>>(this: THIS): Promise<FoundDatumUtxo<T, TLike>[]>;
     findRecords<THIS extends DelegatedDataContract<any, any>, ID extends undefined | string | UutName | number[]>(this: THIS, options: {
-        id: T;
+        id: ID;
     }): Promise<FoundDatumUtxo<T, TLike>>;
     // (undocumented)
     getReturnAddress(): Address;
@@ -2378,6 +2378,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     addScriptProgram(...args: Parameters<TxBuilder["attachUplcProgram"]>): this;
     // (undocumented)
     addSignature(wallet: Wallet): Promise<void>;
+    addSigners(...signers: PubKeyHash[]): Promise<void>;
     // (undocumented)
     addState<TCX extends StellarTxnContext, K extends string, V>(this: TCX, key: K, value: V): StellarTxnContext<{
         [keyName in K]: V;
@@ -2385,7 +2386,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     // (undocumented)
     addUut<T extends string, TCX extends StellarTxnContext>(this: TCX, uutName: UutName, ...names: T[]): hasUutContext<T> & TCX;
     // (undocumented)
-    allNeededWitnesses: Address[];
+    allNeededWitnesses: (Address | PubKeyHash)[];
     // (undocumented)
     alreadyPresent: TxNotNeededError | undefined;
     // (undocumented)
@@ -2445,6 +2446,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
     getSeedAttrs<TCX extends hasSeedUtxo>(this: TCX): SeedAttrs;
     // (undocumented)
     getSeedUtxoDetails(this: hasSeedUtxo): SeedAttrs;
+    // (undocumented)
+    hasAuthorityToken(authorityValue: Value): boolean;
     // (undocumented)
     id: string;
     // (undocumented)
@@ -3187,7 +3190,7 @@ export type WrappedPromise<T> = {
 // src/Capo.ts:1209:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
 // src/StellarContract.ts:359:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
-// src/StellarTxnContext.ts:91:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
+// src/StellarTxnContext.ts:92:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:161:7 - (ae-forgotten-export) The symbol "DelegateRoleHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:165:7 - (ae-forgotten-export) The symbol "ManifestActivityHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:169:7 - (ae-forgotten-export) The symbol "CapoLifecycleActivityHelper_2" needs to be exported by the entry point index.d.ts

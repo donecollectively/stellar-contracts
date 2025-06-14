@@ -1277,7 +1277,7 @@ class CapoDAppProvider extends Component {
           console.log("onReceive", message);
         },
         isForMainnet: isMainnet,
-        l1client: this.bf,
+        // l1client: this.bf,
         ...hydraOptions
       }) : this.bf;
       simpleWallet = makeSimpleWallet(privKey, networkClient);

@@ -3667,6 +3667,9 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     const sig = await wallet.signTx(builtTx);
     builtTx.addSignature(sig[0]);
   }
+  hasAuthorityToken(authorityValue) {
+    return this.inputs.some((i) => i.value.isGreaterOrEqual(authorityValue));
+  }
   async findAnySpareUtxos() {
     this.noFacade("findAnySpareUtxos");
     const mightNeedFees = 3500000n;
@@ -3710,6 +3713,18 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
       );
     return unused;
   }
+  /**
+   * Adds required signers to the transaction context
+   * @remarks
+   * Before a transaction can be submitted, signatures from each of its signers must be included.
+   * 
+   * Any inputs from the wallet are automatically added as signers, so addSigners() is not needed
+   * for those.
+   */
+  async addSigners(...signers) {
+    this.noFacade("addSigners");
+    this.allNeededWitnesses.push(...signers);
+  }
   async build({
     signers = [],
     addlTxInfo = {
@@ -3740,9 +3755,19 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
       const changeAddress = await this.findChangeAddr();
       console.timeStamp?.(`submit(): findAnySpareUtxos()`);
       const spares = await this.findAnySpareUtxos();
-      const willSign = [...signers, ...this.allNeededWitnesses].map(
-        (addr) => addr.era == "Shelley" && addr.spendingCredential.kind == "PubKeyHash" ? addr.spendingCredential : void 0
-      ).filter((pkh) => !!pkh).flat(1);
+      const willSign = [...signers, ...this.allNeededWitnesses].map((addrOrPkh) => {
+        if (addrOrPkh.kind == "PubKeyHash") {
+          return addrOrPkh;
+        } else if (addrOrPkh.kind == "Address") {
+          if (addrOrPkh.era == "Shelley") {
+            return addrOrPkh.spendingCredential.kind == "PubKeyHash" ? addrOrPkh.spendingCredential : void 0;
+          } else {
+            return void 0;
+          }
+        } else {
+          return void 0;
+        }
+      }).filter((pkh) => !!pkh).flat(1);
       console.timeStamp?.(`submit(): addSIgners()`);
       this.txb.addSigners(...willSign);
       const wHelper = wallet && makeWalletHelper(wallet);
