@@ -198,7 +198,7 @@ export abstract class DelegatedDataContract<
     >(
         this: THIS,
         options: {
-            id: T;
+            id: ID;
             // TODO: support single/predicate/query options by passing them through
             // single : boolean
             // predicate: ...
@@ -211,7 +211,7 @@ export abstract class DelegatedDataContract<
     >(
         this: THIS,
         options: {
-            id?: T;
+            id?: ID;
             // TODO: support single/predicate/query options by passing them through
             // single : boolean
             // predicate: ...
@@ -224,6 +224,7 @@ export abstract class DelegatedDataContract<
     > {
         const result = await this.capo.findDelegatedDataUtxos({
             type: this.recordTypeName,
+            id: options.id,
             // single, // todo: support single in the options
             // predicate
         });
