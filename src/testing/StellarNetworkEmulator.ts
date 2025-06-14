@@ -515,6 +515,16 @@ export class StellarNetworkEmulator implements Emulator {
             throw new Error(`can't snapshot with pending txns`);
         }
         console.log(
+`        .---.
+        |[X]|
+ _.==._.""""".___n__
+/ __ ___.-''-. _____b
+|[__]  /."""".\\ _   |
+|     // /""\\ \\\\_)  |
+|     \\\\ \\__/ //    |
+|      \\\`.__.'/     |
+\\=======\`-..-'======/
+ \`-----------------'   \n`+
             "            📸 📸 📸   ████  📸 📸 📸  #" + this.id,
             ` - snapshot '${snapName}' at slot `,
             this.currentSlot.toString(),
@@ -561,7 +571,16 @@ export class StellarNetworkEmulator implements Emulator {
 
         this.initHelper();
         console.log(
-            "            🌺🌺🌺 ████████  #" + this.id,
+            `
+      .--.             .--.             .--.             .--.       
+    .'_\\/_'.         .'_\\/_'.         .'_\\/_'.         .'_\\/_'.     
+    '. /\\ .'         '. /\\ .'         '. /\\ .'         '. /\\ .'     
+      "||"             "||"             "||"             "||"       
+       || /\\            || /\\            || /\\            || /\\     
+    /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)    
+   (/\\\\||/          (/\\\\||/          (/\\\\||/          (/\\\\||/       
+______\\||/_____________\\||/_____________\\||/_____________\\||/_______
+            🌺🌺🌺 ████████  # ${this.id}\n`,
             ` - restored snapshot '${snapshot.name}' from #${snapshot.netNumber} at slot `,
             this.currentSlot.toString(),
             "height ",
