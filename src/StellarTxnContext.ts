@@ -39,6 +39,7 @@ import {
     type TxId,
     type TxInput,
     type TxOutput,
+    type Value,
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import type { UtxoHelper } from "./UtxoHelper.js";
