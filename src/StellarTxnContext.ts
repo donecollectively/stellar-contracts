@@ -933,6 +933,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
         builtTx.addSignature(sig[0]);
     }
 
+    hasAuthorityToken(authorityValue: Value) {
+        return this.inputs.some(i => i.value.isGreaterOrEqual(authorityValue))
+    }
+
     async findAnySpareUtxos(): Promise<TxInput[] | never> {
         this.noFacade("findAnySpareUtxos");
         const mightNeedFees = 3_500_000n; // lovelace this.ADA(3.5);
