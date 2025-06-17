@@ -3262,7 +3262,6 @@ export abstract class Capo<
         }
         // console.log("\n\n\n\n\n\n\n\n\n======= findDelegatedDataUtxos =======\n\n\n\n\n\n\n\n\n");
         // console.log({ type, types: Object.keys(this.datumAdapters)})
-        const hasType = !!type;
         if ("undefined" !== typeof type) {
             const dgtForType = await this.getDgDataController(type as any, {
                 charterData,

@@ -869,6 +869,16 @@ struct DgDataDetails {
         }
     } 
 
+    // see CapoCtx::referencingDgData(id)
+    func referencing(id : ByteArray, input : TxInput, mph : MintingPolicyHash) -> DgDataDetails {
+        DgDataDetails{
+            dataSrc: dgd_DataSrc::Input{input},
+            id: id,
+            type: "",
+            mph: mph
+        }
+    }    
+
     func uutValue(self) -> Value {
         Value::new(
             AssetClass::new(self.mph, self.id), 
@@ -1095,6 +1105,11 @@ struct CapoCtx {
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
         input : TxInput = self.delegatedDataTxInput(recIdBytes: recIdBytes);
         DgDataDetails::updating(recIdBytes, input, output, self.mph)
+    }
+
+    func referencingDgData(self, recId : String="", recIdBytes : ByteArray = recId.encode_utf8()) -> DgDataDetails {
+        input : TxInput = self.delegatedDataRef(recIdBytes: recIdBytes);
+        DgDataDetails::referencing(recIdBytes, input, self.mph)
     }
     
     func getCharterRedeemer(self) -> CapoActivity {
