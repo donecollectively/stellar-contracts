@@ -268,7 +268,7 @@ export abstract class CapoTestHelper<
                             .then((result) => {
                                 if (this.actorName !== actorName) {
                                     throw new Error(
-                                        `actorName mismatch during snapshot generation; was '${this.actorName}', expected '${actorName}'`
+                                        `snapshot ${snapshotName}: expected actor '${actorName}', but current actor is '${this.actorName}'`
                                     );
                                 }
                                 this.network.tick(1);
