@@ -1094,7 +1094,7 @@ export class CapoDAppProvider<
                     ? {
                           ...(this.props.hydra === true ? {} : this.props.hydra),
                           isForMainnet: isMainnet,
-                      }
+                      } as any
                     : undefined;
             let networkClient = useHydra ? makeHydraClient(WebSocket, {
                 onReceive(message) {
@@ -1104,6 +1104,9 @@ export class CapoDAppProvider<
                 ...hydraOptions,
             }) : this.bf;
             simpleWallet = makeSimpleWallet(privKey, networkClient);
+            if (this.capo) {
+                this.capo.setup.network = networkClient;
+            }
         } else {
             if (!!this.props.hydra) {
                 throw new Error("hydra not supported for this wallet");
