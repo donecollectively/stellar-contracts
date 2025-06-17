@@ -677,7 +677,14 @@ export class UtxoHelper {
     ) : Promise<TxInput[]> {
         const wallet = options.wallet ?? this.wallet;
 
-        const utxos = await wallet.utxos;
+        const addrs = (await wallet.usedAddresses)
+        const utxos: TxInput[] = [];
+        for (const addr of addrs.flat(1)) {
+            if (!addr) continue;
+            const addrUtxos = await this.network.getUtxos(addr);
+            utxos.push(...addrUtxos);
+        }
+
         const filtered = options.exceptInTcx
             ? utxos.filter(
                   options.exceptInTcx.utxoNotReserved.bind(options.exceptInTcx)
