@@ -2447,8 +2447,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
     // (undocumented)
     getSeedUtxoDetails(this: hasSeedUtxo): SeedAttrs;
     // (undocumented)
-    hasAuthorityToken(authorityValue: Value): boolean;
-    // (undocumented)
     id: string;
     // (undocumented)
     includeAddlTxn<TCX extends StellarTxnContext<anyState>, RETURNS extends hasAddlTxns<TCX> = TCX extends hasAddlTxns<any> ? TCX : hasAddlTxns<TCX>>(this: TCX, txnName: string, txInfoIn: Omit<TxDescription<any, "buildLater!">, "id" | "depth" | "parentId"> & {
@@ -3190,7 +3188,7 @@ export type WrappedPromise<T> = {
 // src/Capo.ts:1209:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
 // src/StellarContract.ts:359:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
-// src/StellarTxnContext.ts:92:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
+// src/StellarTxnContext.ts:91:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:161:7 - (ae-forgotten-export) The symbol "DelegateRoleHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:165:7 - (ae-forgotten-export) The symbol "ManifestActivityHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:169:7 - (ae-forgotten-export) The symbol "CapoLifecycleActivityHelper_2" needs to be exported by the entry point index.d.ts

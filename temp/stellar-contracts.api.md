@@ -1184,7 +1184,7 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     abstract exampleData(): minimalData<TLike>;
     findRecords<THIS extends DelegatedDataContract<any, any>>(this: THIS): Promise<FoundDatumUtxo<T, TLike>[]>;
     findRecords<THIS extends DelegatedDataContract<any, any>, ID extends undefined | string | UutName | number[]>(this: THIS, options: {
-        id: T;
+        id: ID;
     }): Promise<FoundDatumUtxo<T, TLike>>;
     // (undocumented)
     getReturnAddress(): Address;
@@ -2378,6 +2378,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     addScriptProgram(...args: Parameters<TxBuilder["attachUplcProgram"]>): this;
     // (undocumented)
     addSignature(wallet: Wallet): Promise<void>;
+    addSigners(...signers: PubKeyHash[]): Promise<void>;
     // (undocumented)
     addState<TCX extends StellarTxnContext, K extends string, V>(this: TCX, key: K, value: V): StellarTxnContext<{
         [keyName in K]: V;
@@ -2385,7 +2386,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     // (undocumented)
     addUut<T extends string, TCX extends StellarTxnContext>(this: TCX, uutName: UutName, ...names: T[]): hasUutContext<T> & TCX;
     // (undocumented)
-    allNeededWitnesses: Address[];
+    allNeededWitnesses: (Address | PubKeyHash)[];
     // (undocumented)
     alreadyPresent: TxNotNeededError | undefined;
     // (undocumented)

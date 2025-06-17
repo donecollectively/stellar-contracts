@@ -21661,7 +21661,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "{\n        id: T;\n    }"
+                  "text": "{\n        id: ID;\n    }"
                 },
                 {
                   "kind": "Content",
@@ -41687,6 +41687,64 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#addSigners:member(1)",
+              "docComment": "/**\n * Adds required signers to the transaction context\n *\n * @remarks\n *\n * Before a transaction can be submitted, signatures from each of its signers must be included.\n *\n * Any inputs from the wallet are automatically added as signers, so addSigners() is not needed for those.\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "addSigners(...signers: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "PubKeyHash",
+                  "canonicalReference": "@helios-lang/ledger!PubKeyHash:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<void>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 4,
+                "endIndex": 6
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "signers",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "addSigners"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#addState:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -41968,13 +42026,26 @@
                   "text": "allNeededWitnesses: "
                 },
                 {
+                  "kind": "Content",
+                  "text": "("
+                },
+                {
                   "kind": "Reference",
                   "text": "Address",
                   "canonicalReference": "@helios-lang/ledger!Address:type"
                 },
                 {
                   "kind": "Content",
-                  "text": "[]"
+                  "text": " | "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "PubKeyHash",
+                  "canonicalReference": "@helios-lang/ledger!PubKeyHash:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ")[]"
                 },
                 {
                   "kind": "Content",
@@ -41987,7 +42058,7 @@
               "name": "allNeededWitnesses",
               "propertyTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 3
+                "endIndex": 6
               },
               "isStatic": false,
               "isProtected": false,
