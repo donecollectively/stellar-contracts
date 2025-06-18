@@ -29,8 +29,9 @@ export const SNAP_BOOTSTRAP = "bootstrapped";
  * @public
  **/
 export abstract class CapoTestHelper<
-    SC extends Capo<any>
-> extends StellarTestHelper<SC> {
+    SC extends Capo<any>,
+    SpecialState extends Record<string, any> = {[key: string]: never}
+> extends StellarTestHelper<SC, SpecialState> {
     declare config?: canHaveRandomSeed & SC extends Capo<any, infer FF>
         ? ConfigFor<SC> & CapoConfig<FF>
         : never;
@@ -42,7 +43,7 @@ export abstract class CapoTestHelper<
         config?: SC extends Capo<any, infer FF>
             ? ConfigFor<SC> & CapoConfig<FF>
             : ConfigFor<SC>,
-        helperState?: TestHelperState<SC>
+        helperState?: TestHelperState<SC, SpecialState>
     ) {
         if (!config) {
             super(config, helperState);

@@ -47,13 +47,16 @@ export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
 /**
  * @public
  */
-export type DefaultCapoTestHelperClass<SC extends Capo<any>> = new (
+export type DefaultCapoTestHelperClass<
+    SC extends Capo<any>,
+    SpecialState extends Record<string, any> = {}
+> = new (
     config?: canHaveRandomSeed & SC extends Capo<any, infer FF>
         ? ConfigFor<SC> & CapoConfig<FF>
         : ConfigFor<SC>,
-    helperState?: TestHelperState<SC>
+    helperState?: TestHelperState<SC, SpecialState>
 ) => // StellarTestHelper<SC> &
-DefaultCapoTestHelper<SC>;
+DefaultCapoTestHelper<SC, SpecialState>;
 
 /**
  * @public
@@ -69,14 +72,21 @@ export type canSkipSetup = {
 };
 
 /**
+ * Establishes a state object for a test helper.  
+ * @remarks
+ * The second optional type parameter allows adding arbitrary fields to the state object,
+ * suitable for state particular to your app testing needs.
  * @public
  */
-export type TestHelperState<SC extends StellarContract<any>> = {
+export type TestHelperState<
+    SC extends StellarContract<any>, 
+    Special extends Record<string, any> = {[key: string]: never}
+> = {
     bootstrapped: Boolean;
     bootstrappedStrella?: SC;
     snapshots: Record<string, NetworkSnapshot>;
     previousHelper: StellarTestHelper<any>;
-};
+} & Special;
 
 /**
  * Adds a test helper class to a `vitest` testing context.
@@ -89,16 +99,17 @@ export type TestHelperState<SC extends StellarContract<any>> = {
  **/
 export async function addTestContext<
     SC extends StellarContract<any>,
-    ST_CONFIG extends configBase & ConfigFor<SC> = ConfigFor<SC>
+    ST_CONFIG extends configBase & ConfigFor<SC> = ConfigFor<SC>,
+    SpecialState extends Record<string, any> = {[key: string]: never}
 >(
     context: StellarTestContext<any, SC>,
     TestHelperClass: SC extends Capo<any>
-        ? DefaultCapoTestHelperClass<SC>
+        ? DefaultCapoTestHelperClass<SC, SpecialState>
         : stellarTestHelperSubclass<SC>,
     stConfig?: Partial<
         SC extends Capo<any, infer FF> ? {featureFlags: FF} & ST_CONFIG : ST_CONFIG
     >,
-    helperState?: TestHelperState<SC>
+    helperState?: TestHelperState<SC, SpecialState>
 ) {
     console.log(" ======== ======== ======== +test context");
     Object.defineProperty(context, "strella", {

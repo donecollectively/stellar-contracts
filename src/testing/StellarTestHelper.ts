@@ -80,7 +80,7 @@ export type TestHelperSubmitOptions = SubmitOptions & {
  * Use this class for specific unit-testing needs not sufficiently served by integration-testing on a Capo.
  * @public
  **/
-export abstract class StellarTestHelper<SC extends StellarContract<any>> {
+export abstract class StellarTestHelper<SC extends StellarContract<any>, SpecialState extends Record<string, any> = {}> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC>;
     config?: ConfigFor<SC> & canHaveRandomSeed;
@@ -189,10 +189,10 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         return this.setActor("hiro");
     }
 
-    helperState?: TestHelperState<SC>;
+    helperState?: TestHelperState<SC, SpecialState>;
     constructor(
         config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup,
-        helperState?: TestHelperState<SC>
+        helperState?: TestHelperState<SC, SpecialState>
     ) {
         this.state = {};
         if (!helperState) {

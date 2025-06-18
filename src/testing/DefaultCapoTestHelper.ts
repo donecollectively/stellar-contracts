@@ -58,11 +58,12 @@ declare const expect: typeof expectType;
 export class DefaultCapoTestHelper<
     //@xxxts-expect-error spurious fail  type; it tries to strongly match the generic abstract type
     //    from (abstract) Capo, instead of paying attention to the clearly-matching concrete version in DefaultCapo
-    CAPO extends Capo<any> = CapoWithoutSettings //prettier-ignore
+    CAPO extends Capo<any> = CapoWithoutSettings,
+    SpecialState extends Record<string, any> = {[key: string]: never}
     //@xxxts-ignore because of a mismatch between the Capo's abstract mkTxnMintCharterToken's defined constraints
     //    ... vs the only concrete impl in DefaultCapo, with types that are actually nicely matchy.
     //    vscode is okay with it, but api-extractor is not :/
-> extends CapoTestHelper<CAPO> {
+> extends CapoTestHelper<CAPO, SpecialState> {
     /**
      * Creates a prepared test helper for a given Capo class, with boilerplate built-in
      *
@@ -79,10 +80,14 @@ export class DefaultCapoTestHelper<
      * @typeParam CAPO - no need to specify it; it's inferred from your parameter
      * @public
      **/
-    static forCapoClass<CAPO extends Capo<any>>(
-        s: stellarSubclass<CAPO>
-    ): DefaultCapoTestHelperClass<CAPO> {
-        class specificCapoHelper extends DefaultCapoTestHelper<CAPO> {
+    static forCapoClass<
+        CAPO extends Capo<any>,
+        SpecialState extends Record<string, any> = {}
+    >(
+        s: stellarSubclass<CAPO>,
+        specialState?: SpecialState
+    ): DefaultCapoTestHelperClass<CAPO, SpecialState> {
+        class specificCapoHelper extends DefaultCapoTestHelper<CAPO, SpecialState> {
             get stellarClass() {
                 return s;
             }
@@ -100,7 +105,7 @@ export class DefaultCapoTestHelper<
         config?: CAPO extends Capo<any, infer FF>
             ? ConfigFor<CAPO> & CapoConfig<FF>
             : ConfigFor<CAPO>,
-        helperState?: TestHelperState<CAPO>
+        helperState?: TestHelperState<CAPO, SpecialState>
     ) {
         super(config, helperState);
         this._start = new Date().getTime();
