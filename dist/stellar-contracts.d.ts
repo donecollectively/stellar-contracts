@@ -14450,6 +14450,7 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
     _builtTx?: Tx | Promise<Tx>;
     get builtTx(): Tx | Promise<Tx>;
     addSignature(wallet: Wallet): Promise<void>;
+    hasAuthorityToken(authorityValue: Value): boolean;
     findAnySpareUtxos(): Promise<TxInput[] | never>;
     findChangeAddr(): Promise<Address>;
     /**

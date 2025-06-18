@@ -3667,6 +3667,9 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     const sig = await wallet.signTx(builtTx);
     builtTx.addSignature(sig[0]);
   }
+  hasAuthorityToken(authorityValue) {
+    return this.inputs.some((i) => i.value.isGreaterOrEqual(authorityValue));
+  }
   async findAnySpareUtxos() {
     this.noFacade("findAnySpareUtxos");
     const mightNeedFees = 3500000n;

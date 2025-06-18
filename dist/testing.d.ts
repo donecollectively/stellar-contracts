@@ -64,9 +64,11 @@ export declare const ADA = 1000000n;
  * @param stConfig - preset configuration for the contract under test
  * @public
  **/
-export declare function addTestContext<SC extends StellarContract<any>, ST_CONFIG extends configBase & ConfigFor<SC> = ConfigFor<SC>>(context: StellarTestContext<any, SC>, TestHelperClass: SC extends Capo<any> ? DefaultCapoTestHelperClass<SC> : stellarTestHelperSubclass<SC>, stConfig?: Partial<SC extends Capo<any, infer FF> ? {
+export declare function addTestContext<SC extends StellarContract<any>, ST_CONFIG extends configBase & ConfigFor<SC> = ConfigFor<SC>, SpecialState extends Record<string, any> = {
+    [key: string]: never;
+}>(context: StellarTestContext<any, SC>, TestHelperClass: SC extends Capo<any> ? DefaultCapoTestHelperClass<SC, SpecialState> : stellarTestHelperSubclass<SC>, stConfig?: Partial<SC extends Capo<any, infer FF> ? {
     featureFlags: FF;
-} & ST_CONFIG : ST_CONFIG>, helperState?: TestHelperState<SC>): Promise<void>;
+} & ST_CONFIG : ST_CONFIG>, helperState?: TestHelperState<SC, SpecialState>): Promise<void>;
 
 /**
  * @public
@@ -89,11 +91,13 @@ export declare type canSkipSetup = {
  * You should probably use DefaultCapoTestHelper instead of this class.
  * @public
  **/
-export declare abstract class CapoTestHelper<SC extends Capo<any>> extends StellarTestHelper<SC> {
+export declare abstract class CapoTestHelper<SC extends Capo<any>, SpecialState extends Record<string, any> = {
+    [key: string]: never;
+}> extends StellarTestHelper<SC, SpecialState> {
     config?: canHaveRandomSeed & SC extends Capo<any, infer FF> ? ConfigFor<SC> & CapoConfig<FF> : never;
     get capo(): SC;
     featureFlags: CapoFeatureFlags | undefined;
-    constructor(config?: SC extends Capo<any, infer FF> ? ConfigFor<SC> & CapoConfig<FF> : ConfigFor<SC>, helperState?: TestHelperState<SC>);
+    constructor(config?: SC extends Capo<any, infer FF> ? ConfigFor<SC> & CapoConfig<FF> : ConfigFor<SC>, helperState?: TestHelperState<SC, SpecialState>);
     initialize({ randomSeed }?: {
         randomSeed?: number;
     }, args?: Partial<MinimalCharterDataArgs>): Promise<SC>;
@@ -139,7 +143,9 @@ export declare abstract class CapoTestHelper<SC extends Capo<any>> extends Stell
  * @typeParam DC - the specific Capo subclass under test
  * @public
  **/
-export declare class DefaultCapoTestHelper<CAPO extends Capo<any> = CapoWithoutSettings> extends CapoTestHelper<CAPO> {
+export declare class DefaultCapoTestHelper<CAPO extends Capo<any> = CapoWithoutSettings, SpecialState extends Record<string, any> = {
+    [key: string]: never;
+}> extends CapoTestHelper<CAPO, SpecialState> {
     /**
      * Creates a prepared test helper for a given Capo class, with boilerplate built-in
      *
@@ -156,10 +162,10 @@ export declare class DefaultCapoTestHelper<CAPO extends Capo<any> = CapoWithoutS
      * @typeParam CAPO - no need to specify it; it's inferred from your parameter
      * @public
      **/
-    static forCapoClass<CAPO extends Capo<any>>(s: stellarSubclass<CAPO>): DefaultCapoTestHelperClass<CAPO>;
+    static forCapoClass<CAPO extends Capo<any>, SpecialState extends Record<string, any> = {}>(s: stellarSubclass<CAPO>, specialState?: SpecialState): DefaultCapoTestHelperClass<CAPO, SpecialState>;
     get stellarClass(): stellarSubclass<CAPO>;
     _start: number;
-    constructor(config?: CAPO extends Capo<any, infer FF> ? ConfigFor<CAPO> & CapoConfig<FF> : ConfigFor<CAPO>, helperState?: TestHelperState<CAPO>);
+    constructor(config?: CAPO extends Capo<any, infer FF> ? ConfigFor<CAPO> & CapoConfig<FF> : ConfigFor<CAPO>, helperState?: TestHelperState<CAPO, SpecialState>);
     ts(...args: any[]): void;
     requiresActorRole(roleName: string, firstLetter: string): void;
     get relativeTs(): string;
@@ -181,7 +187,7 @@ export declare class DefaultCapoTestHelper<CAPO extends Capo<any> = CapoWithoutS
 /**
  * @public
  */
-export declare type DefaultCapoTestHelperClass<SC extends Capo<any>> = new (config?: canHaveRandomSeed & SC extends Capo<any, infer FF> ? ConfigFor<SC> & CapoConfig<FF> : ConfigFor<SC>, helperState?: TestHelperState<SC>) => DefaultCapoTestHelper<SC>;
+export declare type DefaultCapoTestHelperClass<SC extends Capo<any>, SpecialState extends Record<string, any> = {}> = new (config?: canHaveRandomSeed & SC extends Capo<any, infer FF> ? ConfigFor<SC> & CapoConfig<FF> : ConfigFor<SC>, helperState?: TestHelperState<SC, SpecialState>) => DefaultCapoTestHelper<SC, SpecialState>;
 
 /**
  * @public
@@ -392,7 +398,7 @@ export declare interface StellarTestContext<HTH extends StellarTestHelper<SC>, S
  * Use this class for specific unit-testing needs not sufficiently served by integration-testing on a Capo.
  * @public
  **/
-export declare abstract class StellarTestHelper<SC extends StellarContract<any>> {
+export declare abstract class StellarTestHelper<SC extends StellarContract<any>, SpecialState extends Record<string, any> = {}> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC>;
     config?: ConfigFor<SC> & canHaveRandomSeed;
@@ -435,8 +441,8 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>>
      * @public
      */
     setDefaultActor(): Promise<void>;
-    helperState?: TestHelperState<SC>;
-    constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup, helperState?: TestHelperState<SC>);
+    helperState?: TestHelperState<SC, SpecialState>;
+    constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup, helperState?: TestHelperState<SC, SpecialState>);
     /**
      * @public
      */
@@ -551,14 +557,20 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>>
 export declare type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (stConfig: ConfigFor<SC> & canHaveRandomSeed, helperState?: TestHelperState<SC>) => StellarTestHelper<SC>;
 
 /**
+ * Establishes a state object for a test helper.
+ * @remarks
+ * The second optional type parameter allows adding arbitrary fields to the state object,
+ * suitable for state particular to your app testing needs.
  * @public
  */
-export declare type TestHelperState<SC extends StellarContract<any>> = {
+export declare type TestHelperState<SC extends StellarContract<any>, Special extends Record<string, any> = {
+    [key: string]: never;
+}> = {
     bootstrapped: Boolean;
     bootstrappedStrella?: SC;
     snapshots: Record<string, NetworkSnapshot>;
     previousHelper: StellarTestHelper<any>;
-};
+} & Special;
 
 /**
  * @public

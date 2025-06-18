@@ -43322,6 +43322,55 @@
               "name": "getSeedUtxoDetails"
             },
             {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#hasAuthorityToken:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "hasAuthorityToken(authorityValue: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Value",
+                  "canonicalReference": "@helios-lang/ledger!Value:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "boolean"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "authorityValue",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "hasAuthorityToken"
+            },
+            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#id:member",
               "docComment": "",

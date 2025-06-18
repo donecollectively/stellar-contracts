@@ -27866,7 +27866,6 @@ class BatchSubmitController {
         if (!parentId2) return txd;
         const parent = this.$txInfo(parentId2);
         if (!parent) {
-          debugger;
           console.warn("tx batcher: no parent", parentId2);
           return txd;
         }

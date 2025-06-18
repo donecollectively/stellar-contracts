@@ -1630,7 +1630,7 @@ class DefaultCapoTestHelper extends CapoTestHelper {
    * @typeParam CAPO - no need to specify it; it's inferred from your parameter
    * @public
    **/
-  static forCapoClass(s) {
+  static forCapoClass(s, specialState) {
     class specificCapoHelper extends DefaultCapoTestHelper {
       get stellarClass() {
         return s;
