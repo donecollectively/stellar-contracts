@@ -102,7 +102,7 @@ export type IntersectedEnum<
             ? intersected[key]
             : never;
     }
-> = Partial<merged>;
+> = IFISNEVER<ExtractRestOfUnion<keyof intersected>, merged, Partial<merged>>;
 
 
 /**
