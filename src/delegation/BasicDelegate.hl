@@ -1124,7 +1124,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     charterData : CapoDatum::CharterData = cctx.getCharterData();
                                     nextCharterData = cctx.getNextCharterData();
                                     REQT("the indicated token MUST be referenced in the transaction");
-                                    _refInput = cctx.delegatedDataRef(recIdBytes: tokenName);
+                                    refInput = cctx.delegatedDataRef(recIdBytes: tokenName);
+                                    assert(
+                                        (refInput == refInput).trace(
+                                            "  -- found refInput: "+tokenName.decode_utf8_safe()+"?"
+                                        ), 
+                                        "refInput must be found"
+                                    );
 
                                     REQT("the new entry MUST be found in the new manifest");
                                     nextCharterData.manifest.get_safe(key).switch {
