@@ -311,7 +311,8 @@ function Softlight(props) {
 
 function TxBatchViewer({
   batch,
-  initialId
+  initialId,
+  advancedView
 }) {
   const [selectedId, setSelectedId] = React.useState(
     initialId
@@ -343,14 +344,16 @@ function TxBatchViewer({
       batch.$txChanges.off("statusUpdate", renderNow);
     };
   }, [batch, renderNow]);
-  return /* @__PURE__ */ React.createElement("div", { className: "border-1 border-(--color-card) flex w-full flex-row gap-2 rounded-md drop-shadow-md" }, /* @__PURE__ */ React.createElement(
+  const width = advancedView ? "w-9/12" : "";
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "border-1 border-(--color-card) flex w-full flex-row gap-2 rounded-md drop-shadow-md" }, /* @__PURE__ */ React.createElement(
     ShowTxList,
     {
       batch,
       initialId,
       renderNow,
       selectedId,
-      setSelectedId
+      setSelectedId,
+      advancedView
     }
   ), (() => {
     const indicateSelectedTx = selectedId ? "border-s-4 border-s-brand-orange/20" : "";
@@ -359,7 +362,7 @@ function TxBatchViewer({
       return /* @__PURE__ */ React.createElement(
         "div",
         {
-          className: `${indicateSelectedTx} ${cardStyle} w-9/12 rounded-md border border-white/10 p-2`
+          className: `${indicateSelectedTx} ${cardStyle} ${width} rounded-md border border-white/10 p-2`
         },
         /* @__PURE__ */ React.createElement(Softlight, null, "Select a transaction to view details")
       );
@@ -368,7 +371,7 @@ function TxBatchViewer({
       return /* @__PURE__ */ React.createElement(
         "div",
         {
-          className: `${indicateSelectedTx} ${cardStyle} w-9/12 rounded-md border border-white/10 p-2`
+          className: `${indicateSelectedTx} ${cardStyle} ${width} rounded-md border border-white/10 p-2`
         },
         /* @__PURE__ */ React.createElement(Softlight, null, "Loading transaction details...")
       );
@@ -376,32 +379,46 @@ function TxBatchViewer({
     return /* @__PURE__ */ React.createElement(
       "div",
       {
-        className: `${indicateSelectedTx} z-3 ${cardStyle} w-9/12 rounded-md border border-white/10 p-2`
+        className: `${indicateSelectedTx} z-3 ${cardStyle} ${width} flex flex-col rounded-md border border-white/10 p-2`
       },
-      /* @__PURE__ */ React.createElement(ShowTxDescription, { txTracker: txMgr, tx: selectedTx })
+      /* @__PURE__ */ React.createElement(
+        ShowTxDescription,
+        {
+          txTracker: txMgr,
+          tx: selectedTx,
+          advancedView
+        }
+      )
     );
-  })());
+  })()));
 }
 function ShowTxList({
   batch,
   initialId,
   renderNow,
   selectedId,
-  setSelectedId
+  setSelectedId,
+  advancedView
 }) {
   const { $allTxns } = batch;
-  return /* @__PURE__ */ React.createElement("div", { className: "z-4 flex w-3/12 flex-col gap-0" }, batch.$allTxns.map((txTracker) => {
+  const width = advancedView ? "w-3/12" : "w-9/12";
+  return /* @__PURE__ */ React.createElement("div", { className: `z-4 flex ${width} flex-col gap-0` }, batch.$allTxns.map((txTracker) => {
     return /* @__PURE__ */ React.createElement(
       ShowSingleTx,
       {
         key: txTracker.txd.id,
-        ...{ txTracker, selectedId, setSelectedId }
+        ...{
+          txTracker,
+          selectedId,
+          setSelectedId,
+          advancedView
+        }
       }
     );
   }));
 }
 const ShowSingleTx = (props) => {
-  const { txTracker, selectedId, setSelectedId } = props;
+  const { txTracker, selectedId, setSelectedId, advancedView } = props;
   const { $state, txSubmitters, txd } = txTracker;
   let {
     id,
@@ -413,11 +430,12 @@ const ShowSingleTx = (props) => {
     depth = 0,
     parentId
   } = txd;
+  debugger;
   if (!txName) {
     txName = description;
     description = "";
   }
-  const submitterStates = Object.values(txSubmitters).map((s) => s.$$statusSummary).join(", ");
+  Object.values(txSubmitters).map((s) => s.$$statusSummary).join(", ");
   const isCurrent = id == selectedId;
   const countNested = txd.tcx?.addlTxns ? Object.keys(txd.tcx.addlTxns).length : 0;
   const indentClass = [
@@ -445,7 +463,7 @@ const ShowSingleTx = (props) => {
         title: txd.txName || txd.description,
         className: `${innerMarginClass} bg-(--color-card) text-(--color-card-foreground) flex min-h-[0.66in] flex-row rounded-md border border-white/10 p-2 text-sm ${indicateSelectedTx}`
       },
-      /* @__PURE__ */ React.createElement("div", { className: `w-8/12` }, txName ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("b", null, txName), /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("div", { className: "ml-2 opacity-50" }, description), /* @__PURE__ */ React.createElement("div", { className: "ml-2 opacity-50" }, submitterStates)) : description),
+      /* @__PURE__ */ React.createElement("div", { className: `w-8/12` }, txName ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("b", null, txName), /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("div", { className: "ml-2 opacity-50" }, description)) : description),
       /* @__PURE__ */ React.createElement("div", { className: `w-1/12 text-right` }, $state == "building" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
         "svg",
         {
@@ -476,7 +494,8 @@ const ShowSingleTx = (props) => {
 };
 function ShowTxDescription({
   txTracker,
-  tx
+  tx,
+  advancedView
 }) {
   const { $state, txSubmitters, id, txd } = txTracker;
   const { tcx, txCborHex, signedTxCborHex } = txd;
@@ -496,14 +515,14 @@ function ShowTxDescription({
       console.error("Failed to decode signed transaction:", e);
     }
   }, [signedTxCborHex]);
-  return /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2 " }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-row justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "basis-1/9" }, tx && txTracker && tcx && !tcx.isFacade && /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2 " }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "basis-1/9" }, tx && txTracker && tcx && !tcx.isFacade && /* @__PURE__ */ React.createElement(
     ActionButton,
     {
       className: "mt-2 self-start",
       onClick: () => txTracker.$signAndSubmit?.()
     },
     "Sign\xA0&\xA0Submit"
-  )), /* @__PURE__ */ React.createElement("div", { className: "ml-4 flex-grow self-start" }, /* @__PURE__ */ React.createElement(Highlight, { className: "text-xl" }, txd.txName || txd.description), txd.txName && txd.description && /* @__PURE__ */ React.createElement("div", { className: "text-md display-inline ml-4 opacity-50" }, txd.description), txd.moreInfo && /* @__PURE__ */ React.createElement("div", { className: "text-brand-orange/66 ml-8 text-sm italic" }, txd.moreInfo)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Lowlight, { className: "float-right" }, $state), /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("div", { id: "tab-selector" }, Object.keys(availableTabs).map((key) => {
+  )), advancedView && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "ml-4 flex-grow self-start" }, /* @__PURE__ */ React.createElement(Highlight, { className: "text-xl" }, txd.txName || txd.description), txd.txName && txd.description && /* @__PURE__ */ React.createElement("div", { className: "text-md display-inline ml-4 opacity-50" }, txd.description), txd.moreInfo && /* @__PURE__ */ React.createElement("div", { className: "text-brand-orange/66 ml-8 text-sm italic" }, txd.moreInfo))), advancedView && /* @__PURE__ */ React.createElement("div", { id: "tab-selector" }, Object.keys(availableTabs).map((key) => {
     const isSelected = key === tab;
     const selectedTabClass = isSelected ? "rounded-t-md bg-(--color-card) text-(--color-card-foreground) border-x-1 border-t-3 border-(--color-border)/50" : " rounded-t-md bg-(--color-secondary)/70 text-(--color-secondary-foreground)";
     return /* @__PURE__ */ React.createElement(
@@ -517,7 +536,7 @@ function ShowTxDescription({
       },
       key
     );
-  })))), /* @__PURE__ */ React.createElement("div", { className: "-mt-2 border-t border-white/10 pt-1" }, tab === "transcript" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-1" }, Object.entries(txSubmitters).map(
+  }), /* @__PURE__ */ React.createElement(Lowlight, { className: "float-right" }, $state)), advancedView && /* @__PURE__ */ React.createElement("div", { className: "-mt-2 border-t border-white/10 pt-1" }, tab === "transcript" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-1" }, Object.entries(txSubmitters).map(
     ([key, submitter]) => /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -568,17 +587,22 @@ function ShowTxDescription({
       }
       return /* @__PURE__ */ React.createElement(React.Fragment, null, prefix, " ", rest, /* @__PURE__ */ React.createElement("br", null), " ");
     })
-  )))), tab === "structure" && tx && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm" }, "Unsigned Tx:", " ", tx.id?.()?.toString?.() || "Unknown ID"), /* @__PURE__ */ React.createElement("code", { className: "text-sm" }, /* @__PURE__ */ React.createElement("pre", { className: "font-formal text-[1.30em]/4.5 tracking-wide max-h-[80vh] overflow-auto" }, dumpAny(tx, txTracker.setup.networkParams)), txCborHex && /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-xs" }, "CBOR Hex:", " ", /* @__PURE__ */ React.createElement("span", { className: "break-all" }, txCborHex)))), tab === "diagnostics" && /* @__PURE__ */ React.createElement(React.Fragment, null, signedTx ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("h3", null, "Signed Tx"), /* @__PURE__ */ React.createElement("h4", null, signedTx.id?.()?.toString?.() || "Unknown ID"), /* @__PURE__ */ React.createElement("code", { className: "text-xs" }, /* @__PURE__ */ React.createElement("pre", { className: "max-h-64 overflow-auto" }, dumpAny(
+  )))), tab === "structure" && tx && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm" }, "Unsigned Tx:", " ", tx.id?.()?.toString?.() || "Unknown ID"), /* @__PURE__ */ React.createElement("code", { className: "text-sm" }, /* @__PURE__ */ React.createElement("pre", { className: "font-formal text-[1.30em]/4.5 tracking-wide max-h-[80vh] overflow-auto" }, dumpAny(
+    tx,
+    txTracker.setup.networkParams
+  )), txCborHex && /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-xs" }, "CBOR Hex:", " ", /* @__PURE__ */ React.createElement("span", { className: "break-all" }, txCborHex)))), tab === "diagnostics" && /* @__PURE__ */ React.createElement(React.Fragment, null, signedTx ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("h3", null, "Signed Tx"), /* @__PURE__ */ React.createElement("h4", null, signedTx.id?.()?.toString?.() || "Unknown ID"), /* @__PURE__ */ React.createElement("code", { className: "text-xs" }, /* @__PURE__ */ React.createElement("pre", { className: "max-h-64 overflow-auto" }, dumpAny(
     signedTx,
     txTracker.setup.networkParams
-  )), signedTxCborHex ? /* @__PURE__ */ React.createElement("div", { className: "mt-2" }, "CBOR Hex:", " ", /* @__PURE__ */ React.createElement("span", { className: "break-all" }, signedTxCborHex.length / 2, " ", "bytes: ", /* @__PURE__ */ React.createElement("br", null), signedTxCborHex)) : /* @__PURE__ */ React.createElement("div", null, "\u2039not yet signed\u203A"))) : /* @__PURE__ */ React.createElement("div", null, "Not yet signed"))), txd.tcx?.addlTxns && Object.keys(txd.tcx.addlTxns).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4 flex flex-col gap-1 border-t border-white/10 pt-4" }, /* @__PURE__ */ React.createElement(Softlight, null, "Nested Transactions:"), Object.entries(txd.tcx.addlTxns).map(([key, tx2]) => /* @__PURE__ */ React.createElement(
-    "div",
-    {
-      key,
-      className: "flex flex-row justify-between"
-    },
-    /* @__PURE__ */ React.createElement(Lowlight, null, key),
-    /* @__PURE__ */ React.createElement(Lowlight, null, tx2.id)
+  )), signedTxCborHex ? /* @__PURE__ */ React.createElement("div", { className: "mt-2" }, "CBOR Hex:", " ", /* @__PURE__ */ React.createElement("span", { className: "break-all" }, signedTxCborHex.length / 2, " ", "bytes: ", /* @__PURE__ */ React.createElement("br", null), signedTxCborHex)) : /* @__PURE__ */ React.createElement("div", null, "\u2039not yet signed\u203A"))) : /* @__PURE__ */ React.createElement("div", null, "Not yet signed"))), advancedView && txd.tcx?.addlTxns && Object.keys(txd.tcx.addlTxns).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4 flex flex-col gap-1 border-t border-white/10 pt-4" }, /* @__PURE__ */ React.createElement(Softlight, null, "Nested Transactions:"), Object.entries(txd.tcx.addlTxns).map(
+    ([key, tx2]) => /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        key,
+        className: "flex flex-row justify-between"
+      },
+      /* @__PURE__ */ React.createElement(Lowlight, null, key),
+      /* @__PURE__ */ React.createElement(Lowlight, null, tx2.id)
+    )
   ))));
 }
 
@@ -589,6 +613,18 @@ function TxBatchUI() {
   const [initialId, setInitialId] = React__default.useState(
     void 0
   );
+  const [advancedView, setAdvancedView] = React__default.useState(false);
+  const batchSize = currentBatch?.$allTxns.length;
+  const viewSwitcher = /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row justify-between p-2" }, /* @__PURE__ */ React__default.createElement("div", null, /* @__PURE__ */ React__default.createElement("h3", { className: "bg-transparent mt-0 mb-2" }, "Pending Txns"), batchSize && batchSize > 1 && /* @__PURE__ */ React__default.createElement(React__default.Fragment, null, batchSize, " txns in batch")), /* @__PURE__ */ React__default.createElement("div", null, /* @__PURE__ */ React__default.createElement(
+    Button,
+    {
+      variant: "secondary-sm",
+      onClick: () => {
+        setAdvancedView(!advancedView);
+      }
+    },
+    advancedView ? "Hide details" : "Show details"
+  )));
   React__default.useEffect(
     function monitorTxBatcher() {
       if (!capo) return;
@@ -611,8 +647,22 @@ function TxBatchUI() {
     [capo, capo?.setup.txBatcher]
   );
   const hasBatch = !!currentBatch && !!currentBatch?.$allTxns.length;
+  const width = advancedView ? "w-[80vw]" : "";
   if (!hasBatch) return null;
-  return /* @__PURE__ */ React__default.createElement("div", { className: "z-100 bg-background/66 absolute top-10 right-4 w-[80vw] rounded-lg border border-white/10 backdrop-blur-md" }, /* @__PURE__ */ React__default.createElement(TxBatchViewer, { batch: currentBatch, ...{ initialId } }));
+  return /* @__PURE__ */ React__default.createElement(
+    "div",
+    {
+      className: `z-100 bg-background/66 absolute top-10 right-4 ${width} flex flex-col rounded-lg border border-white/10 backdrop-blur-md`
+    },
+    viewSwitcher,
+    /* @__PURE__ */ React__default.createElement(
+      TxBatchViewer,
+      {
+        batch: currentBatch,
+        ...{ initialId, advancedView }
+      }
+    )
+  );
 }
 
 //!!! comment out the following block while using the "null" config.
@@ -663,6 +713,7 @@ class CapoDAppProvider extends Component {
       status: {
         message: `... connecting to ${this.dAppName} ...`,
         keepOnscreen: true,
+        ready: false,
         developerGuidance: "... discovering the on-chain status e.g. from blockfrost"
       },
       userInfo: {
@@ -712,7 +763,7 @@ class CapoDAppProvider extends Component {
       capo,
       walletUtxos,
       walletHelper,
-      userInfo: { wallet, connectingWallet, roles, memberUut: collabUut },
+      userInfo: { wallet, connectingWallet, roles, memberUut },
       status: {
         moreInstructions,
         message,
@@ -1431,7 +1482,8 @@ class CapoDAppProvider extends Component {
         walletHandle,
         selectedWallet: walletName,
         connectingWallet: false,
-        foundNetworkName
+        foundNetworkName,
+        walletAddress: addrString
       },
       walletHelper
     };
@@ -1485,7 +1537,8 @@ class CapoDAppProvider extends Component {
       "checking wallet for authority tokens ",
       {
         progressBar: true,
-        developerGuidance: "status message for the user"
+        developerGuidance: "status message for the user",
+        ready: false
       },
       "/// looking for authority tokens  from policy " + capo.mph.toHex()
     );
@@ -1495,7 +1548,7 @@ class CapoDAppProvider extends Component {
     let memberUut;
     if (!!member) {
       memberUut = member.uut;
-      roles.push("collaborator");
+      roles.push("member");
     }
     if (!!isAdmin) roles.push("admin");
     const message = roles.includes("member") ? (
@@ -1506,7 +1559,8 @@ class CapoDAppProvider extends Component {
       message,
       {
         progressPercent: 100,
-        developerGuidance: "display the indicated roles in the UI and/or show/hide app features based on the roles"
+        developerGuidance: "display the indicated roles in the UI and/or show/hide app features based on the roles",
+        ready: true
       },
       `/// found ${roles.length} roles: ${roles.join(", ")}}`,
       {
@@ -1572,6 +1626,7 @@ class CapoDAppProvider extends Component {
       await this.updateStatus(
         `connecting: ${this.dAppName}`,
         {
+          progressBar: true,
           developerGuidance: "wait for connection; possibly show a spinner"
         },
         "//init",
@@ -1856,6 +1911,7 @@ class CapoDAppProvider extends Component {
       // progressBar = undefined,
       isError = void 0,
       clearAfter = 0,
+      ready = this.state.status.ready,
       ...otherStatusProps
     } = statusProps;
     if (!clearAfter) {
@@ -1869,6 +1925,7 @@ class CapoDAppProvider extends Component {
       ...otherStatusProps,
       message,
       isError,
+      ready,
       clearAfter,
       ...nextAction ? {
         nextAction: {

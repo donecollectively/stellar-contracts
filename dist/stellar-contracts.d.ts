@@ -862,9 +862,9 @@ declare class BurningActivityHelper extends EnumBridge<JustAnEnum> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         _placeholder1BA: number[];
-    }, Partial<{
+    }, {
         _placeholder1BA: number[];
-    }>>;
+    }>;
     /**
      * generates  UplcData for ***"UnspecializedDelegate::BurningActivity._placeholder1BA"***
      */
@@ -882,9 +882,9 @@ declare class BurningActivityHelper_2 extends EnumBridge<JustAnEnum> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         DeletingRecord: number[];
-    }, Partial<{
+    }, {
         DeletingRecord: number[];
-    }>>;
+    }>;
     /**
      * generates  UplcData for ***"ReqtsData::BurningActivity.DeletingRecord"***
      */
@@ -902,9 +902,9 @@ declare class BurningActivityHelperNested extends EnumBridge<isActivity> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         _placeholder1BA: number[];
-    }, Partial<{
+    }, {
         _placeholder1BA: number[];
-    }>>;
+    }>;
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"UnspecializedDelegate::BurningActivity._placeholder1BA"***
      * @remarks
@@ -927,9 +927,9 @@ declare class BurningActivityHelperNested_2 extends EnumBridge<isActivity> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         DeletingRecord: number[];
-    }, Partial<{
+    }, {
         DeletingRecord: number[];
-    }>>;
+    }>;
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"ReqtsData::BurningActivity.DeletingRecord"***
      * @remarks
@@ -8839,7 +8839,7 @@ declare type intersectedElements<T extends any[]> = T extends [infer A, ...infer
  */
 export declare type IntersectedEnum<T, intersected = intersectedElements<EachUnionElement<T>>, merged = {
     [key in keyof intersected]: key extends keyof intersected ? intersected[key] : never;
-}> = Partial<merged>;
+}> = IFISNEVER<ExtractRestOfUnion<keyof intersected>, merged, Partial<merged>>;
 
 declare type _intersectInspectFuncs<U> = _inspectableUnionFuncs<U> extends (k: infer MAGIC) => void ? MAGIC : never;
 
@@ -10745,9 +10745,9 @@ declare class MintingActivityHelper extends EnumBridge<JustAnEnum> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         _placeholder1MA: TxOutputId;
-    }, Partial<{
+    }, {
         _placeholder1MA: TxOutputId | string;
-    }>>;
+    }>;
     /**
      * generates  UplcData for ***"UnspecializedDelegate::MintingActivity._placeholder1MA"***,
      * given a transaction-context (or direct arg) with a ***seed utxo***
@@ -10790,9 +10790,9 @@ declare class MintingActivityHelper_2 extends EnumBridge<JustAnEnum> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         CreatingRecord: TxOutputId;
-    }, Partial<{
+    }, {
         CreatingRecord: TxOutputId | string;
-    }>>;
+    }>;
     /**
      * generates  UplcData for ***"ReqtsData::MintingActivity.CreatingRecord"***,
      * given a transaction-context (or direct arg) with a ***seed utxo***
@@ -10835,9 +10835,9 @@ declare class MintingActivityHelperNested extends EnumBridge<isActivity> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         _placeholder1MA: TxOutputId;
-    }, Partial<{
+    }, {
         _placeholder1MA: TxOutputId | string;
-    }>>;
+    }>;
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"UnspecializedDelegate::MintingActivity._placeholder1MA"***,
      * given a transaction-context (or direct arg) with a ***seed utxo***
@@ -10888,9 +10888,9 @@ declare class MintingActivityHelperNested_2 extends EnumBridge<isActivity> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         CreatingRecord: TxOutputId;
-    }, Partial<{
+    }, {
         CreatingRecord: TxOutputId | string;
-    }>>;
+    }>;
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"ReqtsData::MintingActivity.CreatingRecord"***,
      * given a transaction-context (or direct arg) with a ***seed utxo***
@@ -13450,9 +13450,9 @@ declare class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         _placeholder1SA: number[];
-    }, Partial<{
+    }, {
         _placeholder1SA: number[];
-    }>>;
+    }>;
     /**
      * generates  UplcData for ***"UnspecializedDelegate::SpendingActivity._placeholder1SA"***
      */
@@ -13470,9 +13470,9 @@ declare class SpendingActivityHelper_2 extends EnumBridge<JustAnEnum> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         UpdatingRecord: number[];
-    }, Partial<{
+    }, {
         UpdatingRecord: number[];
-    }>>;
+    }>;
     /**
      * generates  UplcData for ***"ReqtsData::SpendingActivity.UpdatingRecord"***
      */
@@ -13490,9 +13490,9 @@ declare class SpendingActivityHelperNested extends EnumBridge<isActivity> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         _placeholder1SA: number[];
-    }, Partial<{
+    }, {
         _placeholder1SA: number[];
-    }>>;
+    }>;
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"UnspecializedDelegate::SpendingActivity._placeholder1SA"***
      * @remarks
@@ -13515,9 +13515,9 @@ declare class SpendingActivityHelperNested_2 extends EnumBridge<isActivity> {
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<{
         UpdatingRecord: number[];
-    }, Partial<{
+    }, {
         UpdatingRecord: number[];
-    }>>;
+    }>;
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"ReqtsData::SpendingActivity.UpdatingRecord"***
      * @remarks
@@ -14494,7 +14494,7 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
      * onSubmitted can be used to notify the user that the transaction has been submitted,
      * or for logging or any other post-submission processing.
      */
-    submitAll(this: StellarTxnContext<any>, options?: SubmitOptions): Promise<boolean>;
+    submitAll(this: StellarTxnContext<any>, options?: SubmitOptions): Promise<BatchSubmitController_2>;
     /**
      * augments a transaction context with a type indicator
      * that it has additional transactions to be submitted.
@@ -14504,7 +14504,7 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
      * transactions to be chained after the current transaction.
      */
     withAddlTxns<TCX extends StellarTxnContext<anyState>>(this: TCX, addlTxns?: Record<string, TxDescription<any, "buildLater!">>): hasAddlTxns<TCX>;
-    buildAndQueueAll(this: StellarTxnContext<any>, options?: SubmitOptions): Promise<boolean | undefined>;
+    buildAndQueueAll(this: StellarTxnContext<any>, options?: SubmitOptions): Promise<BatchSubmitController_2>;
     get currentBatch(): BatchSubmitController_2;
     /**
      * Submits only the current transaction.

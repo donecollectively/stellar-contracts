@@ -337,6 +337,10 @@ export declare type CapoDappStatus<T extends UserActionMap<any> = BaseUserAction
      */
     message: string | undefined;
     /**
+     * Indicates that the dApp has loaded the user wallet and identified the user's roles.
+     */
+    ready?: boolean;
+    /**
      * Indicates that the message SHOULD be left onscreen, and not automatically removed.
      * @remarks
      * if set, clearAfter will be undefined.
@@ -518,7 +522,7 @@ export declare type DappUserInfo = {
     walletHandle?: Cip30FullHandle;
     walletAddress?: string;
     memberUut?: UutName;
-    roles: ("member" | "admin" | "artist" | "muNodeOp")[];
+    roles: ("member" | "admin")[];
     foundNetworkName: string;
 };
 
@@ -812,9 +816,10 @@ export declare type stateUpdaterFunc = CapoDAppProvider<Capo<any>>["updateStatus
  * Shows a summary of the batch status at the top
  * @public
  */
-export declare function TxBatchViewer({ batch, initialId, }: {
+export declare function TxBatchViewer({ batch, initialId, advancedView, }: {
     batch: BatchSubmitController;
     initialId?: string;
+    advancedView: boolean;
 }): React_3.JSX.Element;
 
 /**

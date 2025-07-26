@@ -30197,12 +30197,30 @@
             },
             {
               "kind": "Reference",
+              "text": "IFISNEVER",
+              "canonicalReference": "@donecollectively/stellar-contracts!IFISNEVER:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "ExtractRestOfUnion",
+              "canonicalReference": "@donecollectively/stellar-contracts!~ExtractRestOfUnion:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<keyof intersected>, merged, "
+            },
+            {
+              "kind": "Reference",
               "text": "Partial",
               "canonicalReference": "!Partial:type"
             },
             {
               "kind": "Content",
-              "text": "<merged>"
+              "text": "<merged>>"
             },
             {
               "kind": "Content",
@@ -30249,7 +30267,7 @@
           ],
           "typeTokenRange": {
             "startIndex": 8,
-            "endIndex": 10
+            "endIndex": 14
           }
         },
         {
@@ -42484,7 +42502,16 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<boolean | undefined>"
+                  "text": "<import(\"./networkClients/BatchSubmitController.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "BatchSubmitController",
+                  "canonicalReference": "@donecollectively/stellar-contracts!BatchSubmitController:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -42494,7 +42521,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 6,
-                "endIndex": 8
+                "endIndex": 10
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -44324,7 +44351,16 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<boolean>"
+                  "text": "<import(\"./networkClients/BatchSubmitController.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "BatchSubmitController",
+                  "canonicalReference": "@donecollectively/stellar-contracts!BatchSubmitController:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -44334,7 +44370,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 6,
-                "endIndex": 8
+                "endIndex": 10
               },
               "releaseTag": "Public",
               "isProtected": false,

@@ -1702,11 +1702,12 @@ export type InlineDatum = InlineTxOutputDatum;
 
 // Warning: (ae-forgotten-export) The symbol "intersectedElements" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "EachUnionElement" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "ExtractRestOfUnion" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
 export type IntersectedEnum<T, intersected = intersectedElements<EachUnionElement<T>>, merged = {
     [key in keyof intersected]: key extends keyof intersected ? intersected[key] : never;
-}> = Partial<merged>;
+}> = IFISNEVER<ExtractRestOfUnion<keyof intersected>, merged, Partial<merged>>;
 
 // @public
 export type isActivity = {
@@ -2405,7 +2406,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }): Promise<BuiltTcx>;
     buildAndQueue(this: StellarTxnContext<any>, submitOptions?: SubmitOptions): Promise<void>;
     // (undocumented)
-    buildAndQueueAll(this: StellarTxnContext<any>, options?: SubmitOptions): Promise<boolean | undefined>;
+    buildAndQueueAll(this: StellarTxnContext<any>, options?: SubmitOptions): Promise<BatchSubmitController_2>;
     // (undocumented)
     get builtTx(): Tx | Promise<Tx>;
     // (undocumented)
@@ -2490,7 +2491,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     slotToTime(slot: bigint): bigint;
     // (undocumented)
     state: S;
-    submitAll(this: StellarTxnContext<any>, options?: SubmitOptions): Promise<boolean>;
+    submitAll(this: StellarTxnContext<any>, options?: SubmitOptions): Promise<BatchSubmitController_2>;
     // (undocumented)
     submitTxnChain(options?: {
         txns?: TxDescription<any, "buildLater!">[];
@@ -3190,7 +3191,7 @@ export type WrappedPromise<T> = {
 // src/Capo.ts:1209:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
 // src/StellarContract.ts:359:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
-// src/StellarTxnContext.ts:92:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
+// src/StellarTxnContext.ts:93:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:161:7 - (ae-forgotten-export) The symbol "DelegateRoleHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:165:7 - (ae-forgotten-export) The symbol "ManifestActivityHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:169:7 - (ae-forgotten-export) The symbol "CapoLifecycleActivityHelper_2" needs to be exported by the entry point index.d.ts

@@ -3944,8 +3944,8 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
   async submitAll(options = {}) {
     const currentBatch = this.currentBatch;
     const hasOpenBatch = currentBatch?.isOpen;
-    return this.buildAndQueueAll(options).then(() => {
-      return true;
+    return this.buildAndQueueAll(options).then((batch) => {
+      return batch;
     });
   }
   /**
@@ -3966,7 +3966,7 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
   async buildAndQueueAll(options = {}) {
     const {
       addlTxInfo = {
-        description: this.txnName ? ": " + this.txnName : "\u2039unnamed tx\u203A",
+        description: this.txnName ? this.txnName : "\u2039unnamed tx\u203A",
         id: this.id,
         tcx: this
       },
@@ -3988,9 +3988,10 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
             `\u{1F384}\u26C4\u{1F381} ${this.id}   -- B&QA - registering addl txns`
           );
           return this.queueAddlTxns(options).then(() => {
-            return true;
+            return this.currentBatch;
           });
         }
+        return this.currentBatch;
       });
     } else if (this.state.addlTxns) {
       if (this.isFacade) {
@@ -4000,7 +4001,7 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
         `\u{1F384}\u26C4\u{1F381} ${this.id}   -- B&QA - registering txns in facade`
       );
       return this.queueAddlTxns(generalSubmitOptions).then(() => {
-        return true;
+        return this.currentBatch;
       });
     }
     console.warn(`\u26A0\uFE0F  submitAll(): no txns to queue/submit`, this);
