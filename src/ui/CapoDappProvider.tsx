@@ -357,7 +357,7 @@ export class CapoDAppProvider<
             capo,
             walletUtxos,
             walletHelper,
-            userInfo: { wallet, connectingWallet, roles, memberUut: collabUut },
+            userInfo: { wallet, connectingWallet, roles, memberUut },
             status: {
                 moreInstructions,
                 message,
@@ -1276,6 +1276,7 @@ export class CapoDAppProvider<
                 selectedWallet: walletName,
                 connectingWallet: false,
                 foundNetworkName,
+                walletAddress: addrString,
             },
             walletHelper,
         };
@@ -1354,7 +1355,7 @@ export class CapoDAppProvider<
         if (!!member) {
             memberUut = member.uut;
 
-            roles.push("collaborator");
+            roles.push("member");
         }
         if (!!isAdmin) roles.push("admin");
 
@@ -1961,7 +1962,7 @@ export type DappUserInfo = {
     walletAddress?: string;
 
     memberUut?: UutName;
-    roles: ("member" | "admin" | "artist" | "muNodeOp")[];
+    roles: ("member" | "admin")[];
     foundNetworkName: string;
 };
 
