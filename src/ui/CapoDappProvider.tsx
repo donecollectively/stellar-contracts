@@ -291,6 +291,7 @@ export class CapoDAppProvider<
             status: {
                 message: `... connecting to ${this.dAppName} ...`,
                 keepOnscreen: true,
+                ready: false,
 
                 developerGuidance:
                     "... discovering the on-chain status e.g. from blockfrost",
@@ -1339,8 +1340,9 @@ export class CapoDAppProvider<
             {
                 progressBar: true,
                 developerGuidance: "status message for the user",
+                ready: false,
             },
-            "/// looking for authority tokens  from policy " + capo.mph.toHex()
+            "/// looking for authority tokens  from policy " + capo.mph.toHex(),
         );
 
         const roles: String[] = [];
@@ -1367,6 +1369,7 @@ export class CapoDAppProvider<
                 progressPercent: 100,
                 developerGuidance:
                     "display the indicated roles in the UI and/or show/hide app features based on the roles",
+                ready: true,
             },
             `/// found ${roles.length} roles: ${roles.join(", ")}}`,
             {
@@ -1490,6 +1493,7 @@ export class CapoDAppProvider<
             await this.updateStatus(
                 `connecting: ${this.dAppName}`,
                 {
+                    progressBar: true,
                     developerGuidance:
                         "wait for connection; possibly show a spinner",
                 },
@@ -1844,6 +1848,7 @@ export class CapoDAppProvider<
             // progressBar = undefined,
             isError = undefined,
             clearAfter = 0,
+            ready = this.state.status.ready,
             ...otherStatusProps
         } = statusProps;
 
@@ -1866,6 +1871,7 @@ export class CapoDAppProvider<
                       ...otherStatusProps,
                       message,
                       isError,
+                      ready,
                       clearAfter,
                       ...(nextAction
                           ? {
@@ -2050,6 +2056,11 @@ export type CapoDappStatus<T extends UserActionMap<any> = BaseUserActionMap> = {
      * typically by the user.
      */
     message: string | undefined;
+    /**
+     * Indicates that the dApp has loaded the user wallet and identified the user's roles.
+     */
+    ready?: boolean;
+
     /**
      * Indicates that the message SHOULD be left onscreen, and not automatically removed.
      * @remarks
