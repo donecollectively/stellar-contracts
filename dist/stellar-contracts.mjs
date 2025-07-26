@@ -26655,7 +26655,7 @@ class TxSubmitMgr extends StateMachine {
   /**
    * the locally-unique id-ish label of the tx description
    * @remarks
-   * see {@link txId} for the actual txId available after the tx is built
+   * see {@link TxSubmitMgr.txId|txId} for the actual txId available after the tx is built
    */
   get id() {
     return this.txd.id;
@@ -27305,6 +27305,9 @@ class TxSubmitMgr extends StateMachine {
     }
     return false;
   }
+  /**
+   * @internal
+   */
   checkTxValidityDetails(tx) {
     tx.body;
     function getAttr(x) {
@@ -27678,6 +27681,7 @@ class TxSubmissionTracker extends StateMachine {
 
 const nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
 class BatchSubmitController {
+  /* was SubmitterMultiClient */
   submitters;
   setup;
   submitOptions;

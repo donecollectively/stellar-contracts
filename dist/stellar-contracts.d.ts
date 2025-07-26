@@ -399,6 +399,9 @@ export declare function addrAsString(address: Address): string;
 
 declare type addRefInputArgs = Parameters<TxBuilder["refer"]>;
 
+/**
+ * @public
+ */
 export declare type aggregatedStateString = `pending` | `${numberString} confirming` | `${numberString} submitting` | `${numberString} confirmed` | `${numberString} failed` | `${numberString} mostly confirmed`;
 
 /**
@@ -581,6 +584,9 @@ export declare type basicDelegateMap<anyOtherRoles extends {
     [k in keyof anyOtherRoles | keyof basicDelegateRoles]: (k extends keyof anyOtherRoles ? anyOtherRoles[k] : k extends keyof basicDelegateRoles ? basicDelegateRoles[k] : never);
 };
 
+/**
+ * @public
+ */
 export declare type basicDelegateRoles = {
     govAuthority: DelegateSetup<"authority", StellarDelegate, any>;
     mintDelegate: DelegateSetup<"mintDgt", BasicMintDelegate, any>;
@@ -790,6 +796,9 @@ export declare class BatchSubmitController {
     };
 }
 
+/**
+ * @public
+ */
 export declare type BatchSubmitControllerOptions = {
     submitters: namedSubmitters;
     setup: SetupInfo;
@@ -2633,6 +2642,9 @@ export declare type CapoDeployedDetails<form extends "json" | "native" = "native
     isNullDeployment?: boolean;
 };
 
+/**
+ * @public
+ */
 export declare type CapoFeatureFlags = Record<string, boolean>;
 
 /**
@@ -4833,6 +4845,9 @@ export declare type charterDataState = {
 
 declare type CoinSelector = (utxos: TxInput[], amount: Value) => [TxInput[], TxInput[]];
 
+/**
+ * @public
+ */
 declare interface Colors {
     isColorSupported: boolean;
     reset: Formatter;
@@ -4878,6 +4893,9 @@ declare interface Colors {
     bgWhiteBright: Formatter;
 }
 
+/**
+ * @public
+ */
 export declare const colors: Colors;
 
 declare type ComputedScriptProperties = Partial<{
@@ -4888,6 +4906,9 @@ declare type ComputedScriptProperties = Partial<{
     identity: string;
 }>;
 
+/**
+ * @public
+ */
 export declare type ConcreteCapoDelegateBundle = typeof CapoDelegateBundle & Constructor<CapoDelegateBundle> & EmptyConstructor<CapoDelegateBundle> & {
     capoBundle: CapoHeliosBundle;
     isConcrete: true;
@@ -6077,6 +6098,9 @@ declare class DelegateDatumHelper_2 extends EnumBridge<JustAnEnum> {
     }): InlineTxOutputDatum;
 }
 
+/**
+ * @public
+ */
 export declare abstract class DelegatedDataBundle extends CapoDelegateBundle {
     scriptParamsSource: "bundle";
     /**
@@ -7485,6 +7509,9 @@ export declare type dgtStateKey<N extends string, PREFIX extends string = "dgPol
  */
 export declare function displayTokenName(nameBytesOrString: string | number[]): string;
 
+/**
+ * @public
+ */
 export declare class DraftEternlMultiSigner extends GenericSigner {
     canBatch: boolean;
     signTxBatch(batch: BatchSubmitController): Promise<any>;
@@ -7537,6 +7564,9 @@ export declare type EnumTypeMeta<EID extends EnumId, enumVariants extends Varian
     };
 };
 
+/**
+ * @public
+ */
 export declare const environment: {
     DEBUG: number;
     CARDANO_NETWORK: string;
@@ -8330,11 +8360,17 @@ export declare function findInputsInWallets(v: Value, searchIn: WalletsAndAddres
  */
 export declare type findReadDatumType<T extends canHaveDataBridge, CBT extends someContractBridgeType = possiblyAbstractContractBridgeType<T>> = IF<CBT["isAbstract"], readsUplcTo<any>, undefined extends CBT["datum"] ? never : undefined extends CBT["readDatum"] ? never : CBT["readDatum"]>;
 
+/**
+ * @public
+ */
 declare type Formatter = {
     start: string;
     end: string;
 } & ((input: string | number | null | undefined) => string);
 
+/**
+ * @public
+ */
 export declare type FoundCharterUtxo = {
     utxo: TxInput;
     datum: InlineDatum;
@@ -8402,6 +8438,9 @@ export declare type GenericDelegateDatum = Pick<ErgoDelegateDatum, "Cip68RefToke
     };
 };
 
+/**
+ * @public
+ */
 export declare class GenericSigner extends WalletSigningStrategy {
     canBatch: boolean;
     signSingleTx(tx: Tx): Promise<Signature[]>;
@@ -8493,6 +8532,7 @@ declare type hasRecId = string | number[] | UutName;
 
 /**
  * Factory for type-safe requirements details for a unit of software
+ * @public
  * @remarks
  * return `hasReqts({... requirements})` from a requirements() or other method in a class, to express
  * requirements using a standardized form that supports arbitrary amounts of detailed requirements
@@ -8504,7 +8544,6 @@ declare type hasRecId = string | number[] | UutName;
  *
  * NOTE: Type parameters are inferred from the provided data structure
  * @param reqtsMap - the ReqtsMap structure for the software unit
- * @public
  */
 export declare function hasReqts<R extends ReqtsMap<validReqts, inheritedNames>, const validReqts extends string = string & keyof R, const inheritedNames extends string | never = never>(reqtsMap: R): ReqtsMap<validReqts, inheritedNames>;
 
@@ -8574,6 +8613,9 @@ declare type HeliosBundleTypes = {
     redeemer: DataType;
 };
 
+/**
+ * @public
+ */
 export declare type HeliosOptimizeOptions = Exclude<Pick<Exclude<Parameters<Program["compile"]>[0], undefined | boolean>, "optimize">["optimize"], undefined | boolean>;
 
 /**
@@ -8882,6 +8924,10 @@ declare const JustAnEnum_2: unique symbol;
  */
 declare type JustAnEnum = typeof JustAnEnum_2;
 
+/**
+ * Converts lovelace to approximate ADA, in consumable 3-decimal form
+ * @public
+ */
 export declare function lovelaceToAda(lovelace: bigint | number): string;
 
 /**
@@ -11178,6 +11224,9 @@ declare const NotNested_2: unique symbol;
  */
 declare type NotNested = typeof NotNested_2;
 
+/**
+ * @public
+ */
 declare type numberString = `${number}`;
 
 /**
@@ -13366,6 +13415,9 @@ export declare type someContractBridgeClass = AbstractNew<ContractDataBridge>;
  */
 export declare type someContractBridgeType = ContractDataBridge;
 
+/**
+ * @public
+ */
 export declare interface someDataWrapper<wrappedType extends AnyDataTemplate<any, any>> {
     unwrapData(): wrappedType;
 }
@@ -13703,6 +13755,9 @@ declare type StateMachineEmitter<SM extends StateMachine<any, any>> = {
     [`backoff`]: [SM, number, string];
 };
 
+/**
+ * @public
+ */
 export declare type stateSummary = `pending` | `building` | `confirmed` | `submitting` | `confirming` | `failed` | `mostly confirmed` | `pending`;
 
 declare type StateTransitionTable<S extends string, T extends string> = {
@@ -14622,6 +14677,9 @@ export declare type SubmitOptions = TxPipelineOptions & {
  */
 export declare type submitterName = string;
 
+/**
+ * @public
+ */
 export declare type SubmitterRetryIntervals = {
     reconfirm?: number;
     submit?: number;
@@ -14717,10 +14775,16 @@ export declare class TxBatcher {
     rotate(chainBuilder?: TxChainBuilder): void;
 }
 
+/**
+ * @public
+ */
 declare type TxBatcherChanges = {
     rotated: [BatchSubmitController];
 };
 
+/**
+ * @public
+ */
 export declare type TxBatcherOptions = {
     submitters: namedSubmitters;
     setup?: SetupInfo;
@@ -14962,7 +15026,7 @@ export declare class TxSubmitMgr extends StateMachine<TxSubmitterStates, TxSubmi
     /**
      * the locally-unique id-ish label of the tx description
      * @remarks
-     * see {@link txId} for the actual txId available after the tx is built
+     * see {@link TxSubmitMgr.txId|txId} for the actual txId available after the tx is built
      */
     get id(): string;
     get txId(): TxId;
@@ -15020,11 +15084,20 @@ export declare class TxSubmitMgr extends StateMachine<TxSubmitterStates, TxSubmi
      */
     doSubmit(): Promise<TxId | undefined>;
     isTxExpired(tx: Tx): boolean;
-    private checkTxValidityDetails;
+    /**
+     * @internal
+     */
+    checkTxValidityDetails(tx: Tx): void;
 }
 
+/**
+ * @public
+ */
 declare type TxSubmitterStates = "submitting" | "confirming" | "softConfirmed" | "confirmed" | "failed";
 
+/**
+ * @public
+ */
 declare type TxSubmitterTransitions = "submitted" | "confirmed" | "unconfirmed" | "hardConfirm" | "failed" | "notOk" | "timeout" | "txExpired" | "reconfirm" | "otherSubmitterProblem";
 
 declare const TYPE_ERROR: unique symbol;
@@ -15595,6 +15668,9 @@ declare type useRawMinterSetup = Omit<NormalDelegateSetup, "mintDelegateActivity
  **/
 export declare function utxoAsString(x: TxInput, prefix?: string, utxoDCache?: UtxoDisplayCache): string;
 
+/**
+ * @public
+ */
 declare type UtxoDisplayCache = Map<TxOutputId, string>;
 
 /**
@@ -15907,6 +15983,9 @@ declare type WalletsAndAddresses = {
     addresses?: Address[];
 };
 
+/**
+ * @public
+ */
 export declare abstract class WalletSigningStrategy {
     abstract canBatch: boolean;
     wallet: Wallet;
