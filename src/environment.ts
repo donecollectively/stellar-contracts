@@ -47,6 +47,9 @@ if (
 // console.log(process.env);
 console.log("env:", {DEBUG, CARDANO_NETWORK, NODE_ENV, OPTIMIZE, cwd});
 
+/**
+ * @public
+ */
 export const environment = {
     DEBUG,
     CARDANO_NETWORK,

@@ -7,10 +7,16 @@ import {
 import { EventEmitter } from "eventemitter3";
 import type { WalletSigningStrategy } from "./WalletSigningStrategy.js";
 
+/**
+ * @public
+ */
 type TxBatcherChanges = {
     rotated: [BatchSubmitController];
 };
 
+/**
+ * @public
+ */
 export type TxBatcherOptions = {
     submitters: namedSubmitters;
     setup?: SetupInfo;

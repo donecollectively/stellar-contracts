@@ -14,6 +14,9 @@ import {
     type minimalDgDataTypeLike,
 } from "./DelegatedDataContract.js";
 
+/**
+ * @public
+ */
 export interface someDataWrapper<wrappedType extends AnyDataTemplate<any, any>> {
     unwrapData(): wrappedType;
 };

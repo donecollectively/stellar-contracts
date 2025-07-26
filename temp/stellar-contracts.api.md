@@ -1723,7 +1723,7 @@ export type ISNEVER<T, ELSE = never> = [T] extends [never] ? true : ELSE;
 // @public (undocumented)
 export type JustAnEnum = typeof JustAnEnum_2;
 
-// @public (undocumented)
+// @public
 export function lovelaceToAda(lovelace: bigint | number): string;
 
 // @public
@@ -2810,6 +2810,8 @@ export class TxSubmitMgr extends StateMachine<TxSubmitterStates, TxSubmitterTran
         submitter: CardanoTxSubmitter;
         retryIntervals?: SubmitterRetryIntervals;
     });
+    // @internal (undocumented)
+    checkTxValidityDetails(tx: Tx): void;
     confirmTx(): Promise<boolean>;
     // (undocumented)
     get currentSlot(): number;
@@ -3190,7 +3192,7 @@ export type WrappedPromise<T> = {
 //
 // src/Capo.ts:1209:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
-// src/StellarContract.ts:359:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
+// src/StellarContract.ts:365:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
 // src/StellarTxnContext.ts:93:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:161:7 - (ae-forgotten-export) The symbol "DelegateRoleHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:165:7 - (ae-forgotten-export) The symbol "ManifestActivityHelper_2" needs to be exported by the entry point index.d.ts

@@ -80,8 +80,15 @@ export type TxBatchChangeNotifier = {
     statusUpdate: [aggregatedStateString[]];
     // txFailed: [ SingleTxSubmissionState ]
 };
+
+/**
+ * @public
+ */
 type numberString = `${number}`;
 
+/**
+ * @public
+ */
 export type stateSummary =
     | `pending`
     | `building`
@@ -91,6 +98,10 @@ export type stateSummary =
     | `failed`
     | `mostly confirmed`
     | `pending`;
+
+/**
+ * @public
+ */
 export type aggregatedStateString =
     | `pending`
     | `${numberString} confirming`
@@ -99,6 +110,9 @@ export type aggregatedStateString =
     | `${numberString} failed`
     | `${numberString} mostly confirmed`;
 
+/**
+ * @public
+ */
 export type BatchSubmitControllerOptions = {
     submitters: namedSubmitters;
     setup: SetupInfo;
@@ -152,8 +166,8 @@ export type BatchSubmitControllerOptions = {
  * purposes.
  * @public
  */
-/* was SubmitterMultiClient */
 export class BatchSubmitController {
+    /* was SubmitterMultiClient */
     readonly submitters: namedSubmitters;
     setup: SetupInfo;
     submitOptions: SubmitOptions & TxSubmitCallbacks;

@@ -11,6 +11,9 @@ import {
 import type { TxSubmissionTracker } from "./TxSubmissionTracker.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 
+/**
+ * @public
+ */
 export abstract class WalletSigningStrategy {
     abstract canBatch: boolean;
     wallet: Wallet;
@@ -75,6 +78,9 @@ export abstract class WalletSigningStrategy {
     }
 }
 
+/**
+ * @public
+ */ 
 export class GenericSigner extends WalletSigningStrategy {
     canBatch = false;
 
@@ -83,6 +89,9 @@ export class GenericSigner extends WalletSigningStrategy {
     }
 }
 
+/**
+ * @public
+ */
 export class DraftEternlMultiSigner extends GenericSigner {
     canBatch = true;
 

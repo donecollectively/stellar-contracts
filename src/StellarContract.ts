@@ -323,6 +323,9 @@ export async function findInputsInWallets(
     );
 }
 
+/**
+ * @public
+ */
 export type HeliosOptimizeOptions = Exclude<
     Pick<
         Exclude<Parameters<Program["compile"]>[0], undefined | boolean>,
@@ -331,6 +334,9 @@ export type HeliosOptimizeOptions = Exclude<
     undefined | boolean
 >;
 
+/**
+ * @public
+ */
 export type UtxoDisplayCache = Map<TxOutputId, string>;
 /**
  * standard setup for any Stellar Contract class

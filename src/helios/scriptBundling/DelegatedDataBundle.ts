@@ -1,6 +1,9 @@
 import type { Source } from "@helios-lang/compiler-utils";
 import { CapoDelegateBundle } from "./CapoDelegateBundle.js";
 
+/**
+ * @public
+ */
 export abstract class DelegatedDataBundle extends CapoDelegateBundle {
     scriptParamsSource = "bundle" as const
     /**

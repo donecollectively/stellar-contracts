@@ -83,12 +83,19 @@ type txSubmissionDetails = {
     // onStateChanged: (state: SubmitManagerState) => void;
 };
 
+/**
+ * @public
+ */ 
 type TxSubmitterStates =
     | "submitting"
     | "confirming"
     | "softConfirmed"
     | "confirmed"
     | "failed";
+
+/**
+ * @public
+ */
 type TxSubmitterTransitions =
     | "submitted"
     | "confirmed"
@@ -101,6 +108,9 @@ type TxSubmitterTransitions =
     | "reconfirm"
     | "otherSubmitterProblem";
 
+/**
+ * @public
+ */
 export type SubmitterRetryIntervals = {
     reconfirm?: number;
     submit?: number;
@@ -109,6 +119,9 @@ export type SubmitterRetryIntervals = {
     maximum?: number;
 };
 
+/**
+ * @public
+ */
 const noTransitionsExcept = {
     submitted: null,
     confirmed: null,
@@ -239,7 +252,7 @@ export class TxSubmitMgr extends StateMachine<
     /**
      * the locally-unique id-ish label of the tx description
      * @remarks
-     * see {@link txId} for the actual txId available after the tx is built
+     * see {@link TxSubmitMgr.txId|txId} for the actual txId available after the tx is built
      */
     get id() {
         return this.txd.id;
@@ -1064,7 +1077,10 @@ export class TxSubmitMgr extends StateMachine<
         return false;
     }
 
-    private checkTxValidityDetails(tx: Tx) {
+    /**
+     * @internal
+     */
+    checkTxValidityDetails(tx: Tx) {
         const b = tx.body;
         // const db = tx.dump().body;
         function getAttr(x: string) {

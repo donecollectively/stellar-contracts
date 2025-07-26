@@ -105,14 +105,23 @@ let createColors = (enabled = isColorSupported) => {
 	} as any
 }
 
+/**
+ * @public
+ */
 export const colors : Colors = createColors()
 
 
+/**
+ * @public
+ */
 export type Formatter = {
     start: string;
     end: string;
 } & ((input: string | number | null | undefined) => string);
 
+/**
+ * @public
+ */
 export interface Colors {
     isColorSupported: boolean;
 

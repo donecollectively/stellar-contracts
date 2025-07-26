@@ -488,7 +488,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!aggregatedStateString:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -1632,7 +1632,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!basicDelegateRoles:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -3653,7 +3653,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!BatchSubmitControllerOptions:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -15276,7 +15276,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!CapoFeatureFlags:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -17458,7 +17458,7 @@
         {
           "kind": "Variable",
           "canonicalReference": "@donecollectively/stellar-contracts!colors:var",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -17482,7 +17482,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!ConcreteCapoDelegateBundle:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -21084,7 +21084,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!DelegatedDataBundle:class",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -24243,7 +24243,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!DraftEternlMultiSigner:class",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -24875,7 +24875,7 @@
         {
           "kind": "Variable",
           "canonicalReference": "@donecollectively/stellar-contracts!environment:var",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -25561,7 +25561,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!FoundCharterUtxo:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -26109,7 +26109,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!GenericSigner:class",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -27311,7 +27311,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!HeliosOptimizeOptions:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -30397,7 +30397,7 @@
         {
           "kind": "Function",
           "canonicalReference": "@donecollectively/stellar-contracts!lovelaceToAda:function(1)",
-          "docComment": "",
+          "docComment": "/**\n * Converts lovelace to approximate ADA, in consumable 3-decimal form\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -35855,7 +35855,7 @@
         {
           "kind": "Interface",
           "canonicalReference": "@donecollectively/stellar-contracts!someDataWrapper:interface",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -36244,7 +36244,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!stateSummary:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -45422,7 +45422,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!SubmitterRetryIntervals:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -46101,7 +46101,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!TxBatcherOptions:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -48321,7 +48321,7 @@
             {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!TxSubmitMgr#id:member",
-              "docComment": "/**\n * the locally-unique id-ish label of the tx description\n *\n * @remarks\n *\n * see {@link txId} for the actual txId available after the tx is built\n */\n",
+              "docComment": "/**\n * the locally-unique id-ish label of the tx description\n *\n * @remarks\n *\n * see {@link TxSubmitMgr.txId | txId} for the actual txId available after the tx is built\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -54673,7 +54673,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!WalletSigningStrategy:class",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",

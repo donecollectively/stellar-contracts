@@ -237,6 +237,10 @@ export function lovelaceToAdaOld(l: bigint | number) {
     return ada;
 }
 
+/**
+ * Converts lovelace to approximate ADA, in consumable 3-decimal form
+ * @public
+ */
 export function lovelaceToAda(lovelace: bigint | number): string {
     const asNum = parseInt(lovelace.toString());
     // input: 6004000 should output 6_004.000
@@ -252,6 +256,10 @@ export function lovelaceToAda(lovelace: bigint | number): string {
     return `${wholeWithSeparators}.${fractionWithSeparators} ADA`;
 }
 
+/**
+ * Converts a bigint or number to a string with commas as thousands separators
+ * @public
+ */
 export function intWithGrouping(i : bigint | number) {
     const whole = Math.floor(Number(i)).toFixed(0);
     const fraction = Math.abs(Number(i) - Math.floor(Number(i))).toFixed(0);

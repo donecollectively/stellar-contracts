@@ -216,6 +216,9 @@ export type FoundDatumUtxo<
     dataWrapped?: WRAPPED_DatumType;
 };
 
+/**
+ * @public
+ */
 export type FoundCharterUtxo = {
     utxo: TxInput;
     datum: InlineDatum;
@@ -332,6 +335,9 @@ export type PreconfiguredDelegate<T extends StellarDelegate> = Omit<
     };
 };
 
+/**
+ * @public
+ */
 export type basicDelegateRoles = {
     govAuthority: DelegateSetup<"authority", StellarDelegate, any>;
     mintDelegate: DelegateSetup<"mintDgt", BasicMintDelegate, any>;
@@ -418,5 +424,8 @@ export type FindableViaCharterData = {
     optional?: true;
 };
 
+/**
+ * @public
+ */
 export type CapoFeatureFlags = Record<string, boolean>;
 
