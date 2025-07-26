@@ -24,6 +24,7 @@ import {
     decodeTx,
     makeAssets,
     makeNetworkParamsHelper,
+    makePubKey,
     makeTx,
     makeTxBody,
     makeTxCertifyingRedeemer,
@@ -755,6 +756,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this.noFacade("validFor");
         const startMoment = this.txnTime.getTime();
 
+        // if the desired duration is greater  the current validity period,
+        //   DO NOT constraint the validity period further.
+        // If the current validity period is greater than the desired duration,
+        //   we SHOULD constrain the tx validity to this more restrictive duration.
         this._validityPeriodSet = true;
         this.txb
             .validFromTime(new Date(startMoment))
@@ -1383,8 +1388,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         // }
         //!!! ^^^ remove?
 
-        return this.buildAndQueueAll(options).then(() => {
-            return true;
+        return this.buildAndQueueAll(options).then((batch) => {
+            return batch;
             //            return currentBatch.$signAndSubmitAll().then(() => true);
         });
     }
@@ -1417,7 +1422,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const {
             addlTxInfo = {
                 description: this.txnName
-                    ? ": " + this.txnName
+                    ? this.txnName
                     : "‹unnamed tx›",
                 id: this.id,
                 tcx: this,
@@ -1450,7 +1455,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         `🎄⛄🎁 ${this.id}   -- B&QA - registering addl txns`
                     );
                     return this.queueAddlTxns(options).then(() => {
-                        return true;
+                        return this.currentBatch;
                     });
 
                     // .then((x) => {
@@ -1459,6 +1464,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     //     // return x;
                     // });
                 }
+                return this.currentBatch
             });
         } else if (this.state.addlTxns) {
             if (this.isFacade) {
@@ -1470,7 +1476,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 `🎄⛄🎁 ${this.id}   -- B&QA - registering txns in facade`
             );
             return this.queueAddlTxns(generalSubmitOptions).then(() => {
-                return true;
+                return this.currentBatch;
             });
         }
         console.warn(`⚠️  submitAll(): no txns to queue/submit`, this);
