@@ -1,6 +1,6 @@
 import { C as CapoHeliosBundle } from '../CapoHeliosBundle2.mjs';
 import { makeSource } from '@helios-lang/compiler-utils';
-import { I as HeliosScriptBundle } from '../HeliosScriptBundle.mjs';
+import { HeliosScriptBundle } from '../HeliosBundle.mjs';
 import '../BasicDelegate.mjs';
 import '../DefaultCapo.mjs';
 import '@helios-lang/ledger';
@@ -10,8 +10,6 @@ import '@helios-lang/compiler';
 import '@helios-lang/codec-utils';
 import '@helios-lang/crypto';
 import '@helios-lang/contract-utils';
-import '@helios-lang/tx-utils';
-import 'nanoid';
 import '../environment.mjs';
 
 const CapoMinter_hl = makeSource(

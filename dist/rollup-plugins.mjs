@@ -801,7 +801,10 @@ import type {
     // BytesLike,
  } from "@helios-lang/codec-utils";
 
- type TimeLike = IntLike;
+/**
+ * @public
+ */
+export type TimeLike = IntLike;
  
 ${stellarImports}
 
@@ -1130,6 +1133,10 @@ import {
 // NOTE: this file is auto-generated; do not edit directly
 ${imports}
 ${scImports}
+
+/**
+ * @public
+ */
 export type TimeLike = IntLike;
 
 ${this.includeScriptNamedTypes(inputFile)}
@@ -1178,7 +1185,7 @@ ${this.includeNamedSchemas()}
 `;
   }
   generateDataReaderClass(className) {
-    return `/*
+    return `/**
  * @public
  */
 export class ${className} extends DataBridgeReaderClass {
@@ -1679,7 +1686,6 @@ export class ${helperClassName} extends ${parentClass} {
         const nestedAccessor = new ${nestedHelperClassName}({
             isMainnet: this.isMainnet, isNested: true, isActivity: ${isActivity ? "true" : "false"} 
         });
-        ${"//"}@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
             (${nestedFieldName}: ${nestedEnumName}Like) => {
                 return  this.mkUplcData({ ${variantName}: ${nestedFieldName} }, 
@@ -2282,7 +2288,7 @@ ${[...this.bundleEntries.keys()].map((k) => `  - ${k}`).join("\n")}`
         `cannot generate types for ${filename} with status ${status}`
       );
     }
-    let typeFilename = filename.replace(/(\.hlb)?\.[jt]s$/, ".typeInfo.ts");
+    let typeFilename = filename.replace(/(\.hlb)?\.[jt]s$/, ".typeInfo.d.ts");
     const { bundleClassName, parentClassName } = bundleEntry;
     if (!parentClassName) {
       throw new Error(`no parent class name for ${filename}`);

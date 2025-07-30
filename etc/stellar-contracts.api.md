@@ -1049,29 +1049,29 @@ export class DataBridge extends DataBridge_base {
     // (undocumented)
     getSeed(arg: hasSeed | TxOutputId): TxOutputId;
     // (undocumented)
-    protected getTypeSchema(): TypeSchema;
+    getTypeSchema(): TypeSchema;
     // (undocumented)
-    protected isActivity: boolean;
+    isActivity: boolean;
     // (undocumented)
     isCallable: boolean;
     // (undocumented)
-    protected get isEnum(): boolean;
+    get isEnum(): boolean;
     // (undocumented)
-    protected isMainnet: boolean;
+    isMainnet: boolean;
     // (undocumented)
-    protected isNested: boolean;
+    isNested: boolean;
     // (undocumented)
     mkData: this["ᱺᱺcast"]["toUplcData"];
     // (undocumented)
-    protected mkDataVia(redirectionCallback: (value: any) => void): void;
+    mkDataVia(redirectionCallback: (value: any) => void): void;
     // (undocumented)
     readData: this["ᱺᱺcast"]["fromUplcData"];
     // (undocumented)
-    protected redirectTo?: (value: any) => void;
+    redirectTo?: (value: any) => void;
     // (undocumented)
     ᱺᱺcast: Cast<any, any>;
     // (undocumented)
-    protected ᱺᱺschema: TypeSchema;
+    ᱺᱺschema: TypeSchema;
 }
 
 // Warning: (ae-internal-missing-underscore) The name "DataBridgeOptions" should be prefixed with an underscore because the declaration is marked as @internal
@@ -1310,7 +1310,6 @@ export class DraftEternlMultiSigner extends GenericSigner {
 // @public
 export function dumpAny(x: undefined | Tx | StellarTxnContext | Address | MintingPolicyHash | Value | Assets | TxOutputId | TxOutput | TxOutput[] | TxInput | TxInput[] | TxId | number[] | ByteArrayData | ByteArrayData[], networkParams?: NetworkParams, forJson?: boolean): any;
 
-// Warning: (ae-forgotten-export) The symbol "isDatum" needs to be exported by the entry point index.d.ts
 // Warning: (ae-incompatible-release-tags) The symbol "EnumBridge" is marked as @public, but its signature references "DataBridge" which is marked as @internal
 //
 // @public
@@ -1320,7 +1319,7 @@ export class EnumBridge<TYPE extends isActivity | isDatum | JustAnEnum = JustAnE
     // Warning: (ae-incompatible-release-tags) The symbol "__constructor" is marked as @public, but its signature references "DataBridgeOptions" which is marked as @internal
     constructor(options: DataBridgeOptions);
     // (undocumented)
-    protected mkUplcData(value: any, enumPathExpr: string): uplcReturnType;
+    mkUplcData(value: any, enumPathExpr: string): uplcReturnType;
 }
 
 // Warning: (ae-forgotten-export) The symbol "EnumId" needs to be exported by the entry point index.d.ts
@@ -1569,7 +1568,7 @@ export abstract class HeliosScriptBundle {
     effectiveDatumTypeName(): string;
     getEffectiveModuleList(): Source[];
     // (undocumented)
-    getPreCompiledBundle(variant: string): DeployedProgramBundle;
+    getPreCompiledBundle(variant: string): DeployedProgramBundle_2;
     // (undocumented)
     getPreconfiguredUplcParams(variantName: string): UplcRecord_2<any> | undefined;
     // (undocumented)
@@ -1590,7 +1589,7 @@ export abstract class HeliosScriptBundle {
     }>;
     // Warning: (ae-forgotten-export) The symbol "HeliosBundleTypes" needs to be exported by the entry point index.d.ts
     //
-    // (undocumented)
+    // @internal (undocumented)
     getTopLevelTypes(): HeliosBundleTypes;
     // (undocumented)
     get hasAnyVariant(): boolean;
@@ -1612,9 +1611,9 @@ export abstract class HeliosScriptBundle {
     isMainnet: boolean;
     // (undocumented)
     get isPrecompiled(): boolean;
-    // (undocumented)
+    // @internal (undocumented)
     locateDatumType(): DataType | undefined;
-    // (undocumented)
+    // @internal (undocumented)
     locateRedeemerType(): DataType;
     // (undocumented)
     logModuleDetails(): void;
@@ -1627,7 +1626,7 @@ export abstract class HeliosScriptBundle {
     get optimize(): HeliosOptimizeOptions | boolean | undefined;
     // (undocumented)
     get params(): any;
-    // (undocumented)
+    // @internal (undocumented)
     paramsToUplc<ConfigType extends configBase>(params: Record<string, any>): UplcRecord_2<ConfigType>;
     // (undocumented)
     get preBundledScript(): UplcProgramV2 | undefined;
@@ -1663,7 +1662,7 @@ export abstract class HeliosScriptBundle {
     //
     // (undocumented)
     setup: SetupOrMainnetSignalForBundle;
-    // (undocumented)
+    // @internal (undocumented)
     typeToUplc(type: DataType, data: any, path?: string): UplcData;
     // Warning: (ae-forgotten-export) The symbol "HeliosBundleClassWithCapo" needs to be exported by the entry point index.d.ts
     static usingCapoBundleClass<CB extends CapoBundleClass>(c: CB): HeliosBundleClassWithCapo;
@@ -1716,12 +1715,19 @@ export type isActivity = {
 };
 
 // @public (undocumented)
+export const isDatum: unique symbol;
+
+// @public (undocumented)
+export type isDatum = typeof isDatum;
+
+// @public (undocumented)
 export type ISNEVER<T, ELSE = never> = [T] extends [never] ? true : ELSE;
 
-// Warning: (ae-forgotten-export) The symbol "JustAnEnum_2" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
-export type JustAnEnum = typeof JustAnEnum_2;
+export const JustAnEnum: unique symbol;
+
+// @public (undocumented)
+export type JustAnEnum = typeof JustAnEnum;
 
 // @public
 export function lovelaceToAda(lovelace: bigint | number): string;
@@ -1879,10 +1885,11 @@ export type namedSubmitters = Record<submitterName, CardanoTxSubmitter>;
 // @public (undocumented)
 export type namedTxSubmitMgrs = Record<submitterName, TxSubmitMgr>;
 
-// Warning: (ae-forgotten-export) The symbol "Nested_2" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
-export type Nested = typeof Nested_2;
+export const Nested: unique symbol;
+
+// @public (undocumented)
+export type Nested = typeof Nested;
 
 // @public (undocumented)
 export type NetworkContext<NWT extends CardanoClient = CardanoClient> = {
@@ -1900,10 +1907,11 @@ export type NormalDelegateSetup = {
     mintDelegateActivity: isActivity;
 };
 
-// Warning: (ae-forgotten-export) The symbol "NotNested_2" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
-export type NotNested = typeof NotNested_2;
+export const NotNested: unique symbol;
+
+// @public (undocumented)
+export type NotNested = typeof NotNested;
 
 // @public
 export type OffchainPartialDelegateLink = {
@@ -3190,34 +3198,34 @@ export type WrappedPromise<T> = {
 
 // Warnings were encountered during analysis:
 //
+// .api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts:290:5 - (ae-forgotten-export) The symbol "ErgoManifestEntryType" needs to be exported by the entry point index.d.ts
+// .api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts:743:5 - (ae-forgotten-export) The symbol "ErgoPendingDelegateChange" needs to be exported by the entry point index.d.ts
+// .api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts:745:5 - (ae-forgotten-export) The symbol "PendingCharterChange$Ergo$otherManifestChange" needs to be exported by the entry point index.d.ts
 // src/Capo.ts:1209:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
 // src/StellarContract.ts:365:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
 // src/StellarTxnContext.ts:93:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:161:7 - (ae-forgotten-export) The symbol "DelegateRoleHelper_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:165:7 - (ae-forgotten-export) The symbol "ManifestActivityHelper_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:169:7 - (ae-forgotten-export) The symbol "CapoLifecycleActivityHelper_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:173:7 - (ae-forgotten-export) The symbol "DelegateLifecycleActivityHelper" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:177:7 - (ae-forgotten-export) The symbol "SpendingActivityHelper" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:181:7 - (ae-forgotten-export) The symbol "MintingActivityHelper" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:185:7 - (ae-forgotten-export) The symbol "BurningActivityHelper" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:193:7 - (ae-forgotten-export) The symbol "PendingDelegateActionHelper_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:197:7 - (ae-forgotten-export) The symbol "ManifestEntryTypeHelper_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:201:7 - (ae-forgotten-export) The symbol "PendingCharterChangeHelper_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:205:7 - (ae-forgotten-export) The symbol "cctx_CharterInputTypeHelper" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:210:7 - (ae-forgotten-export) The symbol "AnyDataLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:220:7 - (ae-forgotten-export) The symbol "DelegationDetailLike" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:231:7 - (ae-forgotten-export) The symbol "RelativeDelegateLinkLike_3" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:242:7 - (ae-forgotten-export) The symbol "PendingDelegateChangeLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:243:5 - (ae-forgotten-export) The symbol "PendingDelegateActionLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:244:5 - (ae-forgotten-export) The symbol "DelegateRoleLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:253:7 - (ae-forgotten-export) The symbol "CapoManifestEntryLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:254:5 - (ae-forgotten-export) The symbol "ManifestEntryTypeLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:264:7 - (ae-forgotten-export) The symbol "CapoCtxLike" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:266:5 - (ae-forgotten-export) The symbol "cctx_CharterInputTypeLike" needs to be exported by the entry point index.d.ts
-// src/helios/scriptBundling/CapoHeliosBundle.typeInfo.ts:367:5 - (ae-forgotten-export) The symbol "ErgoManifestEntryType" needs to be exported by the entry point index.d.ts
-// src/helios/scriptBundling/CapoHeliosBundle.typeInfo.ts:893:13 - (ae-forgotten-export) The symbol "ErgoPendingDelegateChange" needs to be exported by the entry point index.d.ts
-// src/helios/scriptBundling/CapoHeliosBundle.typeInfo.ts:895:13 - (ae-forgotten-export) The symbol "PendingCharterChange$Ergo$otherManifestChange" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:165:7 - (ae-forgotten-export) The symbol "DelegateRoleHelper_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:169:7 - (ae-forgotten-export) The symbol "ManifestActivityHelper_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:173:7 - (ae-forgotten-export) The symbol "CapoLifecycleActivityHelper_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:177:7 - (ae-forgotten-export) The symbol "DelegateLifecycleActivityHelper" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:181:7 - (ae-forgotten-export) The symbol "SpendingActivityHelper" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:185:7 - (ae-forgotten-export) The symbol "MintingActivityHelper" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:189:7 - (ae-forgotten-export) The symbol "BurningActivityHelper" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:197:7 - (ae-forgotten-export) The symbol "PendingDelegateActionHelper_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:201:7 - (ae-forgotten-export) The symbol "ManifestEntryTypeHelper_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:205:7 - (ae-forgotten-export) The symbol "PendingCharterChangeHelper_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:209:7 - (ae-forgotten-export) The symbol "cctx_CharterInputTypeHelper" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:214:7 - (ae-forgotten-export) The symbol "AnyDataLike_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:224:7 - (ae-forgotten-export) The symbol "DelegationDetailLike" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:235:7 - (ae-forgotten-export) The symbol "RelativeDelegateLinkLike_3" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:246:7 - (ae-forgotten-export) The symbol "PendingDelegateChangeLike_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:247:5 - (ae-forgotten-export) The symbol "PendingDelegateActionLike_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:248:5 - (ae-forgotten-export) The symbol "DelegateRoleLike_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:257:7 - (ae-forgotten-export) The symbol "CapoManifestEntryLike_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:258:5 - (ae-forgotten-export) The symbol "ManifestEntryTypeLike_2" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:268:7 - (ae-forgotten-export) The symbol "CapoCtxLike" needs to be exported by the entry point index.d.ts
+// src/delegation/UnspecializedDelegate.bridge.ts:270:5 - (ae-forgotten-export) The symbol "cctx_CharterInputTypeLike" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

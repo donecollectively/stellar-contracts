@@ -4471,6 +4471,9 @@ declare class CapoMinterDataBridge extends ContractDataBridge {
     ᱺᱺRelativeDelegateLinkCast: Cast<RelativeDelegateLink_2, RelativeDelegateLinkLike_2>;
 }
 
+/**
+ * @public
+ */
 declare class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
     bridge: CapoMinterDataBridge;
     constructor(bridge: CapoMinterDataBridge, isMainnet: boolean);
@@ -5188,20 +5191,50 @@ declare type CoreDgDataUpdateOptions<TLike extends AnyDataTemplate<any, any>> = 
  * @internal
  */
 export declare class DataBridge extends DataBridge_base {
-    protected ᱺᱺschema: TypeSchema;
-    protected isMainnet: boolean;
-    protected isActivity: boolean;
-    protected isNested: boolean;
+    /**
+     * @internal
+     */
+    ᱺᱺschema: TypeSchema;
+    /**
+     * @internal
+     */
+    isMainnet: boolean;
+    /**
+     * @internal
+     */
+    isActivity: boolean;
+    /**
+     * @internal
+     */
+    isNested: boolean;
+    /**
+     * @internal
+     */
     ᱺᱺcast: Cast<any, any>;
+    /**
+     * @internal
+     */
     isCallable: boolean;
     mkData: this["ᱺᱺcast"]["toUplcData"];
     readData: this["ᱺᱺcast"]["fromUplcData"];
     constructor(options: DataBridgeOptions);
     getSeed(arg: hasSeed | TxOutputId): TxOutputId;
-    protected redirectTo?: (value: any) => void;
-    protected mkDataVia(redirectionCallback: (value: any) => void): void;
-    protected get isEnum(): boolean;
-    protected getTypeSchema(): TypeSchema;
+    /**
+     * @internal
+     */
+    redirectTo?: (value: any) => void;
+    /**
+     * @internal
+     */
+    mkDataVia(redirectionCallback: (value: any) => void): void;
+    /**
+     * @internal
+     */
+    get isEnum(): boolean;
+    /**
+     * @internal
+     */
+    getTypeSchema(): TypeSchema;
 }
 
 declare const DataBridge_base: ObjectConstructor;
@@ -7539,7 +7572,7 @@ export declare class EnumBridge<TYPE extends isActivity | isDatum | JustAnEnum =
     redeemer: UplcData;
 } : UplcData> extends DataBridge {
     constructor(options: DataBridgeOptions);
-    protected mkUplcData(value: any, enumPathExpr: string): uplcReturnType;
+    mkUplcData(value: any, enumPathExpr: string): uplcReturnType;
 }
 
 declare type EnumId = {
@@ -8603,11 +8636,17 @@ declare type hasWrap = {
     wrap: Promise<any>;
 };
 
+/**
+ * @public
+ */
 declare type HeliosBundleClassWithCapo = typeof HeliosScriptBundle & EmptyConstructor<HeliosScriptBundle> & {
     capoBundle: CapoHeliosBundle;
     isConcrete: true;
 };
 
+/**
+ * @public
+ */
 declare type HeliosBundleTypes = {
     datum?: DataType;
     redeemer: DataType;
@@ -8698,7 +8737,7 @@ export declare abstract class HeliosScriptBundle {
     scriptHash?: number[] | undefined;
     init(setupDetails: StellarBundleSetupDetails<any>): void;
     get isPrecompiled(): boolean;
-    getPreCompiledBundle(variant: string): DeployedProgramBundle;
+    getPreCompiledBundle(variant: string): DeployedProgramBundle_2;
     getPreconfiguredVariantParams(variantName: string): any;
     getPreconfiguredUplcParams(variantName: string): UplcRecord_2<any> | undefined;
     withSetupDetails(details: StellarBundleSetupDetails<any>): this;
@@ -8818,11 +8857,26 @@ export declare abstract class HeliosScriptBundle {
     isHeliosScriptBundle(): boolean;
     addTypeProxies(): void;
     effectiveDatumTypeName(): string;
+    /**
+     * @internal
+     */
     locateDatumType(): DataType | undefined;
+    /**
+     * @internal
+     */
     locateRedeemerType(): DataType;
     get includeEnums(): string[];
+    /**
+     * @internal
+     */
     getTopLevelTypes(): HeliosBundleTypes;
+    /**
+     * @internal
+     */
     paramsToUplc<ConfigType extends configBase>(params: Record<string, any>): UplcRecord_2<ConfigType>;
+    /**
+     * @internal
+     */
     typeToUplc(type: DataType, data: any, path?: string): UplcData;
 }
 
@@ -8898,14 +8952,12 @@ export declare type isActivity = {
 /**
  * @public
  */
-declare type isDatum = typeof isDatum_2;
-
-declare const isDatum_2: unique symbol;
+export declare const isDatum: unique symbol;
 
 /**
  * @public
  */
-declare type isDatum = typeof isDatum_2;
+export declare type isDatum = typeof isDatum;
 
 /**
  * @public
@@ -8915,14 +8967,12 @@ export declare type ISNEVER<T, ELSE = never> = [T] extends [never] ? true : ELSE
 /**
  * @public
  */
-export declare type JustAnEnum = typeof JustAnEnum_2;
-
-declare const JustAnEnum_2: unique symbol;
+export declare const JustAnEnum: unique symbol;
 
 /**
  * @public
  */
-declare type JustAnEnum = typeof JustAnEnum_2;
+export declare type JustAnEnum = typeof JustAnEnum;
 
 /**
  * Converts lovelace to approximate ADA, in consumable 3-decimal form
@@ -11177,14 +11227,12 @@ declare type NeedsSingleArgError = TypeError_2<"expected at most one arg for see
 /**
  * @public
  */
-export declare type Nested = typeof Nested_2;
-
-declare const Nested_2: unique symbol;
+export declare const Nested: unique symbol;
 
 /**
  * @public
  */
-declare type Nested = typeof Nested_2;
+export declare type Nested = typeof Nested;
 
 /**
  * @public
@@ -11215,14 +11263,12 @@ declare type noTimeout = Record<string, never>;
 /**
  * @public
  */
-export declare type NotNested = typeof NotNested_2;
-
-declare const NotNested_2: unique symbol;
+export declare const NotNested: unique symbol;
 
 /**
  * @public
  */
-declare type NotNested = typeof NotNested_2;
+export declare type NotNested = typeof NotNested;
 
 /**
  * @public
@@ -12893,6 +12939,9 @@ declare class ReqtsPolicyDataBridge extends ContractDataBridge {
     ᱺᱺCapoCtxCast: Cast<CapoCtx_2, CapoCtxLike_2>;
 }
 
+/**
+ * @public
+ */
 declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
     bridge: ReqtsPolicyDataBridge;
     constructor(bridge: ReqtsPolicyDataBridge, isMainnet: boolean);
@@ -13924,7 +13973,7 @@ export declare class StellarContract<ConfigType extends configBase> {
      * to your StellarContracts class module, and define a `scriptBundle() { return new YourScriptNameBundle() }` or
      * similar method in that class.
      *
-     * This results in a generated **`.typeInfo.ts`** and **`.bridge.ts`** with complete
+     * This results in a generated **`.typeInfo.d.ts`** and **`.bridge.ts`** with complete
      * typescript bindings for your on-chain script (trouble? check Plugin setup below).
      *
      * #### Step 2: Import the generated bridge class
@@ -14704,6 +14753,9 @@ export { textToBytes }
 
 declare type TimeLike = IntLike;
 
+/**
+ * @public
+ */
 declare type TimeLike_2 = IntLike;
 
 /**
@@ -15272,6 +15324,9 @@ export declare class UnspecializedDelegateBridge extends ContractDataBridge {
     ᱺᱺCapoCtxCast: Cast<CapoCtx, CapoCtxLike>;
 }
 
+/**
+ * @public
+ */
 declare class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
     bridge: UnspecializedDelegateBridge;
     constructor(bridge: UnspecializedDelegateBridge, isMainnet: boolean);

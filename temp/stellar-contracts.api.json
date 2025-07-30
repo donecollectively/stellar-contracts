@@ -24581,7 +24581,7 @@
             {
               "kind": "Reference",
               "text": "isDatum",
-              "canonicalReference": "@donecollectively/stellar-contracts!~isDatum:type"
+              "canonicalReference": "@donecollectively/stellar-contracts!isDatum:type"
             },
             {
               "kind": "Content",
@@ -24712,7 +24712,7 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "protected mkUplcData(value: "
+                  "text": "mkUplcData(value: "
                 },
                 {
                   "kind": "Content",
@@ -24745,7 +24745,7 @@
                 "endIndex": 6
               },
               "releaseTag": "Public",
-              "isProtected": true,
+              "isProtected": false,
               "overloadIndex": 1,
               "parameters": [
                 {
@@ -24931,7 +24931,7 @@
               "text": ";"
             }
           ],
-          "fileUrlPath": "src/helios/scriptBundling/CapoHeliosBundle.typeInfo.ts",
+          "fileUrlPath": ".api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts",
           "releaseTag": "Public",
           "name": "ErgoCapoManifestEntry",
           "typeTokenRange": {
@@ -24980,7 +24980,7 @@
               "text": ";"
             }
           ],
-          "fileUrlPath": "src/helios/scriptBundling/CapoHeliosBundle.typeInfo.ts",
+          "fileUrlPath": ".api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts",
           "releaseTag": "Public",
           "name": "ErgoPendingCharterChange",
           "typeTokenRange": {
@@ -28233,6 +28233,10 @@
                   "text": "): "
                 },
                 {
+                  "kind": "Content",
+                  "text": "import(\"../CachedHeliosProgram.js\")."
+                },
+                {
                   "kind": "Reference",
                   "text": "DeployedProgramBundle",
                   "canonicalReference": "@donecollectively/stellar-contracts!~DeployedProgramBundle:type"
@@ -28245,7 +28249,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 3,
-                "endIndex": 4
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -28436,38 +28440,6 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "getSerializedProgramBundle"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#getTopLevelTypes:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "getTopLevelTypes(): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "HeliosBundleTypes",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~HeliosBundleTypes:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "getTopLevelTypes"
             },
             {
               "kind": "Property",
@@ -28828,74 +28800,6 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#locateDatumType:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "locateDatumType(): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "DataType",
-                  "canonicalReference": "@helios-lang/compiler!DataType:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": " | undefined"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 3
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "locateDatumType"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#locateRedeemerType:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "locateRedeemerType(): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "DataType",
-                  "canonicalReference": "@helios-lang/compiler!DataType:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "locateRedeemerType"
-            },
-            {
-              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#logModuleDetails:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -29115,86 +29019,6 @@
               "isStatic": false,
               "isProtected": false,
               "isAbstract": false
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#paramsToUplc:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "paramsToUplc<ConfigType extends "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "configBaseWithRev",
-                  "canonicalReference": "@donecollectively/stellar-contracts!configBase:interface"
-                },
-                {
-                  "kind": "Content",
-                  "text": ">(params: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "Record",
-                  "canonicalReference": "!Record:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<string, any>"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "UplcRecord",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~UplcRecord_2:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<ConfigType>"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "typeParameters": [
-                {
-                  "typeParameterName": "ConfigType",
-                  "constraintTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "defaultTypeTokenRange": {
-                    "startIndex": 0,
-                    "endIndex": 0
-                  }
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 6,
-                "endIndex": 8
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "params",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 5
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "paramsToUplc"
             },
             {
               "kind": "Property",
@@ -29562,88 +29386,6 @@
               "isStatic": false,
               "isProtected": false,
               "isAbstract": false
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#typeToUplc:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "typeToUplc(type: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "DataType",
-                  "canonicalReference": "@helios-lang/compiler!DataType:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", data: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "any"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", path?: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "string"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "UplcData",
-                  "canonicalReference": "@helios-lang/uplc!UplcData:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 7,
-                "endIndex": 8
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "type",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "data",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 4
-                  },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "path",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 5,
-                    "endIndex": 6
-                  },
-                  "isOptional": true
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "typeToUplc"
             },
             {
               "kind": "Method",
@@ -30307,6 +30049,60 @@
         },
         {
           "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!isDatum:type",
+          "docComment": "/**\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type isDatum = "
+            },
+            {
+              "kind": "Content",
+              "text": "typeof "
+            },
+            {
+              "kind": "Reference",
+              "text": "isDatum",
+              "canonicalReference": "@donecollectively/stellar-contracts!isDatum:var"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/helios/dataBridge/EnumBridge.ts",
+          "releaseTag": "Public",
+          "name": "isDatum",
+          "typeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 3
+          }
+        },
+        {
+          "kind": "Variable",
+          "canonicalReference": "@donecollectively/stellar-contracts!isDatum:var",
+          "docComment": "/**\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "isDatum: "
+            },
+            {
+              "kind": "Content",
+              "text": "unique symbol"
+            }
+          ],
+          "fileUrlPath": "src/helios/dataBridge/EnumBridge.ts",
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "isDatum",
+          "variableTypeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
+          }
+        },
+        {
+          "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!ISNEVER:type",
           "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
@@ -30379,7 +30175,7 @@
             {
               "kind": "Reference",
               "text": "JustAnEnum",
-              "canonicalReference": "@donecollectively/stellar-contracts!~JustAnEnum_2:var"
+              "canonicalReference": "@donecollectively/stellar-contracts!JustAnEnum:var"
             },
             {
               "kind": "Content",
@@ -30392,6 +30188,29 @@
           "typeTokenRange": {
             "startIndex": 1,
             "endIndex": 3
+          }
+        },
+        {
+          "kind": "Variable",
+          "canonicalReference": "@donecollectively/stellar-contracts!JustAnEnum:var",
+          "docComment": "/**\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "JustAnEnum: "
+            },
+            {
+              "kind": "Content",
+              "text": "unique symbol"
+            }
+          ],
+          "fileUrlPath": "src/helios/dataBridge/EnumBridge.ts",
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "JustAnEnum",
+          "variableTypeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
           }
         },
         {
@@ -32951,7 +32770,7 @@
             {
               "kind": "Reference",
               "text": "Nested",
-              "canonicalReference": "@donecollectively/stellar-contracts!~Nested_2:var"
+              "canonicalReference": "@donecollectively/stellar-contracts!Nested:var"
             },
             {
               "kind": "Content",
@@ -32964,6 +32783,29 @@
           "typeTokenRange": {
             "startIndex": 1,
             "endIndex": 3
+          }
+        },
+        {
+          "kind": "Variable",
+          "canonicalReference": "@donecollectively/stellar-contracts!Nested:var",
+          "docComment": "/**\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "Nested: "
+            },
+            {
+              "kind": "Content",
+              "text": "unique symbol"
+            }
+          ],
+          "fileUrlPath": "src/helios/dataBridge/EnumBridge.ts",
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "Nested",
+          "variableTypeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
           }
         },
         {
@@ -33174,7 +33016,7 @@
             {
               "kind": "Reference",
               "text": "NotNested",
-              "canonicalReference": "@donecollectively/stellar-contracts!~NotNested_2:var"
+              "canonicalReference": "@donecollectively/stellar-contracts!NotNested:var"
             },
             {
               "kind": "Content",
@@ -33187,6 +33029,29 @@
           "typeTokenRange": {
             "startIndex": 1,
             "endIndex": 3
+          }
+        },
+        {
+          "kind": "Variable",
+          "canonicalReference": "@donecollectively/stellar-contracts!NotNested:var",
+          "docComment": "/**\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "NotNested: "
+            },
+            {
+              "kind": "Content",
+              "text": "unique symbol"
+            }
+          ],
+          "fileUrlPath": "src/helios/dataBridge/EnumBridge.ts",
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "NotNested",
+          "variableTypeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
           }
         },
         {
@@ -34509,7 +34374,7 @@
               "text": "export interface RelativeDelegateLink "
             }
           ],
-          "fileUrlPath": "src/helios/scriptBundling/CapoHeliosBundle.typeInfo.ts",
+          "fileUrlPath": ".api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts",
           "releaseTag": "Public",
           "name": "RelativeDelegateLink",
           "preserveMemberOrder": false,

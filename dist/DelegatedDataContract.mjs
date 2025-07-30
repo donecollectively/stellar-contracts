@@ -1,14 +1,14 @@
 import { makeValue, makeTxOutput } from '@helios-lang/ledger';
 import { makeIntData } from '@helios-lang/uplc';
-import { C as ContractBasedDelegate } from './ContractBasedDelegate2.mjs';
-import { u as uplcDataSerializer, E as betterJsonSerializer, d as dumpAny } from './HeliosScriptBundle.mjs';
+import { C as ContractBasedDelegate, u as uplcDataSerializer, Q as betterJsonSerializer, e as dumpAny } from './ContractBasedDelegate2.mjs';
 import { encodeUtf8 } from '@helios-lang/codec-utils';
+import '@helios-lang/crypto';
 import '@helios-lang/tx-utils';
-import '@helios-lang/contract-utils';
+import 'nanoid';
+import './HeliosBundle.mjs';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import '@helios-lang/compiler';
-import '@helios-lang/crypto';
-import 'nanoid';
+import '@helios-lang/contract-utils';
 import './environment.mjs';
 
 class DelegatedDataContract extends ContractBasedDelegate {
@@ -86,7 +86,7 @@ Defined in a \`*.hlb.ts\` file, it should have at minimum:
         specializedDelegateModule = SomeSpecializedDelegate;
     }
 
-We'll generate types in a .typeInfo.ts file, based on the types in your Helios sources,
+We'll generate types in a .typeInfo.d.ts file, based on the types in your Helios sources,
   ... and a .bridge.ts file having data-conversion classes for your on-chain types.
 When your delegated-data controller is used within your Capo, your bundle will
 have access via import {...} to any helios modules provided by that Capo's .hlb.ts. `

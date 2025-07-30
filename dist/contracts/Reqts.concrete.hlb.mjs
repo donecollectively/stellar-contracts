@@ -1,6 +1,6 @@
 import '@helios-lang/compiler-utils';
 import { C as CapoHeliosBundle } from '../CapoHeliosBundle2.mjs';
-import '../HeliosScriptBundle.mjs';
+import '../HeliosBundle.mjs';
 import '../BasicDelegate.mjs';
 import { R as ReqtsPolicy_hl, a as ReqtsData_hl } from '../ReqtsData.mjs';
 import { DelegatedDataBundle } from '../DelegatedDataBundle.mjs';
@@ -12,8 +12,6 @@ import '@helios-lang/compiler';
 import '@helios-lang/codec-utils';
 import '@helios-lang/crypto';
 import '@helios-lang/contract-utils';
-import '@helios-lang/tx-utils';
-import 'nanoid';
 import '../environment.mjs';
 import '../CapoDelegateHeliosBundle.mjs';
 
