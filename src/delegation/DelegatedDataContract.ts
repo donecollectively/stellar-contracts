@@ -170,7 +170,7 @@ export abstract class DelegatedDataContract<
                 `    export default class SomeDelegateBundle extends CapoHeliosBundle {\n` +
                 `        specializedDelegateModule = SomeSpecializedDelegate;\n` +
                 `    }\n\n` +
-                `We'll generate types in a .typeInfo.ts file, based on the types in your Helios sources,\n` +
+                `We'll generate types in a .typeInfo.d.ts file, based on the types in your Helios sources,\n` +
                 `  ... and a .bridge.ts file having data-conversion classes for your on-chain types.` +
                 `\nWhen your delegated-data controller is used within your Capo, your bundle will\n` +
                 `have access via import {...} to any helios modules provided by that Capo's .hlb.ts. `

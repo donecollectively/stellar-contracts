@@ -49,6 +49,10 @@ import {
     type IntersectedEnum,
 } from "@donecollectively/stellar-contracts"
 
+
+/**
+ * @public
+ */
 export type TimeLike = IntLike;
 
 
@@ -212,7 +216,7 @@ export class OtherActivityTypeHelper extends DataBridge {
     
     } // mkOtherDatumHelperClass
     
-/*
+/**
  * @public
  */
 export class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {

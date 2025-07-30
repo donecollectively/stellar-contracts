@@ -134,7 +134,7 @@ export class ContractBasedDelegate extends StellarDelegate {
                 `    export default class SomeDelegateBundle extends CapoDelegateBundle.using(YourAppCapo) {\n` +
                 `        specializedDelegateModule = SomeSpecializedDelegate; \n` +
                 `    }\n\n` +
-                `We'll generate an additional .typeInfo.ts, based on the types in your Helios sources,\n` +
+                `We'll generate an additional .typeInfo.d.ts, based on the types in your Helios sources,\n` +
                 `  ... and a .bridge.ts with generated data-conversion code for bridging between off-chain` +
                 `  ... and on-chain data encoding.` +
                 `Your scriptBundle() method can \`return new SomeDelegateBundle()\``

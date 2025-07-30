@@ -1,10 +1,8 @@
 import type { DataType, Program } from "@helios-lang/compiler";
 import type { Source } from "@helios-lang/compiler-utils";
 import {
-    makeUplcProgramV2,
     type UplcData,
     type UplcProgramV2,
-    type UplcProgramV3,
     type UplcSourceMapJsonSafe,
 } from "@helios-lang/uplc";
 import { decodeUplcProgramV2FromCbor } from "@helios-lang/uplc";
@@ -16,12 +14,11 @@ import type { CapoHeliosBundle } from "./CapoHeliosBundle.js";
 import type {
     configBaseWithRev,
     HeliosOptimizeOptions,
-    SetupInfo,
     SetupOrMainnetSignalForBundle,
     StellarBundleSetupDetails,
     UplcRecord,
 } from "../../StellarContract.js";
-import type { anyUplcProgram, CompileOptionsForCachedHeliosProgram } from "../../HeliosPromotedTypes.js";
+import type { anyUplcProgram } from "../../HeliosPromotedTypes.js";
 import type {
     CapoBundleClass,
     HeliosBundleClassWithCapo,
@@ -30,19 +27,14 @@ import type {
 import {
     programFromCacheEntry,
     serializeCacheEntry,
-    type DeployedProgramBundle,
 } from "../CachedHeliosProgram.js";
 import type {
-    DeployedScriptDetails,
     RequiredDeployedScriptDetails,
 } from "../../configuration/DeployedScriptConfigs.js";
-import { bytesToHex, equalsBytes, hexToBytes } from "@helios-lang/codec-utils";
+import { bytesToHex, equalsBytes } from "@helios-lang/codec-utils";
 import { makeCast } from "@helios-lang/contract-utils";
-import { uplcDataSerializer } from "../../delegation/jsonSerializers.js";
 import {
     makeMintingPolicyHash,
-    makeValidatorHash,
-    type ValidatorHash,
 } from "@helios-lang/ledger";
 import { environment } from "../../environment.js";
 
@@ -1023,6 +1015,9 @@ export abstract class HeliosScriptBundle {
         );
     }
 
+    /**
+     * @internal
+     */
     locateDatumType(): DataType | undefined {
         let datumType: DataType | undefined;
         // let datumTypeName: string | undefined;
@@ -1049,6 +1044,9 @@ export abstract class HeliosScriptBundle {
         return datumType;
     }
 
+    /**
+     * @internal
+     */
     locateRedeemerType(): DataType {
         const program = this.program;
         const argTypes = program.entryPoint.mainArgTypes;
@@ -1081,6 +1079,9 @@ export abstract class HeliosScriptBundle {
         return []
     }
 
+    /**
+     * @internal
+     */
     getTopLevelTypes(): HeliosBundleTypes {
         const types = {
             datum: this.locateDatumType(),
@@ -1129,6 +1130,9 @@ export abstract class HeliosScriptBundle {
         return types;
     }
 
+    /**
+     * @internal
+     */
     paramsToUplc<ConfigType extends configBaseWithRev>(
         params: Record<string, any>
     ): UplcRecord<ConfigType> {
@@ -1195,6 +1199,9 @@ export abstract class HeliosScriptBundle {
         ) as UplcRecord<ConfigType>;
     }
 
+    /**
+     * @internal
+     */
     typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
         const schema = type.toSchema();
         if (!this.setup) {

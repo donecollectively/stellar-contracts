@@ -666,7 +666,7 @@ export class StellarContract<
      * to your StellarContracts class module, and define a `scriptBundle() { return new YourScriptNameBundle() }` or
      * similar method in that class.
      *
-     * This results in a generated **`.typeInfo.ts`** and **`.bridge.ts`** with complete
+     * This results in a generated **`.typeInfo.d.ts`** and **`.bridge.ts`** with complete
      * typescript bindings for your on-chain script (trouble? check Plugin setup below).
      *
      * #### Step 2: Import the generated bridge class

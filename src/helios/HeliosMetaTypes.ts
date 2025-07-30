@@ -285,6 +285,7 @@ export type makesUplcActivityEnumData<
 > = {
     [k in keyof VARIANTS]: ActivityEnumVariantCreator<VARIANTS[k]>;
 };
+
 /**
  * General type information for the datum and redeemer types in a helios script
  * bundle.  Not exactly the same as the types generated for api access
@@ -292,19 +293,26 @@ export type makesUplcActivityEnumData<
  * is separately typed, enabling the type-generation to be more precise
  * in creating ergonomic branded types for reading, detecting, and writing
  * each variant.
+ * @public
  */
-
 export type HeliosBundleTypeDetails<T = undefined> = {
     datum?: typeDetails<T> | enumTypeDetails<T>;
     redeemer: typeDetails<T> | enumTypeDetails<T>;
 };
 
+/**
+ * @public
+ */
 export type HeliosBundleTypes = {
     datum?: DataType;
     redeemer: DataType;
 };
 export type Constructor<T> = new (...args: any[]) => T;
+
 export type EmptyConstructor<T> = new () => T;
+/**
+ * @public
+ */
 export type HeliosBundleClassWithCapo = typeof HeliosScriptBundle &
     //Constructor<HeliosScriptBundle> &
     EmptyConstructor<HeliosScriptBundle> & {

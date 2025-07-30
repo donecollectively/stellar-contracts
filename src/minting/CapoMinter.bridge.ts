@@ -50,6 +50,10 @@ import {
     type funcWithImpliedSeed, type SeedAttrs
 } from "../ActivityTypes.js"
 
+
+/**
+ * @public
+ */
 export type TimeLike = IntLike;
 
 
@@ -128,7 +132,7 @@ datum = undefined // no datum type defined for this bundle (minter / rewards scr
 }
 export default CapoMinterDataBridge;
 
-/*
+/**
  * @public
  */
 export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {

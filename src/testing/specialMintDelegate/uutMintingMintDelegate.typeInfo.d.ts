@@ -31,7 +31,10 @@ import type {
     // BytesLike,
  } from "@helios-lang/codec-utils";
 
- type TimeLike = IntLike;
+/**
+ * @public
+ */
+export type TimeLike = IntLike;
  
         
 import type {
@@ -175,53 +178,6 @@ export interface DelegationDetailLike {
 
 
 /**
- * A strong type for the canonical form of DgDatumTestData
- * @remarks
- * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
- * enum data conforming to this type can be a bit of a pain.
- * For a more ergonomic, though less strictly-safe form of this type, see ErgoDgDatumTestData instead.
- * @public
- */
-export interface DgDatumTestData {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
-    name: /*minStructField*/ string
-    number: /*minStructField*/ bigint
-}
-
-
-/**
- * An ergonomic, though less strictly-safe form of DgDatumTestData
- * @remarks
- * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
- * as being "read-only", in that it's possible to create data with this type that would not be suitable for
- * conversion to on-chain use.  For creating such data, use the DgDatumTestDataLike type,
- * or the on-chain data-building helpers instead.
- * @public
- */
-export type ErgoDgDatumTestData = DgDatumTestData/*like canon-other*/
-
-/**
- * A strong type for the permissive form of DgDatumTestData
- * @remarks
- * The field types enable implicit conversion from various allowable input types (including the canonical form).
- * @public
- */
-export interface DgDatumTestDataLike {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
-    name: /*minStructField*/ string
-    number: /*minStructField*/ IntLike
-}
-
-
-/**
- * expresses the essential fields needed for initiating creation of a DgDatumTestData
- * @public
- */
-export type minimalDgDatumTestData = minimalData<DgDatumTestDataLike>
-
-/**
  * A strong type for the canonical form of DelegateDatum$capoStoredData
  * @remarks
  * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
@@ -230,7 +186,7 @@ export type minimalDgDatumTestData = minimalData<DgDatumTestDataLike>
  * @public
  */
 export interface DelegateDatum$capoStoredData {
-    data: DgDatumTestData  /*minVariantField*/ ,
+    data: AnyData  /*minVariantField*/ ,
     version: bigint  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
@@ -246,7 +202,7 @@ export interface DelegateDatum$capoStoredData {
  * @public
  */
 export type DelegateDatum$Ergo$capoStoredData = {
-    data: ErgoDgDatumTestData  /*minVariantField*/ ,
+    data: ErgoAnyData  /*minVariantField*/ ,
     version: bigint  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
@@ -259,9 +215,300 @@ export type DelegateDatum$Ergo$capoStoredData = {
  * @public
  */
 export interface DelegateDatum$capoStoredDataLike {
-    data: DgDatumTestDataLike  /*minVariantField*/ ,
+    data: AnyDataLike  /*minVariantField*/ ,
     version: IntLike  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
+}
+
+
+
+/**
+ * A strong type for the canonical form of SampleStruct
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoSampleStruct instead.
+ * @public
+ */
+export interface SampleStruct {
+    a: /*minStructField*/ bigint
+    b: /*minStructField*/ Map<string, number[]>
+    c: /*minStructField*/ Array<boolean>
+    d: /*minStructField*/ UplcData | undefined
+}
+
+
+/**
+ * An ergonomic, though less strictly-safe form of SampleStruct
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the SampleStructLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type ErgoSampleStruct = SampleStruct/*like canon-other*/
+
+/**
+ * A strong type for the permissive form of SampleStruct
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
+export interface SampleStructLike {
+    a: /*minStructField*/ IntLike
+    b: /*minStructField*/ Map<string, number[]>
+    c: /*minStructField*/ Array<boolean>
+    d: /*minStructField*/ UplcData | undefined
+}
+
+
+
+/**
+ * A strong type for the canonical form of SomeEnum$hasNestedFields
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see SomeEnum$Ergo$hasNestedFields instead.
+ * @public
+ */
+export interface SomeEnum$hasNestedFields {
+    m: SampleStruct  /*minVariantField*/ ,
+    n: bigint  /*minVariantField*/ 
+}
+
+
+/**
+ * An ergonomic, though less strictly-safe form of SomeEnum$hasNestedFields
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the SomeEnum$hasNestedFieldsLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type SomeEnum$Ergo$hasNestedFields = {
+    m: ErgoSampleStruct  /*minVariantField*/ ,
+    n: bigint  /*minVariantField*/ 
+}
+
+
+/**
+ * A strong type for the permissive form of SomeEnum$hasNestedFields
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
+export interface SomeEnum$hasNestedFieldsLike {
+    m: SampleStructLike  /*minVariantField*/ ,
+    n: IntLike  /*minVariantField*/ 
+}
+
+
+
+/**
+ * A strong type for the canonical form of SomeEnum$hasRecursiveFields
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see SomeEnum$Ergo$hasRecursiveFields instead.
+ * @public
+ */
+export interface SomeEnum$hasRecursiveFields {
+    placeholder: bigint  /*minVariantField*/ ,
+    ph2: string  /*minVariantField*/ 
+}
+
+
+/**
+ * An ergonomic, though less strictly-safe form of SomeEnum$hasRecursiveFields
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the SomeEnum$hasRecursiveFieldsLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type SomeEnum$Ergo$hasRecursiveFields = SomeEnum$hasRecursiveFields  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of SomeEnum$hasRecursiveFields
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
+export interface SomeEnum$hasRecursiveFieldsLike {
+    placeholder: IntLike  /*minVariantField*/ ,
+    ph2: string  /*minVariantField*/ 
+}
+
+
+
+
+            /**
+            * @internal
+            */
+            export type SomeEnumMeta = EnumTypeMeta<
+    {module: "uutMintingDelegate", enumName: "SomeEnum"}, {
+        justATag: singleEnumVariantMeta<SomeEnumMeta, "justATag",
+            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        justAnInt: singleEnumVariantMeta<SomeEnumMeta, "justAnInt",
+            "Constr#1", "singletonField", /* implied wrapper { m: ... } for singleVariantField */ 
+			bigint   , "noSpecialFlags"
+        >,
+        oneNestedStruct: singleEnumVariantMeta<SomeEnumMeta, "oneNestedStruct",
+            "Constr#2", "singletonField", /* implied wrapper { m: ... } for singleVariantField */ 
+			SampleStruct   , "noSpecialFlags"
+        >,
+        hasNestedFields: singleEnumVariantMeta<SomeEnumMeta, "hasNestedFields",
+            "Constr#3", 
+            "fields", SomeEnum$hasNestedFields, "noSpecialFlags"
+        >,
+        hasRecursiveFields: singleEnumVariantMeta<SomeEnumMeta, "hasRecursiveFields",
+            "Constr#4", 
+            "fields", SomeEnum$hasRecursiveFields, "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * SomeEnum enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **5 variant(s)** of the SomeEnum enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `SomeEnumHelper` class
+ *     for generating UPLC data for this enum type
+ * @public
+ */
+export type SomeEnum = 
+        | { justATag: tagOnly /*minEnumVariant*/ }
+        | { justAnInt: /* implied wrapper { m: ... } for singleVariantField */ 
+			bigint    /*minEnumVariant*/ }
+        | { oneNestedStruct: /* implied wrapper { m: ... } for singleVariantField */ 
+			SampleStruct    /*minEnumVariant*/ }
+        | { hasNestedFields: SomeEnum$hasNestedFields /*minEnumVariant*/ }
+        | { hasRecursiveFields: SomeEnum$hasRecursiveFields /*minEnumVariant*/ }
+
+/**
+ * ergonomic type enabling easy access to values converted from the on-chain form
+ * @remarks
+ * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields.
+ * Nested enums are also merged in this ergonomic way.
+ * @public
+ */
+export type ErgoSomeEnum = IntersectedEnum<
+        | { justATag: tagOnly /*minEnumVariant*/ }
+        | { justAnInt: /* implied wrapper { m: ... } for singleVariantField */ 
+			bigint    /*minEnumVariant*/ }
+        | { oneNestedStruct: /* implied wrapper { m: ... } for singleVariantField */ 
+			ErgoSampleStruct    /*minEnumVariant*/ }
+        | { hasNestedFields: SomeEnum$Ergo$hasNestedFields /*minEnumVariant*/ }
+        | { hasRecursiveFields: SomeEnum$Ergo$hasRecursiveFields /*minEnumVariant*/ }
+>
+
+/**
+ * SomeEnum enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structure
+ * for creating any of the **5 variant(s)** of the SomeEnum enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `SomeEnumHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * #### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ * @public
+ */
+export type SomeEnumLike = IntersectedEnum<
+        | { justATag: tagOnly /*minEnumVariant*/ }
+        | { justAnInt: /* implied wrapper { m: ... } for singleVariantField */ 
+			IntLike    /*minEnumVariant*/ }
+        | { oneNestedStruct: /* implied wrapper { m: ... } for singleVariantField */ 
+			SampleStructLike    /*minEnumVariant*/ }
+        | { hasNestedFields: SomeEnum$hasNestedFieldsLike /*minEnumVariant*/ }
+        | { hasRecursiveFields: SomeEnum$hasRecursiveFieldsLike /*minEnumVariant*/ }
+>
+
+/**
+ * A strong type for the canonical form of DelegateDatum$MultiFieldVariant
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see DelegateDatum$Ergo$MultiFieldVariant instead.
+ * @public
+ */
+export interface DelegateDatum$MultiFieldVariant {
+    field1: bigint  /*minVariantField*/ ,
+    field2: string  /*minVariantField*/ 
+}
+
+
+/**
+ * An ergonomic, though less strictly-safe form of DelegateDatum$MultiFieldVariant
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DelegateDatum$MultiFieldVariantLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type DelegateDatum$Ergo$MultiFieldVariant = DelegateDatum$MultiFieldVariant  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of DelegateDatum$MultiFieldVariant
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
+export interface DelegateDatum$MultiFieldVariantLike {
+    field1: IntLike  /*minVariantField*/ ,
+    field2: string  /*minVariantField*/ 
+}
+
+
+
+/**
+ * A strong type for the canonical form of DelegateDatum$MultiFieldNestedThings
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see DelegateDatum$Ergo$MultiFieldNestedThings instead.
+ * @public
+ */
+export interface DelegateDatum$MultiFieldNestedThings {
+    nestedStruct: SampleStruct  /*minVariantField*/ ,
+    nestedEnumMaybe: SomeEnum | undefined  /*minVariantField*/ 
+}
+
+
+/**
+ * An ergonomic, though less strictly-safe form of DelegateDatum$MultiFieldNestedThings
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the DelegateDatum$MultiFieldNestedThingsLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type DelegateDatum$Ergo$MultiFieldNestedThings = {
+    nestedStruct: ErgoSampleStruct  /*minVariantField*/ ,
+    nestedEnumMaybe: ErgoSomeEnum | undefined  /*minVariantField*/ 
+}
+
+
+/**
+ * A strong type for the permissive form of DelegateDatum$MultiFieldNestedThings
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
+export interface DelegateDatum$MultiFieldNestedThingsLike {
+    nestedStruct: SampleStructLike  /*minVariantField*/ ,
+    nestedEnumMaybe: SomeEnumLike | undefined  /*minVariantField*/ 
 }
 
 
@@ -271,7 +518,7 @@ export interface DelegateDatum$capoStoredDataLike {
             * @internal
             */
             export type DelegateDatumMeta = EnumTypeMeta<
-    {module: "DelegateDatumTester", enumName: "DelegateDatum"}, {
+    {module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
         Cip68RefToken: singleEnumVariantMeta<DelegateDatumMeta, "Cip68RefToken",
             "Constr#0", 
             "fields", DelegateDatum$Cip68RefToken, "noSpecialFlags"
@@ -280,9 +527,32 @@ export interface DelegateDatum$capoStoredDataLike {
             "Constr#1", "singletonField", /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetail   , "noSpecialFlags"
         >,
+        TagOnlyDatum: singleEnumVariantMeta<DelegateDatumMeta, "TagOnlyDatum",
+            "Constr#2", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
         capoStoredData: singleEnumVariantMeta<DelegateDatumMeta, "capoStoredData",
-            "Constr#2", 
+            "Constr#3", 
             "fields", DelegateDatum$capoStoredData, "noSpecialFlags"
+        >,
+        SingleDataElement: singleEnumVariantMeta<DelegateDatumMeta, "SingleDataElement",
+            "Constr#4", "singletonField", /* implied wrapper { aString: ... } for singleVariantField */ 
+			string   , "noSpecialFlags"
+        >,
+        SingleNestedStruct: singleEnumVariantMeta<DelegateDatumMeta, "SingleNestedStruct",
+            "Constr#5", "singletonField", /* implied wrapper { aStruct: ... } for singleVariantField */ 
+			SampleStruct   , "noSpecialFlags"
+        >,
+        HasNestedEnum: singleEnumVariantMeta<DelegateDatumMeta, "HasNestedEnum",
+            "Constr#6", "singletonField", /* implied wrapper { nested: ... } for singleVariantField */ 
+			SomeEnum   , "noSpecialFlags"
+        >,
+        MultiFieldVariant: singleEnumVariantMeta<DelegateDatumMeta, "MultiFieldVariant",
+            "Constr#7", 
+            "fields", DelegateDatum$MultiFieldVariant, "noSpecialFlags"
+        >,
+        MultiFieldNestedThings: singleEnumVariantMeta<DelegateDatumMeta, "MultiFieldNestedThings",
+            "Constr#8", 
+            "fields", DelegateDatum$MultiFieldNestedThings, "noSpecialFlags"
         >
     }
 >;
@@ -292,7 +562,7 @@ export interface DelegateDatum$capoStoredDataLike {
  * DelegateDatum enum variants
  * 
  * @remarks - expresses the essential raw data structures
- * supporting the **3 variant(s)** of the DelegateDatum enum type
+ * supporting the **9 variant(s)** of the DelegateDatum enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateDatumHelper` class
  *     for generating UPLC data for this enum type
@@ -302,7 +572,16 @@ export type DelegateDatum =
         | { Cip68RefToken: DelegateDatum$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetail    /*minEnumVariant*/ }
+        | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { capoStoredData: DelegateDatum$capoStoredData /*minEnumVariant*/ }
+        | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
+        | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
+			SampleStruct    /*minEnumVariant*/ }
+        | { HasNestedEnum: /* implied wrapper { nested: ... } for singleVariantField */ 
+			SomeEnum    /*minEnumVariant*/ }
+        | { MultiFieldVariant: DelegateDatum$MultiFieldVariant /*minEnumVariant*/ }
+        | { MultiFieldNestedThings: DelegateDatum$MultiFieldNestedThings /*minEnumVariant*/ }
 
 /**
  * ergonomic type enabling easy access to values converted from the on-chain form
@@ -315,14 +594,23 @@ export type ErgoDelegateDatum = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Ergo$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			ErgoDelegationDetail    /*minEnumVariant*/ }
+        | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { capoStoredData: DelegateDatum$Ergo$capoStoredData /*minEnumVariant*/ }
+        | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
+        | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
+			ErgoSampleStruct    /*minEnumVariant*/ }
+        | { HasNestedEnum: /* implied wrapper { nested: ... } for singleVariantField */ 
+			ErgoSomeEnum    /*minEnumVariant*/ }
+        | { MultiFieldVariant: DelegateDatum$Ergo$MultiFieldVariant /*minEnumVariant*/ }
+        | { MultiFieldNestedThings: DelegateDatum$Ergo$MultiFieldNestedThings /*minEnumVariant*/ }
 >
 
 /**
  * DelegateDatum enum variants (permissive)
  * 
  * @remarks - expresses the allowable data structure
- * for creating any of the **3 variant(s)** of the DelegateDatum enum type
+ * for creating any of the **9 variant(s)** of the DelegateDatum enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateDatumHelper` class
  *     for generating UPLC data for this enum type
@@ -336,7 +624,16 @@ export type DelegateDatumLike = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Cip68RefTokenLike /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetailLike    /*minEnumVariant*/ }
+        | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { capoStoredData: DelegateDatum$capoStoredDataLike /*minEnumVariant*/ }
+        | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
+			string    /*minEnumVariant*/ }
+        | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
+			SampleStructLike    /*minEnumVariant*/ }
+        | { HasNestedEnum: /* implied wrapper { nested: ... } for singleVariantField */ 
+			SomeEnumLike    /*minEnumVariant*/ }
+        | { MultiFieldVariant: DelegateDatum$MultiFieldVariantLike /*minEnumVariant*/ }
+        | { MultiFieldNestedThings: DelegateDatum$MultiFieldNestedThingsLike /*minEnumVariant*/ }
 >
 
 /**
@@ -999,9 +1296,13 @@ export type DelegateLifecycleActivityLike = IntersectedEnum<
             * @internal
             */
             export type SpendingActivityMeta = EnumTypeMeta<
-    {module: "DelegateDatumTester", enumName: "SpendingActivity"}, {
-        UpdatingTData: singleEnumVariantMeta<SpendingActivityMeta, "UpdatingTData",
+    {module: "uutMintingDelegate", enumName: "SpendingActivity"}, {
+        _placeholder2SA: singleEnumVariantMeta<SpendingActivityMeta, "_placeholder2SA",
             "Constr#0", "singletonField", /* implied wrapper { id: ... } for singleVariantField */ 
+			number[]   , "noSpecialFlags"
+        >,
+        mockWorkingSpendActivity: singleEnumVariantMeta<SpendingActivityMeta, "mockWorkingSpendActivity",
+            "Constr#1", "singletonField", /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]   , "noSpecialFlags"
         >
     }
@@ -1012,14 +1313,16 @@ export type DelegateLifecycleActivityLike = IntersectedEnum<
  * SpendingActivity enum variants
  * 
  * @remarks - expresses the essential raw data structures
- * supporting the **1 variant(s)** of the SpendingActivity enum type
+ * supporting the **2 variant(s)** of the SpendingActivity enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `SpendingActivityHelper` class
  *     for generating UPLC data for this enum type
  * @public
  */
 export type SpendingActivity = 
-        | { UpdatingTData: /* implied wrapper { id: ... } for singleVariantField */ 
+        | { _placeholder2SA: /* implied wrapper { id: ... } for singleVariantField */ 
+			number[]    /*minEnumVariant*/ }
+        | { mockWorkingSpendActivity: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 
 /**
@@ -1035,7 +1338,7 @@ export type ErgoSpendingActivity = IntersectedEnum<SpendingActivity/*like canon 
  * SpendingActivity enum variants (permissive)
  * 
  * @remarks - expresses the allowable data structure
- * for creating any of the **1 variant(s)** of the SpendingActivity enum type
+ * for creating any of the **2 variant(s)** of the SpendingActivity enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `SpendingActivityHelper` class
  *     for generating UPLC data for this enum type
@@ -1046,19 +1349,63 @@ export type ErgoSpendingActivity = IntersectedEnum<SpendingActivity/*like canon 
  * @public
  */
 export type SpendingActivityLike = IntersectedEnum<
-        | { UpdatingTData: /* implied wrapper { id: ... } for singleVariantField */ 
+        | { _placeholder2SA: /* implied wrapper { id: ... } for singleVariantField */ 
+			number[]    /*minEnumVariant*/ }
+        | { mockWorkingSpendActivity: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 >
+
+/**
+ * A strong type for the canonical form of MintingActivity$mintingUuts
+ * @remarks
+ * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
+ * enum data conforming to this type can be a bit of a pain.
+ * For a more ergonomic, though less strictly-safe form of this type, see MintingActivity$Ergo$mintingUuts instead.
+ * @public
+ */
+export interface MintingActivity$mintingUuts {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purposes: Array<string>  /*minVariantField*/ 
+}
+
+
+/**
+ * An ergonomic, though less strictly-safe form of MintingActivity$mintingUuts
+ * @remarks
+ * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
+ * as being "read-only", in that it's possible to create data with this type that would not be suitable for
+ * conversion to on-chain use.  For creating such data, use the MintingActivity$mintingUutsLike type,
+ * or the on-chain data-building helpers instead.
+ * @public
+ */
+export type MintingActivity$Ergo$mintingUuts = MintingActivity$mintingUuts  /*ergo like-canonical-this-variant*/
+
+/**
+ * A strong type for the permissive form of MintingActivity$mintingUuts
+ * @remarks
+ * The field types enable implicit conversion from various allowable input types (including the canonical form).
+ * @public
+ */
+export interface MintingActivity$mintingUutsLike {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purposes: Array<string>  /*minVariantField*/ 
+}
+
+
 
 
             /**
             * @internal
             */
             export type MintingActivityMeta = EnumTypeMeta<
-    {module: "DelegateDatumTester", enumName: "MintingActivity"}, {
-        CreatingTData: singleEnumVariantMeta<MintingActivityMeta, "CreatingTData",
-            "Constr#0", "singletonField", /* implied wrapper { seed: ... } for singleVariantField */ 
-			TxOutputId   , "isSeededActivity"
+    {module: "uutMintingDelegate", enumName: "MintingActivity"}, {
+        mintingUuts: singleEnumVariantMeta<MintingActivityMeta, "mintingUuts",
+            "Constr#0", 
+            "fields", MintingActivity$mintingUuts, "isSeededActivity"
+        >,
+        mockOtherActivity: singleEnumVariantMeta<MintingActivityMeta, "mockOtherActivity",
+            "Constr#1", "singletonField", /* implied wrapper { QQ: ... } for singleVariantField */ 
+			SomeEnum   , "noSpecialFlags"
         >
     }
 >;
@@ -1068,15 +1415,16 @@ export type SpendingActivityLike = IntersectedEnum<
  * MintingActivity enum variants
  * 
  * @remarks - expresses the essential raw data structures
- * supporting the **1 variant(s)** of the MintingActivity enum type
+ * supporting the **2 variant(s)** of the MintingActivity enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `MintingActivityHelper` class
  *     for generating UPLC data for this enum type
  * @public
  */
 export type MintingActivity = 
-        | { CreatingTData: /* implied wrapper { seed: ... } for singleVariantField */ 
-			TxOutputId    /*minEnumVariant*/ }
+        | { mintingUuts: MintingActivity$mintingUuts /*minEnumVariant*/ }
+        | { mockOtherActivity: /* implied wrapper { QQ: ... } for singleVariantField */ 
+			SomeEnum    /*minEnumVariant*/ }
 
 /**
  * ergonomic type enabling easy access to values converted from the on-chain form
@@ -1085,13 +1433,17 @@ export type MintingActivity =
  * Nested enums are also merged in this ergonomic way.
  * @public
  */
-export type ErgoMintingActivity = IntersectedEnum<MintingActivity/*like canon enum*/>
+export type ErgoMintingActivity = IntersectedEnum<
+        | { mintingUuts: MintingActivity$Ergo$mintingUuts /*minEnumVariant*/ }
+        | { mockOtherActivity: /* implied wrapper { QQ: ... } for singleVariantField */ 
+			ErgoSomeEnum    /*minEnumVariant*/ }
+>
 
 /**
  * MintingActivity enum variants (permissive)
  * 
  * @remarks - expresses the allowable data structure
- * for creating any of the **1 variant(s)** of the MintingActivity enum type
+ * for creating any of the **2 variant(s)** of the MintingActivity enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `MintingActivityHelper` class
  *     for generating UPLC data for this enum type
@@ -1102,8 +1454,9 @@ export type ErgoMintingActivity = IntersectedEnum<MintingActivity/*like canon en
  * @public
  */
 export type MintingActivityLike = IntersectedEnum<
-        | { CreatingTData: /* implied wrapper { seed: ... } for singleVariantField */ 
-			TxOutputId | string    /*minEnumVariant*/ }
+        | { mintingUuts: MintingActivity$mintingUutsLike /*minEnumVariant*/ }
+        | { mockOtherActivity: /* implied wrapper { QQ: ... } for singleVariantField */ 
+			SomeEnumLike    /*minEnumVariant*/ }
 >
 
 
@@ -1111,10 +1464,10 @@ export type MintingActivityLike = IntersectedEnum<
             * @internal
             */
             export type BurningActivityMeta = EnumTypeMeta<
-    {module: "DelegateDatumTester", enumName: "BurningActivity"}, {
-        NOOP: singleEnumVariantMeta<BurningActivityMeta, "NOOP",
-            "Constr#0", "singletonField", /* implied wrapper { noSuchActivity: ... } for singleVariantField */ 
-			boolean   , "noSpecialFlags"
+    {module: "uutMintingDelegate", enumName: "BurningActivity"}, {
+        _placeholder2BA: singleEnumVariantMeta<BurningActivityMeta, "_placeholder2BA",
+            "Constr#0", "singletonField", /* implied wrapper { recId: ... } for singleVariantField */ 
+			number[]   , "noSpecialFlags"
         >
     }
 >;
@@ -1131,8 +1484,8 @@ export type MintingActivityLike = IntersectedEnum<
  * @public
  */
 export type BurningActivity = 
-        | { NOOP: /* implied wrapper { noSuchActivity: ... } for singleVariantField */ 
-			boolean    /*minEnumVariant*/ }
+        | { _placeholder2BA: /* implied wrapper { recId: ... } for singleVariantField */ 
+			number[]    /*minEnumVariant*/ }
 
 /**
  * ergonomic type enabling easy access to values converted from the on-chain form
@@ -1158,8 +1511,8 @@ export type ErgoBurningActivity = IntersectedEnum<BurningActivity/*like canon en
  * @public
  */
 export type BurningActivityLike = IntersectedEnum<
-        | { NOOP: /* implied wrapper { noSuchActivity: ... } for singleVariantField */ 
-			boolean    /*minEnumVariant*/ }
+        | { _placeholder2BA: /* implied wrapper { recId: ... } for singleVariantField */ 
+			number[]    /*minEnumVariant*/ }
 >
 
 /**
@@ -1281,7 +1634,7 @@ export interface DelegateActivity$DeletingDelegatedDataLike {
             * @internal
             */
             export type DelegateActivityMeta = EnumTypeMeta<
-    {module: "DelegateDatumTester", enumName: "DelegateActivity"}, {
+    {module: "uutMintingDelegate", enumName: "DelegateActivity"}, {
         CapoLifecycleActivities: singleEnumVariantMeta<DelegateActivityMeta, "CapoLifecycleActivities",
             "Constr#0", "singletonField", /* implied wrapper { activity: ... } for singleVariantField */ 
 			CapoLifecycleActivity   , "noSpecialFlags"

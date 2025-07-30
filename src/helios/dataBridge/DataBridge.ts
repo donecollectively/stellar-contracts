@@ -150,13 +150,29 @@ export type callWith<ARGS, T extends DataBridge> = T &
  * @internal
  */
 export class DataBridge extends (dataBridgeProxyBase as typeof Object) {
-    protected ᱺᱺschema: TypeSchema;
-    protected isMainnet: boolean;
-    protected isActivity: boolean;
-    protected isNested: boolean;
-    // relaxed protected so that GenericDelegateBridge and specific bridges don't have to
-    //   use an inheritance relationship.  Can add that kind of inheritance and make this protected again.
+    /**
+     * @internal
+     */
+    ᱺᱺschema: TypeSchema;
+    /**
+     * @internal
+     */
+    isMainnet: boolean;
+    /**
+     * @internal
+     */
+    isActivity: boolean;
+    /**
+     * @internal
+     */
+    isNested: boolean;
+    /**
+     * @internal
+     */
     ᱺᱺcast: Cast<any, any>;
+    /**
+     * @internal
+     */
     isCallable = false;
 
     mkData: this["ᱺᱺcast"]["toUplcData"] = (x: any) =>
@@ -191,8 +207,14 @@ export class DataBridge extends (dataBridgeProxyBase as typeof Object) {
         return getSeed(arg);
     }
 
-    protected redirectTo?: (value: any) => void;
-    protected mkDataVia(redirectionCallback: (value: any) => void) {
+    /**
+     * @internal
+     */
+    redirectTo?: (value: any) => void;
+    /**
+     * @internal
+     */
+    mkDataVia(redirectionCallback: (value: any) => void) {
         if (!this.isNested) {
             throw new Error(
                 `dataMaker ${this.constructor.name}: redirectTo is only valid for nested enums`
@@ -201,10 +223,16 @@ export class DataBridge extends (dataBridgeProxyBase as typeof Object) {
         this.redirectTo = redirectionCallback;
     }
 
-    protected get isEnum() {
+    /**
+     * @internal
+     */
+    get isEnum() {
         return "enum" === this.ᱺᱺschema!.kind;
     }
-    protected getTypeSchema() {
+    /**
+     * @internal
+     */
+    getTypeSchema() {
         if (!this.ᱺᱺschema) {
             this.ᱺᱺschema = "placeholder" as any; // this.__typeDetails.dataType.toSchema()
             this.ᱺᱺcast = makeCast(this.ᱺᱺschema, {

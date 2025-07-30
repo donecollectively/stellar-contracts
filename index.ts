@@ -209,11 +209,13 @@ export type {
     NEVERIF,
     OR,
  } from "./src/helios/typeUtils.js";
+ 
 export {
     EnumBridge,
-    type JustAnEnum,
-    type Nested,
-    type NotNested,
+    JustAnEnum,
+    Nested,
+    NotNested,
+    isDatum
 } from "./src/helios/dataBridge/EnumBridge.js";
 
 export {

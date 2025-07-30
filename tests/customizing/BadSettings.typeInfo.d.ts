@@ -31,18 +31,22 @@ import type {
     // BytesLike,
  } from "@helios-lang/codec-utils";
 
- type TimeLike = IntLike;
+/**
+ * @public
+ */
+export type TimeLike = IntLike;
  
-
-import {HeliosScriptBundle} from "../helios/scriptBundling/HeliosScriptBundle.js"
-import type { 
-    tagOnly, 
-    EnumTypeMeta, 
-    singleEnumVariantMeta
-} from "../helios/HeliosMetaTypes.js"
-import type { minimalData } from "../delegation/DelegatedData.js"
-import type { IntersectedEnum } from "../helios/typeUtils.js"
-                
+        
+import type {
+    CapoHeliosBundle,
+    CapoDelegateBundle,
+    minimalData,
+    HeliosScriptBundle,
+    EnumTypeMeta,
+    singleEnumVariantMeta,
+    tagOnly,
+    IntersectedEnum
+} from "@donecollectively/stellar-contracts"
 
 
 /**
@@ -174,69 +178,53 @@ export interface DelegationDetailLike {
 
 
 /**
- * A strong type for the canonical form of ReqtData
+ * A strong type for the canonical form of ProtocolSettings
  * @remarks
  * Note that any enum fields in this type are expressed as a disjoint union of the enum variants.  Processing
  * enum data conforming to this type can be a bit of a pain.
- * For a more ergonomic, though less strictly-safe form of this type, see ErgoReqtData instead.
+ * For a more ergonomic, though less strictly-safe form of this type, see ErgoProtocolSettings instead.
  * @public
  */
-export interface ReqtData {
+export interface ProtocolSettings {
     id: /*minStructField*/ number[]
     type: /*minStructField*/ string
-    category: /*minStructField*/ string
-    name: /*minStructField*/ string
-    image: /*minStructField*/ string
-    description: /*minStructField*/ string
-    mustFreshenBy: /*minStructField*/ number
-    target: /*minStructField*/ number[]
-    purpose: /*minStructField*/ string
-    details: /*minStructField*/ Array<string>
-    mech: /*minStructField*/ Array<string>
-    impl: /*minStructField*/ string
-    requires: /*minStructField*/ Array<string>
+    meaning: /*minStructField*/ bigint
+    badSpenderSetting: /*minStructField*/ bigint
+    badMinterSetting: /*minStructField*/ bigint
 }
 
 
 /**
- * An ergonomic, though less strictly-safe form of ReqtData
+ * An ergonomic, though less strictly-safe form of ProtocolSettings
  * @remarks
  * This type can use enums expressed as merged unions of the enum variants.  You might think of this type
  * as being "read-only", in that it's possible to create data with this type that would not be suitable for
- * conversion to on-chain use.  For creating such data, use the ReqtDataLike type,
+ * conversion to on-chain use.  For creating such data, use the ProtocolSettingsLike type,
  * or the on-chain data-building helpers instead.
  * @public
  */
-export type ErgoReqtData = ReqtData/*like canon-other*/
+export type ErgoProtocolSettings = ProtocolSettings/*like canon-other*/
 
 /**
- * A strong type for the permissive form of ReqtData
+ * A strong type for the permissive form of ProtocolSettings
  * @remarks
  * The field types enable implicit conversion from various allowable input types (including the canonical form).
  * @public
  */
-export interface ReqtDataLike {
+export interface ProtocolSettingsLike {
     id: /*minStructField*/ number[]
     type: /*minStructField*/ string
-    category: /*minStructField*/ string
-    name: /*minStructField*/ string
-    image: /*minStructField*/ string
-    description: /*minStructField*/ string
-    mustFreshenBy: /*minStructField*/ TimeLike
-    target: /*minStructField*/ number[]
-    purpose: /*minStructField*/ string
-    details: /*minStructField*/ Array<string>
-    mech: /*minStructField*/ Array<string>
-    impl: /*minStructField*/ string
-    requires: /*minStructField*/ Array<string>
+    meaning: /*minStructField*/ IntLike
+    badSpenderSetting: /*minStructField*/ IntLike
+    badMinterSetting: /*minStructField*/ IntLike
 }
 
 
 /**
- * expresses the essential fields needed for initiating creation of a ReqtData
+ * expresses the essential fields needed for initiating creation of a ProtocolSettings
  * @public
  */
-export type minimalReqtData = minimalData<ReqtDataLike>
+export type minimalProtocolSettings = minimalData<ProtocolSettingsLike>
 
 /**
  * A strong type for the canonical form of DelegateDatum$capoStoredData
@@ -247,7 +235,7 @@ export type minimalReqtData = minimalData<ReqtDataLike>
  * @public
  */
 export interface DelegateDatum$capoStoredData {
-    data: ReqtData  /*minVariantField*/ ,
+    data: ProtocolSettings  /*minVariantField*/ ,
     version: bigint  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
@@ -263,7 +251,7 @@ export interface DelegateDatum$capoStoredData {
  * @public
  */
 export type DelegateDatum$Ergo$capoStoredData = {
-    data: ErgoReqtData  /*minVariantField*/ ,
+    data: ErgoProtocolSettings  /*minVariantField*/ ,
     version: bigint  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
@@ -276,7 +264,7 @@ export type DelegateDatum$Ergo$capoStoredData = {
  * @public
  */
 export interface DelegateDatum$capoStoredDataLike {
-    data: ReqtDataLike  /*minVariantField*/ ,
+    data: ProtocolSettingsLike  /*minVariantField*/ ,
     version: IntLike  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
@@ -288,7 +276,7 @@ export interface DelegateDatum$capoStoredDataLike {
             * @internal
             */
             export type DelegateDatumMeta = EnumTypeMeta<
-    {module: "ReqtsData", enumName: "DelegateDatum"}, {
+    {module: "BadSettingsPolicy", enumName: "DelegateDatum"}, {
         Cip68RefToken: singleEnumVariantMeta<DelegateDatumMeta, "Cip68RefToken",
             "Constr#0", 
             "fields", DelegateDatum$Cip68RefToken, "noSpecialFlags"
@@ -1016,7 +1004,7 @@ export type DelegateLifecycleActivityLike = IntersectedEnum<
             * @internal
             */
             export type SpendingActivityMeta = EnumTypeMeta<
-    {module: "ReqtsData", enumName: "SpendingActivity"}, {
+    {module: "BadSettingsPolicy", enumName: "SpendingActivity"}, {
         UpdatingRecord: singleEnumVariantMeta<SpendingActivityMeta, "UpdatingRecord",
             "Constr#0", "singletonField", /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]   , "noSpecialFlags"
@@ -1072,7 +1060,7 @@ export type SpendingActivityLike = IntersectedEnum<
             * @internal
             */
             export type MintingActivityMeta = EnumTypeMeta<
-    {module: "ReqtsData", enumName: "MintingActivity"}, {
+    {module: "BadSettingsPolicy", enumName: "MintingActivity"}, {
         CreatingRecord: singleEnumVariantMeta<MintingActivityMeta, "CreatingRecord",
             "Constr#0", "singletonField", /* implied wrapper { seed: ... } for singleVariantField */ 
 			TxOutputId   , "isSeededActivity"
@@ -1128,7 +1116,7 @@ export type MintingActivityLike = IntersectedEnum<
             * @internal
             */
             export type BurningActivityMeta = EnumTypeMeta<
-    {module: "ReqtsData", enumName: "BurningActivity"}, {
+    {module: "BadSettingsPolicy", enumName: "BurningActivity"}, {
         DeletingRecord: singleEnumVariantMeta<BurningActivityMeta, "DeletingRecord",
             "Constr#0", "singletonField", /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]   , "noSpecialFlags"
@@ -1298,7 +1286,7 @@ export interface DelegateActivity$DeletingDelegatedDataLike {
             * @internal
             */
             export type DelegateActivityMeta = EnumTypeMeta<
-    {module: "ReqtsPolicy", enumName: "DelegateActivity"}, {
+    {module: "BadSettingsPolicy", enumName: "DelegateActivity"}, {
         CapoLifecycleActivities: singleEnumVariantMeta<DelegateActivityMeta, "CapoLifecycleActivities",
             "Constr#0", "singletonField", /* implied wrapper { activity: ... } for singleVariantField */ 
 			CapoLifecycleActivity   , "noSpecialFlags"

@@ -8,6 +8,6 @@ declare module "*.hl" {
 /**
  * this file ONLY needs a declaration for *.hl files.
  * 
- * hlb.ts, hlBundled.mjs and bridge.ts and typeInfo.ts are just
+ * hlb.ts, hlBundled.mjs and bridge.ts and typeInfo.d.ts are just
  * regular typescript files and don't need any special handling.
  */

@@ -117,7 +117,10 @@ import type {
     // BytesLike,
  } from "@helios-lang/codec-utils";
 
- type TimeLike = IntLike;
+/**
+ * @public
+ */
+export type TimeLike = IntLike;
  
 ${stellarImports}
 

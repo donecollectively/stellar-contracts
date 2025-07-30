@@ -4,23 +4,35 @@ import type { HeliosScriptBundle } from "../scriptBundling/HeliosScriptBundle.js
 import type { isActivity } from "../../ActivityTypes.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 
-const JustAnEnum = Symbol("JustAnEnum");
+/**
+ * @public
+ */
+export const JustAnEnum = Symbol("JustAnEnum");
 /**
  * @public
  */
 export type JustAnEnum = typeof JustAnEnum;
-const Nested = Symbol("Nested");
 /**
  * @public
  */
-export type Nested = typeof Nested;5
-const NotNested = Symbol("NotNested");
+export const Nested = Symbol("Nested");
+/**
+ * @public
+ */
+export type Nested = typeof Nested;
+/**
+ * @public
+ */
+export const NotNested = Symbol("NotNested");
 /**
  * @public
  */
 export type NotNested = typeof NotNested;
 
-const isDatum = Symbol("isDatum");
+/**
+ * @public
+ */
+export const isDatum = Symbol("isDatum");
 /**
  * @public
  */
@@ -42,7 +54,7 @@ export class EnumBridge<
     }   
     // the uplcReturnType provides type clues, mainly for editor support
     // and compile-time type-checking.  
-    protected mkUplcData(value: any, enumPathExpr: string) : uplcReturnType{
+    mkUplcData(value: any, enumPathExpr: string) : uplcReturnType{
         if (this.redirectTo) {
             //@ts-expect-error the signature's return type is provided by the returned
             //   value from the redirectTo() callback.

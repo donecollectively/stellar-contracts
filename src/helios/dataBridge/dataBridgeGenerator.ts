@@ -216,6 +216,10 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 // NOTE: this file is auto-generated; do not edit directly
 ${imports}
 ${scImports}
+
+/**
+ * @public
+ */
 export type TimeLike = IntLike;
 
 ${this.includeScriptNamedTypes(inputFile)}
@@ -271,7 +275,7 @@ ${this.includeNamedSchemas()}
     }
 
     generateDataReaderClass(className: string) {
-        return `/*
+        return `/**
  * @public
  */
 export class ${className} extends DataBridgeReaderClass {
@@ -941,7 +945,6 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 isActivity ? "true" : "false"
             } 
         });\n` +
-            `        ${"//"}@ts-expect-error drilling through the protected accessor.  See more comments about that above\n` +
             `        nestedAccessor.mkDataVia(\n` +
             `            (${nestedFieldName}: ${nestedEnumName}Like) => {\n` +
             `                return  this.mkUplcData({ ${variantName}: ${nestedFieldName} }, 

@@ -329,7 +329,7 @@ export class StellarHeliosProject {
             );
         }
 
-        let typeFilename = filename.replace(/(\.hlb)?\.[jt]s$/, ".typeInfo.ts");
+        let typeFilename = filename.replace(/(\.hlb)?\.[jt]s$/, ".typeInfo.d.ts");
         const { bundleClassName, parentClassName } = bundleEntry;
 
         if (!parentClassName) {
