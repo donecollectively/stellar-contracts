@@ -4,6 +4,7 @@
     "compiler": {
         "tsconfigFilePath": "<projectFolder>/tsconfig.dts.json"
     },
+    "newlineKind": "lf",
     "apiReport": { "enabled": false },
     "docModel": { "enabled": false },
     "dtsRollup": {
