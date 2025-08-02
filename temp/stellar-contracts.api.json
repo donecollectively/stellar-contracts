@@ -24883,7 +24883,7 @@
             },
             {
               "kind": "Content",
-              "text": "{\n    DEBUG: number;\n    CARDANO_NETWORK: string;\n    NODE_ENV: string;\n    OPTIMIZE: number;\n    cwd: string;\n}"
+              "text": "{\n    DEBUG: number;\n    CARDANO_NETWORK: string;\n    BF_API_KEY: string;\n    NODE_ENV: string;\n    OPTIMIZE: number;\n    cwd: string;\n}"
             }
           ],
           "fileUrlPath": "src/environment.ts",

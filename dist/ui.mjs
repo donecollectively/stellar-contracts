@@ -11,13 +11,13 @@ import { bytesToHex, hexToBytes } from '@helios-lang/codec-utils';
 
 const styles = {
   primary: {
-    className: "not-prose rounded-md bg-blue-700 py-2 px-4 text-sm font-semibold text-slate-900 border border-solid border-blue-600/50 text-neutral-200 hover:bg-blue-500 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 active:bg-blue-500"
+    className: "not-prose rounded-md bg-blue-700 py-2 px-4 text-sm font-semibold text-slate-900 border border-solid border-blue-600/66 text-neutral-200 hover:bg-blue-500 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 active:bg-blue-500"
   },
   secondary: {
-    className: "not-prose rounded-md bg-blue-900 py-2 px-4 text-sm font-medium border border-solid border-blue-700/50 text-neutral-400 hover:bg-slate-700 disabled:bg-slate-700 disabled:border-blue-900 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50 active:text-slate-400"
+    className: "not-prose rounded-md bg-blue-900 py-2 px-4 text-sm font-medium border border-solid border-blue-500/66 text-neutral-400 hover:bg-slate-700 disabled:bg-slate-700 disabled:border-blue-900 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50 active:text-slate-400"
   },
   "secondary-sm": {
-    className: "not-prose rounded-md bg-blue-900 px-2 text-sm border border-solid border-blue-700/50 text-neutral-400 hover:bg-slate-700 disabled:bg-slate-700 disabled:border-blue-900 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50 active:text-slate-400"
+    className: "not-prose rounded-md bg-blue-900 px-4 text-sm border border-solid border-blue-500/75 text-neutral-200 hover:bg-slate-700 disabled:bg-slate-700 disabled:border-blue-900 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50 active:text-slate-400"
   }
 };
 const Button = function(props) {
@@ -268,7 +268,7 @@ function ActionButton(props) {
     "button",
     {
       onClick,
-      className: `${className} bg-(--color-primary) text-(--color-primary-foreground) text-${size} rounded-${size} cursor-pointer px-2 py-1`
+      className: `${className} font-bold bg-(--color-primary) text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${" hi-there "} text-${size} border-2 border-(--color-border) rounded-${size} cursor-pointer px-2 py-1`
     },
     children
   );
@@ -402,7 +402,7 @@ function ShowTxList({
 }) {
   const { $allTxns } = batch;
   const width = advancedView ? "w-3/12" : "w-9/12";
-  return /* @__PURE__ */ React.createElement("div", { className: `z-4 flex ${width} flex-col gap-0` }, batch.$allTxns.map((txTracker) => {
+  return /* @__PURE__ */ React.createElement("div", { className: `z-4 flex ${width} flex-grow flex-col gap-0` }, batch.$allTxns.map((txTracker) => {
     return /* @__PURE__ */ React.createElement(
       ShowSingleTx,
       {
@@ -515,7 +515,7 @@ function ShowTxDescription({
       console.error("Failed to decode signed transaction:", e);
     }
   }, [signedTxCborHex]);
-  return /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2 " }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "basis-1/9" }, tx && txTracker && tcx && !tcx.isFacade && /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2 " }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "basis-1/9" }, tx && txTracker && tcx && !tcx.isFacade && $state != "confirmed" && /* @__PURE__ */ React.createElement(
     ActionButton,
     {
       className: "mt-2 self-start",
@@ -619,6 +619,7 @@ function TxBatchUI() {
     Button,
     {
       variant: "secondary-sm",
+      className: "ml-3",
       onClick: () => {
         setAdvancedView(!advancedView);
       }

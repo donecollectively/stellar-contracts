@@ -1340,6 +1340,7 @@ export type EnumTypeMeta<EID extends EnumId, enumVariants extends VariantMap> = 
 export const environment: {
     DEBUG: number;
     CARDANO_NETWORK: string;
+    BF_API_KEY: string;
     NODE_ENV: string;
     OPTIMIZE: number;
     cwd: string;
