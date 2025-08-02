@@ -159,7 +159,7 @@ function ShowTxList({
     const width = advancedView ? "w-3/12" : "w-9/12";
 
     return (
-        <div className={`z-4 flex ${width} flex-col gap-0`}>
+        <div className={`z-4 flex ${width} flex-grow flex-col gap-0`}>
             {batch.$allTxns.map((txTracker) => {
                 return (
                     <ShowSingleTx
@@ -348,7 +348,7 @@ function ShowTxDescription({
             <div className="flex flex-col justify-between">
                 {/* Sign & Submit button */}
                 <div className="basis-1/9">
-                    {tx && txTracker && tcx && !tcx.isFacade && (
+                    {tx && txTracker && tcx && !tcx.isFacade && $state != "confirmed" &&  (
                         <ActionButton
                             className="mt-2 self-start"
                             onClick={() => txTracker.$signAndSubmit?.()}

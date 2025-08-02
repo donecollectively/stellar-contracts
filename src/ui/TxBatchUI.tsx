@@ -24,6 +24,7 @@ export function TxBatchUI() {
             </div>
             <div>
                 <Button variant="secondary-sm"
+                    className="ml-3"
                     onClick={() => {
                         setAdvancedView(!advancedView);
                     }}
