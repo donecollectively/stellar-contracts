@@ -240,7 +240,11 @@ export function ActionButton(props: {
     return (
         <button
             onClick={onClick}
-            className={`${className} bg-(--color-primary) text-(--color-primary-foreground) text-${size} rounded-${size} cursor-pointer px-2 py-1`}
+            className={`${
+                className
+            } font-bold bg-(--color-primary) text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${
+                " hi-there "
+            } text-${size} border-2 border-(--color-border) rounded-${size} cursor-pointer px-2 py-1`}
         >
             {children}
         </button>

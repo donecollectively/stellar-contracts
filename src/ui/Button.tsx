@@ -6,7 +6,7 @@ const styles = {
         className:
             "not-prose rounded-md bg-blue-700 py-2 px-4 " +
             "text-sm font-semibold text-slate-900 " +
-            "border border-solid border-blue-600/50 " +
+            "border border-solid border-blue-600/66 " +
             "text-neutral-200 " +
             "hover:bg-blue-500 " +
             "focus:outline-none focus-visible:outline-2 " +
@@ -16,7 +16,7 @@ const styles = {
     secondary: {
         className:
             "not-prose rounded-md bg-blue-900 py-2 px-4 text-sm font-medium " +
-            "border border-solid border-blue-700/50 " +
+            "border border-solid border-blue-500/66 " +
             "text-neutral-400 hover:bg-slate-700 " +
             "disabled:bg-slate-700 disabled:border-blue-900 " +
             "focus:outline-none focus-visible:outline-2 " +
@@ -25,9 +25,9 @@ const styles = {
     },
     "secondary-sm": {
         className:
-            "not-prose rounded-md bg-blue-900 px-2 text-sm " +
-            "border border-solid border-blue-700/50 " +
-            "text-neutral-400 hover:bg-slate-700 " +
+            "not-prose rounded-md bg-blue-900 px-4 text-sm " +
+            "border border-solid border-blue-500/75 " +
+            "text-neutral-200 hover:bg-slate-700 " +
             "disabled:bg-slate-700 disabled:border-blue-900 " +
             "focus:outline-none focus-visible:outline-2 " +
             "focus-visible:outline-offset-2 focus-visible:outline-white/50 " +
