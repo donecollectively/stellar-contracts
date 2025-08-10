@@ -344,7 +344,7 @@ export function heliosRollupBundler(
                         const bundledId = `${id}?bundled`;
 
                         const name = resolved.id.replace(
-                            /.*\/([._a-zA-Z]*)\.hlb\.[jt]s$/,
+                            /.*\/([._a-zA-Z0-9]*)\.hlb\.[jt]s$/,
                             "$1"
                         );
                         const buildGenericArtifacts = !!isStellarContracts;
