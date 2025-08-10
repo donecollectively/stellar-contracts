@@ -22,9 +22,10 @@ Additional Use Grant:
         extractive dynamics of Open Source as it has been previously defined, enabling
         sustainabie functional and economic dynamics for projects while preserving the 
         essential experience of source-code openness, transparency, and freedom to modify
-        and repair the software.  The Licensed Work's entire source code is available.
-        This paragraph, without augmenting or limiting your rights under the license, 
-        provides context for these conditions of non-commercial use.
+        and repair the software.  The Licensed Work's entire source code is open and available 
+        today, and is licensed with GPL2 as of the the Change Date below. This paragraph, 
+        without augmenting or limiting your rights under the license, provides context for these 
+        conditions of non-commercial use.
  
         You may refer to this license using the trademark "Cardano Community 
         Source License", as long as you comply with the Covenants of Licensor
@@ -52,15 +53,16 @@ Additional Use Grant:
           - You do not provide the software or application for remuneration, or in 
             connection with consulting for remuneration.
 
-Change Date:          2029-05-15
+        For information about alternative licensing arrangements for the Software,
+        please review the FAQ urls from MariaDB below, and engage with ODIN through 
+        our Discord server or Github.
+
+Change Date:          2029-08-10
 
 Change License:       Version 2 or later of the GNU General Public License as
                       published by the Free Software Foundation.
 
-For information about alternative licensing arrangements for the Software,
-please review the FAQ urls from MariaDB below, and also visit: 
 
-    https://stellar-contracts.org/ 
 
 Notice
 
