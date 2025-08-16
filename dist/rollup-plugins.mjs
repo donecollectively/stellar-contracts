@@ -2046,7 +2046,7 @@ var OPTIMIZE;
 var BF_API_KEY;
 var isNodeJS = typeof process !== "undefined";
 var cwd = isNodeJS ? process.cwd() : "";
-var anyNEXTjsCue = process.env.NEXT_PUBLIC_DEBUG || process.env.NEXT_PUBLIC_CARDANO_NETWORK || process.env.NEXT_PUBLIC_OPTIMIZE || process.env.NODE_ENV;
+var anyNEXTjsCue = process.env.NEXT_PUBLIC_DEBUG || process.env.NEXT_PUBLIC_CARDANO_NETWORK || process.env.NEXT_PUBLIC_OPTIMIZE || process.env.NEXT_RUNTIME;
 if ((() => {
   try {
     return import.meta.env;
@@ -5308,7 +5308,6 @@ function heliosRollupBundler(opts = {}) {
               /.*\/([._a-zA-Z0-9]*)\.hlb\.[jt]s$/,
               "$1"
             );
-            console.log("resolved", resolved.id, "\n... to name", name);
             const buildGenericArtifacts = !!isStellarContracts;
             const netIdSuffix = buildGenericArtifacts ? "" : `-${networkId}`;
             const packageRelativeName = `contracts${netIdSuffix}/${name}.hlb`;

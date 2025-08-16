@@ -5,7 +5,7 @@ let OPTIMIZE;
 let BF_API_KEY;
 const isNodeJS = typeof process !== "undefined";
 const cwd = isNodeJS ? process.cwd() : "";
-let anyNEXTjsCue = process.env.NEXT_PUBLIC_DEBUG || process.env.NEXT_PUBLIC_CARDANO_NETWORK || process.env.NEXT_PUBLIC_OPTIMIZE || process.env.NODE_ENV;
+let anyNEXTjsCue = process.env.NEXT_PUBLIC_DEBUG || process.env.NEXT_PUBLIC_CARDANO_NETWORK || process.env.NEXT_PUBLIC_OPTIMIZE || process.env.NEXT_RUNTIME;
 if ((() => {
   try {
     return import.meta.env;
