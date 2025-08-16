@@ -10,7 +10,7 @@ const cwd = isNodeJS ? process.cwd() : ""
 let anyNEXTjsCue = process.env.NEXT_PUBLIC_DEBUG || 
     process.env.NEXT_PUBLIC_CARDANO_NETWORK || 
     process.env.NEXT_PUBLIC_OPTIMIZE || 
-    process.env.NODE_ENV;
+    process.env.NEXT_RUNTIME 
 
 if (
     ( () => {
