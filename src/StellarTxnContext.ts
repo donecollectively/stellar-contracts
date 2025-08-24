@@ -1177,8 +1177,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         // exBudget to cover the way the haskell node computes the
                         // per-script execution costs.  Prevents "out of budget" errors
                         // during script execution:
-                        const cpuSlush = BigInt(350_000_000n); // ~25k lovelace
-                        const memSlush = BigInt(430_000n); // ~25k lovelace
+                        const cpuSlush = BigInt(250_000_000n); // ~25k lovelace
+                        const memSlush = BigInt(50_000n); // ~25k lovelace
 
                         //... but doesn't suffice to just add per-script slush:
                         // this approach leads to escalating "expected/actual fee" messaging
