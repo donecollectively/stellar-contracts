@@ -1599,8 +1599,8 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
             capturedCosts[`${purpose} @${1 + index}`] = {
               ...costs
             };
-            const cpuSlush = BigInt(350000000n);
-            const memSlush = BigInt(430000n);
+            const cpuSlush = BigInt(250000000n);
+            const memSlush = BigInt(50000n);
             capturedCosts.slush.cpu += cpuSlush;
             capturedCosts.slush.mem += memSlush;
             costs.cpu += cpuSlush;
