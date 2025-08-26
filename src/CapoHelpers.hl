@@ -1049,6 +1049,16 @@ struct DgDataDetails {
     //     // todo
     //     false
     // }
+
+    /**
+     * Allows the object's creation to be an implicit assertion
+     * of presence / input / output conditions, without the caller having to
+     * use the object in any other way (prevents an unused-variable error).
+     */
+    func orFail(self) -> () {
+        // prevent unused-variable error:
+        assert(true || /* never executed */ self == self, "no way"); 
+    }
 }
 
 /**************************************************************
