@@ -8,13 +8,13 @@
 // >;
 
 import { BadSettingsController } from "./BadSettingsController.js";
-import {
-    ProtocolSettingsLike,
-    ErgoProtocolSettings,
-    ErgoDelegationDetail,
-    ErgoDelegateActivity,
-    ErgoDelegateDatum
-} from "./BadSettings.typeInfo.js";
+// import type {
+//     ProtocolSettingsLike,
+//     ErgoProtocolSettings,
+//     ErgoDelegationDetail,
+//     ErgoDelegateActivity,
+//     ErgoDelegateDatum
+// } from "./BadSettings.typeInfo.js";
 import { Capo, defineRole } from "@donecollectively/stellar-contracts";
 
 // const goodSettings: CanBeBadSettings = { data: {

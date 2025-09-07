@@ -5,7 +5,7 @@ import {
     CapoWithoutSettings
 } from "@donecollectively/stellar-contracts"
 
-import { minimalReqtData } from "../src/reqts/Reqts.concrete.typeInfo.js";
+import type { minimalReqtData } from "../src/reqts/Reqts.concrete.typeInfo.d.ts";
 import { ReqtsController } from "../src/reqts/ReqtsController.js";
 import { CapoTestHelper } from "../src/testing/CapoTestHelper.js";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
@@ -110,7 +110,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         this.setActor("tina");
         const reqtsController = (await this.capo.getDgDataController(
             "reqts"
-        )) as ReqtsController;
+        )) as unknown as ReqtsController;
         const t = await this.capo.findDelegatedDataUtxos({
             type: "reqts",
         });
@@ -141,7 +141,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
     async findFirstDependentReqt() {
         const delegate = (await this.capo.getDgDataController(
             "reqts"
-        )) as ReqtsController;
+        )) as unknown as ReqtsController;
         const firstReqt = await this.findFirstReqt();
         const reqts = await this.capo.findReqts({
             requires: firstReqt.id,
@@ -175,7 +175,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
 
         const delegate = (await this.capo.getDgDataController(
             "reqts"
-        )) as ReqtsController;
+        )) as unknown as ReqtsController;
         // ).getNamedDelegate("reqtCtrl");
         // getNamedDelegate("reqtCtrl") ) as ReqtsController
         // const tcx = await delegate.mkTxnCreateReqt(reqt);
