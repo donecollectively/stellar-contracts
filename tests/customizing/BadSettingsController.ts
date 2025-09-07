@@ -1,11 +1,11 @@
 import BadSettingsBundle from "./BadSettings.hlb.js";
-import {
-    SpendingActivity,
-    SpendingActivityLike,
-    type ProtocolSettingsLike,
-    type ProtocolSettings,
+import type {
+    // SpendingActivity,
+    // SpendingActivityLike,
+    ProtocolSettingsLike,
+    ProtocolSettings,
     minimalProtocolSettings,
- } from "./BadSettings.typeInfo.js";
+ } from "./BadSettings.typeInfo.d.ts";
 import { 
     BadSettingsPolicyDataBridge
 } from "./BadSettings.bridge.js" ;
