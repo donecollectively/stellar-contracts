@@ -402,7 +402,7 @@ describe("StellarContract", async () => {
             });
             
             describe("findSufficientActorUtxos()", () => {
-                fit("finds a given amount of ada-only utxos, despite not having any single utxo with that amount", async (context: localTC) => {
+                it("finds a given amount of ada-only utxos, despite not having any single utxo with that amount", async (context: localTC) => {
                     const {
                         h,
                         h: { network, actors, delay, state },
@@ -444,6 +444,27 @@ describe("StellarContract", async () => {
                         wallet: tina
                     })).rejects.toThrow(/Insufficient funds error/);
                 });
+
+                it("finds money in other known wallets if searchOthers is true", async (context: localTC) => {
+                    const {
+                        h,
+                        h: { network, actors, delay, state },
+                    } = context;
+                    const t: CapoWithoutSettings = await h.initialize();
+                    await h.setActor("tracy");
+                    
+                    const uh = t.utxoHelper;
+                    const targetAda = 1_500n * ADA
+                    const notFound = uh.findSufficientActorUtxos("doesn't find lots of money in tracy's wallet",  makeValue(targetAda), {})
+                    await expect(notFound).rejects.toThrow(/Insufficient funds error/);
+
+                    const found = await uh.findSufficientActorUtxos("finds lots of money from tina's wallet",  makeValue(targetAda), {
+                        searchOthers: true
+                    })
+                    expect(found.length).toBeGreaterThan(0);
+                    expect(found.reduce((sum, u) => sum + u.value.lovelace, 0n)).toBeGreaterThan(targetAda);
+                    
+                })
             });
 
             describe("with valuePredicate for ada-only", () => {
@@ -529,6 +550,49 @@ describe("StellarContract", async () => {
                 });
             });
         });
+
+        describe("findActorUtxo()", () => {
+            it("only finds utxos in the current actor's wallet, if searchOthers is false", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+                const t: CapoWithoutSettings = await h.initialize();
+                const uh = t.utxoHelper;
+                const tcx = t.mkTcx();
+                await h.setActor("tracy");
+
+                const predicate = uh.mkValuePredicate(1000n * ADA);
+                const found = await uh.findActorUtxo("finds utxo in current wallet", predicate, {
+                    searchOthers: false,                    
+                })
+                expect(found).toBeUndefined();
+
+                await h.setActor("tina");
+                const found2 = await uh.findActorUtxo("finds utxo in current wallet", predicate, {
+                    searchOthers: false,                    
+                })
+                expect(found2).toBeTruthy()
+            })
+
+            it("finds utxos in other wallets, if searchOthers is true", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+
+                const t: CapoWithoutSettings = await h.initialize();
+                const uh = t.utxoHelper;
+                const tcx = t.mkTcx();
+                await h.setActor("tracy");
+
+                const predicate = uh.mkValuePredicate(1000n * ADA);
+                const found = await uh.findActorUtxo("finds utxo in current wallet", predicate, {
+                    searchOthers: true,                    
+                })
+                expect(found).toBeTruthy()
+            })
+        })
 
         describe("mustFindMyUtxo", () => {
             it("uses hasUtxo underneath", async (context: localTC) => {
