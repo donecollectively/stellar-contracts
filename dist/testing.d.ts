@@ -329,6 +329,7 @@ export declare class StellarNetworkEmulator implements Emulator {
         costModelParamsV1: number[];
         costModelParamsV2: number[];
         costModelParamsV3: number[];
+        collateralUTXO?: string;
     };
     /**
      * retains continuity for the seed and the RNG through one or more snapshots.
@@ -485,10 +486,6 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>,
      * @public
      */
     createWallet(lovelace?: bigint, assets?: Assets): SimpleWallet_stellar;
-    /**
-     * @public
-     */
-    mkSeedUtxo(seedIndex?: bigint): Promise<TxId>;
     /**
      * @public
      */

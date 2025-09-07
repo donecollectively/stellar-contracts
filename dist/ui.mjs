@@ -1611,7 +1611,8 @@ class CapoDAppProvider extends Component {
       networkParams,
       txBatcher,
       actorContext: {
-        wallet
+        wallet,
+        others: {}
       },
       isMainnet: this.isMainnet(),
       optimize: true

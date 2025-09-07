@@ -1,6 +1,6 @@
 export { e as environment } from './environment.mjs';
 import { C as ContractBasedDelegate, A as Activity, d as datum, D as DataBridge, a as ContractDataBridge, i as impliedSeedActivityMaker, b as DataBridgeReaderClass, S as StellarContract, m as mkValuesEntry, c as StellarDelegate, e as dumpAny, f as StellarTxnContext, U as UutName, g as mkUutValuesEntries, h as delegateLinkSerializer, j as errorMapAsString, u as uplcDataSerializer, T as TxNotNeededError, k as AlreadyPendingError, l as hasReqts, p as partialTxn, t as txn } from './ContractBasedDelegate2.mjs';
-export { a0 as ContractDataBridgeWithEnumDatum, a1 as ContractDataBridgeWithOtherDatum, _ as SeedActivity, X as UtxoHelper, R as abbrevAddress, V as abbreviatedDetail, W as abbreviatedDetailBytes, J as addrAsString, x as assetsAsString, Q as betterJsonSerializer, K as byteArrayAsString, N as byteArrayListAsString, s as colors, O as datumSummary, n as debugMath, v as displayTokenName, Y as findInputsInWallets, $ as getSeed, P as hexToPrintableString, I as lovelaceToAda, Z as mergesInheritedReqts, F as policyIdAsString, r as realDiv, o as realMul, w as stringToPrintableString, q as toFixedReal, y as txAsString, H as txInputAsString, G as txOutputAsString, M as txOutputIdAsString, L as txidAsString, z as utxoAsString, E as utxosAsString, B as valueAsString } from './ContractBasedDelegate2.mjs';
+export { $ as ContractDataBridgeWithEnumDatum, a0 as ContractDataBridgeWithOtherDatum, Z as SeedActivity, X as UtxoHelper, R as abbrevAddress, V as abbreviatedDetail, W as abbreviatedDetailBytes, J as addrAsString, x as assetsAsString, Q as betterJsonSerializer, K as byteArrayAsString, N as byteArrayListAsString, s as colors, O as datumSummary, n as debugMath, v as displayTokenName, _ as getSeed, P as hexToPrintableString, I as lovelaceToAda, Y as mergesInheritedReqts, F as policyIdAsString, r as realDiv, o as realMul, w as stringToPrintableString, q as toFixedReal, y as txAsString, H as txInputAsString, G as txOutputAsString, M as txOutputIdAsString, L as txidAsString, z as utxoAsString, E as utxosAsString, B as valueAsString } from './ContractBasedDelegate2.mjs';
 import { bytesToHex, decodeUtf8, encodeUtf8, equalsBytes } from '@helios-lang/codec-utils';
 export { decodeUtf8 as bytesToText, encodeUtf8 as textToBytes } from '@helios-lang/codec-utils';
 import { makeInlineTxOutputDatum, makeValue, makeAssets, makeAddress, makeTxOutput, makeDummyMintingPolicyHash, makeValidatorHash, makeTxOutputId, makeNetworkParamsHelper, decodeTx, makeTxId, decodeTxWitnesses } from '@helios-lang/ledger';
@@ -9193,20 +9193,24 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
   // }
   //! impls MUST resolve the indicated token to a specific UTxO
   //  ... or throw an informative error
-  async DelegateMustFindAuthorityToken(tcx, label) {
+  async DelegateMustFindAuthorityToken(tcx, label, options = {}) {
     const v = this.tvAuthorityToken();
     const { addrHint } = this.configIn;
-    return this.uh.mustFindActorUtxo(
+    const extraErrorHint = "are you connected to the right wallet address? " + (addrHint?.length ? "\nauthority token originally issued to " + addrHint.map((x) => {
+      const addr = "string" == typeof x ? makeAddress(x) : x;
+      return dumpAny(addr) + " = " + addr.toString();
+    }).join("\n or ") : "");
+    const found = await this.uh.findActorUtxo(
       `${label}: ${decodeUtf8(this.configIn.tn)}`,
+      this.uh.mkTokenPredicate(v),
       {
-        predicate: this.uh.mkTokenPredicate(v),
         exceptInTcx: tcx,
-        extraErrorHint: "are you connected to the right wallet address? " + (addrHint?.length ? "\nauthority token originally issued to " + addrHint.map((x) => {
-          const addr = "string" == typeof x ? makeAddress(x) : x;
-          return dumpAny(addr) + " = " + addr.toString();
-        }).join("\n or ") : "")
+        searchOthers: true,
+        extraErrorHint
       }
     );
+    if (found) return found;
+    throw this.uh.utxoSearchError(label, options, extraErrorHint);
   }
   async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {
     let dest;

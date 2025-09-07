@@ -1,8 +1,8 @@
-import { dumpAny, environment, TxBatcher, GenericSigner, UtxoHelper, utxosAsString, findInputsInWallets, txAsString, lovelaceToAda, StellarTxnContext, CapoWithoutSettings, parseCapoJSONConfig } from '@donecollectively/stellar-contracts';
-import { DEFAULT_NETWORK_PARAMS, makeNetworkParamsHelper, makeAssets, makeTxOutputId, makeAddress, makeStakingAddress, makeValue } from '@helios-lang/ledger';
+import { dumpAny, environment, TxBatcher, GenericSigner, UtxoHelper, txAsString, lovelaceToAda, StellarTxnContext, CapoWithoutSettings, parseCapoJSONConfig } from '@donecollectively/stellar-contracts';
+import { DEFAULT_NETWORK_PARAMS, makeNetworkParamsHelper, makeAssets, makeTxOutputId, makeAddress, makeStakingAddress } from '@helios-lang/ledger';
 import { generateBytes, mulberry32 } from '@helios-lang/crypto';
 import '@helios-lang/codec-utils';
-import { SECOND, makeEmulatorGenesisTx, makeEmulatorRegularTx, BIP39_DICT_EN, restoreRootPrivateKey, signCip30CoseData, makeRootPrivateKey, makeTxBuilder } from '@helios-lang/tx-utils';
+import { SECOND, makeEmulatorGenesisTx, makeEmulatorRegularTx, BIP39_DICT_EN, restoreRootPrivateKey, signCip30CoseData, makeRootPrivateKey } from '@helios-lang/tx-utils';
 import { expectDefined } from '@helios-lang/type-utils';
 
 async function addTestContext(context, TestHelperClass, stConfig, helperState) {
@@ -661,6 +661,7 @@ class StellarTestHelper {
    * @public
    */
   actorContext = {
+    others: {},
     wallet: void 0
   };
   /**
@@ -1108,42 +1109,6 @@ class StellarTestHelper {
   /**
    * @public
    */
-  async mkSeedUtxo(seedIndex = 0n) {
-    const { wallet } = this;
-    const { network } = this;
-    const txb = makeTxBuilder({
-      isMainnet: network.isMainnet()
-    });
-    const actorMoney = await wallet.utxos;
-    console.log(
-      `${this._actorName} has money: 
-` + utxosAsString(actorMoney)
-    );
-    txb.spendWithoutRedeemer(
-      await findInputsInWallets(
-        makeValue(30n * ADA),
-        { wallets: [wallet] },
-        network
-      )
-    );
-    txb.payUnsafe(wallet.address, makeValue(10n * ADA));
-    txb.payUnsafe(wallet.address, makeValue(10n * ADA));
-    let si = 2;
-    for (; si < seedIndex; si++) {
-      txb.payUnsafe(wallet.address, makeValue(10n * ADA));
-    }
-    const txId = await this.submitTx(
-      await txb.build({
-        changeAddress: wallet.address,
-        networkParams: this.networkParams
-      }),
-      "force"
-    );
-    return txId;
-  }
-  /**
-   * @public
-   */
   async submitTx(tx, force) {
     this.wallet?.address;
     const isAlreadyInitialized = !!this.strella;
@@ -1228,6 +1193,7 @@ class StellarTestHelper {
         -4
       )} ${lovelaceToAda(walletBalance)} (\u{1F511}#${a.address.spendingCredential?.toHex().substring(0, 8)}\u2026)`
     );
+    this.actorContext.others[roleName] = a;
     //! it makes collateral for each actor, above and beyond the initial balance,
     const five = 5n * ADA;
     if (0 == moreUtxos.length) moreUtxos = [five, five, five];
@@ -1550,7 +1516,8 @@ class CapoTestHelper extends StellarTestHelper {
         Object.assign(this.actors, previousHelper.actors);
         previousHelper.networkCtx = { network: previousNetwork };
         previousHelper.actorContext = {
-          wallet: "previous network retired"
+          wallet: "previous network retired",
+          others: previousHelper.actorContext.others
         };
         this.networkCtx = oldNetworkEnvelope;
         this.actorContext = oldActorContext;

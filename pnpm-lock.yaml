@@ -34,7 +34,7 @@ importers:
         specifier: ^0.3.4
         version: 0.3.4
       '@helios-lang/compiler':
-        specifier: ^0.17.21
+        specifier: ^0.17.22
         version: 0.17.22
       '@helios-lang/compiler-utils':
         specifier: ^0.5.15
@@ -49,8 +49,8 @@ importers:
         specifier: ^0.3.9
         version: 0.3.9
       '@helios-lang/ledger':
-        specifier: ^0.7.11
-        version: 0.7.11
+        specifier: ^0.7.19
+        version: 0.7.19
       '@helios-lang/tx-utils':
         specifier: ^0.6.15
         version: 0.6.15
@@ -58,8 +58,8 @@ importers:
         specifier: ^0.3.0
         version: 0.3.0
       '@helios-lang/uplc':
-        specifier: ^0.7.17
-        version: 0.7.17
+        specifier: ^0.7.18
+        version: 0.7.18
       '@microsoft/api-extractor':
         specifier: ^7.47.11
         version: 7.47.11(@types/node@20.16.2)
@@ -887,8 +887,8 @@ packages:
   '@helios-lang/ir@0.3.9':
     resolution: {integrity: sha512-uWEPBftVkBCECq2DFPMNAa+o6VpnYKgHefCvjwiTpD7xqL0tl+z5y3U/W3AvHmdgCXMu+Z8JG6iaheSSggmdqA==}
 
-  '@helios-lang/ledger@0.7.11':
-    resolution: {integrity: sha512-67TTl4GjUVePOIMr1ZJLLBa1adjW9R4JiquTpSHkYF6kx7gSVd+qXh3DnrH2DUyox14ER//xtaTNnVYWqzR+6Q==}
+  '@helios-lang/ledger@0.7.19':
+    resolution: {integrity: sha512-sBakVCd/dSNgRkYdl36HIRLZnbAyulZmHW3M4Lr9RmTY9ehzwsIrkmal9Qts5h/HeKtSDCOPJiqXMux5fWWfEg==}
 
   '@helios-lang/tx-utils@0.6.15':
     resolution: {integrity: sha512-CefQJLL+uYsZMBYYewrzCYarcJRgrjp8tP2ncwv0T6DyCliiFSbiulf4dw4DN6esgohJ80+2B1LL3aeN+G5PBQ==}
@@ -902,8 +902,8 @@ packages:
   '@helios-lang/type-utils@0.3.0':
     resolution: {integrity: sha512-7iEzd/6Qw7srA5ye2gveUcNlRA5jpZZ2YGeCOZc93irpFwpZaJl8P35yQfRXTRfX77W5t57Hc+Zmg/I2eGbq2Q==}
 
-  '@helios-lang/uplc@0.7.17':
-    resolution: {integrity: sha512-zQuDzOaLX7/KfuCB7TTgvu+dGAu1nTcILjQ5t7IWvNQgOPGZQ8eMs8vt2ytwPniWCEEOE+7a9Tw5cwvEKDn1sg==}
+  '@helios-lang/uplc@0.7.18':
+    resolution: {integrity: sha512-LbwjBjUKpZYsHZIKmH1vF7WytNJfISgyDyAEqgCf5w2htMJqBlv5buV2ZYS8sef91IKW9OeI05NCsTa2Q1zJGA==}
 
   '@jridgewell/gen-mapping@0.3.8':
     resolution: {integrity: sha512-imAbBGkb+ebQyxKgzv5Hu2nmROxoDOXHh80evxdoXNOrvAnVx7zimzc1Oo5h9RlfV4vPXaE2iM5pOFbvOCClWA==}
@@ -3093,7 +3093,7 @@ snapshots:
       '@helios-lang/compiler-utils': 0.5.15
       '@helios-lang/ir': 0.3.9
       '@helios-lang/type-utils': 0.3.0
-      '@helios-lang/uplc': 0.7.17
+      '@helios-lang/uplc': 0.7.18
 
   '@helios-lang/contract-utils@0.3.21(@helios-lang/compiler@0.17.22)':
     dependencies:
@@ -3102,9 +3102,9 @@ snapshots:
       '@helios-lang/compiler': 0.17.22
       '@helios-lang/compiler-utils': 0.5.15
       '@helios-lang/crypto': 0.2.3
-      '@helios-lang/ledger': 0.7.11
+      '@helios-lang/ledger': 0.7.19
       '@helios-lang/type-utils': 0.3.0
-      '@helios-lang/uplc': 0.7.17
+      '@helios-lang/uplc': 0.7.18
 
   '@helios-lang/crypto@0.2.3':
     dependencies:
@@ -3118,24 +3118,24 @@ snapshots:
       '@helios-lang/codec-utils': 0.3.4
       '@helios-lang/compiler-utils': 0.5.15
       '@helios-lang/type-utils': 0.2.9
-      '@helios-lang/uplc': 0.7.17
+      '@helios-lang/uplc': 0.7.18
 
-  '@helios-lang/ledger@0.7.11':
+  '@helios-lang/ledger@0.7.19':
     dependencies:
       '@helios-lang/cbor': 0.3.1
       '@helios-lang/codec-utils': 0.3.4
       '@helios-lang/crypto': 0.2.3
       '@helios-lang/type-utils': 0.3.0
-      '@helios-lang/uplc': 0.7.17
+      '@helios-lang/uplc': 0.7.18
 
   '@helios-lang/tx-utils@0.6.15':
     dependencies:
       '@helios-lang/cbor': 0.3.1
       '@helios-lang/codec-utils': 0.3.4
       '@helios-lang/crypto': 0.2.3
-      '@helios-lang/ledger': 0.7.11
+      '@helios-lang/ledger': 0.7.19
       '@helios-lang/type-utils': 0.3.0
-      '@helios-lang/uplc': 0.7.17
+      '@helios-lang/uplc': 0.7.18
 
   '@helios-lang/type-utils@0.1.25': {}
 
@@ -3143,7 +3143,7 @@ snapshots:
 
   '@helios-lang/type-utils@0.3.0': {}
 
-  '@helios-lang/uplc@0.7.17':
+  '@helios-lang/uplc@0.7.18':
     dependencies:
       '@helios-lang/cbor': 0.3.1
       '@helios-lang/codec-utils': 0.3.4

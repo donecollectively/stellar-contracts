@@ -387,6 +387,7 @@ declare class ActivityDelegateRoleHelperNested_3 extends EnumBridge<isActivity> 
  */
 export declare type ActorContext<WTP extends Wallet = Wallet> = {
     wallet?: WTP;
+    others: Record<string, WTP>;
 };
 
 /**
@@ -442,7 +443,7 @@ export declare class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         rev: bigint;
     };
     get delegateValidatorHash(): undefined;
-    DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string): Promise<TxInput>;
+    DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string, options?: UtxoSearchScope): Promise<TxInput>;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo: TxInput): Promise<TCX>;
     DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput, redeemer?: isActivity): Promise<TCX>;
     DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput): Promise<TCX>;
@@ -8387,11 +8388,6 @@ CANNOT_ERROR>;
 /**
  * @public
  */
-export declare function findInputsInWallets(v: Value, searchIn: WalletsAndAddresses, network: CardanoClient): Promise<TxInput<any>>;
-
-/**
- * @public
- */
 export declare type findReadDatumType<T extends canHaveDataBridge, CBT extends someContractBridgeType = possiblyAbstractContractBridgeType<T>> = IF<CBT["isAbstract"], readsUplcTo<any>, undefined extends CBT["datum"] ? never : undefined extends CBT["readDatum"] ? never : CBT["readDatum"]>;
 
 /**
@@ -14252,7 +14248,7 @@ export declare abstract class StellarDelegate extends StellarContract<capoDelega
      * calls the delegate-specific DelegateAddsAuthorityToken() method,
      * with the uut found by DelegateMustFindAuthorityToken().
      *
-     * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+     * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
      * @param tcx - transaction context
      * @public
      **/
@@ -15871,6 +15867,8 @@ export declare class UtxoHelper {
      * This method is useful for finding ADA utxos that can be used to pay for a transaction.
      *
      * Other methods in the utxo helper are better for finding individual utxos.
+     *
+     * If the `required` option is true, it throws an error if no sufficient utxos are found.
      * @public
      */
     findSufficientActorUtxos(name: string, amount: Value, options?: UtxoSearchScope, strategy?: CoinSelector | CoinSelector[]): Promise<TxInput[]>;
@@ -15878,9 +15876,14 @@ export declare class UtxoHelper {
      * Locates a utxo in the current actor's wallet that matches the provided token predicate
      * @remarks
      * With the mode="multiple" option, it returns an array of matches if any are found, or undefined if none are found.
+     *
+     * In "single" mode, it returns the single matching utxo, or undefined if none are found
+     *
+     * When the searchOthers option is true, it searches in other wallets from the actor-context
+     * if no utxos are matched  in the current actor's wallet.
      * @public
      */
-    findActorUtxo<T extends "single" | "multiple" = "single">(name: string, predicate: (u: TxInput) => TxInput | undefined, options?: UtxoSearchScope, mode?: T): Promise<T extends "single" ? TxInput | undefined : TxInput[] | undefined>;
+    findActorUtxo<T extends "single" | "multiple" = "single">(name: string, predicate: (u: TxInput) => TxInput | undefined, options?: UtxoSearchScope, mode?: T): any;
     /**
      * Try finding a utxo matching a predicate
      * @remarks
@@ -15892,7 +15895,7 @@ export declare class UtxoHelper {
      * With the mode="multiple" option, it returns an array of matches if any are found, or undefined if none are found.
      * @public
      **/
-    hasUtxo<T extends "single" | "multiple" = "single">(semanticName: string, predicate: utxoPredicate, { wallet, exceptInTcx, utxos, required, dumpDetail, }: UtxoSearchScopeWithUtxos, mode?: T): Promise<T extends "single" ? TxInput | undefined : TxInput[] | undefined>;
+    hasUtxo<T extends "single" | "multiple" = "single">(semanticName: string, predicate: utxoPredicate, { wallet, exceptInTcx, utxos, required, dumpDetail, searchOthers, }: UtxoSearchScopeWithUtxos, mode?: T): Promise<T extends "single" ? TxInput | undefined : TxInput[] | undefined>;
     mustFindActorUtxo(name: string, options: {
         predicate: (u: TxInput) => TxInput | undefined;
         exceptInTcx?: StellarTxnContext<any>;
@@ -15900,7 +15903,6 @@ export declare class UtxoHelper {
     }): Promise<TxInput>;
     mustFindUtxo(semanticName: string, options: UtxoSearchScope & {
         predicate: utxoPredicate;
-        extraErrorHint?: string;
     }): Promise<TxInput>;
     utxoSearchError(semanticName: string, searchScope: UtxoSearchScope, extraErrorHint?: string, walletAddresses?: Address | Address[]): string;
     toUtxoId(u: TxInput): string;
@@ -15939,6 +15941,14 @@ declare type UtxoSearchScope = {
      * searches in this wallet rather than the address
      */
     wallet?: Wallet | SimpleWallet;
+    /**
+     * suppresses searching in other actor-wallets found in the setup / actorContext:
+     */
+    searchOthers?: boolean;
+    /**
+     * extra hint to add to the error message if no utxos are found
+     */
+    extraErrorHint?: string;
     /**
      * @deprecated - ??? use txBatcher's chainBuilder and includeAddlTxns instead
      * NOTE: if we're only using this to reference our OWN tcx, then
@@ -16029,14 +16039,6 @@ declare type VariantFlavor = "tagOnly" | "fields" | "singletonField";
 
 declare type VariantMap = {
     [variantName: string]: singleEnumVariantMeta<any, any, any, any, any, any>;
-};
-
-/**
- * @public
- */
-declare type WalletsAndAddresses = {
-    wallets: Wallet[];
-    addresses?: Address[];
 };
 
 /**

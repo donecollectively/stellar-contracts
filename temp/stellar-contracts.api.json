@@ -411,7 +411,16 @@
             },
             {
               "kind": "Content",
-              "text": "{\n    wallet?: WTP;\n}"
+              "text": "{\n    wallet?: WTP;\n    others: "
+            },
+            {
+              "kind": "Reference",
+              "text": "Record",
+              "canonicalReference": "!Record:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<string, WTP>;\n}"
             },
             {
               "kind": "Content",
@@ -436,7 +445,7 @@
           ],
           "typeTokenRange": {
             "startIndex": 5,
-            "endIndex": 6
+            "endIndex": 8
           }
         },
         {
@@ -813,6 +822,15 @@
                 },
                 {
                   "kind": "Content",
+                  "text": ", options?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UtxoSearchScope",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~UtxoSearchScope:type"
+                },
+                {
+                  "kind": "Content",
                   "text": "): "
                 },
                 {
@@ -840,8 +858,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 9
+                "startIndex": 7,
+                "endIndex": 11
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -862,6 +880,14 @@
                     "endIndex": 4
                   },
                   "isOptional": false
+                },
+                {
+                  "parameterName": "options",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": true
                 }
               ],
               "isOptional": false,
@@ -25370,100 +25396,6 @@
           }
         },
         {
-          "kind": "Function",
-          "canonicalReference": "@donecollectively/stellar-contracts!findInputsInWallets:function(1)",
-          "docComment": "/**\n * @public\n */\n",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export declare function findInputsInWallets(v: "
-            },
-            {
-              "kind": "Reference",
-              "text": "Value",
-              "canonicalReference": "@helios-lang/ledger!Value:type"
-            },
-            {
-              "kind": "Content",
-              "text": ", searchIn: "
-            },
-            {
-              "kind": "Reference",
-              "text": "WalletsAndAddresses",
-              "canonicalReference": "@donecollectively/stellar-contracts!~WalletsAndAddresses:type"
-            },
-            {
-              "kind": "Content",
-              "text": ", network: "
-            },
-            {
-              "kind": "Reference",
-              "text": "CardanoClient",
-              "canonicalReference": "@helios-lang/tx-utils!CardanoClient:type"
-            },
-            {
-              "kind": "Content",
-              "text": "): "
-            },
-            {
-              "kind": "Reference",
-              "text": "Promise",
-              "canonicalReference": "!Promise:interface"
-            },
-            {
-              "kind": "Content",
-              "text": "<"
-            },
-            {
-              "kind": "Reference",
-              "text": "TxInput",
-              "canonicalReference": "@helios-lang/ledger!TxInput:type"
-            },
-            {
-              "kind": "Content",
-              "text": "<any>>"
-            },
-            {
-              "kind": "Content",
-              "text": ";"
-            }
-          ],
-          "fileUrlPath": "src/StellarContract.ts",
-          "returnTypeTokenRange": {
-            "startIndex": 7,
-            "endIndex": 11
-          },
-          "releaseTag": "Public",
-          "overloadIndex": 1,
-          "parameters": [
-            {
-              "parameterName": "v",
-              "parameterTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "isOptional": false
-            },
-            {
-              "parameterName": "searchIn",
-              "parameterTypeTokenRange": {
-                "startIndex": 3,
-                "endIndex": 4
-              },
-              "isOptional": false
-            },
-            {
-              "parameterName": "network",
-              "parameterTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 6
-              },
-              "isOptional": false
-            }
-          ],
-          "name": "findInputsInWallets"
-        },
-        {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!findReadDatumType:type",
           "docComment": "/**\n * @public\n */\n",
@@ -40108,7 +40040,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarDelegate#txnGrantAuthority:member(1)",
-              "docComment": "/**\n * Finds and adds the delegate's authority token to the transaction\n *\n * @remarks\n *\n * calls the delegate-specific DelegateAddsAuthorityToken() method, with the uut found by DelegateMustFindAuthorityToken().\n *\n * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken()}\n *\n * @param tcx - transaction context\n *\n * @public\n */\n",
+              "docComment": "/**\n * Finds and adds the delegate's authority token to the transaction\n *\n * @remarks\n *\n * calls the delegate-specific DelegateAddsAuthorityToken() method, with the uut found by DelegateMustFindAuthorityToken().\n *\n * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken()}\n *\n * @param tcx - transaction context\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -51505,7 +51437,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!UtxoHelper#findActorUtxo:member(1)",
-              "docComment": "/**\n * Locates a utxo in the current actor's wallet that matches the provided token predicate\n *\n * @remarks\n *\n * With the mode=\"multiple\" option, it returns an array of matches if any are found, or undefined if none are found.\n *\n * @public\n */\n",
+              "docComment": "/**\n * Locates a utxo in the current actor's wallet that matches the provided token predicate\n *\n * @remarks\n *\n * With the mode=\"multiple\" option, it returns an array of matches if any are found, or undefined if none are found.\n *\n * In \"single\" mode, it returns the single matching utxo, or undefined if none are found\n *\n * When the searchOthers option is true, it searches in other wallets from the actor-context if no utxos are matched in the current actor's wallet.\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -51579,31 +51511,8 @@
                   "text": "): "
                 },
                 {
-                  "kind": "Reference",
-                  "text": "Promise",
-                  "canonicalReference": "!Promise:interface"
-                },
-                {
                   "kind": "Content",
-                  "text": "<T extends \"single\" ? "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "TxInput",
-                  "canonicalReference": "@helios-lang/ledger!TxInput:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": " | undefined : "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "TxInput",
-                  "canonicalReference": "@helios-lang/ledger!TxInput:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "[] | undefined>"
+                  "text": "any"
                 },
                 {
                   "kind": "Content",
@@ -51626,7 +51535,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 17,
-                "endIndex": 23
+                "endIndex": 18
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -51763,7 +51672,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!UtxoHelper#findSufficientActorUtxos:member(1)",
-              "docComment": "/**\n * finds utxos in the current actor's wallet that have enough ada to cover the given amount\n *\n * @remarks\n *\n * This method is useful for finding ADA utxos that can be used to pay for a transaction.\n *\n * Other methods in the utxo helper are better for finding individual utxos.\n *\n * @public\n */\n",
+              "docComment": "/**\n * finds utxos in the current actor's wallet that have enough ada to cover the given amount\n *\n * @remarks\n *\n * This method is useful for finding ADA utxos that can be used to pay for a transaction.\n *\n * Other methods in the utxo helper are better for finding individual utxos.\n *\n * If the `required` option is true, it throws an error if no sufficient utxos are found.\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -52045,7 +51954,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", { wallet, exceptInTcx, utxos, required, dumpDetail, }: "
+                  "text": ", { wallet, exceptInTcx, utxos, required, dumpDetail, searchOthers, }: "
                 },
                 {
                   "kind": "Reference",
@@ -52135,7 +52044,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "{ wallet, exceptInTcx, utxos, required, dumpDetail, }",
+                  "parameterName": "{ wallet, exceptInTcx, utxos, required, dumpDetail, searchOthers, }",
                   "parameterTypeTokenRange": {
                     "startIndex": 9,
                     "endIndex": 10
@@ -53228,7 +53137,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ";\n        extraErrorHint?: string;\n    }"
+                  "text": ";\n    }"
                 },
                 {
                   "kind": "Content",

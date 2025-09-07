@@ -107,6 +107,7 @@ export const Activity: {
 // @public (undocumented)
 export type ActorContext<WTP extends Wallet = Wallet> = {
     wallet?: WTP;
+    others: Record<string, WTP>;
 };
 
 // @public
@@ -131,8 +132,10 @@ export class AlreadyPendingError extends TxNotNeededError {
 export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     // (undocumented)
     DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput, redeemer?: isActivity): Promise<TCX>;
+    // Warning: (ae-forgotten-export) The symbol "UtxoSearchScope" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
-    DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string): Promise<TxInput>;
+    DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string, options?: UtxoSearchScope): Promise<TxInput>;
     // (undocumented)
     DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput): Promise<TCX>;
     // (undocumented)
@@ -438,8 +441,6 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     featureEnabled(f: keyof featureFlags): boolean;
     // (undocumented)
     findActorUut(uutPrefix: string, mph?: MintingPolicyHash): Promise<FoundUut | undefined>;
-    // Warning: (ae-forgotten-export) The symbol "UtxoSearchScope" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     findCapoUtxos(option?: Required<Pick<UtxoSearchScope, "dumpDetail">>): Promise<TxInput[]>;
     findCharterData(currentCharterUtxo?: TxInput, options?: {
@@ -1384,11 +1385,6 @@ export type findActivityType<T extends canHaveDataBridge, isSCBaseClass extends 
     activity: infer A;
 } ? A : never> = IF<IF<CBT["isAbstract"], true, IF<isSCBaseClass, true, false, CANNOT_ERROR>, CANNOT_ERROR>, DataBridge, activityHelper, // CBT extends { activity: infer A } ? CBT["activity"] : never, //    activityHelper,
 CANNOT_ERROR>;
-
-// Warning: (ae-forgotten-export) The symbol "WalletsAndAddresses" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export function findInputsInWallets(v: Value, searchIn: WalletsAndAddresses, network: CardanoClient): Promise<TxInput<any>>;
 
 // @public (undocumented)
 export type findReadDatumType<T extends canHaveDataBridge, CBT extends someContractBridgeType = possiblyAbstractContractBridgeType<T>> = IF<CBT["isAbstract"], readsUplcTo<any>, undefined extends CBT["datum"] ? never : undefined extends CBT["readDatum"] ? never : CBT["readDatum"]>;
@@ -3043,7 +3039,7 @@ export class UtxoHelper {
     acAuthorityToken(tokenName: string | number[], mph?: MintingPolicyHash): AssetClass;
     // (undocumented)
     assetsHasToken(a: Assets, vOrMph: Value | MintingPolicyHash, tokenName?: string, quantity?: bigint): boolean;
-    findActorUtxo<T extends "single" | "multiple" = "single">(name: string, predicate: (u: TxInput) => TxInput | undefined, options?: UtxoSearchScope, mode?: T): Promise<T extends "single" ? TxInput | undefined : TxInput[] | undefined>;
+    findActorUtxo<T extends "single" | "multiple" = "single">(name: string, predicate: (u: TxInput) => TxInput | undefined, options?: UtxoSearchScope, mode?: T): any;
     // (undocumented)
     findSmallestUnusedUtxo(lovelace: bigint, utxos: TxInput[], tcx?: StellarTxnContext): TxInput | undefined;
     // Warning: (ae-forgotten-export) The symbol "CoinSelector" needs to be exported by the entry point index.d.ts
@@ -3055,7 +3051,7 @@ export class UtxoHelper {
     // (undocumented)
     hasToken<tokenBearer extends canHaveToken>(something: tokenBearer, value: Value, tokenName?: string, quantity?: bigint): tokenBearer | undefined;
     // Warning: (ae-forgotten-export) The symbol "UtxoSearchScopeWithUtxos" needs to be exported by the entry point index.d.ts
-    hasUtxo<T extends "single" | "multiple" = "single">(semanticName: string, predicate: utxoPredicate, { wallet, exceptInTcx, utxos, required, dumpDetail, }: UtxoSearchScopeWithUtxos, mode?: T): Promise<T extends "single" ? TxInput | undefined : TxInput[] | undefined>;
+    hasUtxo<T extends "single" | "multiple" = "single">(semanticName: string, predicate: utxoPredicate, { wallet, exceptInTcx, utxos, required, dumpDetail, searchOthers, }: UtxoSearchScopeWithUtxos, mode?: T): Promise<T extends "single" ? TxInput | undefined : TxInput[] | undefined>;
     // (undocumented)
     inputHasToken(i: TxInput, value: Value, tokenName?: string, quantity?: bigint): false | TxInput;
     // @deprecated (undocumented)
@@ -3085,7 +3081,6 @@ export class UtxoHelper {
     // (undocumented)
     mustFindUtxo(semanticName: string, options: UtxoSearchScope & {
         predicate: utxoPredicate;
-        extraErrorHint?: string;
     }): Promise<TxInput>;
     // (undocumented)
     get network(): TxChainBuilder | CardanoClient | Emulator;
@@ -3204,7 +3199,7 @@ export type WrappedPromise<T> = {
 // .api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts:745:5 - (ae-forgotten-export) The symbol "PendingCharterChange$Ergo$otherManifestChange" needs to be exported by the entry point index.d.ts
 // src/Capo.ts:1209:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
-// src/StellarContract.ts:365:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
+// src/StellarContract.ts:307:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
 // src/StellarTxnContext.ts:93:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:165:7 - (ae-forgotten-export) The symbol "DelegateRoleHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:169:7 - (ae-forgotten-export) The symbol "ManifestActivityHelper_2" needs to be exported by the entry point index.d.ts

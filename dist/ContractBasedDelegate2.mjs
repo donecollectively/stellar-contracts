@@ -2526,8 +2526,10 @@ class UtxoHelper {
    * finds utxos in the current actor's wallet that have enough ada to cover the given amount
    * @remarks
    * This method is useful for finding ADA utxos that can be used to pay for a transaction.
-   * 
+   *
    * Other methods in the utxo helper are better for finding individual utxos.
+   *
+   * If the `required` option is true, it throws an error if no sufficient utxos are found.
    * @public
    */
   async findSufficientActorUtxos(name, amount, options = {}, strategy = [
@@ -2545,27 +2547,74 @@ class UtxoHelper {
     const filtered = options.exceptInTcx ? utxos.filter(
       options.exceptInTcx.utxoNotReserved.bind(options.exceptInTcx)
     ) : utxos;
+    const { searchOthers = false } = options;
     if (!Array.isArray(strategy)) {
       strategy = [strategy];
     }
+    let someError;
     for (const s of strategy) {
-      const [selected, others] = s(filtered, amount);
-      if (selected.length > 0) {
-        return selected;
+      try {
+        const [selected, others] = s(filtered, amount);
+        if (selected.length > 0) {
+          return selected;
+        }
+      } catch (e) {
+        if (!searchOthers) someError = e;
       }
     }
+    if (!searchOthers && someError) throw someError;
+    if (!searchOthers) {
+      throw new Error(`crazy talk! (expected to find utxos in actor's wallet, but didn't; and searchOthers is false)`);
+    }
+    if (searchOthers) {
+      console.log(
+        `   -- actor's primary wallet doesn't have needed value; searching in other actor-wallets...`
+      );
+      for (const [name2, utxo] of Object.entries(
+        this.setup.actorContext.others
+      )) {
+        try {
+          const utxos2 = await this.findSufficientActorUtxos(
+            name2,
+            amount,
+            {
+              ...options,
+              searchOthers: false,
+              wallet: utxo
+            }
+          );
+          if (utxos2.length > 0) {
+            console.log(
+              `      -- found sufficient utxos in other wallet: ${name2}`
+            );
+            return utxos2;
+          }
+        } catch {
+          console.log(
+            `      -- searched in other wallet: ${name2} without result`
+          );
+        }
+      }
+    }
+    console.log("TODO: add a fallback to search in multiple utxos from multiple active wallets");
     throw new Error(
-      `no sufficient utxos found using any of ${strategy.length} strategies`
+      `no sufficient utxos found using any of ${strategy.length} strategies and ${Object.keys(this.setup.actorContext.others).length} additional wallets from actor-context (doesn't yet fund the total by contribution from multiple wallets)`
     );
   }
   /**
    * Locates a utxo in the current actor's wallet that matches the provided token predicate
    * @remarks
    * With the mode="multiple" option, it returns an array of matches if any are found, or undefined if none are found.
+   * 
+   * In "single" mode, it returns the single matching utxo, or undefined if none are found
+   * 
+   * When the searchOthers option is true, it searches in other wallets from the actor-context
+   * if no utxos are matched  in the current actor's wallet.
    * @public
    */
   async findActorUtxo(name, predicate, options = {}, mode = "single") {
     const wallet = options.wallet ?? this.wallet;
+    const { searchOthers = false } = options;
     const addrs = await wallet?.usedAddresses ?? [];
     const utxos = [];
     for (const addr of addrs.flat(1)) {
@@ -2578,11 +2627,50 @@ class UtxoHelper {
       predicate,
       {
         ...options,
+        searchOthers: false,
         wallet,
         utxos
       },
       mode
-    );
+    ).then(async (result) => {
+      if (result) return result;
+      if (!searchOthers) return result;
+      console.log(
+        `   -- no matching utxos found searching in actor's wallet: ${name}; searching in other wallets from actor-context...`
+      );
+      for (const [name2, otherWallet] of Object.entries(
+        this.setup.actorContext.others
+      )) {
+        try {
+          const otherActorUtxos = await this.findActorUtxo(
+            name2,
+            predicate,
+            {
+              ...options,
+              searchOthers: false,
+              wallet: otherWallet
+            }
+          );
+          if (otherActorUtxos) {
+            console.log(
+              `     -- ^ found matching utxos in other wallet: ${name2}`
+            );
+            return otherActorUtxos;
+          }
+          console.log(
+            `     -- no matching utxos found searching in other wallet: ${name2}; `
+          );
+        } catch {
+          console.log(
+            `     -- error searching in other wallet: ${name2}; `
+          );
+        }
+      }
+      console.log(
+        `   -- Yikes! no matching utxos found searching in any wallets from actor-context`
+      );
+      return void 0;
+    });
   }
   /**
    * Try finding a utxo matching a predicate
@@ -2601,8 +2689,14 @@ class UtxoHelper {
     exceptInTcx,
     utxos,
     required,
-    dumpDetail
+    dumpDetail,
+    searchOthers
   }, mode = "single") {
+    if (searchOthers) {
+      throw new Error(
+        "hasUtxo(): search option `searchOthers`: true is only valid in higher-level methods like findActorUtxo()"
+      );
+    }
     let notCollateral = await (async () => {
       let nc = utxos;
       try {
@@ -2695,6 +2789,7 @@ class UtxoHelper {
       wallet,
       exceptInTcx,
       utxos,
+      extraErrorHint,
       required: true
     });
     if (!found) {
@@ -3025,49 +3120,6 @@ function partialTxn(proto, thingName, descriptor) {
     );
   }
   return descriptor;
-}
-async function findInputsInWallets(v, searchIn, network) {
-  const { wallets, addresses } = searchIn;
-  const lovelaceOnly = v.assets.isZero();
-  console.warn("finding inputs", {
-    lovelaceOnly
-  });
-  for (const w of wallets) {
-    const [a] = await w.usedAddresses;
-    console.log("finding funds in wallet", a.toString().substring(0, 18));
-    const utxos = await w.utxos;
-    for (const u of utxos) {
-      if (lovelaceOnly) {
-        if (u.value.assets.isZero() && u.value.lovelace >= v.lovelace) {
-          return u;
-        }
-        console.log("  - too small; skipping ", u.value.dump());
-      } else {
-        if (u.value.isGreaterOrEqual(v)) {
-          return u;
-        }
-      }
-    }
-  }
-  if (lovelaceOnly) {
-    throw new Error(
-      `no ADA is present except those on token bundles.  TODO: findFreeLovelaceWithTokens`
-    );
-  }
-  //!!! todo: allow getting free ada from a contract address?
-  if (addresses) {
-    for (const a of addresses) {
-      const utxos = await network.getUtxos(a);
-      for (const u of utxos) {
-        if (u.value.isGreaterOrEqual(v)) {
-          return u;
-        }
-      }
-    }
-  }
-  throw new Error(
-    `None of these wallets${addresses && " or addresses" || ""} have the needed tokens`
-  );
 }
 class StellarContract {
   //! it has scriptProgram: a parameterized instance of the contract
@@ -4028,7 +4080,7 @@ class StellarDelegate extends StellarContract {
    * calls the delegate-specific DelegateAddsAuthorityToken() method,
    * with the uut found by DelegateMustFindAuthorityToken().
    *
-   * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+   * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
    * @param tcx - transaction context
    * @public
    **/
@@ -4522,5 +4574,5 @@ __decorateClass([
   datum
 ], ContractBasedDelegate.prototype, "mkDatumIsDelegation");
 
-export { getSeed as $, Activity as A, valueAsString as B, ContractBasedDelegate as C, DataBridge as D, utxosAsString as E, policyIdAsString as F, txOutputAsString as G, txInputAsString as H, lovelaceToAda as I, addrAsString as J, byteArrayAsString as K, txidAsString as L, txOutputIdAsString as M, byteArrayListAsString as N, datumSummary as O, hexToPrintableString as P, betterJsonSerializer as Q, abbrevAddress as R, StellarContract as S, TxNotNeededError as T, UutName as U, abbreviatedDetail as V, abbreviatedDetailBytes as W, UtxoHelper as X, findInputsInWallets as Y, mergesInheritedReqts as Z, SeedActivity as _, ContractDataBridge as a, ContractDataBridgeWithEnumDatum as a0, ContractDataBridgeWithOtherDatum as a1, DataBridgeReaderClass as b, StellarDelegate as c, datum as d, dumpAny as e, StellarTxnContext as f, mkUutValuesEntries as g, delegateLinkSerializer as h, impliedSeedActivityMaker as i, errorMapAsString as j, AlreadyPendingError as k, hasReqts as l, mkValuesEntry as m, debugMath as n, realMul as o, partialTxn as p, toFixedReal as q, realDiv as r, colors as s, txn as t, uplcDataSerializer as u, displayTokenName as v, stringToPrintableString as w, assetsAsString as x, txAsString as y, utxoAsString as z };
+export { ContractDataBridgeWithEnumDatum as $, Activity as A, valueAsString as B, ContractBasedDelegate as C, DataBridge as D, utxosAsString as E, policyIdAsString as F, txOutputAsString as G, txInputAsString as H, lovelaceToAda as I, addrAsString as J, byteArrayAsString as K, txidAsString as L, txOutputIdAsString as M, byteArrayListAsString as N, datumSummary as O, hexToPrintableString as P, betterJsonSerializer as Q, abbrevAddress as R, StellarContract as S, TxNotNeededError as T, UutName as U, abbreviatedDetail as V, abbreviatedDetailBytes as W, UtxoHelper as X, mergesInheritedReqts as Y, SeedActivity as Z, getSeed as _, ContractDataBridge as a, ContractDataBridgeWithOtherDatum as a0, DataBridgeReaderClass as b, StellarDelegate as c, datum as d, dumpAny as e, StellarTxnContext as f, mkUutValuesEntries as g, delegateLinkSerializer as h, impliedSeedActivityMaker as i, errorMapAsString as j, AlreadyPendingError as k, hasReqts as l, mkValuesEntry as m, debugMath as n, realMul as o, partialTxn as p, toFixedReal as q, realDiv as r, colors as s, txn as t, uplcDataSerializer as u, displayTokenName as v, stringToPrintableString as w, assetsAsString as x, txAsString as y, utxoAsString as z };
 //# sourceMappingURL=ContractBasedDelegate2.mjs.map
