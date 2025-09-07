@@ -8,6 +8,7 @@ import { makeAddress, makeTxOutput } from "@helios-lang/ledger";
 import type { Address, TxInput, Value } from "@helios-lang/ledger";
 
 import { bytesToText } from "../HeliosPromotedTypes.js";
+import type { UtxoSearchScope } from "../UtxoHelper.js";
 
 /**
  * Token-based authority
@@ -47,32 +48,35 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     //  ... or throw an informative error
     async DelegateMustFindAuthorityToken(
         tcx: StellarTxnContext,
-        label: string
+        label: string,
+        options : UtxoSearchScope = {}
     ): Promise<TxInput> {
         const v = this.tvAuthorityToken();
 
         const { addrHint } = this.configIn!;
-        return this.uh.mustFindActorUtxo(
+        const extraErrorHint = "are you connected to the right wallet address? " +
+            (addrHint?.length
+                ? "\nauthority token originally issued to " +
+                addrHint
+                    .map((x) => {
+                        const addr = "string" == typeof x ? makeAddress(x) : x;
+                        return (
+                            dumpAny(addr) + " = " + addr.toString()
+                        );
+                    })
+                    .join("\n or ")
+                : "");
+        const found = await this.uh.findActorUtxo(
             `${label}: ${bytesToText(this.configIn!.tn)}`,
+            this.uh.mkTokenPredicate(v),
             {
-                predicate: this.uh.mkTokenPredicate(v),
                 exceptInTcx: tcx,
-                extraErrorHint:
-                    "are you connected to the right wallet address? " +
-                    (addrHint?.length
-                        ? "\nauthority token originally issued to " +
-                          addrHint
-                              .map((x) => {
-                                  const addr =
-                                      "string" == typeof x ? makeAddress(x) : x;
-                                  return (
-                                      dumpAny(addr) + " = " + addr.toString()
-                                  );
-                              })
-                              .join("\n or ")
-                        : ""),
+                searchOthers: true,
+                extraErrorHint,
             }
         );
+        if (found) return found;
+        throw this.uh.utxoSearchError(label, options, extraErrorHint);
     }
 
     async txnReceiveAuthorityToken<TCX extends StellarTxnContext>(

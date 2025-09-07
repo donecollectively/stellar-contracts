@@ -28,7 +28,7 @@ import type {
     ReqtDataLike, ErgoReqtData,
     ReqtData,
     minimalReqtData
-} from "./Reqts.concrete.typeInfo.js";
+} from "./Reqts.concrete.typeInfo.d.ts";
 import type { hasSeed } from "../ActivityTypes.js";
 import { textToBytes } from "../HeliosPromotedTypes.js";
 import { makeTxOutput, makeValue } from "@helios-lang/ledger";

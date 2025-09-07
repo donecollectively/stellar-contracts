@@ -6,9 +6,7 @@ import {
     type Tx,
     type TxId,
     makeAssets,
-    makeValue,
     type ShelleyAddress,
-    type PubKeyHash,
     type TxBody,
 } from "@helios-lang/ledger";
 import { generateBytes, mulberry32 } from "@helios-lang/crypto";
@@ -17,11 +15,9 @@ import { SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator
 
 import {
     StellarContract,
-    findInputsInWallets,
     dumpAny,
     lovelaceToAda,
     txAsString,
-    utxosAsString,
     UtxoHelper,
     TxBatcher,
     GenericSigner,
@@ -44,17 +40,13 @@ import type {
     actorMap,
     canHaveRandomSeed,
     canSkipSetup,
-    enhancedNetworkParams,
 } from "./types.js";
 import {
     SimpleWallet_stellar,
     StellarNetworkEmulator,
-    type NetworkSnapshot,
 } from "./StellarNetworkEmulator.js";
 import {
     makeRootPrivateKey,
-    makeTxBuilder,
-    makeTxChainBuilder,
     type Wallet,
 } from "@helios-lang/tx-utils";
 
@@ -123,6 +115,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
      * @public
      */
     actorContext: ActorContext<emulatedWallet> = {
+        others: {},
         wallet: undefined,
     };
 
@@ -671,46 +664,6 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
     /**
      * @public
      */
-    async mkSeedUtxo(seedIndex: bigint = 0n) {
-        const { wallet } = this;
-        const { network } = this;
-
-        const txb = makeTxBuilder({
-            isMainnet: network.isMainnet(),
-        });
-        const actorMoney = await wallet.utxos;
-        console.log(
-            `${this._actorName} has money: \n` + utxosAsString(actorMoney)
-        );
-
-        txb.spendWithoutRedeemer(
-            await findInputsInWallets(
-                makeValue(30n * ADA),
-                { wallets: [wallet] },
-                network
-            )
-        );
-
-        txb.payUnsafe(wallet.address, makeValue(10n * ADA));
-        txb.payUnsafe(wallet.address, makeValue(10n * ADA));
-        let si = 2;
-        for (; si < seedIndex; si++) {
-            txb.payUnsafe(wallet.address, makeValue(10n * ADA));
-        }
-        const txId = await this.submitTx(
-            await txb.build({
-                changeAddress: wallet.address,
-                networkParams: this.networkParams,
-            }),
-            "force"
-        );
-
-        return txId;
-    }
-
-    /**
-     * @public
-     */
     async submitTx(tx: Tx, force?: "force"): Promise<TxId> {
         const sendChangeToCurrentActor = this.wallet?.address;
         const isAlreadyInitialized = !!this.strella;
@@ -824,6 +777,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
                 ?.toHex()
                 .substring(0, 8)}…)`
         );
+
+        this.actorContext.others[roleName] = a;
 
         //! it makes collateral for each actor, above and beyond the initial balance,
         //  ... so that the full balance is spendable and the actor can immediately

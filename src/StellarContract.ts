@@ -268,64 +268,6 @@ export function partialTxn(proto, thingName, descriptor) {
 /**
  * @public
  */
-export async function findInputsInWallets(
-    v: Value,
-    searchIn: WalletsAndAddresses,
-    network: CardanoClient
-): Promise<TxInput<any>> {
-    const { wallets, addresses } = searchIn;
-
-    const lovelaceOnly = v.assets.isZero();
-    console.warn("finding inputs", {
-        lovelaceOnly,
-    });
-
-    for (const w of wallets) {
-        const [a] = await w.usedAddresses;
-        console.log("finding funds in wallet", a.toString().substring(0, 18));
-        const utxos = await w.utxos;
-        for (const u of utxos) {
-            if (lovelaceOnly) {
-                if (u.value.assets.isZero() && u.value.lovelace >= v.lovelace) {
-                    return u as any;
-                }
-                console.log("  - too small; skipping ", u.value.dump());
-            } else {
-                if (u.value.isGreaterOrEqual(v)) {
-                    return u as any;
-                }
-            }
-        }
-    }
-    if (lovelaceOnly) {
-        throw new Error(
-            `no ADA is present except those on token bundles.  TODO: findFreeLovelaceWithTokens`
-        );
-        // const spareChange = this.findFreeLovelaceWithTokens(v, w)
-    }
-    //!!! todo: allow getting free ada from a contract address?
-
-    if (addresses) {
-        for (const a of addresses) {
-            const utxos = await network.getUtxos(a);
-            for (const u of utxos) {
-                if (u.value.isGreaterOrEqual(v)) {
-                    return u as any;
-                }
-            }
-        }
-    }
-
-    throw new Error(
-        `None of these wallets${
-            (addresses && " or addresses") || ""
-        } have the needed tokens`
-    );
-}
-
-/**
- * @public
- */
 export type HeliosOptimizeOptions = Exclude<
     Pick<
         Exclude<Parameters<Program["compile"]>[0], undefined | boolean>,
@@ -437,7 +379,9 @@ type ComputedScriptProperties = Partial<{
  */
 export type ActorContext<WTP extends Wallet = Wallet> = {
     wallet?: WTP;
+    others: Record<string, WTP>;
 };
+
 /**
  * @public
  */
@@ -1677,6 +1621,7 @@ export class StellarContract<
             });
         }
     }
+    
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
         const uh = this.utxoHelper;
         //!!! big enough to serve minUtxo for each of the new UUT(s)

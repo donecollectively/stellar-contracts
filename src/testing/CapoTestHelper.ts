@@ -12,8 +12,7 @@ import type {
 } from "@donecollectively/stellar-contracts";
 
 import { StellarTestHelper } from "./StellarTestHelper.js";
-import { canHaveRandomSeed, canSkipSetup, TestHelperState } from "./types.js";
-import { MintingPolicyHash } from "@helios-lang/ledger";
+import { canHaveRandomSeed, TestHelperState } from "./types.js";
 
 const ACTORS_ALREADY_MOVED =
     "NONE! all actors were moved from a different network via snapshot";
@@ -381,6 +380,7 @@ export abstract class CapoTestHelper<
                 previousHelper.networkCtx = { network: previousNetwork };
                 previousHelper.actorContext = {
                     wallet: "previous network retired" as any,
+                    others: previousHelper.actorContext.others,
                 };
 
                 // uses the old envelope (that the Capo/etc classes used on the old network)

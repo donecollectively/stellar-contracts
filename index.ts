@@ -102,8 +102,7 @@ export {
     Activity,
     txn,
     partialTxn,
-    datum,
-    findInputsInWallets
+    datum
 } from "./src/StellarContract.js";
 
 export { StellarDelegate } from "./src/delegation/StellarDelegate.js";

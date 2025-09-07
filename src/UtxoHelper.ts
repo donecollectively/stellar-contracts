@@ -69,6 +69,16 @@ export type UtxoSearchScope = {
      */
     wallet?: Wallet | SimpleWallet; //| SimpleWallet_stellar;
     /**
+     * suppresses searching in other actor-wallets found in the setup / actorContext:
+     */
+    searchOthers?: boolean;
+
+    /**
+     * extra hint to add to the error message if no utxos are found
+     */
+    extraErrorHint?: string;
+
+    /**
      * @deprecated - ??? use txBatcher's chainBuilder and includeAddlTxns instead
      * NOTE: if we're only using this to reference our OWN tcx, then
      *   either make that automatic, or retract the deprecation.
@@ -662,8 +672,10 @@ export class UtxoHelper {
      * finds utxos in the current actor's wallet that have enough ada to cover the given amount
      * @remarks
      * This method is useful for finding ADA utxos that can be used to pay for a transaction.
-     * 
+     *
      * Other methods in the utxo helper are better for finding individual utxos.
+     *
+     * If the `required` option is true, it throws an error if no sufficient utxos are found.
      * @public
      */
     async findSufficientActorUtxos(
@@ -674,10 +686,10 @@ export class UtxoHelper {
             selectLargestFirst({ allowSelectingUninvolvedAssets: false }),
             selectLargestFirst({ allowSelectingUninvolvedAssets: true }),
         ]
-    ) : Promise<TxInput[]> {
+    ): Promise<TxInput[]> {
         const wallet = options.wallet ?? this.wallet;
 
-        const addrs = (await wallet.usedAddresses)
+        const addrs = await wallet.usedAddresses;
         const utxos: TxInput[] = [];
         for (const addr of addrs.flat(1)) {
             if (!addr) continue;
@@ -691,23 +703,79 @@ export class UtxoHelper {
               )
             : utxos;
 
+        const { searchOthers = false } = options;
         if (!Array.isArray(strategy)) {
             strategy = [strategy];
         }
+        let someError : Error | undefined;
         for (const s of strategy) {
-            const [selected, others] = s(filtered, amount);
-            if (selected.length > 0) {
-                return selected;
+            try {
+                const [selected, others] = s(filtered, amount);
+                if (selected.length > 0) {
+                    return selected;
+                }
+            } catch (e) {
+                if (!searchOthers) someError = e as Error;
+                // otherwise, suppress the error, try the next strategy..
+                // ... and if needed, fall back to searching in other wallets
             }
         }
+        if (!searchOthers && someError) throw someError;
+        if (!searchOthers)  {
+            // should be unreachable:
+            throw new Error(`crazy talk! (expected to find utxos in actor's wallet, but didn't; and searchOthers is false)`);
+        }
+
+        if (searchOthers) {
+            console.log(
+                `   -- actor's primary wallet doesn't have needed value; searching in other actor-wallets...`
+            );
+            for (const [name, utxo] of Object.entries(
+                this.setup.actorContext.others
+            )) {
+                try {
+                    const utxos = await this.findSufficientActorUtxos(
+                        name,
+                        amount,
+                        {
+                            ...options,
+                            searchOthers: false,
+                            wallet: utxo,
+                        }
+                    );
+                    if (utxos.length > 0) {
+                        console.log(
+                            `      -- found sufficient utxos in other wallet: ${name}`
+                        );
+                        return utxos;
+                    }
+                } catch {
+                    console.log(
+                        `      -- searched in other wallet: ${name} without result`
+                    );
+                    // ignore
+                }
+            }
+        }
+        console.log("TODO: add a fallback to search in multiple utxos from multiple active wallets");
         throw new Error(
-            `no sufficient utxos found using any of ${strategy.length} strategies`
+            `no sufficient utxos found using any of ${
+                strategy.length
+            } strategies and ${
+                Object.keys(this.setup.actorContext.others).length
+            } additional wallets from actor-context (doesn't yet fund the total by contribution from multiple wallets)`
         );
     }
+
     /**
      * Locates a utxo in the current actor's wallet that matches the provided token predicate
      * @remarks
      * With the mode="multiple" option, it returns an array of matches if any are found, or undefined if none are found.
+     * 
+     * In "single" mode, it returns the single matching utxo, or undefined if none are found
+     * 
+     * When the searchOthers option is true, it searches in other wallets from the actor-context
+     * if no utxos are matched  in the current actor's wallet.
      * @public
      */
     async findActorUtxo<T extends "single" | "multiple" = "single">(
@@ -717,6 +785,7 @@ export class UtxoHelper {
         mode: T = "single" as T
     ) {
         const wallet = options.wallet ?? this.wallet;
+        const { searchOthers = false } = options;
 
         // doesn't go through the wallet's interface - uses the network client instead,
         // so that txChainBuilder can take into account the UTxO's already being spent in the tx-chain.
@@ -733,11 +802,52 @@ export class UtxoHelper {
             predicate,
             {
                 ...options,
+                searchOthers: false,
                 wallet,
                 utxos,
             },
             mode
-        );
+        ).then(async (result) => {
+            if (result) return result;
+            if (!searchOthers) return result;
+
+            console.log(
+                `   -- no matching utxos found searching in actor's wallet: ${name}; searching in other wallets from actor-context...`
+            );
+            for (const [name, otherWallet] of Object.entries(
+                this.setup.actorContext.others
+            )) {
+                try {
+                    const otherActorUtxos = await this.findActorUtxo(
+                        name,
+                        predicate,
+                        {
+                            ...options,
+                            searchOthers: false,
+                            wallet: otherWallet,
+                        }
+                    );
+                    if (otherActorUtxos) {
+                        console.log(
+                            `     -- ^ found matching utxos in other wallet: ${name}`
+                        );
+                        return otherActorUtxos;
+                    }
+                    console.log(
+                        `     -- no matching utxos found searching in other wallet: ${name}; `
+                    );
+                } catch {
+                    console.log(
+                        `     -- error searching in other wallet: ${name}; `
+                    );
+                }
+                // ... iterate to next other wallet
+            }
+            console.log(
+                `   -- Yikes! no matching utxos found searching in any wallets from actor-context`
+            );
+            return undefined;
+        });
     }
 
     /**
@@ -761,11 +871,18 @@ export class UtxoHelper {
             utxos,
             required,
             dumpDetail,
+            searchOthers,
         }: UtxoSearchScopeWithUtxos,
         mode: T = "single" as T
     ): Promise<
         T extends "single" ? TxInput | undefined : TxInput[] | undefined
     > {
+        if (searchOthers) {
+            throw new Error(
+                "hasUtxo(): search option `searchOthers`: true is only valid in higher-level methods like findActorUtxo()"
+            );
+        }
+
         let notCollateral = await (async () => {
             let nc = utxos;
             try {
@@ -877,7 +994,6 @@ export class UtxoHelper {
         semanticName: string,
         options: UtxoSearchScope & {
             predicate: utxoPredicate;
-            extraErrorHint?: string;
         }
     ): Promise<TxInput> {
         // workaround for a failure in api-extractor to make this a separate assignment??
@@ -886,7 +1002,7 @@ export class UtxoHelper {
             extraErrorHint = "",
             wallet,
             address,
-            exceptInTcx,
+            exceptInTcx,            
         } = options;
         // const { address, exceptInTcx } = searchScope;
 
@@ -903,6 +1019,7 @@ export class UtxoHelper {
             wallet,
             exceptInTcx,
             utxos,
+            extraErrorHint,
             required: true,
         });
         if (!found) {

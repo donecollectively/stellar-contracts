@@ -1479,6 +1479,7 @@ export class CapoDAppProvider<
             txBatcher,
             actorContext: {
                 wallet,
+                others: {}
             },
             isMainnet: this.isMainnet(),
             optimize: true,
