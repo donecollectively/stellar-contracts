@@ -810,8 +810,9 @@ export function dumpAny(
         const firstItem = x[0];
         if ("number" == typeof firstItem) {
             return (
-                "num array: " +
-                byteArrayListAsString([makeByteArrayData(x as number[])])
+                `num array: ‹"${ 
+                    byteArrayAsString(makeByteArrayData(x as number[]))
+                }"›`
             );
         }
         if (firstItem.kind == "TxOutput") {
@@ -828,14 +829,14 @@ export function dumpAny(
         //@ts-expect-error on this type probe
         if (firstItem.kind == "ByteArrayData") {
             return (
-                "byte array:\n" + byteArrayListAsString(x as ByteArrayData[])
+                "byte array list:\n" + byteArrayListAsString(x as ByteArrayData[])
             );
         }
 
         if ("object" == typeof firstItem) {
             // debugger;
             if (firstItem instanceof Uint8Array) {
-                return "byte array: " + byteArrayAsString(firstItem);
+                return `byte array: ‹"${byteArrayAsString(firstItem)}"›`;
             }
             return (
                 `[` +
