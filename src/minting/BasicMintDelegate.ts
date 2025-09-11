@@ -6,6 +6,7 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import UnspecializedDelegateBundle from "../delegation/UnspecializedDelegate.hlb.js";
 import type { GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
 import type { hasSeed, isActivity } from "../ActivityTypes.js";
+import type { GrantAuthorityOptions } from "../delegation/StellarDelegate.js";
 
 /**
  * Serves a delegated minting-policy role for Capo contracts
@@ -127,10 +128,10 @@ export class BasicMintDelegate extends ContractBasedDelegate {
 
     async txnGrantAuthority<TCX extends StellarTxnContext>(
         tcx: TCX,
-        redeemer: isActivity,
-        skipReturningDelegate?: "skipDelegateReturn"
+        redeemerActivity: isActivity,
+        options: GrantAuthorityOptions = {}
     ) {
-        if (!redeemer)
+        if (!redeemerActivity)
             throw new Error(
                 `mint delegate requires an explicit redeemer for txnGrantAuthority()`
             );
@@ -138,7 +139,32 @@ export class BasicMintDelegate extends ContractBasedDelegate {
         const { capo } = this.configIn!;
         // await capo.txnAttachScriptOrRefScript(tcx, this.compiledScript);
 
-        return super.txnGrantAuthority(tcx, redeemer, skipReturningDelegate);
+        const {redeemer: expectedRedeemer} = redeemerActivity;
+        return super.txnGrantAuthority(tcx, redeemerActivity, {
+            ifExists: (existingInput, existingRedeemer) => {
+                if (!existingRedeemer.rawData.MultipleDelegateActivities) {
+                    throw this.existingRedeemerError(
+                        "mint delegate authority (not a multiple-activity redeemer)",
+                        this.tvAuthorityToken(),
+                        existingRedeemer
+                    );
+                }
+                if (existingRedeemer.kind != "constr") throw new Error(`non-enum redeemer`)
+                const list = existingRedeemer.fields[0]
+                if (list.kind != "list") throw new Error(`non-list redeemer`)
+
+                const existingActivity = list.items.find(f => f.isEqual(expectedRedeemer))
+                if (!existingActivity) {
+                    throw this.existingRedeemerError(
+                        "mint delegate authority (multiple-activity redeemer doesn't include the needed activity)",
+                        this.tvAuthorityToken(),
+                        existingRedeemer,
+                        expectedRedeemer
+                    );
+                }
+            },
+            ...options,
+        });
     }
 
     // moved to to super

@@ -180,7 +180,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
             const updating = h.submitTxnWithBlock(update);
             await expect(updating).resolves.toBeTruthy();
             const newSettings = await capo.findSettingsInfo({ charterData });
-            expect(newSettings.data.meaning).toEqual(19n);
+            expect(newSettings!.data.meaning).toEqual(19n);
         });
 
         it("requires the capoGov- authority uut to update the settings data", async (context: localTC) => {

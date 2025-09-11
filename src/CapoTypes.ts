@@ -188,7 +188,8 @@ type useRawMinterSetup = Omit<NormalDelegateSetup, "mintDelegateActivity"> & {
  * @public
  */
 export type DelegateSetupWithoutMintDelegate = {
-    withoutMintDelegate: useRawMinterSetup;
+    withoutMintDelegate: useRawMinterSetup,
+    skipReturningDelegate?: true;
 };
 
 /**
@@ -197,7 +198,7 @@ export type DelegateSetupWithoutMintDelegate = {
 export type NormalDelegateSetup = {
     usingSeedUtxo?: TxInput | undefined;
     additionalMintValues?: valuesEntry[];
-    skipDelegateReturn?: true;
+    skipReturningDelegate?: true;
     mintDelegateActivity: isActivity;
 };
 

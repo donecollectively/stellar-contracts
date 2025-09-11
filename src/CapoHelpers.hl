@@ -1104,6 +1104,7 @@ struct CapoCtx {
         recIdBytes : ByteArray = recId.encode_utf8()
     ) -> DgDataDetails {
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
+        
         DgDataDetails::creating(recIdBytes, output, self.mph)
     }
 
@@ -1764,14 +1765,20 @@ struct CapoCtx {
     
     // doesn't care where the charter info comes from - refinput or input, both OK
     func needsCharter(self) -> CapoCtx {
-        REQT("requires the charter to be available in the transaction (input or ref)");
-
         charter : cctx_CharterInputType = self.charter;
         charter.switch {
-            RefInput => self,
-            Input => self,
+            RefInput => {
+                print("      -- needs charter, anywhere in the tx (already found as ref : )");
+                self
+            },
+            Input => {
+                print("      -- needs charter, anywhere in the tx (already found as input : )");
+                self
+            },
             Unk => {
                 CapoCtx{mph, _} = self;
+                REQT("requires the charter to be available in the transaction (input or ref)");
+
                 charterAc : AssetClass = AssetClass::new(mph, "charter".encode_utf8());
                 hasCharter = (txin : TxInput) -> Bool { txin.value.get_safe(charterAc) > 0 };
 
@@ -1796,14 +1803,17 @@ struct CapoCtx {
     }
 
     func withCharterInput(self) -> CapoCtx {
-        REQT("requires the charter to be spent in the inputs");
 
         charter : cctx_CharterInputType = self.charter;
         charter.switch {
-            Input => self,
+            Input => {
+                print("      -- needs charter spent in inputs (already checked : )");
+                self
+            },
             RefInput => error("CapoCtx.withCharterInput(): charter is from ref!"),
             Unk => {
                 CapoCtx{mph, _} = self;
+                REQT("requires the charter to be spent in the inputs");
 
                 charterAc : AssetClass = AssetClass::new(mph, "charter".encode_utf8());
                 hasCharter = (txin : TxInput) -> Bool { txin.value.get_safe(charterAc) > 0 };
@@ -1837,14 +1847,17 @@ struct CapoCtx {
     // }
 
     func withCharterRef(self) -> CapoCtx {
-        REQT("requires the charter to be referenced in the txn, but unspent");
 
         charter : cctx_CharterInputType = self.charter;
         charter.switch {
-            RefInput => self,
+            RefInput => {
+                print("      -- needs charter ref (already checked : )");
+                self
+            },
             Input => error("CapoCtx.withCharterRef(): charter is from inputs!"),
             Unk => {
                 CapoCtx{mph, _} = self;
+                REQT("requires the charter to be referenced in the txn, but unspent");
                 utxo : TxInput = getRefCharterUtxo(mph);
                 datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
                     utxo.datum.inline 

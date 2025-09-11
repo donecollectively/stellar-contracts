@@ -26,6 +26,7 @@ import type {
     mustFindConcreteContractBridgeType,
 } from "../helios/dataBridge/BridgeTypes.js";
 import type { hasSeed, isActivity } from "../ActivityTypes.js";
+import type { GrantAuthorityOptions } from "../delegation/StellarDelegate.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
@@ -304,7 +305,7 @@ export class CapoMinter
         vEntries: valuesEntry[],
         mintDelegate: BasicMintDelegate,
         mintDgtRedeemer: isActivity,
-        skipReturningDelegate?: "skipDelegateReturn"
+        options: GrantAuthorityOptions = {}
     ): Promise<TCX> {
         const { capo } = this.configIn!;
         const md = mintDelegate || (await capo.getMintDelegate());
@@ -312,9 +313,9 @@ export class CapoMinter
         const tcx2 = await md.txnGrantAuthority(
             tcx1,
             mintDgtRedeemer,
-            skipReturningDelegate
+            options
         );
-        return (await this.attachScript(tcx)).mintTokens(
+        return (await this.attachScript(tcx2)).mintTokens(
             this.mintingPolicyHash!,
             vEntries,
             this.activityMintWithDelegateAuthorizing()

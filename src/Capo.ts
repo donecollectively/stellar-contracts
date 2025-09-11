@@ -3516,7 +3516,7 @@ export abstract class Capo<
                   additionalMintValues: this.mkValuesBurningDelegateUut(
                       currentDatum.mintDelegateLink
                   ),
-                  skipDelegateReturn: true, // so it can be burned without a txn imbalance
+                  skipReturningDelegate: true, // so it can be burned without a txn imbalance
               } as NormalDelegateSetup);
 
         const tcx2 = await this.txnMintingUuts(
@@ -3611,7 +3611,7 @@ export abstract class Capo<
                       ),
                 // the minter won't require the old delegate to be burned,
                 //  ... so it can be burned without a txn imbalance:
-                skipDelegateReturn: delegateInfo.forcedUpdate,
+                skipReturningDelegate: delegateInfo.forcedUpdate,
             },
         };
         const tcx2 = await this.txnMintingUuts(
@@ -3640,7 +3640,9 @@ export abstract class Capo<
                           purpose: "spendDgt",
                       }
                   ),
-                  "skipDelegateReturn"
+                  {
+                    skipReturningDelegate: true,
+                  }
               );
         const tcx2b = await newSpendDelegate.delegate.txnReceiveAuthorityToken(
             tcx2a,
@@ -4493,7 +4495,7 @@ export abstract class Capo<
                                 tcx2a,
                                 previousDgt.activity.DelegateLifecycleActivities
                                     .Retiring,
-                                "skipDelegateReturn"
+                                {skipReturningDelegate: true}
                             );
                         }
                         return mkValuesEntry(tokenName, -1n);
@@ -4573,7 +4575,7 @@ export abstract class Capo<
             omitMintDelegate = false,
             mintDelegateActivity,
             specialMinterActivity,
-            skipDelegateReturn,
+            skipReturningDelegate,
         } =
             //@ts-expect-error accessing the intersection type
             options.withoutMintDelegate || options;
@@ -4638,7 +4640,7 @@ export abstract class Capo<
             ],
             mintDelegate,
             mintDelegateActivity,
-            skipDelegateReturn
+            {skipReturningDelegate}
         );
         // console.log(
         //     "    🐞🐞 @end of txnMintingUuts",

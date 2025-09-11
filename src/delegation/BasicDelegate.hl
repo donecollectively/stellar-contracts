@@ -189,34 +189,16 @@ import {
 //         hasGovAuthority
 // }
 
-func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
-    print(" 🚥❓delegate: "+delegateName + "\n");
+func checkOneActivity(
+    dgtionDatum: DelegateDatum::IsDelegation, 
+    activity: DelegateActivity,
+    dd : DelegationDetail = dgtionDatum.dd,
+    baseCctx: CapoCtx = mkCapoCtx(dd.mph)
+) -> Bool {
+    print("🏒 checking activity:\n");
 
-    // input = get_current_input();
-    result :Bool = mdd.switch{
-        //! performs essential checks of policy for spending the minting delegate's authority token "mintDgt-*"
-        // ... it also calls any additionalDelegateValidation() defined in a specialized minting delegate,
-        // ... governing the minting of application-specific tokens (including UUTs, fungible tokens, 
-        // ... or other sorts of tokens under our minting policy).
-        //! Ditto, for our spendDgt-* token, for governing the spend of any utxos in the Capo address.
-        capoStoredData => error("Data Delegates must never store the capoStoredData variant in the script; used only for data-structuring capo-stored utxo datum"),
-        // todo: ensure that the utxo-creation path also does not store IsDelegatedData variants in the script
-
-        //! This code path is also used for other authority-bearing tokens in other specialized delegates,
-        //  ... such as named delegates that the mintDgt- or spendDgt- policies defer to.
-        //  ... each of those cases has separate execution through this base logic, with specialization 
-        //  ... applicable for each (see references to "nowActingAs").
-        isD : IsDelegation{dd} => {
-            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
-            assert(dd.tn != rev.serialize(), "uniqueness");
-            assert(dd.tn != instance, "uniqueness");
-            assert(dd.tn != delegateName.encode_utf8(), "uniqueness");
-
-            // showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
-            myDgTkn = // showMyTokens(get_current_input().value);
-            get_current_input().value.show();
-            print("  -- is spending dgTkn "+ myDgTkn);
-
+    result = if (true) {
+        if( true ) {
             checkNonDelegatedActivities: Bool = activity.switch {
                 MultipleDelegateActivities{activities} => {
                     // NOTE: the Capo ensures that each SPENT UTxO is addressed by EXACTLY ONE SpendDgt activity.
@@ -235,7 +217,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     // Special: DeletingDelegatedDatum requires a Spend validation as well as a Burn validation,
                     //   ... so it will be present in both the mintDgt and spendDgt multi-activities.
 
-                    cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+                    cctx : CapoCtx = baseCctx.withCharterRef();
 
                     mintDgtCheck : Bool = if (!isMintDelegate) {
                         true 
@@ -265,14 +247,14 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     //     // " ... use MintingActivities in a delegated-data controller"
                                     // );
                                     // recursion checks for the needed input/output and DgDataController MintingActivity
-                                    main(mdd, a)
+                                    checkOneActivity(dgtionDatum, a, dd, cctx)
                                 },
                                 DeletingDelegatedData => {
                                     // assert(isMintDelegate, "DeletingDelegatedData only ok in mintDgt" ); // " ... use BurningActivities in a delegated-data controller"
                                     // cctx.nowActingAsMintDgt() &&
     
                                     // recursion checks for the needed input/burn                                
-                                    main(mdd, a)
+                                    checkOneActivity(dgtionDatum, a, dd, cctx)
                                 },
                                 UpdatingDelegatedData => error(
                                     "UpdatingDelegatedData only ok at level-1 spendDgt"
@@ -308,7 +290,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     // the recursion always checks for the input-datum, so we
                                     // don't need to check it here.
                                     // _inputDD = cctx.delegatedDataTxInput(recIdBytes: recId);
-                                    main(mdd, a)
+                                    checkOneActivity(dgtionDatum, a, dd, cctx)
                                 },
                                 CreatingDelegatedData => error(
                                     "CreatingDelegatedData only ok in mintDgt"
@@ -325,7 +307,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     };
                 
                     dgDataPolicyCheck : Bool = if (isMintDelegate || isSpendDelegate) {
-                        assert(isDgDataPolicy, "ack! delegated-data policy can't be a mint/spend delegate");
+                        assert(!isDgDataPolicy, "ack! mint/spend delegate can't be a delegated-data policy!");
                         true 
                     } else {
                         TODO("assert isDgDataPolicy"); // assert(isDgDataPolicy, "invalid use of multiActivity by non-DgDataPolicy");
@@ -349,11 +331,11 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 // in the delegated-data controllers, we have to support these multi-activities.
                                 // this will pass through the individual activity to be individually validated by the specialized delegate 
                                 // module that governs the data-controller's UUT, in its additionalDelegateValidation() function.
-                                SpendingActivities => main(mdd, a),
-                                MintingActivities => main(mdd, a),
+                                SpendingActivities => checkOneActivity(dgtionDatum, a, dd, cctx),
+                                MintingActivities => checkOneActivity(dgtionDatum, a, dd, cctx),
                                 BurningActivities => {
                                     assert(false, "TODO: support multi:BurningActivities for dgDataPolicy or other delegate") ;
-                                    main(mdd, a)
+                                    checkOneActivity(dgtionDatum, a, dd, cctx)
                                 },
                                 DelegateLifecycleActivities => error("multi:DelegateLifecycleActivities not ok"),
                                 CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
@@ -387,7 +369,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         REQT("needs the charter to be approving the the new mint-delegate");
                         TODO("  ^^^ should queue the new delegate in pendingChanges");
 
-                        cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterInput();
+                        cctx : CapoCtx = baseCctx.withCharterInput();
                         isUpdatingCharter : Bool = cctx.getCharterRedeemer().switch {
                             // THE CHARTER UPDATE ITSELF WILL CHECK THAT THERE'S A VALID DELEGATE OUTPUT FOR THE NEW DELEGATE
                             updatingCharter => true,
@@ -446,8 +428,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         assert( false && 
                             // validated && 
                             // isValid : Bool = 
-                            //     ((isTest && throwIfBadSettings(mdd, settings)) || true) &&
-                            //     mdd.validateSettings(settings);
+                            //     ((isTest && throwIfBadSettings(dgtionDatum, settings)) || true) &&
+                            //     dgtionDatum.validateSettings(settings);
                             // isValid
                             true,
                             "ValidateSettings temporarily disabled"
@@ -1195,7 +1177,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 CreatingDelegatedData{seed, dDataTypeName} => if (!isMintDelegate) {
                     error("CreatingDelegatedData activity is only allowed in the mint delegate")
                 } else {
-                    cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+                    cctx : CapoCtx = baseCctx.withCharterRef();
                     assert(cctx.nowActingAsMintDgt(), "<---- fails in there, not here");
                     REQT("context: CreatingDelegatedData");
 
@@ -1269,7 +1251,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 UpdatingDelegatedData{dDataTypeName, recId} => if (!isSpendDelegate) {
                     error("UpdatingDelegatedData activity is only allowed in the spend delegate")
                 } else {
-                    cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+                    cctx : CapoCtx = baseCctx.withCharterRef();
                     assert(cctx.nowActingAsSpendDgt(), "<---- fails in there, not here");
                     REQT("EXPECTS j6bmfv: all and ONLY DelegatedData datums must be spent with the Capo's spendingDelegatedData activity");
 
@@ -1337,7 +1319,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 DeletingDelegatedData {_dataType, recId} => if (!isMintDelegate) {
                     error("DeletingDelegatedData activity is only allowed in the mint delegate")
                 } else {
-                    cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+                    cctx : CapoCtx = baseCctx.withCharterRef();
                     assert(cctx.nowActingAsMintDgt(), "<---- fails in there, not here");
 
                     REQT("this code is triggered by both the mintDgt and spendDgt, with each doing their parts of the job");
@@ -1371,18 +1353,63 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 BurningActivities => true // handled by the specialized delegate
             };
             assert(checkNonDelegatedActivities, "checkNonDelegatedActivities failed");
-            REQT("... final checks:");
-            cctx : CapoCtx = mkCapoCtx(isD.dd.mph).needsCharter();
-            if (!isDgDataPolicy) {true} else {
-                if (!requiresGovAuthority) {true} else {
-                    cctx.requiresGovAuthority().orFail()
-                }
-            } && if (bREQT("... additionalDelegateValidation") && activity.additionalDelegateValidation(isD, cctx)) {
+
+            if (
+                bREQT("... additionalDelegateValidation") 
+                && activity.additionalDelegateValidation(dgtionDatum, baseCctx.needsCharter())
+            ) {
                 print ("delegate: "+ delegateName + ": additionalDelegateValidation ok!\n");
                 true
             } else {
                 error("delegate: "+ delegateName + ": additionalDelegateValidation returned false (without any thrown error)")
             }
+        } else { false }
+    } else { false }
+
+    result
+}
+
+func main(
+    mdd: DelegateDatum, 
+    activity: DelegateActivity
+) -> Bool {
+    print(" 🚥❓delegate: "+delegateName + "\n");
+
+    result :Bool = mdd.switch{
+        //! performs essential checks of policy for spending the minting delegate's authority token "mintDgt-*"
+        // ... it also calls any additionalDelegateValidation() defined in a specialized minting delegate,
+        // ... governing the minting of application-specific tokens (including UUTs, fungible tokens, 
+        // ... or other sorts of tokens under our minting policy).
+        //! Ditto, for our spendDgt-* token, for governing the spend of any utxos in the Capo address.
+        capoStoredData => error("Data Delegates must never store the capoStoredData variant in the script; used only for data-structuring capo-stored utxo datum"),
+        // todo: ensure that the utxo-creation path also does not store IsDelegatedData variants in the script
+
+        //! This code path is also used for other authority-bearing tokens in other specialized delegates,
+        //  ... such as named delegates that the mintDgt- or spendDgt- policies defer to.
+        //  ... each of those cases has separate execution through this base logic, with specialization 
+        //  ... applicable for each (see references to "nowActingAs").
+        isD : IsDelegation{dd} => {
+             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
+             assert(dd.tn != rev.serialize(), "param/script-hash uniqueness");
+             assert(dd.tn != instance, "param/script-hash uniqueness");
+             assert(dd.tn != delegateName.encode_utf8(), "param/script-hash uniqueness");
+ 
+             // showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
+             myDgTkn = // showMyTokens(get_current_input().value);
+             get_current_input().value.show();
+
+             print("  -- is spending dgTkn "+ myDgTkn);
+
+             REQT("... final checks:");
+             cctx : CapoCtx = mkCapoCtx(dd.mph).needsCharter();
+             govAuthorityCheck : Bool = if (!isDgDataPolicy) {true} else {
+                if (!requiresGovAuthority) {true} else {
+                    cctx.requiresGovAuthority().orFail()
+                }
+            }
+
+            govAuthorityCheck
+            && checkOneActivity(isD, activity, dd, cctx)
         },
         _ => {
             // to trigger an invalid redeemer, call this function
@@ -1394,9 +1421,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 _ => activity.otherDatumValidation(mdd)
             }
         }
-    };
+    }            
 
     print ("🚥🟢 delegate: "+ delegateName + ": ok!\n");
-
+    // always true:
     result
 }

@@ -14,6 +14,12 @@ import type { isActivity } from "../ActivityTypes.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
 import { mkTv } from "../utils.js";
+import type { UplcData } from "@helios-lang/uplc";
+
+export type GrantAuthorityOptions = {
+    skipReturningDelegate?: true;
+    ifExists?: (existingInput: TxInput, existingRedeemer: UplcData) => void;
+};
 
 /**
  * Base class for modules that can serve as Capo delegates
@@ -26,15 +32,40 @@ import { mkTv } from "../utils.js";
 export abstract class StellarDelegate extends StellarContract<capoDelegateConfig> {
     static currentRev = 1n;
     static get defaultParams() {
-        return { 
-            rev: this.currentRev
-         };
+        return {
+            rev: this.currentRev,
+        };
     }
     // not required except for Contract-based delegates.  A subclass can represent a delegation
     // relationship without an on-chain contract, resulting in there being no relevant data-bridge.
     declare dataBridgeClass:
         | AbstractNew<ContractDataBridgeWithEnumDatum>
         | undefined;
+
+    existingRedeemerError(
+        label: string,
+        authorityVal: Value,
+        existingRedeemer: UplcData,
+        redeemerActivity?: UplcData
+    ) {
+        console.error(
+            "This delegate authority is already being used in the transaction..."
+        );
+        console.error(
+            "... you may use the {ifExists} option to handle this case, if appropriate"
+        );
+
+        return new Error(
+            `Delegate ${label}: already added: ${dumpAny(
+                authorityVal,
+                this.networkParams
+            )} with redeemer = ${existingRedeemer} ${
+                redeemerActivity
+                    ? `\n ... needs redeemer = ${redeemerActivity} (maybe with MultipleDelegateActivities?)`
+                    : ""
+            }`
+        );
+    }
 
     /**
      * Finds and adds the delegate's authority token to the transaction
@@ -43,28 +74,42 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
      * calls the delegate-specific DelegateAddsAuthorityToken() method,
      * with the uut found by DelegateMustFindAuthorityToken().
      *
-     * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+     * Returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() },
+     * automatically, unless the `skipReturningDelegate` option is provided.
+     *
+     * If the authority token
      * @param tcx - transaction context
      * @public
      **/
     async txnGrantAuthority<TCX extends StellarTxnContext>(
         tcx: TCX,
         redeemer?: isActivity,
-        skipReturningDelegate?: "skipDelegateReturn"
+        options: GrantAuthorityOptions = {}
     ) {
         const label = `${this.constructor.name} authority`;
         const useMinTv = true;
         const authorityVal = this.tvAuthorityToken(useMinTv);
+        const { skipReturningDelegate, ifExists } = options;
 
-        const existing= tcx.hasAuthorityToken(authorityVal)
+        const existing = tcx.hasAuthorityToken(authorityVal);
         if (existing) {
-            console.error("This should be okay IF the redeemer on the txn is consistent with the redeemer being added");
-            console.error("TODO: can the delegate have multiple redeemers, covering both activities?");
+            const [existingInput, existingRedeemer] =
+                (
+                    (tcx.txb as any).spendingRedeemers as [TxInput, UplcData][]
+                ).find(([inp, _redeemer]) =>
+                    inp.value.isGreaterOrEqual(authorityVal)
+                ) || ([] as any as [TxInput, UplcData]);
+            if (ifExists) {
+                ifExists(existingInput, existingRedeemer);
+                // unreachable, but prevents a " | void" type alternative for the function
+                return tcx;
+            }
 
-            throw new Error(`Delegate ${label}: already added: ${dumpAny(
+            throw this.existingRedeemerError(
+                label,
                 authorityVal,
-                this.networkParams
-            )}`);
+                existingRedeemer
+            );
         }
 
         const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
