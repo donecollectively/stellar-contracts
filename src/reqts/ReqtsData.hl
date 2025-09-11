@@ -12,7 +12,7 @@ import {
 //   ... which uses the code in this module (see DelegateActivity::additionalDelegateValidation below)
 struct ReqtData {
     id : ByteArray "@id" // = "reqt-XXXXyyyyZZZZ"
-    type : String "tpe" // = "reqt"
+    type : String "tpe" // = "Reqt"
     category: String "cat" // e.g. "security", "usability", "performance", "compliance"   
     // for CIP-68 tokens issued from this requirement
     name: String // e.g. "Reqt XyZ"

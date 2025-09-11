@@ -2704,9 +2704,10 @@ export abstract class Capo<
                             }
                         );
                         if (delegate.recordTypeName !== policyAndTypeName) {
-                            throw new Error(`${this.constructor.name}:  delegateRoles.${policyAndTypeName} has class ${dgDataControllerClass.name},\n`+
-                                `whose \`get recordTypeName()\` '${delegate.recordTypeName}' is mismatched.\n`+
-                                `Use the recordTypeName in the delegateRoles map.`);
+                            debugger
+                            throw new Error(`${this.constructor.name}:  delegateRoles.${policyAndTypeName} references class ${dgDataControllerClass.name},\n`+
+                                `whose \`get recordTypeName()\` is '${delegate.recordTypeName}'.\n`+
+                                `These should match; use the recordTypeName in the delegateRoles map!`);
                         }
                         await delegate.setupCapoPolicy(tcx3, policyAndTypeName, {
                             charterData,

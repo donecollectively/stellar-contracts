@@ -292,9 +292,9 @@ enum DelegateActivity {
 
                 VSA.switch {                    
                     UpdatingRecord{recId} => {
-                        hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("reqt", recId);
+                        hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("Reqt", recId);
                         // settings: ProtocolSettings = ccts.getManifestDatum[ProtocolSettings]("settings");
-                        hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("reqt", recId);
+                        hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("Reqt", recId);
     
                         tx.inputs.filter(hasDD).for_each( (utxo : TxInput) -> () {
                             // they're all reqts, because of the above filter

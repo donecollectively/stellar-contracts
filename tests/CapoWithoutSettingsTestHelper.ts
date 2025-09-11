@@ -109,10 +109,10 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
     async firstReqt() {
         this.setActor("tina");
         const reqtsController = (await this.capo.getDgDataController(
-            "reqts"
+            "Reqt"
         )) as unknown as ReqtsController;
         const t = await this.capo.findDelegatedDataUtxos({
-            type: "reqts",
+            type: "Reqt",
         });
         return this.createReqt(reqtsController.exampleData());
     }
@@ -140,7 +140,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
 
     async findFirstDependentReqt() {
         const delegate = (await this.capo.getDgDataController(
-            "reqts"
+            "Reqt"
         )) as unknown as ReqtsController;
         const firstReqt = await this.findFirstReqt();
         const reqts = await this.capo.findReqts({
@@ -181,7 +181,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         // const tcx = await delegate.mkTxnCreateReqt(reqt);
         const tcx = await delegate.mkTxnCreateRecord({
             activity: delegate.activity.$seeded$CreatingDelegatedData({
-                dataType: "reqts",
+                dataType: "Reqt",
             }),
             data: reqt,
         });

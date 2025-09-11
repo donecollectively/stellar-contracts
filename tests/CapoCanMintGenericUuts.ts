@@ -30,7 +30,7 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     
     initDelegateRoles() {
         const inherited = super.initDelegateRoles()
-        const { reqts, mintDelegate: parentMintDelegate, ...othersInherited } =
+        const { Reqt, mintDelegate: parentMintDelegate, ...othersInherited } =
             inherited;
         const {
             config,
@@ -69,7 +69,7 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
             // noDefault: defineRole("", CapoMinter, {}),
             mintDelegate,
             spendDelegate,
-            reqts,
+            Reqt,
             // inventionPolicy: defineRole("dgDataPolicy", InventionPolicy, {})
             testData: defineRole("dgDataPolicy", DelegatedDatumTester, {}),
             ...testData2,

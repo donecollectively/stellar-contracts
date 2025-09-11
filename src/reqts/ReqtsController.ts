@@ -51,7 +51,7 @@ export class ReqtsController extends DelegatedDataContract<
     }
     
     get recordTypeName() {
-        return "reqt";
+        return "Reqt";
     }
 
     exampleData() : minimalReqtData {

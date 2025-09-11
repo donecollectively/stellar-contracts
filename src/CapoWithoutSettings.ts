@@ -54,11 +54,11 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
     initDelegateRoles() {
         return {
             ... this.basicDelegateRoles(),
-            reqts: defineRole("dgDataPolicy", ReqtsController, {})
+            Reqt: defineRole("dgDataPolicy", ReqtsController, {})
         }
     }
     async reqtsController() { 
-        return this.getDgDataController("reqts") as Promise<ReqtsController>;
+        return this.getDgDataController("Reqt") as Promise<ReqtsController>;
     }
 }
 
