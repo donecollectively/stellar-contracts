@@ -439,7 +439,7 @@ describe("Capo", async () => {
         });
 
         it.todo(
-            "TODO uses the new spending delegate after it is installed",
+            "TODO: TEST it uses the new spending delegate after it is installed",
             async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
@@ -478,7 +478,7 @@ describe("Capo", async () => {
         );
 
         it.todo(
-            "TODO: can't use the old spending delegate after it is replaced",
+            "TODO: TEST it can't use the old spending delegate after it is replaced",
             async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
