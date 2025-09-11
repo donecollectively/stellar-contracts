@@ -767,7 +767,7 @@ function dumpAny(x, networkParams, forJson = false) {
     if (!x.length) return "\u2039empty array\u203A";
     const firstItem = x[0];
     if ("number" == typeof firstItem) {
-      return "num array: " + byteArrayListAsString([makeByteArrayData(x)]);
+      return `num array: \u2039"${byteArrayAsString(makeByteArrayData(x))}"\u203A`;
     }
     if (firstItem.kind == "TxOutput") {
       return "tx outputs: \n" + x.map((txo) => txOutputAsString(txo)).join("\n");
@@ -776,11 +776,11 @@ function dumpAny(x, networkParams, forJson = false) {
       return "utxos: \n" + utxosAsString(x);
     }
     if (firstItem.kind == "ByteArrayData") {
-      return "byte array:\n" + byteArrayListAsString(x);
+      return "byte array list:\n" + byteArrayListAsString(x);
     }
     if ("object" == typeof firstItem) {
       if (firstItem instanceof Uint8Array) {
-        return "byte array: " + byteArrayAsString(firstItem);
+        return `byte array: \u2039"${byteArrayAsString(firstItem)}"\u203A`;
       }
       return `[` + x.map((item) => JSON.stringify(item, betterJsonSerializer)).join(", ") + `]`;
     }
@@ -4073,6 +4073,21 @@ class StellarDelegate extends StellarContract {
       rev: this.currentRev
     };
   }
+  existingRedeemerError(label, authorityVal, existingRedeemer, redeemerActivity) {
+    console.error(
+      "This delegate authority is already being used in the transaction..."
+    );
+    console.error(
+      "... you may use the {ifExists} option to handle this case, if appropriate"
+    );
+    return new Error(
+      `Delegate ${label}: already added: ${dumpAny(
+        authorityVal,
+        this.networkParams
+      )} with redeemer = ${existingRedeemer} ${redeemerActivity ? `
+ ... needs redeemer = ${redeemerActivity} (maybe with MultipleDelegateActivities?)` : ""}`
+    );
+  }
   /**
    * Finds and adds the delegate's authority token to the transaction
    * @remarks
@@ -4080,22 +4095,32 @@ class StellarDelegate extends StellarContract {
    * calls the delegate-specific DelegateAddsAuthorityToken() method,
    * with the uut found by DelegateMustFindAuthorityToken().
    *
-   * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+   * Returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() },
+   * automatically, unless the `skipReturningDelegate` option is provided.
+   *
+   * If the authority token
    * @param tcx - transaction context
    * @public
    **/
-  async txnGrantAuthority(tcx, redeemer, skipReturningDelegate) {
+  async txnGrantAuthority(tcx, redeemer, options = {}) {
     const label = `${this.constructor.name} authority`;
     const useMinTv = true;
     const authorityVal = this.tvAuthorityToken(useMinTv);
+    const { skipReturningDelegate, ifExists } = options;
     const existing = tcx.hasAuthorityToken(authorityVal);
     if (existing) {
-      console.error("This should be okay IF the redeemer on the txn is consistent with the redeemer being added");
-      console.error("TODO: can the delegate have multiple redeemers, covering both activities?");
-      throw new Error(`Delegate ${label}: already added: ${dumpAny(
+      const [existingInput, existingRedeemer] = tcx.txb.spendingRedeemers.find(
+        ([inp, _redeemer]) => inp.value.isGreaterOrEqual(authorityVal)
+      ) || [];
+      if (ifExists) {
+        ifExists(existingInput, existingRedeemer);
+        return tcx;
+      }
+      throw this.existingRedeemerError(
+        label,
         authorityVal,
-        this.networkParams
-      )}`);
+        existingRedeemer
+      );
     }
     const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
     console.log(

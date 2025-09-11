@@ -649,7 +649,7 @@ export declare class BasicMintDelegate extends ContractBasedDelegate {
      */
     activityCreatingDataDelegate(seedFrom: hasSeed, uutPurpose: string): isActivity;
     mkDatumScriptReference(): any;
-    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer: isActivity, skipReturningDelegate?: "skipDelegateReturn"): Promise<TCX>;
+    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemerActivity: isActivity, options?: GrantAuthorityOptions): Promise<TCX>;
 }
 
 /**
@@ -4419,7 +4419,7 @@ export declare class CapoMinter extends StellarContract<BasicMinterParams> imple
     }): Promise<TCX>;
     attachScript<TCX extends StellarTxnContext<anyState>>(tcx: TCX, useRefScript?: boolean): Promise<TCX>;
     txnMintingWithoutDelegate<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[], minterActivity: isActivity): Promise<TCX>;
-    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[], mintDelegate: BasicMintDelegate, mintDgtRedeemer: isActivity, skipReturningDelegate?: "skipDelegateReturn"): Promise<TCX>;
+    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[], mintDelegate: BasicMintDelegate, mintDgtRedeemer: isActivity, options?: GrantAuthorityOptions): Promise<TCX>;
 }
 
 /**
@@ -4515,7 +4515,7 @@ declare class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
  */
 export declare class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
     initDelegateRoles(): {
-        reqts: DelegateSetup_2<"dgDataPolicy", any, {}>;
+        Reqt: DelegateSetup_2<"dgDataPolicy", any, {}>;
         spendDelegate: DelegateSetup_2<"spendDgt", ContractBasedDelegate_2, any>;
         govAuthority: DelegateSetup_2<"authority", StellarDelegate_2, any>;
         mintDelegate: DelegateSetup_2<"mintDgt", BasicMintDelegate_2, any>;
@@ -7395,6 +7395,7 @@ export declare type DelegateSetup<DT extends DelegateTypes, SC extends (DT exten
  */
 export declare type DelegateSetupWithoutMintDelegate = {
     withoutMintDelegate: useRawMinterSetup;
+    skipReturningDelegate?: true;
 };
 
 declare type DelegateTypes = "spendDgt" | "mintDgt" | "authority" | "dgDataPolicy" | "other";
@@ -8482,6 +8483,11 @@ export declare class GenericSigner extends WalletSigningStrategy {
  * @public
  */
 export declare function getSeed(arg: hasSeed | TxOutputId): TxOutputId;
+
+declare type GrantAuthorityOptions = {
+    skipReturningDelegate?: true;
+    ifExists?: (existingInput: TxInput, existingRedeemer: UplcData) => void;
+};
 
 /**
  * A transaction context that includes additional transactions in its state for later execution
@@ -11251,7 +11257,7 @@ export declare type NEVERIF<T extends boolean | never, ELSE, ifError = unknown> 
 export declare type NormalDelegateSetup = {
     usingSeedUtxo?: TxInput | undefined;
     additionalMintValues?: valuesEntry[];
-    skipDelegateReturn?: true;
+    skipReturningDelegate?: true;
     mintDelegateActivity: isActivity;
 };
 
@@ -14241,6 +14247,7 @@ export declare abstract class StellarDelegate extends StellarContract<capoDelega
         rev: bigint;
     };
     dataBridgeClass: AbstractNew<ContractDataBridgeWithEnumDatum> | undefined;
+    existingRedeemerError(label: string, authorityVal: Value, existingRedeemer: UplcData, redeemerActivity?: UplcData): Error;
     /**
      * Finds and adds the delegate's authority token to the transaction
      * @remarks
@@ -14248,11 +14255,14 @@ export declare abstract class StellarDelegate extends StellarContract<capoDelega
      * calls the delegate-specific DelegateAddsAuthorityToken() method,
      * with the uut found by DelegateMustFindAuthorityToken().
      *
-     * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+     * Returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() },
+     * automatically, unless the `skipReturningDelegate` option is provided.
+     *
+     * If the authority token
      * @param tcx - transaction context
      * @public
      **/
-    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer?: isActivity, skipReturningDelegate?: "skipDelegateReturn"): Promise<TCX>;
+    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer?: isActivity, options?: GrantAuthorityOptions): Promise<TCX>;
     /**
      * Finds the authority token and adds it to the transaction, tagged for retirement
      * @public

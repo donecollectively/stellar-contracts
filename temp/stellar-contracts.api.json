@@ -2190,7 +2190,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", redeemer: "
+                  "text": ", redeemerActivity: "
                 },
                 {
                   "kind": "Reference",
@@ -2199,11 +2199,12 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", skipReturningDelegate?: "
+                  "text": ", options?: "
                 },
                 {
-                  "kind": "Content",
-                  "text": "\"skipDelegateReturn\""
+                  "kind": "Reference",
+                  "text": "GrantAuthorityOptions",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~GrantAuthorityOptions:type"
                 },
                 {
                   "kind": "Content",
@@ -2254,7 +2255,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "redeemer",
+                  "parameterName": "redeemerActivity",
                   "parameterTypeTokenRange": {
                     "startIndex": 5,
                     "endIndex": 6
@@ -2262,7 +2263,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "skipReturningDelegate",
+                  "parameterName": "options",
                   "parameterTypeTokenRange": {
                     "startIndex": 7,
                     "endIndex": 8
@@ -17280,11 +17281,12 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", skipReturningDelegate?: "
+                  "text": ", options?: "
                 },
                 {
-                  "kind": "Content",
-                  "text": "\"skipDelegateReturn\""
+                  "kind": "Reference",
+                  "text": "GrantAuthorityOptions",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~GrantAuthorityOptions:type"
                 },
                 {
                   "kind": "Content",
@@ -17359,7 +17361,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "skipReturningDelegate",
+                  "parameterName": "options",
                   "parameterTypeTokenRange": {
                     "startIndex": 12,
                     "endIndex": 13
@@ -23731,7 +23733,7 @@
             },
             {
               "kind": "Content",
-              "text": ";\n}"
+              "text": ";\n    skipReturningDelegate?: true;\n}"
             },
             {
               "kind": "Content",
@@ -32908,7 +32910,7 @@
             },
             {
               "kind": "Content",
-              "text": "[];\n    skipDelegateReturn?: true;\n    mintDelegateActivity: "
+              "text": "[];\n    skipReturningDelegate?: true;\n    mintDelegateActivity: "
             },
             {
               "kind": "Reference",
@@ -39950,6 +39952,106 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarDelegate#existingRedeemerError:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "existingRedeemerError(label: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", authorityVal: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Value",
+                  "canonicalReference": "@helios-lang/ledger!Value:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", existingRedeemer: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UplcData",
+                  "canonicalReference": "@helios-lang/uplc!UplcData:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", redeemerActivity?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UplcData",
+                  "canonicalReference": "@helios-lang/uplc!UplcData:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Error",
+                  "canonicalReference": "!Error:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 9,
+                "endIndex": 10
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "label",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "authorityVal",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "existingRedeemer",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "redeemerActivity",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 7,
+                    "endIndex": 8
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "existingRedeemerError"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarDelegate#mkAuthorityTokenPredicate:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -40040,7 +40142,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarDelegate#txnGrantAuthority:member(1)",
-              "docComment": "/**\n * Finds and adds the delegate's authority token to the transaction\n *\n * @remarks\n *\n * calls the delegate-specific DelegateAddsAuthorityToken() method, with the uut found by DelegateMustFindAuthorityToken().\n *\n * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken()}\n *\n * @param tcx - transaction context\n *\n * @public\n */\n",
+              "docComment": "/**\n * Finds and adds the delegate's authority token to the transaction\n *\n * @remarks\n *\n * calls the delegate-specific DelegateAddsAuthorityToken() method, with the uut found by DelegateMustFindAuthorityToken().\n *\n * Returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken()}, automatically, unless the `skipReturningDelegate` option is provided.\n *\n * If the authority token\n *\n * @param tcx - transaction context\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -40070,11 +40172,12 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", skipReturningDelegate?: "
+                  "text": ", options?: "
                 },
                 {
-                  "kind": "Content",
-                  "text": "\"skipDelegateReturn\""
+                  "kind": "Reference",
+                  "text": "GrantAuthorityOptions",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~GrantAuthorityOptions:type"
                 },
                 {
                   "kind": "Content",
@@ -40133,7 +40236,7 @@
                   "isOptional": true
                 },
                 {
-                  "parameterName": "skipReturningDelegate",
+                  "parameterName": "options",
                   "parameterTypeTokenRange": {
                     "startIndex": 7,
                     "endIndex": 8

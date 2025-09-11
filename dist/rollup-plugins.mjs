@@ -4875,7 +4875,7 @@ function dumpAny(x, networkParams, forJson = false) {
     if (!x.length) return "\u2039empty array\u203A";
     const firstItem = x[0];
     if ("number" == typeof firstItem) {
-      return "num array: " + byteArrayListAsString([makeByteArrayData(x)]);
+      return `num array: \u2039"${byteArrayAsString(makeByteArrayData(x))}"\u203A`;
     }
     if (firstItem.kind == "TxOutput") {
       return "tx outputs: \n" + x.map((txo) => txOutputAsString(txo)).join("\n");
@@ -4884,11 +4884,11 @@ function dumpAny(x, networkParams, forJson = false) {
       return "utxos: \n" + utxosAsString(x);
     }
     if (firstItem.kind == "ByteArrayData") {
-      return "byte array:\n" + byteArrayListAsString(x);
+      return "byte array list:\n" + byteArrayListAsString(x);
     }
     if ("object" == typeof firstItem) {
       if (firstItem instanceof Uint8Array) {
-        return "byte array: " + byteArrayAsString(firstItem);
+        return `byte array: \u2039"${byteArrayAsString(firstItem)}"\u203A`;
       }
       return `[` + x.map((item) => JSON.stringify(item, betterJsonSerializer)).join(", ") + `]`;
     }

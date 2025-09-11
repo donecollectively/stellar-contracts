@@ -109,13 +109,37 @@ class BasicMintDelegate extends ContractBasedDelegate {
   mkDatumScriptReference() {
     throw new Error(`obsolete mkDatumScriptReference!!!`);
   }
-  async txnGrantAuthority(tcx, redeemer, skipReturningDelegate) {
-    if (!redeemer)
+  async txnGrantAuthority(tcx, redeemerActivity, options = {}) {
+    if (!redeemerActivity)
       throw new Error(
         `mint delegate requires an explicit redeemer for txnGrantAuthority()`
       );
     const { capo } = this.configIn;
-    return super.txnGrantAuthority(tcx, redeemer, skipReturningDelegate);
+    const { redeemer: expectedRedeemer } = redeemerActivity;
+    return super.txnGrantAuthority(tcx, redeemerActivity, {
+      ifExists: (existingInput, existingRedeemer) => {
+        if (!existingRedeemer.rawData.MultipleDelegateActivities) {
+          throw this.existingRedeemerError(
+            "mint delegate authority (not a multiple-activity redeemer)",
+            this.tvAuthorityToken(),
+            existingRedeemer
+          );
+        }
+        if (existingRedeemer.kind != "constr") throw new Error(`non-enum redeemer`);
+        const list = existingRedeemer.fields[0];
+        if (list.kind != "list") throw new Error(`non-list redeemer`);
+        const existingActivity = list.items.find((f) => f.isEqual(expectedRedeemer));
+        if (!existingActivity) {
+          throw this.existingRedeemerError(
+            "mint delegate authority (multiple-activity redeemer doesn't include the needed activity)",
+            this.tvAuthorityToken(),
+            existingRedeemer,
+            expectedRedeemer
+          );
+        }
+      },
+      ...options
+    });
   }
   // moved to to super
   // static mkDelegateWithArgs(a: capoDelegateConfig) {}
@@ -9123,16 +9147,16 @@ class CapoMinter extends StellarContract {
       minterActivity
     );
   }
-  async txnMintWithDelegateAuthorizing(tcx, vEntries, mintDelegate, mintDgtRedeemer, skipReturningDelegate) {
+  async txnMintWithDelegateAuthorizing(tcx, vEntries, mintDelegate, mintDgtRedeemer, options = {}) {
     const { capo } = this.configIn;
     const md = mintDelegate || await capo.getMintDelegate();
     const tcx1 = await capo.tcxWithCharterRef(tcx);
-    await md.txnGrantAuthority(
+    const tcx2 = await md.txnGrantAuthority(
       tcx1,
       mintDgtRedeemer,
-      skipReturningDelegate
+      options
     );
-    return (await this.attachScript(tcx)).mintTokens(
+    return (await this.attachScript(tcx2)).mintTokens(
       this.mintingPolicyHash,
       vEntries,
       this.activityMintWithDelegateAuthorizing()
@@ -15378,9 +15402,10 @@ Delegated-data-types registered in the manifest:
               }
             );
             if (delegate.recordTypeName !== policyAndTypeName) {
-              throw new Error(`${this.constructor.name}:  delegateRoles.${policyAndTypeName} has class ${dgDataControllerClass.name},
-whose \`get recordTypeName()\` '${delegate.recordTypeName}' is mismatched.
-Use the recordTypeName in the delegateRoles map.`);
+              debugger;
+              throw new Error(`${this.constructor.name}:  delegateRoles.${policyAndTypeName} references class ${dgDataControllerClass.name},
+whose \`get recordTypeName()\` is '${delegate.recordTypeName}'.
+These should match; use the recordTypeName in the delegateRoles map!`);
             }
             await delegate.setupCapoPolicy(tcx3, policyAndTypeName, {
               charterData: charterData2,
@@ -15890,7 +15915,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       additionalMintValues: this.mkValuesBurningDelegateUut(
         currentDatum.mintDelegateLink
       ),
-      skipDelegateReturn: true
+      skipReturningDelegate: true
       // so it can be burned without a txn imbalance
     };
     const tcx2 = await this.txnMintingUuts(
@@ -15948,7 +15973,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
         ),
         // the minter won't require the old delegate to be burned,
         //  ... so it can be burned without a txn imbalance:
-        skipDelegateReturn: delegateInfo.forcedUpdate
+        skipReturningDelegate: delegateInfo.forcedUpdate
       }
     };
     const tcx2 = await this.txnMintingUuts(
@@ -15973,7 +15998,9 @@ ADDING SCRIPT DIRECTLY TO TXN!`
           purpose: "spendDgt"
         }
       ),
-      "skipDelegateReturn"
+      {
+        skipReturningDelegate: true
+      }
     );
     const tcx2b = await newSpendDelegate.delegate.txnReceiveAuthorityToken(
       tcx2a,
@@ -16516,7 +16543,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
             await previousDgt.txnGrantAuthority(
               tcx2a,
               previousDgt.activity.DelegateLifecycleActivities.Retiring,
-              "skipDelegateReturn"
+              { skipReturningDelegate: true }
             );
           }
           return mkValuesEntry(tokenName, -1n);
@@ -16554,7 +16581,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       omitMintDelegate = false,
       mintDelegateActivity,
       specialMinterActivity,
-      skipDelegateReturn
+      skipReturningDelegate
     } = (
       //@ts-expect-error accessing the intersection type
       options.withoutMintDelegate || options
@@ -16610,7 +16637,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       ],
       mintDelegate,
       mintDelegateActivity,
-      skipDelegateReturn
+      { skipReturningDelegate }
     );
     return tcx2;
   }
@@ -25880,7 +25907,7 @@ class ReqtsController extends DelegatedDataContract {
     return "reqt";
   }
   get recordTypeName() {
-    return "reqt";
+    return "Reqt";
   }
   exampleData() {
     return {
@@ -26053,11 +26080,11 @@ class CapoWithoutSettings extends Capo {
   initDelegateRoles() {
     return {
       ...this.basicDelegateRoles(),
-      reqts: defineRole("dgDataPolicy", ReqtsController, {})
+      Reqt: defineRole("dgDataPolicy", ReqtsController, {})
     };
   }
   async reqtsController() {
-    return this.getDgDataController("reqts");
+    return this.getDgDataController("Reqt");
   }
 }
 

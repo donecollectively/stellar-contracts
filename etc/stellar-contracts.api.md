@@ -220,8 +220,10 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     // (undocumented)
     get needsGovAuthority(): boolean;
     scriptBundle(): UnspecializedDgtBundle;
+    // Warning: (ae-forgotten-export) The symbol "GrantAuthorityOptions" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
-    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer: isActivity, skipReturningDelegate?: "skipDelegateReturn"): Promise<TCX>;
+    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemerActivity: isActivity, options?: GrantAuthorityOptions): Promise<TCX>;
 }
 
 // @public
@@ -836,7 +838,7 @@ export class CapoMinter extends StellarContract<BasicMinterParams> implements Mi
     // (undocumented)
     txnMintingWithoutDelegate<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[], minterActivity: isActivity): Promise<TCX>;
     // (undocumented)
-    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[], mintDelegate: BasicMintDelegate, mintDgtRedeemer: isActivity, skipReturningDelegate?: "skipDelegateReturn"): Promise<TCX>;
+    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[], mintDelegate: BasicMintDelegate, mintDgtRedeemer: isActivity, options?: GrantAuthorityOptions): Promise<TCX>;
 }
 
 // Warning: (ae-internal-missing-underscore) The name "CapoWithoutSettings" should be prefixed with an underscore because the declaration is marked as @internal
@@ -845,7 +847,7 @@ export class CapoMinter extends StellarContract<BasicMinterParams> implements Mi
 export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
     // (undocumented)
     initDelegateRoles(): {
-        reqts: DelegateSetup_2<"dgDataPolicy", any, {}>;
+        Reqt: DelegateSetup_2<"dgDataPolicy", any, {}>;
         spendDelegate: DelegateSetup_2<"spendDgt", ContractBasedDelegate_2, any>;
         govAuthority: DelegateSetup_2<"authority", StellarDelegate_2, any>;
         mintDelegate: DelegateSetup_2<"mintDgt", BasicMintDelegate_2, any>;
@@ -1260,6 +1262,7 @@ export type DelegateSetup<DT extends DelegateTypes, SC extends (DT extends "dgDa
 // @public (undocumented)
 export type DelegateSetupWithoutMintDelegate = {
     withoutMintDelegate: useRawMinterSetup;
+    skipReturningDelegate?: true;
 };
 
 // @public (undocumented)
@@ -1900,7 +1903,7 @@ export type NEVERIF<T extends boolean | never, ELSE, ifError = unknown> = IF<T, 
 export type NormalDelegateSetup = {
     usingSeedUtxo?: TxInput | undefined;
     additionalMintValues?: valuesEntry[];
-    skipDelegateReturn?: true;
+    skipReturningDelegate?: true;
     mintDelegateActivity: isActivity;
 };
 
@@ -2330,10 +2333,12 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
     // (undocumented)
     get delegateValidatorHash(): ValidatorHash | undefined;
     // (undocumented)
+    existingRedeemerError(label: string, authorityVal: Value, existingRedeemer: UplcData, redeemerActivity?: UplcData): Error;
+    // (undocumented)
     mkAuthorityTokenPredicate(): tokenPredicate_2<any>;
     // (undocumented)
     tvAuthorityToken(useMinTv?: boolean): Value;
-    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer?: isActivity, skipReturningDelegate?: "skipDelegateReturn"): Promise<TCX>;
+    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer?: isActivity, options?: GrantAuthorityOptions): Promise<TCX>;
     abstract txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
     txnRetireAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX>;
 }
