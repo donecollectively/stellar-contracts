@@ -145,7 +145,7 @@ func requiresMintDelegateApproval(
     // print ("      ❇️  "+ 
     //     tx.minted.get_policy(mph).to_list(
     //         (b : ByteArray, i: Int) -> String { 
-    //             i.show() + "x " + b.decode_utf8()
+    //             i.show() + "x " + b.decode_utf8_safe()
     //         }
     //     ).join(" + ") 
     // + "\n");
@@ -455,7 +455,7 @@ func validateUutMinting(
     //     l.find_safe((x : ByteArray) -> Bool { x == b }).switch{
     //         None => l.prepend(b),
     //         Some /*{x}*/ => error("UUT duplicate purpose "
-    //             // +  x.decode_utf8()
+    //             // +  x.decode_utf8_safe()
     //         )
     //     }
     // }, []ByteArray{});

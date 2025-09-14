@@ -171,7 +171,7 @@ struct CapoManifestEntry {
 //             ).round() / 1_000.0
 //         ).show() + " ADA";
 //         mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {
-//             tn = tokenName.decode_utf8();
+//             tn = tokenName.decode_utf8_safe();
 //             []String{
 //                 c.show(), "×💴 ", tn
 //             } + previous
@@ -298,7 +298,7 @@ enum CapoDatum {
     // func mustFindSettingsOutput(self, mph: MintingPolicyHash, inAddr: Address) -> outputAndDatum[CapoDatum::SettingsData] {
     //     settingsVal : Value = mkTv(mph: mph, tnBytes: self.switch {
     //         ct: CharterData => {
-    //             print( " ⬅️ 🔎 finding settings output: "+ ct.settingsUut.decode_utf8() + "\n");
+    //             print( " ⬅️ 🔎 finding settings output: "+ ct.settingsUut.decode_utf8_safe());
     //             ct.settingsUut
     //         },
     //         _ => error("mustFindSettings - only valid on CharterData datum")
@@ -349,7 +349,7 @@ enum CapoDatum {
     //     assert(settingsVal.contains(settingsOutput.value.get_assets()), 
     //         "excess value in settings output: "+(settingsOutput.value - settingsVal).show()
     //     );
-    //     print("\n ⬅️ ✅ found CapoDatum::SettingsData\n");
+    //     print("⬅️ ✅ found CapoDatum::SettingsData");
     //     foundSettings.head
     //     // ^^ fails if there's no settings output to the right address
 
@@ -649,7 +649,7 @@ struct DelegateInput {
         };
 
         REQT("withUniqueDDSpendingActivity: checks presence of delegated-data controller's spending activity for recId");
-        strId : String = recId.decode_utf8();
+        strId : String = recId.decode_utf8_safe();
         print("    -- recId: "+ strId);
 
         TODO("TEST THIS v");
@@ -675,7 +675,7 @@ struct DelegateInput {
                 self.delegateUnchanged()
             },
             MultipleDelegateActivities{activities} => {
-                print( "    -- multiple activities found\n" );
+                print( "    -- multiple activities found" );
 
                 self.assert(activities.length > 0, "no spending activities found");
                 // can do one or more spending activities, but each one needs to be bound to a separate recId
@@ -709,9 +709,8 @@ struct DelegateInput {
                                     assert(index==index, "no way h"); // unused field can't be _
                                     foundRecId: ByteArray = ByteArray::from_data(fields.head);
                                     if(recId != foundRecId) {
-                                        print("  -- expected: Spending: "+strId);
-                                        print("\n  -- actual: Spending: "+foundRecId.show());
-                                        self.error("recId mismatch");
+                                        actualIdStr = foundRecId.decode_utf8_safe();
+                                        self.error("recId mismatch: found "+actualIdStr+" (expected "+strId+")");
                                         error("")
                                     } else { true }
                                 },
@@ -955,7 +954,7 @@ struct DgDataDetails {
     //         _ => {
     //             targetId : ByteArray = self.id;
     //             isEmpty : Bool = targetId.length == 0;
-    //             print("finding input dgData id: "+self.id.decode_utf8());
+    //             print("finding input dgData id: "+self.id.decode_utf8_safe());
     //             utxo: TxInput = self.inputs.find_safe( (txin : TxInput) -> Bool {
     //                 rec : AnyData = AnyData::from_data(
     //                     txin.datum.inline
@@ -1195,9 +1194,9 @@ struct CapoCtx {
         tokenName : ByteArray = manifestEntry.tokenName;
         manifestAc = AssetClass::new(self.mph, tokenName);
         // manifestValue : Value = mkTv(mph: self.mph, tnBytes: tokenName);
-        tnStr = tokenName.decode_utf8();
+        tnStr = tokenName.decode_utf8_safe();
         print("     ... with input dgData token name: "+ tnStr);
-        // print("     with value: "+manifestValue.show()+"\n");
+        // print("     with value: "+manifestValue.show());
 
         inputs: []TxInput = which.switch {
             RefInput => tx.ref_inputs,
@@ -1270,7 +1269,7 @@ struct CapoCtx {
     //     settingsValue : Value = mkTv(mph: self.mph, tnBytes: charterData.settingsUut);
     //     hasSettings = (txin : TxInput) -> Bool { txin.value.contains(settingsValue) };
 
-    //     print("getting ref_input for settings\n");
+    //     print("getting ref_input for settings");
     //     settingsUtxo : TxInput =  tx.ref_inputs.find_safe(hasSettings).switch{
     //         Some{s} => s,
     //         //!!! todo adjust this message: Missing required charter in ref_inputs
@@ -1456,14 +1455,14 @@ struct CapoCtx {
             id: recIdBytes
         );
 
-        recIdStr = recIdBytes.decode_utf8();
-        print("  -- expecting refDD "+ recIdStr);
+        recIdStr = recIdBytes.decode_utf8_safe();
+        REQT("Expects reference to delegated-data record: "+recIdStr);
         tx.ref_inputs.find_safe(hasDD).switch {
             None => {
-                error("❌❌ 📎 ^ refDD: not found\n")
+                error("❌❌ 📎 ^ refDD: not found: "+recIdStr)
             },
             Some{txin} => {
-                print("✅ 📎 ^ refDD: ok\n");
+                print("✅ 📎 ^ refDD: ok: "+recIdStr);
 
                 txin
             }
@@ -1478,15 +1477,15 @@ struct CapoCtx {
             id: recIdBytes
         );
 
-        recIdStr = recIdBytes.decode_utf8();
-        print("  -- expecting inDD " + recIdStr);
+        recIdStr = recIdBytes.decode_utf8_safe();
+        REQT("Expects delegated-data record as input: "+recIdStr);
 
         tx.inputs.find_safe(hasDD).switch {
             None => {
-                error("❌❌ 📎 ^ inDD: not found\n")
+                error("❌❌ 📎 ^ inDD: not found: "+recIdStr)
             },
             Some{txin} => {
-                print("    ✅ 📎 ^ inDD: ok\n");
+                print("    ✅ 📎 ^ inDD: ok: "+recIdStr);
 
                 txin
             }
@@ -1529,7 +1528,7 @@ struct CapoCtx {
                     DelegatedData => {
                         x : AnyData = AnyData::from_data(fromCip68Wrapper(data));
                         // print( "found type " + x.type );
-                        // print( "found id " + x.id.decode_utf8() );
+                        // print( "found id " + x.id.decode_utf8_safe() );
                         // isMatch : Bool = 
                         x.type == typeName && (id == # || x.id == id)
                         // print( "isMatch: " + isMatch.show() );
@@ -1665,17 +1664,15 @@ struct CapoCtx {
         dgDatum.switch {
             DelegatedData => {
                 data : AnyData = AnyData::from_data(fromCip68Wrapper(dgData));
-                recIdStr = newDataId.decode_utf8();
+                recIdStr = newDataId.decode_utf8_safe();
                 if (data.id != newDataId) {
-                    print("  -- expected id: "+recIdStr);
-                    actualIdStr = data.id.decode_utf8();
-                    error("❌❌ 📎 outDD: wrong id: "+actualIdStr)
+                    actualIdStr = data.id.decode_utf8_safe();
+                    error("❌❌ 📎 outDD: wrong id: "+actualIdStr + " (expected "+recIdStr+")")
                 } else {
                     if (data.type != dataTypePurpose) {
-                        print("  -- expected type: "+ dataTypePurpose);
-                        error("❌❌ 📎 outDD: bad type: "+data.type)
+                        error("❌❌ 📎 outDD: bad type: "+data.type + " (expected "+dataTypePurpose+")")
                     } else {
-                        print("✅ 📎 outDD: ok: ^ outDD to Capo: "+recIdStr);
+                        print("✅ 📎 outDD: ok: ^ delegated-data saved in Capo: "+recIdStr);
                         true
                     }
                 }
@@ -1695,7 +1692,7 @@ struct CapoCtx {
     func delegatedTxOutput(self, 
         recId: ByteArray
     ) -> TxOutput {
-        recIdStr = recId.decode_utf8();
+        recIdStr = recId.decode_utf8_safe();
         ac = AssetClass::new(self.mph, recId);
         capoAddr = self.address();
         tx.outputs.find_safe(
@@ -1722,7 +1719,7 @@ struct CapoCtx {
     // func XXXmustFindDelegatedDatum[T](self, mph: MintingPolicyHash, tnBytes: ByteArray, inAddr: Address) -> outputAndDatum[T] {
     //     notFound = Option[outputAndDatum[T]]::None;
     //     idTokenValue = mkTv(mph: mph, tnBytes: tnBytes);
-    //     print( " ⬅️ 🔎 finding DelegatedData output: "+ //xxx no decode in print! tnbBytes.decode_utf8() + "\n");
+    //     print( " ⬅️ 🔎 finding DelegatedData output: "+ tnbBytes.decode_utf8_safe());
 
     //     foundDelegatedData: []outputAndDatum[T] = 
     //         tx.outputs.map_option[
@@ -1760,7 +1757,7 @@ struct CapoCtx {
     //         "excess value in delegated-data output: "+(settingsOutput.value - settingsVal).show()
     //     );
 
-    //     print("\n ⬅️ ✅ found DelegatedData\n");
+    //     print("⬅️ ✅ found DelegatedData");
     //     foundDelegatedData.head
     // }
 
@@ -1787,12 +1784,12 @@ struct CapoCtx {
 
                 tx.ref_inputs.find_safe(hasCharter).switch{
                     None => {
-                        print("CapoCtx needsCharter(): no charter ref; must be in inputs...\n");
+                        print("CapoCtx needsCharter(): no charter ref; must be in inputs...");
 
                         self.withCharterInput()
                     },
                     Some{charterUtxo} => {
-                        print("    -- CapoCtx needsCharter(): found charter ref\n");
+                        print("    -- CapoCtx needsCharter(): found charter ref");
 
                         datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
                             charterUtxo.datum.inline
@@ -1821,7 +1818,7 @@ struct CapoCtx {
                 charterAc : AssetClass = AssetClass::new(mph, "charter".encode_utf8());
                 hasCharter = (txin : TxInput) -> Bool { txin.value.get_safe(charterAc) > 0 };
         
-                print("    -- CapoCtx finding charter in inputs\n");
+                print("    -- CapoCtx finding charter in inputs");
                 charterUtxo: TxInput = tx.inputs.find_safe(hasCharter).switch{
                     Some{ch} => ch,
                     None => error("Missing required charter input")
@@ -1931,7 +1928,7 @@ struct CapoCtx {
             ).switch{
                 Some => true,
                 None => {
-                    print("  -- govAuthority isn't a script-based validator; doesn't validate new settings\n");
+                    print("  -- govAuthority isn't a script-based validator; doesn't validate new settings");
                     true
                 }
             };
