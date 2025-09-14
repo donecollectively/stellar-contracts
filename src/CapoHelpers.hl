@@ -405,7 +405,7 @@ func getRefCharterUtxo(mph : MintingPolicyHash) -> TxInput {
     // chVal : Value = tvCharter(mph);
     charterAc : AssetClass = AssetClass::new(mph, "charter".encode_utf8());
     hasCharter = (txin : TxInput) -> Bool { txin.value.get_safe(charterAc) > 0 };
-    print("getting ref_input for charter\n");
+    print("  -- getting ref_input for charter");
     charterUtxo : TxInput = tx.ref_inputs.find_safe(hasCharter).switch{
         Some{ch} => ch,
         //!!! todo adjust this message: Missing required charter in ref_inputs
@@ -610,6 +610,8 @@ struct DelegateInput {
             },
             MultipleDelegateActivities{activities} => {
                 // can do one or more minting activities, but each one needs to be bound to a separate seed
+                print("-- the delegated-data policy is triggered with a multi-activity");
+
                 assert(activities.length > 0, "no minting activities found");
                 foundWithThisSeed : []Data = activities.filter( (a : Data) -> Bool {
                     AbstractDelegateActivitiesEnum::from_data(a).switch {
@@ -674,6 +676,7 @@ struct DelegateInput {
             },
             MultipleDelegateActivities{activities} => {
                 print( "    -- multiple activities found\n" );
+
                 self.assert(activities.length > 0, "no spending activities found");
                 // can do one or more spending activities, but each one needs to be bound to a separate recId
                 actsOnThisRecord : []Data = activities.filter( (a : Data) -> Bool {
@@ -1789,7 +1792,7 @@ struct CapoCtx {
                         self.withCharterInput()
                     },
                     Some{charterUtxo} => {
-                        print("CapoCtx needsCharter(): found charter ref\n");
+                        print("    -- CapoCtx needsCharter(): found charter ref\n");
 
                         datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
                             charterUtxo.datum.inline

@@ -193,9 +193,10 @@ func checkOneActivity(
     dgtionDatum: DelegateDatum::IsDelegation, 
     activity: DelegateActivity,
     dd : DelegationDetail = dgtionDatum.dd,
-    baseCctx: CapoCtx = mkCapoCtx(dd.mph)
+    baseCctx: CapoCtx = mkCapoCtx(dd.mph),
+    desc: String = "‹unspecified›"
 ) -> Bool {
-    print("🏒 checking activity:\n");
+    print("🏒 checking "+desc+" activity");
 
     result = if (true) {
         if( true ) {
@@ -219,18 +220,26 @@ func checkOneActivity(
 
                     cctx : CapoCtx = baseCctx.withCharterRef();
 
-                    mintDgtCheck : Bool = if (!isMintDelegate) {
-                        true 
-                    } else if (!cctx.nowActingAsMintDgt(required: false)) {
-                        true
-                    } else {
-                        activities.all( (rawActivity: Data) -> Bool {
+                    actingAsMintDgt : Bool  = isMintDelegate 
+                        && cctx.nowActingAsMintDgt(required: false)
+                        && bREQT("Mint delegate: checks that all the indicated create/remove activities are valid");
+
+                    actingAsSpendDgt : Bool = !actingAsMintDgt 
+                        && isSpendDelegate 
+                        && cctx.nowActingAsSpendDgt(required: false)
+                        && bREQT("Spend delegate: checks that all the indicated record-update activities are valid");
+
+                    notMintDgt : Bool = !actingAsMintDgt;
+                    notSpendDgt : Bool = !actingAsSpendDgt;
+
+                    mintDgtCheck : Bool = notMintDgt || activities.all( 
+                        (rawActivity: Data) -> Bool {
                             a : DelegateActivity = DelegateActivity::from_data(rawActivity);
 
                             // probably can't fail here:
                             // assert(isMintDelegate, "ack! non-MintDelegate can't act as mintDgt");
                             print("  -- mintDgt checking multi-activity");
-                            REQT("in the mint delegate, only {Create,Delete}DelegatedData activities are valid in multi-activities");
+                            REQT("    -- validates nested activities: in the mint delegate, only {Create,Delete}DelegatedData activities are valid in multi-activities");
 
                             a.switch {
                                 // in the Mint and Spend delegates, these nested activities are expected to re-delegate 
@@ -247,14 +256,18 @@ func checkOneActivity(
                                     //     // " ... use MintingActivities in a delegated-data controller"
                                     // );
                                     // recursion checks for the needed input/output and DgDataController MintingActivity
-                                    checkOneActivity(dgtionDatum, a, dd, cctx)
+                                    checkOneActivity(
+                                        dgtionDatum, a, dd, cctx, "one create is properly delegated"
+                                    )
                                 },
                                 DeletingDelegatedData => {
                                     // assert(isMintDelegate, "DeletingDelegatedData only ok in mintDgt" ); // " ... use BurningActivities in a delegated-data controller"
                                     // cctx.nowActingAsMintDgt() &&
     
                                     // recursion checks for the needed input/burn                                
-                                    checkOneActivity(dgtionDatum, a, dd, cctx)
+                                    checkOneActivity(
+                                        dgtionDatum, a, dd, cctx, "one delete is properly delegated"
+                                    )
                                 },
                                 UpdatingDelegatedData => error(
                                     "UpdatingDelegatedData only ok at level-1 spendDgt"
@@ -265,20 +278,14 @@ func checkOneActivity(
     
                                 _ => error("multi:non-minting activities are invalid for mintDgt")
                             }
-                        })
-                    };
+                        }
+                    )
 
-                    spendDgtCheck : Bool = if (!isSpendDelegate) {
-                        true 
-                    } else if (!cctx.nowActingAsSpendDgt(required: false)) {
-                        true
-                    } else {
-                        // probably can't fail here:
-                        // assert(isSpendDelegate, "ack! non-SpendDelegate can't act as spendDgt");
-                        activities.all( (rawActivity: Data) -> Bool {
+                    spendDgtCheck : Bool = notSpendDgt || activities.all( 
+                        (rawActivity: Data) -> Bool {
                             a : DelegateActivity = DelegateActivity::from_data(rawActivity);
                             print("  -- spendDgt checking multi-activity");
-                            REQT("in the spend delegate, only {Updating,Deleting}DelegatedData activities are valid in multi-activities");
+                            REQT("    -- validates nested activities: in the spend delegate, only {Updating,Deleting}DelegatedData activities are valid in multi-activities");
                             a.switch {
                                 // in the Mint and Spend delegates, these nested activities are expected re-delegate to delegated-data controllers,
                                 // which will use Mint/Spend/Burn activities on the data-controller tokens.
@@ -290,7 +297,9 @@ func checkOneActivity(
                                     // the recursion always checks for the input-datum, so we
                                     // don't need to check it here.
                                     // _inputDD = cctx.delegatedDataTxInput(recIdBytes: recId);
-                                    checkOneActivity(dgtionDatum, a, dd, cctx)
+                                    checkOneActivity(
+                                        dgtionDatum, a, dd, cctx, "one update is properly delegated"
+                                    )
                                 },
                                 CreatingDelegatedData => error(
                                     "CreatingDelegatedData only ok in mintDgt"
@@ -303,14 +312,15 @@ func checkOneActivity(
                                 MultipleDelegateActivities => error("multi:multi: nesting not ok"),
                                 _ => error("multi: non-spending activities are invalid for spendDgt")
                             }
-                        })
-                    };
+                        }
+                    );
                 
                     dgDataPolicyCheck : Bool = if (isMintDelegate || isSpendDelegate) {
                         assert(!isDgDataPolicy, "ack! mint/spend delegate can't be a delegated-data policy!");
                         true 
                     } else {
-                        TODO("assert isDgDataPolicy"); // assert(isDgDataPolicy, "invalid use of multiActivity by non-DgDataPolicy");
+                        // TODO("assert isDgDataPolicy"); // 
+                        assert(isDgDataPolicy, "invalid use of multiActivity by non-DgDataPolicy");
                         activities.all( (rawActivity: Data) -> Bool {
                             a : DelegateActivity = DelegateActivity::from_data(rawActivity);
 
@@ -331,11 +341,11 @@ func checkOneActivity(
                                 // in the delegated-data controllers, we have to support these multi-activities.
                                 // this will pass through the individual activity to be individually validated by the specialized delegate 
                                 // module that governs the data-controller's UUT, in its additionalDelegateValidation() function.
-                                SpendingActivities => checkOneActivity(dgtionDatum, a, dd, cctx),
-                                MintingActivities => checkOneActivity(dgtionDatum, a, dd, cctx),
+                                SpendingActivities => checkOneActivity(dgtionDatum, a, dd, cctx, "biz-logic for one record update"),
+                                MintingActivities => checkOneActivity(dgtionDatum, a, dd, cctx, "biz-logic for one record create"),
                                 BurningActivities => {
                                     assert(false, "TODO: support multi:BurningActivities for dgDataPolicy or other delegate") ;
-                                    checkOneActivity(dgtionDatum, a, dd, cctx)
+                                    checkOneActivity(dgtionDatum, a, dd, cctx, "biz-logic for one record delete")
                                 },
                                 DelegateLifecycleActivities => error("multi:DelegateLifecycleActivities not ok"),
                                 CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
@@ -1354,6 +1364,21 @@ func checkOneActivity(
             };
             assert(checkNonDelegatedActivities, "checkNonDelegatedActivities failed");
 
+            // This point in the execution serves every type of delegate, which 
+            // can be a bit confusing.  Each delegate type takes its own handoff here.'
+            //
+            // One of the most interesting cases is for delegated-data policies, which
+            // either have add'l validation called one time (for single-record creation/update)
+            // or multiple times (when there's a multi-activity, we hit this spot once for
+            // each nested activity)
+            if (isMintDelegate) {
+                print("-- handoff to mint delegate's additionalDelegateValidation");
+            } else if (isSpendDelegate) { 
+                print("-- handoff to spend delegate's additionalDelegateValidation");
+            } else {
+                print("-- handoff to data-controller's additionalDelegateValidation");
+            }
+
             if (
                 bREQT("... additionalDelegateValidation") 
                 && activity.additionalDelegateValidation(dgtionDatum, baseCctx.needsCharter())
@@ -1366,7 +1391,7 @@ func checkOneActivity(
         } else { false }
     } else { false }
 
-    result
+    result.trace("  -- ok activity "+desc+"? ");
 }
 
 func main(
@@ -1409,9 +1434,14 @@ func main(
             }
 
             govAuthorityCheck
-            && checkOneActivity(isD, activity, dd, cctx)
+            && checkOneActivity(isD, activity, dd, cctx, "delegate "+delegateName+"'s overall policy")
         },
         _ => {
+            // allows a delegate to also control OTHER utxo/datum types
+            // in its own address, for special cases where that could be important.
+            //   (so far, it's never been used - please open a discussion if you think
+            //    it it's needed for your special case)
+
             // to trigger an invalid redeemer, call this function
             kaboomInvalidRedeemer = () -> {  error("wrong Actvy/dtm") }; // Activity custom datum must not use Activities reserved for IsDelegation datum.") };
 

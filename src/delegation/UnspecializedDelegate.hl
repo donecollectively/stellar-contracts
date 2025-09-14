@@ -318,12 +318,17 @@ enum DelegateActivity {
                 print(" ℹ️  mint delegate allowing DeletingDelegatedData on the say-so of its policy delegate");
                 true
             },
+            MultipleDelegateActivities => {
+                print("    -- mint/spend delegate: MultipleDelegateActivities: no special validation in this unspecialized delegate");
+                true
+            },
             _ => {
                 assert(false, "mint/spend delegate rejecting other activity");
                 false
             }
-        } || tx.serialize() == priorMddd.serialize()        
+        } || tx.serialize() == priorMddd.serialize()
     }
+
     func supportedCapoDelegatePurposes(self) -> []String {
         assert(true || /* prevent unused variable */ self == self, "no way, man" );
          []String{ 
@@ -331,13 +336,14 @@ enum DelegateActivity {
         }
     }
 
-    //! Used only for validating non-IsDelegation datum types and activities.
-    // if you have any special admininstrative data structures that inform 
-    // ...  your minting policy, this might be useful.  Otherwise, and typically,
-    // ... you should look to Activity validations above in additionalDelegateValidation,
-    // ...  in which the isDelegation token is being spent with an application-specific
+    //! Use this only for validating non-IsDelegation datum types and activities,
+    //  stored in the delegate's own address, for special cases where that could 
+    // be important (so far, it's never been used - please open a discussion if you 
+    //    think it's needed for your special case)
+    // Typically, you should look to Activity validations above in additionalDelegateValidation,
+    // ...  in which the unique isDelegation token is being spent with an application-specific
     // ...  activity/redeemer
-    func otherDatumValidation( self,
+    func otherDatumValidation(self,
         _priorMdd: DelegateDatum
     ) -> Bool {
         neverTriggered = () -> {  error("never called") };

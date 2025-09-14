@@ -163,11 +163,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
     // the normal case for validation is to use CapoDatum-specific checks.  
     // however, this section allows activity-specific checks to be included, so extensions aren't painted into a corner.
     allActivitySpecificChecks : Bool = activity.switch {
-        // checks for higher-frequency cases first
         spendingDelegatedDatum => {
-            charterData : CapoDatum::CharterData = getTxCharterData(
-                mph: mph
-            );
             // NOT all delegated-data policies need gov authority!
             // hasGovAuthority = charterData.govAuthorityLink.hasValidOutput(mph);
 
@@ -203,30 +199,19 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
 
             cctx = mkCapoCtx(mph).needsCharter();
             // ?? is this checking the same things as the rest of the code below?
-            checkThingOne = cctx.requiresSpendDelegateInput()
-                // .withUniqueDDSpendingActivity(datumId)
-                .requiresValidOutput();
-            TODO("VERIFY the above versus the below!");
 
-            // the below stuff was already tested
-
-            spendDelegate: RelativeDelegateLink = charterData.spendDelegateLink;
-            
-            // consider allowing this as a refInput, with other stuff to enable more parallelism for populations
-            spendDelegateInput: TxInput = spendDelegate.hasDelegateInput(
-                //!!!!!! todo: audit for usages of hasDelegateInput - do we need to pass inputs as an arg?
-                inputs: tx.inputs,
-                mph: mph
-            ).unwrap();
-
-            delegateReturned: Bool = spendDelegate.hasValidOutput(mph).trace(" -- delegate returned ok? ");
-
-            spendDgtInputRedeemer: Data = mustFindInputRedeemer(spendDelegateInput);
-            print("  -- vvvvv REDUNDANT checks for delegate activity (right?)\n");
-            getSpendingRecId : (Data) -> ByteArray = (dgSpendActivity : Data) -> ByteArray {
+            spendDgtInput = cctx.requiresSpendDelegateInput();
+            delegateReturned = spendDgtInput.requiresValidOutput();
+            spendDgtInputRedeemer: Data = mustFindInputRedeemer(
+                spendDgtInput.input.unwrap()
+            )
+            // extracts the record-id from a data-policy delegate's activity (or a single 
+            // ... nested activity, without any special expectations about the 
+            // ... data-structural details of the activity (just the baseline expectation 
+            // ... that its first field is a ByteArray having the record-id).
+            getsSpendingRecId : (Data) -> ByteArray = (dgSpendActivity : Data) -> ByteArray {
                 dgSpendActivity.switch {
-                    ConstrData{index, fields} => {
-                        assert(true || index==index, "unreachable"); // prevent unused variable warning
+                    ConstrData{_index, fields} => {
                         fields.head.switch {
                             ByteArrayData{recId} => {
                                 print("  -- found recId: " + recId.show());
@@ -238,6 +223,8 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     _ => error("unreachable")
                 }
             };
+
+            REQT("Ensures that the spend delegate is acting on this record-id");
             uniqMatchingSpendDgtActivity : Bool = AbstractDelegateActivitiesEnum::from_data(
                 spendDgtInputRedeemer
             ).switch {
@@ -250,7 +237,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     // unwrap the abstract Data from sa, expecting an Enum 
                     // ... with a first data-field having the token-name 
                     // ... that matches with the delegated-data record `id`
-                    recId : ByteArray = getSpendingRecId(sa);
+                    recId : ByteArray = getsSpendingRecId(sa);
                     assert(recId == datumId, "spendDgt SpendingActivity must act on the correct record-id");
                     true
                 },
@@ -266,13 +253,11 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                             AbstractDelegateActivitiesEnum::from_data(act).switch {
                                 SpendingActivities{sa} => {                                    
                                     // unwrap / check record-id
-                                    assert(false,
-                                        "expected the Spend delegate to use *DelegatedData* activities\n"+
-                                        "  ... to describe the operations that are being performed by next-level "+
-                                        "  ... DgData Policy delegates"
+                                    error(
+                                        "expected the Spend delegate to use only *DelegatedData* activities "+
+                                        "to describe the operations that are being performed by next-level "+
+                                        "DgDataPolicy delegates"
                                     );
-                                    recId : ByteArray = getSpendingRecId(sa);
-                                    recId == datumId
                                 },
                                 UpdatingDelegatedData{
                                     /* dgDataType*/ _ , recId
@@ -297,12 +282,12 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         , "❗IMPOSSIBLE (caught by DelegateInput.withDDSpendingActivity())"+
                             " spend delegate tried to act in multiple ways on the same token"
                     );
-                    checkThingOne && true
+                    delegateReturned && true
                 },
                 _ => {
                     spendDgtInputRedeemer.switch {
                         ConstrData{index, fields} => {
-                            print("unexpected redeemer: " + index.show() );
+                            print("unexpected redeemer index #" + index.show() );
                             print("\n");
                             assert(true || /* never executed */ fields.length > 0, "unreachable");
                             error("spend delegate not triggered with a Spending activity")
@@ -311,7 +296,6 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     }
                 }
             };
-            print("  -- ^^^^^ REDUNDANT checks for delegate activity\n");
 
             true
             && hasMatchingValue
