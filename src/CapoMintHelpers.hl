@@ -73,7 +73,7 @@ func requiresDelegateAuthorizingMint(
         Some{x} => x.output_id,
         None => error("  ❌❌ missing dgTkn "+delegateLink.uutName)
     };
-    print ("    -- ✅ ➡️  💁found dgTkn ^");
+    print ("     ✅ ➡️  💁found dgTkn ^");
     spendsAuthorityUut : ScriptPurpose = tx.redeemers.find_key( 
         (purpose : ScriptPurpose) -> { purpose.switch{ 
             sp: Spending => {
@@ -513,7 +513,7 @@ func validateUutMinting(
         "unreachable exception: otherPoliciesMintOk"
     );
 
-    print(" ✅ validateUutMinting:  ok!\n");
+    print("     ✅ validateUutMinting:  ok!\n");
 
     delegateApproval && thisPolicyMintOK && otherPoliciesMintOk 
 }

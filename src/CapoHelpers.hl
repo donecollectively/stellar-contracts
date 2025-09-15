@@ -644,7 +644,7 @@ struct DelegateInput {
 
     func withUniqueDDSpendingActivity(self, recId: ByteArray) -> DelegateInput {
         self.role.switch {
-            DgDataPolicy => print("ok, checking spending activity for a DgData Policy"),
+            DgDataPolicy => print("ok, checking spending activity for a delegated-data policy"),
             _ => error("withUniqueDDSpendingActivity: only valid for DgDataPolicy")
         };
 
@@ -1195,7 +1195,7 @@ struct CapoCtx {
         manifestAc = AssetClass::new(self.mph, tokenName);
         // manifestValue : Value = mkTv(mph: self.mph, tnBytes: tokenName);
         tnStr = tokenName.decode_utf8_safe();
-        print("     ... with input dgData token name: "+ tnStr);
+        // print("     ... with input dgData token name: "+ tnStr);
         // print("     with value: "+manifestValue.show());
 
         inputs: []TxInput = which.switch {
@@ -1206,7 +1206,7 @@ struct CapoCtx {
             txin.value.get_safe(manifestAc) > 0
         }).switch{
             Some{txin} => {
-                print ("  ✅ ➡️  📀💁 found ^ input dgData utxo" );
+                print ("     ✅ ➡️  📀💁 found input dgData utxo for "+tnStr );
                 txin
             },
             None => {                
@@ -1456,13 +1456,13 @@ struct CapoCtx {
         );
 
         recIdStr = recIdBytes.decode_utf8_safe();
-        REQT("Expects reference to delegated-data record: "+recIdStr);
+        REQT("Expects reference to delegated-data record");
         tx.ref_inputs.find_safe(hasDD).switch {
             None => {
-                error("❌❌ 📎 ^ refDD: not found: "+recIdStr)
+                error("❌❌ 📎 input: delegated-data ref not found: "+recIdStr)
             },
             Some{txin} => {
-                print("✅ 📎 ^ refDD: ok: "+recIdStr);
+                print("     ✅ 📎 input: delegated-data ref ok: "+recIdStr);
 
                 txin
             }
@@ -1478,14 +1478,14 @@ struct CapoCtx {
         );
 
         recIdStr = recIdBytes.decode_utf8_safe();
-        REQT("Expects delegated-data record as input: "+recIdStr);
+        REQT("expects delegated-data record as input");
 
         tx.inputs.find_safe(hasDD).switch {
             None => {
-                error("❌❌ 📎 ^ inDD: not found: "+recIdStr)
+                error("❌❌ 📎 input: delegated-data record: not found: "+recIdStr)
             },
             Some{txin} => {
-                print("    ✅ 📎 ^ inDD: ok: "+recIdStr);
+                print("     ✅ 📎 input: delegated-data record: ok: "+recIdStr);
 
                 txin
             }
@@ -1655,7 +1655,7 @@ struct CapoCtx {
     // }
 
     func mustOutputDelegatedData(self, newDataId : ByteArray, dataTypePurpose : String) -> Bool{
-        REQT("   -- validates that the new record is stored in the Capo address");
+        REQT("The new record must be saved in the Capo address");
 
         dgData : Data = self.delegatedTxOutput(newDataId).datum.inline;
         dgDatum : CapoDatum = CapoDatum::from_data(dgData);
@@ -1672,7 +1672,7 @@ struct CapoCtx {
                     if (data.type != dataTypePurpose) {
                         error("❌❌ 📎 outDD: bad type: "+data.type + " (expected "+dataTypePurpose+")")
                     } else {
-                        print("✅ 📎 outDD: ok: ^ delegated-data saved in Capo: "+recIdStr);
+                        print("     ✅ 📎 delegated-data saved in Capo: "+recIdStr);
                         true
                     }
                 }
@@ -1701,16 +1701,16 @@ struct CapoCtx {
                 // print("@addr" + txout.address.show());
                 true
                 && (txout.value.get_safe(ac) == 1)
-                    .trace("  -- output has value? ")
+                    .trace("    -- check output has value? ")
                 && (txout.address == capoAddr)
-                    .trace("     -- found output... is it at the right capoAddr? ")
+                    .trace("     -- ... at the right capoAddr? ")
             }
         ).switch{
             None => {
-                error("❌❌ 📎 ^ outDD: not found: " + recIdStr)
+                error("❌❌ 📎 delegated-data output: not found: " + recIdStr)
             },
             Some{txout} => {
-                print("     ✅ 📎 ^ outDD: found "+ recIdStr);
+                print("     ✅ 📎 delegated-data output: found "+ recIdStr);
                 txout
             }
         }

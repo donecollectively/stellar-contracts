@@ -196,7 +196,7 @@ func checkOneActivity(
     baseCctx: CapoCtx = mkCapoCtx(dd.mph),
     desc: String = "‹unspecified›"
 ) -> Bool {
-    print("🏒 checking "+desc+" activity");
+    print("🏒 checking activity: "+desc);
 
     result = if (true) {
         if( true ) {
@@ -1371,17 +1371,17 @@ func checkOneActivity(
             // either have add'l validation called one time (for single-record creation/update)
             // or multiple times (when there's a multi-activity, we hit this spot once for
             // each nested activity)
-            if (isMintDelegate) {
-                print("-- handoff to mint delegate's additionalDelegateValidation");
-            } else if (isSpendDelegate) { 
-                print("-- handoff to spend delegate's additionalDelegateValidation");
+            if (isMintDelegate && baseCctx.nowActingAsMintDgt(required: false)) {
+                print("  -- handoff to mint delegate's additionalDelegateValidation");
+            } else if (isSpendDelegate && baseCctx.nowActingAsSpendDgt(required: false)) { 
+                print("  -- handoff to spend delegate's additionalDelegateValidation");
             } else {
-                print("-- handoff to data-controller's additionalDelegateValidation");
+                print("  -- handoff to data-controller's additionalDelegateValidation");
             }
 
             if (
-                bREQT("... additionalDelegateValidation") 
-                && activity.additionalDelegateValidation(dgtionDatum, baseCctx.needsCharter())
+                // bREQT("... additionalDelegateValidation") 
+                activity.additionalDelegateValidation(dgtionDatum, baseCctx.needsCharter())
             ) {
                 print ("delegate: "+ delegateName + ": additionalDelegateValidation ok!\n");
                 true
@@ -1391,7 +1391,7 @@ func checkOneActivity(
         } else { false }
     } else { false }
 
-    result.trace("  -- ok activity "+desc+"? ");
+    result.trace("  -- activity 🥅: "+desc+": ok? ");
 }
 
 func main(

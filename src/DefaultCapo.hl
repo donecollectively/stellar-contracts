@@ -143,10 +143,10 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             _ => error("invalid activity on ScriptReference")            
         },
         DelegatedData => {
-            REQT("j6bmfv: all and ONLY DelegatedData datums must be spent with the Capo's spendingDelegatedDatum activity");
+            REQT("j6bmfv: all and only DelegatedData datums must be spent with the Capo's **spendingDelegatedDatum** activity");
             // vvv part one of j6bmfv
             activity.switch {
-                spendingDelegatedDatum => true,  // more checks below.
+                spendingDelegatedDatum => true.trace("  -- is spendingDelegatedDatum activity? "),  // more checks below.
                 _ => error("invalid activity on DelegatedData")
             }
         }
@@ -168,13 +168,13 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             // hasGovAuthority = charterData.govAuthorityLink.hasValidOutput(mph);
 
             // this is part two of j6bmfv
-            REQT("j6bmfv: all and ONLY DelegatedData datums must be spent with the Capo's spendingDelegatedDatum activity");
-            print( "  ...with activity spendingDelegatedDatum\n");
+            REQT("j6bmfv: all and **ONLY DelegatedData** datums must be spent with the Capo's spendingDelegatedDatum activity");
             // check that the datum is a DelegatedData variant
             datumId : ByteArray = capoDatum.switch{
                 DelegatedData => {
                     datum.switch {
                         ConstrData{_index, fields} => {
+                            print("     ✅ is DelegatedData datum-type");
                             AnyData::from_data(fields.head).id
                         },
                         _ => error("unreachable")
@@ -251,7 +251,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     found: []Data = activities.filter(
                         (act: Data) -> Bool {
                             AbstractDelegateActivitiesEnum::from_data(act).switch {
-                                SpendingActivities{sa} => {                                    
+                                SpendingActivities{_sa} => {                                    
                                     // unwrap / check record-id
                                     error(
                                         "expected the Spend delegate to use only *DelegatedData* activities "+
@@ -270,7 +270,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         }
                     );
                     TODO("TEST THIS v");
-                    print("recId: " + datumId.show());
+                    print("recId: " + datumId.decode_utf8_safe());
                     REQT("spendDgt must be acting on the matching record-id");
                     assert(  // fails a test having a spending activity, but on wrong recId
                         ( found.length > 0 ).trace( "found activity for this recId? ")
