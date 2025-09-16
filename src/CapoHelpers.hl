@@ -601,8 +601,8 @@ struct DelegateInput {
     func withUniqueSeededMintingActivity(self, seed: TxOutputId) -> DelegateInput {
         // tnFactory : (String) -> String = mkUutTnFactory(seed);
 
-        logGroupStart("withUniqueSeededMintingActivity");
-        REQT("ensures the delegate is unchanged, so callers needn't.");
+        logGroupStart("");
+        print("-- ensures the delegate is unchanged, so callers needn't.");
         result = self.genericDelegateActivity().switch {
             MintingActivities{ma} => {
                 ma.switch {
@@ -641,7 +641,6 @@ struct DelegateInput {
                 self.assert(foundWithThisSeed.length > 0, "no minting activity found for seed!");
                 REQT("only one of a multi-activity for a given seed is allowed");
                 self.assert(foundWithThisSeed.length == 1, "multiple minting activities found for seed");
-
                 self.delegateUnchanged()
             },
             _ => {
@@ -649,7 +648,7 @@ struct DelegateInput {
                 error("")
             }
         }
-        logGroupEnd()
+        logGroupEnd("✅ unique seeded mint ok!")
         result
     }
 
@@ -761,7 +760,7 @@ struct DelegateInput {
     }
 
     func requiresValidOutput(self, createdOrReturned : DgTkn=DgTkn::Returned) -> Bool {
-        logGroup("requiresValidOutput", () -> Bool {
+        bREQTgroup(reqt: "delegate: dgTkn must be returned", collapse: true, callback: () -> Bool {
             // TODO - would want this to be able to call our assert/error methods
             self.link.hasValidOutput(
                 mph: self.mph, 
@@ -784,7 +783,7 @@ struct DelegateInput {
     }
 
     func delegateUnchanged(self) -> DelegateInput {
-    REQTgroup("the delegate must be unchanged", () -> Bool {
+    REQTgroup(reqt: "the delegate must be unchanged", collapse: true, callback:() -> Bool {
         DelegateInput{link, _role, _idPrefix, input, mph} = self;
         RelativeDelegateLink{
             uut,
@@ -1125,9 +1124,9 @@ struct CapoCtx {
         recId : String="", 
         recIdBytes : ByteArray = recId.encode_utf8()
     ) -> DgDataDetails {
-        REQTgroupStart("creates the delegated-data record");
+        REQTgroupStart("the delegated-data record must be created", collapse: true);
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
-        logGroupEnd()
+        logGroupEnd("✅ create ok: "+recIdBytes.decode_utf8_safe())
 
         DgDataDetails::creating(recIdBytes, output, self.mph)
     }
@@ -1137,7 +1136,7 @@ struct CapoCtx {
         recId : String="", 
         recIdBytes : ByteArray = recId.encode_utf8()
     ) -> DgDataDetails {
-        REQTgroupStart("updates the delegated-data record");
+        REQTgroupStart(reqt: "updates the delegated-data record", collapse: true);
         input : TxInput = self.delegatedDataTxInput(recIdBytes: recIdBytes);
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
         logGroupEnd("✅ update ok: "+recIdBytes.decode_utf8_safe())
@@ -1145,9 +1144,9 @@ struct CapoCtx {
     }
 
     func referencingDgData(self, recId : String="", recIdBytes : ByteArray = recId.encode_utf8()) -> DgDataDetails {
-        REQTgroupStart("requires a REFERENCE to the delegated-data record");
+        REQTgroupStart(reqt: "requires a REFERENCE to the delegated-data record", collapse: true);
         input : TxInput = self.delegatedDataRef(recIdBytes: recIdBytes);
-        logGroupEnd()
+        logGroupEnd("✅ ref found: "+recIdBytes.decode_utf8_safe())
         DgDataDetails::referencing(recIdBytes, input, self.mph)
     }
     
@@ -1310,7 +1309,7 @@ struct CapoCtx {
     // }
 
     func requiresGovAuthority(self) -> CapoCtx {
-        REQTgroup("it must have the Capo's govAuthority approval", () -> Bool {
+        REQTgroup(reqt: "MUST have the Capo's govAuthority approval", collapse: true, callback: () -> Bool {
             result = self.getCharterData().govAuthorityLink.hasValidOutput( 
                 self.mph  
             )
@@ -1338,9 +1337,9 @@ struct CapoCtx {
     }
 
     func requiresDgDataPolicyInput(self, typeName: String, required: Bool = true) -> DelegateInput {
-        logGroupStart("requiresDgDataPolicyInput");
-        REQT("locates the manifest's data-policy for this record-type");
+        REQTgroupStart(reqt: "MUST include the policy for record-type "+typeName, collapse: true);
 
+        print("  -- locates the needed policy through the Capo manifest");
         result = self.getCharterData().manifest.get_safe(typeName).switch{
             None => error("missing data-policy manifest for record-type '" + typeName + "'"),
             Some{entry} => {
@@ -1348,7 +1347,6 @@ struct CapoCtx {
                     DgDataPolicy{policyLink, idPrefix, _refCount} => ( policyLink, idPrefix ),
                     _ => error("manifest entry is not a data policy: "+typeName)
                 };
-                REQT("requires the delegated-data policy for type="+typeName);
                 self.requiresDelegateInput(
                     dgtLink, 
                     DelegateRole::DgDataPolicy{typeName}, 
@@ -1357,7 +1355,7 @@ struct CapoCtx {
                 )
             }
         }
-        logGroupEnd()
+        logGroupEnd("✅ dgData policy found: "+typeName)
         result
     }
 
@@ -1486,9 +1484,9 @@ struct CapoCtx {
         hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(
             id: recIdBytes
         );
-        logGroupStart("delegatedDataRef");
+        REQTgroupStart(reqt: "Expects reference to delegated-data record", collapse: true);
         recIdStr = recIdBytes.decode_utf8_safe();
-        REQT("Expects reference to delegated-data record");
+
         tx.ref_inputs.find_safe(hasDD).switch {
             None => {
                 error("❌❌ 📎 input: delegated-data ref not found: "+recIdStr)
@@ -1508,7 +1506,7 @@ struct CapoCtx {
         hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(
             id: recIdBytes
         );
-        REQTgroupStart("the input data record is required");
+        REQTgroupStart(reqt: "MUST have the input data record", collapse: true);
         recIdStr = recIdBytes.decode_utf8_safe();
 
         tx.inputs.find_safe(hasDD).switch {
@@ -1686,7 +1684,7 @@ struct CapoCtx {
     // }
 
     func mustOutputDelegatedData(self, newDataId : ByteArray, dataTypePurpose : String) -> Bool{
-    bREQTgroup("The new record must be saved in the Capo address", () -> Bool {
+    bREQTgroup(reqt: "The new record MUST be saved in the Capo address", collapse: true, callback: () -> Bool {
         dgData : Data = self.delegatedTxOutput(newDataId).datum.inline;
         dgDatum : CapoDatum = CapoDatum::from_data(dgData);
 

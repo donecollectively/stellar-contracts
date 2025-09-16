@@ -623,8 +623,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     matchesActivity = (dgtActivity: AbstractDelegateActivitiesEnum) -> Bool {
                         dgtActivity.switch {
                             CapoLifecycleActivities{cla} => {
-                                bREQT(
-                                    "  - the delegate's activity must match the capo's lifecycle activity",
+                                bREQT("the delegate's activity must match the capo's lifecycle activity",
                                     (cla == myCLActivity)
                                 )
                             },
@@ -632,16 +631,22 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         }
                     };
                     needsMintDgt = () -> Bool {
-                    bREQTgroup("ensures presence of the mint delegate", () -> Bool {
+                    bREQTgroup(reqt: "ensures presence of the mint delegate", collapse: true, callback: () -> Bool {
                         mintDgt = cctx.requiresMintDelegateInput();
                         assert(mintDgt.requiresValidOutput(), "<-- that fails, this doesn't");
-                        matchesActivity(mintDgt.genericDelegateActivity())
+                        if(matchesActivity(mintDgt.genericDelegateActivity())) {
+                            print("✅ ok: mint delegate present")
+                            true
+                        } else { false /* unreachable */ }
                     }) };
                     needsSpendDgt = () -> Bool {
-                    bREQTgroup("ensures presence of the spend delegate", () -> Bool {
+                    bREQTgroup(reqt: "ensures presence of the spend delegate", collapse: true, callback: () -> Bool {
                         spendDgt = cctx.requiresSpendDelegateInput();
                         assert(spendDgt.requiresValidOutput(), "<-- that fails, this doesn't");
-                        matchesActivity(spendDgt.genericDelegateActivity())
+                        if(matchesActivity(spendDgt.genericDelegateActivity())) {
+                            print("✅ ok: spend delegate present")
+                            true
+                        } else { false /* unreachable */ }
                     }) };
                     cctx.dgtRolesForLifecycleActivity(myCLActivity).switch {
                         HandledByCapoOnly => error("unreachable"),

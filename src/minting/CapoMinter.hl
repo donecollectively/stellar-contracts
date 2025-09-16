@@ -86,7 +86,7 @@ func main(r : MinterActivity) -> Bool {
             mkUutName: (String) -> String = mkUutTnFactory(
                 minterSeed  
             );
-            TRACE("cm3".encode_utf8(), "validateUutMinting");
+            // TRACE("cm3".encode_utf8(), "validateUutMinting");
             REQT("must mint uuts for mintDgt, spendDgt, and govAuth using the same seed");
             mintsUuts: Bool = validateUutMinting(
                 mph: mph,

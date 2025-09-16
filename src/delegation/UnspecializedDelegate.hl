@@ -313,15 +313,15 @@ enum DelegateActivity {
                 error("unspecialized mint delegate doesn't have any MintingActivities")
             },
             CreatingDelegatedData{_, dataType} => {
-                print(" ℹ️  mint: delegates CreatingDelegatedData authority to policy: "+dataType);
+                print(" ℹ️  mint: delegates CreatingDelegatedData authority to "+dataType);
                 true
             },
             UpdatingDelegatedData{dataType, _recId} => {
-                print(" ℹ️  spend: delegates UpdatingDelegatedData authority to policy: "+dataType);
+                print(" ℹ️  spend: delegates UpdatingDelegatedData authority to "+dataType);
                 true
             },
             DeletingDelegatedData{dataType, _recId} => {
-                print(" ℹ️  spend: delegates DeletingDelegatedData authority to policy: "+dataType);
+                print(" ℹ️  spend: delegates DeletingDelegatedData authority to "+dataType);
                 true
             },
             MultipleDelegateActivities => {

@@ -77,12 +77,13 @@ export class UplcConsoleLogger implements UplcLogger {
             this.interesting = 1
         }
         // 🐣 = bird in egg (think "nest")
-        if (message.startsWith("🐣 ")) {
-            const groupName = message.replace("🐣 ", "");
+        if (message.startsWith("🐣")) {
+            const groupName = message.replace("🐣", "");
             const nextGroup = {
                 name: groupName,
                 lines: []
             };
+            console.log("Group start: " + groupName);
             this.currentGroupLines.push(nextGroup)
             this.groupStack.push(nextGroup);
             
@@ -90,8 +91,17 @@ export class UplcConsoleLogger implements UplcLogger {
         } else if (message.startsWith("🥚 ")) {
             // 🥚 = egg (think "close up that container")
             const rest = message.replace("🥚 ", "");
-            this.currentGroup.result = rest
-            this.groupStack.pop()
+            if (this.groupStack.length == 1) {
+                const t = this.formatLines(this.topLines)
+                debugger
+                console.warn(
+                    "Ignoring extra groupEnd() called in contract script\n"+t.join("\n")
+                );
+            } else {
+                console.log("Group end: " + rest);
+                this.currentGroup.result = rest
+                this.groupStack.pop()
+            }
             return this
         }
         
@@ -109,7 +119,8 @@ export class UplcConsoleLogger implements UplcLogger {
     get currentGroup() {
         const group = this.groupStack.at(-1);
         if (!group) {
-            throw new Error("Too many groupEnds called in contract script");
+            debugger
+            throw new Error("Too many groupEnd()s called in contract script");
         }
         return group;
     }
@@ -277,10 +288,10 @@ export class UplcConsoleLogger implements UplcLogger {
         const joined = content.join("");
         this.formattedHistory.push(joined);
         console.log(joined);
-        this.groupStack[0] = {
+        this.groupStack = [{
             name: "",
             lines: []
-        }
+        }]
     }
     finish() {
         this.flushLines(

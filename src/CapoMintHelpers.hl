@@ -37,13 +37,14 @@ import {
 func hasSeedUtxo(tx: Tx, seedUtxo: TxOutputId
     // , reason: String
 ) -> Bool {
-    bREQTgroup("It must spend the indicated seed UTXO", () -> Bool {
-        print("-- seedUtxo: "+seedUtxo.show());
+    bREQTgroup(reqt: "It must spend the indicated seed UTXO", collapse: false, callback: () -> Bool {
         if (!tx.inputs.any( (input: TxInput) -> Bool {
             input.output_id == seedUtxo
         })) {
+            print("  -- seedUtxo: "+seedUtxo.show());
             error("missing expected seed input for minting")
         };
+        print("✅ ok: seedUtxo: "+seedUtxo.show());
         true
     })
 }
@@ -140,12 +141,13 @@ func requiresDelegateAuthorizingMint(
 func requiresMintDelegateApproval(
     mph: MintingPolicyHash
 ) -> Bool {
-bREQTgroup("Minter defers to the mint-delegate to approve the mint", () -> Bool {
+bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", collapse: false, callback: () -> Bool {
     cctx : CapoCtx = mkCapoCtx(mph).needsCharter();
     // print("Minter needs mintDgt + mint activity\n");
     REQTgroupUnit(
-        "EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value",
-        () -> {
+        reqt: "EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value",
+        collapse: false,
+        callback: () -> {
             print("  e.g. with assert(tx.minted.get_policy(mph) == expectedMintedValue);")
             print("      (if it's only responsible for one minting policy)")
         }
@@ -362,7 +364,7 @@ func validateUutMinting(
     extraMintDelegateRedeemerCheck: Bool = true,
     checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported
 ) -> Bool {
-bREQTgroup("checks that the UUTs are minted correctly", () -> Bool {
+bREQTgroup(reqt: "checks that the UUTs are minted correctly", collapse: true, callback: () -> Bool {
     print("-- uut purposes: " + purposes.join(", "));
     isBootstrapping : Bool = !( bootstrapCharter.is_zero() );
 
@@ -454,10 +456,13 @@ bREQTgroup("checks that the UUTs are minted correctly", () -> Bool {
             tnStr = tn.decode_utf8_safe();  
             print( "    ℹ️ 🐞   actual: " + i.show() + "x " + tnStr )
         });
-        print("other policy values minted: \n");
-        print(Value::from_map(valueMinted.to_map().filter( (b:MintingPolicyHash, _ /* Map[ByteArray]Int */ ) -> Bool {
+        filteredOtherMint = Value::from_map(valueMinted.to_map().filter( (b:MintingPolicyHash, _ /* Map[ByteArray]Int */ ) -> Bool {
             b != mph
-        })).get_assets().show())
+        }));
+        if (!filteredOtherMint.is_zero()) {
+            print("other policy values minted: \n");
+            print(filteredOtherMint.get_assets().show())
+        }
     };
 
     // _temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
@@ -470,17 +475,16 @@ bREQTgroup("checks that the UUTs are minted correctly", () -> Bool {
     // }, []ByteArray{});
     // assert(true || (temp == temp), "prevent unused var");
 
-    thisPolicyMintOK = bREQTgroup("Ensures the mint for this policy-id is exactly the expected value", () -> Bool {
+    thisPolicyMintOK = bREQTgroup(reqt: "Ensures the mint for this policy-id is exactly the expected value", collapse: true, callback: () -> Bool {
         assert(actualThisPolicyMintSorted == expectedValuesSorted, "❌❌ validateUutMinting(): mismatch in UUT mint");
-        print("  -- this-policy mint ok");
         assert(hasSeedUtxo(tx, seed), "❌❌ validateUutMinting(): no seed"); //, "UUT "+purposes.join("+")
-        print("ok: has seed and expected this-policy mint value");
+        print("✅ ok: this-policy mint value matches");
         true
     });
 
     otherPoliciesMintOk = if (!otherMintedValue.is_zero()) { true } else {
         REQT("... with an additional mint-value indicated");
-
+        print("  -- other-minted-value: "+otherMintedValue.show());
         remainingExpectedMint = if (expectedValue.contains_policy(mph)) {
             Value::from_map(
                 expectedValue.to_map().delete(mph)
@@ -488,7 +492,7 @@ bREQTgroup("checks that the UUTs are minted correctly", () -> Bool {
         } else { expectedValue };
 
         if (remainingExpectedMint.is_zero()) { true } else {
-        bREQTgroup("...with other-policy values expected: ", () -> Bool {
+        bREQTgroup(reqt: "...with other-policy values expected: ", collapse: false, callback: () -> Bool {
             print( "  -- expecting other-mint value: "+ remainingExpectedMint.show())
             REQT("It should mint exactly the indicated token names");
             REQT("Doesn't constrain any mentioned policy's minting of any other tokens");
@@ -521,6 +525,7 @@ bREQTgroup("checks that the UUTs are minted correctly", () -> Bool {
             otherPoliciesMintOk.trace("  -- other-expected-mints ok? "), 
             "unreachable exception: otherPoliciesMintOk"
         );
+        print("✅ ok: minted uut purposes: " + purposes.join(", "));
         delegateApproval && thisPolicyMintOK && otherPoliciesMintOk 
     })// .trace("     ✅ validateUutMinting: ok? ");
 }

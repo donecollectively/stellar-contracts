@@ -203,7 +203,7 @@ func checkOneActivity(
     baseCctx: CapoCtx = mkCapoCtx(dd.mph),
     desc: String = "‹unspecified›"
 ) -> Bool {
-    logGroup("🏒 checking activity: "+desc, () -> {
+    logGroup(group:"🏒 checking activity: "+desc, collapse: false, callback: () -> {
         result = if (true) {
             checkNonDelegatedActivities: Bool = activity.switch {
                 MultipleDelegateActivities{activities} => {
@@ -287,8 +287,9 @@ func checkOneActivity(
                     )
 
                     spendDgtCheck : Bool = notSpendDgt || bREQTgroup(                        
-                        "validates nested activities: in the spend delegate, only {Updating,Deleting}DelegatedData activities are valid in multi-activities", 
-                        () -> Bool { activities.all( (rawActivity: Data) -> Bool {
+                        reqt: "validates nested activities: in the spend delegate, only {Updating,Deleting}DelegatedData activities are valid in multi-activities", 
+                        collapse: false,
+                        callback: () -> Bool { activities.all( (rawActivity: Data) -> Bool {
                             a : DelegateActivity = DelegateActivity::from_data(rawActivity);
                             print("  -- spendDgt checking multi-activity");
                             a.switch {
@@ -324,8 +325,9 @@ func checkOneActivity(
                         assert(!isDgDataPolicy, "ack! mint/spend delegate can't be a delegated-data policy!");
                         true 
                     } else {
-                        bREQTgroup("multi-activity: in DgDataPolicy, only Minting/Burning/Spending activities are valid",
-                        () -> Bool { activities.all( (rawActivity: Data) -> Bool {
+                        bREQTgroup(reqt: "multi-activity: in DgDataPolicy, only Minting/Burning/Spending activities are valid",
+                        collapse: false,
+                        callback: () -> Bool { activities.all( (rawActivity: Data) -> Bool {
                             a : DelegateActivity = DelegateActivity::from_data(rawActivity);
 
                             // WHEN this code is supporting a DgDataPolicy (with its own specializedDelegate module),
@@ -609,8 +611,9 @@ func checkOneActivity(
                             };
 
                             REQTgroupUnit(
-                                "The new pending-delegate action must be found at the head of the new change-list",
-                                () -> {
+                                reqt: "The new pending-delegate action must be found at the head of the new change-list",
+                                collapse: false,
+                                callback: () -> {
                                     action.switch {
                                         Remove => {
                                             print("   -- another delegate-role check would be redundant.");
@@ -1376,15 +1379,19 @@ func checkOneActivity(
             // or multiple times (when there's a multi-activity, we hit this spot once for
             // each nested activity)
 
-            bREQTgroup(if (isMintDelegate && baseCctx.nowActingAsMintDgt(required: false)) {
-                "mintDgt: additionalDelegateValidation in "+delegateName
-            } else if (isSpendDelegate && baseCctx.nowActingAsSpendDgt(required: false)) { 
-                "spendDgt: additionalDelegateValidation in "+delegateName
-            } else {
-                delegateName+": additionalDelegateValidation()"
-            },  () -> {
-                activity.additionalDelegateValidation(dgtionDatum, baseCctx.needsCharter())
-            })
+            bREQTgroup(
+                callback: () -> {
+                    activity.additionalDelegateValidation(dgtionDatum, baseCctx.needsCharter())
+                },
+                collapse: false,
+                reqt: if (isMintDelegate && baseCctx.nowActingAsMintDgt(required: false)) {
+                    "mintDgt: additionalDelegateValidation in "+delegateName
+                } else if (isSpendDelegate && baseCctx.nowActingAsSpendDgt(required: false)) { 
+                    "spendDgt: additionalDelegateValidation in "+delegateName
+                } else {
+                    delegateName+": additionalDelegateValidation()"
+                }
+            )
         } else { false }
         result
         // result.trace("  -- activity 🥅: "+desc+": ok? ");
@@ -1416,7 +1423,7 @@ func main(
              assert(dd.tn != instance, "param/script-hash uniqueness");
              assert(dd.tn != delegateName.encode_utf8(), "param/script-hash uniqueness");
               
-             logGroupUnit("spending dgTkn", () -> {
+             logGroupUnit(group: "delegate: spending dgTkn", collapse: false, callback: () -> {
                  // showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
                  // showMyTokens(get_current_input().value);
                  print(get_current_input().value.show())

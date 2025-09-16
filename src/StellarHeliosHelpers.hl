@@ -28,9 +28,13 @@ func didSign(a: Address) -> Bool {
  * @remarks
  * The end of the group MUST be explicitly indicated by calling logGroupEnd().
  */
-func logGroupStart(group: String) -> () {
+func logGroupStart(group: String, collapse: Bool = false) -> () {
     // 🐣 = Bird in egg (think "nest")
-    print("🐣 "+group);
+    if (collapse) {
+        print("🐣🗜️ "+group)
+    } else {
+        print("🐣"+group);
+    }
 }
 
 /**
@@ -56,9 +60,10 @@ func emptyUnitFunc() -> () { () }
  */
 func logGroup(
     group: String, 
+    collapse: Bool = false,
     callback: () -> Bool
 ) -> Bool {
-    logGroupStart(group);
+    logGroupStart(group, collapse);
     result = callback();
     if (result) {
         logGroupEnd("✅");
@@ -76,9 +81,10 @@ func logGroup(
  */
 func logGroupUnit(
     group: String, 
+    collapse: Bool = false,
     callback: () -> () = emptyUnitFunc
 ) -> () {
-    logGroupStart(group);
+    logGroupStart(group, collapse);
     callback();
     logGroupEnd();
 }
@@ -99,7 +105,7 @@ func TRACE(id: ByteArray, message: String) -> () {
  */
 func REQT(reqt: String, assertion : Bool=true) -> () {
     // ❗red exclamation mark
-    print("❗ "+ reqt);
+    print("❗"+ reqt);
     assert(assertion, "  ❌❌ ^ failed: " + reqt)
 }
 
@@ -116,8 +122,8 @@ func bREQT(reqt: String, assertion : Bool=true) -> Bool {
  * @remarks
  * The end of the group MUST be explicitly indicated by calling logGroupEnd().
  */
-func REQTgroupStart(reqt: String) -> () {
-    logGroupStart("❗"+ reqt);
+func REQTgroupStart(reqt: String, collapse: Bool = false) -> () {
+    logGroupStart("❗"+ reqt, collapse);
 }
 
 /**
@@ -127,8 +133,8 @@ func REQTgroupStart(reqt: String) -> () {
  * The group is closed automatically, with an emoji indicating success or failure.
  * If the function returns false, an assertion is thrown (outside the logging group)
  */
-func REQTgroup(reqt: String, callback: () -> Bool) -> () {
-    result = logGroup("❗"+ reqt, callback);
+func REQTgroup(reqt: String, collapse: Bool = false, callback: () -> Bool) -> () {
+    result = logGroup("❗"+ reqt, collapse, callback);
     assert(result, "❌❌ ^ failed: " + reqt)
 }
 
@@ -139,8 +145,8 @@ func REQTgroup(reqt: String, callback: () -> Bool) -> () {
  * The group is closed automatically, with an emoji indicating success or failure.
  * If the function returns false, an assertion is thrown (outside the logging group)
  */
-func bREQTgroup(reqt: String, callback: () -> Bool) -> Bool {
-    result = logGroup("❗"+ reqt, callback);
+func bREQTgroup(reqt: String, collapse: Bool = false, callback: () -> Bool) -> Bool {
+    result = logGroup("❗"+ reqt, collapse, callback);
     assert(result, "❌❌ ^ failed: " + reqt)
     result
 }
@@ -151,8 +157,8 @@ func bREQTgroup(reqt: String, callback: () -> Bool) -> Bool {
  * @remarks
  * The group is closed automatically.
  */
-func REQTgroupUnit(reqt: String, callback: () -> ()) -> () {
-    logGroupUnit("❗"+ reqt, callback);
+func REQTgroupUnit(reqt: String, collapse: Bool = false, callback: () -> ()) -> () {
+    logGroupUnit("❗"+ reqt, collapse, callback);
 }
 
 /**
