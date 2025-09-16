@@ -26,6 +26,9 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     static isMintDelegate = true;
     declare dataBridgeClass : GenericDelegateBridgeClass
 
+    /**
+     * Enforces that the mint delegate needs gov-authority by default
+     */
     get needsGovAuthority() {
         return true;
     }

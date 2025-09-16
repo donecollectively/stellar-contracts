@@ -23,6 +23,66 @@ func didSign(a: Address) -> Bool {
     tx.is_signed_by(pkh)
 }
 
+/**
+ * emits an indication for the start of a logging group.
+ * @remarks
+ * The end of the group MUST be explicitly indicated by calling logGroupEnd().
+ */
+func logGroupStart(group: String) -> () {
+    // 🐣 = Bird in egg (think "nest")
+    print("🐣 "+group);
+}
+
+/**
+ * emits an indication for the end of a logging group.
+ * @remarks
+ * Can be used with logGroupStart() or REQTgroupStart() to close the logging group.
+ * 
+ * If you don't close the group, log messages will be mis-attributed to the group.
+ * Errors and failed assertions will implicitly close the group.
+ */
+func logGroupEnd(status: String = "") -> () {
+    // 🥚 = Egg (think "close up that container")
+    print("🥚 "+status)
+}
+
+func emptyUnitFunc() -> () { () }
+
+/**
+ * Opens a logging group, executing a boolean callback and returning its result.
+ * 
+ * @remarks
+ * The group is closed automatically, with an emoji indicating success or failure.
+ */
+func logGroup(
+    group: String, 
+    callback: () -> Bool
+) -> Bool {
+    logGroupStart(group);
+    result = callback();
+    if (result) {
+        logGroupEnd("✅");
+    } else {
+        logGroupEnd("❌");
+    }
+    result
+}
+
+/**
+ * Executes a callback without args or return value, within a logging group.
+ * 
+ * @remarks
+ * The group is closed automatically.
+ */
+func logGroupUnit(
+    group: String, 
+    callback: () -> () = emptyUnitFunc
+) -> () {
+    logGroupStart(group);
+    callback();
+    logGroupEnd();
+}
+
 func TODO(task: String) -> () {
     // 🟥  😳💦 red checkbox, face, sweat droplets
     print("  🟥  😳💦  TODO: " + task + "\n")
@@ -34,17 +94,74 @@ func TRACE(id: ByteArray, message: String) -> () {
     print(message)
 }
 
+/**
+ * Indicates a self-documenting required behavior
+ */
 func REQT(reqt: String, assertion : Bool=true) -> () {
     // ❗red exclamation mark
     print("❗ "+ reqt);
     assert(assertion, "  ❌❌ ^ failed: " + reqt)
 }
+
+/**
+ * Indicates a self-documenting required behavior and returns true
+ */
 func bREQT(reqt: String, assertion : Bool=true) -> Bool {
     REQT(reqt, assertion);
     true
 }
 
-//! represents the indicated token name as a Value
+/**
+ * Starts a logging group with the "Requirement" indicator included
+ * @remarks
+ * The end of the group MUST be explicitly indicated by calling logGroupEnd().
+ */
+func REQTgroupStart(reqt: String) -> () {
+    logGroupStart("❗"+ reqt);
+}
+
+/**
+ * Executes a boolean function within a logging group, labeled with the "Requirement" indicator.
+ * 
+ * @remarks
+ * The group is closed automatically, with an emoji indicating success or failure.
+ * If the function returns false, an assertion is thrown (outside the logging group)
+ */
+func REQTgroup(reqt: String, callback: () -> Bool) -> () {
+    result = logGroup("❗"+ reqt, callback);
+    assert(result, "❌❌ ^ failed: " + reqt)
+}
+
+/**
+ * Returns true after calling a boolean function within a logging group, 
+ * labeled with the "Requirement" indicator.
+ * @remarks
+ * The group is closed automatically, with an emoji indicating success or failure.
+ * If the function returns false, an assertion is thrown (outside the logging group)
+ */
+func bREQTgroup(reqt: String, callback: () -> Bool) -> Bool {
+    result = logGroup("❗"+ reqt, callback);
+    assert(result, "❌❌ ^ failed: " + reqt)
+    result
+}
+
+/**
+ * Executes a callback without args or return value, within a logging group,
+ * labeled with the "Requirement" indicator.
+ * @remarks
+ * The group is closed automatically.
+ */
+func REQTgroupUnit(reqt: String, callback: () -> ()) -> () {
+    logGroupUnit("❗"+ reqt, callback);
+}
+
+/**
+  * forms a Value, given minimal details
+  * @remarks
+  * Uses named args to allow `tn` string token name or `tnBytes` for a ByteArray,
+  * and `count` (default 1) to specify the number of tokens.
+  * the `mph` arg is required.
+  */ 
 func mkTv(
     mph: MintingPolicyHash, 
     tn: String="", 

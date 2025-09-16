@@ -54,7 +54,7 @@ func main(r : MinterActivity) -> Bool {
     value_minted: Value = tx.minted;
     assert(true || (/* never evaluated */ rev.serialize() == rev.serialize()), "no");
     assert(true || (/* never evaluated */ seedTxn.serialize() == seedTxn.serialize()), "no");
-    TRACE("cm1".encode_utf8(), " 🚥❓ Capo minter");
+    print(" 🚥❓ Capo minter");
     print("  -- minter policy id: " + get_current_minting_policy_hash().show());
 
     ok : Bool = r.switch {

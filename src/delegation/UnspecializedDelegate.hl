@@ -44,7 +44,13 @@ import {
     AnyData,
     REQT,
     bREQT,
-    TODO
+    TODO,
+    REQTgroup,
+    REQTgroupUnit,
+    logGroupUnit,
+    logGroup,
+    logGroupStart,
+    logGroupEnd
 } from StellarHeliosHelpers
 
 import {
@@ -306,16 +312,16 @@ enum DelegateActivity {
 
                 error("unspecialized mint delegate doesn't have any MintingActivities")
             },
-            CreatingDelegatedData => {
-                print(" ℹ️  mint delegate allowing CreatingDelegatedData on the say-so of its policy delegate");
+            CreatingDelegatedData{_, dataType} => {
+                print(" ℹ️  mint: delegates CreatingDelegatedData authority to policy: "+dataType);
                 true
             },
-            UpdatingDelegatedData => {
-                print(" ℹ️  spend delegate allowing UpdatingDelegatedData on the say-so of its policy delegate");
+            UpdatingDelegatedData{dataType, _recId} => {
+                print(" ℹ️  spend: delegates UpdatingDelegatedData authority to policy: "+dataType);
                 true
             },
-            DeletingDelegatedData => {
-                print(" ℹ️  mint delegate allowing DeletingDelegatedData on the say-so of its policy delegate");
+            DeletingDelegatedData{dataType, _recId} => {
+                print(" ℹ️  spend: delegates DeletingDelegatedData authority to policy: "+dataType);
                 true
             },
             MultipleDelegateActivities => {

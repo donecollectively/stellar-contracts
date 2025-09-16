@@ -6,7 +6,14 @@ import {
     mkTv,
     TODO,
     REQT,
-    tvCharter
+    tvCharter,
+    REQTgroup,
+    bREQTgroup,
+    REQTgroupUnit,
+    logGroupUnit,
+    logGroup,
+    logGroupStart,
+    logGroupEnd
 } from StellarHeliosHelpers
 
 import {tx, get_current_input} from ScriptContext
@@ -30,20 +37,15 @@ import {
 func hasSeedUtxo(tx: Tx, seedUtxo: TxOutputId
     // , reason: String
 ) -> Bool {
-    REQT("It must spend the indicated seed UTXO");
-
-    if (!tx.inputs.any( (input: TxInput) -> Bool {
-        input.output_id == seedUtxo
-    })) {
-        print(" - expected seedUtxo: ");
-        print(seedUtxo.show());
-        print("\n");
-        // + "\n"+seedUtxo.tx_id.show() + " : " +seedUtxo.index.show()
-        assert(false, "missing expected seed input for minting")
-        // +reason 
-    };
-    print( "  -- has seed -> ok\n");
-    true
+    bREQTgroup("It must spend the indicated seed UTXO", () -> Bool {
+        print("-- seedUtxo: "+seedUtxo.show());
+        if (!tx.inputs.any( (input: TxInput) -> Bool {
+            input.output_id == seedUtxo
+        })) {
+            error("missing expected seed input for minting")
+        };
+        true
+    })
 }
 
 func noOtherActivitiesSupported( _: AbstractDelegateActivitiesEnum) -> Bool {
@@ -138,10 +140,16 @@ func requiresDelegateAuthorizingMint(
 func requiresMintDelegateApproval(
     mph: MintingPolicyHash
 ) -> Bool {
+bREQTgroup("Minter defers to the mint-delegate to approve the mint", () -> Bool {
     cctx : CapoCtx = mkCapoCtx(mph).needsCharter();
-    print("Minter needs mintDgt + mint activity\n");
-    REQT("EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value");
-    
+    // print("Minter needs mintDgt + mint activity\n");
+    REQTgroupUnit(
+        "EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value",
+        () -> {
+            print("  e.g. with assert(tx.minted.get_policy(mph) == expectedMintedValue);")
+            print("      (if it's only responsible for one minting policy)")
+        }
+    )
     // print ("      ❇️  "+ 
     //     tx.minted.get_policy(mph).to_list(
     //         (b : ByteArray, i: Int) -> String { 
@@ -149,9 +157,6 @@ func requiresMintDelegateApproval(
     //         }
     //     ).join(" + ") 
     // + "\n");
-
-    print("    -- ^ e.g. assert(tx.minted.get_policy(mph) == expectedMintedValue);\n");
-    print("    ---- (if it's only responsible for one minting policy)\n");
     // if (true) {
         // todo: enforces minting invariants.
         TODO("must enforce minting invariants");
@@ -172,12 +177,12 @@ func requiresMintDelegateApproval(
                 true
             }, 
             queuePendingChange => {
-                print("  -- ok: mintDgt using CapoLifecycle.queuePendingChange)\n");
+                print("  -- ok: mintDgt using CapoLifecycle.queuePendingChange)");
                 mintDgtInput.requiresValidOutput() && 
                 true
             },
             commitPendingChanges => {
-                print("  -- ok: mintDgt using CapoLifecycle.commitPendingChanges)\n");
+                print("  -- ok: mintDgt using CapoLifecycle.commitPendingChanges)");
                 mintDgtInput.requiresValidOutput() && 
                 true
             },
@@ -255,7 +260,7 @@ func requiresMintDelegateApproval(
             )
         }
     }
-
+    }).trace("  -- mintDgt activity ok? ");
 
     // requiresDelegateAuthorizingMint(
     //     delegateLink: mintDgt, 
@@ -357,12 +362,15 @@ func validateUutMinting(
     extraMintDelegateRedeemerCheck: Bool = true,
     checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported
 ) -> Bool {
+bREQTgroup("checks that the UUTs are minted correctly", () -> Bool {
+    print("-- uut purposes: " + purposes.join(", "));
     isBootstrapping : Bool = !( bootstrapCharter.is_zero() );
 
-    delegateApproval : Bool = if ( isBootstrapping ) { 
+    delegateApproval : Bool = if ( isBootstrapping ) {
+        print("  -- bootstrapping; no delegate approval required");
         true 
     } else {
-        // not bootstrapping; must honor the mintDelegate's authority
+        print("  -- not bootstrapping; must honor the mintDelegate's authority");
         CapoDatum::CharterData {
             _spendDgt,
             _spendInvariants,
@@ -376,6 +384,7 @@ func validateUutMinting(
 
         if (needsMintDelegateApproval) {
             //!!! todo: add explicit activity details in authorization
+            print("  -- checking mintDelegate's authority");
             requiresDelegateAuthorizingMint(
                 delegateLink: mintDgt, 
                 mph: mph, 
@@ -448,7 +457,7 @@ func validateUutMinting(
         print("other policy values minted: \n");
         print(Value::from_map(valueMinted.to_map().filter( (b:MintingPolicyHash, _ /* Map[ByteArray]Int */ ) -> Bool {
             b != mph
-        })).show())
+        })).get_assets().show())
     };
 
     // _temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
@@ -461,14 +470,13 @@ func validateUutMinting(
     // }, []ByteArray{});
     // assert(true || (temp == temp), "prevent unused var");
 
-    
-
-    REQT("Ensures the mint for this policy-id is exactly the expected value");
-    thisPolicyMintOK = actualThisPolicyMintSorted == expectedValuesSorted;
-    assert(thisPolicyMintOK, "mismatch in UUT mint");
-    print("  -- this-policy mint ok");
-    assert(hasSeedUtxo(tx, seed), "no seed"); //, "UUT "+purposes.join("+")
-    print("  -- ok: has seed and expected this-policy mint value");
+    thisPolicyMintOK = bREQTgroup("Ensures the mint for this policy-id is exactly the expected value", () -> Bool {
+        assert(actualThisPolicyMintSorted == expectedValuesSorted, "❌❌ validateUutMinting(): mismatch in UUT mint");
+        print("  -- this-policy mint ok");
+        assert(hasSeedUtxo(tx, seed), "❌❌ validateUutMinting(): no seed"); //, "UUT "+purposes.join("+")
+        print("ok: has seed and expected this-policy mint value");
+        true
+    });
 
     otherPoliciesMintOk = if (!otherMintedValue.is_zero()) { true } else {
         REQT("... with an additional mint-value indicated");
@@ -480,8 +488,8 @@ func validateUutMinting(
         } else { expectedValue };
 
         if (remainingExpectedMint.is_zero()) { true } else {
-            REQT("...with other-policy values expected: ");
-            print( remainingExpectedMint.show() + "^ other-mint value expected");
+        bREQTgroup("...with other-policy values expected: ", () -> Bool {
+            print( "  -- expecting other-mint value: "+ remainingExpectedMint.show())
             REQT("It should mint exactly the indicated token names");
             REQT("Doesn't constrain any mentioned policy's minting of any other tokens");
             remainingExpectedMint.to_map().for_each( 
@@ -503,19 +511,18 @@ func validateUutMinting(
                         }}
                     )
                 }
-            );
-            true
+                );
+                true
+            })
         }
         // ^^ any errors are thrown in here
-    };
-    assert(
-        otherPoliciesMintOk.trace("  -- other-expected-mints ok? "), 
-        "unreachable exception: otherPoliciesMintOk"
-    );
-
-    print("     ✅ validateUutMinting:  ok!\n");
-
-    delegateApproval && thisPolicyMintOK && otherPoliciesMintOk 
+    }
+        assert(
+            otherPoliciesMintOk.trace("  -- other-expected-mints ok? "), 
+            "unreachable exception: otherPoliciesMintOk"
+        );
+        delegateApproval && thisPolicyMintOK && otherPoliciesMintOk 
+    })// .trace("     ✅ validateUutMinting: ok? ");
 }
 
 enum MinterActivity { 

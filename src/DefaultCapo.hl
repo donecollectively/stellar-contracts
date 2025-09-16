@@ -31,7 +31,14 @@ import {
     AnyData,
     tvCharter,
     mkTv,
-    didSign
+    didSign,
+    REQTgroup,
+    bREQTgroup,
+    REQTgroupUnit,
+    logGroupUnit,
+    logGroup,
+    logGroupStart,
+    logGroupEnd
 } from StellarHeliosHelpers
 
 import {
@@ -110,11 +117,26 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
     // now: Time = tx.time_range.start;
     print("🚥❓Capo\n");
 
-    input : TxInput = get_current_input();
+    input = get_current_input();
+    baseCctx = mkCapoCtx(mph).needsCharter();
+
     // showMyTokens : (Value) -> String = mkTokenShow(mph);
     print("  -- Capo: checks spend of " + input.value.show())
     
     capoDatum : CapoDatum = CapoDatum::from_data(datum);
+    dgDataCheck = capoDatum.switch {
+        DelegatedData => {
+            REQT("j6bmfv: all and only DelegatedData datums must be spent with the Capo's **spendingDelegatedDatum** activity");
+            // vvv part one of j6bmfv
+            activity.switch {
+                spendingDelegatedDatum => true.trace("  -- is spendingDelegatedDatum activity? "),  // more checks below.
+                _ => error("invalid activity on DelegatedData")
+            }  
+        },
+        _ => false
+    }
+
+    // (isFirstCapoInput, rest) : (Bool, []TxInput) = if (dgDataCheck) {
     allDatumSpecificChecks: Bool = capoDatum.switch {
         // checks that unsupported activities for a datum are rejected promptly 
         // +special things we want to always guard against for specific Datum types:
@@ -142,14 +164,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             retiringRefScript => true,
             _ => error("invalid activity on ScriptReference")            
         },
-        DelegatedData => {
-            REQT("j6bmfv: all and only DelegatedData datums must be spent with the Capo's **spendingDelegatedDatum** activity");
-            // vvv part one of j6bmfv
-            activity.switch {
-                spendingDelegatedDatum => true.trace("  -- is spendingDelegatedDatum activity? "),  // more checks below.
-                _ => error("invalid activity on DelegatedData")
-            }
-        }
+        DelegatedData => dgDataCheck
         // maybe bring this back in v2
         //, TypeMapInfo => activity.switch {
         //     updatingTypeMap => true,
@@ -197,10 +212,9 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             // ... then the dgDataPolicy checks the validity of the new data, and requires that
             // ... the new data is created as a DelegatedData record in the Capo address.
 
-            cctx = mkCapoCtx(mph).needsCharter();
             // ?? is this checking the same things as the rest of the code below?
 
-            spendDgtInput = cctx.requiresSpendDelegateInput();
+            spendDgtInput = baseCctx.requiresSpendDelegateInput();
             delegateReturned = spendDgtInput.requiresValidOutput();
             spendDgtInputRedeemer: Data = mustFindInputRedeemer(
                 spendDgtInput.input.unwrap()
@@ -523,7 +537,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 charterOutput.datum.inline
             );
             REQT("all capoLifecycleActivities require the govAuthority");
-            cctx = mkCapoCtx(mph).
+            cctx = baseCctx.
                 withCharterInput().
                 requiresGovAuthority();
 
@@ -618,17 +632,17 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         }
                     };
                     needsMintDgt = () -> Bool {
-                        REQT("  - enforces presence of the mint delegate");
+                    bREQTgroup("ensures presence of the mint delegate", () -> Bool {
                         mintDgt = cctx.requiresMintDelegateInput();
                         assert(mintDgt.requiresValidOutput(), "<-- that fails, this doesn't");
                         matchesActivity(mintDgt.genericDelegateActivity())
-                    };
+                    }) };
                     needsSpendDgt = () -> Bool {
-                        REQT("  - enforces presence of the spend delegate");
+                    bREQTgroup("ensures presence of the spend delegate", () -> Bool {
                         spendDgt = cctx.requiresSpendDelegateInput();
                         assert(spendDgt.requiresValidOutput(), "<-- that fails, this doesn't");
                         matchesActivity(spendDgt.genericDelegateActivity())
-                    };
+                    }) };
                     cctx.dgtRolesForLifecycleActivity(myCLActivity).switch {
                         HandledByCapoOnly => error("unreachable"),
                         MintDgt => {

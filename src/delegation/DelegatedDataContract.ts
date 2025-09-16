@@ -105,6 +105,7 @@ export abstract class DelegatedDataContract<
      * This is a convenience for the controller, and should be used along with
      * the appropriate on-chain policy to require the gov token's presence.
      * @public
+     * @deprecated - set requiresGovAuthority in the contract-bundle instead
      */
     get needsGovAuthority() {
         return this._bundle!.requiresGovAuthority;

@@ -51,7 +51,14 @@ import {
     returnsValueToScript,
     TODO,
     REQT,
-    bREQT
+    bREQT,
+    logGroupStart,
+    logGroupEnd,
+    logGroup,
+    logGroupUnit,
+    REQTgroup,
+    bREQTgroup,
+    REQTgroupUnit
     // tvCharter
 } from StellarHeliosHelpers
 
@@ -196,10 +203,8 @@ func checkOneActivity(
     baseCctx: CapoCtx = mkCapoCtx(dd.mph),
     desc: String = "‹unspecified›"
 ) -> Bool {
-    print("🏒 checking activity: "+desc);
-
-    result = if (true) {
-        if( true ) {
+    logGroup("🏒 checking activity: "+desc, () -> {
+        result = if (true) {
             checkNonDelegatedActivities: Bool = activity.switch {
                 MultipleDelegateActivities{activities} => {
                     // NOTE: the Capo ensures that each SPENT UTxO is addressed by EXACTLY ONE SpendDgt activity.
@@ -281,11 +286,11 @@ func checkOneActivity(
                         }
                     )
 
-                    spendDgtCheck : Bool = notSpendDgt || activities.all( 
-                        (rawActivity: Data) -> Bool {
+                    spendDgtCheck : Bool = notSpendDgt || bREQTgroup(                        
+                        "validates nested activities: in the spend delegate, only {Updating,Deleting}DelegatedData activities are valid in multi-activities", 
+                        () -> Bool { activities.all( (rawActivity: Data) -> Bool {
                             a : DelegateActivity = DelegateActivity::from_data(rawActivity);
                             print("  -- spendDgt checking multi-activity");
-                            REQT("    -- validates nested activities: in the spend delegate, only {Updating,Deleting}DelegatedData activities are valid in multi-activities");
                             a.switch {
                                 // in the Mint and Spend delegates, these nested activities are expected re-delegate to delegated-data controllers,
                                 // which will use Mint/Spend/Burn activities on the data-controller tokens.
@@ -313,21 +318,18 @@ func checkOneActivity(
                                 _ => error("multi: non-spending activities are invalid for spendDgt")
                             }
                         }
-                    );
+                    )});
                 
                     dgDataPolicyCheck : Bool = if (isMintDelegate || isSpendDelegate) {
                         assert(!isDgDataPolicy, "ack! mint/spend delegate can't be a delegated-data policy!");
                         true 
                     } else {
-                        // TODO("assert isDgDataPolicy"); // 
-                        assert(isDgDataPolicy, "invalid use of multiActivity by non-DgDataPolicy");
-                        activities.all( (rawActivity: Data) -> Bool {
+                        bREQTgroup("multi-activity: in DgDataPolicy, only Minting/Burning/Spending activities are valid",
+                        () -> Bool { activities.all( (rawActivity: Data) -> Bool {
                             a : DelegateActivity = DelegateActivity::from_data(rawActivity);
 
-                            print("  -- dgDataPolicy checking multi-activity");
                             // WHEN this code is supporting a DgDataPolicy (with its own specializedDelegate module),
                             //   the multi-activity expects Minting/Spending/Burning activities, not *DelegatedData activities.
-                            REQT("in DgDataPolicy, only Minting/Burning/Spending activities are valid");
                             a.switch {
                                 UpdatingDelegatedData => error(
                                     "UpdatingDelegatedData only ok at level-1 spendDgt (use a SpendingActivity in dgDataPolicy)"
@@ -353,6 +355,7 @@ func checkOneActivity(
                                 // _ => error("multi: invalid other activity for non-mint/spend delegate")
                             }
                         })
+                    })
                     };
 
                     mintDgtCheck && spendDgtCheck && dgDataPolicyCheck
@@ -586,10 +589,9 @@ func checkOneActivity(
                             REQT("... for the addingPendingDgt activity:");
 
                             charterData : CapoDatum::CharterData = cctx.getCharterData();
-
-                            REQT("The new pending-delegate action is found at the head of the new change-list");
-                            oldPendingChanges = charterData.pendingChanges;
                             nextCharterData = cctx.getNextCharterData();
+
+                            oldPendingChanges = charterData.pendingChanges;
                             nextChangeList = nextCharterData.pendingChanges;
                             newChange = nextChangeList.head;
 
@@ -606,23 +608,26 @@ func checkOneActivity(
                                 _ => error("only DgDataPolicy is yet supported in queuePendingChange")
                             };
 
-                            action.switch {
-                                Remove => {
-                                    print("   -- another delegate-role check would be redundant.");
+                            REQTgroupUnit(
+                                "The new pending-delegate action must be found at the head of the new change-list",
+                                () -> {
+                                    action.switch {
+                                        Remove => {
+                                            print("   -- another delegate-role check would be redundant.");
 
-                                    myCurrentRole.switch {
-                                        SpendDgt => {
-                                            REQT("verifies that the delegate queued for removal is present in the Capo's charterData");
-                                            error("implement me")
-                                        },
-                                        _ => error("unreachable")
-                                    }
-                                }, 
-                                _ => assert(true, "no way l")
+                                            myCurrentRole.switch {
+                                                SpendDgt => {
+                                                    REQT("verifies that the delegate queued for removal is present in the Capo's charterData");
+                                                    error("implement me")
+                                                },
+                                                _ => error("unreachable")
+                                            }
+                                        }, 
+                                        _ => assert(true, "no way l")
 
-                            };
-
-
+                                    };
+                                }
+                            )
 
                             REQT("the remainder of the change-list should be unchanged");
                             assert(
@@ -1234,7 +1239,6 @@ func checkOneActivity(
                     // ).trace(
                     //     " ✅ checked basic UUT minting "
                     )
-                    && bREQT("it outputs the new delegated-data record to the Capo address")
                     && cctx.mustOutputDelegatedData(
                         newDataId, dDataTypeName
                     )
@@ -1371,27 +1375,20 @@ func checkOneActivity(
             // either have add'l validation called one time (for single-record creation/update)
             // or multiple times (when there's a multi-activity, we hit this spot once for
             // each nested activity)
-            if (isMintDelegate && baseCctx.nowActingAsMintDgt(required: false)) {
-                print("  -- handoff to mint delegate's additionalDelegateValidation");
+
+            bREQTgroup(if (isMintDelegate && baseCctx.nowActingAsMintDgt(required: false)) {
+                "mintDgt: additionalDelegateValidation in "+delegateName
             } else if (isSpendDelegate && baseCctx.nowActingAsSpendDgt(required: false)) { 
-                print("  -- handoff to spend delegate's additionalDelegateValidation");
+                "spendDgt: additionalDelegateValidation in "+delegateName
             } else {
-                print("  -- handoff to data-controller's additionalDelegateValidation");
-            }
-
-            if (
-                // bREQT("... additionalDelegateValidation") 
+                delegateName+": additionalDelegateValidation()"
+            },  () -> {
                 activity.additionalDelegateValidation(dgtionDatum, baseCctx.needsCharter())
-            ) {
-                print ("delegate: "+ delegateName + ": additionalDelegateValidation ok!\n");
-                true
-            } else {
-                error("delegate: "+ delegateName + ": additionalDelegateValidation returned false (without any thrown error)")
-            }
+            })
         } else { false }
-    } else { false }
-
-    result.trace("  -- activity 🥅: "+desc+": ok? ");
+        result
+        // result.trace("  -- activity 🥅: "+desc+": ok? ");
+    })
 }
 
 func main(
@@ -1418,17 +1415,21 @@ func main(
              assert(dd.tn != rev.serialize(), "param/script-hash uniqueness");
              assert(dd.tn != instance, "param/script-hash uniqueness");
              assert(dd.tn != delegateName.encode_utf8(), "param/script-hash uniqueness");
- 
-             // showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
-             myDgTkn = // showMyTokens(get_current_input().value);
-             get_current_input().value.show();
+              
+             logGroupUnit("spending dgTkn", () -> {
+                 // showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
+                 // showMyTokens(get_current_input().value);
+                 print(get_current_input().value.show())
+             });
 
-             print("  -- is spending dgTkn "+ myDgTkn);
-
-             REQT("... final checks:");
              cctx : CapoCtx = mkCapoCtx(dd.mph).needsCharter();
-             govAuthorityCheck : Bool = if (!isDgDataPolicy) {true} else {
-                if (!requiresGovAuthority) {true} else {
+             govAuthorityCheck : Bool = if (!isDgDataPolicy) { true } else {
+                if (!requiresGovAuthority) {
+                    // "📝" - note  emoji
+                    print("📝 "+delegateName+": requiresGovAuthority is overridden to false in the delegate's .hlb.ts")
+                    print("   -- the policy can still choose to situationally enforce gov-authority");
+                    true
+                } else {
                     cctx.requiresGovAuthority().orFail()
                 }
             }
