@@ -181,12 +181,12 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
                 true
             }, 
             queuePendingChange => {
-                print("  -- ok: mintDgt using CapoLifecycle.queuePendingChange)");
+                print("  -- ok: 🎯trust the mintDgt's CapoLifecycle.queuePendingChange verification");
                 mintDgtInput.requiresValidOutput() && 
                 true
             },
             commitPendingChanges => {
-                print("  -- ok: mintDgt using CapoLifecycle.commitPendingChanges)");
+                print("  -- ok: 🎯trust the mintDgt's CapoLifecycle.commitPendingChanges verification");
                 mintDgtInput.requiresValidOutput() && 
                 true
             },
@@ -232,10 +232,16 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
         UpdatingDelegatedData => error("invalid mint-delegate activity for minting; UpdatingDelegatedDatum can't mint"),
         MultipleDelegateActivities{ma} => {
             // assert(false && ma.length > 0, "empty MultipleDelegateActivities");
-            mintDgtInput.requiresValidOutput()
-            && ma.map(AbstractDelegateActivitiesEnum::from_data).all(
-                (mintDgtActivity: AbstractDelegateActivitiesEnum) -> Bool {
-                    mintDgtActivity.switch {
+            logGroupStart("Multiple delegate activities")
+
+            result = mintDgtInput.requiresValidOutput()
+            && REQTgroup[Bool](
+                reqt: "MultipleDelegateActivities may only target delegated-data create/delete",
+                collapse: false,
+                callback: () -> {
+                    ma.map(AbstractDelegateActivitiesEnum::from_data).all(
+                        (mintDgtActivity: AbstractDelegateActivitiesEnum) -> Bool {
+                            mintDgtActivity.switch {
                         CreatingDelegatedData => true, // short version of recursing the full check
                         DeletingDelegatedData => true, // short version of recursing the full check
                         MintingActivities => error(
@@ -260,17 +266,17 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
                             "mintDgt: MultipleDelegateActivities: nested DelegateLifecycleActivities invalid"
                         )
                     }
-                }
-            )
+                } )
+            } )
+            logGroupEnd("✅")
+            result
         }
     }
-    }).trace("  -- mintDgt activity ok? ");
-
     // requiresDelegateAuthorizingMint(
     //     delegateLink: mintDgt, 
     //     mph: mph,
     // )
-}
+})  }
 
 //! pre-computes the hash-based suffix for a token name, returning
 //  a function that cheaply makes Uut names with any given purpose, 
