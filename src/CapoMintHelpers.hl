@@ -7,6 +7,7 @@ import {
     TODO,
     REQT,
     tvCharter,
+    isTrue,
     REQTgroup,
     bREQTgroup,
     REQTgroupUnit,
@@ -169,7 +170,6 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
     mintDgtInput : DelegateInput = cctx.requiresMintDelegateInput();
     mintDgtActivity : AbstractDelegateActivitiesEnum = mintDgtInput.genericDelegateActivity();
 
-
     // TODO restore this: mintDgtInput.requiresValidOutput() && 
     mintDgtActivity.switch {
         CapoLifecycleActivities{CLA} => CLA.switch {
@@ -210,24 +210,24 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
             }
         },
         MintingActivities => {
+            isTrue(mintDgtInput.requiresValidOutput())
             print("  -- app-specific minting; 🎯trust the verified mintDgt\n");
-            mintDgtInput.requiresValidOutput() && 
-                true
+            true
         },
         BurningActivities => {
+            isTrue(mintDgtInput.requiresValidOutput())
             print("  -- app-specific burning; 🎯trust the verified mintDgt");
-            mintDgtInput.requiresValidOutput() && 
-                true
+            true
         },
         CreatingDelegatedData => {
+            isTrue(mintDgtInput.requiresValidOutput())
             print("  -- mint for dgData; 🎯trust the verified mintDgt");            
-            mintDgtInput.requiresValidOutput() && 
-                true
+            true
         },
         DeletingDelegatedData => {
+            isTrue(mintDgtInput.requiresValidOutput())
             print("  -- burn for dgData; 🎯trust the verified mintDgt");
-            mintDgtInput.requiresValidOutput() && 
-                true
+            true
         },
         UpdatingDelegatedData => error("invalid mint-delegate activity for minting; UpdatingDelegatedDatum can't mint"),
         MultipleDelegateActivities{ma} => {
@@ -268,7 +268,7 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
                     }
                 } )
             } )
-            logGroupEnd("✅")
+            logGroupEnd("✅ mint delegate with multiple activities")
             result
         }
     }

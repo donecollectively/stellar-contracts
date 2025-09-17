@@ -182,6 +182,10 @@ func REQTgroup[T: Any](reqt: String, collapse: Bool = false, callback: () -> T) 
     result
 }
 
+func isTrue(t : Bool) -> () {
+    assert(t, "validator func throws or is true")
+}
+
 /**
   * forms a Value, given minimal details
   * @remarks
