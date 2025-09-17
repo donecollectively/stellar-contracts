@@ -210,22 +210,22 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
             }
         },
         MintingActivities => {
-            print("  -- app-specific minting; trust mintDgt\n");
+            print("  -- app-specific minting; 🎯trust the verified mintDgt\n");
             mintDgtInput.requiresValidOutput() && 
                 true
         },
         BurningActivities => {
-            print("  -- app-specific burning; trust mintDgt");
+            print("  -- app-specific burning; 🎯trust the verified mintDgt");
             mintDgtInput.requiresValidOutput() && 
                 true
         },
         CreatingDelegatedData => {
-            print("  -- mint for dgData; trust mintDgt");            
+            print("  -- mint for dgData; 🎯trust the verified mintDgt");            
             mintDgtInput.requiresValidOutput() && 
                 true
         },
         DeletingDelegatedData => {
-            print("  -- burn for dgData; trust mintDgt");
+            print("  -- burn for dgData; 🎯trust the verified mintDgt");
             mintDgtInput.requiresValidOutput() && 
                 true
         },
