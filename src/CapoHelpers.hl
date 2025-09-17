@@ -783,7 +783,10 @@ struct DelegateInput {
     }
 
     func delegateUnchanged(self) -> DelegateInput {
-    REQTgroup(reqt: "the delegate must be unchanged", collapse: true, callback:() -> Bool {
+    REQTgroupUnit(
+        reqt: "the delegate must be unchanged", 
+        collapse: true, 
+    callback: () -> () {
         DelegateInput{link, _role, _idPrefix, input, mph} = self;
         RelativeDelegateLink{
             uut,
@@ -822,7 +825,6 @@ struct DelegateInput {
         };
         assert(returnedUnchanged, "no"); // already thrown
         assert(link.hasValidOutput(mph), "no"); // thrown inside the method
-        true
     })
         self
     }
@@ -1309,15 +1311,17 @@ struct CapoCtx {
     // }
 
     func requiresGovAuthority(self) -> CapoCtx {
-        REQTgroup(reqt: "MUST have the Capo's govAuthority approval", collapse: true, callback: () -> Bool {
-            result = self.getCharterData().govAuthorityLink.hasValidOutput( 
-                self.mph  
-            )
-            print("✅ govAuthority ok!")
-            result
-        })
+        REQTgroup[CapoCtx](
+            reqt: "MUST have the Capo's govAuthority approval", 
+            collapse: true, 
+            callback: () -> CapoCtx {
+                assert(self.getCharterData().govAuthorityLink.hasValidOutput( 
+                    self.mph
+                ), "^ that fails, this can't");
 
-        self
+            print("✅ govAuthority ok!")
+            self
+        })
     }
 
     // func getSettings[SettingsTYPE](self) -> SettingsTYPE {

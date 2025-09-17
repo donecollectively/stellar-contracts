@@ -34,10 +34,12 @@ import {
     DelegateLifecycleActivity
 } from CapoDelegateHelpers
 
-func hasSeedUtxo(tx: Tx, seedUtxo: TxOutputId
-    // , reason: String
+func hasSeedUtxo(
+    tx: Tx, 
+    seedUtxo: TxOutputId,
+    reqt: String = "the indicated seed UTXO must be spent"
 ) -> Bool {
-    bREQTgroup(reqt: "It must spend the indicated seed UTXO", collapse: false, callback: () -> Bool {
+    bREQTgroup(reqt: reqt, collapse: false, callback: () -> Bool {
         if (!tx.inputs.any( (input: TxInput) -> Bool {
             input.output_id == seedUtxo
         })) {

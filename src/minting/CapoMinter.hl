@@ -32,6 +32,11 @@ import {
     mustFindInputRedeemer,
     TRACE,
     REQT,
+    logGroupUnit,
+    logGroupEnd,
+    logGroupStart,
+    logGroup,
+    REQTgroup,
     TODO,
     mkTv,
     outputAndDatum,
@@ -44,9 +49,11 @@ const seedIndex : Int = 42
 const rev : Int = 1
 
 func hasContractSeedUtxo(tx: Tx) -> Bool {
-    REQT("verifies that the provided seed utxo is being spent, providing uniqueness assurances for the minting-script's seed parameters");
-
-    hasSeedUtxo(tx, TxOutputId::new(seedTxn, seedIndex))
+    hasSeedUtxo(
+        reqt: "the minter's unique seed-utxo MUST be spent",
+        tx: tx, 
+        seedUtxo: TxOutputId::new(seedTxn, seedIndex)
+    )
 }
 
 func main(r : MinterActivity) -> Bool {
@@ -58,7 +65,8 @@ func main(r : MinterActivity) -> Bool {
     print("  -- minter policy id: " + get_current_minting_policy_hash().show());
 
     ok : Bool = r.switch {
-        charter: mintingCharter => {
+        charter: mintingCharter => REQTgroup[Bool](reqt: "Creates the capo charter", 
+        collapse: false, callback: () -> Bool {
             charterVal : Value = mkTv(mph: mph, tn: "charter");
 
             // these must be sorted BY LENGTH FIRST, then lexicographically
@@ -76,18 +84,17 @@ func main(r : MinterActivity) -> Bool {
             // settingsDgtTnBase: String = "settingsDgt"
             // if (charter.withSettings) purposes = purposes + []String{ settingsDgtTnBase, "settings" }
 
-            TRACE("cm2".encode_utf8(), "  -- creating Capo charter");
-            REQT("must mint the charter token");
-            assert(value_minted >= charterVal,
-                "charter token not minted");
-
-            hasSeed: Bool = hasContractSeedUtxo(tx);
             minterSeed: TxOutputId = TxOutputId::new(seedTxn, seedIndex);
             mkUutName: (String) -> String = mkUutTnFactory(
                 minterSeed  
             );
-            // TRACE("cm3".encode_utf8(), "validateUutMinting");
-            REQT("must mint uuts for mintDgt, spendDgt, and govAuth using the same seed");
+            REQT(reqt: "the charter token MUST be minted", 
+                assertion: value_minted >= charterVal, 
+                onError: "charter token not minted",
+                showSuccess: true
+            );
+            hasSeed: Bool = hasContractSeedUtxo(tx)
+            print ("  -- mints the uuts for the Capo using the same seed");
             mintsUuts: Bool = validateUutMinting(
                 mph: mph,
                 seed: minterSeed,
@@ -95,12 +102,17 @@ func main(r : MinterActivity) -> Bool {
                 mkTokenName: mkUutName,
                 bootstrapCharter: charterVal
             );
-            TRACE("cm4".encode_utf8(), "output to expected address");
-            REQT("must deposit the charter token to the new Capo address");
-            charterOutput: TxOutput = tx.outputs.find( (output: TxOutput) -> Bool {
-                output.address == charter.owner &&
-                    output.value.contains(charterVal)
-            });
+            // charterOutput = REQTgroup(
+            charterOutput = REQTgroup[TxOutput](
+                reqt: "the charter MUST be saved at the new Capo address",
+                collapse: false,
+                callback: () -> TxOutput {
+                    tx.outputs.find( (output: TxOutput) -> Bool {
+                        output.address == charter.owner &&
+                        output.value.contains(charterVal)
+                    })
+                }
+            )
             // ^^ fails if there's no charter output to the right address
 
             // print("defaultMinter @C");
@@ -124,22 +136,36 @@ func main(r : MinterActivity) -> Bool {
             // but much less than the special status they had when Settings
             // were a separate datum type.
 
-            TRACE("cm5".encode_utf8(), "validate charter data");
-            REQT("the new charter must not have any mint invariants, spend invariants, manifest entry or pending-delegate-actions");
-            // once we have burned down the test backlog a bit, we can add these in:
-            assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");
-            assert(spendInvariants.length == 0, "no spend invariants allowed at charter creation");
-            assert(manifest.length == 0, "no UUTs allowed at charter creation");
-            assert(pendingDelegates.length == 0, "no pending delegates allowed at charter creation");
+            logGroupUnit(
+                group: "validating charter data", collapse: true, 
+                callback: () -> () {
+                    TODO("support initializing with some of these pre-defined:");
+                    print("  -- empty mint invariants for now");
+                    assert(mintInvariants.length == 0, "TEMP: no mint invariants allowed at charter creation");
+                    print("  -- empty spend invariants for now");
+                    assert(spendInvariants.length == 0, "TEMP: no spend invariants allowed at charter creation");
+                    print("  -- empty manifest for now");
+                    assert(manifest.length == 0, "TEMP: no manifest entries allowed at charter creation");
+                    print("  -- empty pending-delegate-actions for now");
+                    assert(pendingDelegates.length == 0, "TEMP: no pending-delegate-actions allowed at charter creation");
 
-            REQT("the new charter must have mintDgt, spendDgt, and authDgt tokens, each deposited to their separate script addresses");
-            TRACE("cm6".encode_utf8(), "  -- checking for required delegates\n");
-            hasGoodDelegates : Bool = true &&
-                authDgt.hasValidOutput(mph, true, DgTkn::Created) &&
-                mintDgt.hasValidOutput(mph, true, DgTkn::Created) &&
-                spendDgt.hasValidOutput(mph, true, DgTkn::Created) &&
-                true;
+                    // named delegates are probably obsolete.
+                    assert(namedDelegates.length == 0, "no named delegates allowed at charter creation");
+                }
+            )
 
+            true 
+            && hasSeed
+            && mintsUuts
+            && REQTgroup[Bool](reqt: "the new charter MUST have mintDgt, spendDgt, and authDgt tokens, each at their respective destinations",
+            collapse: false, callback: () -> Bool {
+                true
+                    && authDgt.hasValidOutput(mph, true, DgTkn::Created) 
+                    && mintDgt.hasValidOutput(mph, true, DgTkn::Created)
+                    && spendDgt.hasValidOutput(mph, true, DgTkn::Created)
+                    // check mark:
+                .trace("✅ delegate tokens sent to their separate destinations")
+    
                 // if (charter.withSettings) {
                 //     REQT("when 'withSettings' is true, there must be a settings-policy delegate created");
                 //     assert(namedDelegates.length == 1, "only settingsDgt allowed at charter creation");
@@ -173,20 +199,10 @@ func main(r : MinterActivity) -> Bool {
                 //     assert(namedDelegates.length == 0, "no named delegates allowed at charter creation");
                 //     true
                 //  };
-
-            TRACE("cm7".encode_utf8(), "");
-            assert(namedDelegates.length == 0, "no named delegates allowed at charter creation");
-
-            TRACE("cm8".encode_utf8(), "finishing");
-            print("\n  -- hasSeed: " + hasSeed.show());
-            print("\n  -- mintsUuts: " + mintsUuts.show());
-            print("\n  -- hasGoodDelegates: " + hasGoodDelegates.show());
-        
-            true
-            && hasGoodDelegates 
-            && mintsUuts 
-            && hasSeed
-        },
+    
+                }
+            )
+        }),
 
         // ------------------------- MOST MINTING ACTIVITIES USE THIS CODE PATH --------------------
         mintWithDelegateAuthorizing => {

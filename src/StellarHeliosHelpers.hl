@@ -103,17 +103,31 @@ func TRACE(id: ByteArray, message: String) -> () {
 /**
  * Indicates a self-documenting required behavior
  */
-func REQT(reqt: String, assertion : Bool=true) -> () {
+func REQT(
+    reqt: String, 
+    assertion : Bool=true, 
+    onError: String ="  ❌❌ ^ failed: " + reqt,
+    showSuccess: Bool = false
+) -> () {
     // ❗red exclamation mark
-    print("❗"+ reqt);
-    assert(assertion, "  ❌❌ ^ failed: " + reqt)
+    if (showSuccess && assertion) {
+        print("✅ ❗"+ reqt);
+    } else {
+        print("❗"+ reqt);
+    }
+    assert(assertion, onError)
 }
 
 /**
  * Indicates a self-documenting required behavior and returns true
  */
-func bREQT(reqt: String, assertion : Bool=true) -> Bool {
-    REQT(reqt, assertion);
+func bREQT(
+    reqt: String, 
+    assertion : Bool=true, 
+    onError: String ="  ❌❌ ^ failed: " + reqt,
+    showSuccess: Bool = false   
+) -> Bool {
+    REQT(reqt, assertion, onError, showSuccess);
     true
 }
 
@@ -133,7 +147,7 @@ func REQTgroupStart(reqt: String, collapse: Bool = false) -> () {
  * The group is closed automatically, with an emoji indicating success or failure.
  * If the function returns false, an assertion is thrown (outside the logging group)
  */
-func REQTgroup(reqt: String, collapse: Bool = false, callback: () -> Bool) -> () {
+func assertREQTgroup(reqt: String, collapse: Bool = false, callback: () -> Bool) -> () {
     result = logGroup("❗"+ reqt, collapse, callback);
     assert(result, "❌❌ ^ failed: " + reqt)
 }
@@ -159,6 +173,13 @@ func bREQTgroup(reqt: String, collapse: Bool = false, callback: () -> Bool) -> B
  */
 func REQTgroupUnit(reqt: String, collapse: Bool = false, callback: () -> ()) -> () {
     logGroupUnit("❗"+ reqt, collapse, callback);
+}
+
+func REQTgroup[T: Any](reqt: String, collapse: Bool = false, callback: () -> T) -> T {
+    logGroupStart("❗"+ reqt, collapse);
+    result = callback();
+    logGroupEnd("✅");
+    result
 }
 
 /**
