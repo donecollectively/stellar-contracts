@@ -419,11 +419,11 @@ bREQTgroup(reqt: "checks that the UUTs are minted correctly", collapse: true, ca
     // tokenName1 = purpose + "." + miniHash.show();
 
     // print(" purposes: " + purposes.join(", "));
+    tokenNames : []String = purposes.map(mkTokenName);
     expectedValue : Value = bootstrapCharter + otherMintedValue + Value::sum(
-        purposes.map(
-            (purpose: String) -> Value {
-                // print("purpose: " + purpose);
-                mkTv(mph: mph, tn: mkTokenName(purpose) /*, => 1 */)
+        tokenNames.map(
+            (tn: String) -> Value {
+                mkTv(mph: mph, tn: tn /*, => 1 */)
             }
         )
     );
@@ -527,7 +527,15 @@ bREQTgroup(reqt: "checks that the UUTs are minted correctly", collapse: true, ca
             otherPoliciesMintOk.trace("  -- other-expected-mints ok? "), 
             "unreachable exception: otherPoliciesMintOk"
         );
-        print("✅ ok: minted uut purposes: " + purposes.join(", "));
+        if (purposes.length > 1) {
+            print("✅ ok: minted uuts: {" 
+                + purposes.join(", ") 
+                + "}" + 
+                mkTokenName("")
+            );
+        } else {
+            print("✅ ok: minted uut: " + tokenNames.head)
+        }
         delegateApproval && thisPolicyMintOK && otherPoliciesMintOk 
     })// .trace("     ✅ validateUutMinting: ok? ");
 }
