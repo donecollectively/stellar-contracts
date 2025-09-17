@@ -5,6 +5,7 @@ type Group = {
     name: string;
     lines: (LineOrGroup)[];
     result?: string;
+    collapse?: boolean
 }
 
 type LineOrGroup = string | Group;
@@ -78,12 +79,15 @@ export class UplcConsoleLogger implements UplcLogger {
         }
         // 🐣 = bird in egg (think "nest")
         if (message.startsWith("🐣")) {
-            const groupName = message.replace("🐣", "");
+            const groupName = message.replace("🐣", "").replace("🗜️", "");
+            const collapse = !!message.match(/^🐣🗜️/) 
+
             const nextGroup = {
-                name: groupName,
-                lines: []
+                name: groupName.replace(/^\s+/, ""),
+                lines: [],
+                collapse
             };
-            console.log("Group start: " + groupName);
+            // console.log("Group start: " + groupName);
             this.currentGroupLines.push(nextGroup)
             this.groupStack.push(nextGroup);
             
@@ -98,7 +102,7 @@ export class UplcConsoleLogger implements UplcLogger {
                     "Ignoring extra groupEnd() called in contract script\n"+t.join("\n")
                 );
             } else {
-                console.log("Group end: " + rest);
+                // console.log("Group end: " + rest);
                 this.currentGroup.result = rest
                 this.groupStack.pop()
             }
@@ -192,10 +196,16 @@ export class UplcConsoleLogger implements UplcLogger {
 
         const content: string[] = [];
         const groupHeader = `${name}`;
-        content.push(groupHeader);
         const formattedLines = this.formatLines(lines)
         const indentedLines = formattedLines.map(line => `  │ ${line}`);
-        content.push(... indentedLines);
+        // maybe an env option to prevent collapsing
+        const collapseThisGroup = false && group.collapse; 
+        if (collapseThisGroup) {
+            content.push(groupHeader + " (+" + formattedLines.length + ")");
+        } else {
+            content.push(groupHeader);
+            content.push(... indentedLines);
+        }
         const lastLine = formattedLines.at(-1);
 
         const happySimpleResult = result && result == "✅" ?  "✅"  : ""
@@ -217,12 +227,20 @@ export class UplcConsoleLogger implements UplcLogger {
                 }
             }
             // replacementLastLine = `  ╰${marker} ${replacementLastLine}`;
-            content.splice(-1, 1, replacementLastLine)
+            if (collapseThisGroup) {
+                content.push(replacementLastLine)
+            } else {
+                content.splice(-1, 1, replacementLastLine)
+            }
         } else if ((happySimpleResult || noResult) && lastLine?.match(/^\s*✅/)) {
             // combines the success-indicator on the last line
             // with the "close group" indicator
             const replacementLastLine = `  ╰ ${lastLine.replace(/^\s+/, "")}`;
-            content.splice(-1, 1, replacementLastLine)
+            if (collapseThisGroup) {
+                content.push(replacementLastLine)
+            } else {
+                content.splice(-1, 1, replacementLastLine)
+            }
         } else if (result) {
             const extraClosingLine = `  ╰ ${result}`;
             content.push(extraClosingLine)
