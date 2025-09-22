@@ -5,7 +5,7 @@ type Group = {
     name: string;
     lines: (LineOrGroup)[];
     result?: string;
-    collapse?: boolean
+    collapsed?: boolean
 }
 
 type LineOrGroup = string | Group;
@@ -199,7 +199,7 @@ export class UplcConsoleLogger implements UplcLogger {
         const formattedLines = this.formatLines(lines)
         const indentedLines = formattedLines.map(line => `  │ ${line}`);
         // maybe an env option to prevent collapsing
-        const collapseThisGroup = false && group.collapse; 
+        const collapseThisGroup = false && group.collapsed; 
         if (collapseThisGroup) {
             content.push(groupHeader + " (+" + formattedLines.length + ")");
         } else {

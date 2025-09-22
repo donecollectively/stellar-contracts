@@ -40,7 +40,7 @@ func hasSeedUtxo(
     seedUtxo: TxOutputId,
     reqt: String = "the indicated seed UTXO must be spent"
 ) -> Bool {
-    bREQTgroup(reqt: reqt, collapse: false, callback: () -> Bool {
+    bREQTgroup(reqt: reqt, collapsed: false, callback: () -> Bool {
         if (!tx.inputs.any( (input: TxInput) -> Bool {
             input.output_id == seedUtxo
         })) {
@@ -144,13 +144,12 @@ func requiresDelegateAuthorizingMint(
 func requiresMintDelegateApproval(
     mph: MintingPolicyHash
 ) -> Bool {
-bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", collapse: false, callback: () -> Bool {
+bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", collapsed: false, callback: () -> Bool {
     cctx : CapoCtx = mkCapoCtx(mph).needsCharter();
     // print("Minter needs mintDgt + mint activity\n");
     REQTgroupUnit(
         reqt: "EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value",
-        collapse: false,
-        callback: () -> {
+        collapsed: false, callback: () -> {
             print("  e.g. with assert(tx.minted.get_policy(mph) == expectedMintedValue);")
             print("      (if it's only responsible for one minting policy)")
         }
@@ -181,13 +180,13 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
                 true
             }, 
             queuePendingChange => {
-                print("  -- ok: 🎯trust the mintDgt's CapoLifecycle.queuePendingChange verification");
-                mintDgtInput.requiresValidOutput() && 
+                isTrue(mintDgtInput.requiresValidOutput())
+                print("🎯trust the mintDgt's CapoLifecycle.queuePendingChange verification");
                 true
             },
             commitPendingChanges => {
-                print("  -- ok: 🎯trust the mintDgt's CapoLifecycle.commitPendingChanges verification");
-                mintDgtInput.requiresValidOutput() && 
+                isTrue(mintDgtInput.requiresValidOutput())
+                print("🎯trust the mintDgt's CapoLifecycle.commitPendingChanges verification");
                 true
             },
             forcingNewSpendDelegate => error("invalid forcingNewSpendDelegate activity on mintDgt (escape-hatch reserved for Minter/Capo pair)"),
@@ -211,22 +210,22 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
         },
         MintingActivities => {
             isTrue(mintDgtInput.requiresValidOutput())
-            print("  -- app-specific minting; 🎯trust the verified mintDgt\n");
+            print("🎯trust the verified mintDgt for app-specific specialized mint\n");
             true
         },
         BurningActivities => {
             isTrue(mintDgtInput.requiresValidOutput())
-            print("  -- app-specific burning; 🎯trust the verified mintDgt");
+            print("🎯trust the verified mintDgt for app-specific specialized burn");
             true
         },
         CreatingDelegatedData => {
             isTrue(mintDgtInput.requiresValidOutput())
-            print("  -- mint for dgData; 🎯trust the verified mintDgt");            
+            print("🎯trust the verified mintDgt for minting dgData");            
             true
         },
         DeletingDelegatedData => {
             isTrue(mintDgtInput.requiresValidOutput())
-            print("  -- burn for dgData; 🎯trust the verified mintDgt");
+            print("🎯trust the verified mintDgt for burning dgData");
             true
         },
         UpdatingDelegatedData => error("invalid mint-delegate activity for minting; UpdatingDelegatedDatum can't mint"),
@@ -237,8 +236,7 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
             result = mintDgtInput.requiresValidOutput()
             && REQTgroup[Bool](
                 reqt: "MultipleDelegateActivities may only target delegated-data create/delete",
-                collapse: false,
-                callback: () -> {
+                collapsed: false, callback: () -> {
                     ma.map(AbstractDelegateActivitiesEnum::from_data).all(
                         (mintDgtActivity: AbstractDelegateActivitiesEnum) -> Bool {
                             mintDgtActivity.switch {
@@ -372,7 +370,7 @@ func validateUutMinting(
     extraMintDelegateRedeemerCheck: Bool = true,
     checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported
 ) -> Bool {
-bREQTgroup(reqt: "checks that the UUTs are minted correctly", collapse: true, callback: () -> Bool {
+bREQTgroup(reqt: "checks that the UUTs are minted correctly", collapsed: true, callback: () -> Bool {
     print("-- uut purposes: " + purposes.join(", "));
     isBootstrapping : Bool = !( bootstrapCharter.is_zero() );
 
@@ -483,7 +481,9 @@ bREQTgroup(reqt: "checks that the UUTs are minted correctly", collapse: true, ca
     // }, []ByteArray{});
     // assert(true || (temp == temp), "prevent unused var");
 
-    thisPolicyMintOK = bREQTgroup(reqt: "Ensures the mint for this policy-id is exactly the expected value", collapse: true, callback: () -> Bool {
+    thisPolicyMintOK = bREQTgroup(
+    reqt: "Ensures the mint for this policy-id is exactly the expected value", 
+    collapsed: true, callback: () -> Bool {
         assert(actualThisPolicyMintSorted == expectedValuesSorted, "❌❌ validateUutMinting(): mismatch in UUT mint");
         assert(hasSeedUtxo(tx, seed), "❌❌ validateUutMinting(): no seed"); //, "UUT "+purposes.join("+")
         print("✅ ok: this-policy mint value matches");
@@ -500,7 +500,7 @@ bREQTgroup(reqt: "checks that the UUTs are minted correctly", collapse: true, ca
         } else { expectedValue };
 
         if (remainingExpectedMint.is_zero()) { true } else {
-        bREQTgroup(reqt: "...with other-policy values expected: ", collapse: false, callback: () -> Bool {
+        bREQTgroup(reqt: "...with other-policy values expected: ", collapsed: false, callback: () -> Bool {
             print( "  -- expecting other-mint value: "+ remainingExpectedMint.show())
             REQT("It should mint exactly the indicated token names");
             REQT("Doesn't constrain any mentioned policy's minting of any other tokens");

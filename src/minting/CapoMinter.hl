@@ -66,7 +66,7 @@ func main(r : MinterActivity) -> Bool {
 
     ok : Bool = r.switch {
         charter: mintingCharter => REQTgroup[Bool](reqt: "Creates the capo charter", 
-        collapse: false, callback: () -> Bool {
+        collapsed: false, callback: () -> Bool {
             charterVal : Value = mkTv(mph: mph, tn: "charter");
 
             // these must be sorted BY LENGTH FIRST, then lexicographically
@@ -105,7 +105,7 @@ func main(r : MinterActivity) -> Bool {
             // charterOutput = REQTgroup(
             charterOutput = REQTgroup[TxOutput](
                 reqt: "the charter MUST be saved at the new Capo address",
-                collapse: false,
+                collapsed: false,
                 callback: () -> TxOutput {
                     tx.outputs.find( (output: TxOutput) -> Bool {
                         output.address == charter.owner &&
@@ -137,7 +137,7 @@ func main(r : MinterActivity) -> Bool {
             // were a separate datum type.
 
             logGroupUnit(
-                group: "validating charter data", collapse: true, 
+                group: "validating charter data", collapsed: true, 
                 callback: () -> () {
                     TODO("support initializing with some of these pre-defined:");
                     print("  -- empty mint invariants for now");
@@ -158,7 +158,7 @@ func main(r : MinterActivity) -> Bool {
             && hasSeed
             && mintsUuts
             && REQTgroup[Bool](reqt: "the new charter MUST have mintDgt, spendDgt, and authDgt tokens, each at their respective destinations",
-            collapse: false, callback: () -> Bool {
+            collapsed: false, callback: () -> Bool {
                 true
                     && authDgt.hasValidOutput(mph, true, DgTkn::Created) 
                     && mintDgt.hasValidOutput(mph, true, DgTkn::Created)

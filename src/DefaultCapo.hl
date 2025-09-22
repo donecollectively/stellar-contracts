@@ -631,7 +631,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         }
                     };
                     needsMintDgt = () -> Bool {
-                    bREQTgroup(reqt: "ensures presence of the mint delegate", collapse: true, callback: () -> Bool {
+                    bREQTgroup(reqt: "ensures presence of the mint delegate", collapsed: true, callback: () -> Bool {
                         mintDgt = cctx.requiresMintDelegateInput();
                         assert(mintDgt.requiresValidOutput(), "<-- that fails, this doesn't");
                         if(matchesActivity(mintDgt.genericDelegateActivity())) {
@@ -640,7 +640,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         } else { false /* unreachable */ }
                     }) };
                     needsSpendDgt = () -> Bool {
-                    bREQTgroup(reqt: "ensures presence of the spend delegate", collapse: true, callback: () -> Bool {
+                    bREQTgroup(reqt: "ensures presence of the spend delegate", collapsed: true, callback: () -> Bool {
                         spendDgt = cctx.requiresSpendDelegateInput();
                         assert(spendDgt.requiresValidOutput(), "<-- that fails, this doesn't");
                         if(matchesActivity(spendDgt.genericDelegateActivity())) {
