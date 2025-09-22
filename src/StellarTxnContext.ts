@@ -1569,7 +1569,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             //     debugger;
             // }
 
-            logger.logPrint(`⚠️  txn validation failed: ${errMsg}\n`);
+            logger.logPrint(`⚠️  txn validation failed: ${description}\n${errMsg}\n`);
             logger.logPrint(this.dump(tx));
             this.emitCostDetails(tx, costs);
             logger.flush();
