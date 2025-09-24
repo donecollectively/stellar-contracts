@@ -873,26 +873,63 @@ struct DgDataDetails {
     id: ByteArray
     type: String
     mph: MintingPolicyHash
+    activity: Option[AbstractDelegateActivitiesEnum]
     // inputs: []TxInput
 
+    func spendingActivity(self) -> Data {
+        a = self.activity.unwrap();
+        a.switch {
+            _ => error(
+                "the activity for "+self.id.decode_utf8_safe()+
+                " is not a SpendingActivity: "+a.show()
+            ),
+            SpendingActivities{sa} => sa
+            // Multiple ???
+        }
+    }
+
+    func burningActivity(self) -> Data {
+        a = self.activity.unwrap();
+        a.switch {
+            _ => error(
+                "the activity for "+self.id.decode_utf8_safe()+
+                " is not a BurningActivity: "+a.show()
+            ),
+            BurningActivities{ba} => ba
+            // Multiple ???
+        }
+    }
+
     // see CapoCtx::updatingDgData(id)
-    func updating(id : ByteArray, input: TxInput, output : TxOutput, mph : MintingPolicyHash) -> DgDataDetails {
+    func updating(
+        id : ByteArray, 
+        input: TxInput, 
+        output : TxOutput, 
+        mph : MintingPolicyHash,
+        activity : Option[AbstractDelegateActivitiesEnum] = Option[AbstractDelegateActivitiesEnum]::None
+    ) -> DgDataDetails {
         DgDataDetails{
             dataSrc: dgd_DataSrc::Both{input, output},
             id: id,
             type: "",
-            mph: mph
+            mph: mph,
+            activity: activity
         }
     }
     
     // see CapoCtx::creatingDgData(id)
-    func creating(id : ByteArray, output : TxOutput, mph : MintingPolicyHash
+    func creating(
+        id : ByteArray, 
+        output : TxOutput, 
+        mph : MintingPolicyHash,
+        activity : Option[AbstractDelegateActivitiesEnum] = Option[AbstractDelegateActivitiesEnum]::None
     ) -> DgDataDetails {
         DgDataDetails{
             dataSrc: dgd_DataSrc::Output{output},
             id: id,
             type: "",
-            mph: mph
+            mph: mph,
+            activity: activity
         }
     } 
 
@@ -902,7 +939,8 @@ struct DgDataDetails {
             dataSrc: dgd_DataSrc::Input{input},
             id: id,
             type: "",
-            mph: mph
+            mph: mph,
+            activity: Option[AbstractDelegateActivitiesEnum]::None
         }
     }    
 
@@ -1153,8 +1191,18 @@ struct CapoCtx {
         );
         input : TxInput = self.delegatedDataTxInput(recIdBytes: recIdBytes);
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
-        logGroupEnd("✅ update ok: "+recIdBytes.decode_utf8_safe())
-        DgDataDetails::updating(recIdBytes, input, output, self.mph)
+
+        activity = withActivity.map[AbstractDelegateActivitiesEnum](
+            self.findModelActivity
+        )
+        logGroupEnd("✅ updating: "+recIdBytes.decode_utf8_safe())
+        DgDataDetails::updating(recIdBytes, input, output, self.mph, activity)
+    }
+
+    func findModelActivity(self, modelName: String) -> AbstractDelegateActivitiesEnum {
+        delegateInput = self.requiresDgDataPolicyInput(modelName)
+
+        delegateInput.genericDelegateActivity()
     }
 
     func referencingDgData(self, 
