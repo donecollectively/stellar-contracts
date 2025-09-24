@@ -1181,7 +1181,18 @@ struct CapoCtx {
     ) -> DgDataDetails {
         REQTgroupStart(reqt, collapsed: true);
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
-        logGroupEnd("✅ create ok: "+recIdBytes.decode_utf8_safe())
+        recIdAssetClass = AssetClass::new(self.mph, recIdBytes);
+        minted = tx.minted.get_safe(recIdAssetClass)
+        if (minted == 1) {
+            logGroupEnd("✅ creating: "+recIdBytes.decode_utf8_safe())
+        } else {
+            if (tx.minted.contains_policy(self.mph)) {
+                print ("  -- policy mint: "+tx.minted.get_policy(self.mph).show());
+            } else {
+                print ("  -- no mint in this policy");
+            }
+            error("creatingDgData(): required record not minted: "+recIdBytes.decode_utf8_safe())
+        }
 
         DgDataDetails::creating(recIdBytes, output, self.mph)
     }
