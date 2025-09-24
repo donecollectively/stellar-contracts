@@ -1294,10 +1294,10 @@ struct CapoCtx {
         REQT("finds the manifest data with the given key");
 
         manifestEntry : CapoManifestEntry = self.mustFindManifestEntry(key);
-        tokenName : ByteArray = manifestEntry.tokenName;
-        manifestAc = AssetClass::new(self.mph, tokenName);
+        tnBytes : ByteArray = manifestEntry.tokenName;
+        manifestAc = AssetClass::new(self.mph, tnBytes);
         // manifestValue : Value = mkTv(mph: self.mph, tnBytes: tokenName);
-        tnStr = tokenName.decode_utf8_safe();
+        tnStr = tnBytes.decode_utf8_safe();
         // print("     ... with input dgData token name: "+ tnStr);
         // print("     with value: "+manifestValue.show());
 
@@ -1414,10 +1414,26 @@ struct CapoCtx {
         }
     }
 
-    func requiresDgDataPolicyInput(self, typeName: String, required: Bool = true) -> DelegateInput {
+    func requiresDgDataPolicyInput(self, 
+        typeName: String, 
+        required: Bool = true,
+        message: String = ""
+    ) -> DelegateInput {
+        if (required) {
+            if (message.encode_utf8().length > 0) {
+                REQTgroupStart(reqt:message, collapsed: true);
+            } else {
                 REQTgroupStart(reqt: "MUST find the policy for record-type "+typeName, collapsed: true);
+            }
+        } else {
+            if (message.encode_utf8().length > 0) {
+                logGroupStart(group: message, collapsed: false);
+            } else {
+                logGroupStart(group: "trying to find the policy for record-type "+typeName, collapsed: false);
+            }
+        }
 
-        print("  -- locates the needed policy through the Capo manifest");
+        print("     -- locates the needed policy through the Capo manifest");
         result = self.getCharterData().manifest.get_safe(typeName).switch{
             None => error("missing data-policy manifest for record-type '" + typeName + "'"),
             Some{entry} => {
@@ -1433,7 +1449,12 @@ struct CapoCtx {
                 )
             }
         }
-        logGroupEnd("✅ dgData policy found: "+typeName)
+        // todo: use Option::is_present() :pray:
+        if (required || result.input.switch {Some => true, None => false}) {
+            logGroupEnd("✅ dgData policy found: "+typeName)
+        } else {
+            logGroupEnd("✅ dgData policy found: "+typeName)
+        }
         result
     }
 
@@ -1562,7 +1583,7 @@ struct CapoCtx {
         hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(
             id: recIdBytes
         );
-        REQTgroupStart(reqt: "Expects reference to delegated-data record", collapsed: true);
+        // REQTgroupStart(reqt: "Expects reference to delegated-data record", collapsed: true);
         recIdStr = recIdBytes.decode_utf8_safe();
 
         tx.ref_inputs.find_safe(hasDD).switch {
@@ -1570,7 +1591,7 @@ struct CapoCtx {
                 error("❌❌ 📎 input: delegated-data ref not found: "+recIdStr)
             },
             Some{txin} => {
-                logGroupEnd("✅ 📎 input: delegated-data ref ok: "+recIdStr);
+                // logGroupEnd("✅ 📎 input: delegated-data ref ok: "+recIdStr);
 
                 txin
             }
