@@ -106,7 +106,7 @@ func TRACE(id: ByteArray, message: String) -> () {
 func REQT(
     reqt: String, 
     assertion : Bool=true, 
-    onError: String ="  ❌❌ ^ failed: " + reqt,
+    onError: String ="  ❌ failed reqt: ❗" + reqt,
     showSuccess: Bool = false
 ) -> () {
     // ❗red exclamation mark
@@ -124,7 +124,7 @@ func REQT(
 func bREQT(
     reqt: String, 
     assertion : Bool=true, 
-    onError: String ="  ❌❌ ^ failed: " + reqt,
+    onError: String ="  ❌ failed reqt: ❗" + reqt,
     showSuccess: Bool = false   
 ) -> Bool {
     REQT(reqt, assertion, onError, showSuccess);
@@ -149,7 +149,7 @@ func REQTgroupStart(reqt: String, collapsed: Bool = false) -> () {
  */
 func assertREQTgroup(reqt: String, collapsed: Bool = false, callback: () -> Bool) -> () {
     result = logGroup("❗"+ reqt, collapsed, callback);
-    assert(result, "❌❌ ^ failed: " + reqt)
+    assert(result, "❌ failed reqt: ❗" + reqt)
 }
 
 /**
@@ -161,7 +161,7 @@ func assertREQTgroup(reqt: String, collapsed: Bool = false, callback: () -> Bool
  */
 func bREQTgroup(reqt: String, collapsed: Bool = false, callback: () -> Bool) -> Bool {
     result = logGroup("❗"+ reqt, collapsed, callback);
-    assert(result, "❌❌ ^ failed: " + reqt)
+    assert(result, "❌ failed reqt: ❗" + reqt)
     result
 }
 
