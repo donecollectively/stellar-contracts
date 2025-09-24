@@ -709,8 +709,8 @@ export abstract class HeliosScriptBundle {
                 // });
                 this.alreadyCompiledScript = uplcProgram;
                 const scriptHash = bytesToHex(uplcProgram.hash());
-                console.log(
-                    `compiled in ${new Date().getTime() - t}ms -> ${scriptHash}`
+                console.log(program.compileTime || `compiled: ${new Date().getTime() - t}ms`,
+                    `-> ${scriptHash}`
                 );
                 // if (globalThis.document) {
                 //     console.log({

@@ -450,6 +450,7 @@ export class CachedHeliosProgram extends Program {
         const programElements = (this.programElements =
             this.gatherProgramElements());
 
+        const start = Date.now();
         const cacheKey = this.getCacheKey(options);
         // const cachedProgram = CachedHeliosProgram.memoryCache.get(cacheKey);
 
@@ -457,6 +458,10 @@ export class CachedHeliosProgram extends Program {
         if (fromCache) {
             // const programCount = fromCache.alt ? 2 : 1;
             console.log(`🐢${this.id}: ${cacheKey}: from cache`);
+            const end1 = Date.now();
+            this.compileTime = {
+                fetchedCache: end1 - start,
+            }
             return fromCache;
         }
         // not in cache.  Get the lock; if we get it, then we compile.  If not, we wait
@@ -493,8 +498,10 @@ export class CachedHeliosProgram extends Program {
             console.log(
                 `🐢${this.id}: compiling program with cacheKey: ${cacheKey}`
             );
+            const start = Date.now();
             // slow!
             const uplcProgram = this.compile(options);
+            const end1 = Date.now();
             const cacheEntry: HeliosProgramCacheEntry = {
                 version: "PlutusV2",
                 createdBy: this.id,
@@ -528,6 +535,11 @@ export class CachedHeliosProgram extends Program {
             }
             this.cacheEntry = cacheEntry;
             this.storeInCache(cacheKey, cacheEntry);
+            const end2 = Date.now();
+            this.compileTime = {
+                compiled: end1 - start,
+                stored: end2 - end1,
+            }
             return uplcProgram;
         } catch (e: any) {
             debugger;
@@ -538,6 +550,11 @@ export class CachedHeliosProgram extends Program {
             throw e;
         }
     }
+    compileTime: {
+        compiled?: number,
+        stored?: number,
+        fetchedCache?: number,
+    } | undefined;
 
     async waitForCaching(
         cacheKey: string

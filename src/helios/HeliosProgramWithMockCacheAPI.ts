@@ -28,6 +28,12 @@ export class HeliosProgramWithCacheAPI extends Program {
     constructor(mainSource: string | Source, props: CacheableProgramProps) {
         super(mainSource, props);
     }
+    compileTime: {
+        compiled?: number,
+        stored?: number,
+        fetchedCache?: number,
+    } | undefined;
+
     static checkFile(srcFilename: string) : boolean | null {
         return null
     }
