@@ -279,7 +279,9 @@ ${this.includeNamedSchemas()}
  * @public
  */
 export class ${className} extends DataBridgeReaderClass {
-    constructor(public bridge: ${this.bundle.bridgeClassName}, isMainnet: boolean) {
+    constructor(public bridge: ${
+        this.bundle.bridgeClassName
+    }, isMainnet: boolean) {
         super();
     }
 ${this.includeEnumReaders()}
@@ -796,7 +798,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             if (typeDetails.typeSchema.kind === "enum") {
                 const enumDetails =
                     typeDetails as unknown as fullEnumTypeDetails;
-                this.helperClasses[name] = this.mkEnumHelperClass(enumDetails);
+                this.helperClasses[name] = this.mkEnumHelperClass({
+                    typeDetails: enumDetails
+                });
             } else if (typeDetails.typeSchema.kind === "struct") {
                 const structDetails = typeDetails as unknown as fullTypeDetails;
                 this.helperClasses[name] =
@@ -814,11 +818,17 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         return this.activityTypeDetails.dataType.name;
     }
 
-    nestedHelperClassName(
-        typeDetails: fullEnumTypeDetails,
-        isActivity: boolean
-    ) {
-        let helperClassName = typeDetails.moreInfo.helperClassName;
+    nestedHelperClassName(options: {
+        typeDetails: fullEnumTypeDetails;
+        isActivity: boolean;
+    }) {
+        const {
+            typeDetails,
+            isActivity,
+        } = options;
+        let helperClassName =
+            typeDetails.moreInfo.helperClassName;
+
         //  - matches "Activities" or "Activity":
         if (isActivity && !helperClassName?.match(/Activit/)) {
             helperClassName = `Activity${helperClassName}`;
@@ -856,11 +866,16 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         );
     }
 
-    mkEnumHelperClass(
-        typeDetails: fullEnumTypeDetails,
-        isActivity = this.redeemerTypeName === typeDetails.enumName,
-        isNested?: "isNested"
-    ) {
+    mkEnumHelperClass(options: {
+        typeDetails: fullEnumTypeDetails;
+        isActivity?: boolean;
+        isNested?: "isNested";
+    }) {
+        const {
+            typeDetails,
+            isActivity = this.redeemerTypeName === typeDetails.enumName,
+            isNested,
+        } = options;
         const enumName = typeDetails.enumName;
         // const maybeNested = isNested ? ", Nested" : "";
         const isDatum = this.datumTypeName === enumName;
@@ -871,15 +886,18 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const normalType = isDatum ? "InlineTxOutputDatum" : "UplcData";
 
         const helperClassName = isNested
-            ? this.nestedHelperClassName(typeDetails, isActivity)
+            ? this.nestedHelperClassName({
+                  typeDetails,
+                  isActivity,
+              })
             : typeDetails.moreInfo.helperClassName;
 
         return (
             `/**\n` +
             ` * Helper class for generating ${normalType} for variants of the ***${enumName}*** enum type.\n` +
             ` * @public\n` +
-            ` * @remarks\n`+
-            ` * this class is not intended to be used directly.  Its methods are available through automatic accesors in the parent struct, contract-datum- or contract-activity-bridges.`+
+            ` * @remarks\n` +
+            ` * this class is not intended to be used directly.  Its methods are available through automatic accesors in the parent struct, contract-datum- or contract-activity-bridges.` +
             ` */\n` +
             `export class ${helperClassName} extends ${parentClass} {\n` +
             `    /*mkEnumHelperClass*/\n` +
@@ -890,24 +908,32 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `        ${enumName}Schema,\n` +
             `        { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }\n` +
             `    );\n\n` +
-            this.mkEnumVariantAccessors(
-                typeDetails,
+            this.mkEnumVariantAccessors({
+                enumDetails: typeDetails,
                 isDatum,
                 isActivity,
-                isNested
-            ) +
+                isNested,
+            }) +
             `\n}/*mkEnumHelperClass*/\n\n`
         );
     }
 
-    mkNestedEnumAccessor(
-        enumTypeDetails: fullEnumTypeDetails,
-        variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
-        variantName: string,
-        fieldName: string,
-        oneField: anyTypeDetails<dataBridgeTypeInfo>,
-        isInActivity?: boolean
-    ) {
+    mkNestedEnumAccessor(options: {
+        enumTypeDetails: fullEnumTypeDetails;
+        variantDetails: variantTypeDetails<dataBridgeTypeInfo>;
+        variantName: string;
+        fieldName: string;
+        oneField: anyTypeDetails<dataBridgeTypeInfo>;
+        isInActivity?: boolean;
+    }) {
+        const {
+            enumTypeDetails,
+            variantDetails,
+            variantName,
+            fieldName,
+            oneField,
+            isInActivity,
+        } = options;
         const enumName = enumTypeDetails.enumName;
         const isActivity = isInActivity || this.redeemerTypeName === enumName;
 
@@ -916,17 +942,16 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const nestedEnumName = nestedEnumDetails.name;
 
         const nestedEnumField: fullEnumTypeDetails = oneField as any;
-        const nestedHelperClassName = this.nestedHelperClassName(
-            nestedEnumField,
-            isActivity
-        );
-
-        const nestedHelper = this.mkEnumHelperClass(
-            nestedEnumField,
+        const nestedHelperClassName = this.nestedHelperClassName({
+            typeDetails: nestedEnumField,
             isActivity,
-            "isNested"
-        );
+        });
 
+        const nestedHelper = this.mkEnumHelperClass({
+            typeDetails: nestedEnumField,
+            isActivity,
+            isNested: "isNested",
+        });
         // registers the nested helper class
         this.helperClasses[nestedHelperClassName] = nestedHelper;
 
@@ -955,7 +980,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         );
     }
 
-    getEnumPathExpr(variantDetails: variantTypeDetails<any>, quoted = true) {
+    getEnumPath(variantDetails: variantTypeDetails<any>) {
         const { parentType } = variantDetails.dataType.asEnumMemberType!;
         const enumName =
             variantDetails.dataType.asEnumMemberType?.parentType.name;
@@ -963,26 +988,33 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const [_1, _module, moduleName, _enumPlusBracket] =
             parentType.path.split("__");
         //result should be SomeModule::EnumName.variantName
-
-        return JSON.stringify(
-            `${moduleName}::${enumName}.${variantDetails.variantName}`
-        );
+        return `${moduleName}::${enumName}.${variantDetails.variantName}`;
     }
 
-    mkEnumVariantAccessors(
-        enumDetails: fullEnumTypeDetails,
-        isDatum: boolean,
-        isActivity: boolean,
-        isNested?: "isNested"
-    ) {
+    getEnumPathExpr(variantDetails: variantTypeDetails<any>) {
+        return JSON.stringify(this.getEnumPath(variantDetails));
+    }
+
+    mkEnumVariantAccessors(options: {
+        enumDetails: fullEnumTypeDetails;
+        isDatum: boolean;
+        isActivity: boolean;
+        isNested?: "isNested";
+    }) {
+        const {
+            enumDetails,
+            isDatum,
+            isActivity,
+            isNested,
+        } = options;
         const accessors = Object.keys(enumDetails.variants)
             .map((variantName) => {
                 const variantDetails = enumDetails.variants[variantName];
                 const fieldCount = variantDetails.fieldCount;
                 const normalType = isDatum ? "InlineTxOutputDatum" : "UplcData";
 
+                const enumPathExpr = this.getEnumPathExpr(variantDetails);
                 if (fieldCount === 0) {
-                    const enumPathExpr = this.getEnumPathExpr(variantDetails);
                     return (
                         `/**\n` +
                         ` * (property getter): ${normalType} for ***${enumPathExpr}***\n` +
@@ -997,38 +1029,45 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                         `    } /* tagOnly variant accessor */`
                     );
                 } else if (fieldCount === 1) {
-                    return this.mkSingleFieldVariantAccessor(
-                        enumDetails,
+                    return this.mkSingleFieldVariantAccessor({
+                        enumTypeDetails: enumDetails,
                         variantDetails,
                         variantName,
                         isDatum,
                         isActivity,
-                        isNested
-                    );
+                        isNested,
+                    });
                 } else {
-                    return this.mkMultiFieldVariantAccessor(
-                        enumDetails,
+                    return this.mkMultiFieldVariantAccessor({
+                        enumTypeDetails: enumDetails,
                         variantDetails,
                         variantName,
                         isDatum,
                         isActivity,
-                        isNested
-                    );
+                        isNested,
+                    });
                 }
             })
             .join("\n\n");
         return accessors;
     }
 
-    private mkMultiFieldVariantAccessor(
-        enumTypeDetails: fullEnumTypeDetails,
-        variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
-        variantName: string,
-        isDatum: boolean = this.datumTypeName === enumTypeDetails.enumName,
-        isActivity: boolean = this.redeemerTypeName ===
-            enumTypeDetails.enumName,
-        isNested?: "isNested"
-    ) {
+    private mkMultiFieldVariantAccessor(options: {
+        enumTypeDetails: fullEnumTypeDetails;
+        variantDetails: variantTypeDetails<dataBridgeTypeInfo>;
+        variantName: string;
+        isDatum?: boolean;
+        isActivity?: boolean;
+        isNested?: "isNested";
+    }) {
+        const {
+            enumTypeDetails,
+            variantDetails,
+            variantName,
+            isDatum = this.datumTypeName === enumTypeDetails.enumName,
+            isActivity = this.redeemerTypeName === enumTypeDetails.enumName,
+            isNested,
+        } = options;
         function mkFieldType(fieldName: string, indent = 2): string {
             const oneField = variantDetails.fields[fieldName];
             let thatType = oneField.permissiveType;
@@ -1045,6 +1084,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 .join(",\n");
         }
         const { permissiveTypeName } = variantDetails;
+        const enumPath = this.getEnumPath(variantDetails);
         const enumPathExpr = this.getEnumPathExpr(variantDetails);
         const returnType = isActivity
             ? "isActivity"
@@ -1182,15 +1222,22 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         );
     }
 
-    private mkSingleFieldVariantAccessor(
-        enumTypeDetails: fullEnumTypeDetails,
-        variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
-        variantName: string,
-        isDatum: boolean = this.datumTypeName === enumTypeDetails.enumName,
-        isActivity: boolean = this.redeemerTypeName ===
-            enumTypeDetails.enumName,
-        isNested?: "isNested"
-    ) {
+    private mkSingleFieldVariantAccessor(options: {
+        enumTypeDetails: fullEnumTypeDetails;
+        variantDetails: variantTypeDetails<dataBridgeTypeInfo>;
+        variantName: string;
+        isDatum?: boolean;
+        isActivity?: boolean;
+        isNested?: "isNested";
+    }) {
+        const {
+            enumTypeDetails,
+            variantDetails,
+            variantName,
+            isDatum = this.datumTypeName === enumTypeDetails.enumName,
+            isActivity = this.redeemerTypeName === enumTypeDetails.enumName,
+            isNested,
+        } = options;
         const fieldName = Object.keys(variantDetails.fields)[0];
         const oneField = variantDetails.fields[fieldName];
         const enumName =
@@ -1204,14 +1251,14 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             : "UplcData";
 
         if ("enum" == oneField.typeSchema.kind) {
-            return this.mkNestedEnumAccessor(
+            return this.mkNestedEnumAccessor({
                 enumTypeDetails,
                 variantDetails,
                 variantName,
                 fieldName,
                 oneField,
-                isActivity
-            );
+                isInActivity: isActivity,
+            });
         }
         if ("seed" == fieldName && !isDatum) {
             // && isSeededActivity
@@ -1290,8 +1337,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 isDatum ? "InlineTxOutputDatum" : "UplcData"
             } for ***${enumPathExpr}***\n${expandedTypeNote}` +
             (isNested
-                ? 
-                 `    * @remarks\n`+
+                ? `    * @remarks\n` +
                   `    * #### Nested activity: \n` +
                   `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
                   `    * the parent's uplc-encoder, producing a single uplc object with \n` +
