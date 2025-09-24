@@ -52,11 +52,10 @@
     },
     "author": "Done Collectively LCA",
     "dependencies": {
-        "ansi-colors": "^4.1.3",
-        "clsx": "^2.1.1",
-        "eventemitter3": "^5.0.1",
-        "nanoid": "^5.0.9",
-        "proper-lockfile": "^4.1.2"
+        "clsx": "2.1.1",
+        "eventemitter3": "5.0.1",
+        "nanoid": "5.1.6",
+        "proper-lockfile": "4.1.2"
     },
     "peerDependencies": {
         "@cardano-ogmios/client": "^6.11.2",
