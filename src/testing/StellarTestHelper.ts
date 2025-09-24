@@ -574,7 +574,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             uh: undefined as any,
             isTest: true,
             isMainnet: false,
-            optimize: environment.OPTIMIZE ? true : this.optimize,
+            optimize: process.env.OPTIMIZE ? true : this.optimize,
         } as any
 
         const getNetwork = () => { return this.network };
@@ -606,7 +606,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         TargetClass: stellarSubclass<SC>,
         config?: ConfigFor<SC>
     ) {
-        const envOptimize = environment.OPTIMIZE
+        const envOptimize = process.env.OPTIMIZE
         // console.warn(`using env OPTIMIZE=${envOptimize}`)
 
         const setup = this.initSetup()

@@ -291,7 +291,7 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            expect(environment.OPTIMIZE, "VITE_OPTIMIZE must == 1 for this test").toBeTruthy();
+            expect(process.env.OPTIMIZE, "OPTIMIZE must == 1 for this test").toBeTruthy();
             await h.snapToInstalledTestDataPolicy();
             // building on top of the single-delegate snapshot:
 
