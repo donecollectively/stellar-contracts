@@ -1085,6 +1085,14 @@ struct DgDataDetails {
     //     }
     // }
 
+    func abstractInput(self) -> AnyData {
+        AnyData::from_data(self.inputData())
+    }
+
+    func abstractOutput(self) -> AnyData {
+        AnyData::from_data(self.outputData())
+    }
+
     func inputData(self) -> Data {
         self.input().datum.inline.switch {
             ConstrData{_, fields} => fields.head,
@@ -1096,6 +1104,8 @@ struct DgDataDetails {
         //     _ => error("no input data")
         // }
     }
+
+
 
     func outputData(self) -> Data {
         self.output().datum.inline.switch {
