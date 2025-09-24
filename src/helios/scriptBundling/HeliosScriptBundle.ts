@@ -876,7 +876,7 @@ export abstract class HeliosScriptBundle {
             }
             if (!e.site) {
                 console.error(
-                    `unexpected error while compiling helios program (or its imported module) \n` +
+                    `unexpected error while compiling helios program (or its imported module): ${mName || this.main.name}\n` +
                         `> ${e.message}\n` +
                         `(debugging breakpoint available)\n` +
                         `This likely indicates a problem in Helios' error reporting - \n` +

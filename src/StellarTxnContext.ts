@@ -1642,6 +1642,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         logger.logPrint(`tx transcript: ${description}\n`);
         logger.logPrint(this.dump(tx));
         this.emitCostDetails(tx, costs);
+        logger.logPrint(`end: ${description}`);
         logger.flush();
 
         // hands off wallet signing & tx-completion to the batcher.
