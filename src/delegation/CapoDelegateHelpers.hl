@@ -136,12 +136,21 @@ enum CapoLifecycleActivity {
         activity: ManifestActivity
     }
 
-    
+    func show(self) -> String {
+        self.switch {
+            CreatingDelegate => "CreatingDelegate",
+            queuePendingChange => "queuePendingChange",
+            removePendingChange => "removePendingChange",
+            commitPendingChanges => "commitPendingChanges",
+            forcingNewSpendDelegate => "forcingNewSpendDelegate",
+            forcingNewMintDelegate => "forcingNewMintDelegate",
+            updatingManifest => "updatingManifest"
+        }
+    }
 }
 
 // use this enum to match any redeemer if you don't care about what other
 // variants may be in that delegate, but you know it has to be a delegate with the 
-// universal delegate activities at constr#0
 enum AbstractDelegateActivitiesEnum {
     CapoLifecycleActivities {
         activity: CapoLifecycleActivity
@@ -186,7 +195,39 @@ enum AbstractDelegateActivitiesEnum {
     OtherActivities {
         activity: Data // anything defined in the specialization.  Nothing specific here, of course.
     }
+
+    func show(self) -> String {
+        self.switch {
+            // Capo's mint/spend delegates use these:
+            CapoLifecycleActivities{cLA} => "CapoLifecycleActivities::"+cLA.show(),
+            DelegateLifecycleActivities{dLA} => "DelegateLifecycleActivities::"+dLA.show(),
+            CreatingDelegatedData => "CreatingDelegatedData (mint-dgt only)",
+            DeletingDelegatedData => "DeletingDelegatedData (mint-dgt only)",
+            UpdatingDelegatedData => "UpdatingDelegatedData (spend-dgt only)",
+
+            // delegated-data-controllers use these:
+            SpendingActivities => "SpendingActivities::‹abstract/delegate-specialized›",
+            MintingActivities => "MintingActivities::‹abstract/delegate-specialized›",
+            BurningActivities => "BurningActivities::‹abstract/delegate-specialized›",
+            OtherActivities => "OtherActivities::‹abstract/delegate-specialized›",
+
+            // Any delegate-type can use these;
+            MultipleDelegateActivities{mDA} => {
+                "MultipleDelegateActivities: \n"+mDA.map(
+                    (a : Data) -> String {
+                        // bullet unicode
+                        " • " + if (AbstractDelegateActivitiesEnum::is_valid_data(a)) {
+                            AbstractDelegateActivitiesEnum::from_data(a).show()
+                        } else {
+                            "‹yikes! invalid nested data›"
+                        }
+                    }
+                ).join("\n")
+            }
+        }
+    }
 }
+
 enum DgTknDisposition {
     Returned
     Created
