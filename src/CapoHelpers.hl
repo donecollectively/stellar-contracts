@@ -1128,9 +1128,10 @@ struct CapoCtx {
     func creatingDgData(
         self,
         recId : String="", 
-        recIdBytes : ByteArray = recId.encode_utf8()
+        recIdBytes : ByteArray = recId.encode_utf8(),
+        reqt: String = "the delegated-data record must be created"
     ) -> DgDataDetails {
-        REQTgroupStart("the delegated-data record must be created", collapsed: true);
+        REQTgroupStart(reqt, collapsed: true);
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
         logGroupEnd("✅ create ok: "+recIdBytes.decode_utf8_safe())
 
@@ -1140,19 +1141,30 @@ struct CapoCtx {
     func updatingDgData(
         self,
         recId : String="", 
-        recIdBytes : ByteArray = recId.encode_utf8()
+        recIdBytes : ByteArray = recId.encode_utf8(),
+        withActivity: Option[String] = Option[String]::None,
+        reqt: String = "updates the delegated-data record"
     ) -> DgDataDetails {
-        REQTgroupStart(reqt: "updates the delegated-data record", collapse: true);
+        REQTgroupStart(
+            reqt: reqt, 
+            collapsed: withActivity.switch { 
+                Some => false, None => true 
+            }
+        );
         input : TxInput = self.delegatedDataTxInput(recIdBytes: recIdBytes);
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
         logGroupEnd("✅ update ok: "+recIdBytes.decode_utf8_safe())
         DgDataDetails::updating(recIdBytes, input, output, self.mph)
     }
 
-    func referencingDgData(self, recId : String="", recIdBytes : ByteArray = recId.encode_utf8()) -> DgDataDetails {
-        REQTgroupStart(reqt: "requires a REFERENCE to the delegated-data record", collapsed: true);
+    func referencingDgData(self, 
+        recId : String="", 
+        recIdBytes : ByteArray = recId.encode_utf8(),
+        reqt: String = "requires a REFERENCE to the delegated-data record"
+    ) -> DgDataDetails {
+        REQTgroupStart(reqt: reqt, collapsed: true);
         input : TxInput = self.delegatedDataRef(recIdBytes: recIdBytes);
-        logGroupEnd("✅ ref found: "+recIdBytes.decode_utf8_safe())
+        logGroupEnd("✅ input ref: "+recIdBytes.decode_utf8_safe())
         DgDataDetails::referencing(recIdBytes, input, self.mph)
     }
     
@@ -1508,13 +1520,13 @@ struct CapoCtx {
     }
 
     func delegatedDataTxInput(self, 
-        recId: String="",
-        recIdBytes: ByteArray=recId.encode_utf8()
+        recIdBytes: ByteArray,
+        reqt: String = "MUST have the input data record"
     ) -> TxInput {
         hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(
             id: recIdBytes
         );
-        REQTgroupStart(reqt: "MUST have the input data record", collapse: true);
+        REQTgroupStart(reqt: reqt, collapsed: true);
         recIdStr = recIdBytes.decode_utf8_safe();
 
         tx.inputs.find_safe(hasDD).switch {
