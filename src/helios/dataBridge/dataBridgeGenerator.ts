@@ -922,6 +922,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         enumTypeDetails: fullEnumTypeDetails;
         variantDetails: variantTypeDetails<dataBridgeTypeInfo>;
         variantName: string;
+        parentContext: string;
         fieldName: string;
         oneField: anyTypeDetails<dataBridgeTypeInfo>;
         isInActivity?: boolean;
@@ -930,14 +931,24 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             enumTypeDetails,
             variantDetails,
             variantName,
+            parentContext,
             fieldName,
             oneField,
             isInActivity,
         } = options;
+
         const enumName = enumTypeDetails.enumName;
         const isActivity = isInActivity || this.redeemerTypeName === enumName;
+        if (!isActivity) {
+            if (enumName.match(/Activit/) || parentContext.match(/Activit/)) {
+                // skip accessors (and helper-classes) for defined enums that will
+                // be used as activity-types; they'll have a separate path for generation.
+                return "";
+            }
+        }
 
         const enumPathExpr = this.getEnumPathExpr(variantDetails);
+
         const nestedEnumDetails = oneField.typeSchema as EnumTypeSchema;
         const nestedEnumName = nestedEnumDetails.name;
 
@@ -952,6 +963,19 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             isActivity,
             isNested: "isNested",
         });
+        if (this.helperClasses[nestedHelperClassName]) {
+            if (this.helperClasses[nestedHelperClassName] != nestedHelper) {
+                debugger;
+                throw new Error(
+                    `nestedHelperClassName already exists: ${nestedHelperClassName}\n${this.helperClasses[nestedHelperClassName]}\n----------------------------------------------------\n${nestedHelper}\n`
+                );
+            } else {
+                // throw new Error(
+                //     `exact duplicate nestedHelperClassName: ${nestedHelperClassName}`
+                // );
+                // return ""
+            }
+        }
         // registers the nested helper class
         this.helperClasses[nestedHelperClassName] = nestedHelper;
 
@@ -1255,6 +1279,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 enumTypeDetails,
                 variantDetails,
                 variantName,
+                parentContext: `${enumName}$${variantName}$$`,
                 fieldName,
                 oneField,
                 isInActivity: isActivity,

@@ -18,7 +18,6 @@ import {
     DelegateRole,
     DelegationDetail,
     DgTknDisposition as DgTkn,
-    ManifestActivity,
     PendingCharterChange,
     PendingDelegateChange,
     PendingDelegateAction,
@@ -280,7 +279,6 @@ func checkOneActivity(
                                 DelegateLifecycleActivities => error("multi:DelegateLifecycleActivities not ok"),
                                 CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
                                 MultipleDelegateActivities => error("multi:multi: nesting not ok"),
-    
                                 _ => error("multi:non-minting activities are invalid for mintDgt")
                             }
                         }
