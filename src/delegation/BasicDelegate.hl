@@ -351,6 +351,9 @@ func checkOneActivity(
                                     assert(false, "TODO: support multi:BurningActivities for dgDataPolicy or other delegate") ;
                                     checkOneActivity(dgtionDatum, a, dd, cctx, "biz-logic for one record delete")
                                 },
+                                OtherActivities => {
+                                    checkOneActivity(dgtionDatum, a, dd, cctx, "biz-logic for OtherActivities ")                                    
+                                },
                                 DelegateLifecycleActivities => error("multi:DelegateLifecycleActivities not ok"),
                                 CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
                                 MultipleDelegateActivities => error("multi:multi: nesting not ok")
@@ -1367,7 +1370,12 @@ func checkOneActivity(
                 // ... MultipleActivities would be used to express "it does multiple separate activities on different utxos")
                 SpendingActivities => true, // handled by the specialized delegate
                 MintingActivities => true,  // handled by the specialized delegate
-                BurningActivities => true // handled by the specialized delegate
+                BurningActivities => true, // handled by the specialized delegate
+                OtherActivities => true // handled by the specialized delegate
+                // _ => {
+                //     // ... OtherDelegatedActivities
+                //     true
+                // }
             };
             assert(checkNonDelegatedActivities, "checkNonDelegatedActivities failed");
 

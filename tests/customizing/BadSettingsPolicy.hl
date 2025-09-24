@@ -177,6 +177,10 @@ enum DelegateActivity {
         activities: []Data
     }
     
+    OtherActivities {
+        activity: Data // anything defined in the specialization; nothing here.
+    }
+
     //! used only for validating IsDelegation datum, that is,
     //   ... to approve minting requests or any customize spending modes 
     //   ... of that datum.  
@@ -224,7 +228,6 @@ enum DelegateActivity {
                         checkMintDgtActivity: (dgtActivity: AbstractDelegateActivitiesEnum) -> Bool {
                             dgtActivity.switch {
                                 CreatingDelegatedData{mintDgtSeed, dataType} => {
-                                    print("hiya");
                                     assert(mintDgtSeed == seed, "seed mismatch");
                                     assert(dataType == "settings", "unexpected data type");
                                     true
@@ -270,6 +273,9 @@ enum DelegateActivity {
                     // , _ => /* is already a compile-time error*/ error("unrecognized Spending activity")
                 }
             }, 
+            OtherActivities => error(
+                "no other activities exist in this delegate"
+            ),
             _ => {
                 assert(false, "expected Spending or Minting activity");
                 false

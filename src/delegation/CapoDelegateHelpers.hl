@@ -183,6 +183,9 @@ enum AbstractDelegateActivitiesEnum {
     MultipleDelegateActivities {
         activities: []Data // actually a []DelegateActivitiesEnum
     }
+    OtherActivities {
+        activity: Data // anything defined in the specialization.  Nothing specific here, of course.
+    }
 }
 enum DgTknDisposition {
     Returned

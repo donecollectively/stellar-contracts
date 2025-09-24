@@ -626,14 +626,16 @@ struct DelegateInput {
                     AbstractDelegateActivitiesEnum::from_data(a).switch {
                         MintingActivities{ma} => {
                             ma.switch {
-                                ConstrData{index, fields} => {
-                                    assert(index==index, "no way c"); // unused field can't be _ in switch
+                                ConstrData{_, fields} => {
+                                    // assert(index==index, "no way c"); // unused field can't be _ in switch
                                     seed == TxOutputId::from_data(fields.head) &&
                                     true
                                 },
                                 _ => error("no way d")
                             }
                         },
+                        // doesn't match other activities; only seeking unique MINTING activity
+                        // OtherActivities => false,
                         _ => false
                     }
                 });
@@ -685,6 +687,7 @@ struct DelegateInput {
                 };
                 self.delegateUnchanged()
             },
+            OtherActivities => error("expected spending activity for the recId, got OtherActivities"),
             MultipleDelegateActivities{activities} => {
                 print( "    -- multiple activities found" );
 
@@ -734,6 +737,7 @@ struct DelegateInput {
                                 }
                             }
                         },
+                        // OtherActivities => false,
                         
                         _ => false
                     }

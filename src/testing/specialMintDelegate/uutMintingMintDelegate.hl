@@ -206,6 +206,9 @@ enum DelegateActivity {
         activities: []Data // actually a []DelegateActivity
         // todo: change this back when the recursive enum's `__is_valid_data not found` error is resolved
     }
+    OtherActivities {
+        activity: Data // anything defined in the specialization; nothing here.
+    }
     // this function gives a general-purpose implementation of checking for 
     // valid uut mints. A specialization might modify it use different policies
     // or enforce additional requirements
@@ -293,6 +296,9 @@ enum DelegateActivity {
                     // _ => // leave as compile-time problem
                 }
             },
+            OtherActivities => error(
+                "no other activities exist in this delegate"
+            ),
             _ => false
         }
     }

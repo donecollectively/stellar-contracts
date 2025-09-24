@@ -2611,6 +2611,18 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         }, "ReqtsPolicy::DelegateActivity.MultipleDelegateActivities"); /*singleField enum variant*/
        return uplc;
     }
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"ReqtsPolicy::DelegateActivity.OtherActivities"***
+     */
+    OtherActivities(
+        activity: UplcData
+    ) : isActivity {
+        const uplc = this.mkUplcData({ 
+           OtherActivities: activity
+        }, "ReqtsPolicy::DelegateActivity.OtherActivities"); /*singleField enum variant*/
+       return uplc;
+    }
 }/*mkEnumHelperClass*/
 
 
@@ -4622,6 +4634,21 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                             "kind": "internal",
                             "name": "Data"
                         }
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 9,
+            "id": "__module__ReqtsPolicy__DelegateActivity[]__OtherActivities",
+            "name": "OtherActivities",
+            "fieldTypes": [
+                {
+                    "name": "activity",
+                    "type": {
+                        "kind": "internal",
+                        "name": "Data"
                     }
                 }
             ]

@@ -195,6 +195,7 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
             // _ => error("no")// ---- left as a compile-time error if any further variants are added 
         },
         SpendingActivities => error("DelegateInput::SpendingActivity can't mint!"),
+        OtherActivities => error("DelegateInput:: OtherActivities can't mint (???)!"),
         DelegateLifecycleActivities{DLA} => {
             DLA.switch {
                 ReplacingMe => {
@@ -262,6 +263,9 @@ bREQTgroup( reqt: "Minter defers to the mint-delegate to approve the mint", coll
                         ),
                         DelegateLifecycleActivities => error(
                             "mintDgt: MultipleDelegateActivities: nested DelegateLifecycleActivities invalid"
+                        ),
+                        OtherActivities => error(
+                            "mintDgt: MultipleDelegateActivities: nested OtherActivities invalid"
                         )
                     }
                 } )

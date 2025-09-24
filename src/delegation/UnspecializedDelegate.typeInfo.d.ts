@@ -1269,8 +1269,12 @@ export interface DelegateActivity$DeletingDelegatedDataLike {
             "Constr#7", 
             "fields", DelegateActivity$DeletingDelegatedData, "noSpecialFlags"
         >,
+        OtherActivities: singleEnumVariantMeta<DelegateActivityMeta, "OtherActivities",
+            "Constr#8", "singletonField", /* implied wrapper { activity: ... } for singleVariantField */ 
+			UplcData   , "noSpecialFlags"
+        >,
         MultipleDelegateActivities: singleEnumVariantMeta<DelegateActivityMeta, "MultipleDelegateActivities",
-            "Constr#8", "singletonField", /* implied wrapper { activities: ... } for singleVariantField */ 
+            "Constr#9", "singletonField", /* implied wrapper { activities: ... } for singleVariantField */ 
 			Array<UplcData>   , "noSpecialFlags"
         >
     }
@@ -1281,7 +1285,7 @@ export interface DelegateActivity$DeletingDelegatedDataLike {
  * DelegateActivity enum variants
  * 
  * @remarks - expresses the essential raw data structures
- * supporting the **9 variant(s)** of the DelegateActivity enum type
+ * supporting the **10 variant(s)** of the DelegateActivity enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateActivityHelper` class
  *     for generating UPLC data for this enum type
@@ -1301,6 +1305,8 @@ export type DelegateActivity =
         | { CreatingDelegatedData: DelegateActivity$CreatingDelegatedData /*minEnumVariant*/ }
         | { UpdatingDelegatedData: DelegateActivity$UpdatingDelegatedData /*minEnumVariant*/ }
         | { DeletingDelegatedData: DelegateActivity$DeletingDelegatedData /*minEnumVariant*/ }
+        | { OtherActivities: /* implied wrapper { activity: ... } for singleVariantField */ 
+			UplcData    /*minEnumVariant*/ }
         | { MultipleDelegateActivities: /* implied wrapper { activities: ... } for singleVariantField */ 
 			Array<UplcData>    /*minEnumVariant*/ }
 
@@ -1325,6 +1331,8 @@ export type ErgoDelegateActivity = IntersectedEnum<
         | { CreatingDelegatedData: DelegateActivity$Ergo$CreatingDelegatedData /*minEnumVariant*/ }
         | { UpdatingDelegatedData: DelegateActivity$Ergo$UpdatingDelegatedData /*minEnumVariant*/ }
         | { DeletingDelegatedData: DelegateActivity$Ergo$DeletingDelegatedData /*minEnumVariant*/ }
+        | { OtherActivities: /* implied wrapper { activity: ... } for singleVariantField */ 
+			UplcData    /*minEnumVariant*/ }
         | { MultipleDelegateActivities: /* implied wrapper { activities: ... } for singleVariantField */ 
 			Array<UplcData>    /*minEnumVariant*/ }
 >
@@ -1333,7 +1341,7 @@ export type ErgoDelegateActivity = IntersectedEnum<
  * DelegateActivity enum variants (permissive)
  * 
  * @remarks - expresses the allowable data structure
- * for creating any of the **9 variant(s)** of the DelegateActivity enum type
+ * for creating any of the **10 variant(s)** of the DelegateActivity enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateActivityHelper` class
  *     for generating UPLC data for this enum type
@@ -1357,6 +1365,8 @@ export type DelegateActivityLike = IntersectedEnum<
         | { CreatingDelegatedData: DelegateActivity$CreatingDelegatedDataLike /*minEnumVariant*/ }
         | { UpdatingDelegatedData: DelegateActivity$UpdatingDelegatedDataLike /*minEnumVariant*/ }
         | { DeletingDelegatedData: DelegateActivity$DeletingDelegatedDataLike /*minEnumVariant*/ }
+        | { OtherActivities: /* implied wrapper { activity: ... } for singleVariantField */ 
+			UplcData    /*minEnumVariant*/ }
         | { MultipleDelegateActivities: /* implied wrapper { activities: ... } for singleVariantField */ 
 			Array<UplcData>    /*minEnumVariant*/ }
 >

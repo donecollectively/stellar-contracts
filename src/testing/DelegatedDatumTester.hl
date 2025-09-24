@@ -179,6 +179,10 @@ enum DelegateActivity {
         activities: []Data
     }
     
+    OtherActivities {
+        activity: Data // anything defined in the specialization; nothing here.
+    }
+
     //! used only for validating IsDelegation datum, that is,
     //   ... to approve minting requests or any customize spending modes 
     //   ... of that datum.  
@@ -249,6 +253,9 @@ enum DelegateActivity {
                     }
                 }
             }, 
+            OtherActivities => error(
+                "no other activities exist in this delegate"
+            ),
             _ => false  
         } || tx.serialize() == priorMddd.serialize()        
     }

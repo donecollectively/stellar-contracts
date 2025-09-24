@@ -200,6 +200,10 @@ enum DelegateActivity {
         recId: ByteArray
     }
 
+    OtherActivities {
+        activity: Data // anything defined in the specialization; nothing here.
+    }
+
     MultipleDelegateActivities {
         activities: []Data // actually a []DelegateActivity
         // todo: change this back when the recursive enum's `__is_valid_data not found` error is resolved
@@ -328,6 +332,9 @@ enum DelegateActivity {
                 print("    -- mint/spend delegate: MultipleDelegateActivities: no special validation in this unspecialized delegate");
                 true
             },
+            OtherActivities => error(
+                "no other activities exist in this unspecialized delegate"
+            ),
             _ => {
                 assert(false, "mint/spend delegate rejecting other activity");
                 false

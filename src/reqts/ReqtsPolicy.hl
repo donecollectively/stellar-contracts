@@ -165,6 +165,10 @@ enum DelegateActivity {
         // todo: change this back when the recursive enum's `__is_valid_data not found` error is resolved
     }
 
+    OtherActivities {
+        activity: Data // anything defined in the specialization; nothing here.
+    }
+
     // this function gives a general-purpose implementation of checking for 
     // valid uut minting. 
     //
@@ -323,6 +327,9 @@ enum DelegateActivity {
                     }
                 }
             },        
+            OtherActivities => error(
+                "no other activities exist in this delegate"
+            ),
             _ => false
         } || tx.serialize() == priorMddd.serialize()        
     }
