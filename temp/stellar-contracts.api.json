@@ -2107,7 +2107,7 @@
             {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!BasicMintDelegate#needsGovAuthority:member",
-              "docComment": "",
+              "docComment": "/**\n * Enforces that the mint delegate needs gov-authority by default\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -22349,7 +22349,7 @@
             {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!DelegatedDataContract#needsGovAuthority:member",
-              "docComment": "/**\n * when set to true, the controller class will include the Capo's gov authority in the transaction, to ease transaction setup.\n *\n * @remarks\n *\n * This is a convenience for the controller, and should be used along with the appropriate on-chain policy to require the gov token's presence.\n *\n * @public\n */\n",
+              "docComment": "/**\n * when set to true, the controller class will include the Capo's gov authority in the transaction, to ease transaction setup.\n *\n * @remarks\n *\n * This is a convenience for the controller, and should be used along with the appropriate on-chain policy to require the gov token's presence.\n *\n * @deprecated\n *\n * - set requiresGovAuthority in the contract-bundle instead\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",

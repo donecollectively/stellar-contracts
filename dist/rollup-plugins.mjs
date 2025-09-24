@@ -1580,7 +1580,9 @@ import type * as types from "${relativeTypeFile}";
     )) {
       if (typeDetails.typeSchema.kind === "enum") {
         const enumDetails = typeDetails;
-        this.helperClasses[name] = this.mkEnumHelperClass(enumDetails);
+        this.helperClasses[name] = this.mkEnumHelperClass({
+          typeDetails: enumDetails
+        });
       } else if (typeDetails.typeSchema.kind === "struct") {
         const structDetails = typeDetails;
         this.helperClasses[name] = this.mkStructHelperClass(structDetails);
@@ -1594,7 +1596,11 @@ import type * as types from "${relativeTypeFile}";
   get redeemerTypeName() {
     return this.activityTypeDetails.dataType.name;
   }
-  nestedHelperClassName(typeDetails, isActivity) {
+  nestedHelperClassName(options) {
+    const {
+      typeDetails,
+      isActivity
+    } = options;
     let helperClassName = typeDetails.moreInfo.helperClassName;
     if (isActivity && !helperClassName?.match(/Activit/)) {
       helperClassName = `Activity${helperClassName}`;
@@ -1630,12 +1636,20 @@ export class ${structName}Helper extends DataBridge {
 
 `;
   }
-  mkEnumHelperClass(typeDetails, isActivity = this.redeemerTypeName === typeDetails.enumName, isNested) {
+  mkEnumHelperClass(options) {
+    const {
+      typeDetails,
+      isActivity = this.redeemerTypeName === typeDetails.enumName,
+      isNested
+    } = options;
     const enumName = typeDetails.enumName;
     const isDatum = this.datumTypeName === enumName;
     const parentClass = isActivity ? `EnumBridge<isActivity>` : `EnumBridge<JustAnEnum>`;
     const normalType = isDatum ? "InlineTxOutputDatum" : "UplcData";
-    const helperClassName = isNested ? this.nestedHelperClassName(typeDetails, isActivity) : typeDetails.moreInfo.helperClassName;
+    const helperClassName = isNested ? this.nestedHelperClassName({
+      typeDetails,
+      isActivity
+    }) : typeDetails.moreInfo.helperClassName;
     return `/**
  * Helper class for generating ${normalType} for variants of the ***${enumName}*** enum type.
  * @public
@@ -1651,32 +1665,59 @@ export class ${helperClassName} extends ${parentClass} {
         { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     );
 
-` + this.mkEnumVariantAccessors(
-      typeDetails,
+` + this.mkEnumVariantAccessors({
+      enumDetails: typeDetails,
       isDatum,
       isActivity,
       isNested
-    ) + `
+    }) + `
 }/*mkEnumHelperClass*/
 
 `;
   }
-  mkNestedEnumAccessor(enumTypeDetails, variantDetails, variantName, fieldName, oneField, isInActivity) {
+  mkNestedEnumAccessor(options) {
+    const {
+      enumTypeDetails,
+      variantDetails,
+      variantName,
+      parentContext,
+      fieldName,
+      oneField,
+      isInActivity
+    } = options;
     const enumName = enumTypeDetails.enumName;
     const isActivity = isInActivity || this.redeemerTypeName === enumName;
+    if (!isActivity) {
+      if (enumName.match(/Activit/) || parentContext.match(/Activit/)) {
+        return "";
+      }
+    }
     const enumPathExpr = this.getEnumPathExpr(variantDetails);
     const nestedEnumDetails = oneField.typeSchema;
     const nestedEnumName = nestedEnumDetails.name;
     const nestedEnumField = oneField;
-    const nestedHelperClassName = this.nestedHelperClassName(
-      nestedEnumField,
+    const nestedHelperClassName = this.nestedHelperClassName({
+      typeDetails: nestedEnumField,
       isActivity
-    );
-    const nestedHelper = this.mkEnumHelperClass(
-      nestedEnumField,
+    });
+    const nestedHelper = this.mkEnumHelperClass({
+      typeDetails: nestedEnumField,
       isActivity,
-      "isNested"
-    );
+      isNested: "isNested"
+    });
+    if (this.helperClasses[nestedHelperClassName]) {
+      if (this.helperClasses[nestedHelperClassName] != nestedHelper) {
+        debugger;
+        throw new Error(
+          `nestedHelperClassName already exists: ${nestedHelperClassName}
+${this.helperClasses[nestedHelperClassName]}
+----------------------------------------------------
+${nestedHelper}
+`
+        );
+      } else {
+      }
+    }
     this.helperClasses[nestedHelperClassName] = nestedHelper;
     const nestedFieldName = fieldName;
     return `    /**
@@ -1694,21 +1735,28 @@ export class ${helperClassName} extends ${parentClass} {
         return nestedAccessor;
     } /* nested enum accessor */`;
   }
-  getEnumPathExpr(variantDetails, quoted = true) {
+  getEnumPath(variantDetails) {
     const { parentType } = variantDetails.dataType.asEnumMemberType;
     const enumName = variantDetails.dataType.asEnumMemberType?.parentType.name;
     const [_1, _module, moduleName, _enumPlusBracket] = parentType.path.split("__");
-    return JSON.stringify(
-      `${moduleName}::${enumName}.${variantDetails.variantName}`
-    );
+    return `${moduleName}::${enumName}.${variantDetails.variantName}`;
   }
-  mkEnumVariantAccessors(enumDetails, isDatum, isActivity, isNested) {
+  getEnumPathExpr(variantDetails) {
+    return JSON.stringify(this.getEnumPath(variantDetails));
+  }
+  mkEnumVariantAccessors(options) {
+    const {
+      enumDetails,
+      isDatum,
+      isActivity,
+      isNested
+    } = options;
     const accessors = Object.keys(enumDetails.variants).map((variantName) => {
       const variantDetails = enumDetails.variants[variantName];
       const fieldCount = variantDetails.fieldCount;
       const normalType = isDatum ? "InlineTxOutputDatum" : "UplcData";
+      const enumPathExpr = this.getEnumPathExpr(variantDetails);
       if (fieldCount === 0) {
-        const enumPathExpr = this.getEnumPathExpr(variantDetails);
         return `/**
  * (property getter): ${normalType} for ***${enumPathExpr}***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#${variantDetails.typeSchema.tag}***
@@ -1720,28 +1768,36 @@ export class ${helperClassName} extends ${parentClass} {
 ` : `        return uplc;
 `) + `    } /* tagOnly variant accessor */`;
       } else if (fieldCount === 1) {
-        return this.mkSingleFieldVariantAccessor(
-          enumDetails,
+        return this.mkSingleFieldVariantAccessor({
+          enumTypeDetails: enumDetails,
           variantDetails,
           variantName,
           isDatum,
           isActivity,
           isNested
-        );
+        });
       } else {
-        return this.mkMultiFieldVariantAccessor(
-          enumDetails,
+        return this.mkMultiFieldVariantAccessor({
+          enumTypeDetails: enumDetails,
           variantDetails,
           variantName,
           isDatum,
           isActivity,
           isNested
-        );
+        });
       }
     }).join("\n\n");
     return accessors;
   }
-  mkMultiFieldVariantAccessor(enumTypeDetails, variantDetails, variantName, isDatum = this.datumTypeName === enumTypeDetails.enumName, isActivity = this.redeemerTypeName === enumTypeDetails.enumName, isNested) {
+  mkMultiFieldVariantAccessor(options) {
+    const {
+      enumTypeDetails,
+      variantDetails,
+      variantName,
+      isDatum = this.datumTypeName === enumTypeDetails.enumName,
+      isActivity = this.redeemerTypeName === enumTypeDetails.enumName,
+      isNested
+    } = options;
     function mkFieldType(fieldName, indent = 2) {
       const oneField = variantDetails.fields[fieldName];
       let thatType = oneField.permissiveType;
@@ -1754,6 +1810,7 @@ export class ${helperClassName} extends ${parentClass} {
       return Object.keys(variantDetails.fields).map((x) => mkFieldType(x, indent)).join(",\n");
     }
     const { permissiveTypeName } = variantDetails;
+    const enumPath = this.getEnumPath(variantDetails);
     const enumPathExpr = this.getEnumPathExpr(variantDetails);
     const returnType = isActivity ? "isActivity" : isDatum ? `InlineTxOutputDatum` : "UplcData";
     if ("seed" == Object.keys(variantDetails.fields)[0] && !isDatum) {
@@ -1859,21 +1916,30 @@ ${filteredFields2(
 ` : `       return uplc;
 `) + `    } /*multiFieldVariant enum accessor*/`;
   }
-  mkSingleFieldVariantAccessor(enumTypeDetails, variantDetails, variantName, isDatum = this.datumTypeName === enumTypeDetails.enumName, isActivity = this.redeemerTypeName === enumTypeDetails.enumName, isNested) {
+  mkSingleFieldVariantAccessor(options) {
+    const {
+      enumTypeDetails,
+      variantDetails,
+      variantName,
+      isDatum = this.datumTypeName === enumTypeDetails.enumName,
+      isActivity = this.redeemerTypeName === enumTypeDetails.enumName,
+      isNested
+    } = options;
     const fieldName = Object.keys(variantDetails.fields)[0];
     const oneField = variantDetails.fields[fieldName];
     const enumName = variantDetails.dataType.asEnumMemberType?.parentType.name;
     const enumPathExpr = this.getEnumPathExpr(variantDetails);
     const returnType = isActivity ? "isActivity" : isDatum ? "InlineTxOutputDatum" : "UplcData";
     if ("enum" == oneField.typeSchema.kind) {
-      return this.mkNestedEnumAccessor(
+      return this.mkNestedEnumAccessor({
         enumTypeDetails,
         variantDetails,
         variantName,
+        parentContext: `${enumName}$${variantName}$$`,
         fieldName,
         oneField,
-        isActivity
-      );
+        isInActivity: isActivity
+      });
     }
     if ("seed" == fieldName && !isDatum) {
       return `    /**
@@ -2762,10 +2828,15 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
     const options = typeof optimizeOrOptions === "boolean" ? { optimize: optimizeOrOptions } : optimizeOrOptions;
     const optimize = this.optimizeOptions(optimizeOrOptions);
     const programElements = this.programElements = this.gatherProgramElements();
+    const start = Date.now();
     const cacheKey = this.getCacheKey(options);
     const fromCache = await this.getFromCache(cacheKey);
     if (fromCache) {
       console.log(`\u{1F422}${this.id}: ${cacheKey}: from cache`);
+      const end1 = Date.now();
+      this.compileTime = {
+        fetchedCache: end1 - start
+      };
       return fromCache;
     }
     const weMustCompile = await this.acquireImmediateLock(cacheKey);
@@ -2796,7 +2867,9 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
       console.log(
         `\u{1F422}${this.id}: compiling program with cacheKey: ${cacheKey}`
       );
+      const start2 = Date.now();
       const uplcProgram = this.compile(options);
+      const end1 = Date.now();
       const cacheEntry = {
         version: "PlutusV2",
         createdBy: this.id,
@@ -2828,6 +2901,11 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
       }
       this.cacheEntry = cacheEntry;
       this.storeInCache(cacheKey, cacheEntry);
+      const end2 = Date.now();
+      this.compileTime = {
+        compiled: end1 - start2,
+        stored: end2 - end1
+      };
       return uplcProgram;
     } catch (e) {
       debugger;
@@ -2838,6 +2916,7 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
       throw e;
     }
   }
+  compileTime;
   async waitForCaching(cacheKey) {
     return this.acquireLock(cacheKey).then(async (lock) => {
       if (lock) {
@@ -3063,19 +3142,33 @@ import "@helios-lang/ledger";
 // src/UplcConsoleLogger.ts
 var UplcConsoleLogger = class {
   didStart = false;
-  lines = [];
+  // lines: LineOrGroup[] = [];
   lastMessage = "";
   lastReason;
   history = [];
+  groupStack = [{
+    name: "",
+    lines: []
+  }];
   constructor() {
     this.logPrint = this.logPrint.bind(this);
     this.reset = this.reset.bind(this);
   }
+  get currentGroupLines() {
+    return this.groupStack.at(-1).lines;
+  }
+  get topLines() {
+    return this.groupStack.at(0).lines;
+  }
   reset(reason) {
     this.lastMessage = "";
     this.lastReason = reason;
+    this.groupStack = [{
+      name: "",
+      lines: []
+    }];
     if (reason == "build") {
-      this.lines = [];
+      this.groupStack[0].lines = [];
       return;
     }
     if (reason == "validate") {
@@ -3092,16 +3185,50 @@ var UplcConsoleLogger = class {
   // logPrintLn(...msgs: string[]) {
   //     return this.logPrint(...msgs, "\n");
   // }
+  interesting = 0;
   logPrint(message, site) {
+    if (message.match(/STokMint/)) {
+      this.interesting = 1;
+    }
+    if (message.startsWith("\u{1F423}")) {
+      const groupName = message.replace("\u{1F423}", "").replace("\u{1F5DC}\uFE0F", "");
+      const collapse = !!message.match(/^🐣🗜️/);
+      const nextGroup = {
+        name: groupName.replace(/^\s+/, ""),
+        lines: [],
+        collapse
+      };
+      this.currentGroupLines.push(nextGroup);
+      this.groupStack.push(nextGroup);
+      return this;
+    } else if (message.startsWith("\u{1F95A} ")) {
+      const rest = message.replace("\u{1F95A} ", "");
+      if (this.groupStack.length == 1) {
+        const t = this.formatLines(this.topLines);
+        debugger;
+        console.warn(
+          "Ignoring extra groupEnd() called in contract script\n" + t.join("\n")
+        );
+      } else {
+        this.currentGroup.result = rest;
+        this.groupStack.pop();
+      }
+      return this;
+    }
     if ("string" != typeof message) {
       console.log("wtf");
     }
-    if (message && message.at(-1) != "\n") {
-      message += "\n";
-    }
     this.lastMessage = message;
-    this.lines.push(message);
+    this.currentGroup.lines.push(...message.split("\n"));
     return this;
+  }
+  get currentGroup() {
+    const group = this.groupStack.at(-1);
+    if (!group) {
+      debugger;
+      throw new Error("Too many groupEnd()s called in contract script");
+    }
+    return group;
   }
   logError(message, stack) {
     this.logPrint("\n");
@@ -3141,33 +3268,118 @@ var UplcConsoleLogger = class {
   fullFormattedHistory() {
     return this.formattedHistory.join("\n");
   }
+  // formatGroupedOutput() {
+  //     const content: string[] = [];
+  //     const terminalWidth = process?.stdout?.columns || 65;
+  //     for (const group of this.groupStack) {
+  //         content.push(... this.formatGroup(group));
+  //         let {name, lines} = group;
+  //         if (name) name = `  ${name}  `;
+  //         const groupHeader = `╭${name}`;
+  //         content.push(groupHeader);
+  //         content.push(lines.map(line => ` │ ${line}`).join("\n"));
+  //         let lastLine = lines.at(-1)
+  //         if (lastLine && lastLine.startsWith("╰")) {
+  //             lastLine = `╰ ${lastLine.slice(1)}`;
+  //         }
+  //         content.push(lastLine);
+  //     }
+  // }
+  formatGroup(group) {
+    let { name, lines, result = "" } = group;
+    const terminalWidth = process?.stdout?.columns || 65;
+    const content = [];
+    const groupHeader = `${name}`;
+    const formattedLines = this.formatLines(lines);
+    const indentedLines = formattedLines.map((line) => `  \u2502 ${line}`);
+    const collapseThisGroup = false;
+    if (collapseThisGroup) {
+      content.push(groupHeader + " (+" + formattedLines.length + ")");
+    } else {
+      content.push(groupHeader);
+      content.push(...indentedLines);
+    }
+    const lastLine = formattedLines.at(-1);
+    const happySimpleResult = result && result == "\u2705" ? "\u2705" : "";
+    const noResult = !result;
+    const noResultClosingLine = noResult ? "\u2508".repeat(terminalWidth - 5) : "";
+    if ((noResult || happySimpleResult) && lastLine && lastLine?.match(/^\s+╰/)) {
+      const innerLine = lastLine.replace(/^\s+/, "");
+      const marker = happySimpleResult || "\u2508";
+      let replacementLastLine = `  \u2570${marker} ${innerLine}`;
+      if (replacementLastLine.length > terminalWidth) {
+        const tooMuch = replacementLastLine.length - terminalWidth;
+        if (replacementLastLine.endsWith("\u2508".repeat(tooMuch))) {
+          replacementLastLine = replacementLastLine.slice(0, -tooMuch);
+        }
+      }
+      if (collapseThisGroup) {
+        content.push(replacementLastLine);
+      } else {
+        content.splice(-1, 1, replacementLastLine);
+      }
+    } else if ((happySimpleResult || noResult) && lastLine?.match(/^\s*✅/)) {
+      const replacementLastLine = `  \u2570 ${lastLine.replace(/^\s+/, "")}`;
+      if (collapseThisGroup) {
+        content.push(replacementLastLine);
+      } else {
+        content.splice(-1, 1, replacementLastLine);
+      }
+    } else if (result) {
+      const extraClosingLine = `  \u2570 ${result}`;
+      content.push(extraClosingLine);
+    } else {
+      const extraClosingLine = `  \u2570${noResultClosingLine}`;
+      content.push(extraClosingLine);
+    }
+    return content;
+  }
+  formatLines(lines) {
+    const content = [];
+    for (const line of lines) {
+      if (typeof line == "string") {
+        content.push(line);
+      } else {
+        content.push(...this.formatGroup(line));
+      }
+    }
+    content.at(-1)?.replace(/\n+$/, "");
+    while (content.at(-1)?.match(/^\n?$/)) {
+      content.pop();
+    }
+    return content;
+  }
   flushLines(footerString) {
     let content = [];
     const terminalWidth = process?.stdout?.columns || 65;
-    const thisBatch = this.lines.join("").trimEnd();
-    this.history.push(thisBatch);
+    const formattedLines = this.formatLines(this.topLines);
+    this.history.push(formattedLines.join("\n"));
     if (!this.didStart) {
       this.didStart = true;
-      content.push("\u256D\u2508\u2508\u2508\u252C" + "\u2508".repeat(terminalWidth - 5));
+      content.push("\u256D\u2508\u2508\u2508\u252C" + "\u2508".repeat(terminalWidth - 5) + "\n");
       this.resetDots();
-    } else if (this.lines.length) {
-      content.push("\u251C\u2508\u2508\u2508\u253C" + "\u2508".repeat(terminalWidth - 5));
+    } else if (this.topLines.length) {
+      content.push("\u251C\u2508\u2508\u2508\u253C" + "\u2508".repeat(terminalWidth - 5) + "\n");
       this.resetDots();
     }
-    for (const line of thisBatch.split("\n")) {
-      content.push(`${this.showDot()}${line}`);
+    for (const line of formattedLines) {
+      content.push(`${this.showDot()}${line}
+`);
     }
-    content.push(this.showDot());
+    content.push(this.showDot() + "\n");
     if (!this.toggler) {
-      content.push(this.showDot());
+      content.push(this.showDot() + "\n");
     }
     if (footerString) {
       content.push(footerString);
     }
-    const joined = content.join("\n");
+    const joined = content.join("");
     this.formattedHistory.push(joined);
     console.log(joined);
-    this.lines = [];
+    this.groupStack = [{
+      name: "",
+      lines: []
+    }];
   }
   finish() {
     this.flushLines(
@@ -3175,10 +3387,13 @@ var UplcConsoleLogger = class {
     );
     return this;
   }
+  get groupLines() {
+    return this.groupStack.at(-1)?.lines || [];
+  }
   flush() {
-    if (this.lines.length) {
-      if (this.lastMessage.at(-1) != "\n") {
-        this.lines.push("\n");
+    if (this.topLines.length) {
+      if (this.lastMessage.at(-1) != "") {
+        this.groupLines.push("");
       }
       this.flushLines();
     }
@@ -3186,14 +3401,14 @@ var UplcConsoleLogger = class {
   }
   flushError(message = "") {
     if (this.lastMessage.at(-1) != "\n") {
-      this.lines.push("\n");
+      this.groupLines.push("\n");
     }
     if (message.at(-1) == "\n") {
       message = message.slice(0, -1);
     }
     const terminalWidth = process?.stdout?.columns || 65;
     if (message) this.logError(message);
-    if (this.lines.length) {
+    if (this.topLines.length) {
       this.flushLines(
         "\u23BD\u23BC\u23BB\u23BA\u23BB\u23BA\u23BC\u23BC\u23BB\u23BA\u23BB\u23BD\u23BC\u23BA\u23BB\u23BB\u23BA\u23BC\u23BC\u23BB\u23BA".repeat((terminalWidth - 2) / 21)
       );
@@ -4087,7 +4302,8 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     };
     const errMsg = tx.hasValidationError && tx.hasValidationError.toString();
     if (errMsg) {
-      logger.logPrint(`\u26A0\uFE0F  txn validation failed: ${errMsg}
+      logger.logPrint(`\u26A0\uFE0F  txn validation failed: ${description}
+${errMsg}
 `);
       logger.logPrint(this.dump(tx));
       this.emitCostDetails(tx, costs);
@@ -4150,6 +4366,7 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
 `);
     logger.logPrint(this.dump(tx));
     this.emitCostDetails(tx, costs);
+    logger.logPrint(`end: ${description}`);
     logger.flush();
     console.timeStamp?.(`tx: add to current-tx-batch`);
     currentBatch.$addTxns(txDescr);

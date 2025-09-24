@@ -1,4 +1,4 @@
-import { dumpAny, environment, TxBatcher, GenericSigner, UtxoHelper, txAsString, lovelaceToAda, StellarTxnContext, CapoWithoutSettings, parseCapoJSONConfig } from '@donecollectively/stellar-contracts';
+import { dumpAny, TxBatcher, GenericSigner, UtxoHelper, txAsString, lovelaceToAda, StellarTxnContext, CapoWithoutSettings, parseCapoJSONConfig } from '@donecollectively/stellar-contracts';
 import { DEFAULT_NETWORK_PARAMS, makeNetworkParamsHelper, makeAssets, makeTxOutputId, makeAddress, makeStakingAddress } from '@helios-lang/ledger';
 import { generateBytes, mulberry32 } from '@helios-lang/crypto';
 import '@helios-lang/codec-utils';
@@ -1031,7 +1031,7 @@ class StellarTestHelper {
       uh: void 0,
       isTest: true,
       isMainnet: false,
-      optimize: environment.OPTIMIZE ? true : this.optimize
+      optimize: process.env.OPTIMIZE ? true : this.optimize
     };
     const getNetwork = () => {
       return this.network;
@@ -1061,7 +1061,7 @@ class StellarTestHelper {
    * @public
    */
   async initStrella(TargetClass, config) {
-    environment.OPTIMIZE;
+    process.env.OPTIMIZE;
     const setup = this.initSetup();
     let cfg = {
       setup,

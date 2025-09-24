@@ -839,19 +839,33 @@ if ("undefined" == typeof window) {
 
 class UplcConsoleLogger {
   didStart = false;
-  lines = [];
+  // lines: LineOrGroup[] = [];
   lastMessage = "";
   lastReason;
   history = [];
+  groupStack = [{
+    name: "",
+    lines: []
+  }];
   constructor() {
     this.logPrint = this.logPrint.bind(this);
     this.reset = this.reset.bind(this);
   }
+  get currentGroupLines() {
+    return this.groupStack.at(-1).lines;
+  }
+  get topLines() {
+    return this.groupStack.at(0).lines;
+  }
   reset(reason) {
     this.lastMessage = "";
     this.lastReason = reason;
+    this.groupStack = [{
+      name: "",
+      lines: []
+    }];
     if (reason == "build") {
-      this.lines = [];
+      this.groupStack[0].lines = [];
       return;
     }
     if (reason == "validate") {
@@ -868,16 +882,50 @@ class UplcConsoleLogger {
   // logPrintLn(...msgs: string[]) {
   //     return this.logPrint(...msgs, "\n");
   // }
+  interesting = 0;
   logPrint(message, site) {
+    if (message.match(/STokMint/)) {
+      this.interesting = 1;
+    }
+    if (message.startsWith("\u{1F423}")) {
+      const groupName = message.replace("\u{1F423}", "").replace("\u{1F5DC}\uFE0F", "");
+      const collapse = !!message.match(/^🐣🗜️/);
+      const nextGroup = {
+        name: groupName.replace(/^\s+/, ""),
+        lines: [],
+        collapse
+      };
+      this.currentGroupLines.push(nextGroup);
+      this.groupStack.push(nextGroup);
+      return this;
+    } else if (message.startsWith("\u{1F95A} ")) {
+      const rest = message.replace("\u{1F95A} ", "");
+      if (this.groupStack.length == 1) {
+        const t = this.formatLines(this.topLines);
+        debugger;
+        console.warn(
+          "Ignoring extra groupEnd() called in contract script\n" + t.join("\n")
+        );
+      } else {
+        this.currentGroup.result = rest;
+        this.groupStack.pop();
+      }
+      return this;
+    }
     if ("string" != typeof message) {
       console.log("wtf");
     }
-    if (message && message.at(-1) != "\n") {
-      message += "\n";
-    }
     this.lastMessage = message;
-    this.lines.push(message);
+    this.currentGroup.lines.push(...message.split("\n"));
     return this;
+  }
+  get currentGroup() {
+    const group = this.groupStack.at(-1);
+    if (!group) {
+      debugger;
+      throw new Error("Too many groupEnd()s called in contract script");
+    }
+    return group;
   }
   logError(message, stack) {
     this.logPrint("\n");
@@ -917,33 +965,111 @@ class UplcConsoleLogger {
   fullFormattedHistory() {
     return this.formattedHistory.join("\n");
   }
+  // formatGroupedOutput() {
+  //     const content: string[] = [];
+  //     const terminalWidth = process?.stdout?.columns || 65;
+  //     for (const group of this.groupStack) {
+  //         content.push(... this.formatGroup(group));
+  //         let {name, lines} = group;
+  //         if (name) name = `  ${name}  `;
+  //         const groupHeader = `╭${name}`;
+  //         content.push(groupHeader);
+  //         content.push(lines.map(line => ` │ ${line}`).join("\n"));
+  //         let lastLine = lines.at(-1)
+  //         if (lastLine && lastLine.startsWith("╰")) {
+  //             lastLine = `╰ ${lastLine.slice(1)}`;
+  //         }
+  //         content.push(lastLine);
+  //     }
+  // }
+  formatGroup(group) {
+    let { name, lines, result = "" } = group;
+    const terminalWidth = process?.stdout?.columns || 65;
+    const content = [];
+    const groupHeader = `${name}`;
+    const formattedLines = this.formatLines(lines);
+    const indentedLines = formattedLines.map((line) => `  \u2502 ${line}`);
+    {
+      content.push(groupHeader);
+      content.push(...indentedLines);
+    }
+    const lastLine = formattedLines.at(-1);
+    const happySimpleResult = result && result == "\u2705" ? "\u2705" : "";
+    const noResult = !result;
+    const noResultClosingLine = noResult ? "\u2508".repeat(terminalWidth - 5) : "";
+    if ((noResult || happySimpleResult) && lastLine && lastLine?.match(/^\s+╰/)) {
+      const innerLine = lastLine.replace(/^\s+/, "");
+      const marker = happySimpleResult || "\u2508";
+      let replacementLastLine = `  \u2570${marker} ${innerLine}`;
+      if (replacementLastLine.length > terminalWidth) {
+        const tooMuch = replacementLastLine.length - terminalWidth;
+        if (replacementLastLine.endsWith("\u2508".repeat(tooMuch))) {
+          replacementLastLine = replacementLastLine.slice(0, -tooMuch);
+        }
+      }
+      {
+        content.splice(-1, 1, replacementLastLine);
+      }
+    } else if ((happySimpleResult || noResult) && lastLine?.match(/^\s*✅/)) {
+      const replacementLastLine = `  \u2570 ${lastLine.replace(/^\s+/, "")}`;
+      {
+        content.splice(-1, 1, replacementLastLine);
+      }
+    } else if (result) {
+      const extraClosingLine = `  \u2570 ${result}`;
+      content.push(extraClosingLine);
+    } else {
+      const extraClosingLine = `  \u2570${noResultClosingLine}`;
+      content.push(extraClosingLine);
+    }
+    return content;
+  }
+  formatLines(lines) {
+    const content = [];
+    for (const line of lines) {
+      if (typeof line == "string") {
+        content.push(line);
+      } else {
+        content.push(...this.formatGroup(line));
+      }
+    }
+    content.at(-1)?.replace(/\n+$/, "");
+    while (content.at(-1)?.match(/^\n?$/)) {
+      content.pop();
+    }
+    return content;
+  }
   flushLines(footerString) {
     let content = [];
     const terminalWidth = process?.stdout?.columns || 65;
-    const thisBatch = this.lines.join("").trimEnd();
-    this.history.push(thisBatch);
+    const formattedLines = this.formatLines(this.topLines);
+    this.history.push(formattedLines.join("\n"));
     if (!this.didStart) {
       this.didStart = true;
-      content.push("\u256D\u2508\u2508\u2508\u252C" + "\u2508".repeat(terminalWidth - 5));
+      content.push("\u256D\u2508\u2508\u2508\u252C" + "\u2508".repeat(terminalWidth - 5) + "\n");
       this.resetDots();
-    } else if (this.lines.length) {
-      content.push("\u251C\u2508\u2508\u2508\u253C" + "\u2508".repeat(terminalWidth - 5));
+    } else if (this.topLines.length) {
+      content.push("\u251C\u2508\u2508\u2508\u253C" + "\u2508".repeat(terminalWidth - 5) + "\n");
       this.resetDots();
     }
-    for (const line of thisBatch.split("\n")) {
-      content.push(`${this.showDot()}${line}`);
+    for (const line of formattedLines) {
+      content.push(`${this.showDot()}${line}
+`);
     }
-    content.push(this.showDot());
+    content.push(this.showDot() + "\n");
     if (!this.toggler) {
-      content.push(this.showDot());
+      content.push(this.showDot() + "\n");
     }
     if (footerString) {
       content.push(footerString);
     }
-    const joined = content.join("\n");
+    const joined = content.join("");
     this.formattedHistory.push(joined);
     console.log(joined);
-    this.lines = [];
+    this.groupStack = [{
+      name: "",
+      lines: []
+    }];
   }
   finish() {
     this.flushLines(
@@ -951,10 +1077,13 @@ class UplcConsoleLogger {
     );
     return this;
   }
+  get groupLines() {
+    return this.groupStack.at(-1)?.lines || [];
+  }
   flush() {
-    if (this.lines.length) {
-      if (this.lastMessage.at(-1) != "\n") {
-        this.lines.push("\n");
+    if (this.topLines.length) {
+      if (this.lastMessage.at(-1) != "") {
+        this.groupLines.push("");
       }
       this.flushLines();
     }
@@ -962,14 +1091,14 @@ class UplcConsoleLogger {
   }
   flushError(message = "") {
     if (this.lastMessage.at(-1) != "\n") {
-      this.lines.push("\n");
+      this.groupLines.push("\n");
     }
     if (message.at(-1) == "\n") {
       message = message.slice(0, -1);
     }
     const terminalWidth = process?.stdout?.columns || 65;
     if (message) this.logError(message);
-    if (this.lines.length) {
+    if (this.topLines.length) {
       this.flushLines(
         "\u23BD\u23BC\u23BB\u23BA\u23BB\u23BA\u23BC\u23BC\u23BB\u23BA\u23BB\u23BD\u23BC\u23BA\u23BB\u23BB\u23BA\u23BC\u23BC\u23BB\u23BA".repeat((terminalWidth - 2) / 21)
       );
@@ -1847,7 +1976,8 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     };
     const errMsg = tx.hasValidationError && tx.hasValidationError.toString();
     if (errMsg) {
-      logger.logPrint(`\u26A0\uFE0F  txn validation failed: ${errMsg}
+      logger.logPrint(`\u26A0\uFE0F  txn validation failed: ${description}
+${errMsg}
 `);
       logger.logPrint(this.dump(tx));
       this.emitCostDetails(tx, costs);
@@ -1910,6 +2040,7 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
 `);
     logger.logPrint(this.dump(tx));
     this.emitCostDetails(tx, costs);
+    logger.logPrint(`end: ${description}`);
     logger.flush();
     console.timeStamp?.(`tx: add to current-tx-batch`);
     currentBatch.$addTxns(txDescr);

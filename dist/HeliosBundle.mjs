@@ -267,10 +267,15 @@ class CachedHeliosProgram extends Program {
     const options = typeof optimizeOrOptions === "boolean" ? { optimize: optimizeOrOptions } : optimizeOrOptions;
     const optimize = this.optimizeOptions(optimizeOrOptions);
     const programElements = this.programElements = this.gatherProgramElements();
+    const start = Date.now();
     const cacheKey = this.getCacheKey(options);
     const fromCache = await this.getFromCache(cacheKey);
     if (fromCache) {
       console.log(`\u{1F422}${this.id}: ${cacheKey}: from cache`);
+      const end1 = Date.now();
+      this.compileTime = {
+        fetchedCache: end1 - start
+      };
       return fromCache;
     }
     const weMustCompile = await this.acquireImmediateLock(cacheKey);
@@ -301,7 +306,9 @@ class CachedHeliosProgram extends Program {
       console.log(
         `\u{1F422}${this.id}: compiling program with cacheKey: ${cacheKey}`
       );
+      const start2 = Date.now();
       const uplcProgram = this.compile(options);
+      const end1 = Date.now();
       const cacheEntry = {
         version: "PlutusV2",
         createdBy: this.id,
@@ -333,6 +340,11 @@ class CachedHeliosProgram extends Program {
       }
       this.cacheEntry = cacheEntry;
       this.storeInCache(cacheKey, cacheEntry);
+      const end2 = Date.now();
+      this.compileTime = {
+        compiled: end1 - start2,
+        stored: end2 - end1
+      };
       return uplcProgram;
     } catch (e) {
       debugger;
@@ -343,6 +355,7 @@ class CachedHeliosProgram extends Program {
       throw e;
     }
   }
+  compileTime;
   async waitForCaching(cacheKey) {
     return this.acquireLock(cacheKey).then(async (lock) => {
       if (lock) {
@@ -1080,7 +1093,8 @@ ${this.modules.map(moduleDetails).join("\n")}`
       this.alreadyCompiledScript = uplcProgram;
       const scriptHash = bytesToHex(uplcProgram.hash());
       console.log(
-        `compiled in ${(/* @__PURE__ */ new Date()).getTime() - t}ms -> ${scriptHash}`
+        program.compileTime || `compiled: ${(/* @__PURE__ */ new Date()).getTime() - t}ms`,
+        `-> ${scriptHash}`
       );
       return uplcProgram;
     });
@@ -1208,7 +1222,7 @@ ${this.modules.map(moduleDetails).join("\n")}`
       }
       if (!e.site) {
         console.error(
-          `unexpected error while compiling helios program (or its imported module) 
+          `unexpected error while compiling helios program (or its imported module): ${mName || this.main.name}
 > ${e.message}
 (debugging breakpoint available)
 This likely indicates a problem in Helios' error reporting - 

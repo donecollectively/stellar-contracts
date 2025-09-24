@@ -217,7 +217,6 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     static isMintDelegate: boolean;
     // (undocumented)
     mkDatumScriptReference(): any;
-    // (undocumented)
     get needsGovAuthority(): boolean;
     scriptBundle(): UnspecializedDgtBundle;
     // Warning: (ae-forgotten-export) The symbol "GrantAuthorityOptions" needs to be exported by the entry point index.d.ts
@@ -1203,6 +1202,7 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     mkTxnUpdateRecord<TCX extends StellarTxnContext>(this: DelegatedDataContract<any, any>, txnName: string, item: FoundDatumUtxo<T, any>, options: DgDataUpdateOptions<TLike>, tcx?: TCX): Promise<TCX>;
     // (undocumented)
     moreInfo(): string;
+    // @deprecated
     get needsGovAuthority(): boolean;
     // (undocumented)
     abstract get recordTypeName(): string;

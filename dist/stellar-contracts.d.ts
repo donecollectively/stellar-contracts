@@ -611,6 +611,9 @@ export declare class BasicMintDelegate extends ContractBasedDelegate {
     static currentRev: bigint;
     static isMintDelegate: boolean;
     dataBridgeClass: GenericDelegateBridgeClass;
+    /**
+     * Enforces that the mint delegate needs gov-authority by default
+     */
     get needsGovAuthority(): boolean;
     get delegateName(): string;
     static isMintAndSpendDelegate: boolean;
@@ -3322,10 +3325,6 @@ declare class CapoLifecycleActivityHelper_2 extends EnumBridge<JustAnEnum> {
      */
     get queuePendingChange(): UplcData;
     /**
-     * access to different variants of the ***nested DelegateRole*** type needed for ***CapoLifecycleActivity:removePendingChange***.
-     */
-    get removePendingChange(): DelegateRoleHelperNested_2;
-    /**
      * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.commitPendingChanges"***
      * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
      */
@@ -3412,10 +3411,6 @@ declare class CapoLifecycleActivityHelper_2 extends EnumBridge<JustAnEnum> {
     }) => SeedActivity<(value: hasSeed, fields: {
         purpose: string;
     }) => UplcData>;
-    /**
-     * access to different variants of the ***nested ManifestActivity*** type needed for ***CapoLifecycleActivity:updatingManifest***.
-     */
-    get updatingManifest(): ManifestActivityHelperNested_2;
 }
 
 /**
@@ -3482,10 +3477,6 @@ declare class CapoLifecycleActivityHelper_3 extends EnumBridge<JustAnEnum> {
      * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
      */
     get queuePendingChange(): UplcData;
-    /**
-     * access to different variants of the ***nested DelegateRole*** type needed for ***CapoLifecycleActivity:removePendingChange***.
-     */
-    get removePendingChange(): DelegateRoleHelperNested_3;
     /**
      * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.commitPendingChanges"***
      * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
@@ -3573,10 +3564,6 @@ declare class CapoLifecycleActivityHelper_3 extends EnumBridge<JustAnEnum> {
     }) => SeedActivity<(value: hasSeed, fields: {
         purpose: string;
     }) => UplcData>;
-    /**
-     * access to different variants of the ***nested ManifestActivity*** type needed for ***CapoLifecycleActivity:updatingManifest***.
-     */
-    get updatingManifest(): ManifestActivityHelperNested_3;
 }
 
 /**
@@ -5618,6 +5605,7 @@ declare class DelegateActivityHelper extends EnumBridge<isActivity> {
         CreatingDelegatedData: DelegateActivity$CreatingDelegatedDataLike;
         UpdatingDelegatedData: DelegateActivity$UpdatingDelegatedDataLike;
         DeletingDelegatedData: DelegateActivity$DeletingDelegatedDataLike;
+        OtherActivities: UplcData;
         MultipleDelegateActivities: Array<UplcData>;
     }>>;
     /**
@@ -5698,6 +5686,10 @@ declare class DelegateActivityHelper extends EnumBridge<isActivity> {
         recId: number[];
     }): isActivity;
     /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"UnspecializedDelegate::DelegateActivity.OtherActivities"***
+     */
+    OtherActivities(activity: UplcData): isActivity;
+    /**
      * generates isActivity/redeemer wrapper with UplcData for ***"UnspecializedDelegate::DelegateActivity.MultipleDelegateActivities"***
      */
     MultipleDelegateActivities(activities: Array<UplcData>): isActivity;
@@ -5722,6 +5714,7 @@ declare class DelegateActivityHelper_2 extends EnumBridge<isActivity> {
         UpdatingDelegatedData: DelegateActivity$UpdatingDelegatedDataLike_2;
         DeletingDelegatedData: DelegateActivity$DeletingDelegatedDataLike_2;
         MultipleDelegateActivities: Array<UplcData>;
+        OtherActivities: UplcData;
     }>>;
     /**
      * access to different variants of the ***nested CapoLifecycleActivity*** type needed for ***DelegateActivity:CapoLifecycleActivities***.
@@ -5804,6 +5797,10 @@ declare class DelegateActivityHelper_2 extends EnumBridge<isActivity> {
      * generates isActivity/redeemer wrapper with UplcData for ***"ReqtsPolicy::DelegateActivity.MultipleDelegateActivities"***
      */
     MultipleDelegateActivities(activities: Array<UplcData>): isActivity;
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"ReqtsPolicy::DelegateActivity.OtherActivities"***
+     */
+    OtherActivities(activity: UplcData): isActivity;
 }
 
 /**
@@ -6208,6 +6205,7 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
      * This is a convenience for the controller, and should be used along with
      * the appropriate on-chain policy to require the gov token's presence.
      * @public
+     * @deprecated - set requiresGovAuthority in the contract-bundle instead
      */
     get needsGovAuthority(): boolean;
     abstract get recordTypeName(): string;
@@ -7065,144 +7063,6 @@ declare class DelegateRoleHelperNested extends EnumBridge<JustAnEnum> {
      * @internal
      *  uses unicode U+1c7a - sorts to the end */
     ᱺᱺcast: Cast<DelegateRole, Partial<{
-        MintDgt: tagOnly;
-        SpendDgt: tagOnly;
-        MintInvariant: tagOnly;
-        SpendInvariant: tagOnly;
-        DgDataPolicy: string;
-        OtherNamedDgt: string;
-        BothMintAndSpendDgt: tagOnly;
-        HandledByCapoOnly: tagOnly;
-    }>>;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintDgt"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
-     */
-    get MintDgt(): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.SpendDgt"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
-     */
-    get SpendDgt(): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintInvariant"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
-     */
-    get MintInvariant(): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.SpendInvariant"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
-     */
-    get SpendInvariant(): UplcData;
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::DelegateRole.DgDataPolicy"***
-     * @remarks
-     * #### Nested activity:
-     * this is connected to a nested-activity wrapper, so the details are piped through
-     * the parent's uplc-encoder, producing a single uplc object with
-     * a complete wrapper for this inner activity detail.
-     */
-    DgDataPolicy(name: string): UplcData;
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::DelegateRole.OtherNamedDgt"***
-     * @remarks
-     * #### Nested activity:
-     * this is connected to a nested-activity wrapper, so the details are piped through
-     * the parent's uplc-encoder, producing a single uplc object with
-     * a complete wrapper for this inner activity detail.
-     */
-    OtherNamedDgt(name: string): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.BothMintAndSpendDgt"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#6***
-     */
-    get BothMintAndSpendDgt(): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.HandledByCapoOnly"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#7***
-     */
-    get HandledByCapoOnly(): UplcData;
-}
-
-/**
- * Helper class for generating UplcData for variants of the ***DelegateRole*** enum type.
- * @public
- * @remarks
- * this class is not intended to be used directly.  Its methods are available through automatic accesors in the parent struct, contract-datum- or contract-activity-bridges. */
-declare class DelegateRoleHelperNested_2 extends EnumBridge<JustAnEnum> {
-    /**
-     * @internal
-     *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast: Cast<DelegateRole_2, Partial<{
-        MintDgt: tagOnly;
-        SpendDgt: tagOnly;
-        MintInvariant: tagOnly;
-        SpendInvariant: tagOnly;
-        DgDataPolicy: string;
-        OtherNamedDgt: string;
-        BothMintAndSpendDgt: tagOnly;
-        HandledByCapoOnly: tagOnly;
-    }>>;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintDgt"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
-     */
-    get MintDgt(): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.SpendDgt"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
-     */
-    get SpendDgt(): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintInvariant"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
-     */
-    get MintInvariant(): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.SpendInvariant"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
-     */
-    get SpendInvariant(): UplcData;
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::DelegateRole.DgDataPolicy"***
-     * @remarks
-     * #### Nested activity:
-     * this is connected to a nested-activity wrapper, so the details are piped through
-     * the parent's uplc-encoder, producing a single uplc object with
-     * a complete wrapper for this inner activity detail.
-     */
-    DgDataPolicy(name: string): UplcData;
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::DelegateRole.OtherNamedDgt"***
-     * @remarks
-     * #### Nested activity:
-     * this is connected to a nested-activity wrapper, so the details are piped through
-     * the parent's uplc-encoder, producing a single uplc object with
-     * a complete wrapper for this inner activity detail.
-     */
-    OtherNamedDgt(name: string): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.BothMintAndSpendDgt"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#6***
-     */
-    get BothMintAndSpendDgt(): UplcData;
-    /**
-     * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.HandledByCapoOnly"***
-     * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#7***
-     */
-    get HandledByCapoOnly(): UplcData;
-}
-
-/**
- * Helper class for generating UplcData for variants of the ***DelegateRole*** enum type.
- * @public
- * @remarks
- * this class is not intended to be used directly.  Its methods are available through automatic accesors in the parent struct, contract-datum- or contract-activity-bridges. */
-declare class DelegateRoleHelperNested_3 extends EnumBridge<JustAnEnum> {
-    /**
-     * @internal
-     *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast: Cast<DelegateRole_3, Partial<{
         MintDgt: tagOnly;
         SpendDgt: tagOnly;
         MintInvariant: tagOnly;
@@ -8489,6 +8349,13 @@ declare type GrantAuthorityOptions = {
     ifExists?: (existingInput: TxInput, existingRedeemer: UplcData) => void;
 };
 
+declare type Group = {
+    name: string;
+    lines: (LineOrGroup)[];
+    result?: string;
+    collapsed?: boolean;
+};
+
 /**
  * A transaction context that includes additional transactions in its state for later execution
  * @remarks
@@ -8976,6 +8843,8 @@ export declare const JustAnEnum: unique symbol;
  * @public
  */
 export declare type JustAnEnum = typeof JustAnEnum;
+
+declare type LineOrGroup = string | Group;
 
 /**
  * Converts lovelace to approximate ADA, in consumable 3-decimal form
@@ -15680,13 +15549,17 @@ export declare type updateActivityFunc<ARGS extends [...any]> = (recId: hasRecId
 
 declare class UplcConsoleLogger implements UplcLogger {
     didStart: boolean;
-    lines: string[];
     lastMessage: string;
     lastReason?: "build" | "validate";
     history: string[];
+    groupStack: Group[];
     constructor();
+    get currentGroupLines(): LineOrGroup[];
+    get topLines(): LineOrGroup[];
     reset(reason: "build" | "validate"): void;
+    interesting: number;
     logPrint(message: string, site?: Site): this;
+    get currentGroup(): Group;
     logError(message: string, stack?: Site): void;
     toggler: number;
     toggleDots(): void;
@@ -15696,8 +15569,11 @@ declare class UplcConsoleLogger implements UplcLogger {
     fullHistory(): string;
     formattedHistory: string[];
     fullFormattedHistory(): string;
+    formatGroup(group: Group): string[];
+    formatLines(lines: LineOrGroup[]): string[];
     flushLines(footerString?: string): void;
     finish(): this;
+    get groupLines(): LineOrGroup[];
     flush(): this;
     flushError(message?: string): this;
 }

@@ -77,6 +77,11 @@ declare type HeliosProgramCacheEntry = {
 export declare class HeliosProgramWithCacheAPI extends Program {
     cacheEntry: HeliosProgramCacheEntry | undefined;
     constructor(mainSource: string | Source, props: CacheableProgramProps);
+    compileTime: {
+        compiled?: number;
+        stored?: number;
+        fetchedCache?: number;
+    } | undefined;
     static checkFile(srcFilename: string): boolean | null;
     compileWithCache(optimizeOrOptions: boolean | CompileOptionsForCachedHeliosProgram): Promise<anyUplcProgram>;
 }

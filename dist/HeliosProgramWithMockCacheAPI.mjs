@@ -13,6 +13,7 @@ var HeliosProgramWithCacheAPI = class extends Program {
   constructor(mainSource, props) {
     super(mainSource, props);
   }
+  compileTime;
   static checkFile(srcFilename) {
     return null;
   }
