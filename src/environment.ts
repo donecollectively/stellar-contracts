@@ -7,10 +7,11 @@ let BF_API_KEY: string;
 const isNodeJS =typeof process !== 'undefined' 
 const cwd = isNodeJS ? process.cwd() : ""
 
-let anyNEXTjsCue = process.env.NEXT_PUBLIC_DEBUG || 
+let anyNEXTjsCue = isNodeJS && (process.env.NEXT_PUBLIC_DEBUG || 
     process.env.NEXT_PUBLIC_CARDANO_NETWORK || 
     process.env.NEXT_PUBLIC_OPTIMIZE || 
     process.env.NEXT_RUNTIME 
+) 
 
 if (
     ( () => {
