@@ -2112,7 +2112,7 @@ var OPTIMIZE;
 var BF_API_KEY;
 var isNodeJS = typeof process !== "undefined";
 var cwd = isNodeJS ? process.cwd() : "";
-var anyNEXTjsCue = process.env.NEXT_PUBLIC_DEBUG || process.env.NEXT_PUBLIC_CARDANO_NETWORK || process.env.NEXT_PUBLIC_OPTIMIZE || process.env.NEXT_RUNTIME;
+var anyNEXTjsCue = isNodeJS && (process.env.NEXT_PUBLIC_DEBUG || process.env.NEXT_PUBLIC_CARDANO_NETWORK || process.env.NEXT_PUBLIC_OPTIMIZE || process.env.NEXT_RUNTIME);
 if ((() => {
   try {
     return import.meta.env;
