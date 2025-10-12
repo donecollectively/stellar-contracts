@@ -100,12 +100,17 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
     let isCip68 = false;
     if (typeof nameBytesOrString === "string") {
         // convert the bytes of the string to hex
-        nameBytesHex = Buffer.from(textToBytes(nameBytesOrString)).toString(
-            "hex"
-        );
+        // function(byte) {
+        //     return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+        //   }).join('');
+        nameBytesHex = textToBytes(nameBytesOrString)
+            .map((byte) => ('0' + (byte & 0xFF).toString(16)).slice(-2))
+            .join('');
         nameString = nameBytesOrString;
     } else {
-        nameBytesHex = Buffer.from(nameBytesOrString).toString("hex");
+        nameBytesHex = nameBytesOrString
+            .map((byte) => ('0' + (byte & 0xFF).toString(16)).slice(-2))
+            .join('');
         nameString = stringToPrintableString(nameBytesOrString);
     }
     // check if the first 4 bytes are a cip-68 token name

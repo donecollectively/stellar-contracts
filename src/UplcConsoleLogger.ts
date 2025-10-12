@@ -1,6 +1,13 @@
 import type { Site } from "@helios-lang/compiler-utils";
 import type { UplcLogger } from "@helios-lang/uplc";
 
+const proc = typeof process == "undefined" ? {
+    stdout: {
+        columns: 65
+    },
+    env: {} as Record<string, string>
+} : process;
+
 type Group = {
     name: string;
     lines: (LineOrGroup)[];
@@ -132,11 +139,11 @@ export class UplcConsoleLogger implements UplcLogger {
     logError(message: string, stack? : Site) {
         this.logPrint("\n");
         this.logPrint(
-            "-".repeat((process?.stdout?.columns || 65) - 8)
+            "-".repeat((proc?.stdout?.columns || 65) - 8)
         );
         this.logPrint("--- ⚠️  ERROR: " + message.trimStart() + "\n");
         this.logPrint(
-            "-".repeat((process?.stdout?.columns || 65) - 8) + "\n"
+            "-".repeat((proc?.stdout?.columns || 65) - 8) + "\n"
         );
         // return this;
     }
@@ -192,7 +199,7 @@ export class UplcConsoleLogger implements UplcLogger {
 
     formatGroup(group: Group) : string[] {
         let {name, lines, result=""} = group;
-        const terminalWidth = process?.stdout?.columns || 65;
+        const terminalWidth = proc?.stdout?.columns || 65;
 
         const content: string[] = [];
         const groupHeader = `${name}`;
@@ -273,7 +280,7 @@ export class UplcConsoleLogger implements UplcLogger {
         // this.lines.push(this.accumulator.join(""))
         let content: string[] = [];
         // get terminal width if available:
-        const terminalWidth = process?.stdout?.columns || 65;
+        const terminalWidth = proc?.stdout?.columns || 65;
         const formattedLines = this.formatLines(this.topLines);
         this.history.push(formattedLines.join("\n"));
         if (!this.didStart) {
@@ -313,7 +320,7 @@ export class UplcConsoleLogger implements UplcLogger {
     }
     finish() {
         this.flushLines(
-            "╰┈┈┈┴" + "┈".repeat((process?.stdout?.columns || 65) - 5)
+            "╰┈┈┈┴" + "┈".repeat((proc?.stdout?.columns || 65) - 5)
         );
         return this;
     }
@@ -345,7 +352,7 @@ export class UplcConsoleLogger implements UplcLogger {
         if (message.at(-1) == "\n") {
             message = message.slice(0, -1);
         }
-        const terminalWidth = process?.stdout?.columns || 65;
+        const terminalWidth = proc?.stdout?.columns || 65;
         if (message) this.logError(message);
         if (this.topLines.length) {
             this.flushLines(

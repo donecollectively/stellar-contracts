@@ -20,7 +20,11 @@
 
 
 
-let p = process || {}, argv = p.argv || [], env = p.env || {}
+let p = typeof process == "undefined" ? {
+    platform: "browser",
+    argv: [] as string[],
+    env: {} as Record<string, string>
+} : process, argv = p.argv, env = p.env
 let isColorSupported =
 	!(!!env.NO_COLOR || argv.includes("--no-color")) &&
 	(!!env.FORCE_COLOR || argv.includes("--color") || 

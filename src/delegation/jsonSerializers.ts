@@ -233,7 +233,10 @@ export function abbreviatedDetail(
     initLength = 8,
     countOmitted: boolean = false
 ) {
-    if (process?.env?.EXPAND_DETAIL) {
+    const p = typeof process == "undefined" ? {
+        env: {} as Record<string, string>
+    } : process;
+    if (p?.env?.EXPAND_DETAIL) {
         return hext;
     } else {
         if (hext.length <= initLength) return hext;
