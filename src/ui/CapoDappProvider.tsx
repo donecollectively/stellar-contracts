@@ -235,15 +235,15 @@ export type SetWalletDetails = {
  * `onUserInfo=`, and `onSetCapo=` props.  Alternatively, it can be subclassed
  * and its default renderers overridden for another style of customizing.
  *
- * use the `uiPortals=` prop to provide dom id's for each type of UI element, if you want 
- * to place or style them in a specific location in your layout.  Otherwise, you can simply 
+ * use the `uiPortals=` prop to provide dom id's for each type of UI element, if you want
+ * to place or style them in a specific location in your layout.  Otherwise, you can simply
  * place (styled or unstyled) <div id="{capoStatus, capoUserDetails, txBatchUI}"> elements in your layout,
-*  and the provider's version of those elements will be rendered into your portals.
-* 
-* We recommend providing color themes matching your app's branding; all the provided 
-* UI elements are styled with tailwind classes that reference those theme colors.
-* 
-* @public
+ *  and the provider's version of those elements will be rendered into your portals.
+ *
+ * We recommend providing color themes matching your app's branding; all the provided
+ * UI elements are styled with tailwind classes that reference those theme colors.
+ *
+ * @public
  */
 export class CapoDAppProvider<
     CapoType extends Capo<any>,
@@ -392,18 +392,18 @@ export class CapoDAppProvider<
 
         const roleInfo = this.renderRoleInfo();
         const capoInfo =
-            "development" == process.env.NODE_ENV && capo?._compiledScript
-                ? <div className="inline-block flex flex-row">
+            "development" == process.env.NODE_ENV && capo?._compiledScript ? (
+                <div className="inline-block flex flex-row">
                     {/* show a chip with the capo address, short until expanded on hover */}
                     {/* leaves space for a hat icon on its left */}
-                    <span
-                        className="mb-0 pl-2 text-black overflow-hidden max-w-48 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
-                    >
+                    <span className="mb-0 pl-2 text-black overflow-hidden max-w-48 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text">
                         Capo&nbsp;{capo.address.toString()}
                     </span>&nbsp;
                     {roleInfo}
                 </div>
-                : "";
+            ) : (
+                ""
+            );
         {
             capoInfo ? "address: " + capoInfo : "";
         }
@@ -421,7 +421,7 @@ export class CapoDAppProvider<
                 fallbackLocation="top"
                 {...{ delay: portalDelay, portalFallbackMessage }}
             >
-                 {capoInfo} 
+                {capoInfo}
                 {walletInfo}
                 {/* {inviteLink} */}
             </InPortal>
@@ -745,20 +745,24 @@ export class CapoDAppProvider<
                 wallet,
                 walletAddress,
                 connectingWallet,
-                foundNetworkName,                
-                selectedWallet
+                foundNetworkName,
+                selectedWallet,
             },
         } = this.state;
 
         let autoWallet = selectedWallet;
-        if ("undefined" !== typeof window && typeof selectedWallet === "undefined") {
-            autoWallet = window.localStorage.getItem("capoAutoConnectWalletName") || ""
+        if (
+            "undefined" !== typeof window &&
+            typeof selectedWallet === "undefined"
+        ) {
+            autoWallet =
+                window.localStorage.getItem("capoAutoConnectWalletName") || "";
         }
 
         if (wallet) {
             return (
                 <div className="flex flex-row">
-                    {walletAddress && ( 
+                    {walletAddress && (
                         <span
                             key="chip-walletAddr"
                             // make it small by default, but allow it to grow on hover
@@ -766,7 +770,13 @@ export class CapoDAppProvider<
                             // color the text black
                             className="mb-0 text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
                         >
-                            {walletAddress} {selectedWallet}<a href="#" onClick={() => this.newWalletSelected("")}>✖️</a>
+                            {walletAddress} {selectedWallet}
+                            <a
+                                href="#"
+                                onClick={() => this.newWalletSelected("")}
+                            >
+                                ✖️
+                            </a>
                         </span>
                     )}
                     &nbsp;
@@ -787,7 +797,6 @@ export class CapoDAppProvider<
                 </div>
             );
         } else {
-    
             return (
                 <div>
                     <select value={autoWallet} onChange={this.onWalletChange}>
@@ -962,17 +971,22 @@ export class CapoDAppProvider<
      */
     newWalletSelected(selectedWallet: string = "eternl", autoNext = true) {
         if (selectedWallet === "") {
-            return this.updateStatus("disconnecting from wallet", {
-                developerGuidance: "just a status message for the user",
-            }, "//disconnecting wallet", {
-                userInfo: {
-                    ...this.state.userInfo,
-                    selectedWallet: "",
-                    wallet: undefined,
-                    walletAddress: undefined,
-                    walletHandle: undefined,
+            return this.updateStatus(
+                "disconnecting from wallet",
+                {
+                    developerGuidance: "just a status message for the user",
                 },
-            });
+                "//disconnecting wallet",
+                {
+                    userInfo: {
+                        ...this.state.userInfo,
+                        selectedWallet: "",
+                        wallet: undefined,
+                        walletAddress: undefined,
+                        walletHandle: undefined,
+                    },
+                }
+            );
         }
         if (!this.isWalletSupported(selectedWallet)) {
             debugger;
@@ -1087,6 +1101,7 @@ export class CapoDAppProvider<
                 window.localStorage.setItem("zwk", privKeyHex);
             }
             const privKey = makeRootPrivateKey(hexToBytes(privKeyHex));
+            // console.log(privKey.toPhrase());
 
             // const capo = this.state.capo;
             // if (!capo) {
@@ -1094,20 +1109,21 @@ export class CapoDAppProvider<
             // }
             const isMainnet = this.props.targetNetwork === "mainnet";
             const useHydra = !!this.props.hydra;
-            const hydraOptions: HydraClientOptions | undefined=
-                useHydra
-                    ? {
-                          ...(this.props.hydra === true ? {} : this.props.hydra),
-                          isForMainnet: isMainnet,
-                      } as any
-                    : undefined;
-            let networkClient = useHydra ? makeHydraClient(WebSocket, {
-                onReceive(message) {
-                    console.log("onReceive", message);
-                },
-                isForMainnet: isMainnet,
-                ...hydraOptions,
-            }) : this.bf;
+            const hydraOptions: HydraClientOptions | undefined = useHydra
+                ? ({
+                      ...(this.props.hydra === true ? {} : this.props.hydra),
+                      isForMainnet: isMainnet,
+                  } as any)
+                : undefined;
+            let networkClient = useHydra
+                ? makeHydraClient(WebSocket, {
+                      onReceive(message) {
+                          console.log("onReceive", message);
+                      },
+                      isForMainnet: isMainnet,
+                      ...hydraOptions,
+                  })
+                : this.bf;
             simpleWallet = makeSimpleWallet(privKey, networkClient);
             if (this.capo) {
                 this.capo.setup.network = networkClient;
@@ -1176,7 +1192,7 @@ export class CapoDAppProvider<
         if (walletHandle) {
             const netId = await walletHandle.getNetworkId();
             const addr = (await walletHandle.getUsedAddresses())[0];
-            addrString = addr
+            addrString = addr;
             foundNetworkName = networkNames[netId];
             if (foundNetworkName !== this.props.targetNetwork) {
                 return this.updateStatus(
@@ -1211,7 +1227,7 @@ export class CapoDAppProvider<
                     {
                         userInfo: {
                             ...this.userInfo,
-                            connectingWallet: false,                            
+                            connectingWallet: false,
                             walletAddress: addrString,
                             foundNetworkName,
                         },
@@ -1347,7 +1363,7 @@ export class CapoDAppProvider<
                 developerGuidance: "status message for the user",
                 ready: false,
             },
-            "/// looking for authority tokens  from policy " + capo.mph.toHex(),
+            "/// looking for authority tokens  from policy " + capo.mph.toHex()
         );
 
         const roles: String[] = [];
@@ -1483,7 +1499,7 @@ export class CapoDAppProvider<
             txBatcher,
             actorContext: {
                 wallet,
-                others: {}
+                others: {},
             },
             isMainnet: this.isMainnet(),
             optimize: true,
@@ -1672,7 +1688,7 @@ export class CapoDAppProvider<
 
         let tcx: Awaited<ReturnType<CapoType["mkTxnMintCharterToken"]>>;
         try {
-            const addresses = await wallet.unusedAddresses
+            const addresses = await wallet.unusedAddresses;
             // type Expand<T> =  T extends infer O ? { [K in keyof O]: O[K] } : never;
             // type tt = Expand<typeof t.state>
             tcx = await capo.mkTxnMintCharterToken(
@@ -1999,19 +2015,24 @@ export type UserActionMap<actions extends string> = Record<
 /**
  * @public
  */
-export const CapoDappProviderContext = React.createContext<CapoDAppProvider<any> | null>(null);
+export const CapoDappProviderContext =
+    React.createContext<CapoDAppProvider<any> | null>(null);
 
 /**
  * React hook for accessing the CapoDappProvider context.
  * @remarks
- * The context data now includes the capo instance as well as the provider.  
- * 
+ * The context data now includes the capo instance as well as the provider.
+ *
  * Indicate your Capo's type in the type parameter to access your Capo's methods and properties.
  * @typeParam C - the type of the capo instance
  * @public
  */
-export function useCapoDappProvider<C extends Capo<any, any> = Capo<any, any>>() {
-    const provider = React.useContext(CapoDappProviderContext as React.Context<CapoDAppProvider<C> | null>);
+export function useCapoDappProvider<
+    C extends Capo<any, any> = Capo<any, any>
+>() {
+    const provider = React.useContext(
+        CapoDappProviderContext as React.Context<CapoDAppProvider<C> | null>
+    );
     if (!provider) {
         throw new Error(
             "useCapoDappProvider must be used within a CapoDappProvider"
@@ -2029,7 +2050,7 @@ export function useCapoDappProvider<C extends Capo<any, any> = Capo<any, any>>()
         }, 2000);
     }, [checking, provider, provider?.userInfo.wallet, capo]);
 
-    return {capo, provider};
+    return { capo, provider };
 }
 
 /**
