@@ -541,20 +541,24 @@ export class CapoDAppProvider<
             "bg-blue-300 border-blue-500 text-black font-bold dark:bg-blue-900 dark:text-blue-300";
         return (
             <div
-                className={`flex flex-row w-full status min-h-10 relative left-0 top-0 mb-4 rounded border p-1 ${statusClass}`}
+                className={`flex ${
+                    isError ? "isError" : ""
+                } flex-row w-full status`}
                 key="persistentMessage"
                 role="banner"
             >
-                <div className="">
+                <div className="flex-grow">
                     <span key="status" className="block sm:inline">
                         {message}
                     </span>
-                    <div className="text-sm text-gray-700 dark:text-gray-300 italic">
-                        {moreInstructions}
-                    </div>
+                    {moreInstructions && (
+                        <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 italic">
+                            {moreInstructions}
+                        </div>
+                    )}
                 </div>
 
-                <div className="mr-2 flex-grow">{this.renderNextAction()}</div>
+                <div className="m-2">{this.renderNextAction()}</div>
             </div>
         );
     }
@@ -612,7 +616,7 @@ export class CapoDAppProvider<
         } = this.state;
         return (
             <div
-                className="flex flex-row w-full error min-h-10 relative left-0 top-0 mb-4 rounded border p-1 font-bold bg-[#e7560a] text-black"
+                className="flex flex-row w-full error min-h-10 relative left-0 top-0 mb-4 rounded p-1 font-bold bg-[#e7560a] text-black"
                 role="alert"
                 key="errorStatus"
             >
