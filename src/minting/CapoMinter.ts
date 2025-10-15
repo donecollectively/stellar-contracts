@@ -18,8 +18,7 @@ import { UutName } from "../delegation/UutName.js";
 import { mkValuesEntry } from "../utils.js";
 
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
-// imports the Capo bundle before anything, so the minter bundle can use it
-import CapoMinterBundle from "./CapoMinter.hlb.js";
+
 import CapoMinterDataBridge from "./CapoMinter.bridge.js";
 import type { 
     mustFindActivityType,
@@ -66,8 +65,9 @@ export class CapoMinter
 {
 
     currentRev: bigint = 1n;
-    scriptBundle() {
-        return CapoMinterBundle.create({
+    async scriptBundle() {
+        const bundleModule = await import("./CapoMinter.hlb.js");
+        return bundleModule.CapoMinterBundle.create({
             setup: this.setup,
             params: this.configIn
         });

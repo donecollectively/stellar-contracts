@@ -16,10 +16,8 @@ import { dumpAny } from "../diagnostics.js";
 import { hasReqts } from "../Requirements.js";
 import { DelegatedDataContract } from "../delegation/DelegatedDataContract.js";
 
-// import ReqtsPolicyScript from "./ReqtsPolicy.hl";
-// import { type ReqtData } from "./ReqtsAdapter.js";
-import  ReqtsConcreteBundle from "./Reqts.concrete.hlb.js";
-import {ReqtsBundle} from "./ReqtsBundle.js";
+// import  ReqtsConcreteBundle from "./Reqts.concrete.hlb.js";
+// import {ReqtsBundle} from "./ReqtsBundle.js";
 import {
     DelegateDatumHelper,
     ReqtsPolicyDataBridge
@@ -80,8 +78,9 @@ export class ReqtsController extends DelegatedDataContract<
     //     return new ReqtsAdapter(this);
     // }
 
-    scriptBundle() {    
-        return ReqtsConcreteBundle.create()
+    async scriptBundle() {    
+        const bundleModule = await import("./Reqts.concrete.hlb.js");
+        return bundleModule.ReqtsConcreteBundle.create()
     }
     
     @Activity.redeemer

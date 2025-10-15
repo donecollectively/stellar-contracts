@@ -22,7 +22,7 @@ import type {
     minimalDgDatumTestData
 } from "./DelegatedDatumTester.typeInfo.js"
 
-import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlb.js"
+import type {DelegatedDatumTesterBundle} from "./DelegatedDatumTester.hlb.js"
 import { textToBytes } from "../HeliosPromotedTypes.js";
 
 export class DelegatedDatumTester extends DelegatedDataContract<
@@ -32,8 +32,9 @@ export class DelegatedDatumTester extends DelegatedDataContract<
     dataBridgeClass = DelegateDatumTesterDataBridge
     static currentRev: bigint = 1n;
 
-    scriptBundle() {
-        return DelegatedDatumTesterBundle.create()
+    async scriptBundle() {
+        const bundleModule = await import("./DelegatedDatumTester.hlb.js");
+        return bundleModule.DelegatedDatumTesterBundle.create()
     }
 
     getContractScriptParams(config: capoDelegateConfig) {

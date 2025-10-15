@@ -340,11 +340,11 @@ export abstract class Capo<
         return this.verifyCoreDelegates();
     }
 
-    getBundle() {
-        return super.getBundle() as CapoHeliosBundle;
+    async getBundle() {
+        return super.getBundle() as Promise<CapoHeliosBundle>;
     }
 
-    scriptBundle(): CapoHeliosBundle {
+    async scriptBundle(): Promise<CapoHeliosBundle> {
         console.warn(
             `${this.constructor.name}: each Capo will need to provide a scriptBundle() method.\n` +
                 `It should return an instance of a class defined in a *.hlb.ts file.  At minimum:\n\n` +
@@ -448,7 +448,7 @@ export abstract class Capo<
                 `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
             );
 
-        const bundle = this.getBundle();
+        const bundle = await this.getBundle();
         let seedTxn: TxId | undefined = undefined;
         let seedIndex: bigint = 0n;
         let {
@@ -1228,7 +1228,8 @@ export abstract class Capo<
             throw new Error(`just use this.minter when it's already present`);
         const { minterClass } = this;
         const { seedTxn, seedIndex } = params;
-        const { mph: expectedMph, rev } = this.getBundle().configuredParams ||
+        const bundle = await this.getBundle();
+        const { mph: expectedMph, rev } = await bundle.configuredParams ||
             this.configIn || {
                 mph: undefined,
                 ...(this.constructor as typeof Capo).defaultParams,
@@ -2502,10 +2503,10 @@ export abstract class Capo<
 
             await this.prepareBundleWithScriptParams(params);
             // this.scriptProgram = this.loadProgramScript();
-            await this.asyncCompiledScript();
+            const script = await this.asyncCompiledScript();
 
             capoParams.rootCapoScriptHash = makeValidatorHash(
-                this.compiledScript.hash()
+                script.hash()
             );
 
             this.configIn = capoParams;
@@ -4146,9 +4147,8 @@ export abstract class Capo<
                 );
             }
 
-            const previousCompiledScript = existingDelegate
-                .getBundle()
-                .previousCompiledScript();
+            const existingDgtBundle = await existingDelegate.getBundle();
+            const previousCompiledScript = existingDgtBundle.previousCompiledScript();
             if (!previousCompiledScript) {
                 // when no previous script is there, it means an existing policy is fine as-is
                 if (existingDvh) {
@@ -4177,9 +4177,8 @@ export abstract class Capo<
                             `   ... offchain: ${previousDvh}`
                     );
                 }
-                const nextScript = existingDelegate
-                    .getBundle()
-                    .compiledScript();
+                const existingDgtBundle = await existingDelegate.getBundle();
+                const nextScript = existingDgtBundle.compiledScript();
                 const nextDvh = makeValidatorHash(nextScript.hash());
                 if (nextDvh.isEqual(existingDvh)) {
                     console.warn(

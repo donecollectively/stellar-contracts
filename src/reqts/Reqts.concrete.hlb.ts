@@ -13,8 +13,10 @@ import { ReqtsBundle } from "./ReqtsBundle.js"
  * if you have no separate Capo or need to share the ReqtsData types with
  * other scripts in your smart contract.
  */
-export default class ReqtsConcreteBundle extends ReqtsBundle.usingCapoBundleClass(CapoHeliosBundle) {
+export class ReqtsConcreteBundle extends ReqtsBundle.usingCapoBundleClass(CapoHeliosBundle) {
     specializedDelegateModule = ReqtsPolicy;
     
     requiresGovAuthority = true;
 }
+
+export default ReqtsConcreteBundle;

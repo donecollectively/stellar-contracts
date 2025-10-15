@@ -1,7 +1,7 @@
 
 import { 
     CapoHeliosBundle,
-    CapoDelegateBundle
+    DelegatedDataBundle
  } from "@donecollectively/stellar-contracts"
 
  import TesterPolicy from "./DelegatedDatumTester.hl"
@@ -10,8 +10,8 @@ import {
 // ... the test-environment "CapoCanMintGenericUuts"
 
 
-export default class DelegatedDatumTesterBundle 
-extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle){
+export class DelegatedDatumTesterBundle 
+extends DelegatedDataBundle.usingCapoBundleClass(CapoHeliosBundle){
     specializedDelegateModule = TesterPolicy
     scriptParamsSource = "config" as const
 
@@ -19,3 +19,4 @@ extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle){
     
 }
 
+export default DelegatedDatumTesterBundle;

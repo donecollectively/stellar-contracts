@@ -56,15 +56,16 @@ export function CharterStatus() {
         globalThis.capo = capo;
         setStatusMessage("finding charter data...");
         if (!capo) return;
-        const bundle = capo.getBundle();
-        if (!bundle) {
-            setStatusMessage("no bundle");
-            return;
-        }
-        if (!bundle._progIsPrecompiled) {
-            setStatusMessage("Capo bundle not configured");
-            return;
-        }
+        capo.getBundle().then((bundle) => {
+            if (!bundle) {
+                setStatusMessage("no bundle");
+                return;
+            }
+            if (!bundle._progIsPrecompiled) {
+                setStatusMessage("Capo bundle not configured");
+                return;
+            }
+        });
 
         capo?.findCharterData(undefined, { optional: true }).then((cd) => {
             if (!cd) {
@@ -292,6 +293,7 @@ export function CharterHighlights({
                     const dgt = await capo.getDgDataController(entryName, {
                         charterData,
                     });
+                    await dgt?.getBundle();
                     dataControllers[entryName] = dgt;
                 }
             }

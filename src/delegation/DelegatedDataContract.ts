@@ -144,7 +144,7 @@ export abstract class DelegatedDataContract<
         return undefined;
     }
 
-    scriptBundle() {
+    async scriptBundle() : Promise<DelegatedDataBundle> {
         if (this.abstractBundleClass) {
             throw new Error(
                 `${this.constructor.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.\n` +

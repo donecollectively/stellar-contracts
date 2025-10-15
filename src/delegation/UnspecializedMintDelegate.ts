@@ -2,7 +2,6 @@ import { Activity } from "../StellarContract.js";
 import { type hasSeedUtxo } from "../StellarTxnContext.js";
 import { BasicMintDelegate } from "../minting/BasicMintDelegate.js";
 
-import UnspecializedDelegateBundle from "./UnspecializedDelegate.hlb.js";
 import {UnspecializedDelegateBridge} from "./UnspecializedDelegate.bridge.js"
 import type { hasSeed } from "../ActivityTypes.js";
 
@@ -13,7 +12,7 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
     dataBridgeClass = UnspecializedDelegateBridge;
     get delegateName() { return "UnspecializedDelegate" }
 
-    scriptBundle() {
+    async scriptBundle() {
         if (process.env.NODE_ENV === "development") {
             console.warn(
                 "mint+spend delegate: using unspecialized delegate bundle\n"+
@@ -24,7 +23,8 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
                 "  ... both pointing to a single specialized mint-delegate class."
             );
         }
-        return UnspecializedDelegateBundle.create({
+        const dgtModule = await import("./UnspecializedDelegate.hlb.js");
+        return dgtModule.UnspecializedDgtBundle.create({
             setup: this.setup,            
         });
     }

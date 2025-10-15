@@ -124,7 +124,7 @@ export class ContractBasedDelegate extends StellarDelegate {
     //     return new BundleClass(capoBundle);
     // }
 
-    scriptBundle(): CapoDelegateBundle {
+    async scriptBundle(): Promise<CapoDelegateBundle> {
         throw new Error(
             `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
                 `\nEach contract-based delegate must provide a scriptBundle() method.\n` +

@@ -3,7 +3,6 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
  
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
-import UnspecializedDelegateBundle from "../delegation/UnspecializedDelegate.hlb.js";
 import type { GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
 import type { hasSeed, isActivity } from "../ActivityTypes.js";
 import type { GrantAuthorityOptions } from "../delegation/StellarDelegate.js";
@@ -50,8 +49,11 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      * specialization.  TODO: a generator to make this easier.  Until then,
      * you can copy the UnspecializedDelegate.hl and specialize it.
      */
-    scriptBundle() {
-        return new UnspecializedDelegateBundle()
+    async scriptBundle() {
+        const dgtModule = await import("../delegation/UnspecializedDelegate.hlb.js");
+        return dgtModule.UnspecializedDgtBundle.create({
+            setup: this.setup,            
+        });
     }
 
     // uses the basic delegate script, plus the isMintDelegate param

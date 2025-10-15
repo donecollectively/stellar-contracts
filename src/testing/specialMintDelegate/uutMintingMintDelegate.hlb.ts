@@ -9,12 +9,14 @@ import { CapoHeliosBundle } from "../../helios/scriptBundling/CapoHeliosBundle.j
 /**
  * A specialized minting delegate for testing purposes
  */
-export default class BundleMintDelegateWithGenericUuts 
+export class BundleMintDelegateWithGenericUuts 
 extends MintSpendDelegateBundle.usingCapoBundleClass(CapoHeliosBundle) {
     specializedDelegateModule = uutMintingMintDelegate;
 
     requiresGovAuthority = true;
 }
+
+export default BundleMintDelegateWithGenericUuts;
 
 // if (false) {
 //     // ... type tests for Datum and Datum variants
@@ -237,3 +239,4 @@ extends MintSpendDelegateBundle.usingCapoBundleClass(CapoHeliosBundle) {
 //         );
 //     }
 // }
+

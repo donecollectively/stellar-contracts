@@ -445,7 +445,7 @@ export class StellarContract<
      * Once the data-bridge class is generated, you should import it into your contract
      * module and assign it to your `dataBridgeClass` attribute.
      */
-    scriptBundle(): HeliosScriptBundle {
+    async scriptBundle(): Promise<HeliosScriptBundle> {
         debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
         throw new Error(
             `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
@@ -553,9 +553,9 @@ export class StellarContract<
     }
 
     _bundle: HeliosScriptBundle | undefined;
-    getBundle(): HeliosScriptBundle {
+    async getBundle(): Promise<HeliosScriptBundle> {
         if (!this._bundle) {
-            this._bundle = this.scriptBundle();
+            this._bundle = await this.scriptBundle();
             if (
                 this._bundle.preCompiled &&
                 !this._bundle.preCompiled.singleton
@@ -694,7 +694,6 @@ export class StellarContract<
                 }
             }
 
-            const datumType = this.getBundle().locateDatumType();
             const isMainnet = this.setup.isMainnet;
             let newBridge: any;
             try {
@@ -705,16 +704,19 @@ export class StellarContract<
                 console.error(e);
                 debugger;
             }
-            if (datumType) {
-                // verifies that the dataBridge ALSO has a datum-type
-                console.log(
-                    `${this.constructor.name} dataBridgeClass = `,
-                    dataBridgeClass.name
-                );
-                if (!newBridge.datum) {
-                    console.warn(
-                        `${this.constructor.name}: dataBridgeClass must define a datum accessor.  This is likely a code-generation problem.`
+            if (this._bundle) {
+                const datumType = this._bundle.locateDatumType();
+                if (datumType) {
+                    // verifies that the dataBridge ALSO has a datum-type
+                    console.log(
+                        `${this.constructor.name} dataBridgeClass = `,
+                        dataBridgeClass.name
                     );
+                    if (!newBridge.datum) {
+                        console.warn(
+                            `${this.constructor.name}: dataBridgeClass must define a datum accessor.  This is likely a code-generation problem.`
+                        );
+                    }
                 }
             }
             // verifies that every dataBridge has an activity-type
@@ -723,11 +725,7 @@ export class StellarContract<
                     `${this.constructor.name}: dataBridgeClass must define an activity accessor.  This is likely a code-generation problem.`
                 );
             }
-            if ("undefined" == typeof isMainnet) {
-                return newBridge;
-            }
-
-            return (this._dataBridge = newBridge);
+            this._dataBridge = newBridge;
         }
 
         if (!this._dataBridge) {
@@ -929,7 +927,8 @@ export class StellarContract<
             // with a rawProgram, the contract script is used directly
             // to make a HeliosScriptBundle with that rawProgram
             // as an override.
-            this._bundle = this.scriptBundle().withSetupDetails({
+            const b = await this.scriptBundle();
+            this._bundle = b.withSetupDetails({
                 setup: this.setup,
                 previousOnchainScript: previousOnchainScript,
                 // params: this.getContractScriptParams(config),
@@ -944,7 +943,7 @@ export class StellarContract<
 
             // const params = this.getContractScriptParams(config);
             if (this.usesContractScript) {
-                const genericBundle = this.scriptBundle();
+                const genericBundle = await this.scriptBundle();
                 if (!config) {
                     // debugger;
                     console.warn(
@@ -983,7 +982,7 @@ export class StellarContract<
                 // this._bundle = this.scriptBundle();
             }
             if (this.usesContractScript) {
-                const bundle = this.getBundle();
+                const bundle = await this.getBundle();
                 if (!bundle) {
                     throw new Error(
                         `${this.constructor.name}: missing required this.bundle for contract class`
@@ -1012,7 +1011,7 @@ export class StellarContract<
                 console.log(this.program.name, "bundle loaded");
             }
         } else {
-            const bundle = this.getBundle();
+            const bundle = await this.getBundle();
             if (bundle.isPrecompiled) {
                 console.log(
                     `${bundle.displayName}: will use precompiled script on-demand`
@@ -1044,7 +1043,8 @@ export class StellarContract<
     }
 
     async asyncCompiledScript() {
-        const s = await this.getBundle().compiledScript(true);
+        const b = await this.getBundle();
+        const s = await b.compiledScript(true);
         this._compiledScript = s;
         return s;
     }
@@ -1226,8 +1226,17 @@ export class StellarContract<
      * @public
      **/
     get onChainDatumType(): DataType {
-        return this.getBundle()!.locateDatumType()!;
+        
+        return this.preloadedBundle.locateDatumType()!;
     }
+
+    get preloadedBundle(): HeliosScriptBundle {
+        if (!this._bundle) {
+            throw new Error("bundle must be loaded before calling this");
+        }
+        return this._bundle;
+    }
+
 
     /**
      * identifies the enum used for activities (redeemers) in the Helios script
@@ -1379,19 +1388,19 @@ export class StellarContract<
      * @public
      */
     isDefinitelyMainnet() {
-        return this.getBundle().isDefinitelyMainnet();
+        return this.preloadedBundle.isDefinitelyMainnet();
     }
 
     paramsToUplc(params: Record<string, any>): UplcRecord<ConfigType> {
-        return this.getBundle().paramsToUplc(params);
+        return this.preloadedBundle.paramsToUplc(params);
     }
 
     typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
-        return this.getBundle().typeToUplc(type, data, path);
+        return this.preloadedBundle.typeToUplc(type, data, path);
     }
 
     get program() {
-        return this.getBundle()!.program;
+        return this.preloadedBundle.program;
     }
 
     _utxoHelper: UtxoHelper;
@@ -1479,7 +1488,7 @@ export class StellarContract<
             throw new Error(`contractParams not set`);
         }
 
-        let bundle = this.getBundle();
+        let bundle = await this.getBundle();
         // if (bundle.isPrecompiled) {
         //     debugger;
         //     console.warn(

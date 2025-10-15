@@ -17,8 +17,9 @@ export class BadSettingsController extends DelegatedDataContract<
 > {
     dataBridgeClass = BadSettingsPolicyDataBridge;
 
-    scriptBundle() {
-        return BadSettingsBundle.create()
+    async scriptBundle(): Promise<DelegatedDataBundle> {
+        const bundleModule = await import("./BadSettings.hlb.js");
+        return bundleModule.BadSettingsBundle.create() as DelegatedDataBundle;
     }
 
 
