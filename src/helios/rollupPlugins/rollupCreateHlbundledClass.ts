@@ -18,7 +18,7 @@ type hlBundleOptions = {
     projectRoot: string,
     onHeliosSource?: heliosSourceFileSeenHook
 }
-export async function rollupCreateHlbundledClass(
+export async function rollupCreateHlPrecompiledClass(
     inputFile: string, 
     options: hlBundleOptions
 ) {
@@ -68,11 +68,13 @@ export async function rollupCreateHlbundledClass(
                     return;
                 }
             }
+            // console.log("warning", warning);
             warn(warning);
         },
         plugins: [
             // stellarDeploymentHook("plugin"),
-            heliosRollupLoader({
+            {
+                ... heliosRollupLoader({
                 // todo make this right for the context
                 project: "stellar-contracts",
                 onHeliosSource(id) {
@@ -81,6 +83,8 @@ export async function rollupCreateHlbundledClass(
                     }
                 },
             }),
+            name: "nestedHeliosRollupLoader",
+        },
             // !!! figure out how to make the bundle include the compiled & optimized
             //   program, when options.compile is true.
             esbuild({
