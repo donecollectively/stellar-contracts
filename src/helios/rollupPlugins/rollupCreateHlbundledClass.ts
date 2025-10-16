@@ -9,6 +9,7 @@ import { colors } from "../../colors.js";
 import type { HeliosScriptBundle } from "../scriptBundling/HeliosScriptBundle.js";
 import type { CapoHeliosBundle } from "../scriptBundling/CapoHeliosBundle.js";
 import { environment } from "../../environment.js";
+import { StellarHeliosProject } from "./StellarHeliosProject.js";
 
 const processStart = Date.now();
 
@@ -16,21 +17,30 @@ const { DEBUG } = environment;
 export type heliosSourceFileSeenHook = (heliosSourceId: string, outputFile: string) => void
 type hlBundleOptions = {
     projectRoot: string,
+    outDir: string,
     onHeliosSource?: heliosSourceFileSeenHook
 }
+const { projectRoot, packageJSON } =
+StellarHeliosProject.findProjectDetails();
+
+export function relativePath(id: string) {
+    return id.replace(`${projectRoot}/`, "");
+}
+
 export async function rollupCreateHlPrecompiledClass(
     inputFile: string, 
     options: hlBundleOptions
 ) {
+    const { projectRoot, onHeliosSource, outDir } = options;
+
     // writes the output file next to the input file as *.hlBundled.mjs
-    const outputFile = inputFile.replace(
+    const outputFile = `${outDir}/${relativePath(inputFile.replace(
         /\.hlb\.[tj]s$/,
         ".hlBundled.mjs" // ??? move to dist/ or .hltemp/?  hlbundle
-    );
+    ))}`;
     if (inputFile == outputFile) {
         throw new Error(`inputFile cannot be the same as outputFile`);
     }
-    const { projectRoot, onHeliosSource } = options;
 
     const buildStartTime = Date.now();
 
@@ -108,7 +118,10 @@ export async function rollupCreateHlPrecompiledClass(
         throw error;
     });
 
-    const result = await bundle.generate({ format: "es" });
+    const result = await bundle.generate({ 
+        format: "es",
+
+    });
     if (result.output.length > 1) {
         throw new Error(`unexpected: bundle should have one output`);
     }
@@ -120,8 +133,8 @@ export async function rollupCreateHlPrecompiledClass(
     if (existsSync(outputFile)) {
         const existing = readFileSync(outputFile, "utf-8");
         if (existing === compiled) {
-            DEBUG && console.log(
-                `📦 StellarHeliosProject: unchanged bundle (${buildTime}ms): ${path.relative(projectRoot, outputFile)}`
+            DEBUG && console.debug(
+                `    -- 📦 StellarHeliosProject: unchanged bundle (${buildTime}ms): ${path.relative(projectRoot, outputFile)}`
             );
             needsWrite = false;
         }

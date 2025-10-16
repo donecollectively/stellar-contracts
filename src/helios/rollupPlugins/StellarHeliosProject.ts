@@ -85,6 +85,11 @@ export class StellarHeliosProject {
         }
         return replacement;
     }
+    relativePath(filename: string) {
+        return filename.startsWith(this.projectRoot)
+            ? path.relative(this.projectRoot, filename)
+            : filename;
+    }
 
     // call from code-generated hlproject.mjs with instantiated bundle
     // call from rollup plugin with bundle filename
@@ -294,7 +299,7 @@ export class StellarHeliosProject {
         if (existsSync(filename)) {
             const existingSource = readFileSync(filename, "utf-8");
             if (existingSource === source) {
-                environment.DEBUG && console.log(`   -- unchanged: ${filename}`);
+                environment.DEBUG && console.debug(`   -- unchanged: ${this.relativePath(filename)}`);
                 return;
             }
         }

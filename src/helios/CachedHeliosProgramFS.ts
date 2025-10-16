@@ -12,7 +12,7 @@ import {
 } from "./CachedHeliosProgram.js";
 import type { Source } from "@helios-lang/compiler-utils";
 
-const cacheStore = ".hltemp/cache";
+const cacheStore = ".stellar/cache";
 
 export class CachedHeliosProgramFS extends CachedHeliosProgram {
     constructor(mainSource: string | Source, props: CacheableProgramProps) {

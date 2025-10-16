@@ -37,7 +37,7 @@ import {
     type BundleClassWithLoadStats,
     type heliosSourceFileSeenHook,
 } from "../rollupPlugins/rollupCreateHlbundledClass.js";
-import type { HeliosScriptBundle } from "../scriptBundling/HeliosScriptBundle.js";
+import type { HeliosScriptBundle } from "@donecollectively/stellar-contracts";
 import type { CapoHeliosBundle } from "../scriptBundling/CapoHeliosBundle.js";
 import {
     parseCapoJSONConfig,
@@ -105,7 +105,7 @@ export function heliosRollupBundler(
 
     // creates a temporary directory for dynamic loading,
     // in the project-root's .temp directory
-    const tempDir = path.join(process.cwd(), ".hltemp", "heliosBundler");
+    const tempDir = path.join(process.cwd(), ".stellar", "typeGen");
     // create the tempdir if needed
     if (!existsSync(tempDir)) {
         mkdirSync(tempDir, { recursive: true });
@@ -212,8 +212,21 @@ export function heliosRollupBundler(
         }
     }
 
+    function addMeta(this: PluginContext, id: string, meta: any) {
+        const info = this.getModuleInfo(id)! as any;
+        if (info?.meta) {
+            this.debug("---------- adding meta for " + id);
+            // this.debug('  ^ was '+ JSON.stringify(info.meta.stellar || "nothing"));
+            // this.debug("  now "+ meta.precompiledModuleFilename)
+            info.meta.stellar = {
+                ...(info.meta.stellar || {}),
+                ...meta,
+            };
+        }
+    }
+
     return {
-        name: "heliosBundler",
+        name: "stellar-bundler",
         buildEnd: {
             order: "pre",
             handler(this: PluginContext, error?: Error) {
@@ -264,6 +277,10 @@ export function heliosRollupBundler(
                     this.warn(
                         `patching up a vitest resolution: ${importer} imported ${source}`
                     );
+                    // if (source.match(/UnspecializedDelegate.hlb/)) {
+                    //     debugger;
+                    // }
+
                     // work around vitest not resolving .ts files from .js using
                     // the correct rules...
                     const sourceWithTs = source.replace(/\.js$/, ".ts");
@@ -277,24 +294,32 @@ export function heliosRollupBundler(
                     );
                     if (resolved) {
                         console.log(
-                            `heliosBundler: in vitest: resolving ${source} as ${sourceWithTs} for ${importer}`
+                            `stellar-bundler: in vitest: resolving ${source} as ${sourceWithTs} for ${importer}`
                         );
+                        // addMeta.call(this, resolved.id, meta)
                     }
                 }
                 if (isEntry && !importer) {
+                    if (source.match(/UnspecializedDelegate.hlb/)) {
+                        debugger;
+                    }
+
                     // this.debug(`<- resolveId (${source}) @isEntry`)
                     if (resolved && filterHeliosSources(source)) {
                         const importerDeps = findOrCreateDeps(importer);
                         importerDeps.add(resolved.id);
                     } else {
-                        this.debug(
-                            "resolveId: not resolved or not a filter match: " +
-                                source +
-                                " " +
-                                resolved?.id
-                        );
+                        // This is too verbose - it never shows anything except all the non-hlb files
+                        // this.debug(
+                        //     "resolveId: not resolved or not a filter match: " +
+                        //         source +
+                        //         " " +
+                        //         resolved?.id
+                        // );
                     }
-
+                    // if (source.match(/UnspecializedDelegate/)) {
+                    //     debugger;
+                    // }
                     return resolved;
                 }
                 // let other resolvers resolve to an absolute filename
@@ -303,6 +328,7 @@ export function heliosRollupBundler(
                     skipSelf: true,
                 });
                 if (r) resolved = r;
+
                 const id = resolved?.id || source;
                 const p = relativePath(id);
                 firstImportFrom[p] =
@@ -319,16 +345,29 @@ export function heliosRollupBundler(
                     ? ""
                     : `-${networkId}`;
 
+                // ===================================================
+                // ===================================================
+                // The resolveId handler is called twice for each .hlb.ts file:
+                //  - The first time is triggered directly by an import in the project source.
+                //     This leads to a second resolution?
+                // ===================================================
+                // ===================================================
+
                 const isPrecompiled = filterHlprecompiledImportName(id);
 
                 // debugger;
-                const packageRelativeName =
-                    // isPrecompiled
-                    //     ? name
-                    //     :
-                    `contracts${netIdSuffix}/${name}.hlb`;
-                const precompiledExportName = `${packageWithPrefix}/${packageRelativeName}`;
+                const packageRelativeName = `contracts${netIdSuffix}/${name}`;
+                const precompiledModuleFilename = `${packageRelativeName}.compiled.hlb.mjs`;
+                const packageImportName = `${packageWithPrefix}/contracts/${name}.hlb`;
+                const preconfiguredExportName = `${packageWithPrefix}/${packageRelativeName}.hlb`;
+                const precompiledExportName = `${packageWithPrefix}/${packageRelativeName}.compiled.hlb`;
 
+                const meta = {
+                    // packageRelativeName,
+                    // preconfiguredExportName,
+                    precompiledModuleFilename,
+                    precompiledExportName,
+                };
                 if (filterHlprecompiledImportName(id) || filterHLB(id)) {
                     this.debug(
                         `in resolveId: ${JSON.stringify(
@@ -338,6 +377,7 @@ export function heliosRollupBundler(
                                 isPrecompiled,
                                 name,
                                 packageRelativeName,
+                                preconfiguredExportName,
                                 precompiledExportName,
                             },
                             null,
@@ -347,6 +387,9 @@ export function heliosRollupBundler(
                 }
 
                 if (resolved && id && filterHLB(id)) {
+                    this.debug("here1")
+                    addMeta.call(this, id, meta);
+    
                     this.debug(
                         `-> resolveId ${source} (from ${relativePath(
                             importer
@@ -358,6 +401,9 @@ export function heliosRollupBundler(
                                 JSON.stringify(options)
                         );
                     }
+                    // if (source.match(/UnspecializedDelegate.hlb/)) {
+                    //     debugger;
+                    // }
 
                     if (pluginOptions.vite) {
                         // in vite, we allow resolution and loading to proceed without
@@ -370,6 +416,10 @@ export function heliosRollupBundler(
                                 resolved.id
                             )}) for Vite / vitest`
                         );
+                        // if (source.match(/UnspecializedDelegate/)) {
+                        //     debugger;
+                        // }
+
                         return resolved;
                     } else {
                         // id is now an absolute filename of a (TS or JS) helios-bundle definition.
@@ -408,6 +458,7 @@ export function heliosRollupBundler(
                         //   }
                         // ```
                         if (pluginOptions.emitBundled) {
+
                             const actualResolutionResult = await this.resolve(
                                 id,
                                 importer,
@@ -426,9 +477,15 @@ export function heliosRollupBundler(
                                 );
                                 const onHeliosSource: heliosSourceFileSeenHook =
                                     (hsId, outFile) => {
-                                        this.debug(` •  ${hsId} 👀🔍`);
                                         myDeps.add(hsId);
-                                        this.addWatchFile(hsId);
+                                        if (
+                                            !this.getWatchFiles().includes(hsId)
+                                        ) {
+                                            this.debug(
+                                                `• ${relativePath(hsId)} 👀🔍`
+                                            );
+                                            this.addWatchFile(hsId);
+                                        }
                                         addHlArtifact(hsId, outFile);
                                         addHlb(hsId, id);
                                     };
@@ -439,12 +496,21 @@ export function heliosRollupBundler(
                                         {
                                             projectRoot,
                                             onHeliosSource,
+                                            outDir: tempDir,
                                         }
                                     );
 
                                 const isMainnet = networkId === "mainnet";
 
                                 state.bundleClassById[id] = SomeBundleClass;
+                                let isPreconfigured = "preconfigured";
+                                let localMeta = {
+                                    // preconfiguredExportName,
+                                    precompiledModuleFilename,
+                                    precompiledExportName,                
+                                    // packageRelativeName,
+                                    // importer,
+                                } as any;
                                 const hlBundler: HeliosScriptBundle =
                                     SomeBundleClass.create({
                                         ...placeholderSetup,
@@ -455,7 +521,7 @@ export function heliosRollupBundler(
                                     if (
                                         state.project.capoBundleName &&
                                         state.project.capoBundleName ==
-                                        SomeBundleClass.name
+                                            SomeBundleClass.name
                                     ) {
                                         const filenameBase = id.replace(
                                             /.*\/([^.]+)\..*$/,
@@ -478,6 +544,9 @@ export function heliosRollupBundler(
                                                     "no deployment config"
                                                 )
                                             );
+                                            isPreconfigured =
+                                                "without deploy config";
+                                            localMeta = {};
                                             debugger;
                                         }
                                     }
@@ -491,13 +560,41 @@ export function heliosRollupBundler(
                                 // load/transform processing of the separate chunk.
                                 console.log(
                                     `--------------------------------------------------------------\n` +
-                                        `  -- heliosBundler: emitting ${packageRelativeName} ` +
+                                        `  -- stellar-bundler: emitting ${isPreconfigured} ${relativePath(
+                                            resolved.id
+                                        )}\n` +
+                                        `     for import("${packageImportName}") (condition = network-${networkId})` +
                                         `\n--------------------------------------------------------------\n` +
                                         ""
                                 );
+
+                                addMeta.call(this, resolved.id, localMeta);
+                                const resolvedInfo: PartialResolvedId = {
+                                    // id: preconfiguredExportName,
+                                    id: resolved.id,
+                                    meta: { stellar: localMeta },
+                                    external: false,
+                                    resolvedBy: "stellar",
+                                };
+
+                                this.debug(
+                                    `<- resolveId(${relativePath(
+                                        resolved.id
+                                    )}) = ${resolvedInfo.id}`
+                                );
+                                this.debug(
+                                    `   ^ ... with meta ${colors.green(
+                                        JSON.stringify(
+                                            resolvedInfo.meta!.stellar,
+                                            null,
+                                            24
+                                        )
+                                    )}`
+                                );
                                 this.emitFile({
                                     type: "chunk",
-                                    id: precompiledId,
+                                    // id: precompiledId,
+                                    id: resolved.id,
                                     name: packageRelativeName,
                                     importer,
                                     //XXX // now the only importer of the precompiled bundle is the original file:
@@ -505,69 +602,90 @@ export function heliosRollupBundler(
                                     // only valid for emitted assets, not chunks:
                                     // originalFileName: resolved.id,
                                 });
-                                this.debug(
-                                    `<- resolveId(${relativePath(
-                                        resolved.id
-                                    )}) = ${precompiledExportName}`
-                                );
+                                if (source.match(/CapoMinter.hlb/)) {
+                                    debugger;
+                                }
 
-                                return precompiledExportName;
+                                return resolvedInfo;
+                                // return preconfiguredExportName;
                             }
                         }
                         this.info(
-                            `<- resolveId(${relativePath(
-                                resolved?.id
-                            )}) => ${precompiledExportName} (without emitted artifacts)`
+                            `<- resolveId(${source}) => ${resolved.id}/???${preconfiguredExportName} (without emitted artifacts)` +
+                                `\n    emitBundled = ${pluginOptions.emitBundled}`
                         );
-                        // return resolved;
-                        return precompiledExportName;
+                        this.debug("here3")
+                        addMeta.call(this, resolved.id, meta);
+                        return {
+                            ...resolved,
+                            meta: { stellar: meta },
+                            external: false,
+                        };
+                        return preconfiguredExportName;
                     }
                 } else if (filterHlprecompiledImportName(id)) {
-                    this.debug(
-                        `-> resolveId for emitted bundle: ${relativePath(
-                            source
-                        )}\n   (from ${relativePath(importer)})`
-                    );
-                    // debugger;
-                    // return precompiledExportName;
+                    this.error("dead code path???");
+                    // this.debug(
+                    //     `-> resolveId for emitted bundle: ${relativePath(
+                    //         source
+                    //     )}\n   (from ${relativePath(importer)})`
+                    // );
+                    // // debugger;
+                    // // return precompiledExportName;
 
-                    if (interesting && process.env.DEBUG) {
-                        this.warn(
-                            `resolveId: got HLBundled: ${id}` +
-                                JSON.stringify(options)
-                        );
-                    }
-                    // resolving the file-to-be-emitted - it's the same file, but as a
-                    // dynamic entry-point.  We resolve it like any file, minus the ?precompiled suffix,
-                    // then load & transform as seen below.
+                    // if (interesting && process.env.DEBUG) {
+                    //     this.warn(
+                    //         `resolveId: got HLBundled: ${id}` +
+                    //             JSON.stringify(options)
+                    //     );
+                    // }
+                    // // resolving the file-to-be-emitted - it's the same file, but as a
+                    // // dynamic entry-point.  We resolve it like any file, minus the ?precompiled suffix,
+                    // // then load & transform as seen below.
 
-                    const unbundledId = id.replace(/\?precompiled$/, "");
-                    if (filterHLB(unbundledId)) {
-                        const myDeps = findOrCreateDeps(unbundledId);
-                        for (const dep of myDeps) {
-                            // bullet: •;  eyes: 👀; box: 📦
-                            this.debug(" • 👀  📦" + dep);
-                            addHlArtifact(dep, unbundledId);
-                            addHlb(dep, unbundledId);
-                            this.addWatchFile(dep);
-                        }
-                    }
-                    // this call doesn't hit the path above, or cause an infinite loop,
-                    //  because this.resolve() skips using this plugin's own resolveId hook.
-                    const result = await this.resolve(unbundledId, importer, {
-                        ...options,
-                        skipSelf: true,
-                    });
+                    // const unbundledId = id.replace(/\?precompiled$/, "");
+                    // if (filterHLB(unbundledId)) {
+                    //     const myDeps = findOrCreateDeps(unbundledId);
+                    //     for (const dep of myDeps) {
+                    //         // bullet: •;  eyes: 👀; box: 📦
+                    //         this.debug(" • 👀  📦" + dep);
+                    //         addHlArtifact(dep, unbundledId);
+                    //         addHlb(dep, unbundledId);
+                    //         this.addWatchFile(dep);
+                    //     }
+                    // }
+                    // // this call doesn't hit the path above, or cause an infinite loop,
+                    // //  because this.resolve() skips using this plugin's own resolveId hook.
+                    // const result = await this.resolve(unbundledId, importer, {
+                    //     ...options,
+                    //     skipSelf: true,
+                    // });
+                    // // debugger;
+                    // if (!result) {
+                    //     throw new Error(`can't fail here`); // for typescript narrowing
+                    // }
+                    // const resolvedWithMeta = {
+                    //     ...result,
+                    //     meta: {
+                    //         ...(result?.meta || {}),
+                    //         stellar: {
+                    //             // preconfiguredExportName,
+                    //             precompiledExportName,
+                    //             // packageRelativeName,
+                    //             // importer,
+                    //         },
+                    //     },
+                    // };
+
+                    // this.debug(
+                    //     `<- resolveId (${relativePath(result!.id)}) = ${
+                    //         result!.id
+                    //     } with meta ${JSON.stringify(
+                    //         resolvedWithMeta.meta.stellar
+                    //     )}`
+                    // );
                     // debugger;
-                    if (!result) {
-                        throw new Error(`can't fail here`); // for typescript narrowing
-                    }
-                    this.debug(
-                        `<- resolveId (${relativePath(
-                            result!.id
-                        )}) for precompiled contracts`
-                    );
-                    return result;
+                    // return resolvedWithMeta;
                 } else {
                     if (
                         id.match(/hlb/) &&
@@ -582,9 +700,15 @@ export function heliosRollupBundler(
                         debugger;
                         //no-op, but helpful for debugging:
                         filterHLB(id); // trace into here to see what's up with the filter
+
+
                         return null;
                     }
                 }
+
+                // this responds to files that aren't handled by this plugin.
+                //  no verbose logging about those, unless you're just doing
+                // some sanity-checking for the logic above.
                 // this.debug(`<- resolveId (${source}) verbatim result`)
                 return resolved;
             },
@@ -638,22 +762,37 @@ export function heliosRollupBundler(
                 } else {
                     this.debug(`-> load: ${relativePath(id)}`);
                 }
+                // const info = this.getModuleInfo(id)! as any;
+                // if (!info?.stellar) {
+                //     debugger
+                //     this.warn("incontheeivable!  (at A) No stellar module info for " + id);
+                // }
+                // const {
+                //     preconfiguredExportName,
+                //     precompiledExportName,
+                //     packageRelativeName,
+                //     importer,
+                // } = info.meta.stellar as any;
 
                 // ->  todo: load an existing bundle if it's already compiled, and ask that class to
                 // ->   check its sources for changes, so we can skip rollup and recompilation if
                 // ->   things are already up-to-date.
                 let SomeBundleClass = state.bundleClassById[id];
 
-                // bullet: • ; eyes: 👀
-                this.debug(`watch: ${id} 👀 👜`);
-                this.addWatchFile(id);
+                // bullet: • ; eyes: 👀; numeral 1: 1️⃣ for the entry point
+                if (!this.getWatchFiles().includes(id)) {
+                    this.debug(`• ${relativePath(id)} 👀 1️⃣ 👜`);
+                    this.addWatchFile(id);
+                }
                 const myDeps = findOrCreateDeps(id);
                 const onHeliosSource: heliosSourceFileSeenHook = (
                     heliosSourceId,
                     outputFile
                 ) => {
-                    this.debug(`  • ${heliosSourceId} 👀 👜`);
-                    this.addWatchFile(heliosSourceId);
+                    if (!this.getWatchFiles().includes(heliosSourceId)) {
+                        this.addWatchFile(heliosSourceId);
+                        this.debug(`• ${relativePath(heliosSourceId)} 👀 👜`);
+                    }
                     addHlArtifact(heliosSourceId, outputFile);
                     addHlb(heliosSourceId, id);
                     myDeps.add(heliosSourceId);
@@ -661,27 +800,28 @@ export function heliosRollupBundler(
                 if (!SomeBundleClass) {
                     if (pluginOptions.emitBundled) {
                         this.warn(
-                            `heliosBundler: missing expected bundleClass for ${id} (debugging breakpoint available)`
+                            `stellar-bundler: missing expected bundleClass for ${id} (debugging breakpoint available)`
                         );
                         debugger;
                     }
                     SomeBundleClass = await rollupCreateHlPrecompiledClass(id, {
                         projectRoot,
                         onHeliosSource,
+                        outDir: tempDir,
                     });
                     const { hash, afterDelay } = SomeBundleClass;
-                    this.debug(
-                        `      created class ${colors.cyanBright(
-                            SomeBundleClass.name
-                        )} from ${id} ${hash} ${afterDelay}s`
-                    );
+                    // this.debug(
+                    //     `  -- created helper class ${colors.cyanBright(
+                    //         SomeBundleClass.name
+                    //     )} for type-gen from ${relativePath(id)} ${hash} ${afterDelay}s`
+                    // );
                 }
 
                 const relativeFilename = path.relative(projectRoot, id);
                 this.debug(
-                    `   👁️  checking helios script bundle ${
+                    `   👁️  checking helios script bundle ${colors.green(
                         SomeBundleClass.name
-                    } for ${colors.cyanBright("type-gen needs")}`
+                    )} for ${colors.cyanBright("type-gen needs")}`
                 );
 
                 let bundle = SomeBundleClass.create({
@@ -785,7 +925,7 @@ export function heliosRollupBundler(
                             !state.capoBundle
                         ) {
                             console.log(
-                                `looks like you're using the default Capo bundle! ${capoName}`
+                                `  -- no special Capo registered... using the default Capo bundle ${capoName}`
                             );
                             state.project.capoBundleName = capoName;
 
@@ -880,17 +1020,21 @@ export function heliosRollupBundler(
                     looksLikeCapo = null;
                 const myDeps = findOrCreateDeps(id);
                 if (myDeps.size > 0) {
-                    this.debug(
-                        `watching helios sources\n` +
-                            Array.from(myDeps)
-                                .map(
-                                    // bullet: • ; eyes: 👀
-                                    (dep) => `   • ${relativePath(dep)}`
-                                )
-                                .join("\n")
-                    );
+                    // this.debug(
+                    //     `watching helios sources\n` +
+                    //         Array.from(myDeps)
+                    //             .map(
+                    //                 // bullet: • ; eyes: 👀
+                    //                 (dep) => `   • ${relativePath(dep)}`
+                    //             )
+                    //             .join("\n")
+                    // );
                     for (const dep of myDeps) {
-                        this.addWatchFile(dep);
+                        if (!this.getWatchFiles().includes(dep)) {
+                            this.addWatchFile(dep);
+                            // jekyll/hyde (transform) emoji :🧟
+                            this.debug(`• ${relativePath(dep)} 👀 🧟`);
+                        }
                     }
                 } else {
                     this.warn(`----- no dependencies registered for ${id}`);
@@ -913,6 +1057,7 @@ export function heliosRollupBundler(
                     this.debug(`<- transform: no emitBundle, skipping config`);
                     return null;
                 }
+
                 if (looksLikeCapo) {
                     if (!code.match(capoConfigRegex)) {
                         if (SomeBundleClass.isAbstract == true) {
@@ -1007,7 +1152,7 @@ export function heliosRollupBundler(
             });
 
             const { CapoMinterBundle } = await import(
-                "@donecollectively/stellar-contracts/contracts/CapoMinter.hlb"
+                "@donecollectively/stellar-contracts/contracts/CapoMinter"
             );
             const minterBundler: HeliosScriptBundle =
                 await CapoMinterBundle.create({
@@ -1038,10 +1183,26 @@ export function heliosRollupBundler(
             this.debug(
                 `emitting ${colors.cyanBright("precompiled scripts")} for ${id}`
             );
-            // return {
-            const refId = this.emitFile({
+
+            
+            const info = this.getModuleInfo(id)! as any;
+            if (!info?.stellar) {
+                debugger;
+                this.warn(
+                    "incontheeivable!  (at B) No stellar module info for " + id
+                );
+            }
+            const {
+                // preconfiguredExportName,
+                precompiledModuleFilename,
+                precompiledExportName,
+                // packageRelativeName,
+                // importer,
+            } = info.meta.stellar as any;
+            
+            this.emitFile({
                 type: "prebuilt-chunk",
-                fileName: `${id}.precompiled.js`,
+                fileName: precompiledModuleFilename,
                 exports: ["precompiled"],
                 code: `export const precompiled = {
                         capo: ${JSON.stringify(programBundle)},
@@ -1050,10 +1211,6 @@ export function heliosRollupBundler(
                     export default precompiled;
                     `,
             });
-            // };
-            // }
-
-            const capoModuleName = `import.meta.ROLLUP_FILE_URL_${refId}`;
 
             const typedDeployDetailsText = `{
         capo: {
@@ -1075,26 +1232,20 @@ export function heliosRollupBundler(
             // deployDetails.capo.scriptHash = hexToBytes(scriptHash);
             // deployDetails.capo.programBundle = programBundle;
 
-            const _i = "    ";
-            const _ii = _i + _i;
-            const _iii = _ii + _i;
-
             const lazyLoader =
-                `\n${_iii}async loadPrecompiledCapo() {\n` +
-                _ii +
-                `const module = await import(${capoModuleName});\n` +
-                _ii +
-                `return module.precompiled.capo;\n` +
-                _i +
-                `}\n\n` +
-                _i +
-                `async loadPrecompiledMinter() {\n` +
-                _ii +
-                `const module = await import(${capoModuleName});\n` +
-                _ii +
-                `return module.precompiled.minter;\n` +
-                _i +
-                `}\n\n`;
+                `\n${_i_(`async loadPrecompiledCapo() {\n`)}` +
+                _ii__(
+                    `const module = await import(${precompiledExportName});\n`
+                ) +
+                _ii__(`return module.precompiled.capo;\n`) +
+                _i_(`}\n\n`) +
+                _i_(`async loadPrecompiledMinter() {\n`) +
+                _ii__(
+                    `const module = await import(${precompiledExportName});\n`
+                ) +
+                _ii__(`return module.precompiled.minter;\n`) +
+                _i_(`}\n\n`);
+
             const s = new MagicString(code);
             s.replace(
                 capoConfigRegex,
@@ -1285,15 +1436,40 @@ export function heliosRollupBundler(
             }
 
             const baseFilename = id.replace(/.*\/(.*\.hlb).[jt]s$/, "$1");
-            const prebuiltFilename = `contracts-preprod/${baseFilename}.compiled.mjs`;
+            const info = this.getModuleInfo(id)! as any;
+            if (!info?.meta.stellar) {
+                {
+                    // for troubleshooting
+                    debugger;
+                    this.getModuleInfo(id)! as any;
+                }
+
+                this.debug(
+                    `incontheeivable! (at C) ${colors.magenta(
+                        "No stellar module info for " + id
+                    )}`
+                );
+                this.warn(
+                    "incontheeivable! (at C) No stellar module info for " + id
+                );
+            }
+            const {
+                // preconfiguredExportName,
+                precompiledModuleFilename,
+                precompiledExportName,
+                // packageRelativeName,
+                // importer,
+            } = info.meta.stellar as any;
+
             this.debug(
                 `emitting ${colors.cyanBright(
-                    "prebuilt script"
-                )}: ${prebuiltFilename}`
+                    "prebuilt contracts"
+                )} in ${precompiledExportName}`
             );
             const refId = this.emitFile({
                 type: "prebuilt-chunk",
-                fileName: prebuiltFilename,
+                fileName: precompiledModuleFilename,
+                // fileName: prebuiltFilename,
                 exports: ["precompiled"],
                 code: `export const precompiled = ${JSON.stringify(
                     precompiledVariants,
@@ -1303,37 +1479,37 @@ export function heliosRollupBundler(
                     export default precompiled;
                     `,
             });
-            const _i = "    "; // indent
-            const _ii = _i + _i;
-            const _iii = _ii + _i;
-            const precompiledModuleName = `import.meta.ROLLUP_FILE_URL_${refId}`;
-            const precompiledScriptDetails = `${_i}precompiledScriptDetails = ({\n${Object.entries(
-                precompiledScriptInfo
-            )
-                .map(([vName, vSrc]) => `${_iii + vName}: ${vSrc},\n`)
-                .join("")}${_i}})\n\n`;
+            const precompiledScriptDetails =
+                _i_(`precompiledScriptDetails = ({\n`) +
+                Object.entries(precompiledScriptInfo)
+                    .map(([vName, vSrc]) => _iii___(`${vName}: ${vSrc},\n`))
+                    .join("") +
+                _i_(`})\n\n`);
 
+            debugger;
+            const asyncLoader = `const module = await import("${precompiledExportName}");\n`;
+            const badVariant = `throw new Error(\`unknown variant: \${variant}\`);\n`;
             const precompiledScriptLoader =
-                _i +
-                `async loadPrecompiledVariant(variant: string) {\n` +
-                _ii +
-                `const module = await import(${precompiledModuleName});\n` +
-                _ii +
-                `const foundVariant = module.variants[variant];\n` +
-                _ii +
-                `if (!foundVariant) throw new Error(\`unknown variant: \${variant}\`);\n\n` +
-                _ii +
-                `return foundVariant;\n` +
-                _i +
-                `}\n\n`;
+                _i_(`async loadPrecompiledVariant(variant: string) {\n`) +
+                _ii__(asyncLoader) +
+                _ii__(`const foundVariant = module.precompiled[variant];\n`) +
+                _ii__(`if (!foundVariant) {\n`) +
+                _iii___(badVariant) +
+                _ii__(`}\n`) +
+                _ii__(`return foundVariant;\n`) +
+                _i_(`}\n\n`);
+            // _iii +
+            // `// no side effect: prevent the precompiled module from being tree-shaken out\n` +
+            // _iii +
+            // `await import(${precompiledModuleName});\n` +
 
             s.replace(regex, (_match, specializedDelegateModule, getMain) => {
                 this.debug(`[transform] -- inserting pre-compiled script`);
                 const existing = specializedDelegateModule || getMain;
-                return `${precompiledScriptDetails}\n${precompiledScriptLoader}   ${existing}`;
+                return `\n${precompiledScriptDetails}\n\n${precompiledScriptLoader}   ${existing}`;
             });
 
-            // console.log(s.toString())
+            // console.log(s.toString());
             this.debug(
                 `<- transform: non-capo w/ ${scriptCount} compiled script(s)${skipMsg}`
             );
@@ -1407,4 +1583,14 @@ https://nodejs.org/docs/latest-v22.x/api/packages.html#conditional-exports
 }
 `;
     }
+}
+
+function _i_(x: string) {
+    return "    " + x;
+} // indent
+function _ii__(x: string) {
+    return _i_(_i_(x));
+}
+function _iii___(x: string) {
+    return _ii__(_i_(x));
 }
