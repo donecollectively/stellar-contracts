@@ -391,15 +391,17 @@ describe("Capo", async () => {
             expect(nextTestDataHash).toBeTruthy();
             expect(nextTestData2Hash).toBeTruthy();
 
-            const prevTestDataScript = await prevTestDataController.getBundle()!.compiledScript(true);
+            const prevBundle = await prevTestDataController.getBundle();
+            const prevTestDataScript = await prevBundle!.compiledScript(true);
             const prevTestDataHash = makeValidatorHash(prevTestDataScript.hash());
-            const prevTestData2Script = await prevTestData2Controller.getBundle()!.compiledScript(true);
+            const prevTestData2Script = await prevBundle!.compiledScript(true);
             const prevTestData2Hash = makeValidatorHash(prevTestData2Script.hash());
             expect(nextTestDataHash!.isEqual(prevTestDataHash)).toBeFalsy();
             expect(nextTestData2Hash!.isEqual(prevTestData2Hash)).toBeFalsy();
 
-            const nextTestDataScript = await nextTestDataController.getBundle()!.compiledScript(true);
-            const nextTestData2Script = await nextTestData2Controller.getBundle()!.compiledScript(true);
+            const nextBundle = await nextTestDataController.getBundle();
+            const nextTestDataScript = await nextBundle!.compiledScript(true);
+            const nextTestData2Script = await nextBundle!.compiledScript(true);
             const nextTestDataHash2 = makeValidatorHash(nextTestDataScript.hash());
             const nextTestData2Hash2 = makeValidatorHash(nextTestData2Script.hash());
             expect(nextTestDataHash!.isEqual(nextTestDataHash2)).toBeTruthy();

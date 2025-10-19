@@ -91,11 +91,12 @@ type AbstractStoredDataLike = DelegateDatum$capoStoredDataLike;
 /**
  * @public
  */
-export type GenericDelegateDatum = Pick<
-    ErgoDelegateDatum,
-    "Cip68RefToken" | "IsDelegation"
-> & {
-    capoStoredData?: { // !!! was optional!  --> does this cause any problems if required?
+export type GenericDelegateDatum = Partial<
+    Pick<
+        ErgoDelegateDatum,
+        "Cip68RefToken" | "IsDelegation"
+>> & {
+    capoStoredData?: { 
         data: AnyDataTemplate<any,any>;
         version: bigint;
         otherDetails: unknown;

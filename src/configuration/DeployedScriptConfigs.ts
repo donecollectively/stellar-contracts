@@ -44,12 +44,14 @@ export function mkCapoDeployment({
     capo,
 }: // scripts,
 Required<CapoDeployedDetails<"json">>) {
-    const { config, programBundle } = capo;
+    const {
+        config,
+        // programBundle
+    } = capo;
     return {
         // scripts,
         capo: {
             config: parseCapoJSONConfig(config),
-            programBundle,
         } as DeployedScriptDetails<CapoConfig, "native">,
     };
 }
@@ -78,8 +80,7 @@ export function mkDelegateDeployment(
  */
 export type CapoDeployedDetails<form extends "json" | "native" = "native"> = {
     capo?: DeployedScriptDetails<CapoConfig, form>;
-    minter? : DeployedScriptDetails<BasicMinterParams, form>
-    isNullDeployment?: boolean;
+    minter?: DeployedScriptDetails<BasicMinterParams, form>;
 };
 
 /**
@@ -119,24 +120,10 @@ export type ScriptDeployments =
 export type DeployedScriptDetails<
     CT extends configBaseWithRev = configBaseWithRev,
     form extends "json" | "native" = "native"
-> =
-    | {
-          config: form extends "json" ? any : CT;
-          scriptHash?: number[];
-          programBundle?: DeployedProgramBundle;
-      }
-    | RequiredDeployedScriptDetails<CT>;
-
-/**
- * @public
- */
-export type RequiredDeployedScriptDetails<
-    CT extends configBaseWithRev,
-    form extends "json" | "native" = "native"
 > = {
     config: form extends "json" ? any : CT;
-    programBundle: DeployedProgramBundle;
-    scriptHash?: string;
+    scriptHash?: number[];
+    //   programBundle?: DeployedProgramBundle;
 };
 
 /**

@@ -16,5 +16,7 @@ import type { CapoDeployedDetails } from "./DeployedScriptConfigs.js";
  */
 export const capoConfigurationDetails : CapoDeployedDetails<"native"> = Object.freeze({
     capo: undefined,
-    isNullDeployment: true,
+    //@ts-ignore - this is simply for nosy developers who may be looking under the hoold
+    isConfigPlaceholder: true,
+    // in real life, this is replaced by a real deployment configuration in the stellar rollup plugin
 });

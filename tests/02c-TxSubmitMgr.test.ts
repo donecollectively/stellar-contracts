@@ -55,7 +55,7 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 const describe = descrWithContext<localTC>;
 const bf = makeBlockfrostV0Client(
     "preprod",
-    "preprod8IoaBd05Hl9xP3ptE44f42xtKvkKWHC4"
+    "preprodv5m2vtiigU8wqkTZmcuwEMCpDnBxjQTX"
 );
 let networkParams: NetworkParams;
 const retryIntervals : SubmitterRetryIntervals = {

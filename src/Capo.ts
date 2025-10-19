@@ -336,10 +336,6 @@ export abstract class Capo<
         return readDatum as (x: UplcData) => CapoDatumLike as any;
     }
 
-    verifyConfigs(): Promise<any> {
-        return this.verifyCoreDelegates();
-    }
-
     async getBundle() {
         return super.getBundle() as Promise<CapoHeliosBundle>;
     }
@@ -423,42 +419,47 @@ export abstract class Capo<
                 : ({ config: otherConfig } as any)),
         });
 
-        const {
-            scriptDatumName: onChainDatumName,
-            scriptActivitiesName: onChainActivitiesName,
-        } = this;
-
-        const { CharterData } = this.onChainDatumType.typeMembers;
-
         const updatingCharter = this.activity.updatingCharter;
         // this.mustGetActivity("updatingCharter");
         const usingAuthority = this.activity.usingAuthority;
         // this.mustGetActivity("usingAuthority");
 
-        if (!CharterData)
-            throw new Error(
-                `datum type ${onChainDatumName} must have a 'CharterData' variant`
-            );
-        if (!updatingCharter)
-            throw new Error(
-                `activities type ${onChainActivitiesName} must have a 'updatingCharter' variant`
-            );
-        if (!usingAuthority)
-            throw new Error(
-                `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
-            );
+        if (!updatingCharter || !usingAuthority) {
+            await this.getBundle()
+            this._bundle!.loadProgram()
+
+            const {
+                scriptDatumName: onChainDatumName,
+                scriptActivitiesName: onChainActivitiesName,
+            } = this;
+
+            const { CharterData } = this.onChainDatumType.typeMembers;
+
+            if (!CharterData)
+                throw new Error(
+                    `datum type ${onChainDatumName} must have a 'CharterData' variant`
+                );
+            if (!updatingCharter)
+                throw new Error(
+                    `activities type ${onChainActivitiesName} must have a 'updatingCharter' variant`
+                );
+            if (!usingAuthority)
+                throw new Error(
+                    `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
+                );
+        }
 
         const bundle = await this.getBundle();
         let seedTxn: TxId | undefined = undefined;
         let seedIndex: bigint = 0n;
         let {
             configuredParams,
-            preConfigured: {
-                minter: {
+            precompiledScriptDetails: {
+                minter: {                    
                     config: minterConfig,
-                    programBundle: minterProgramBundle,
+                    // programBundle: minterProgramBundle,
                 } = {},
-            },
+            }={},
         } = bundle;
 
         let expectedMph: MintingPolicyHash | undefined = undefined;
@@ -473,14 +474,16 @@ export abstract class Capo<
         }
 
         if (seedTxn) {
-            await this.connectMintingScript(minterConfig, minterProgramBundle);
+            await this.connectMintingScript(
+                minterConfig
+            );
         }
 
         //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
         this._delegateRoles = this.initDelegateRoles();
 
         if (seedTxn) {
-            await this.verifyConfigs();
+            await this.verifyCoreDelegates();
         }
 
         // //@ts-expect-error - trust the subclass's initDelegatedDatumAdapters() to be type-matchy
@@ -907,6 +910,12 @@ export abstract class Capo<
     // }
 
     get mph() {
+        if (!this._bundle?.configuredScriptDetails && !this.minter) {
+            throw new Error("Can't get mph until either the minter or a pre-configured bundle is available")
+        }
+        if (this._bundle?.configuredScriptDetails) {
+            return (this._bundle.configuredScriptDetails.config as CapoConfig).mph
+        }
         return this.minter.mintingPolicyHash!;
     }
 
@@ -1222,11 +1231,18 @@ export abstract class Capo<
         params: SeedTxnScriptParams,
         programBundle?: DeployedProgramBundle
     ): Promise<CapoMinter> {
-        if (this.minter)
-            throw new Error(`just use this.minter when it's already present`);
+        if (this.minter) return this.minter;
         const { minterClass } = this;
         const { seedTxn, seedIndex } = params;
         const bundle = await this.getBundle();
+
+        // this should ***connect*** the minter to the capo,  without forcing
+        // the minter's script to be compiled or loaded.  Still, it will have
+        // the key configuration details such as its minting policy hash,
+        // so that we can perform all kinds of off-chain activities while
+        // deferring the costs of actually loading that on-chain script into
+        // memory.
+        // programBundle = await bundle.loadPrecompiledMinterScript()
         const { mph: expectedMph, rev } = (await bundle.configuredParams) ||
             this.configIn || {
                 mph: undefined,
@@ -1236,6 +1252,7 @@ export abstract class Capo<
             rev,
             seedTxn,
             seedIndex,
+            mph: expectedMph,
             capo: this,
         };
         // the minter can't be upgraded, so the previousOnchainScript arg isn't relevant

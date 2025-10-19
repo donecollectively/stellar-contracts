@@ -338,11 +338,12 @@ export type StellarSetupDetails<CT extends configBaseWithRev> = {
 export type SetupOrMainnetSignalForBundle = Partial<
     Omit<SetupInfo, "isMainnet">
 > &
-    Required<Pick<SetupInfo, "isMainnet">> & { isPlaceholder?: any };
+    Required<Pick<SetupInfo, "isMainnet">>
 
 export type StellarBundleSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupOrMainnetSignalForBundle;
-    placeholderAt?: string;
+    scriptParamsSource?: "config" | "bundle" | "none";
+    originatorLabel?: string;
     previousOnchainScript?: {
         validatorHash: number[];
         uplcProgram: anyUplcProgram;
@@ -557,8 +558,7 @@ export class StellarContract<
         if (!this._bundle) {
             this._bundle = await this.scriptBundle();
             if (
-                this._bundle.preCompiled &&
-                !this._bundle.preCompiled.singleton
+                !this._bundle.configuredScriptDetails
             ) {
             }
             if (!this._bundle._didInit) {
@@ -704,7 +704,7 @@ export class StellarContract<
                 console.error(e);
                 debugger;
             }
-            if (this._bundle) {
+            if (this._bundle?._program) {
                 const datumType = this._bundle.locateDatumType();
                 if (datumType) {
                     // verifies that the dataBridge ALSO has a datum-type
@@ -867,26 +867,6 @@ export class StellarContract<
             }
         }
         configuredNetwork = chosenNetwork;
-        if (actorContext.wallet) {
-            const walletIsMainnet = await actorContext.wallet.isMainnet();
-            const foundNetwork = walletIsMainnet
-                ? "mainnet"
-                : "a testnet (preprod/preview)";
-            const chosenNetworkLabel = isMainnet
-                ? "mainnet"
-                : "a testnet (preprod/preview)";
-            if (walletIsMainnet !== isMainnet) {
-                const message = `The wallet is connected to ${foundNetwork}, doesn't match this app's target network  ${chosenNetworkLabel}`;
-                if (chosenNetwork == "mainnet") {
-                    console.log(
-                        `${message}\n   ... have you provided env.TESTNET to the build to target a testnet?`
-                    );
-                }
-                throw new Error(message);
-            }
-            // redundant
-            this.actorContext = actorContext;
-        }
 
         // the config comes from...
         //  - a Stellar SaaSaaS configuration handle
@@ -915,13 +895,46 @@ export class StellarContract<
 
         const {
             config,
-            partialConfig,
+            partialConfig : pCfg,
             programBundle,
             previousOnchainScript,
-            previousOnchainScript: { validatorHash, uplcProgram } = {},
+            previousOnchainScript: { 
+                validatorHash, 
+                uplcProgram,                
+            } = {},
         } = args;
-        this.partialConfig = partialConfig;
         this.configIn = config;
+        
+        let partialConfig : typeof pCfg = undefined
+        if (pCfg && Object.keys(pCfg).length == 0) {
+            debugger;
+            console.warn(`${this.constructor.name}: ignoring empty partialConfig; change the upstream code to leave it out`);
+        } else {
+            partialConfig = pCfg;
+        }
+        this.partialConfig = partialConfig;
+        
+        if (actorContext.wallet) {
+            const walletIsMainnet = await actorContext.wallet.isMainnet();
+            const foundNetwork = walletIsMainnet
+                ? "mainnet"
+                : "a testnet (preprod/preview)";
+            const chosenNetworkLabel = isMainnet
+                ? "mainnet"
+                : "a testnet (preprod/preview)";
+            if (walletIsMainnet !== isMainnet) {
+                const message = `The wallet is connected to ${foundNetwork}, doesn't match this app's target network  ${chosenNetworkLabel}`;
+                if (chosenNetwork == "mainnet") {
+                    console.log(
+                        `${message}\n   ... have you provided env.TESTNET to the build to target a testnet?`
+                    );
+                }
+                throw new Error(message);
+            }
+            // redundant
+            this.actorContext = actorContext;
+        }
+
 
         if (uplcProgram) {
             // with a rawProgram, the contract script is used directly
@@ -930,6 +943,7 @@ export class StellarContract<
             const b = await this.scriptBundle();
             this._bundle = b.withSetupDetails({
                 setup: this.setup,
+                scriptParamsSource: "config",
                 previousOnchainScript: previousOnchainScript,
                 // params: this.getContractScriptParams(config),
                 // deployedDetails: {
@@ -966,12 +980,14 @@ export class StellarContract<
                         `  -- 🐞🐞🐞 🐞 ${this.constructor.name}: no programBundle; will use JIT compilation`
                     );
                 }
-                this._bundle = genericBundle.withSetupDetails({
+                const specificBundle = genericBundle.withSetupDetails({
                     ...params,
                     setup: this.setup,
                     deployedDetails,
                     variant,
                 });
+                // if (specificBundle.
+                this._bundle = specificBundle;
                 // await this.prepareBundleWithScriptParams(params);
             } else if (partialConfig) {
                 // if (this.canPartialConfig) {
@@ -995,12 +1011,11 @@ export class StellarContract<
                 if (bundle.setup && bundle.configuredParams) {
                     try {
                         // eager compile for early feedback on errors
-                        this._compiledScript = await bundle.compiledScript(
-                            true
-                        );
+                        if (process.env.NODE_ENV == "development") {
+                            bundle.program
                     } catch (e: any) {
                         console.warn(
-                            "while setting compiledScript: ",
+                            "while loading program: ",
                             e.message
                         );
                     }
@@ -1014,11 +1029,11 @@ export class StellarContract<
             const bundle = await this.getBundle();
             if (bundle.isPrecompiled) {
                 console.log(
-                    `${bundle.displayName}: will use precompiled script on-demand`
+                    `${bundle.displayName}: will load the precompiled on-chain policy on-demand`
                 );
                 // this.compiledScript = await bundle.compiledScript();
             } else if (bundle.scriptParamsSource == "config") {
-                console.log(
+                console.error(
                     `${this.constructor.name}: not preconfigured; will use JIT compilation`
                 );
             } else if (bundle.scriptParamsSource == "bundle") {
@@ -1043,6 +1058,7 @@ export class StellarContract<
     }
 
     async asyncCompiledScript() {
+        if (this._compiledScript) return this._compiledScript;
         const b = await this.getBundle();
         const s = await b.compiledScript(true);
         this._compiledScript = s;
@@ -1068,8 +1084,11 @@ export class StellarContract<
         if (vh) return vh;
         // console.log(this.constructor.name, "cached vh", vh?.hex || "none");
 
-        // debugger
-        const nvh = this.compiledScript.hash();
+        // validator hash is the same as the script hash
+        if (this._bundle?.configuredScriptDetails?.scriptHash) {
+            return this._cache.vh = makeValidatorHash(this._bundle.configuredScriptDetails.scriptHash)
+        }
+        throw new Error("bundle not initialized with getBundle() before getting validatorHash")
         // console.log("nvh", nvh.hex);
         // if (vh) {
         //     if (!vh.eq(nvh)) {
@@ -1077,7 +1096,7 @@ export class StellarContract<
         //         debugger
         //     }
         // }
-        return (this._cache.vh = makeValidatorHash(nvh));
+        // return (this._cache.vh = makeValidatorHash(nvh));
     }
 
     //  todo: stakingAddress?: Address or credential or whatever;
@@ -1122,7 +1141,11 @@ export class StellarContract<
         const { mph } = this._cache;
         if (mph) return mph;
         // console.log(this.constructor.name, "_mph", this._mph?.hex || "none");
-        const nMph = makeMintingPolicyHash(this.compiledScript.hash());
+        const hash = this._bundle?.configuredScriptDetails?.scriptHash
+        if (!hash) {
+            throw new Error("bundle not initialized with getBundle() before getting mintingPolicyHash")
+        }
+        const nMph = makeMintingPolicyHash(hash);
         // console.log("nMph", nMph.hex);
         // if (this._mph) {
         //     if (!this._mph.eq(nMph)) {
@@ -1504,7 +1527,7 @@ export class StellarContract<
 
         if (
             !bundle.setup ||
-            bundle.setup.isPlaceholder ||
+            bundle.setupDetails.originatorLabel ||
             !bundle.configuredUplcParams
         ) {
             // serves capo's bootstrap in mkTxnMintCharterToken()
@@ -1513,6 +1536,7 @@ export class StellarContract<
             bundle = this._bundle = bundle.withSetupDetails({
                 params,
                 setup: this.setup,
+                scriptParamsSource: "config",
             });
         }
         // this._compiledScript = await bundle.compiledScript(true);

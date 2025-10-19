@@ -1,7 +1,7 @@
 import type { Source } from "@helios-lang/compiler-utils";
 import { CapoHeliosBundle } from "../helios/scriptBundling/CapoHeliosBundle.js";
 import type { CapoConfig } from "../CapoTypes.js";
-import type { RequiredDeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
+import type { DeployedScriptDetails } from "../configuration/DeployedScriptConfigs.js";
 import { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
 import { HeliosScriptBundle } from "../helios/scriptBundling/HeliosScriptBundle.js";
 
@@ -23,7 +23,7 @@ import type { StellarBundleSetupDetails } from "../StellarContract.js";
  **/
 export class CapoMinterBundle 
 extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
-    scriptParamsSource = "config" as const
+    scriptParamsSource: "config" | "bundle" = "config"
     //pro-forma to make TypeScript happy
     requiresGovAuthority = true;
 
@@ -55,7 +55,7 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
             }
             return undefined
         }
-        const capoConfig = (configuredScriptDetails as RequiredDeployedScriptDetails<CapoConfig>).config
+        const capoConfig = (configuredScriptDetails as DeployedScriptDetails<CapoConfig>).config
         const {
             mph,
             seedTxn,
@@ -91,6 +91,23 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     // get modules() {
     //     return [...this.capoBundle.modules];
     // }
+
+    init(setupDetails: StellarBundleSetupDetails<any>) {
+        const {capo} = setupDetails.params || {}
+        if (capo?._bundle) {
+            this.capoBundle = capo._bundle;
+        }
+        const {minter: minterDetails} = this.capoBundle.precompiledScriptDetails || {}
+        if (minterDetails) {
+            this.precompiledScriptDetails = {
+                singleton: minterDetails
+            }
+            this.configuredScriptDetails = minterDetails
+            this.scriptParamsSource = "bundle"
+        }
+        super.init(setupDetails)
+    }
+
 }
 
 export default CapoMinterBundle

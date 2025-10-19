@@ -51,6 +51,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         public collaborator?: TypeGenHooks<any>
     ) {
         this.namedTypes = {};
+        this.bundle.loadProgram();
         const dataTypes = (this.topLevelDataTypes =
             this.bundle.getTopLevelTypes());
         this.topLevelTypeDetails = this.gatherTopLevelTypeDetails(dataTypes);

@@ -12,15 +12,10 @@ import CapoHelpers from "../../CapoHelpers.hl";
 import TypeMapMetadata from "../../TypeMapMetadata.hl";
 import mainContract from "../../DefaultCapo.hl";
 
-import {
-    parseCapoJSONConfig,
-    parseCapoMinterJSONConfig,
-    type AllDeployedScriptConfigs,
-    type CapoDeployedDetails,
-    type DeployedScriptDetails,
-} from "../../configuration/DeployedScriptConfigs.js";
 import type { StellarBundleSetupDetails } from "../../StellarContract.js";
 import type { AbstractNew } from "../typeUtils.js";
+import { parseCapoJSONConfig, parseCapoMinterJSONConfig, type CapoDeployedDetails, type DeployedScriptDetails } from "../../configuration/DeployedScriptConfigs.js";
+import type { capoConfigurationDetails } from "../../configuration/DefaultNullCapoDeploymentConfig.js";
 
 export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
 
@@ -36,14 +31,14 @@ export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
  * @public
  */
 export class CapoHeliosBundle extends HeliosScriptBundle {
-    configuredScriptDetails?: DeployedScriptDetails;
-    static isPreconfigured = false;
-    preConfigured: CapoDeployedDetails<any> = {capo: undefined};
+    preConfigured?: typeof capoConfigurationDetails
+    precompiledScriptDetails?: CapoDeployedDetails<any> = {capo: undefined};
     scriptParamsSource = "config" as const
     requiresGovAuthority = true;
 
     get hasAnyVariant() {
         if (this.preConfigured?.capo?.config) return true;
+        throw new Error("can we live without configuredUplcParams before accessing program?")
         if (this.configuredUplcParams) return true;
 
         return false
@@ -58,46 +53,68 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     }
 
     init(setupDetails: StellarBundleSetupDetails<any>) {
+        const {setup} = setupDetails
+
         let deployedDetails : DeployedScriptDetails | undefined;
         
-        if (this.preConfigured.capo) {
-            this.configuredScriptDetails = deployedDetails = this.preConfigured.capo
+        if (this.precompiledScriptDetails?.capo) {
+            this.configuredScriptDetails = deployedDetails = this.precompiledScriptDetails.capo
             const {
-                config, programBundle
+                config={} as any, 
+                // programBundle
             } = deployedDetails;
-            if (!programBundle) throw new Error(`${this.constructor.name} missing deployedDetails.programBundle`);
-            // if (!scriptHash) throw new Error(`${this.constructor.name}: missing deployedDetails.scriptHash`);
-
-            this.preCompiled = { singleton: { programBundle, config } };
         } else if (setupDetails.deployedDetails) {
             this.configuredScriptDetails = deployedDetails = setupDetails.deployedDetails
         } else if (!this.configuredScriptDetails) {
             
             console.warn(`no script details configured for ${this.constructor.name} (dbpa)`)
         }
+        this._didInit = true;
+    }
 
-        const hasParams = deployedDetails?.config || setupDetails.params
+    initProgramDetails() {
+        const {configuredScriptDetails} = this;
+
+        const hasParams = configuredScriptDetails?.config || this.setupDetails.params
         const uplcParams = hasParams ? this.paramsToUplc(hasParams) : undefined
 
         if (hasParams) {
             this.configuredParams = hasParams
             this.configuredUplcParams = uplcParams
         }
-        this._didInit = true;
     }
 
     get isPrecompiled() {
-        return !!this.preConfigured?.capo?.programBundle;
+        const t = super.isPrecompiled
+        // the `preConfigured` entry, built by the stellar rollup bundler,
+        // signals that the script is precompiled.  The actual compiled script
+        // is loaded separately, but this provide the key signal of its its presence.
+        const hasScriptHash = !!this.precompiledScriptDetails?.capo?.scriptHash;
+        if (t !== hasScriptHash) {
+            debugger
+            throw new Error("surprise! this code path is used: isPrecompiled() - precompiledScriptDetails mismatch (dbpa)")
+            // ^^ if this never happens, then we don't need this method
+        }
+        return t
     }
 
+    async loadPrecompiledScript() : Promise<Required<CapoDeployedDetails<any>>["capo"]> {
+        throw new Error("capo on-chain bundle is not precompiled");
+    }
+
+    async loadPrecompiledMinterScript() : Promise<Required<CapoDeployedDetails<any>>["minter"]> {
+        throw new Error("capo minter on-chain bundle is not precompiled");
+    }
 
     getPreCompiledBundle(variant: string) {
+        throw new Error("deprecated")
         if (variant !== "singleton") {
             throw new Error(`Capo bundle: ${this.constructor.name} only singleton variant is supported`);
         }
 
-        const {capo} = this.preConfigured
-        if (!capo?.programBundle) {
+        //@ts-expect-error
+        const {capo} = this.preCompiledScriptDetails
+        if (!capo?.scriptHash) {
             debugger
             throw new Error(`Capo bundle: ${this.constructor.name} - not preConfigured or no programBundle configured (debugging breakpoint available)`)
         }

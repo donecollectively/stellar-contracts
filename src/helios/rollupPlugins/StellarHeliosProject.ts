@@ -75,11 +75,21 @@ export class StellarHeliosProject {
     ) {
         throw new Error(`dead code?!?!`);
         const replacement = new StellarHeliosProject();
-        replacement.loadBundleWithClass(absoluteFilename, newCapoClass);
+        replacement.loadBundleWithClass({
+            absoluteFilename,
+            bundleClass: newCapoClass,
+            originatorLabel: "replaceWithNewCapo",
+            scriptParamsSource: "none",
+        });
         replacement.generateBundleTypes(absoluteFilename);
         for (const [filename, entry] of this.bundleEntries.entries()) {
             if (!entry.bundleClass?.isCapoBundle) {
-                replacement.loadBundleWithClass(filename, entry.bundleClass!);
+                replacement.loadBundleWithClass({
+                    absoluteFilename: filename,
+                    bundleClass: entry.bundleClass!,
+                    originatorLabel: "replaceWithNewCapo",
+                    scriptParamsSource: "none",
+                });
                 replacement.generateBundleTypes(filename);
             }
         }
@@ -93,11 +103,20 @@ export class StellarHeliosProject {
 
     // call from code-generated hlproject.mjs with instantiated bundle
     // call from rollup plugin with bundle filename
-    loadBundleWithClass(
+    loadBundleWithClass(options: {
         absoluteFilename: string,
         bundleClass: typeof HeliosScriptBundle,
-        harmlessSecondCapo: boolean = false
-    ) {
+        harmlessSecondCapo?: boolean,
+        originatorLabel: string,
+        scriptParamsSource?: "config" | "bundle" | "none"
+    }) {
+        const { 
+            absoluteFilename, 
+            bundleClass, 
+            harmlessSecondCapo=false,
+            scriptParamsSource,
+            originatorLabel
+        } = options;
         if (harmlessSecondCapo) {
             throw new Error("deprecated use of arg3 'harmlessSecondCapo'");
         }
@@ -131,9 +150,9 @@ export class StellarHeliosProject {
                 throw new Error(`only one CapoBundle is currently supported`);
             }
             // console.log(`Project: loading CapoBundle ${bundleClassName}`);
-            this.capoBundle = new (bundleClass as any)({
-                setup: { isMainnet: false },
-            });
+
+            // includes default placeholder details:
+            this.capoBundle = (bundleClass as any).create();
             const registeredCapoName = bundleClass.name;
             if (this.bundleEntries.size > 0) {
                 // debugger
@@ -202,7 +221,13 @@ export class StellarHeliosProject {
                 bundleClassName: bundleClassName,
                 parentClassName,
             };
-            bundle = new (bundleClass as any)({ setup: { isMainnet: false } });
+            bundle = bundleClass.create({ 
+                originatorLabel,
+                scriptParamsSource,
+                setup: { 
+                    isMainnet: false,
+                } ,                
+            });
             bundleEntry.bundle = bundle;
             bundleEntry.status = "loaded";
             this.bundleEntries.set(filename, bundleEntry);

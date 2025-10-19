@@ -38,6 +38,7 @@ import type {
 import type { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
 import type { AnyDataTemplate, minimalData } from "./DelegatedData.js";
 import { uplcDataSerializer } from "./jsonSerializers.js";
+import type { DelegatedDataBundle } from "../helios/scriptBundling/DelegatedDataBundle.js";
 
 /**
  * @public
@@ -140,7 +141,7 @@ export abstract class DelegatedDataContract<
     //         .then(this.capo.singleItem);
     // }
 
-    get abstractBundleClass(): undefined | typeof CapoDelegateBundle {
+    get abstractBundleClass(): undefined | typeof DelegatedDataBundle {
         return undefined;
     }
 
@@ -177,7 +178,7 @@ export abstract class DelegatedDataContract<
                 `have access via import {...} to any helios modules provided by that Capo's .hlb.ts. `
         );
 
-        return null as unknown as CapoDelegateBundle;
+        return null as unknown as DelegatedDataBundle;
     }
 
     /**

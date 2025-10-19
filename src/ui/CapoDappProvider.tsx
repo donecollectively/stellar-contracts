@@ -392,7 +392,7 @@ export class CapoDAppProvider<
 
         const roleInfo = this.renderRoleInfo();
         const capoInfo =
-            "development" == process.env.NODE_ENV && capo?._compiledScript ? (
+            "development" == process.env.NODE_ENV && capo?._bundle?.configuredScriptDetails ? (
                 <div className="inline-block flex flex-row">
                     {/* show a chip with the capo address, short until expanded on hover */}
                     {/* leaves space for a hat icon on its left */}
