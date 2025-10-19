@@ -29,7 +29,7 @@
         "experimentalDecorators": true,
         // "emitDecoratorMetadata": false,
 
-        "outDir": ".api-extractor-temp",
+        "outDir": ".stellar/d.ts",
         // "outFile": none!
         "importHelpers": true,
         "rootDir": ".",

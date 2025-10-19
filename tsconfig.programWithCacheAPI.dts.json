@@ -6,7 +6,7 @@
         // "emitDeclarationOnly": true,
         // "declarationMap": true,
         // "sourceMap": true,
-        // "outFile": "./.api-extractor-temp/cacheableProgram.d.ts",
+        // "outFile": "./.stellar/d.ts/cacheableProgram.d.ts",
     },
     "include": [],
     "files": [ 

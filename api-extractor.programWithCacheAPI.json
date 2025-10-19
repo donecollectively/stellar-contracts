@@ -1,7 +1,7 @@
 {
     "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
     "extends": "./api-extractor.dtsOnly.json",
-    "mainEntryPointFilePath": "<projectFolder>/.api-extractor-temp/src/helios/HeliosProgramWithMockCacheAPI.d.ts",
+    "mainEntryPointFilePath": "<projectFolder>/.stellar/d.ts/src/helios/HeliosProgramWithMockCacheAPI.d.ts",
     "newlineKind": "lf",
     "compiler": {
         "tsconfigFilePath": "<projectFolder>/tsconfig.programWithCacheAPI.dts.json"

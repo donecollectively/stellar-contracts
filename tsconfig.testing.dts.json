@@ -6,10 +6,10 @@
         "emitDeclarationOnly": true,
         "declarationMap": true,
         "sourceMap": true,
-        // "outFile": "./.api-extractor-temp/testing.d.ts",
+        // "outFile": "./.stellar/d.ts/testing.d.ts",
         "skipLibCheck": true,
         "rootDir": ".",
-        "outDir": "./.api-extractor-temp"
+        "outDir": "./.stellar/d.ts"
     },
     "include": [
         // "src/testing/**/*"

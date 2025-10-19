@@ -1,6 +1,5 @@
 node_modules
-.hltemp/
-.api-extractor-temp/
+.stellar/
 /z/
 /zz_junk
 vite.config.js.timestamp*
