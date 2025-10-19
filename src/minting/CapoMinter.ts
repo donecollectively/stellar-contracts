@@ -69,7 +69,7 @@ export class CapoMinter
         const bundleModule = await import("./CapoMinter.hlb.js");
         return bundleModule.CapoMinterBundle.create({
             setup: this.setup,
-            params: this.configIn
+            params: this.configIn,            
         });
     }
 

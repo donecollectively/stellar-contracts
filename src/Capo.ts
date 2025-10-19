@@ -270,10 +270,10 @@ export abstract class Capo<
      * @remarks
      * This object contains named accessors for generating activity-data values for each
      * activity type defined in the contract's on-chain scripts.
-     * 
+     *
      * Most activity types on the Capo are used implicitly by the other methods on the Capo,
      * so you may seldom need to use this object directly.
-     * 
+     *
      * @example
      * ```typescript
      * const activity = capo.activity.usingAuthority;
@@ -1047,7 +1047,7 @@ export abstract class Capo<
     }
 
     /**
-     * finds charter data for a capo.  
+     * finds charter data for a capo.
      * @remarks
      * Accepts a current utxo for that charter
      * @public
@@ -1133,24 +1133,24 @@ export abstract class Capo<
      * @remarks
      * A Capo's currentSettings can be different in any deployment, but
      * any deployment can have one.  This function finds the currentSettings
-     * as found in the Capo's `charterData.manifest`, and returns it with its 
+     * as found in the Capo's `charterData.manifest`, and returns it with its
      * underlying `data` and possible application-layer `dataWrapped` object.
-     * 
-     * Provide charterData and capoUtxos to resolve the currentSettings without 
-     * extra queries.  
-     * 
+     *
+     * Provide charterData and capoUtxos to resolve the currentSettings without
+     * extra queries.
+     *
      * Define your SettingsController as a subclass of WrappedDgDataContract
      * to provide a custom data-wrapper.
-     * 
-     * If your protocol doesn't use settings, you probably aren't using 
-     * this method.  If you are writing some protocol-independent code, be sure 
-     * to use the `optional` attribute and be robust to cases of "no settings yet" 
+     *
+     * If your protocol doesn't use settings, you probably aren't using
+     * this method.  If you are writing some protocol-independent code, be sure
+     * to use the `optional` attribute and be robust to cases of "no settings yet"
      * and "the specific current protocol doesn't use settings at all".
-     * 
+     *
      * Future: we will cache charterData and UTxOs so that this function will be
-     * simpler in its interface and fast to execute without external management 
+     * simpler in its interface and fast to execute without external management
      * of `{charterData, capoUtxos}`.
-    * @public
+     * @public
      */
     async findSettingsInfo(
         this: SELF,
@@ -1159,9 +1159,7 @@ export abstract class Capo<
             capoUtxos?: TxInput[];
             optional?: boolean;
         }
-    ): Promise<
-        FoundDatumUtxo<any, any> | undefined
-    > {
+    ): Promise<FoundDatumUtxo<any, any> | undefined> {
         let { charterData, capoUtxos, optional = false } = options || {};
         if (!capoUtxos || !charterData) {
             debugger;
@@ -1229,7 +1227,7 @@ export abstract class Capo<
         const { minterClass } = this;
         const { seedTxn, seedIndex } = params;
         const bundle = await this.getBundle();
-        const { mph: expectedMph, rev } = await bundle.configuredParams ||
+        const { mph: expectedMph, rev } = (await bundle.configuredParams) ||
             this.configIn || {
                 mph: undefined,
                 ...(this.constructor as typeof Capo).defaultParams,
@@ -2291,20 +2289,30 @@ export abstract class Capo<
         options?: FindableViaCharterData
     ): Promise<undefined | DelegatedDataContract<any, any>> {
         const { charterData, optional } = options || {};
-        const chD = charterData || (await this.findCharterData( undefined, {
-            optional: optional || false
-        }));
+        const chD =
+            charterData ||
+            (await this.findCharterData(undefined, {
+                optional: optional || false,
+            }));
         const foundME = chD.manifest.get(recordTypeName);
         if (!foundME) {
             // debugger;
             if (optional) return undefined as any;
             await this.findCharterData();
             throw new Error(
-                `${this.constructor.name}.charter.manifest: unknown record type '${recordTypeName}' (debugging breakpoint available)\n`+
-                `Delegated-data-types registered in the manifest: \n ${Array.from(chD.manifest.entries()).map(
-                    // bullet-point: •
-                    ([k,v]) => v.entryType.DgDataPolicy ? `  • ${k}\n` : undefined
-                ).filter((x) => !!x).join("")}`
+                `${this.constructor.name}.charter.manifest: unknown record type '${recordTypeName}' (debugging breakpoint available)\n` +
+                    `Delegated-data-types registered in the manifest: \n ${Array.from(
+                        chD.manifest.entries()
+                    )
+                        .map(
+                            // bullet-point: •
+                            ([k, v]) =>
+                                v.entryType.DgDataPolicy
+                                    ? `  • ${k}\n`
+                                    : undefined
+                        )
+                        .filter((x) => !!x)
+                        .join("")}`
             );
         }
         if (foundME?.entryType.DgDataPolicy) {
@@ -2671,10 +2679,15 @@ export abstract class Capo<
                 });
                 if (this.autoSetup) {
                     // tractor emoji: 🚜
-                    console.log("🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜")
-                    console.log("autoSetup: checking delegate roles for policies needing creation or update:\n"+
-                        Object.keys(this.delegateRoles).map(k => `- ${k}`).join("\n")
-                    )
+                    console.log(
+                        "🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜🚜"
+                    );
+                    console.log(
+                        "autoSetup: checking delegate roles for policies needing creation or update:\n" +
+                            Object.keys(this.delegateRoles)
+                                .map((k) => `- ${k}`)
+                                .join("\n")
+                    );
 
                     for (const [policyAndTypeName, details] of Object.entries(
                         this.delegateRoles
@@ -2689,7 +2702,9 @@ export abstract class Capo<
                         } = ds;
                         //@ts-expect-error on the type probe
                         if (!delegateClass.isDgDataPolicy) {
-                            console.warn(`${delegateClass.name} is not a dgDataPolicy`);
+                            console.warn(
+                                `${delegateClass.name} is not a dgDataPolicy`
+                            );
                             continue;
                         }
 
@@ -2705,20 +2720,28 @@ export abstract class Capo<
                             }
                         );
                         if (delegate.recordTypeName !== policyAndTypeName) {
-                            debugger
-                            throw new Error(`${this.constructor.name}:  delegateRoles.${policyAndTypeName} references class ${dgDataControllerClass.name},\n`+
-                                `whose \`get recordTypeName()\` is '${delegate.recordTypeName}'.\n`+
-                                `These should match; use the recordTypeName in the delegateRoles map!`);
+                            debugger;
+                            throw new Error(
+                                `${this.constructor.name}:  delegateRoles.${policyAndTypeName} references class ${dgDataControllerClass.name},\n` +
+                                    `whose \`get recordTypeName()\` is '${delegate.recordTypeName}'.\n` +
+                                    `These should match; use the recordTypeName in the delegateRoles map!`
+                            );
                         }
-                        await delegate.setupCapoPolicy(tcx3, policyAndTypeName, {
-                            charterData,
-                            capoUtxos,
-                        })
+                        await delegate.setupCapoPolicy(
+                            tcx3,
+                            policyAndTypeName,
+                            {
+                                charterData,
+                                capoUtxos,
+                            }
+                        );
                     }
                 }
                 this.commitPendingChangesIfNeeded(tcx3);
-                console.log("🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 end autoSetup 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜")
-                console.log("🚜 Next: addlTxns... 🚜 🚜 ")
+                console.log(
+                    "🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 end autoSetup 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜 🚜"
+                );
+                console.log("🚜 Next: addlTxns... 🚜 🚜 ");
                 await this.mkAdditionalTxnsForCharter(tcx3, {
                     charterData,
                     capoUtxos,
@@ -2799,7 +2822,9 @@ export abstract class Capo<
                             charterData,
                         }),
                 });
-                console.warn("---- vvv   this redundant commitPendingChangesIfNeeded becomes applicable when multiple policies can be queued and installed at once");
+                console.warn(
+                    "---- vvv   this redundant commitPendingChangesIfNeeded becomes applicable when multiple policies can be queued and installed at once"
+                );
                 this.commitPendingChangesIfNeeded(tcx);
             }
 
@@ -3042,10 +3067,7 @@ export abstract class Capo<
         program: anyUplcProgram | undefined = undefined,
         useRefScript = true
     ): Promise<TCX> {
-        const program2 =
-            program ||
-            this._compiledScript ||
-            (await this.asyncCompiledScript());
+        const program2 = program || (await this.asyncCompiledScript());
         let expectedVh = program2.hash();
 
         const capoUtxos = await this.findCapoUtxos();
@@ -3097,13 +3119,13 @@ export abstract class Capo<
 
         const utxos = (
             await Promise.all(
-                capoUtxos.map((utxo) => {
+                capoUtxos.map<TxInput>((utxo) => {
                     const datum = utxo.output.datum?.data;
                     // console.log("datum", datum);
                     if (!datum) return null;
                     const scriptRef = this.newReadDatum(datum);
                     if (!scriptRef.ScriptReference) {
-                        return null;
+                        return null as any;
                     }
                     return utxo;
                 })
@@ -3643,7 +3665,7 @@ export abstract class Capo<
                       }
                   ),
                   {
-                    skipReturningDelegate: true,
+                      skipReturningDelegate: true,
                   }
               );
         const tcx2b = await newSpendDelegate.delegate.txnReceiveAuthorityToken(
@@ -3918,7 +3940,7 @@ export abstract class Capo<
      * The idPrefix refers to the short prefix used for UUT id's for this data-type.
      *
      * An addlTxn for ref-script creation is included.
-     * 
+     *
      * An addlTxn for committing pending changes is NOT included, leaving pendingChange queued in the Capo's charter.
      * Use mkTxnInstallPolicyDelegate to also ***commit*** pending changes.
      */
@@ -3926,10 +3948,7 @@ export abstract class Capo<
     async mkTxnInstallingPolicyDelegate<
         const TypeName extends string & keyof SELF["delegateRoles"],
         THIS extends Capo<any>
-    >(
-        this: THIS,
-        options: InstallPolicyDgtOptions<THIS, TypeName>
-    ) {
+    >(this: THIS, options: InstallPolicyDgtOptions<THIS, TypeName>) {
         // const mintDelegate = await this.getMintDelegate(charter);
         // console.log("   --mintDgt", mintDelegate.constructor.name);
         // const spendDelegate = await this.getSpendDelegate(charter);
@@ -3947,31 +3966,27 @@ export abstract class Capo<
         } else {
             return this.mkTxnQueuingDelegateChange("Add", options, tcx1);
         }
-
     }
 
     /**
      * Helper for installing a named policy delegate
      * @remarks
-     * 
+     *
      * Creates a transaction for adding a delegate-data-policy to the Capo, using the same logic as mkTxnInstallingPolicyDelegate.
-     * 
+     *
      * In addition, it also commits the pending changes to the Capo's charter.
-     * 
-     * Use mkTxnInstallingPolicyDelegate to queue a pending change without committing it (useful 
+     *
+     * Use mkTxnInstallingPolicyDelegate to queue a pending change without committing it (useful
      * for tests, or when multiple policies can be queued and installed at once).
-     * 
+     *
      * Note that deploying multiple policies at once is currently disabled, to help prevent resource-exhaustion attacks.
-     * 
+     *
      * @public
      */
     async mkTxnInstallPolicyDelegate<
         const TypeName extends string & keyof SELF["delegateRoles"],
         THIS extends Capo<any>
-    >(
-        this: THIS,
-        options: InstallPolicyDgtOptions<THIS, TypeName>
-    ) {
+    >(this: THIS, options: InstallPolicyDgtOptions<THIS, TypeName>) {
         const tcx1 = await this.mkTxnInstallingPolicyDelegate(options);
 
         return this.commitPendingChangesIfNeeded(tcx1);
@@ -4121,7 +4136,6 @@ export abstract class Capo<
         const tempOCDPLink =
             this.mkOnchainRelativeDelegateLink(tempDataPolicyLink);
 
-
         const replacesDgtME = this.hasPolicyInManifest(typeName, charterData);
         const [manifestPolicyName, existingDgtEntry] = replacesDgtME || [];
         const existingDgtLink =
@@ -4148,7 +4162,8 @@ export abstract class Capo<
             }
 
             const existingDgtBundle = await existingDelegate.getBundle();
-            const previousCompiledScript = existingDgtBundle.previousCompiledScript();
+            const previousCompiledScript =
+                existingDgtBundle.previousCompiledScript();
             if (!previousCompiledScript) {
                 // when no previous script is there, it means an existing policy is fine as-is
                 if (existingDvh) {
@@ -4201,12 +4216,12 @@ export abstract class Capo<
             change === "Add"
                 ? {
                       Add: {
-                        seed: tcx1.state.seedUtxo.id,
-                        purpose,
-                        idPrefix,
-                        // delegateValidatorHash: tempOCDPLink.delegateValidatorHash,
-                        // config: tempOCDPLink.config,
-                    },
+                          seed: tcx1.state.seedUtxo.id,
+                          purpose,
+                          idPrefix,
+                          // delegateValidatorHash: tempOCDPLink.delegateValidatorHash,
+                          // config: tempOCDPLink.config,
+                      },
                   }
                 : {
                       Replace: {
@@ -4239,11 +4254,7 @@ export abstract class Capo<
             }
         );
         const delegateLink = this.mkOnchainRelativeDelegateLink(
-            await this.txnCreateOffchainDelegateLink(
-                tcx2,
-                typeName,
-                dgtOptions
-            )
+            await this.txnCreateOffchainDelegateLink(tcx2, typeName, dgtOptions)
         );
         const pendingChange: PendingCharterChangeLike = {
             delegateChange: {
@@ -4308,7 +4319,7 @@ export abstract class Capo<
     /**
      * Looks up a policy in the manifest, returning the policy name and the manifest entry if found.
      * @remarks
-     * Returns a pair of [ policyName, manifestEntry ] if found.  Returns undefined if the policy is not found.  
+     * Returns a pair of [ policyName, manifestEntry ] if found.  Returns undefined if the policy is not found.
      * @public
      */
     hasPolicyInManifest<
@@ -4466,7 +4477,6 @@ export abstract class Capo<
                 tcx1b,
                 mintDgt.activity.CapoLifecycleActivities.commitPendingChanges
             );
-    
         } else {
             const tcx2 = await this.tcxWithCharterRef(tcx);
             const tcx2a = await this.txnAddGovAuthority(tcx2);
@@ -4495,7 +4505,7 @@ export abstract class Capo<
                                 tcx2a,
                                 previousDgt.activity.DelegateLifecycleActivities
                                     .Retiring,
-                                {skipReturningDelegate: true}
+                                { skipReturningDelegate: true }
                             );
                         }
                         return mkValuesEntry(tokenName, -1n);
@@ -4640,7 +4650,7 @@ export abstract class Capo<
             ],
             mintDelegate,
             mintDelegateActivity,
-            {skipReturningDelegate}
+            { skipReturningDelegate }
         );
         // console.log(
         //     "    🐞🐞 @end of txnMintingUuts",

@@ -15,19 +15,19 @@ import {
  * @public
  */
 export type PendingTxn = {
-  txd: TxDescription<any, any>
-  statusSummary: string
-  mgr?: TxSubmitMgr
-}
+    txd: TxDescription<any, any>;
+    statusSummary: string;
+    mgr?: TxSubmitMgr;
+};
 
 /**
  * @deprecated - the CharterStatus component is now preferred
  * @public
  */
 export function ShowPendingTxns({
-  pendingTxns,
+    pendingTxns,
 }: {
-  pendingTxns: Map<string, PendingTxn>
+    pendingTxns: Map<string, PendingTxn>;
 }) {
   return (
     <DashboardRow>

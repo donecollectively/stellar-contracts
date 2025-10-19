@@ -19,7 +19,6 @@ export type {
 import UnspecializedDelegateScript from "./src/delegation/UnspecializedDelegate.hl";
 export { UnspecializedDelegateScript }
 
-export * from "./src/configuration/DeployedScriptConfigs.js";
 export {
     mkValuesEntry,
     mkUutValuesEntries,
@@ -231,6 +230,7 @@ export * from "./src/helios/index.js";
 export { DelegatedDataBundle } from "./src/helios/scriptBundling/DelegatedDataBundle.js";
 export { CapoDelegateBundle, type ConcreteCapoDelegateBundle } from "./src/helios/scriptBundling/CapoDelegateBundle.js";
 export { HeliosScriptBundle } from "./src/helios/scriptBundling/HeliosScriptBundle.js";
+export * from "./src/configuration/DeployedScriptConfigs.js";
 
 export type {
     tokenNamesOrValuesEntry,
