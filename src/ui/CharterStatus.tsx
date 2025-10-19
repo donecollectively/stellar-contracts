@@ -1,4 +1,3 @@
-"use client";
 import * as React from "react";
 import { makeShelleyAddress } from "@helios-lang/ledger";
 import {
@@ -36,7 +35,7 @@ import { TxBatchViewer } from "./TxBatchViewer.js";
  * @public
  */
 export function CharterStatus() {
-    const {capo, provider} = useCapoDappProvider();
+    const { capo, provider, isMounted } = useCapoDappProvider();
     const blockfrost = provider?.bf;
 
     const [charterData, setCharterData] = React.useState<CharterData>();
@@ -65,6 +64,22 @@ export function CharterStatus() {
                 setStatusMessage("Capo bundle not configured");
                 return;
             }
+            const configured = bundle.configuredParams;
+            const { isChartered } = capo;
+
+            if (!configured || !isChartered) {
+                const problem = configured
+                    ? isChartered
+                        ? "impossible"
+                        : "is preconfigured and ready to be chartered!"
+                    : isChartered
+                    ? "impossible"
+                    : "needs to be configured and chartered.   Add a configuration if you have it, or create the Capo charter now.";
+
+                const message = `The Capo contract ${problem} `;
+
+                setStatusMessage(message);
+            }
         });
 
         capo?.findCharterData(undefined, { optional: true }).then((cd) => {
@@ -88,23 +103,27 @@ export function CharterStatus() {
             if (!capo) return;
             if (!charterData) return;
 
-            capo.mkTxnUpgradeIfNeeded()
-                .catch((e) => {
-                    setStatusMessage("error: " + e.message);
-                    debugger;
-                })
-                .then((tcx) => {
-                    if (!tcx) {
-                        setStatusMessage("no upgrade needed");
-                        return;
-                    }
-                    if (Object.keys(tcx.addlTxns).length) {
-                        setUpgradeTxn(tcx as hasAddlTxns<StellarTxnContext>);
-                    } else {
-                        setUpgradeTxn("ok");
-                        setStatusMessage("no upgrade needed");
-                    }
-                });
+            capo.verifyCoreDelegates().then(() => {
+                capo.mkTxnUpgradeIfNeeded()
+                    .catch((e) => {
+                        setStatusMessage("error: " + e.message);
+                        debugger;
+                    })
+                    .then((tcx) => {
+                        if (!tcx) {
+                            setStatusMessage("no upgrade needed");
+                            return;
+                        }
+                        if (Object.keys(tcx.addlTxns).length) {
+                            setUpgradeTxn(
+                                tcx as hasAddlTxns<StellarTxnContext>
+                            );
+                        } else {
+                            setUpgradeTxn("ok");
+                            setStatusMessage("no upgrade needed");
+                        }
+                    });
+            });
         },
         [charterData]
     );
@@ -158,6 +177,10 @@ export function CharterStatus() {
             upgradeTxn.buildAndQueueAll({});
         };
     }, [capo, capo?.setup.txBatcher, upgradeTxn]);
+
+    if (!isMounted) {
+        return null;
+    }
 
     let upgradeInfo = <></>;
     if (upgradeTxn === "ok") {
@@ -436,7 +459,7 @@ function DelegatedDataPolicyItem({
                     </Highlight>
                 </div>
             </div>
-            {delegate?.getBundle().previousOnchainScript ? (
+            {delegate?.preloadedBundle.previousOnchainScript ? (
                 <div className="text-xs mt-2 w-full text-right">
                     <Highlight as="span">update needed </Highlight>
                     <Softlight className="italic">
@@ -478,7 +501,7 @@ function CoreDelegateHighlightItem({
             <Softlight>{delegateLink?.uutName}</Softlight>
             <Lowlight className="text-right">{addr}</Lowlight>
 
-            {delegate?.getBundle().previousOnchainScript ? (
+            {delegate?.preloadedBundle.previousOnchainScript ? (
                 <Highlight className="text-right">
                     update needed{" "}
                     <Softlight>to apply changes to on-chain policy</Softlight>

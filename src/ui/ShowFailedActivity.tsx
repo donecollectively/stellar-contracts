@@ -1,4 +1,3 @@
-"use client";
 import * as React from "react";
 
 /**
@@ -9,6 +8,14 @@ export function ShowFailedActivity(
     {
         failed, failure: { message, code, data, ...otherFailInfo } = {} as any, ...results
     }: OgmiosEvalFailure = {} as any) {
+
+    const [isMounted, setIsMounted] = React.useState(false);
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
+    if (!isMounted) {
+        return null;
+    }
     if (Object.keys(otherFailInfo).length === 0) {
         otherFailInfo = undefined as any;
     }

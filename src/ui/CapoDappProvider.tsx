@@ -1,4 +1,3 @@
-"use client";
 import React, {
     type ChangeEventHandler,
     type MouseEventHandler,
@@ -616,7 +615,7 @@ export class CapoDAppProvider<
         } = this.state;
         return (
             <div
-                className="flex flex-row w-full error min-h-10 relative left-0 top-0 mb-4 rounded p-1 font-bold bg-[#e7560a] text-black"
+                className="flex flex-row w-full error relative left-0 top-0 rounded p-1 font-bold bg-[#e7560a] text-black"
                 role="alert"
                 key="errorStatus"
             >
@@ -1366,8 +1365,8 @@ export class CapoDAppProvider<
             "/// looking for authority tokens  from policy " + capo.mph.toHex()
         );
 
-        const roles: String[] = [];
-        //@ts-expect-error - for now - only works if capo uses member info
+        const roles: ("member" | "admin")[] = [];
+        //@ts-ignore - for now - only works if capo uses member info
         const member = await capo.findMemberInfo?.();
         const isAdmin = await capo.findActorUut("capoGov");
 
@@ -1375,9 +1374,9 @@ export class CapoDAppProvider<
         if (!!member) {
             memberUut = member.uut;
 
-            roles.push("member");
+            roles.push("member" as const);
         }
-        if (!!isAdmin) roles.push("admin");
+        if (!!isAdmin) roles.push("admin" as const);
 
         const message = roles.includes("member")
             ? // || roles.includes("admin")
@@ -1392,11 +1391,10 @@ export class CapoDAppProvider<
                     "display the indicated roles in the UI and/or show/hide app features based on the roles",
                 ready: true,
             },
-            `/// found ${roles.length} roles: ${roles.join(", ")}}`,
+            `/// found ${roles.length} roles: ${roles.join(", ")}`,
             {
                 userInfo: {
                     ...this.userInfo,
-                    //@ts-expect-error on strict types
                     roles,
                     memberUut,
                 },
@@ -1464,7 +1462,7 @@ export class CapoDAppProvider<
         let config =
             !reset && bestKnownConfig
                 ? { config: parseCapoJSONConfig(bestKnownConfig) }
-                : { partialConfig: {} };
+                : { }
 
         if (!wallet) console.warn("connecting to capo with no wallet");
         if (!networkParams) {
@@ -1529,37 +1527,14 @@ export class CapoDAppProvider<
                 //@ts-expect-error - sorry, typescript : /
                 cfg
             );
-            const capoBundle = capo.getBundle();
-            const configured = capoBundle.configuredParams;
-            const { isChartered } = capo;
-
-            if (!configured || !isChartered) {
-                const problem = configured
-                    ? isChartered
-                        ? "impossible"
-                        : "is preconfigured and ready to be chartered!"
-                    : isChartered
-                    ? "impossible"
-                    : "needs to be configured and chartered.   Add a configuration if you have it, or create the Capo charter now.";
-
-                const message = autoNext ? `The Capo contract ${problem} ` : "";
-
-                await this.updateStatus(
-                    message,
-                    {
-                        nextAction: "initializeCapo",
-                        developerGuidance:
-                            "likely administrative moment for dev-time creation of the capo",
-                    },
-                    "//bootstrap needed",
-                    {
-                        capo,
-                    }
-                );
-                return;
-                // return this.stellarSetup();
-            }
             capo.actorContext.wallet = wallet;
+            const config = capo._bundle?.configuredScriptDetails?.config as CapoConfig
+            if (capo._bundle?.configuredScriptDetails) {
+                await capo.connectMintingScript(config);
+            } else {
+                console.warn("no config yet for this capo (dbpa)")
+                debugger
+            }
             if (!autoNext)
                 return this.updateStatus(
                     "",
@@ -2038,10 +2013,12 @@ export function useCapoDappProvider<
             "useCapoDappProvider must be used within a CapoDappProvider"
         );
     }
+    const [isMounted, setIsMounted] = React.useState(false);
     const [capo, setCapo] = React.useState<C>();
     const [checking, keepChecking] = React.useState(1);
 
     React.useEffect(() => {
+        setIsMounted(true);
         setTimeout(() => {
             if (capo !== provider?.capo) {
                 setCapo(provider?.capo);
@@ -2050,7 +2027,7 @@ export function useCapoDappProvider<
         }, 2000);
     }, [checking, provider, provider?.userInfo.wallet, capo]);
 
-    return { capo, provider };
+    return { capo, provider, isMounted };
 }
 
 /**

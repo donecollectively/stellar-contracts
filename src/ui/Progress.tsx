@@ -1,6 +1,4 @@
-"use client";
-import React from "react";
-
+import React, { useEffect } from "react";
 
 /**
  * Props for the progress bar
@@ -23,6 +21,13 @@ export const Progress = ({ children, progressPercent }: ProgressProps ) => {
     const [myId] = React.useState(() => {
         return (42424242 * Math.random()).toString(36).substring(7)
     });
+    const [isMounted, setIsMounted] = React.useState(false);
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+    if (!isMounted) {
+        return null;
+    }
     const concreteIndicatorProps = progressPercent ? {
         value: progressPercent,
         max: 100,
