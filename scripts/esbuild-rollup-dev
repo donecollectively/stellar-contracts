@@ -10,7 +10,10 @@ WATCH="--watch"
 }
 
 # note this duplicates what the main build does for building the rollup plugin
-makeRollupPlugin $WATCH
+makeRollupPlugin $WATCH 2>&1 | while read a ; do {
+    echo "$(date): $a"
+} done
+
 sleep 0.5
 echo "------------------------------ waiting ------------------------------"
 wait

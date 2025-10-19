@@ -2,7 +2,7 @@ import { CapoHeliosBundle, DelegatedDataBundle, MintSpendDelegateBundle } from "
 import BadSettingsPolicy from "./BadSettingsPolicy.hl";
 import BadProtocolSettings from "./TestBadSettings.hl";
 
-export default class BadSettingsBundle 
+export class BadSettingsBundle 
 extends DelegatedDataBundle.usingCapoBundleClass(CapoHeliosBundle) {
     specializedDelegateModule = BadSettingsPolicy
     requiresGovAuthority = true;
@@ -16,3 +16,4 @@ extends DelegatedDataBundle.usingCapoBundleClass(CapoHeliosBundle) {
     }
 }
 
+export default BadSettingsBundle;

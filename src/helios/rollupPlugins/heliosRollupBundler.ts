@@ -37,7 +37,6 @@ import {
     type BundleClassWithLoadStats,
     type heliosSourceFileSeenHook,
 } from "../rollupPlugins/rollupCreateHlbundledClass.js";
-import type { HeliosScriptBundle } from "@donecollectively/stellar-contracts";
 import type { CapoHeliosBundle } from "../scriptBundling/CapoHeliosBundle.js";
 import {
     parseCapoJSONConfig,
@@ -53,6 +52,7 @@ import {
     uplcDataSerializer,
 } from "../../delegation/jsonSerializers.js";
 import { environment } from "../../environment.js";
+import type { HeliosScriptBundle } from "../scriptBundling/HeliosScriptBundle.js";
 
 type HeliosBundlerPluginState = {
     capoBundle?: CapoHeliosBundle;

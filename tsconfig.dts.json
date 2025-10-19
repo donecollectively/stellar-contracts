@@ -15,12 +15,12 @@
         "target": "ESNext",
          // "lib": ‹defaut›
         //  "module": "ESNext",
-         "module": "nodenext",
+         "module": "preserve",
          "esModuleInterop": true,
         "types": ["node"],
         // "verbatimModuleSyntax": true,
 
-        "moduleResolution": "nodenext",
+        "moduleResolution": "bundler",
         "customConditions": ["dev"],
         "baseUrl": "dist/",
         "forceConsistentCasingInFileNames": true,
@@ -42,6 +42,8 @@
         "paths": {
             // "@donecollectively/stellar-contracts": ["./src/index.ts"],
             "src/*": ["./src/*"],
+            "@donecollectively/stellar-contracts/contracts/CapoMinter.hlb": ["./dist/contracts/CapoMinter.hlb.mjs"]
+            // "@donecollectively/stellar-contracts/contract"
         }
     },
     "files": [

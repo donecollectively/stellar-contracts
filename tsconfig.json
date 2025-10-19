@@ -14,12 +14,12 @@
 
         "target": "ESNext",
         "lib": ["esnext", "dom"],
-        "module": "nodenext",
+        "module": "preserve",
         "esModuleInterop": true,        
         "types": ["node", "vitest/globals"],
         "verbatimModuleSyntax": true,
 
-        "moduleResolution": "nodenext",
+        "moduleResolution": "bundler",
         // "traceResolution": true,
         "customConditions": ["dev"],
         "baseUrl": "./",
@@ -41,6 +41,7 @@
         "paths": {
             "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI": ["./dist/programWIthFakeCacheAPI.mjs"],
             "@donecollectively/stellar-contracts": ["./src/index.ts"],
+            "@donecollectively/stellar-contracts/contracts/*": ["./dist/contracts/*"],
             "src/*": ["./src/*"]
         },
         "typeRoots": ["./node_modules/@types", "./src/@types"]

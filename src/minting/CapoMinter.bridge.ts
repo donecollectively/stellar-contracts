@@ -226,7 +226,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
     *  - to get a transaction context having the seed needed for this argument, 
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
     *  - in a context providing an implicit seed utxo, use 
     *    the `$seeded$addingMintInvariant}` variant of this activity instead
     *
@@ -267,7 +267,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
     *  - to get a transaction context having the seed needed for this argument, 
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
     *  - in a context providing an implicit seed utxo, use 
     *    the `$seeded$addingSpendInvariant}` variant of this activity instead
     *
@@ -308,7 +308,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
     *  - to get a transaction context having the seed needed for this argument, 
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
     *  - in a context providing an implicit seed utxo, use 
     *    the `$seeded$forcingNewMintDelegate}` variant of this activity instead
     *

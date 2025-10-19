@@ -27,7 +27,7 @@ import { TestHelperState } from "../src/testing/types.js";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 import { expectTxnError } from "../src/testing/StellarTestHelper.js";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
-import { SomeEnum } from "../src/testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
+import type { SomeEnum } from "../src/testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
 
 // these imports look like they're unused, but they allow this test file to be 
 // used as an entry-point for triggering type-generation for all the helios code 

@@ -74,7 +74,7 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
      * calls the delegate-specific DelegateAddsAuthorityToken() method,
      * with the uut found by DelegateMustFindAuthorityToken().
      *
-     * Returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() },
+     * Returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() },
      * automatically, unless the `skipReturningDelegate` option is provided.
      *
      * If the authority token
@@ -177,7 +177,6 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
      *   UTxO, to match the previous UTxO with minimal extra heuristics
      * @public
      **/
-
     abstract txnReceiveAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         tokenValue: Value,

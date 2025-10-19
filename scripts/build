@@ -87,10 +87,10 @@ if [ ! -f "dist/ui.d.ts" ]; then
     exit 1
 fi
 
-exitIfError
 echo "build started at  $startTime"
 echo "build finished at $(date)"
 
+exitIfError
 playSuccessSound 
 wait
 

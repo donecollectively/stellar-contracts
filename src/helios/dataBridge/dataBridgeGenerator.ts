@@ -1298,7 +1298,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n` +
                 `    *  - to get a transaction context having the seed needed for this argument, \n` +
                 `    *    see the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.\n` +
-                `    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.\n` +
+                `    * - or see Stellar Contracts' \`hasSeed\` type for other ways to feed it with a TxOutputId.\n` +
                 `    *  - in a context providing an implicit seed utxo, use \n` +
                 `    *    the \`$seeded$${variantName}}\` variant of this activity instead\n` +
                 `    *\n ` +
