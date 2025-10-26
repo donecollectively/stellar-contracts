@@ -49,11 +49,9 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      * specialization.  TODO: a generator to make this easier.  Until then,
      * you can copy the UnspecializedDelegate.hl and specialize it.
      */
-    async scriptBundle() {
-        const dgtModule = await import("../delegation/UnspecializedDelegate.hlb.js");
-        return dgtModule.UnspecializedDgtBundle.create({
-            setup: this.setup,            
-        });
+    async scriptBundleClass() {
+        const bundleModule = await import("../delegation/UnspecializedDelegate.hlb.js");
+        return bundleModule.UnspecializedDgtBundle
     }
 
     // uses the basic delegate script, plus the isMintDelegate param

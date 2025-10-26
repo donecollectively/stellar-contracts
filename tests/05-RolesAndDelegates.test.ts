@@ -507,12 +507,13 @@ describe("Capo", () => {
             await expect(tcx2b.submitAll()).resolves.toBeTruthy();
             h.network.tick(1)
 
+            const script = (await mintDelegate.asyncCompiledScript())!;
             // uses the reference script in the minting txn:
             expect(
                 tcx2b.txRefInputs.find(
                     (i) =>
                         i.output.refScript?.toString() ==
-                        mintDelegate.compiledScript.toString()
+                        script.toString()
                 )
             ).toBeTruthy();
         });

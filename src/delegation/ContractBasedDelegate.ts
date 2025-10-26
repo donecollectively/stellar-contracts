@@ -25,7 +25,11 @@ import type {
     GenericDelegateDatum,
 } from "./GenericDelegateBridge.js";
 
-import { Activity, datum } from "../StellarContract.js";
+import {
+    Activity,
+    datum,
+    type PartialStellarBundleDetails,
+} from "../StellarContract.js";
 import { StellarDelegate } from "./StellarDelegate.js";
 import type {
     DelegationDetail,
@@ -37,6 +41,10 @@ import type { isActivity } from "../ActivityTypes.js";
 
 import { bytesToText, textToBytes } from "../HeliosPromotedTypes.js";
 import type { IFISNEVER } from "../helios/typeUtils.js";
+import {
+    placeholderSetupDetails,
+    type HeliosScriptBundle,
+} from "../helios/index.js";
 
 /**
  * Base class for delegates controlled by a smart contract, as opposed
@@ -65,12 +73,33 @@ export class ContractBasedDelegate extends StellarDelegate {
      * are used only in the context the Capo's main spend delegate, re-delegating to the data-controller which
      * can't use those generic activities, but instead implements its user-facing txns as variants of its SpendingActivities enum.
      */
-    static isSpendDelegate = false
+    static isSpendDelegate = false;
 
     get delegateName(): string {
         throw new Error(
             `${this.constructor.name}: missing required get delegateName() : string`
         );
+    }
+
+    _scriptBundle: HeliosScriptBundle | undefined;
+    async mkScriptBundle(
+        setupDetails: PartialStellarBundleDetails<any> = placeholderSetupDetails
+    ) {
+        if (this._scriptBundle) return this._scriptBundle;
+
+        const bundle = await super.mkScriptBundle();
+        if (bundle.isConcrete) return (this._scriptBundle = bundle);
+
+        const bundleClass = await this.scriptBundleClass();
+        const myCapoBundle = await this.capo!.mkScriptBundle();
+        const capoBoundBundle = bundleClass.usingCapoBundleClass(
+            myCapoBundle.constructor as any
+        );
+        return (this._scriptBundle = capoBoundBundle.create({
+            params: this.configIn,
+            ...setupDetails,
+            setup: this.setup,
+        }));
     }
 
     get onchain(): mustFindConcreteContractBridgeType<this> {
@@ -111,7 +140,10 @@ export class ContractBasedDelegate extends StellarDelegate {
     }
 
     get capo(): Capo<any, any> {
-        return (this.configIn || this.partialConfig)?.capo as unknown as Capo<any, any>;
+        return (this.configIn || this.partialConfig)?.capo as unknown as Capo<
+            any,
+            any
+        >;
     }
 
     // mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
@@ -124,7 +156,7 @@ export class ContractBasedDelegate extends StellarDelegate {
     //     return new BundleClass(capoBundle);
     // }
 
-    async scriptBundle(): Promise<CapoDelegateBundle> {
+    async scriptBundleClass(): Promise<typeof CapoDelegateBundle> {
         throw new Error(
             `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
                 `\nEach contract-based delegate must provide a scriptBundle() method.\n` +
@@ -170,7 +202,7 @@ export class ContractBasedDelegate extends StellarDelegate {
         return {
             ...otherConfig,
             delegateName: this.delegateName,
-        }
+        };
     }
 
     tcxWithCharterRef<TCX extends StellarTxnContext | hasCharterRef>(tcx: TCX) {
@@ -507,7 +539,7 @@ export class ContractBasedDelegate extends StellarDelegate {
      * A delegate that doesn't use an on-chain validator should override this method and return undefined.
      **/
     get delegateValidatorHash(): ValidatorHash | undefined {
-        if (!this.validatorHash) {
+        if (!this.usesContractScript) {
             throw new Error(
                 `${this.constructor.name}: address doesn't use a validator hash!\n` +
                     `  ... if that's by design, you may wish to override 'get delegateValidatorHash()'`
@@ -524,9 +556,11 @@ export class ContractBasedDelegate extends StellarDelegate {
         label: string
     ): Promise<TxInput> {
         return this.mustFindMyUtxo(
-            `${label}: ${bytesToText(this.configIn!.tn)}`, {
+            `${label}: ${bytesToText(this.configIn!.tn)}`,
+            {
                 predicate: this.uh.mkTokenPredicate(this.tvAuthorityToken()),
-                extraErrorHint: "this delegate strategy might need to override txnMustFindAuthorityToken()"
+                extraErrorHint:
+                    "this delegate strategy might need to override txnMustFindAuthorityToken()",
             }
         );
     }
@@ -587,16 +621,15 @@ export class ContractBasedDelegate extends StellarDelegate {
     ): Promise<TCX> {
         const { capo } = this.configIn!;
 
-        // when there is a delegate upgrade in progress, we must 
-        // use the previous script, not the next script, to locate 
+        // when there is a delegate upgrade in progress, we must
+        // use the previous script, not the next script, to locate
         // the authority token.
 
-        const script = this._bundle?.previousCompiledScript() || this.compiledScript
-        const tcx2 = await capo.txnAttachScriptOrRefScript(
-            tcx,
-            script
-        );
-        if (!redeemer.redeemer) debugger
+        const script =
+            this._bundle?.previousCompiledScript() ||
+            (await this.asyncCompiledScript());
+        const tcx2 = await capo.txnAttachScriptOrRefScript(tcx, script);
+        if (!redeemer.redeemer) debugger;
         return tcx2.addInput(uutxo, redeemer);
 
         // return this.txnKeepValue(

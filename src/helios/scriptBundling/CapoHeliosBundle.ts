@@ -16,6 +16,7 @@ import type { StellarBundleSetupDetails } from "../../StellarContract.js";
 import type { AbstractNew } from "../typeUtils.js";
 import { parseCapoJSONConfig, parseCapoMinterJSONConfig, type CapoDeployedDetails, type DeployedScriptDetails } from "../../configuration/DeployedScriptConfigs.js";
 import type { capoConfigurationDetails } from "../../configuration/DefaultNullCapoDeploymentConfig.js";
+import type { PrecompiledProgramJSON } from "../CachedHeliosProgram.js";
 
 export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
 
@@ -60,9 +61,11 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
         if (this.precompiledScriptDetails?.capo) {
             this.configuredScriptDetails = deployedDetails = this.precompiledScriptDetails.capo
             const {
-                config={} as any, 
+                config
                 // programBundle
             } = deployedDetails;
+            this.configuredParams = config
+            this._selectedVariant = "capo"
         } else if (setupDetails.deployedDetails) {
             this.configuredScriptDetails = deployedDetails = setupDetails.deployedDetails
         } else if (!this.configuredScriptDetails) {
@@ -98,11 +101,11 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
         return t
     }
 
-    async loadPrecompiledScript() : Promise<Required<CapoDeployedDetails<any>>["capo"]> {
+    async loadPrecompiledScript() : Promise<PrecompiledProgramJSON> {
         throw new Error("capo on-chain bundle is not precompiled");
     }
 
-    async loadPrecompiledMinterScript() : Promise<Required<CapoDeployedDetails<any>>["minter"]> {
+    async loadPrecompiledMinterScript() : Promise<PrecompiledProgramJSON> {
         throw new Error("capo minter on-chain bundle is not precompiled");
     }
 

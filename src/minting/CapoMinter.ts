@@ -6,7 +6,7 @@ import {
 import { makeValue } from "@helios-lang/ledger";
 
 import { Activity, StellarContract } from "../StellarContract.js";
-import type { UplcRecord, configBaseWithRev } from "../StellarContract.js";
+import type { StellarBundleSetupDetails, UplcRecord, configBaseWithRev } from "../StellarContract.js";
 
 import { StellarTxnContext, type anyState } from "../StellarTxnContext.js";
 import type { Capo } from "../Capo.js";
@@ -26,6 +26,7 @@ import type {
 } from "../helios/dataBridge/BridgeTypes.js";
 import type { hasSeed, isActivity } from "../ActivityTypes.js";
 import type { GrantAuthorityOptions } from "../delegation/StellarDelegate.js";
+import { placeholderSetupDetails } from "../helios/index.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
@@ -65,11 +66,23 @@ export class CapoMinter
 {
 
     currentRev: bigint = 1n;
-    async scriptBundle() {
+    async scriptBundleClass() {
         const bundleModule = await import("./CapoMinter.hlb.js");
-        return bundleModule.CapoMinterBundle.create({
+        
+        return bundleModule.CapoMinterBundle
+    }
+
+    async mkScriptBundle(
+        setupDetails: StellarBundleSetupDetails<any> = placeholderSetupDetails
+    ) {
+        const bundleClass = await this.scriptBundleClass();
+        return bundleClass.create({
+            ...setupDetails,
             setup: this.setup,
-            params: this.configIn,            
+            params: this.configIn,
+            // defaultParams: (
+            //     this.constructor as typeof CapoMinter
+            // ).defaultParams
         });
     }
 
@@ -264,10 +277,11 @@ export class CapoMinter
             mintDgtVE,
             spendDgtVE,
         ];
+        const script = (await this.asyncCompiledScript())!;
         
         const activity = this.activity.mintingCharter(owner);
         return tcx.addScriptProgram(
-            this.compiledScript
+            script
         ).mintTokens(
             this.mintingPolicyHash!,
             values,
@@ -275,13 +289,13 @@ export class CapoMinter
         ) as TCX;
     }
 
-    attachScript<TCX extends StellarTxnContext<anyState>>(
+    async attachScript<TCX extends StellarTxnContext<anyState>>(
         tcx: TCX,
         useRefScript = true
     ) {
         return this.configIn!.capo.txnAttachScriptOrRefScript(
             tcx,
-            this.compiledScript,
+            await this.asyncCompiledScript(),
             useRefScript
         ) as Promise<TCX>;
     }

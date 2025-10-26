@@ -149,7 +149,7 @@ export class DefaultCapoTestHelper<
         const tcx: StellarTxnContext = this.mkTcx();
         const tcx2 = await treasury.txnAttachScriptOrRefScript(
             await treasury.txnAddGovAuthority(tcx),
-            treasury.compiledScript
+            await treasury.asyncCompiledScript()
         );
 
         return treasury.txnMustUseCharterUtxo(

@@ -12,7 +12,7 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
     dataBridgeClass = UnspecializedDelegateBridge;
     get delegateName() { return "UnspecializedDelegate" }
 
-    async scriptBundle() {
+    async scriptBundleClass() {
         if (process.env.NODE_ENV === "development") {
             console.warn(
                 "mint+spend delegate: using unspecialized delegate bundle\n"+
@@ -24,9 +24,7 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
             );
         }
         const dgtModule = await import("./UnspecializedDelegate.hlb.js");
-        return dgtModule.UnspecializedDgtBundle.create({
-            setup: this.setup,            
-        });
+        return dgtModule.UnspecializedDgtBundle
     }
     
     @Activity.redeemer

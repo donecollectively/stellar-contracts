@@ -174,13 +174,15 @@ describe("Capo", async () => {
                 // test t3m2n4d
                 // has the mint-delegate script ready to use as a referenceScript
                 debugger;
+                const script = (await mintDelegate.asyncCompiledScript())!;
+                const scriptString = script.toString();
                 const findingRefScript = capo.mustFindMyUtxo(
                     "mint delegate refScript",
                     {
                         predicate: (utxo) => {
                             return (
                                 utxo.output.refScript?.toString() ==
-                                mintDelegate.compiledScript.toString()
+                                scriptString
                             );
                         },
                     }
@@ -329,7 +331,10 @@ describe("Capo", async () => {
                 .addlTxns.refScriptMinter as any;
 
             const utxos = await capo.findCapoUtxos()
-            const refScriptUtxo = await capo.findRefScriptUtxo(minter.compiledScript.hash(), utxos)
+            const script = (await minter.asyncCompiledScript())!;
+            const refScriptUtxo = await capo.findRefScriptUtxo(
+                script.hash(), utxos
+            )
             expect(refScriptUtxo).toBeTruthy()
         });
 
@@ -342,7 +347,8 @@ describe("Capo", async () => {
                 h.state.mintedCharterToken;
 
             const utxos = await capo.findCapoUtxos()
-            const refScriptUtxo = await capo.findRefScriptUtxo(capo.compiledScript.hash(), utxos)
+            const script = (await capo.asyncCompiledScript())!;
+            const refScriptUtxo = await capo.findRefScriptUtxo(script.hash(), utxos)
             expect(refScriptUtxo).toBeTruthy()
         });
 
@@ -356,7 +362,8 @@ describe("Capo", async () => {
             const mintDelegate = await capo.getMintDelegate();
 
             const utxos = await capo.findCapoUtxos()
-            const refScriptUtxo = await capo.findRefScriptUtxo(mintDelegate.compiledScript.hash(), utxos)
+            const script = (await mintDelegate.asyncCompiledScript())!;
+            const refScriptUtxo = await capo.findRefScriptUtxo(script.hash(), utxos)
 
             expect(refScriptUtxo).toBeTruthy()
         });
@@ -375,19 +382,22 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const strella = await h.bootstrap();
-            const tcx = strella.mkTcx("uses scriptRefs");
-            const tcx2 = await strella.txnAttachScriptOrRefScript(tcx);
+            const capo = await h.bootstrap();
+            const tcx = capo.mkTcx("uses scriptRefs");
+            console.log("----------------------------------------------")
+            const tcx2 = await capo.txnAttachScriptOrRefScript(tcx);
+            const script = (await capo.asyncCompiledScript())!;
+            const minterScript = (await capo.minter.asyncCompiledScript())!;
             expect(tcx2.txRefInputs[0].output.refScript?.toString()).toEqual(
-                strella.compiledScript.toString()
+                script.toString()
             );
 
-            const tcx3 = await strella.txnAttachScriptOrRefScript(
+            const tcx3 = await capo.txnAttachScriptOrRefScript(
                 tcx,
-                strella.minter.compiledScript
+                minterScript
             );
             expect(tcx3.txRefInputs[1].output.refScript?.toString()).toEqual(
-                strella.minter.compiledScript.toString()
+                minterScript.toString()
             );
 
             const {tx} = await tcx3.build()

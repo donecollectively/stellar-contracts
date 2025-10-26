@@ -37,7 +37,7 @@ import type { Capo } from "./Capo.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
 // import { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 // import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
-import { HeliosScriptBundle } from "./helios/scriptBundling/HeliosScriptBundle.js";
+import { HeliosScriptBundle, placeholderSetupDetails } from "./helios/scriptBundling/HeliosScriptBundle.js";
 import { type HeliosBundleClass } from "./helios/HeliosMetaTypes.js";
 import {
     DataBridge,
@@ -53,7 +53,7 @@ import type { AbstractNew } from "./helios/typeUtils.js";
 import { getSeed, type hasSeed, type SeedAttrs } from "./ActivityTypes.js";
 import { makeCast } from "@helios-lang/contract-utils";
 import type {
-    DeployedProgramBundle,
+    PrecompiledProgramJSON,
     SerializedHeliosCacheEntry,
 } from "./helios/CachedHeliosProgram.js";
 import type { DeployedScriptDetails } from "./configuration/DeployedScriptConfigs.js";
@@ -328,7 +328,6 @@ export type StellarSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupInfo;
     config?: CT;
     partialConfig?: Partial<CT>;
-    programBundle?: DeployedProgramBundle;
     previousOnchainScript?: {
         validatorHash: number[];
         uplcProgram: anyUplcProgram;
@@ -339,6 +338,9 @@ export type SetupOrMainnetSignalForBundle = Partial<
     Omit<SetupInfo, "isMainnet">
 > &
     Required<Pick<SetupInfo, "isMainnet">>
+
+export type PartialStellarBundleDetails<CT extends configBaseWithRev>
+ = Omit<StellarBundleSetupDetails<CT>, "setup">
 
 export type StellarBundleSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupOrMainnetSignalForBundle;
@@ -446,16 +448,17 @@ export class StellarContract<
      * Once the data-bridge class is generated, you should import it into your contract
      * module and assign it to your `dataBridgeClass` attribute.
      */
-    async scriptBundle(): Promise<HeliosScriptBundle> {
+    async scriptBundleClass(): Promise<typeof HeliosScriptBundle> {
         debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
         throw new Error(
-            `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
-                `...each Stellar Contract must provide a scriptBundle() method. \n` +
-                `It should return an instance of a class defined in a *.hlb.ts file.  At minimum:\n\n` +
+            `${this.constructor.name}: missing required implementation of scriptBundleClass()\n` +
+                `...each Stellar Contract must provide a scriptBundleClass() method. \n` +
+                `It should return a class (not an instance) defined in a *.hlb.ts file.  At minimum:\n\n` +
                 `    export default class MyScriptBundle extends HeliosScriptBundle { ... }\n` +
                 ` or export default CapoDelegateBundle.usingCapoBundleClass(SomeCapoBundleClass) { ... }\n\n` +
                 `We'll generate TS types and other utilities for connecting to the data-types in your Helios sources.\n` +
-                `Your scriptBundle() method can return \`MyScriptBundle.create();\``
+                `Your scriptBundle() method can return \`MyScriptBundle.create();\`\n\n`+
+                `The function is async, so you can await a dynamic import() and reduce the initial bundle-load time.`
         );
     }
 
@@ -556,22 +559,26 @@ export class StellarContract<
     _bundle: HeliosScriptBundle | undefined;
     async getBundle(): Promise<HeliosScriptBundle> {
         if (!this._bundle) {
-            this._bundle = await this.scriptBundle();
+            const bundle = await this.mkScriptBundle({});
             if (
-                !this._bundle.configuredScriptDetails
+                // this._bundle.precompiledScriptDetails &&
+                // !this._bundle.precompiledScriptDetails.singleton
+                !bundle.configuredScriptDetails
             ) {
+                console.log("first-time configuration of bundle ${bundle.constructor.name}")
             }
-            if (!this._bundle._didInit) {
+            if (!bundle._didInit) {
                 console.warn(
                     `NOTE: the scriptBundle() method in ${this.constructor.name} isn't\n` +
-                        `initialized properly; it should use \`${this._bundle.constructor.name}.create({...})\`\n` +
-                        `... instead of \`new ${this._bundle.constructor.name}({...})\` `
+                        `initialized properly; it should use \`${bundle.constructor.name}.create({...})\`\n` +
+                        `... instead of \`new ${bundle.constructor.name}({...})\` `
                 );
             }
+            this._bundle = bundle;
             // this._bundle.checkDevReload()
         }
 
-        return this._bundle;
+        return this._bundle!
     }
 
     /**
@@ -671,7 +678,7 @@ export class StellarContract<
         if ("undefined" == typeof this._dataBridge) {
             const { dataBridgeClass } = this;
             if (!dataBridgeClass) {
-                if (this.usesContractScript) {
+                if ((this as any).usesContractScript) {
                     throw new Error(
                         `${
                             this._bundle?.moduleName || this.constructor.name
@@ -896,18 +903,16 @@ export class StellarContract<
         const {
             config,
             partialConfig : pCfg,
-            programBundle,
             previousOnchainScript,
             previousOnchainScript: { 
                 validatorHash, 
-                uplcProgram,                
+                uplcProgram: previousUplcProgram,
             } = {},
         } = args;
         this.configIn = config;
         
         let partialConfig : typeof pCfg = undefined
         if (pCfg && Object.keys(pCfg).length == 0) {
-            debugger;
             console.warn(`${this.constructor.name}: ignoring empty partialConfig; change the upstream code to leave it out`);
         } else {
             partialConfig = pCfg;
@@ -936,13 +941,11 @@ export class StellarContract<
         }
 
 
-        if (uplcProgram) {
+        if (previousUplcProgram) {
             // with a rawProgram, the contract script is used directly
             // to make a HeliosScriptBundle with that rawProgram
             // as an override.
-            const b = await this.scriptBundle();
-            this._bundle = b.withSetupDetails({
-                setup: this.setup,
+            const bundle = await this.mkScriptBundle({
                 scriptParamsSource: "config",
                 previousOnchainScript: previousOnchainScript,
                 // params: this.getContractScriptParams(config),
@@ -950,60 +953,36 @@ export class StellarContract<
                 //     config,
                 // },
             });
+            this._bundle = bundle
         } else if (config || partialConfig) {
             //@ts-expect-error on probe for possible but not
             //   required variant config
             const variant = (config || partialConfig).variant;
 
-            // const params = this.getContractScriptParams(config);
-            if (this.usesContractScript) {
-                const genericBundle = await this.scriptBundle();
+            console.log(`${this.constructor.name}: stellar offchain class init with config`)
+            let params = config ? this.getContractScriptParams(config) : undefined
+            if ((this as any).usesContractScript) {
+                const deployedDetails: DeployedScriptDetails<any> = {
+                    config,
+                    // programBundle,
+                    // scriptHash,
+                };
                 if (!config) {
                     // debugger;
                     console.warn(
                         `${this.constructor.name}: no config provided`
                     );
                 }
-                const params =
-                    genericBundle.scriptParamsSource != "bundle"
-                        ? config
-                            ? { params: this.getContractScriptParams(config) }
-                            : {}
-                        : {};
-                const deployedDetails = {
-                    config,
-                    programBundle,
-                    // scriptHash,
-                };
-                if (!programBundle) {
-                    console.log(
-                        `  -- 🐞🐞🐞 🐞 ${this.constructor.name}: no programBundle; will use JIT compilation`
-                    );
-                }
-                const specificBundle = genericBundle.withSetupDetails({
-                    ...params,
-                    setup: this.setup,
-                    deployedDetails,
+                const bundle : HeliosScriptBundle = await this.mkScriptBundle({
                     variant,
-                });
-                // if (specificBundle.
-                this._bundle = specificBundle;
+                    deployedDetails,
+                    params
+                })
+                this._bundle = bundle
+                console.error("------------------------ bundle init done");
                 // await this.prepareBundleWithScriptParams(params);
-            } else if (partialConfig) {
-                // if (this.canPartialConfig) {
-                throw new Error(
-                    `${this.constructor.name}: any use case for partial-config?`
-                );
-                this.partialConfig = partialConfig;
-                // this._bundle = this.scriptBundle();
-            }
-            if (this.usesContractScript) {
-                const bundle = await this.getBundle();
-                if (!bundle) {
-                    throw new Error(
-                        `${this.constructor.name}: missing required this.bundle for contract class`
-                    );
-                } else if (!bundle.isHeliosScriptBundle()) {
+
+                if (!bundle!.isHeliosScriptBundle()) {
                     throw new Error(
                         `${this.constructor.name}: this.bundle must be a HeliosScriptBundle; got ${bundle.constructor.name}`
                     );
@@ -1011,8 +990,10 @@ export class StellarContract<
                 if (bundle.setup && bundle.configuredParams) {
                     try {
                         // eager compile for early feedback on errors
-                        if (process.env.NODE_ENV == "development") {
-                            bundle.program
+                        if (false && process.env.NODE_ENV == "development") {
+                            console.log("dev env: loading program");
+                            bundle.loadProgram()
+                        }
                     } catch (e: any) {
                         console.warn(
                             "while loading program: ",
@@ -1023,7 +1004,10 @@ export class StellarContract<
                     debugger;
                     throw new Error(`what is this situation here? (dbpa)`);
                 }
-                console.log(this.program.name, "bundle loaded");
+                console.log(
+                    bundle.configuredScriptDetails?.programName || bundle.loadProgram().name,
+                    "bundle loaded"
+                ) 
             }
         } else {
             const bundle = await this.getBundle();
@@ -1047,8 +1031,24 @@ export class StellarContract<
         return this;
     }
 
+    async mkScriptBundle(
+        setupDetails: PartialStellarBundleDetails<any> = placeholderSetupDetails
+    ) {
+        const bundleClass = await this.scriptBundleClass();
+        return bundleClass.create({
+            ...setupDetails,
+            setup: this.setup,
+            // defaultParams: (
+            //     this.constructor as typeof StellarContract<any>
+            // ).defaultParams,
+        });
+    }
+
     _compiledScript!: anyUplcProgram; // initialized in compileWithScriptParams()
     get compiledScript(): anyUplcProgram {
+        if (this._bundle?.alreadyCompiledScript) {
+            return this._bundle.alreadyCompiledScript;
+        }
         if (!this._compiledScript) {
             throw new Error(
                 `${this.constructor.name}: compiledScript not yet initialized; call asyncCompiledScript() first`
@@ -1058,11 +1058,16 @@ export class StellarContract<
     }
 
     async asyncCompiledScript() {
-        if (this._compiledScript) return this._compiledScript;
+        // if (this._compiledScript) return this._compiledScript;
+        if (!this.usesContractScript) {
+            throw new Error(`${this.constructor.name}: usesContractScript is false; don't call asyncCompiledScript().`);
+        }
         const b = await this.getBundle();
-        const s = await b.compiledScript(true);
-        this._compiledScript = s;
-        return s;
+        const compiledScript = await b.compiledScript(true);
+        if (b.alreadyCompiledScript !== compiledScript) {
+            throw new Error("impossible! alreadyCompiledScript should be present")
+        }
+        return compiledScript;
     }
     usesContractScript: boolean = true;
 
@@ -1085,8 +1090,8 @@ export class StellarContract<
         // console.log(this.constructor.name, "cached vh", vh?.hex || "none");
 
         // validator hash is the same as the script hash
-        if (this._bundle?.configuredScriptDetails?.scriptHash) {
-            return this._cache.vh = makeValidatorHash(this._bundle.configuredScriptDetails.scriptHash)
+        if (this._bundle?.scriptHash) {
+            return this._cache.vh = makeValidatorHash(this._bundle.scriptHash)
         }
         throw new Error("bundle not initialized with getBundle() before getting validatorHash")
         // console.log("nvh", nvh.hex);
@@ -1137,11 +1142,10 @@ export class StellarContract<
     }
 
     get mintingPolicyHash() {
-        if ("minting" != this.purpose) return undefined;
         const { mph } = this._cache;
         if (mph) return mph;
         // console.log(this.constructor.name, "_mph", this._mph?.hex || "none");
-        const hash = this._bundle?.configuredScriptDetails?.scriptHash
+        const hash = this._bundle?.scriptHash
         if (!hash) {
             throw new Error("bundle not initialized with getBundle() before getting mintingPolicyHash")
         }
@@ -1277,6 +1281,11 @@ export class StellarContract<
         return getSeed(arg);
     }
 
+    loadProgram() {
+        if (!this._bundle) throw new Error(`${this.constructor.name}: no bundle / script program`);
+        return this._bundle.loadProgram()
+    }
+
     /**
      * returns the on-chain type for activities ("redeemers")
      * @remarks
@@ -1290,8 +1299,9 @@ export class StellarContract<
      **/
     get onChainActivitiesType(): DataType {
         const { scriptActivitiesName: onChainActivitiesName } = this;
-        if (!this._bundle) throw new Error(`no scriptProgram`);
-        const scriptNamespace = this.program.name;
+        const program = this.loadProgram();
+
+        const scriptNamespace = program.name;
         const {
             [scriptNamespace]: { [onChainActivitiesName]: ActivitiesType },
         } = this.program.userTypes;
@@ -1524,23 +1534,16 @@ export class StellarContract<
             );
             debugger;
         }
-
-        if (
-            !bundle.setup ||
-            bundle.setupDetails.originatorLabel ||
-            !bundle.configuredUplcParams
-        ) {
-            // serves capo's bootstrap in mkTxnMintCharterToken()
-            // also allows delegates to call <bundleClass>.create() without args,
-            // ... and still get the right setup details.
-            bundle = this._bundle = bundle.withSetupDetails({
-                params,
-                setup: this.setup,
-                scriptParamsSource: "config",
-            });
+        if (bundle.isConcrete || bundle.configuredParams) {
+            throw new Error(`can't prepare bundle when there's already a good one`)
         }
-        // this._compiledScript = await bundle.compiledScript(true);
 
+        bundle = this._bundle = await this.mkScriptBundle({
+            params,
+            scriptParamsSource: "config",
+        });
+
+        this._compiledScript = await bundle.compiledScript(true);
         // console.log(
         //     `       ✅ ${this.constructor.name} ready with scriptHash=`,
         //     bytesToHex(this.compiledScript.hash())
@@ -1654,7 +1657,7 @@ export class StellarContract<
             });
         }
     }
-    
+
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
         const uh = this.utxoHelper;
         //!!! big enough to serve minUtxo for each of the new UUT(s)

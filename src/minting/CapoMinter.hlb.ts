@@ -87,6 +87,14 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
         return CapoMinterScript;
     }    
 
+    async loadPrecompiledVariant(variant: string) {
+        if (variant !== "singleton") {
+            throw new Error(`unknown minter variant: ${variant}`);
+        }
+        return this.capoBundle.loadPrecompiledMinterScript()
+        // return super.loadPrecompiledVariant(variant);
+    }
+
     // automatically-included modules from Capo don't need to be specified
     // get modules() {
     //     return [...this.capoBundle.modules];

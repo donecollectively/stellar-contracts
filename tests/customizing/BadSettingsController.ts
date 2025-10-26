@@ -20,9 +20,9 @@ export class BadSettingsController extends DelegatedDataContract<
 > {
     dataBridgeClass = BadSettingsPolicyDataBridge;
 
-    async scriptBundle(): Promise<DelegatedDataBundle> {
+    async scriptBundleClass() {
         const bundleModule = await import("./BadSettings.hlb.js");
-        return bundleModule.BadSettingsBundle.create() as DelegatedDataBundle;
+        return bundleModule.BadSettingsBundle
     }
 
     exampleData(this: BadSettingsController): minimalProtocolSettings {
@@ -68,8 +68,9 @@ export class BadSettingsControllerWithWrapper extends WrappedDgDataContract<
     NoOpWrapper
 > {
     dataBridgeClass = BadSettingsPolicyDataBridge;
-    scriptBundle() {
-        return BadSettingsBundle.create();
+    async scriptBundleClass() {
+        const bundleModule = await import("./BadSettings.hlb.js");
+        return bundleModule.BadSettingsBundle
     }
 
     mkDataWrapper(x: ProtocolSettings) {

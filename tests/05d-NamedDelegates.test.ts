@@ -44,8 +44,8 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
         return (await super.getMintDelegate()) as MintDelegateWithGenericUuts;
     }
 
-    scriptBundle() {
-        return new CapoHeliosBundle();
+    async scriptBundleClass() {
+        return CapoHeliosBundle;
     }
     
     @txn
@@ -116,9 +116,9 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
 export class TestNamedDelegate extends ContractBasedDelegate {
     get delegateName() { return "myNamedDgt" }
     dataBridgeClass = UnspecializedDelegateBridge
-    scriptBundle() {
+    async scriptBundleClass() {
         //todo: change this to use a different bundle class
-        return UnspecializedDgtBundle.create()
+        return UnspecializedDgtBundle;
     }
 }
 

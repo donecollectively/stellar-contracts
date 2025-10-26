@@ -81,18 +81,19 @@ export function CharterStatus() {
                 setStatusMessage(message);
             }
         });
+        if (capo && capo.isChartered) {
+            capo?.findCharterData(undefined, { optional: true }).then((cd) => {
+                if (!cd) {
+                    setStatusMessage("no charter data found");
+                    return;
+                }
+                setStatusMessage("charter data found");
+                // @ts-ignore - This is a temporary global variable for debugging
+                globalThis.charter = cd;
 
-        capo?.findCharterData(undefined, { optional: true }).then((cd) => {
-            if (!cd) {
-                setStatusMessage("no charter data found");
-                return;
-            }
-            setStatusMessage("charter data found");
-            // @ts-ignore - This is a temporary global variable for debugging
-            globalThis.charter = cd;
-
-            setCharterData(cd);
-        });
+                setCharterData(cd);
+            });
+        }
     }, [provider, provider?.userInfo.wallet, capo]);
 
     const [upgradeTxn, setUpgradeTxn] = React.useState<

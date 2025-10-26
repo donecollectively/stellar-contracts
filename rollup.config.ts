@@ -94,6 +94,7 @@ const platformIndependentEntryPoints = {
     "CapoDelegateHeliosBundle": "./src/helios/scriptBundling/CapoDelegateBundle.ts",
     "ContractBasedDelegate": "./src/delegation/ContractBasedDelegate.ts",
     "DelegatedDataContract": "./src/delegation/DelegatedDataContract.ts",
+    "StellarContract": "./src/StellarContract.ts",
     "stellar-contracts": "./index.ts",
     "ui": "./src/ui/index.ts",
 };
@@ -169,7 +170,7 @@ export default [
             // sourcemaps(),
             esbuildPlugin({
                 tsconfig: "./tsconfig.json",
-                target: ["node18" ],
+                target: ["node20" ],
                 dropLabels: [ "__NODEJS_ONLY__" ],
                 sourceMap: true,
             })

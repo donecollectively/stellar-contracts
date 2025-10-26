@@ -148,7 +148,9 @@ describe("Capo", async () => {
 
             {
                 const charter = await capo.mustFindCharterUtxo();
-                tcx1.addScriptProgram(capo.compiledScript!);
+                const program = (await capo.asyncCompiledScript())!;
+
+                tcx1.addScriptProgram(program);
                 tcx1.addInput(charter, capo.activityUsingAuthority());
                 const datum = charter.datum;
                 if (!datum) throw new Error("missing datum");

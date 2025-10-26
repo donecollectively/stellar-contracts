@@ -69,31 +69,6 @@ import { TxBatchUI } from "./TxBatchUI.js";
 import { environment } from "../environment.js";
 import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
 
-// Making your own dApp using Stellar Contracts?  Here's how to get started:
-//   First, use the "null" config here.
-//   Next, charter your Capo using the guide in the README file.
-//   Do any development work you'd like to do; incremental configurations
-//     ... are stored in localStorage.
-//   When you're ready, paste the configuration (see "deploy this!" in the console logs)
-//     ... in place of the non-null config structure below.
-//
-//
-const ourCapoConfig = null;
-
-//!!! comment out the following block while using the "null" config.
-// const ourCapoConfig = {
-//     mph: { bytes: "1caa8526c25066237f4d1e5e271790fa7de0bc286c1b39ccac076f92" },
-//     rev: "1",
-//     isDev: true,
-//     seedTxn: {
-//         bytes: "ebea3b3fe691b71fa254682e9232ab14540ea694c13945ac41d32c6487c1e21e",
-//     },
-//     seedIndex: "5",
-//     rootCapoScriptHash: {
-//         bytes: "d3b181cdf036c70178ae4763a0a50f2f829cf8a50abdc59c41958d17",
-//     },
-// };
-
 /**
  * @public
  */
@@ -1458,11 +1433,11 @@ export class CapoDAppProvider<
                         "If this situation persists, you might need to investigate why the dev config is being written as something non-parseable",
                 });
             }
-        const bestKnownConfig = localConfig || ourCapoConfig;
         let config =
-            !reset && bestKnownConfig
-                ? { config: parseCapoJSONConfig(bestKnownConfig) }
+            !reset && localConfig
+                ? { config: parseCapoJSONConfig(localConfig) }
                 : { }
+                // : { partialConfig: {} };
 
         if (!wallet) console.warn("connecting to capo with no wallet");
         if (!networkParams) {
@@ -1527,6 +1502,37 @@ export class CapoDAppProvider<
                 //@ts-expect-error - sorry, typescript : /
                 cfg
             );
+            const capoBundle = await capo.getBundle();
+            debugger
+            const configured = capoBundle.configuredParams;
+            const { isChartered } = capo;
+
+            if (!configured || !isChartered) {
+                const problem = configured
+                    ? isChartered
+                        ? "impossible"
+                        : "is preconfigured and ready to be chartered!"
+                    : isChartered
+                    ? "impossible"
+                    : "needs to be configured and chartered.   Add a configuration if you have it, or create the Capo charter now.";
+
+                const message = autoNext ? `The Capo contract ${problem} ` : "";
+
+                await this.updateStatus(
+                    message,
+                    {
+                        nextAction: "initializeCapo",
+                        developerGuidance:
+                            "likely administrative moment for dev-time creation of the capo",
+                    },
+                    "//bootstrap needed",
+                    {
+                        capo,
+                    }
+                );
+                return;
+                // return this.stellarSetup();
+            }
             capo.actorContext.wallet = wallet;
             const config = capo._bundle?.configuredScriptDetails?.config as CapoConfig
             if (capo._bundle?.configuredScriptDetails) {

@@ -45,7 +45,7 @@ import {
 import {
     serializeCacheEntry,
     stringifyCacheEntry,
-    type DeployedProgramBundle,
+    type PrecompiledProgramJSON,
 } from "../CachedHeliosProgram.js";
 import {
     delegateLinkSerializer,
@@ -220,10 +220,17 @@ export function heliosRollupBundler(
             this.debug("---------- adding meta for " + id);
             // this.debug('  ^ was '+ JSON.stringify(info.meta.stellar || "nothing"));
             // this.debug("  now "+ meta.precompiledModuleFilename)
-            info.meta.stellar = {
-                ...(info.meta.stellar || {}),
-                ...meta,
-            };
+
+            const st = info.meta.stellar || {}
+            try {
+                info.meta.stellar = {
+                    ...st,
+                    ...meta,
+                };
+            } catch (e:any) {
+                console.warn("detected error while adding meta for " + id)
+                this.debug("detected error while adding meta: "+e.stack)
+            }
         }
     }
 
@@ -391,14 +398,13 @@ export function heliosRollupBundler(
                     );
                 }
 
-                if (resolved && id && filterHLB(id)) {
-                    addMeta.call(this, id, meta);
-    
+                if (resolved && id && filterHLB(id)) {                    
                     this.debug(
                         `-> resolveId ${source} (from ${relativePath(
                             importer
                         )})`
                     );
+                    addMeta.call(this, id, meta);
                     if (interesting) {
                         this.debug(
                             `resolved absolute HLB id ${id} with options: ` +
@@ -1265,6 +1271,7 @@ export function heliosRollupBundler(
                 null,
                 16
             )}),
+                  programName: "${hlBundler.program.name}",
         },
         minter: {
             scriptHash: ${JSON.stringify(mph)},
@@ -1272,6 +1279,7 @@ export function heliosRollupBundler(
                 seedTxn: ${JSON.stringify(config.seedTxn)},
                 seedIndex: ${JSON.stringify(config.seedIndex)},
             }),
+            programName: "${minterBundler.program.name}",
         }
     } 
             // static isPreconfigured = true;
@@ -1280,7 +1288,8 @@ export function heliosRollupBundler(
             // deployDetails.capo.programBundle = programBundle;
 
             const lazyLoader =
-                `\n${_i_(`async loadPrecompiledScript() {\n`)}` +
+                `\n${_i_(`async loadPrecompiledVariant(variant: string) {\n`)}` +
+                _ii__(`if (variant !== "capo") throw new Error(\`unknown capo variant: \${variant}\`);\n`) +
                 _ii__(
                     `const module = await import("${precompiledExportName}");\n`
                 ) +
@@ -1301,6 +1310,7 @@ export function heliosRollupBundler(
                 `$1precompiledScriptDetails = this.constructor.precompiledScriptDetails; \n`+
                 `$1static precompiledScriptDetails = ${staticPreConfiguredDetails}\n\n`+
                 `$1scriptParamsSource = "bundle";\n`+
+                `$1isConcrete = true;\n`+
                 `${lazyLoader}`
             );
             // console.log(s.toString());
@@ -1356,7 +1366,7 @@ export function heliosRollupBundler(
                 return null;
             }
             let hlBundler: HeliosScriptBundle = SomeBundleClass.create({
-                originatorLabel: `rollupBundlerPlugin for inserting pre-compiled script details`,                
+                originatorLabel: `stellar bundler for finding pre-compiled script variants`,                
                 scriptParamsSource: "config",
                 setup: {
                     isMainnet: networkId === "mainnet",
@@ -1375,7 +1385,7 @@ export function heliosRollupBundler(
 
             const precompiledVariants: Record<
                 string,
-                DeployedProgramBundle //... with jsonified contents:
+                PrecompiledProgramJSON //... with jsonified contents:
                 //     programBundle: any;
                 //   // ^^^ removed extraneous programBundle key
                 //   // vvv moved to precompiledScriptInfo
@@ -1417,10 +1427,10 @@ export function heliosRollupBundler(
                 hlBundler.variants
             )) {
                 if (params) {
-                    const configuredBundle = hlBundler.withSetupDetails({
+                    const configuredBundle = SomeBundleClass.create({
                         params,
                         scriptParamsSource: "config",
-                        originatorLabel: "stellar bundler, inserting pre-compiled script details",
+                        originatorLabel: `stellar bundler, inserting pre-compiled script details for variant '${variant}'`,
                         setup: { isMainnet: networkId === "mainnet" },
                     });
 
@@ -1552,6 +1562,7 @@ export function heliosRollupBundler(
             const asyncLoader = `const module = await import("${precompiledExportName}");\n`;
             const badVariant = `throw new Error(\`unknown variant: \${variant}\`);\n`;
             const precompiledScriptLoader =
+                _i_(`scriptParamsSource = "bundle";\n`) +
                 _i_(`async loadPrecompiledVariant(variant: string) {\n`) +
                 _ii__(asyncLoader) +
                 _ii__(`const foundVariant = module.precompiled[variant];\n`) +

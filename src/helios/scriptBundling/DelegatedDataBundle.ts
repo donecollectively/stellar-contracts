@@ -5,7 +5,7 @@ import { CapoDelegateBundle } from "./CapoDelegateBundle.js";
  * @public
  */
 export abstract class DelegatedDataBundle extends CapoDelegateBundle {
-    scriptParamsSource = "bundle" as const
+    scriptParamsSource : "config" | "bundle" = "config"
     /**
      * The delegate module specialization for this script bundle.
      * @remarks

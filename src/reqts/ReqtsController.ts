@@ -43,7 +43,6 @@ export class ReqtsController extends DelegatedDataContract<
         return "ReqtsPolicy";
     }
 
-
     get idPrefix() {
         return "reqt";
     }
@@ -78,9 +77,9 @@ export class ReqtsController extends DelegatedDataContract<
     //     return new ReqtsAdapter(this);
     // }
 
-    async scriptBundle() {    
+    async scriptBundleClass() {    
         const bundleModule = await import("./Reqts.concrete.hlb.js");
-        return bundleModule.ReqtsConcreteBundle.create()
+        return bundleModule.ReqtsConcreteBundle
     }
     
     @Activity.redeemer

@@ -7,9 +7,9 @@ export class MintDelegateWithGenericUuts extends BasicMintDelegate {
     dataBridgeClass = ummdDataBridge;
     get delegateName() { return "uutMintingDelegate" }
 
-    async scriptBundle() {
+    async scriptBundleClass() {
         const bundleModule = await import("./uutMintingMintDelegate.hlb.js");
-        return bundleModule.BundleMintDelegateWithGenericUuts.create() as uutMintingMintDelegateBundle
+        return bundleModule.BundleMintDelegateWithGenericUuts
     }
     
 }

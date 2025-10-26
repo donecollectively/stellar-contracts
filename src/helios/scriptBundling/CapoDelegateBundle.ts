@@ -87,7 +87,11 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     static usingCapoBundleClass<
         THIS extends typeof CapoDelegateBundle,
         CB extends CapoBundleClass
-    >(this: THIS, c: CB) : ConcreteCapoDelegateBundle {
+    >(
+        this: THIS, 
+        c: CB, 
+        generic : "generic" | false = false
+    ) : ConcreteCapoDelegateBundle {
         //@ts-expect-error returning a subclass without concrete implementations
         // of the abstract members; hopefully the subclass will error if they're missing
         const cb = new c(placeholderSetupDetails);
@@ -97,7 +101,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
             constructor(setupDetails: StellarBundleSetupDetails<any>=placeholderSetupDetails) {
                 super(setupDetails);
             }
-            isConcrete = true;
+            isConcrete = !!!generic;
         } as typeof newClass
         // as typeof CapoDelegateBundle & CapoDelegateBundleClass // & CB
 

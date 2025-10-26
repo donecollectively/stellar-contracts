@@ -28,6 +28,7 @@ import type {
     StellarSetupDetails,
     stellarSubclass,
     ConfigFor,
+    StellarBundleSetupDetails,
 } from "./StellarContract.js";
 import type { anyUplcProgram } from "./HeliosPromotedTypes.js";
 import {
@@ -149,7 +150,8 @@ import type {
 } from "./CapoTypes.js";
 import { mkDgtStateKey } from "./CapoTypes.js";
 
-import type { DeployedProgramBundle } from "./helios/CachedHeliosProgram.js";
+import type { PrecompiledProgramJSON } from "./helios/CachedHeliosProgram.js";
+import { placeholderSetupDetails } from "./helios/index.js";
 
 type InstallPolicyDgtOptions<
     CAPO extends Capo<any>,
@@ -240,6 +242,7 @@ export abstract class Capo<
     isChartered: boolean = false;
     dataBridgeClass = CapoDataBridge;
     needsCoreDelegateUpdates = false;
+    usesContractScript = true;
 
     get onchain(): mustFindConcreteContractBridgeType<this> {
         return this.getOnchainBridge() as any;
@@ -340,11 +343,11 @@ export abstract class Capo<
         return super.getBundle() as Promise<CapoHeliosBundle>;
     }
 
-    async scriptBundle(): Promise<CapoHeliosBundle> {
+    async scriptBundleClass(): Promise<typeof CapoHeliosBundle> {
         console.warn(
-            `${this.constructor.name}: each Capo will need to provide a scriptBundle() method.\n` +
+            `${this.constructor.name}: each Capo will need to provide a scriptBundleClass() method.\n` +
                 `It should return an instance of a class defined in a *.hlb.ts file.  At minimum:\n\n` +
-                `    export default class MyAppCapo extends CapoHeliosBundle {\n` +
+                `    export default class MyAppCapoBundle extends CapoHeliosBundle {\n` +
                 `       get modules() { \n` +
                 `           return [\n` +
                 `               ...super.modules,\n` +
@@ -353,15 +356,24 @@ export abstract class Capo<
                 `       }\n` +
                 `    }\n\n` +
                 `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
-                `Your scriptBundle() method can \`return new MyAppCapo();\`\n\n` +
+                `It's recommended to import your bundle asyncrhonously.` +
+                `Your scriptBundleClass() method can \`module= await import("./MyAppCapoBundle.js"); return module.MyAppCapoBundle;\`\n\n` +
                 `We suggest naming your Capo bundle class with your application's name.\n`
         );
         console.warn(
             "using a generic Capo bundle - just enough for getting started."
         );
-        return CapoHeliosBundle.create({
-            setup: this.setup,
+        return CapoHeliosBundle;
+    }
+
+    async mkScriptBundle(
+        setupDetails: StellarBundleSetupDetails<any> = placeholderSetupDetails
+    ) {
+        const c = await this.scriptBundleClass();
+        return c.create({
             params: this.configIn,
+            ...setupDetails,
+            setup: this.setup,
         });
     }
 
@@ -385,6 +397,7 @@ export abstract class Capo<
     get scriptDatumName() {
         return "CapoDatum";
     }
+
     get scriptActivitiesName() {
         return "CapoActivity";
     }
@@ -425,8 +438,8 @@ export abstract class Capo<
         // this.mustGetActivity("usingAuthority");
 
         if (!updatingCharter || !usingAuthority) {
-            await this.getBundle()
-            this._bundle!.loadProgram()
+            await this.getBundle();
+            this._bundle!.loadProgram();
 
             const {
                 scriptDatumName: onChainDatumName,
@@ -455,11 +468,11 @@ export abstract class Capo<
         let {
             configuredParams,
             precompiledScriptDetails: {
-                minter: {                    
+                minter: {
                     config: minterConfig,
                     // programBundle: minterProgramBundle,
-                } = {},
-            }={},
+                } = {config: undefined},
+            } = {},
         } = bundle;
 
         let expectedMph: MintingPolicyHash | undefined = undefined;
@@ -483,7 +496,9 @@ export abstract class Capo<
         this._delegateRoles = this.initDelegateRoles();
 
         if (seedTxn) {
-            await this.verifyCoreDelegates();
+            await this.verifyIsChartered();
+            // expensive:
+            // await this.verifyCoreDelegates();
         }
 
         // //@ts-expect-error - trust the subclass's initDelegatedDatumAdapters() to be type-matchy
@@ -813,7 +828,7 @@ export abstract class Capo<
             const redeemer = redeemerOrRefInput;
             const tcx2 = await this.txnAttachScriptOrRefScript(
                 tcx,
-                this.compiledScript
+                await this.asyncCompiledScript()
             );
             //@ts-expect-error poking our nose into Helios TxBuilder's business
             tcx2.txb._refInputs = tcx2.txb.refInputs.filter(
@@ -911,10 +926,13 @@ export abstract class Capo<
 
     get mph() {
         if (!this._bundle?.configuredScriptDetails && !this.minter) {
-            throw new Error("Can't get mph until either the minter or a pre-configured bundle is available")
+            throw new Error(
+                "Can't get mph until either the minter or a pre-configured bundle is available"
+            );
         }
         if (this._bundle?.configuredScriptDetails) {
-            return (this._bundle.configuredScriptDetails.config as CapoConfig).mph
+            return (this._bundle.configuredScriptDetails.config as CapoConfig)
+                .mph;
         }
         return this.minter.mintingPolicyHash!;
     }
@@ -1209,8 +1227,7 @@ export abstract class Capo<
         // P = SC extends StellarContract<infer P> ? P : never
     >(
         TargetClass: stellarSubclass<SC>,
-        config: SC extends StellarContract<infer iCT> ? iCT : never,
-        programBundle?: DeployedProgramBundle,
+        config: ConfigFor<SC>,
         previousOnchainScript?: {
             validatorHash: number[];
             uplcProgram: anyUplcProgram;
@@ -1219,7 +1236,6 @@ export abstract class Capo<
         const args: StellarSetupDetails<ConfigFor<SC>> = {
             config,
             setup: this.setup,
-            programBundle,
             previousOnchainScript,
         };
 
@@ -1228,8 +1244,7 @@ export abstract class Capo<
     }
 
     async connectMintingScript(
-        params: SeedTxnScriptParams,
-        programBundle?: DeployedProgramBundle
+        params: SeedTxnScriptParams
     ): Promise<CapoMinter> {
         if (this.minter) return this.minter;
         const { minterClass } = this;
@@ -1261,9 +1276,9 @@ export abstract class Capo<
         const minter = await this.addStrellaWithConfig(
             minterClass,
             config,
-            programBundle,
             noPreviousOnchainScript
         );
+        await minter.asyncCompiledScript()
 
         if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
             throw new Error(
@@ -1621,7 +1636,6 @@ export abstract class Capo<
             };
             delegate = await this.mustGetDelegate<DT>(role, delegateSettings);
             if (delegate.usesContractScript) {
-                await delegate.asyncCompiledScript();
             }
         } catch (e: any) {
             console.log("error: unable to create delegate: ", e.stack);
@@ -1648,7 +1662,16 @@ export abstract class Capo<
         if (!uutName) {
             throw new Error(`missing required uutName in delegateSettings`);
         }
-        const { delegateValidatorHash } = delegate;
+
+        const delegateValidatorHash = await (async () => {
+            if (delegate.usesContractScript) {
+                const bundle = await delegate.getBundle()
+                await bundle.compiledScript(true);
+                return makeValidatorHash(bundle.scriptHash)
+            } else {
+                return delegate.delegateValidatorHash
+            }
+        })()
         const pcd: ConfiguredDelegate<DT> & { uutName: string } = {
             ...delegateSettings,
             config: configForOnchainRelativeDelegateLink,
@@ -1660,6 +1683,16 @@ export abstract class Capo<
         return pcd;
     }
 
+    /**
+     * loads the pre-compiled minter script from the pre-compiled bundle
+     */
+    /** note, here in this file we show only a stub.  The heliosRollupBundler
+     * actually writes a real implementation that does a JIT import of the 
+     * precompiled bundle 
+     */
+    async loadPrecompiledMinterScript(): Promise<PrecompiledProgramJSON> {
+        throw new Error(`loading the minter script requires a pre-bundled Capo`)
+    }
     mkImpliedDelegationDetails(uut: UutName): DelegationDetail {
         return {
             capoAddr: this.address,
@@ -1811,6 +1844,10 @@ export abstract class Capo<
             // addrHint,
         });
 
+        if (delegate.usesContractScript) {
+            await delegate.asyncCompiledScript()
+        }
+
         const previousOnchainScript = await (async () => {
             if (!onchainValidatorHash) return undefined;
 
@@ -1912,7 +1949,6 @@ export abstract class Capo<
                 const configured = await this.addStrellaWithConfig(
                     delegateClass,
                     config as any,
-                    undefined,
                     previousOnchainScript
                 );
                 return configured as T;
@@ -2065,6 +2101,18 @@ export abstract class Capo<
         //as ROLEMAP
     }
 
+    async verifyIsChartered() {
+        const maybeFound = await this.findCharterData(undefined, {
+            optional: true,
+        });
+        if (!maybeFound) {
+            console.warn(`Capo is not yet chartered`);
+            return undefined;
+        }
+        this.isChartered = true;
+        return maybeFound;
+    }
+
     /**
      * Performs a validation of all critical delegate connections
      * @remarks
@@ -2093,20 +2141,11 @@ export abstract class Capo<
         }
         await this.asyncCompiledScript();
 
-        let charter: CapoDatum$Ergo$CharterData;
-        {
-            const maybeFound = await this.findCharterData(undefined, {
-                optional: true,
-            });
-            if (!maybeFound) {
-                console.warn(
-                    `Capo is not yet bootstrapped; skipping delegate verification`
-                );
-                return;
-            }
-            charter = maybeFound;
+        let charter: CapoDatum$Ergo$CharterData = (await this.verifyIsChartered())!;
+        if (!charter) {
+            console.warn(`Skipping delegate verification for unchartered Capo`);
+            return;
         }
-        this.isChartered = true;
 
         const { govAuthorityLink, mintDelegateLink, spendDelegateLink } =
             charter;
@@ -2512,10 +2551,8 @@ export abstract class Capo<
         await minter.asyncCompiledScript();
         const { mintingPolicyHash: mph } = minter;
         if (!didHaveDryRun) {
-            const csp = this.partialConfig;
-
             const capoParams = {
-                ...csp,
+                ...this.partialConfig,
                 mph,
                 seedTxn,
                 seedIndex,
@@ -2530,9 +2567,7 @@ export abstract class Capo<
             // this.scriptProgram = this.loadProgramScript();
             const script = await this.asyncCompiledScript();
 
-            capoParams.rootCapoScriptHash = makeValidatorHash(
-                script.hash()
-            );
+            capoParams.rootCapoScriptHash = makeValidatorHash(script!.hash());
 
             this.configIn = capoParams;
         }
@@ -2629,7 +2664,12 @@ export abstract class Capo<
         // tcx.addInput(seedUtxo);
         tcx2.addOutput(charterOut);
         tcx2.state.charterData = charterData;
-        // mints the charter, along with the capoGov and mintDgt UUTs.
+
+        const minterScript = (await minter.asyncCompiledScript())!;
+        const capoScript = (await this.asyncCompiledScript())!;
+        const mintDgtScript = (await mintDelegate.delegate.asyncCompiledScript())!;
+
+        // mints the charter, along with the capoGov and mintDgt UUTs.        
         // TODO: if there are additional UUTs needed for other delegates, include them here.
         const tcxWithCharterMint = await this.minter.txnMintingCharter(tcx2, {
             owner: this.address,
@@ -2639,23 +2679,24 @@ export abstract class Capo<
             // settingsUut: uuts.set,
         });
 
+
         // creates an addl txn that stores a refScript in the delegate;
         //   that refScript could be stored somewhere else instead (e.g. the Capo)
         //   but for now it's in the delegate addr.
-        const tcx4a = await this.txnMkAddlRefScriptTxn(
+        const tcx3a = await this.txnMkAddlRefScriptTxn(
             tcxWithCharterMint,
             "mintDelegate",
-            mintDelegate.delegate.compiledScript
+            mintDgtScript
         );
-        const tcx4b = await this.txnMkAddlRefScriptTxn(
-            tcxWithCharterMint,
+        const tcx3b = await this.txnMkAddlRefScriptTxn(
+            tcx3a,
             "capo",
-            this.compiledScript
+            capoScript!
         );
-        const tcx4c = await this.txnMkAddlRefScriptTxn(
-            tcxWithCharterMint,
+        const tcx3 = await this.txnMkAddlRefScriptTxn(
+            tcx3b,
             "minter",
-            minter.compiledScript
+            minterScript
         );
 
         console.log(
@@ -2667,7 +2708,7 @@ export abstract class Capo<
         //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
         //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
 
-        return tcx4c as unknown as TCX3 & Awaited<typeof tcxWithCharterMint>;
+        return tcx3 as unknown as TCX3 & Awaited<typeof tcxWithCharterMint>;
     }
 
     async mkTxnUpgradeIfNeeded(this: SELF, charterData?: CharterData) {
@@ -2728,14 +2769,16 @@ export abstract class Capo<
                         const dgDataControllerClass: stellarSubclass<
                             DelegatedDataContract<any, any>
                         > = delegateClass as any;
-                        const delegate = await dgDataControllerClass.createWith(
+
+                        const delegate = await this.addStrellaWithConfig(
+                            dgDataControllerClass,
                             {
-                                setup: this.setup,
-                                partialConfig: {
-                                    capo: this,
-                                },
+                                ...config,
+                                ... (this.constructor as any).defaultParams,
+                                capo: this
                             }
                         );
+
                         if (delegate.recordTypeName !== policyAndTypeName) {
                             debugger;
                             throw new Error(
@@ -3084,7 +3127,7 @@ export abstract class Capo<
         program: anyUplcProgram | undefined = undefined,
         useRefScript = true
     ): Promise<TCX> {
-        const program2 = program || (await this.asyncCompiledScript());
+        const program2 = program || (await this.asyncCompiledScript())!;
         let expectedVh = program2.hash();
 
         const capoUtxos = await this.findCapoUtxos();
@@ -3933,10 +3976,11 @@ export abstract class Capo<
         const bigDelegateName = `namedDelegate${DelegateName}`;
         tcx4.state[bigDelegateName] = newNamedDelegate;
 
+        const dgtScript = (await newNamedDelegate.delegate.asyncCompiledScript())!
         const tcx5 = await this.txnMkAddlRefScriptTxn(
             tcx4 as typeof tcx4 & TCX & hasNamedDelegate<DT, delegateName>,
             bigDelegateName,
-            newNamedDelegate.delegate.compiledScript
+            dgtScript
         );
 
         return tcx5;
@@ -4210,7 +4254,7 @@ export abstract class Capo<
                     );
                 }
                 const existingDgtBundle = await existingDelegate.getBundle();
-                const nextScript = existingDgtBundle.compiledScript();
+                const nextScript = (await existingDelegate.asyncCompiledScript())!
                 const nextDvh = makeValidatorHash(nextScript.hash());
                 if (nextDvh.isEqual(existingDvh)) {
                     console.warn(
@@ -4322,13 +4366,14 @@ export abstract class Capo<
         const stateKey = mkDgtStateKey<TypeName>(typeName);
         //@ts-expect-error "could be instantiated with different subtype"
         const tcx5: TCX & hasNamedDelegate<DT, TypeName, "dgData"> = tcx4;
+        const newDgtScript = (await tempDataPolicyLink.delegate.asyncCompiledScript())!
         // this type doesn't resolve because of abstract DT ^
         //  tcx5.state[stateKey] = delegateLink;
 
         const tcx6 = await this.txnMkAddlRefScriptTxn(
             tcx5,
             stateKey,
-            tempDataPolicyLink.delegate.compiledScript
+            newDgtScript
         );
         return tcx6 as typeof tcx6 & hasUutContext<"dgDataPolicy" | TypeName>;
     }

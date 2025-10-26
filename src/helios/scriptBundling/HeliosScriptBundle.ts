@@ -27,16 +27,12 @@ import type {
 import {
     programFromCacheEntry,
     serializeCacheEntry,
-    type DeployedProgramBundle,
+    type PrecompiledProgramJSON,
 } from "../CachedHeliosProgram.js";
-import type {
-    DeployedScriptDetails,
-} from "../../configuration/DeployedScriptConfigs.js";
+import type { DeployedScriptDetails } from "../../configuration/DeployedScriptConfigs.js";
 import { bytesToHex, equalsBytes } from "@helios-lang/codec-utils";
 import { makeCast } from "@helios-lang/contract-utils";
-import {
-    makeMintingPolicyHash,
-} from "@helios-lang/ledger";
+import { makeMintingPolicyHash } from "@helios-lang/ledger";
 import { environment } from "../../environment.js";
 
 /**
@@ -47,7 +43,7 @@ export const defaultNoDefinedModuleName = "‹default-needs-override›";
 /**
  * @public
  */
-export const placeholderSetupDetails : StellarBundleSetupDetails<any> = {
+export const placeholderSetupDetails: StellarBundleSetupDetails<any> = {
     originatorLabel: "for abstract bundleClass",
     setup: {
         isMainnet: "mainnet" === environment.CARDANO_NETWORK,
@@ -88,6 +84,12 @@ export abstract class HeliosScriptBundle {
      */
     static isAbstract?: boolean | undefined = undefined;
 
+    // static get defaultParams() {
+    //     return {};
+    // }
+    //
+    // static currentRev = 1n;
+
     /**
      * Constructs a base class for any Helios script bundle,
      * given the class for an application-specific CapoHeliosBundle.
@@ -108,7 +110,7 @@ export abstract class HeliosScriptBundle {
     //     * XXX - various bundles used within a single Capo,
     //     */
     static usingCapoBundleClass<CB extends CapoBundleClass>(
-        c: CB
+        c: CB, generic : "generic" | false = false
     ): HeliosBundleClassWithCapo {
         //@ts-expect-error returning a subclass without concrete implementations
         // of the abstract members; hopefully the subclass will error if they're missing
@@ -122,7 +124,7 @@ export abstract class HeliosScriptBundle {
                 super(setupDetails);
             }
 
-            isConcrete = true;
+            isConcrete = !!!generic;
         }
 
         return aCapoBoundBundle as HeliosBundleClassWithCapo &
@@ -139,7 +141,7 @@ export abstract class HeliosScriptBundle {
         created.init(setupDetails);
         return created;
     }
-    abstract scriptParamsSource: "config" | "bundle" | "none"
+    abstract scriptParamsSource: "config" | "bundle" | "none";
     capoBundle?: CapoHeliosBundle;
     isConcrete = false;
     configuredScriptDetails?: DeployedScriptDetails = undefined;
@@ -149,7 +151,7 @@ export abstract class HeliosScriptBundle {
      * @remarks
      * This can be used if needed for a contract whose entry point uses an abstract
      * type for the datum; the type-bridge & type-gen system will use this data type
-     * instead of inferrring the type from the entry point.
+     * instead of inferring the type from the entry point.
      */
     datumTypeName?: string;
 
@@ -163,18 +165,20 @@ export abstract class HeliosScriptBundle {
     redeemerTypeName: string = "";
     isMainnet: boolean;
     _program: HeliosProgramWithCacheAPI | undefined = undefined;
-    previousOnchainScript: {
-        validatorHash: number[];
-        uplcProgram: anyUplcProgram;
-    } | undefined = undefined;
+    previousOnchainScript:
+        | {
+              validatorHash: number[];
+              uplcProgram: anyUplcProgram;
+          }
+        | undefined = undefined;
     _progIsPrecompiled = false;
     setup: SetupOrMainnetSignalForBundle;
     setupDetails!: StellarBundleSetupDetails<any>;
-    ___id: number = T__id++
+    ___id: number = T__id++;
     _didInit = false;
     _selectedVariant?: string;
     debug = false;
-    scriptHash?: number[] | undefined;
+    // scriptHash?: number[] | undefined;
     configuredUplcParams: UplcRecord<any> | undefined = undefined;
     configuredParams: any | undefined = undefined;
     precompiledScriptDetails?: {
@@ -205,67 +209,99 @@ export abstract class HeliosScriptBundle {
     }
 
     init(setupDetails: StellarBundleSetupDetails<any>) {
-            const {
-                deployedDetails,
-                params,
-                params: { delegateName, variant = "singleton" } = {},
-                setup,
-                scriptParamsSource=this.scriptParamsSource,
-                previousOnchainScript,
-                originatorLabel
-            } = setupDetails;
-    
-            if (this.scriptParamsSource !== scriptParamsSource) {
-                console.warn(`   -- ${this.constructor.name}: ${originatorLabel} overrides scriptParamsSource\n        was ${this.scriptParamsSource}, now ${scriptParamsSource}`);
-                // debugger
-                this.scriptParamsSource = scriptParamsSource;
-            }
-            if (scriptParamsSource === "config") {
-                if (params) {
-                    this.configuredParams = params
-                } else if (!originatorLabel) {
-                    debugger
-                    this.scriptParamsSource
-                    throw new Error(
-                        `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
-                    );
-                }
-            } else if (scriptParamsSource == "bundle") {
-                // the bundle has its own built-in params
+        const {
+            deployedDetails,
+            params,
+            params: { delegateName, variant = "singleton" } = {},
+            setup,
+            scriptParamsSource = this.scriptParamsSource,
+            previousOnchainScript,
+            originatorLabel,
+        } = setupDetails;
+        // const { config,
+        //     // programBundle
+        // } = deployedDetails || {};
 
-                if (!this.precompiledScriptDetails) {
-                    debugger
-                    throw new Error(`${this.constructor.name}: scriptParamsSource=bundle without precompiled script details (${originatorLabel})`);
-                }
-                const thisVariant = this.precompiledScriptDetails[variant];
-                if (!thisVariant) {
-                    const msg = `${this.constructor.name}: no precompiled variant '${variant}' (${originatorLabel})`;
-                    console.warn(
-                        `${msg}\n  -- available variants: ${Object.keys(
-                            this.precompiledScriptDetails
-                        ).join(", ")}`
-                    );
-                    console.log(
-                        "configured variant should be in scriptBundle's 'params'"
-                    );
-                    debugger
-                    throw new Error(msg);
-                }
-                this._selectedVariant = variant;
-                const preConfig = thisVariant.config;
-                preConfig.rev = BigInt(preConfig.rev);
-
-                if (preConfig.capoMph?.bytes) {
-                    preConfig.capoMph = makeMintingPolicyHash(
-                        preConfig.capoMph.bytes
-                    );
-                }
-                this.configuredParams = preConfig
-            } else if (this.scriptParamsSource != "none") {
-                throw new Error(`unknown scriptParamsSource: ${this.scriptParamsSource} (${originatorLabel})`);
+        if (this.scriptParamsSource !== scriptParamsSource) {
+            console.warn(
+                `   -- ${this.constructor.name}: ${originatorLabel} overrides scriptParamsSource\n        was ${this.scriptParamsSource}, now ${scriptParamsSource}`
+            );
+            // debugger
+            this.scriptParamsSource = scriptParamsSource;
+        }
+        if (scriptParamsSource === "config") {
+            if (params) {
+                this.configuredParams = params;
+            } else if (!originatorLabel) {
+                debugger;
+                this.scriptParamsSource;
+                throw new Error(
+                    `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
+                );
             }
-    
+        } else if (scriptParamsSource == "bundle") {
+            // the bundle has its own built-in params
+
+            if (!this.precompiledScriptDetails) {
+                debugger;
+                throw new Error(
+                    `${this.constructor.name}: scriptParamsSource=bundle without precompiled script details (${originatorLabel})`
+                );
+            }
+            const thisVariant = this.precompiledScriptDetails[variant];
+            if (!thisVariant) {
+                const msg = `${this.constructor.name}: no precompiled variant '${variant}' (${originatorLabel})`;
+                console.warn(
+                    `${msg}\n  -- available variants: ${Object.keys(
+                        this.precompiledScriptDetails
+                    ).join(", ")}`
+                );
+                console.log(
+                    "configured variant should be in scriptBundle's 'params'"
+                );
+                debugger;
+                throw new Error(msg);
+            }
+            this._selectedVariant = variant;
+            // debugger
+            const preConfig = thisVariant.config;
+            preConfig.rev = BigInt(preConfig.rev || 1);
+
+            if (preConfig.capoMph?.bytes) {
+                preConfig.capoMph = makeMintingPolicyHash(
+                    preConfig.capoMph.bytes
+                );
+            }
+            this.configuredParams = preConfig;
+
+            // // temp singleton
+            // const selectedVariant = "singleton";
+            // this.configuredParams =
+            //     this.getPreconfiguredVariantParams(selectedVariant);
+        } else if (this.scriptParamsSource != "none") {
+            throw new Error(
+                `unknown scriptParamsSource: ${this.scriptParamsSource} (${originatorLabel})`
+            );
+        }
+
         this._didInit = true;
+    }
+
+    get scriptHash() {
+        const hash =
+            this.previousOnchainScript?.uplcProgram.hash() ||
+            this.configuredScriptDetails?.scriptHash ||
+            this.alreadyCompiledScript?.hash();
+        if (!hash) {
+            console.log("scriptHash called before program is loaded.  Call loadProgram() first (expensive!) if this is intentional")
+            const script = this.compiledScript()
+            return script.hash()
+            // debugger;
+            throw new Error(
+                "no scriptHash available yet (dbpa) - has the program been loaded and compiled?"
+            );
+        }
+        return hash;
     }
 
     /**
@@ -273,25 +309,26 @@ export abstract class HeliosScriptBundle {
      * load the program prior to it actually being needed
      */
     initProgramDetails() {
-        const {setupDetails} = this;
+        const { setupDetails } = this;
 
         const {
             deployedDetails,
             params,
             params: { delegateName, variant = "singleton" } = {},
             setup,
-            previousOnchainScript
+            previousOnchainScript,
         } = setupDetails;
-        const { config, 
-            // programBundle 
+        const {
+            config,
+            // programBundle
         } = deployedDetails || {};
 
         if (previousOnchainScript) {
             this.previousOnchainScript = previousOnchainScript;
-            this.scriptHash = previousOnchainScript.uplcProgram.hash();
-                // "string" === typeof deployedDetails?.scriptHash
-                //     ? hexToBytes(deployedDetails.scriptHash)
-                //     : deployedDetails?.scriptHash;
+            // this.scriptHash = previousOnchainScript.uplcProgram.hash();
+            // "string" === typeof deployedDetails?.scriptHash
+            //     ? hexToBytes(deployedDetails.scriptHash)
+            //     : deployedDetails?.scriptHash;
             return;
         }
 
@@ -357,26 +394,189 @@ export abstract class HeliosScriptBundle {
                     this.getPreconfiguredUplcParams(selectedVariant);
             }
         } else if (this.scriptParamsSource != "none") {
-            throw new Error(`unknown scriptParamsSource: ${this.scriptParamsSource}`);
+            throw new Error(
+                `unknown scriptParamsSource: ${this.scriptParamsSource}`
+            );
         }
     }
+
+    // XXinitProgramDetails() {
+    //     const {setupDetails} = this;
+    //     // if (!setupDetails?.params) {
+    //     //     debugger
+    //     //     console.warn(`setupDetails/params not set (dbpa)`);
+    //     // }
+    //     const {
+    //         deployedDetails,
+    //         params,
+    //         params: { delegateName, variant = "singleton" } = {},
+    //         setup,
+    //         previousOnchainScript
+    //     } = setupDetails;
+    //     const { config,
+    //         // programBundle
+    //     } = deployedDetails || {};
+
+    //     if (previousOnchainScript) {
+    //         this.previousOnchainScript = previousOnchainScript;
+    //         this.scriptHash = previousOnchainScript.uplcProgram.hash();
+    //             // "string" === typeof deployedDetails?.scriptHash
+    //             //     ? hexToBytes(deployedDetails.scriptHash)
+    //             //     : deployedDetails?.scriptHash;
+    //         return;
+    //     }
+
+    //     if (this.scriptParamsSource === "config") {
+    //         debugger;
+    //         // WHERE TO GET THE PROGRAM BUNDLE IN THIS CASE??
+    //         //   IS IT MAYBE ALREADY COMPILED?
+    //         if (false) { //programBundle) {
+    //         //     if (!scriptHash)
+    //         //         throw new Error(
+    //         //     `${this.constructor.name}: missing deployedDetails.scriptHash`
+    //         // );
+
+    //             // debugger; // do we need to cross-check config <=> params ?
+    //             this.configuredParams = config;
+    //             this.configuredUplcParams = this.paramsToUplc(config);
+    //             // change to preCompiledRawProgram,
+    //             // and use async getPreCompiledProgram(variant)
+    //             //    to get either this raw program or async-imported program data
+    //             this.precompiledScriptDetails = {
+    //                 singleton: {
+    //                     // programBundle,
+    //                 config
+    //             },
+    //             };
+    //             // this.precompiledBundle = programBundle;
+    //         } else if (params) {
+    //             if (this.precompiledScriptDetails) {
+    //                 // change to async getPreCompiledProgram(variant)
+    //                 const thisVariant = this.precompiledScriptDetails[variant];
+    //                 if (!thisVariant) {
+    //                     const msg = `${this.constructor.name}: no precompiled variant '${variant}'`;
+    //                     console.warn(
+    //                         `${msg}\n  -- available variants: ${Object.keys(
+    //                             this.precompiledScriptDetails
+    //                         ).join(", ")}`
+    //                     );
+    //                     console.log(
+    //                         "configured variant should be in scriptBundle's 'params'"
+    //                     );
+    //                     throw new Error(msg);
+    //                 }
+    //                 this._selectedVariant = variant;
+    //                 debugger
+    //                 const preConfig = thisVariant.config;
+    //                 preConfig.rev = BigInt(preConfig.rev);
+
+    //                 if (preConfig.capoMph?.bytes) {
+    //                     preConfig.capoMph = makeMintingPolicyHash(
+    //                         preConfig.capoMph.bytes
+    //                     );
+    //                 }
+    //                 const uplcPreConfig = this.paramsToUplc(preConfig);
+    //                 // omits delegateName from the strict checks
+    //                 //  ... it's provided by the bundle, which the
+    //                 //  ... off-chain wrapper class may not have access to.
+    //                 const {
+    //                     params: { delegateName, ...params },
+    //                 } = setupDetails;
+    //                 this.isConcrete = true;
+    //                 const uplcRuntimeConfig = this.paramsToUplc(params);
+    //                 let didFindProblem: string = "";
+    //                 for (const k of Object.keys(uplcPreConfig)) {
+    //                     const runtime = uplcRuntimeConfig[k];
+    //                     // skips past any runtime setting that was not explicitly set
+    //                     if (!runtime) continue;
+    //                     const pre = uplcPreConfig[k];
+    //                     if (!runtime.isEqual(pre)) {
+    //                         if (!didFindProblem) {
+    //                             console.warn(
+    //                                 `${this.constructor.name}: config mismatch between pre-config and runtime-config`
+    //                             );
+    //                             didFindProblem = k;
+    //                         }
+    //                         console.warn(
+    //                             `• ${k}:  pre-config: `,
+    //                             preConfig[k] || (pre.rawData ?? pre),
+    //                             ` at runtime:`,
+    //                             params[k] || (runtime.rawData ?? runtime)
+    //                         );
+    //                     }
+    //                 }
+    //                 if (didFindProblem) {
+    //                     throw new Error(
+    //                         `runtime-config conflicted with pre-config (see logged details) at key ${didFindProblem}`
+    //                     );
+    //                 }
+    //             }
+    //             // moved to init
+    //             // this.configuredParams = setupDetails.params;
+    //             this.configuredUplcParams = this.paramsToUplc(
+    //                 setupDetails.params
+    //             );
+    //         } else if (!setup.isPlaceholder) {
+    //             debugger
+    //             throw new Error(
+    //                 `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
+    //             );
+    //         }
+    //     } else if (this.scriptParamsSource == "mixed") {
+    //         debugger;
+    //         const {params} = setupDetails
+
+    //         if (this.configuredParams) {
+    //             debugger;
+    //             throw new Error(
+    //                 `unreachable: configuredParameters used without deployedDetails? (dbpa)`
+    //             );
+    //         }
+    //     } else if (this.scriptParamsSource == "bundle") {
+    //         // the bundle has its own built-in params
+
+    //         // temp singleton
+    //         const selectedVariant = "singleton";
+    //         this.configuredParams =
+    //             this.getPreconfiguredVariantParams(selectedVariant);
+    //         if (this.configuredParams) {
+    //             this.configuredUplcParams =
+    //                 this.getPreconfiguredUplcParams(selectedVariant);
+    //         }
+    //     } else {
+    //         throw new Error(`unknown scriptParamsSource: ${this.scriptParamsSource}`);
+    //     }
+    // }
 
     get isPrecompiled() {
         // return !!this.preCompiledScriptDetails
         if (this.scriptParamsSource == "bundle") {
-            return true
+            return true;
         }
-        if (!! this.configuredScriptDetails) {
-            console.warn(`scriptParamsSource is not 'bundle'; isPrecompiled() returns false at ${this.setupDetails.originatorLabel}`)
-            return false
+        if (!!this.configuredScriptDetails) {
+            debugger;
+            // ^^  inspect this situation to verify   vvvv
+            console.warn(
+                `scriptParamsSource is not 'bundle'; isPrecompiled() returns false at ${this.setupDetails.originatorLabel}`
+            );
+            return false;
         }
-        return false
+        return false;
+        // return !! this.configuredScriptDetails
     }
 
+    // !!! deprecate or change to async? (-> loadPrecompiledVariant() -> programFromCacheEntry())
     getPreCompiledBundle(variant: string) {
-        debugger
-        throw new Error("deprecated")
+        throw new Error("deprecated");
 
+        // const foundVariant = this.preCompiledScriptDetails?.[variant];
+        // if (!foundVariant) {
+        //     throw new Error(
+        //         `${this.constructor.name}: variant ${variant} not found in preCompiledScriptDetails`
+        //     );
+        // }
+
+        // return foundVariant.programBundle;
     }
 
     getPreconfiguredVariantParams(variantName: string) {
@@ -387,16 +587,10 @@ export abstract class HeliosScriptBundle {
     getPreconfiguredUplcParams(
         variantName: string
     ): UplcRecord<any> | undefined {
+        // debugger
         const p = this.getPreconfiguredVariantParams(variantName);
         if (!p) return undefined;
         return this.paramsToUplc(p);
-    }
-
-    withSetupDetails(details: StellarBundleSetupDetails<any>): this {
-        //@ts-expect-error with dynamic creation
-        const created = new this.constructor(details) as this;
-        created.init(details);
-        return created;
     }
 
     // these should be unnecessary if we arrange the rollup plugin
@@ -449,7 +643,7 @@ export abstract class HeliosScriptBundle {
      * A list of modules always available for import to Capo-hosted policy scripts
      * @public
      */
-    implicitIncludedCapoModules() : string[]{
+    implicitIncludedCapoModules(): string[] {
         return [
             "CapoMintHelpers",
             "CapoDelegateHelpers",
@@ -511,9 +705,13 @@ export abstract class HeliosScriptBundle {
         ];
 
         const unsatisfiedIncludes = new Set(includeList);
-        const capoModules =this.capoBundle!.modules
+        const capoModules = this.capoBundle!.modules;
         if (!capoModules) {
-            throw new Error(`${this.capoBundle!.constructor.name}: no modules() list defined`)
+            throw new Error(
+                `${
+                    this.capoBundle!.constructor.name
+                }: no modules() list defined`
+            );
         }
         const capoIncludedModules = capoModules.filter((x) => {
             const mName = x.moduleName!;
@@ -591,7 +789,7 @@ export abstract class HeliosScriptBundle {
      * Defaults to the general optimize setting provided by the factoryArgs.
      * Override to force optimization on or off.
      */
-    get optimize() : HeliosOptimizeOptions | boolean | undefined {
+    get optimize(): HeliosOptimizeOptions | boolean | undefined {
         return this.setup!.optimize ?? true;
     }
 
@@ -612,7 +810,8 @@ export abstract class HeliosScriptBundle {
                 `variants not defined for ${this.constructor.name}`
             );
         }
-        const foundVariant = this.variants[vn] ?? this.precompiledScriptDetails?.[vn];
+        const foundVariant =
+            this.variants[vn] ?? this.precompiledScriptDetails?.[vn];
         if (!foundVariant) {
             throw new Error(
                 `${this.constructor.name}: variant ${vn} not found in variants()`
@@ -642,13 +841,18 @@ export abstract class HeliosScriptBundle {
             );
         }
 
-        return uplcProgram
+        return uplcProgram;
     }
-    async loadPrecompiledVariant(variant: string) : Promise<DeployedProgramBundle>{
-        throw new Error(`Dysfunctional bundler bypass (loadPrecompiledVariant() not found)`);
+    async loadPrecompiledVariant(
+        variant: string
+    ): Promise<PrecompiledProgramJSON> {
+        debugger
+        throw new Error(
+            `${this.constructor.name}: Dysfunctional bundler bypass (loadPrecompiledVariant() not found) (dbpa)`
+        );
     }
 
-        /**
+    /**
      * resolves the compiled script for this class with its provided
      * configuration details
      * @remarks
@@ -664,29 +868,32 @@ export abstract class HeliosScriptBundle {
     compiledScript(asyncOk: true): anyUplcProgram | Promise<anyUplcProgram>;
     compiledScript(asyncOk?: true): anyUplcProgram | Promise<anyUplcProgram> {
         const {
-            configuredUplcParams: params,
             setup,
             previousOnchainScript,
-            program,
+            _program: loadedProgram,
         } = this;
 
         if (this.alreadyCompiledScript) {
             return this.alreadyCompiledScript;
         }
 
+        let program = loadedProgram!;
         if (!asyncOk) {
-            throw new Error(`compiledScript() must be called with asyncOk=true when the script is not already loaded`);
+            throw new Error(
+                `compiledScript() must be called with asyncOk=true when the script is not already loaded`
+            );
         }
 
         if (this.isPrecompiled) {
-            debugger
+            // debugger;
             const { singleton } = this.precompiledScriptDetails!;
             if (singleton && !this._selectedVariant) {
                 this.withVariant("singleton");
             }
-            const detailsForVariant = this.precompiledScriptDetails?.[this._selectedVariant!];
+            const detailsForVariant =
+                this.precompiledScriptDetails?.[this._selectedVariant!];
             return this.loadPrecompiledVariant(this._selectedVariant!).then(
-                (programForVariant) => {
+                (programForVariant: PrecompiledProgramJSON) => {
                     if (!detailsForVariant || !programForVariant) {
                         throw new Error(
                             `${this.constructor.name}: variant ${this._selectedVariant} not found in preCompiled`
@@ -696,22 +903,25 @@ export abstract class HeliosScriptBundle {
                         ...detailsForVariant,
                         programBundle: programForVariant,
                     };
-                    const p = (this.alreadyCompiledScript = programFromCacheEntry(
-                        bundleForVariant.programBundle
-                    ));
+                    const p = (this.alreadyCompiledScript =
+                        programFromCacheEntry(bundleForVariant.programBundle));
                     return p;
                 }
             );
-        } else {
-            if (!params || !setup) {
-                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
-                // theoretically only here for type-narrowing
-                throw new Error(
-                    `${this.constructor.name}: missing required params or setup for compiledScript() (debugging breakpoint available)`
-                );
-            }
         }
-        const maybeOptimizing = this.optimize ? "and optimizing ": ""
+
+        if (!this.configuredParams || !setup) {
+            debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+            // theoretically only here for type-narrowing
+            throw new Error(
+                `${this.constructor.name}: missing required params or setup for compiledScript() (debugging breakpoint available)`
+            );
+        }
+        program = this.loadProgram();
+        const params = this.configuredUplcParams;
+
+        // debugger
+        const maybeOptimizing = this.optimize ? "and optimizing " : "";
         console.warn(
             `${this.constructor.name}: compiling ${maybeOptimizing}helios script.  This could take 30s or more... `
         );
@@ -719,7 +929,7 @@ export abstract class HeliosScriptBundle {
         // falls back to actually compiling the program.
         // on server side, this comes with caching for performance.
         // on the browser, there's not (currently) a cache.  It's intended
-        // that the preCompiledScriptDetails will usually be available, so 
+        // that the preCompiledScriptDetails will usually be available, so
         // the cases where this is needed on the browser
         // side should be rare (from .hlb's params() or variants())
         // or only used in special cases of capo deployment (with its configuredScriptDetails)
@@ -763,7 +973,9 @@ export abstract class HeliosScriptBundle {
                 // });
                 this.alreadyCompiledScript = uplcProgram;
                 const scriptHash = bytesToHex(uplcProgram.hash());
-                console.log(program.compileTime || `compiled: ${new Date().getTime() - t}ms`,
+                console.log(
+                    program.compileTime ||
+                        `compiled: ${new Date().getTime() - t}ms`,
                     `-> ${scriptHash}`
                 );
                 // if (globalThis.document) {
@@ -778,11 +990,23 @@ export abstract class HeliosScriptBundle {
 
     // !!! deprecate or change to async? (-> loadPrecompiledVariant() -> programFromCacheEntry())
     get preBundledScript() {
-        throw new Error("deprecated")
+        throw new Error("deprecated");
+        // if (!this.isPrecompiled) return undefined;
+        // const { singleton } = this.preCompiledScriptDetails!;
+        // if (singleton && !this._selectedVariant) {
+        //     this.withVariant("singleton");
+        // }
+        // const bundleForVariant = this.preCompiledScriptDetails?.[this._selectedVariant!];
+        // if (!bundleForVariant) {
+        //     throw new Error(
+        //         `${this.constructor.name}: variant ${this._selectedVariant} not found in preCompiled`
+        //     );
+        // }
+        // return programFromCacheEntry(bundleForVariant.programBundle);
     }
 
     async getSerializedProgramBundle() {
-        const compiledScript = await this.compiledScript();
+        const compiledScript = await this.compiledScript(true);
         const cacheEntry = this.program.cacheEntry;
         if (!cacheEntry) throw new Error(`missing cacheEntry`);
         const serializedCacheEntry = serializeCacheEntry(cacheEntry);
@@ -855,8 +1079,10 @@ export abstract class HeliosScriptBundle {
 
     get program(): HeliosProgramWithCacheAPI {
         if (!this._program) {
-            debugger
-            throw new Error("call loadProgram() (expensive!) before accessing this.program (dbpa)");
+            debugger;
+            throw new Error(
+                "call loadProgram() (a one-time expense) before accessing this.program (dbpa)"
+            );
         }
         return this._program!;
     }
@@ -890,6 +1116,8 @@ export abstract class HeliosScriptBundle {
             debugger;
         }
         try {
+            console.warn(`${this.constructor.name}: loading program`);
+            // console.log(`HERE ${this.___id}: ${new Error("(where?)").stack}`)
             const p = new HeliosProgramWithCacheAPI(this.main, {
                 isTestnet,
                 moduleSources,
@@ -903,7 +1131,9 @@ export abstract class HeliosScriptBundle {
             //  🔥🔥🔥  thanks! you're saving people 100ms at a time!
             console.log(
                 `📦 ${mName}: loaded & parsed ${
-                    this.isPrecompiled ? "w/ pre-compiled program" : "for type-gen"
+                    this.isPrecompiled
+                        ? "w/ pre-compiled program"
+                        : "for type-gen"
                 }: ${Date.now() - ts1}ms`
                 // new Error(`stack`).stack
             );
@@ -929,7 +1159,9 @@ export abstract class HeliosScriptBundle {
             }
             if (!e.site) {
                 console.error(
-                    `unexpected error while compiling helios program (or its imported module): ${mName || this.main.name}\n` +
+                    `unexpected error while compiling helios program (or its imported module): ${
+                        mName || this.main.name
+                    }\n` +
                         `> ${e.message}\n` +
                         `(debugging breakpoint available)\n` +
                         `This likely indicates a problem in Helios' error reporting - \n` +
@@ -1075,7 +1307,7 @@ export abstract class HeliosScriptBundle {
         let datumType: DataType | undefined;
         // let datumTypeName: string | undefined;
 
-        const program = this.program;
+        const program = this.loadProgram();
         const programName = program.name;
         const argTypes = program.entryPoint.mainArgTypes;
         const argCount = argTypes.length;
@@ -1128,8 +1360,8 @@ export abstract class HeliosScriptBundle {
         return redeemerType;
     }
 
-    get includeEnums() : string[] {
-        return []
+    get includeEnums(): string[] {
+        return [];
     }
 
     /**
@@ -1236,7 +1468,7 @@ export abstract class HeliosScriptBundle {
                         }
                         if ((paramName = "addrHint")) {
                             // silently ignore this one
-                            return undefined as any
+                            return undefined as any;
                         }
                         throw new Error(
                             `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +

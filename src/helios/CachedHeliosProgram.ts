@@ -84,7 +84,7 @@ export type SerializedHeliosCacheEntry = {
 /**
  * @internal
  */
-export type DeployedProgramBundle = Pick<
+export type PrecompiledProgramJSON = Pick<
     SerializedHeliosCacheEntry,
     | "version"
     | "programElements"
@@ -771,7 +771,7 @@ export function serializeCacheEntry(
 }
 
 export function programFromCacheEntry(
-    fromCache: DeployedProgramBundle | SerializedHeliosCacheEntry
+    fromCache: PrecompiledProgramJSON | SerializedHeliosCacheEntry
 ): UplcProgramV2 {
     //  | UplcProgramV3 {
     // the program is a hex-string, accepted by both UplcProgramV2 and UplcProgramV3

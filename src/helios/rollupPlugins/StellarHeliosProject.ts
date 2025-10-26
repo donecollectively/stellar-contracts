@@ -149,23 +149,27 @@ export class StellarHeliosProject {
             if (this.capoBundle) {
                 throw new Error(`only one CapoBundle is currently supported`);
             }
-            // console.log(`Project: loading CapoBundle ${bundleClassName}`);
+            console.log(`registering project capo bundle: ${bundleClassName}`);
 
             // includes default placeholder details:
             this.capoBundle = (bundleClass as any).create();
             const registeredCapoName = bundleClass.name;
             if (this.bundleEntries.size > 0) {
-                // debugger
+                console.log(`${bundleClassName}: checking for pre-registered bundles`);
                 for (const [filename, entry] of this.bundleEntries.entries()) {
-                    const thatCapoName =
-                        entry.bundle?.capoBundle?.constructor.name;
+                    const thatCapoBundle = entry.bundle?.capoBundle;
+                    const thatCapoName = thatCapoBundle?.constructor.name;
+                    if (thatCapoBundle && ! thatCapoBundle.isConcrete) {
+                        console.log(`${entry.bundle?.constructor.name}: bind with any Capo in downstream project`);
+                        continue;
+                    }
                     if (thatCapoName !== registeredCapoName) {
-                        console.log("new capo bundle is " + registeredCapoName);
+                        console.log(`${entry.bundle?.constructor.name}: new capo bundle is ${registeredCapoName}`);
                         console.log(
-                            "pre-registered bundle uses capo " + thatCapoName
+                            `${entry.bundle?.constructor.name}: pre-registered bundle uses capo ${thatCapoName}`
                         );
                         throw new Error(
-                            `mismatched capo bundle for ${filename} (see details above)`
+                            `${entry.bundle?.constructor.name}: mismatched capo bundle in ${filename} (see details above)`
                         );
                     }
                 }

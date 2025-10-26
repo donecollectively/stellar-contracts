@@ -11,7 +11,7 @@ import {
     makeValidatorHash,
 } from "@helios-lang/ledger";
 import type { CapoConfig } from "../CapoTypes.js";
-import type { DeployedProgramBundle } from "../helios/CachedHeliosProgram.js";
+import type { PrecompiledProgramJSON } from "../helios/CachedHeliosProgram.js";
 import type { configBaseWithRev } from "../StellarContract.js";
 import type {
     capoDelegateConfig,
@@ -62,7 +62,7 @@ Required<CapoDeployedDetails<"json">>) {
 type DelegateDeployment = {
     config: minimalDelegateConfig;
     scriptHash: string;
-    programBundle?: DeployedProgramBundle;
+    programBundle?: PrecompiledProgramJSON;
 };
 
 /**
@@ -123,6 +123,7 @@ export type DeployedScriptDetails<
 > = {
     config: form extends "json" ? any : CT;
     scriptHash?: number[];
+    programName?: string;
     //   programBundle?: DeployedProgramBundle;
 };
 

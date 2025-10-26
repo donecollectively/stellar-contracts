@@ -20,7 +20,7 @@ export abstract class MintSpendDelegateBundle extends CapoDelegateBundle {
     abstract specializedDelegateModule: Source;
 
     requiresGovAuthority = true
-    scriptParamsSource = "bundle" as const
+    scriptParamsSource = "config" as const
 
     /**
      * returns an unspecialized module that works for basic use-cases of mint/spend delegate

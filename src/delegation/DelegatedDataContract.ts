@@ -145,40 +145,40 @@ export abstract class DelegatedDataContract<
         return undefined;
     }
 
-    async scriptBundle() : Promise<DelegatedDataBundle> {
+    async scriptBundleClass() : Promise<typeof DelegatedDataBundle> {
         if (this.abstractBundleClass) {
             throw new Error(
                 `${this.constructor.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.\n` +
                     `First, ensure you have derived a subclass for the controller, with a scriptBundle() method.\n` +
-                    `\nThat method should \`return YourConcreteBundle.create()\`\n` +
+                    `\nThat method should \`return YourConcreteBundleClass\`\n` +
                     `\n  ... where YourConcreteBundle is a subclass of CapoDelegateBundle that you've created.\n` +
                     `\nA concrete bundle class should be defined in \`${this.delegateName}.concrete.hlb.ts\`\n` +
                     `  ... in the same directory as your derived controller class:\n\n` +
                     `    import {YourAppCapo} from "./YourAppCapo.js";\n` +
                     `    import {${this.abstractBundleClass.name}} from ...\n` +
-                    `    export default class YourConcreteBundle extends ${this.abstractBundleClass.name}} {\n` +
+                    `    export class YourConcreteBundle extends ${this.abstractBundleClass.name}} {\n` +
                     `        // ... \n` +
-                    `    }\n`
+                    `    }\nexport default YourConcreteBundle;`
             );
         }
 
         throw new Error(
-            `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
-                `\nThat method should \`return YourScriptBundle.create()\`\n` +
-                `\n  ... where YourScriptBundle is a subclass of CapoDelegateBundle that you've created.\n` +
+            `${this.constructor.name}: missing required implementation of scriptBundleClass()\n` +
+                `\nThat method may dynamically \`import(''./YourBundle.hlb.ts")\` file, and should \`return YourScriptBundleClass\`\n` +
+                `\n  ... where YourScriptBundle is a subclass of DelegateDataBundle that you've created.\n` +
                 `\nDefined in a \`*.hlb.ts\` file, it should have at minimum:\n` +
                 `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
                 `    import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";\n\n` +
-                `    export default class SomeDelegateBundle extends CapoHeliosBundle {\n` +
+                `    export class SomeDelegateBundle extends CapoHeliosBundle {\n` +
                 `        specializedDelegateModule = SomeSpecializedDelegate;\n` +
-                `    }\n\n` +
+                `    }\nexport default SomeDelegateBundle;\n` +
                 `We'll generate types in a .typeInfo.d.ts file, based on the types in your Helios sources,\n` +
                 `  ... and a .bridge.ts file having data-conversion classes for your on-chain types.` +
                 `\nWhen your delegated-data controller is used within your Capo, your bundle will\n` +
                 `have access via import {...} to any helios modules provided by that Capo's .hlb.ts. `
         );
 
-        return null as unknown as DelegatedDataBundle;
+        return null as unknown as typeof DelegatedDataBundle;
     }
 
     /**
@@ -473,7 +473,7 @@ export abstract class DelegatedDataContract<
         // tell Capo to spend the DD record
         const tcx2 = await capo.txnAttachScriptOrRefScript(
             tcx1,
-            capo.compiledScript
+            await capo.asyncCompiledScript()
         );
         const tcx2a = tcx2.addInput(
             item.utxo,

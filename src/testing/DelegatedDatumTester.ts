@@ -32,9 +32,9 @@ export class DelegatedDatumTester extends DelegatedDataContract<
     dataBridgeClass = DelegateDatumTesterDataBridge
     static currentRev: bigint = 1n;
 
-    async scriptBundle() {
+    async scriptBundleClass() {
         const bundleModule = await import("./DelegatedDatumTester.hlb.js");
-        return bundleModule.DelegatedDatumTesterBundle.create()
+        return bundleModule.DelegatedDatumTesterBundle
     }
 
     getContractScriptParams(config: capoDelegateConfig) {
