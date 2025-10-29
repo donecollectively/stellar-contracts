@@ -12,7 +12,7 @@ export function DashboardTemplate(props: {
     children: React.ReactNode;
 }) {
     return (
-        <div className="relative my-4 mx-8 flex w-full flex-col gap-10">
+        <div className="relative my-2 flex w-full flex-col gap-4">
             <img
                 alt="blurred background"
                 height={260}
