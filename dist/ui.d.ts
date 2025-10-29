@@ -473,7 +473,7 @@ export declare function CharterHighlights({ capo, charterData, }: {
  * Shows a Capo-based dApp's charter status as a dashboard-style screen
  * @public
  */
-export declare function CharterStatus(): React_3.JSX.Element;
+export declare function CharterStatus(): React_3.JSX.Element | null;
 
 /**
  * A React component wrapper that only renders its contents on the client side.
@@ -690,7 +690,7 @@ export declare type PendingTxn = {
  * A progress bar
  * @public
  */
-export declare const Progress: ({ children, progressPercent }: ProgressProps) => React_2.JSX.Element;
+export declare const Progress: ({ children, progressPercent }: ProgressProps) => React_2.JSX.Element | null;
 
 /**
  * Props for the progress bar
@@ -770,7 +770,7 @@ export declare type SetWalletDetails = {
  * @deprecated - probably not needed anymore
  * @public
  */
-export declare function ShowFailedActivity({ failed, failure: { message, code, data, ...otherFailInfo }, ...results }?: OgmiosEvalFailure): React_3.JSX.Element;
+export declare function ShowFailedActivity({ failed, failure: { message, code, data, ...otherFailInfo }, ...results }?: OgmiosEvalFailure): React_3.JSX.Element | null;
 
 /**
  * @deprecated - the CharterStatus component is now preferred
@@ -778,7 +778,7 @@ export declare function ShowFailedActivity({ failed, failure: { message, code, d
  */
 export declare function ShowPendingTxns({ pendingTxns, }: {
     pendingTxns: Map<string, PendingTxn>;
-}): React_3.JSX.Element;
+}): React_3.JSX.Element | null;
 
 /**
  * shows its content in a softened version of the theme color of the accent foreground
@@ -846,6 +846,7 @@ export declare type UpdateStatusProps<T extends UserActionMap<any>> = Omit<CapoD
 export declare function useCapoDappProvider<C extends Capo<any, any> = Capo<any, any>>(): {
     capo: C | undefined;
     provider: CapoDAppProvider<C, BaseUserActionMap>;
+    isMounted: boolean;
 };
 
 /**

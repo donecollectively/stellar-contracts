@@ -1,5 +1,5 @@
 import * as React from 'react';
-import React__default, { useState, Component, Fragment } from 'react';
+import React__default, { useState, useEffect, Component, Fragment } from 'react';
 import clsx from 'clsx';
 import { makeBlockfrostV0Client, makeRandomRootPrivateKey, makeRootPrivateKey, makeHydraClient, makeSimpleWallet, makeCip30Wallet, makeWalletHelper } from '@helios-lang/tx-utils';
 import '@cardano-ogmios/client';
@@ -160,6 +160,13 @@ const Progress = ({ children, progressPercent }) => {
   const [myId] = React__default.useState(() => {
     return (42424242 * Math.random()).toString(36).substring(7);
   });
+  const [isMounted, setIsMounted] = React__default.useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  if (!isMounted) {
+    return null;
+  }
   const concreteIndicatorProps = progressPercent ? {
     value: progressPercent,
     max: 100
@@ -179,7 +186,7 @@ const Progress = ({ children, progressPercent }) => {
 var img = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='UTF-8'%3f%3e%3csvg width='693' height='1115' viewBox='0 0 693 1115' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cg opacity='0.1' filter='url(%23filter0_f_2041_227)'%3e%3ccircle cx='82' cy='504' r='267' fill='%23B44795'/%3e%3c/g%3e%3cdefs%3e%3cfilter id='filter0_f_2041_227' x='-529' y='-107' width='1222' height='1222' filterUnits='userSpaceOnUse' color-interpolation-filters='sRGB'%3e%3cfeFlood flood-opacity='0' result='BackgroundImageFix'/%3e%3cfeBlend mode='normal' in='SourceGraphic' in2='BackgroundImageFix' result='shape'/%3e%3cfeGaussianBlur stdDeviation='172' result='effect1_foregroundBlur_2041_227'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e";
 
 function DashboardTemplate(props) {
-  return /* @__PURE__ */ React__default.createElement("div", { className: "relative my-4 mx-8 flex w-full flex-col gap-10" }, /* @__PURE__ */ React__default.createElement(
+  return /* @__PURE__ */ React__default.createElement("div", { className: "relative my-2 flex w-full flex-col gap-4" }, /* @__PURE__ */ React__default.createElement(
     "img",
     {
       alt: "blurred background",
@@ -430,7 +437,6 @@ const ShowSingleTx = (props) => {
     depth = 0,
     parentId
   } = txd;
-  debugger;
   if (!txName) {
     txName = description;
     description = "";
@@ -666,7 +672,6 @@ function TxBatchUI() {
   );
 }
 
-//!!! comment out the following block while using the "null" config.
 const networkNames = {
   0: "preprod",
   1: "mainnet",
@@ -783,14 +788,7 @@ class CapoDAppProvider extends Component {
     const walletInfo = this.renderWalletInfo();
     const showProgressBar = !!progressBar;
     const roleInfo = this.renderRoleInfo();
-    const capoInfo = "development" == process.env.NODE_ENV && capo?._compiledScript ? /* @__PURE__ */ React__default.createElement("div", { className: "inline-block flex flex-row" }, /* @__PURE__ */ React__default.createElement(
-      "span",
-      {
-        className: "mb-0 pl-2 text-black overflow-hidden max-w-48 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
-      },
-      "Capo\xA0",
-      capo.address.toString()
-    ), "\xA0", roleInfo) : "";
+    const capoInfo = "development" == process.env.NODE_ENV && capo?._bundle?.configuredScriptDetails ? /* @__PURE__ */ React__default.createElement("div", { className: "inline-block flex flex-row" }, /* @__PURE__ */ React__default.createElement("span", { className: "mb-0 pl-2 text-black overflow-hidden max-w-48 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text" }, "Capo\xA0", capo.address.toString()), "\xA0", roleInfo) : "";
     const portalFallbackMessage = {
       fallbackHelp: "CapoDAppProvider: set the uiPortals= prop and/or provide the expected portal elements in the DOM"
     };
@@ -882,20 +880,15 @@ class CapoDAppProvider extends Component {
     const {
       status: { moreInstructions, message, isError }
     } = this.state;
-    const statusClass = (
-      //  !isError
-      //     ? "font-bold bg-red-800 text-orange-200" :
-      "bg-blue-300 border-blue-500 text-black font-bold dark:bg-blue-900 dark:text-blue-300"
-    );
     return /* @__PURE__ */ React__default.createElement(
       "div",
       {
-        className: `flex flex-row w-full status min-h-10 relative left-0 top-0 mb-4 rounded border p-1 ${statusClass}`,
+        className: `flex ${isError ? "isError" : ""} flex-row w-full status`,
         key: "persistentMessage",
         role: "banner"
       },
-      /* @__PURE__ */ React__default.createElement("div", { className: "" }, /* @__PURE__ */ React__default.createElement("span", { key: "status", className: "block sm:inline" }, message), /* @__PURE__ */ React__default.createElement("div", { className: "text-sm text-gray-700 dark:text-gray-300 italic" }, moreInstructions)),
-      /* @__PURE__ */ React__default.createElement("div", { className: "mr-2 flex-grow" }, this.renderNextAction())
+      /* @__PURE__ */ React__default.createElement("div", { className: "flex-grow" }, /* @__PURE__ */ React__default.createElement("span", { key: "status", className: "block sm:inline" }, message), moreInstructions && /* @__PURE__ */ React__default.createElement("div", { className: "mt-2 text-sm text-gray-700 dark:text-gray-300 italic" }, moreInstructions)),
+      /* @__PURE__ */ React__default.createElement("div", { className: "m-2" }, this.renderNextAction())
     );
   }
   /**
@@ -951,7 +944,7 @@ class CapoDAppProvider extends Component {
     return /* @__PURE__ */ React__default.createElement(
       "div",
       {
-        className: "flex flex-row w-full error min-h-10 relative left-0 top-0 mb-4 rounded border p-1 font-bold bg-[#e7560a] text-black",
+        className: "flex flex-row w-full error relative left-0 top-0 rounded p-1 font-bold bg-[#e7560a] text-black",
         role: "alert",
         key: "errorStatus"
       },
@@ -1059,7 +1052,14 @@ class CapoDAppProvider extends Component {
         walletAddress,
         " ",
         selectedWallet,
-        /* @__PURE__ */ React__default.createElement("a", { href: "#", onClick: () => this.newWalletSelected("") }, "\u2716\uFE0F")
+        /* @__PURE__ */ React__default.createElement(
+          "a",
+          {
+            href: "#",
+            onClick: () => this.newWalletSelected("")
+          },
+          "\u2716\uFE0F"
+        )
       ), "\xA0", /* @__PURE__ */ React__default.createElement(
         "span",
         {
@@ -1207,17 +1207,22 @@ class CapoDAppProvider extends Component {
    */
   newWalletSelected(selectedWallet = "eternl", autoNext = true) {
     if (selectedWallet === "") {
-      return this.updateStatus("disconnecting from wallet", {
-        developerGuidance: "just a status message for the user"
-      }, "//disconnecting wallet", {
-        userInfo: {
-          ...this.state.userInfo,
-          selectedWallet: "",
-          wallet: void 0,
-          walletAddress: void 0,
-          walletHandle: void 0
+      return this.updateStatus(
+        "disconnecting from wallet",
+        {
+          developerGuidance: "just a status message for the user"
+        },
+        "//disconnecting wallet",
+        {
+          userInfo: {
+            ...this.state.userInfo,
+            selectedWallet: "",
+            wallet: void 0,
+            walletAddress: void 0,
+            walletHandle: void 0
+          }
         }
-      });
+      );
     }
     if (!this.isWalletSupported(selectedWallet)) {
       debugger;
@@ -1563,11 +1568,10 @@ class CapoDAppProvider extends Component {
         developerGuidance: "display the indicated roles in the UI and/or show/hide app features based on the roles",
         ready: true
       },
-      `/// found ${roles.length} roles: ${roles.join(", ")}}`,
+      `/// found ${roles.length} roles: ${roles.join(", ")}`,
       {
         userInfo: {
           ...this.userInfo,
-          //@ts-expect-error on strict types
           roles,
           memberUut
         }
@@ -1585,7 +1589,7 @@ class CapoDAppProvider extends Component {
       capo,
       userInfo: { wallet }
     } = this.state;
-    let config = { partialConfig: {} };
+    let config = {};
     if (!wallet) console.warn("connecting to capo with no wallet");
     if (!networkParams) {
       console.warn("no network params");
@@ -1640,7 +1644,8 @@ class CapoDAppProvider extends Component {
         //@ts-expect-error - sorry, typescript : /
         cfg
       );
-      const capoBundle = capo2.getBundle();
+      const capoBundle = await capo2.getBundle();
+      debugger;
       const configured = capoBundle.configuredParams;
       const { isChartered } = capo2;
       if (!configured || !isChartered) {
@@ -1660,6 +1665,13 @@ class CapoDAppProvider extends Component {
         return;
       }
       capo2.actorContext.wallet = wallet;
+      const config2 = capo2._bundle?.configuredScriptDetails?.config;
+      if (capo2._bundle?.configuredScriptDetails) {
+        await capo2.connectMintingScript(config2);
+      } else {
+        console.warn("no config yet for this capo (dbpa)");
+        debugger;
+      }
       if (!autoNext)
         return this.updateStatus(
           "",
@@ -1993,15 +2005,19 @@ class CapoDAppProvider extends Component {
 }
 const CapoDappProviderContext = React__default.createContext(null);
 function useCapoDappProvider() {
-  const provider = React__default.useContext(CapoDappProviderContext);
+  const provider = React__default.useContext(
+    CapoDappProviderContext
+  );
   if (!provider) {
     throw new Error(
       "useCapoDappProvider must be used within a CapoDappProvider"
     );
   }
+  const [isMounted, setIsMounted] = React__default.useState(false);
   const [capo, setCapo] = React__default.useState();
   const [checking, keepChecking] = React__default.useState(1);
   React__default.useEffect(() => {
+    setIsMounted(true);
     setTimeout(() => {
       if (capo !== provider?.capo) {
         setCapo(provider?.capo);
@@ -2009,11 +2025,11 @@ function useCapoDappProvider() {
       keepChecking(1 + checking);
     }, 2e3);
   }, [checking, provider, provider?.userInfo.wallet, capo]);
-  return { capo, provider };
+  return { capo, provider, isMounted };
 }
 
 function CharterStatus() {
-  const { capo, provider } = useCapoDappProvider();
+  const { capo, provider, isMounted } = useCapoDappProvider();
   provider?.bf;
   const [charterData, setCharterData] = React.useState();
   const [statusMessage, setStatusMessage] = React.useState("");
@@ -2029,44 +2045,58 @@ function CharterStatus() {
     globalThis.capo = capo;
     setStatusMessage("finding charter data...");
     if (!capo) return;
-    const bundle = capo.getBundle();
-    if (!bundle) {
-      setStatusMessage("no bundle");
-      return;
-    }
-    if (!bundle._progIsPrecompiled) {
-      setStatusMessage("Capo bundle not configured");
-      return;
-    }
-    capo?.findCharterData(void 0, { optional: true }).then((cd) => {
-      if (!cd) {
-        setStatusMessage("no charter data found");
+    capo.getBundle().then((bundle) => {
+      if (!bundle) {
+        setStatusMessage("no bundle");
         return;
       }
-      setStatusMessage("charter data found");
-      globalThis.charter = cd;
-      setCharterData(cd);
+      if (!bundle._progIsPrecompiled) {
+        setStatusMessage("Capo bundle not configured");
+        return;
+      }
+      const configured = bundle.configuredParams;
+      const { isChartered } = capo;
+      if (!configured || !isChartered) {
+        const problem = configured ? isChartered ? "impossible" : "is preconfigured and ready to be chartered!" : isChartered ? "impossible" : "needs to be configured and chartered.   Add a configuration if you have it, or create the Capo charter now.";
+        const message = `The Capo contract ${problem} `;
+        setStatusMessage(message);
+      }
     });
+    if (capo && capo.isChartered) {
+      capo?.findCharterData(void 0, { optional: true }).then((cd) => {
+        if (!cd) {
+          setStatusMessage("no charter data found");
+          return;
+        }
+        setStatusMessage("charter data found");
+        globalThis.charter = cd;
+        setCharterData(cd);
+      });
+    }
   }, [provider, provider?.userInfo.wallet, capo]);
   const [upgradeTxn, setUpgradeTxn] = React.useState();
   React.useEffect(
     function checkForNeededUpgrades() {
       if (!capo) return;
       if (!charterData) return;
-      capo.mkTxnUpgradeIfNeeded().catch((e) => {
-        setStatusMessage("error: " + e.message);
-        debugger;
-      }).then((tcx) => {
-        if (!tcx) {
-          setStatusMessage("no upgrade needed");
-          return;
-        }
-        if (Object.keys(tcx.addlTxns).length) {
-          setUpgradeTxn(tcx);
-        } else {
-          setUpgradeTxn("ok");
-          setStatusMessage("no upgrade needed");
-        }
+      capo.verifyCoreDelegates().then(() => {
+        capo.mkTxnUpgradeIfNeeded().catch((e) => {
+          setStatusMessage("error: " + e.message);
+          debugger;
+        }).then((tcx) => {
+          if (!tcx) {
+            setStatusMessage("no upgrade needed");
+            return;
+          }
+          if (Object.keys(tcx.addlTxns).length) {
+            setUpgradeTxn(
+              tcx
+            );
+          } else {
+            setUpgradeTxn("ok");
+            setStatusMessage("no upgrade needed");
+          }
+        });
       });
     },
     [charterData]
@@ -2089,6 +2119,9 @@ function CharterStatus() {
       upgradeTxn.buildAndQueueAll({});
     };
   }, [capo, capo?.setup.txBatcher, upgradeTxn]);
+  if (!isMounted) {
+    return null;
+  }
   let upgradeInfo = /* @__PURE__ */ React.createElement(React.Fragment, null);
   if (upgradeTxn === "ok") {
     upgradeInfo = /* @__PURE__ */ React.createElement(DashHighlightItem, { title: "Deployment" }, /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement(Lowlight, null, "Everything is up to date"));
@@ -2143,6 +2176,7 @@ function CharterHighlights({
           const dgt = await capo.getDgDataController(entryName, {
             charterData
           });
+          await dgt?.getBundle();
           dataControllers2[entryName] = dgt;
         }
       }
@@ -2229,7 +2263,7 @@ function DelegatedDataPolicyItem({
       footer: /* @__PURE__ */ React.createElement(React.Fragment, null, "Governs all", " ", /* @__PURE__ */ React.createElement(Lowlight, { as: "span" }, /* @__PURE__ */ React.createElement("b", null, delegate?.recordTypeName)), " ", "records")
     },
     /* @__PURE__ */ React.createElement("div", { className: "flex flex-row justify-between w-full" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Softlight, null, "Delegated data policy", /* @__PURE__ */ React.createElement("div", { className: "text-xs" }, "\xA0\xA0\xA0", bytesToText(foundRole.tokenName)))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-end" }, /* @__PURE__ */ React.createElement(Lowlight, { className: "text-xs" }, "for type"), /* @__PURE__ */ React.createElement(Highlight, { as: "span", className: "whitespace-nowrap" }, foundRole.entryType.DgDataPolicy?.idPrefix, "-*"))),
-    delegate?.getBundle().previousOnchainScript ? /* @__PURE__ */ React.createElement("div", { className: "text-xs mt-2 w-full text-right" }, /* @__PURE__ */ React.createElement(Highlight, { as: "span" }, "update needed "), /* @__PURE__ */ React.createElement(Softlight, { className: "italic" }, "to apply pending code changes to on-chain policy")) : ""
+    delegate?.preloadedBundle.previousOnchainScript ? /* @__PURE__ */ React.createElement("div", { className: "text-xs mt-2 w-full text-right" }, /* @__PURE__ */ React.createElement(Highlight, { as: "span" }, "update needed "), /* @__PURE__ */ React.createElement(Softlight, { className: "italic" }, "to apply pending code changes to on-chain policy")) : ""
   );
 }
 function CoreDelegateHighlightItem({
@@ -2244,13 +2278,30 @@ function CoreDelegateHighlightItem({
   }
   const dvh = delegateLink.delegateValidatorHash;
   const addr = dvh ? abbrevAddress(makeShelleyAddress(isMainnet, dvh)) : "";
-  return /* @__PURE__ */ React.createElement(DashHighlightItem, { title, footer }, /* @__PURE__ */ React.createElement(Softlight, null, delegateLink?.uutName), /* @__PURE__ */ React.createElement(Lowlight, { className: "text-right" }, addr), delegate?.getBundle().previousOnchainScript ? /* @__PURE__ */ React.createElement(Highlight, { className: "text-right" }, "update needed", " ", /* @__PURE__ */ React.createElement(Softlight, null, "to apply changes to on-chain policy")) : null);
+  return /* @__PURE__ */ React.createElement(DashHighlightItem, { title, footer }, /* @__PURE__ */ React.createElement(Softlight, null, delegateLink?.uutName), /* @__PURE__ */ React.createElement(Lowlight, { className: "text-right" }, addr), delegate?.preloadedBundle.previousOnchainScript ? /* @__PURE__ */ React.createElement(Highlight, { className: "text-right" }, "update needed", " ", /* @__PURE__ */ React.createElement(Softlight, null, "to apply changes to on-chain policy")) : null);
 }
 
 function ShowPendingTxns({
   pendingTxns
 }) {
-  return /* @__PURE__ */ React.createElement(DashboardRow, null, /* @__PURE__ */ React.createElement(DashboardHighlights, { title: "Pending Txns" }, ...Array.from(pendingTxns.values()).map(({ mgr, statusSummary, txd }) => /* @__PURE__ */ React.createElement(DashHighlightItem, { key: txd.id, title: txd.txName || txd.description }, statusSummary, mgr?.pending?.activity))));
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  if (!isMounted) {
+    return null;
+  }
+  return /* @__PURE__ */ React.createElement(DashboardRow, null, /* @__PURE__ */ React.createElement(DashboardHighlights, { title: "Pending Txns" }, ...Array.from(pendingTxns.values()).map(
+    ({ mgr, statusSummary, txd }) => /* @__PURE__ */ React.createElement(
+      DashHighlightItem,
+      {
+        key: txd.id,
+        title: txd.txName || txd.description
+      },
+      statusSummary,
+      mgr?.pending?.activity
+    )
+  )));
 }
 
 function ShowFailedActivity({
@@ -2258,6 +2309,13 @@ function ShowFailedActivity({
   failure: { message, code, data, ...otherFailInfo } = {},
   ...results
 } = {}) {
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  if (!isMounted) {
+    return null;
+  }
   if (Object.keys(otherFailInfo).length === 0) {
     otherFailInfo = void 0;
   }

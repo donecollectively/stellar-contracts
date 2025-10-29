@@ -1,15 +1,16 @@
 import { makeValue, makeTxOutput } from '@helios-lang/ledger';
 import { makeIntData } from '@helios-lang/uplc';
-import { C as ContractBasedDelegate, u as uplcDataSerializer, Q as betterJsonSerializer, e as dumpAny } from './ContractBasedDelegate2.mjs';
+import { C as ContractBasedDelegate } from './ContractBasedDelegate2.mjs';
+import { u as uplcDataSerializer, N as betterJsonSerializer, b as dumpAny } from './StellarContract2.mjs';
 import { encodeUtf8 } from '@helios-lang/codec-utils';
-import '@helios-lang/crypto';
-import '@helios-lang/tx-utils';
-import 'nanoid';
 import './HeliosBundle.mjs';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import '@helios-lang/compiler';
+import '@helios-lang/crypto';
 import '@helios-lang/contract-utils';
 import './environment.mjs';
+import '@helios-lang/tx-utils';
+import 'nanoid';
 
 class DelegatedDataContract extends ContractBasedDelegate {
   static isDgDataPolicy = true;
@@ -50,13 +51,13 @@ class DelegatedDataContract extends ContractBasedDelegate {
   get abstractBundleClass() {
     return void 0;
   }
-  scriptBundle() {
+  async scriptBundleClass() {
     if (this.abstractBundleClass) {
       throw new Error(
         `${this.constructor.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.
 First, ensure you have derived a subclass for the controller, with a scriptBundle() method.
 
-That method should \`return YourConcreteBundle.create()\`
+That method should \`return YourConcreteBundleClass\`
 
   ... where YourConcreteBundle is a subclass of CapoDelegateBundle that you've created.
 
@@ -65,28 +66,28 @@ A concrete bundle class should be defined in \`${this.delegateName}.concrete.hlb
 
     import {YourAppCapo} from "./YourAppCapo.js";
     import {${this.abstractBundleClass.name}} from ...
-    export default class YourConcreteBundle extends ${this.abstractBundleClass.name}} {
+    export class YourConcreteBundle extends ${this.abstractBundleClass.name}} {
         // ... 
     }
-`
+export default YourConcreteBundle;`
       );
     }
     throw new Error(
-      `${this.constructor.name}: missing required implementation of scriptBundle()
+      `${this.constructor.name}: missing required implementation of scriptBundleClass()
 
-That method should \`return YourScriptBundle.create()\`
+That method may dynamically \`import(''./YourBundle.hlb.ts")\` file, and should \`return YourScriptBundleClass\`
 
-  ... where YourScriptBundle is a subclass of CapoDelegateBundle that you've created.
+  ... where YourScriptBundle is a subclass of DelegateDataBundle that you've created.
 
 Defined in a \`*.hlb.ts\` file, it should have at minimum:
     import {YourAppCapo} from "./YourAppCapo.js";
 
     import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";
 
-    export default class SomeDelegateBundle extends CapoHeliosBundle {
+    export class SomeDelegateBundle extends CapoHeliosBundle {
         specializedDelegateModule = SomeSpecializedDelegate;
     }
-
+export default SomeDelegateBundle;
 We'll generate types in a .typeInfo.d.ts file, based on the types in your Helios sources,
   ... and a .bridge.ts file having data-conversion classes for your on-chain types.
 When your delegated-data controller is used within your Capo, your bundle will
@@ -253,7 +254,7 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
     } = options;
     const tcx2 = await capo.txnAttachScriptOrRefScript(
       tcx1,
-      capo.compiledScript
+      await capo.asyncCompiledScript()
     );
     const tcx2a = tcx2.addInput(
       item.utxo,

@@ -1,13 +1,240 @@
-import { makeUplcSourceMap, decodeUplcProgramV2FromCbor, makeByteArrayData } from '@helios-lang/uplc';
+import { makeUplcSourceMap, decodeUplcProgramV2FromCbor } from '@helios-lang/uplc';
 import { HeliosProgramWithCacheAPI } from '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import { Program, extractName } from '@helios-lang/compiler';
-import { bytesToHex, encodeUtf8, isValidUtf8, decodeUtf8, equalsBytes } from '@helios-lang/codec-utils';
-import { blake2b, encodeBech32 } from '@helios-lang/crypto';
+import { bytesToHex, encodeUtf8, equalsBytes } from '@helios-lang/codec-utils';
+import { blake2b } from '@helios-lang/crypto';
 import { makeCast } from '@helios-lang/contract-utils';
-import { makeValue, makeAssets, makeNetworkParamsHelper, makeAddress, makeMintingPolicyHash } from '@helios-lang/ledger';
-import { makeTxBuilder, makeTxChainBuilder, makeWalletHelper } from '@helios-lang/tx-utils';
-import { customAlphabet } from 'nanoid';
+import { makeMintingPolicyHash, makeTxId, makeValidatorHash } from '@helios-lang/ledger';
 import { e as environment } from './environment.mjs';
+import { makeSource } from '@helios-lang/compiler-utils';
+
+const CapoMintHelpers_hl = makeSource(
+  "\n\nmodule CapoMintHelpers\nimport {\n    mustFindInputRedeemer,\n    mkTv,\n    TODO,\n    REQT,\n    tvCharter,\n    isTrue,\n    REQTgroup,\n    bREQTgroup,\n    REQTgroupUnit,\n    logGroupUnit,\n    logGroup,\n    logGroupStart,\n    logGroupEnd\n} from StellarHeliosHelpers\n\nimport {tx, get_current_input} from ScriptContext\n\nimport {\n    getTxCharterData,\n    CapoCtx,\n    mkCapoCtx,\n    DelegateInput,\n    CapoDatum, \n    CapoActivity\n} from CapoHelpers\n\n\nimport {\n    RelativeDelegateLink,\n    AbstractDelegateActivitiesEnum,\n    DelegateLifecycleActivity\n} from CapoDelegateHelpers\n\nfunc hasSeedUtxo(\n    tx: Tx, \n    seedUtxo: TxOutputId,\n    reqt: String = \"the indicated seed UTXO must be spent\"\n) -> Bool {\n    bREQTgroup(reqt: reqt, collapsed: false, callback: () -> Bool {\n        if (!tx.inputs.any( (input: TxInput) -> Bool {\n            input.output_id == seedUtxo\n        })) {\n            print(\"  -- seedUtxo: \"+seedUtxo.show());\n            error(\"missing expected seed input for minting\")\n        };\n        print(\"✅ ok: seedUtxo: \"+seedUtxo.show());\n        true\n    })\n}\n\nfunc noOtherActivitiesSupported( _: AbstractDelegateActivitiesEnum) -> Bool {\n    print(\"yikes, expected the delegate to use activity DelegateLifecycleActivities:ReplacingMe or authorizingDelegate...\\n\");\n    print(\"   -- note: for other cases, a context-specific check via validateUutMinting's (\\n\"+\n      \"  ...\\n  checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool)\\n\"+\n      \") option can be used to steer around this failure.\\n\");\n    assert(false, \"unexpected delegate activity\");\n    false\n}\n\nfunc requiresDelegateAuthorizingMint(\n    delegateLink: RelativeDelegateLink, \n    mph: MintingPolicyHash,     \n    extraMintDelegateRedeemerCheck: Bool = true,\n    checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported\n) -> Bool {\n    // authzVal : Value = Value::new(AssetClass::new(mph, delegateLink.uutName.encode_utf8()), 1);\n    authzAc : AssetClass = delegateLink.acAuthorityToken(mph);\n    REQT(\"requires the charter's mint-delegate to authorize this mint activity\");\n    print(\"  -- finding input dgTkn: \" + delegateLink.uutName);\n\n    targetId: TxOutputId = tx.inputs.find_safe((i: TxInput) -> {\n        // print(\"   ?  in \"+i.value.show());\n        i.value.get_safe(authzAc) > 0 // find my authority token\n    }).switch{\n        Some{x} => x.output_id,\n        None => error(\"  ❌❌ missing dgTkn \"+delegateLink.uutName)\n    };\n    print (\"     ✅ ➡️  💁found dgTkn ^\");\n    spendsAuthorityUut : ScriptPurpose = tx.redeemers.find_key( \n        (purpose : ScriptPurpose) -> { purpose.switch{ \n            sp: Spending => {\n                // print (\"oid: \" + sp.output_id.show());\n                sp.output_id == targetId\n            }, \n            _ => false \n        } }\n    );\n\n    // r : Data = tx.redeemers.get(  // index redeemers by...\n    //     ScriptPurpose::new_spending(  // [spending, plus ...\n    //     );\n        //!!! Todo replace this with a return of Option[delegate-redeemer}?\n    err : String = \"dgTkn \"+delegateLink.uutName+\" not being spent as expected\"; // \"not spent with an authorizing activity!\")\n    maybeCheckedMintDelegateAuthority : Bool = tx.redeemers.get_safe(\n        spendsAuthorityUut\n    ).switch {\n        None => {\n            error(err)\n        },\n        Some{x} => {\n            activity = AbstractDelegateActivitiesEnum::from_data(x);\n            activity.switch {\n                DelegateLifecycleActivities{DLA} => {\n                    TODO(\"VERIFY we ---------------- don't need the funny redeemer-check skipping\");\n                    if (!extraMintDelegateRedeemerCheck) {\n                        print(\" vvv wherever it is, probably best it uses the checkMintDgtActivity option\");\n                        error(\"where is extraMintDelegateRedeemerCheck=false really needed?\")\n                        //     print(\"  -- ok, dgTkn spent\\n\");\n                        //     print(\"  ---- skip redeemer check\\n\");\n                        //     true\n                    };\n                    DLA.switch {\n                        ReplacingMe => {\n                            print(\"  -- ok, dgTkn spent\\n\");\n                            true\n                        },\n                        Retiring => error(\"DLA::Retiring can't mint!\"),\n                        ValidatingSettings => error(\"DLA::ValidatingSettings can't mint!\")\n                    }\n                },\n                _ => checkMintDgtActivity(activity)\n            }\n        }\n    };\n    delegateDidAuthorize = true; // otherwise, we'd have failed above.\n\n    // NOTE: DOESN'T CHECK that the AUTHORIZING DELEGATE is returned anywhere specific.\n    //    - it's not generally a minting responsibility (however, as an exception the bootstrap charter event DOES \n    //      actually check for valid delegate outputs).  All other cases should have the correct\n    //      delegate outputs checked (e.g. in the Capo's CharterData spend checker).\n    // maybeCheckDelegateOutput : Bool = if (!checkDelegateOutput) {\n    //     print(\"  -- skipping check for expected delegate output \");\n    //     true\n    // } else {\n    //     delegateLink.hasValidOutput(mph)        \n    // };\n    delegateDidAuthorize && maybeCheckedMintDelegateAuthority\n}\n\nfunc requiresMintDelegateApproval(\n    mph: MintingPolicyHash\n) -> Bool {\nbREQTgroup( reqt: \"Minter defers to the mint-delegate to approve the mint\", collapsed: false, callback: () -> Bool {\n    cctx : CapoCtx = mkCapoCtx(mph).needsCharter();\n    // print(\"Minter needs mintDgt + mint activity\\n\");\n    REQTgroupUnit(\n        reqt: \"EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value\",\n        collapsed: false, callback: () -> {\n            print(\"  e.g. with assert(tx.minted.get_policy(mph) == expectedMintedValue);\")\n            print(\"      (if it's only responsible for one minting policy)\")\n        }\n    )\n    // print (\"      ❇️  \"+ \n    //     tx.minted.get_policy(mph).to_list(\n    //         (b : ByteArray, i: Int) -> String { \n    //             i.show() + \"x \" + b.decode_utf8_safe()\n    //         }\n    //     ).join(\" + \") \n    // + \"\\n\");\n    // if (true) {\n        // todo: enforces minting invariants.\n        TODO(\"must enforce minting invariants\");\n    // }; \n\n    mintDgtInput : DelegateInput = cctx.requiresMintDelegateInput();\n    mintDgtActivity : AbstractDelegateActivitiesEnum = mintDgtInput.genericDelegateActivity();\n\n    // TODO restore this: mintDgtInput.requiresValidOutput() && \n    mintDgtActivity.switch {\n        CapoLifecycleActivities{CLA} => CLA.switch {\n            CreatingDelegate => {\n                TODO( \"make this obsolete: generic creatingDelegate (use queuePendingChange and committingPendingChanges in sequence)\");\n                // print(\"  -- minter wants mintDgt + CapoLifecycle (delegate-creation)\\n\");\n\n                mintDgtInput.requiresValidOutput() && \n                true\n            }, \n            queuePendingChange => {\n                isTrue(mintDgtInput.requiresValidOutput())\n                print(\"🎯trust the mintDgt's CapoLifecycle.queuePendingChange verification\");\n                true\n            },\n            commitPendingChanges => {\n                isTrue(mintDgtInput.requiresValidOutput())\n                print(\"🎯trust the mintDgt's CapoLifecycle.commitPendingChanges verification\");\n                true\n            },\n            forcingNewSpendDelegate => error(\"invalid forcingNewSpendDelegate activity on mintDgt (escape-hatch reserved for Minter/Capo pair)\"),\n            forcingNewMintDelegate => error(\"invalid forcingNewMintDelegate activity on mintDgt (escape-hatch reserved for Minter/Capo pair)\"),\n            _ => error(\"mint dgt can only approve CapoLifecycleActivities.queuePendingChange or non-CLA activities\")\n            // _ => error(\"no\")// ---- left as a compile-time error if any further variants are added \n        },\n        SpendingActivities => error(\"DelegateInput::SpendingActivity can't mint!\"),\n        OtherActivities => error(\"DelegateInput:: OtherActivities can't mint (???)!\"),\n        DelegateLifecycleActivities{DLA} => {\n            DLA.switch {\n                ReplacingMe => {\n                    TODO( \"relay delegate installation sequence\" \n                        // \"the new delegate should be minted under CapoLifecycleActivities::CreatingDelegate, then installed \\n  ...without the minter's involvement, using its DelegateLifecycle::Installing activity\"\n                    );\n                    print(\"  -- TEMPORARY: the mint delegate is being replaced\\n\");\n                    true\n                },\n                Retiring => error(\"DLA::Retiring can't mint!\"),\n                ValidatingSettings => error(\"DLA::ValidatingSettings can't mint!\")\n            }\n        },\n        MintingActivities => {\n            isTrue(mintDgtInput.requiresValidOutput())\n            print(\"🎯trust the verified mintDgt for app-specific specialized mint\\n\");\n            true\n        },\n        BurningActivities => {\n            isTrue(mintDgtInput.requiresValidOutput())\n            print(\"🎯trust the verified mintDgt for app-specific specialized burn\");\n            true\n        },\n        CreatingDelegatedData => {\n            isTrue(mintDgtInput.requiresValidOutput())\n            print(\"🎯trust the verified mintDgt for minting dgData\");            \n            true\n        },\n        DeletingDelegatedData => {\n            isTrue(mintDgtInput.requiresValidOutput())\n            print(\"🎯trust the verified mintDgt for burning dgData\");\n            true\n        },\n        UpdatingDelegatedData => error(\"invalid mint-delegate activity for minting; UpdatingDelegatedDatum can't mint\"),\n        MultipleDelegateActivities{ma} => {\n            // assert(false && ma.length > 0, \"empty MultipleDelegateActivities\");\n            logGroupStart(\"Multiple delegate activities\")\n\n            result = mintDgtInput.requiresValidOutput()\n            && REQTgroup[Bool](\n                reqt: \"MultipleDelegateActivities may only target delegated-data create/delete\",\n                collapsed: false, callback: () -> {\n                    ma.map(AbstractDelegateActivitiesEnum::from_data).all(\n                        (mintDgtActivity: AbstractDelegateActivitiesEnum) -> Bool {\n                            mintDgtActivity.switch {\n                        CreatingDelegatedData => true, // short version of recursing the full check\n                        DeletingDelegatedData => true, // short version of recursing the full check\n                        MintingActivities => error(\n                            \"mintDgt: MultipleDelegateActivities: nested MintingActivities invalid\"\n                        ),\n                        BurningActivities => error(\n                            \"mintDgt: MultipleDelegateActivities: nested BurningActivities invalid\"\n                        ),\n                        MultipleDelegateActivities => error(\n                            \"mintDgt: MultipleDelegateActivities: nested MultipleDelegateActivities invalid\"\n                        ),\n                        UpdatingDelegatedData => error(\n                            \"mintDgt: MultipleDelegateActivities: nested UpdatingDelegatedData invalid\"\n                        ),\n                        SpendingActivities => error(\n                            \"mintDgt: MultipleDelegateActivities: nested SpendingActivities invalid\"\n                        ),\n                        CapoLifecycleActivities => error(\n                            \"mintDgt: MultipleDelegateActivities: nested CapoLifecycleActivities invalid\"\n                        ),\n                        DelegateLifecycleActivities => error(\n                            \"mintDgt: MultipleDelegateActivities: nested DelegateLifecycleActivities invalid\"\n                        ),\n                        OtherActivities => error(\n                            \"mintDgt: MultipleDelegateActivities: nested OtherActivities invalid\"\n                        )\n                    }\n                } )\n            } )\n            logGroupEnd(\"✅ mint delegate with multiple activities\")\n            result\n        }\n    }\n    // requiresDelegateAuthorizingMint(\n    //     delegateLink: mintDgt, \n    //     mph: mph,\n    // )\n})  }\n\n//! pre-computes the hash-based suffix for a token name, returning\n//  a function that cheaply makes Uut names with any given purpose, \n// given the initial seed-txn details\nfunc mkUutTnFactory(\n    seed: TxOutputId\n) -> (String) -> String {\n\n    seedTxId : TxId = seed.tx_id;\n    seedIdx : Int = seed.index;\n\n\n    idxBytes : ByteArray = seedIdx.serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    txoInfo : ByteArray = if (idxBytes.length > 9) { \n        // allows 9 bytes to ensure we can support \n        // the largest possible cbor encoding of txo-index integers, \n        // even though we only expect integers < 256 currently\n        assert(false, \n            //\"expected cbor(txo index) to be at most 9 bytes, got cbor( index=\n            //  + seedIdx.show() + \" ).hex = \" + idxBytes.show()\n            \"cbor(txoId) len > 9 !!\"  \n        );\n        idxBytes // never used\n    } else {\n       ( rawTxId + \"@\".encode_utf8() )+ idxBytes\n    };\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoInfo.blake2b().slice(0,6);\n    // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mhs: String = miniHash.show();\n\n    // returns a function computing a lightweight prefix + miniHash\n    (p: String) -> String {\n        p + \"-\" + mhs\n    }\n}\n\nfunc tnCip68nft222(tn : String) -> ByteArray{\n     #000de140 + tn.encode_utf8()\n}\n\nfunc tnCip68ref100(tn : String) -> ByteArray {\n    #000643b0 + tn.encode_utf8()\n}\n\n/**\n * ensures that minted- and expected-token-names are both\n * sorted in the same way.  The on-chain format requires shorter-first,\n * but we re-sort them (both) because the node doesn't always present them in\n * script-context in that required order.  \n *\n */\n func sortPolicyValuesPredictably(k1 : ByteArray, _v1 : Int, k2 : ByteArray, _v2: Int) -> Bool {\n     k1 < k2\n }\n\n /*\n * ensures that shorter token-names are mentioned before longer ones\n * AND that lexographically smaller names are mentioned first.  This is\n * the canonical ordering and is required for hardware wallets to work.\n */\n\nfunc sortPolicyValuesShortestFirst(k1 : ByteArray, _v1 : Int, k2 : ByteArray, _v2: Int) -> Bool {\n    if (k1.length < k2.length) { \n        true\n    } else if (k1.length > k2.length) {\n        false\n    } else {\n        k1 < k2\n    }\n}\n\n// checks all of the following:\n//  - there's an approving delegate (or we're bootstrapping)\n//  - the mint includes the seed UTXO\n//  - the mint matches the UUTs indicated by the list of purposes\nfunc validateUutMinting(\n    mph: MintingPolicyHash,\n    seed: TxOutputId,\n    purposes: []String,     \n    mkTokenName: (String) -> String = mkUutTnFactory(seed),\n    bootstrapCharter:Value = Value::ZERO,\n    otherMintedValue: Value = Value::ZERO,\n    needsMintDelegateApproval: Bool = true,\n    extraMintDelegateRedeemerCheck: Bool = true,\n    checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported\n) -> Bool {\nbREQTgroup(reqt: \"checks that the UUTs are minted correctly\", collapsed: true, callback: () -> Bool {\n    print(\"-- uut purposes: \" + purposes.join(\", \"));\n    isBootstrapping : Bool = !( bootstrapCharter.is_zero() );\n\n    delegateApproval : Bool = if ( isBootstrapping ) {\n        print(\"  -- bootstrapping; no delegate approval required\");\n        true \n    } else {\n        print(\"  -- not bootstrapping; must honor the mintDelegate's authority\");\n        CapoDatum::CharterData {\n            _spendDgt,\n            _spendInvariants,\n            _namedDelegates,\n            mintDgt, \n            _mintInvariants, \n            _govAuthority,\n            _manifest,\n            _pendingDelegates\n        } = getTxCharterData(mph);\n\n        if (needsMintDelegateApproval) {\n            //!!! todo: add explicit activity details in authorization\n            print(\"  -- checking mintDelegate's authority\");\n            requiresDelegateAuthorizingMint(\n                delegateLink: mintDgt, \n                mph: mph, \n                extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck,\n                checkMintDgtActivity: checkMintDgtActivity\n            )\n        } else {\n            true\n        }\n    };\n\n\n    valueMinted: Value = tx.minted;\n\n    // idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // // assert(idxBytes.length == 1, \"surprise!\");\n\n    // //! yuck: un-CBOR...\n    // rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    // txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // // print( \"******** txoId \" + txoId.show());\n\n    // miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    // tokenName1 = purpose + \".\" + miniHash.show();\n\n    // print(\" purposes: \" + purposes.join(\", \"));\n    tokenNames : []String = purposes.map(mkTokenName);\n    expectedValue : Value = bootstrapCharter + otherMintedValue + Value::sum(\n        tokenNames.map(\n            (tn: String) -> Value {\n                mkTv(mph: mph, tn: tn /*, => 1 */)\n            }\n        )\n    );\n\n    if (! valueMinted.contains_policy(mph) ) {\n        mphStr = mph.show();\n        valStr = valueMinted.show();\n        print( \"  -- no mint from our policy \"+ mphStr);\n        print(valStr);\n        print( \"^^  value minted\");\n        error(\"❌❌ validateUutMinting(): no mint from our policy\")\n    };\n\n    // seedTxId = seed.tx_id.show();\n    // seedIdx = seed.index.show();\n    // print(\"\\n  -- uut-minting seed: \" + seedTxId + \"🔹#\"+seedIdx);\n\n    expectedValuesSorted = expectedValue.\n        get_policy(mph).\n        sort(sortPolicyValuesPredictably);\n    expectedValuesSorted.for_each( (tn : ByteArray, i: Int) -> {\n        tnStr = tn.decode_utf8_safe();\n        print( \"    ℹ️ 🐞 expected: \"+ i.show() + \"x \" + tnStr )\n    });\n\n    actualThisPolicyMint = valueMinted.get_policy(mph);\n    actualThisPolicyMintSorted = actualThisPolicyMint.\n        sort(sortPolicyValuesPredictably);\n    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);\n    if (true) {\n        actualThisPolicyMintSorted.for_each( (tn : ByteArray, i: Int) -> {\n            tnStr = tn.decode_utf8_safe();  \n            print( \"    ℹ️ 🐞   actual: \" + i.show() + \"x \" + tnStr )\n        });\n        filteredOtherMint = Value::from_map(valueMinted.to_map().filter( (b:MintingPolicyHash, _ /* Map[ByteArray]Int */ ) -> Bool {\n            b != mph\n        }));\n        if (!filteredOtherMint.is_zero()) {\n            print(\"other policy values minted: \\n\");\n            print(filteredOtherMint.get_assets().show())\n        }\n    };\n\n    // _temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n    //     l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n    //         None => l.prepend(b),\n    //         Some /*{x}*/ => error(\"UUT duplicate purpose \"\n    //             // +  x.decode_utf8_safe()\n    //         )\n    //     }\n    // }, []ByteArray{});\n    // assert(true || (temp == temp), \"prevent unused var\");\n\n    thisPolicyMintOK = bREQTgroup(\n    reqt: \"Ensures the mint for this policy-id is exactly the expected value\", \n    collapsed: true, callback: () -> Bool {\n        assert(actualThisPolicyMintSorted == expectedValuesSorted, \"❌❌ validateUutMinting(): mismatch in UUT mint\");\n        assert(hasSeedUtxo(tx, seed), \"❌❌ validateUutMinting(): no seed\"); //, \"UUT \"+purposes.join(\"+\")\n        print(\"✅ ok: this-policy mint value matches\");\n        true\n    });\n\n    otherPoliciesMintOk = if (!otherMintedValue.is_zero()) { true } else {\n        REQT(\"... with an additional mint-value indicated\");\n        print(\"  -- other-minted-value: \"+otherMintedValue.show());\n        remainingExpectedMint = if (expectedValue.contains_policy(mph)) {\n            Value::from_map(\n                expectedValue.to_map().delete(mph)\n            )\n        } else { expectedValue };\n\n        if (remainingExpectedMint.is_zero()) { true } else {\n        bREQTgroup(reqt: \"...with other-policy values expected: \", collapsed: false, callback: () -> Bool {\n            print( \"  -- expecting other-mint value: \"+ remainingExpectedMint.show())\n            REQT(\"It should mint exactly the indicated token names\");\n            REQT(\"Doesn't constrain any mentioned policy's minting of any other tokens\");\n            remainingExpectedMint.to_map().for_each( \n                (otherMph: MintingPolicyHash, expectedTokensThisPolicy: Map[ByteArray]Int) -> {\n                    mintedThisPolicy : Map[ByteArray]Int = valueMinted.get_policy(otherMph);\n\n                    expectedTokensThisPolicy. \n                    for_each( (tokenName: ByteArray, expectedCount: Int) -> {\n                        if(! mintedThisPolicy.get_safe(tokenName).\n                            switch {\n                                None => false,\n                                Some{actualCount} => actualCount == expectedCount\n                            }\n                        ) {\n                            tnString = tokenName.decode_utf8_safe();\n                            error(\n                                \"❌❌ validateUutMinting(): wrong mint for \"+ otherMph.show() + \":\" + tnString\n                            )\n                        }}\n                    )\n                }\n                );\n                true\n            })\n        }\n        // ^^ any errors are thrown in here\n    }\n        assert(\n            otherPoliciesMintOk.trace(\"  -- other-expected-mints ok? \"), \n            \"unreachable exception: otherPoliciesMintOk\"\n        );\n        if (purposes.length > 1) {\n            print(\"✅ ok: minted uuts: {\" \n                + purposes.join(\", \") \n                + \"}\" + \n                mkTokenName(\"\")\n            );\n        } else {\n            print(\"✅ ok: minted uut: \" + tokenNames.head)\n        }\n        delegateApproval && thisPolicyMintOK && otherPoliciesMintOk \n    })// .trace(\"     ✅ validateUutMinting: ok? \");\n}\n\nenum MinterActivity { \n    mintingCharter { // 0\n        owner: Address\n        //xxx withSettings: Bool\n        // we don't have a responsiblity to enforce delivery to the right location\n        // govAuthority: RelativeDelegateLink   // not needed \n    }\n    mintWithDelegateAuthorizing // 1 - delegate is handling all mints\n\n    // obsoleted by Capo lifecycle activity (queuePendingChange with role=MintInvariant)\n    addingMintInvariant { //2 \n        seed: TxOutputId\n    }\n\n    // obsoleted by Capo lifecycle activity (queuePendingChange with role=SpendInvariant)\n    addingSpendInvariant { //3\n        seed: TxOutputId\n    }\n\n    forcingNewMintDelegate { //4\n        seed: TxOutputId\n    }\n\n    CreatingNewSpendDelegate { //5\n        seed: TxOutputId\n        // when not forcing the new delegate, the old UUT will be replaced:\n        replacingUut: Option[ByteArray]\n    }\n\n}\n\n", {
+    project: "stellar-contracts",
+    purpose: "module",
+    name:  "src/CapoMintHelpers.hl", // source filename
+    moduleName:  "CapoMintHelpers",
+});
+
+const CapoDelegateHelpers_hl = makeSource(
+  "module CapoDelegateHelpers\n\nimport {\n    tx, \n    get_current_input,\n    get_current_validator_hash,\n    get_cont_outputs\n} from ScriptContext\n\nimport {\n    AnyData,\n    mustFindInputRedeemer,\n    mkTv,\n    returnsValueToScript,\n    REQTgroup,\n    REQTgroupUnit,\n    logGroupUnit,\n    logGroup,\n    logGroupStart,\n    logGroupEnd\n} from StellarHeliosHelpers\n\n// todo: add this to RelativeDelegateLink\nenum stakingKeyRequirement {\n    NoStakingKeyAllowed\n    StakingKeyRequired\n    SpecificStakeKeyRequired {\n        stakeCredential: StakingCredential\n    }\n}\n\n// use this activity at Redeemer zero, as enum Redeemer {\n//   DelegateLifecycleActivity { a: DelegateLifecycleActivity }}\n//   ... followed by app-specific redeemer variants\n// }\nenum DelegateLifecycleActivity {\n    ReplacingMe { // replaces this delegate with a different one\n        seed: TxOutputId\n        purpose: String\n    }\n    Retiring\n    ValidatingSettings\n}\n\nenum DelegateRole {\n    MintDgt\n    SpendDgt\n    MintInvariant\n    SpendInvariant\n    DgDataPolicy {\n        name: String\n    }\n    OtherNamedDgt {\n        name: String\n    }\n    BothMintAndSpendDgt\n    HandledByCapoOnly\n}\n\nenum ManifestActivity {\n    retiringEntry {\n        key: String\n    }\n    updatingEntry {\n        key: String  // must already exist\n        tokenName: ByteArray  // must reference or input new & old\n    }\n    addingEntry {\n        key: String  // must not exist\n        tokenName: ByteArray // must reference or input new & old\n    }\n    forkingThreadToken {\n        key: String // must mint new & create a clone of the existing token\n        newThreadCount: Int\n    }\n    burningThreadToken {\n        key: String // must burn the token\n        burnedThreadCount: Int // must match the count of the burned token\n    }\n}\n\nenum PendingDelegateAction {\n    Add {\n        seed: TxOutputId\n        purpose: String\n        idPrefix: String\n        // uutName: String\n        // delegateValidatorHash: Option[ValidatorHash]\n        // config: ByteArray\n    }\n    Remove\n    Replace {\n        seed: TxOutputId\n        purpose: String\n        idPrefix: String\n\n        // uutName: String\n        // delegateValidatorHash: Option[ValidatorHash]\n        // config: ByteArray\n\n        replacesDgt: AssetClass\n    }\n}\n\n// use this activity at Redeemer #1 CapoLifecycleActivities\nenum CapoLifecycleActivity {\n    CreatingDelegate {\n        seed: TxOutputId\n        purpose: String\n    }\n    queuePendingChange \n        // seed: TxOutputId\n        // purpose: String\n        // action: PendingDelegateAction\n\n        // role: DelegateRole\n        // name: Option[String]\n    // }\n    removePendingChange {\n        role: DelegateRole\n    }\n    commitPendingChanges\n    forcingNewSpendDelegate {\n        seed: TxOutputId\n        purpose: String //uut purpose \"spendDgt\"\n    }\n    forcingNewMintDelegate {\n        seed: TxOutputId\n        purpose: String //uut purpose \"mintDgt\"\n    }\n        // manifest-updating activities, ALWAYS at Enum position 5\n    // this is not application-specific.  It's placed into the delegation\n    // layer so that a spend-delegate's manifest-updating logic can be\n    // upgraded while leaving the Capo unchanged.\n    updatingManifest {\n        activity: ManifestActivity\n    }\n\n    func show(self) -> String {\n        self.switch {\n            CreatingDelegate => \"CreatingDelegate\",\n            queuePendingChange => \"queuePendingChange\",\n            removePendingChange => \"removePendingChange\",\n            commitPendingChanges => \"commitPendingChanges\",\n            forcingNewSpendDelegate => \"forcingNewSpendDelegate\",\n            forcingNewMintDelegate => \"forcingNewMintDelegate\",\n            updatingManifest => \"updatingManifest\"\n        }\n    }\n}\n\n// use this enum to match any redeemer if you don't care about what other\n// variants may be in that delegate, but you know it has to be a delegate with the \nenum AbstractDelegateActivitiesEnum {\n    CapoLifecycleActivities {\n        activity: CapoLifecycleActivity\n    }\n    DelegateLifecycleActivities {\n        activity: DelegateLifecycleActivity\n    }\n    SpendingActivities {\n        activity: Data\n    }\n    MintingActivities {\n        activity: Data\n    }\n    BurningActivities {\n        activity: Data\n    }\n\n    // allows for delegated-data minting activities to be checked generically,\n    // instead of having to create explicit minting/spending activities for each one.\n    // The mint/spend delegate can thus generically support any registered data-type,\n    // enforcing that right delegate is used but not needing to deal with specifics of \n    // their activities.  Requires a typeMap for to resolve dataType to the concrete delegate.\n\n    CreatingDelegatedData {\n        seed: TxOutputId\n        dataType: String\n        // id from seed\n    }\n    UpdatingDelegatedData {\n        // seed not used\n        dataType: String\n        recId: ByteArray\n    }\n    DeletingDelegatedData {\n        // seed not used\n        dataType: String\n        recId: ByteArray\n    }\n    MultipleDelegateActivities {\n        activities: []Data // actually a []DelegateActivitiesEnum\n    }\n    OtherActivities {\n        activity: Data // anything defined in the specialization.  Nothing specific here, of course.\n    }\n\n    func show(self) -> String {\n        self.switch {\n            // Capo's mint/spend delegates use these:\n            CapoLifecycleActivities{cLA} => \"CapoLifecycleActivities::\"+cLA.show(),\n            DelegateLifecycleActivities{dLA} => \"DelegateLifecycleActivities::\"+dLA.show(),\n            CreatingDelegatedData => \"CreatingDelegatedData (mint-dgt only)\",\n            DeletingDelegatedData => \"DeletingDelegatedData (mint-dgt only)\",\n            UpdatingDelegatedData => \"UpdatingDelegatedData (spend-dgt only)\",\n\n            // delegated-data-controllers use these:\n            SpendingActivities => \"SpendingActivities::‹abstract/delegate-specialized›\",\n            MintingActivities => \"MintingActivities::‹abstract/delegate-specialized›\",\n            BurningActivities => \"BurningActivities::‹abstract/delegate-specialized›\",\n            OtherActivities => \"OtherActivities::‹abstract/delegate-specialized›\",\n\n            // Any delegate-type can use these;\n            MultipleDelegateActivities{mDA} => {\n                \"MultipleDelegateActivities: \\n\"+mDA.map(\n                    (a : Data) -> String {\n                        // bullet unicode\n                        \" • \" + if (AbstractDelegateActivitiesEnum::is_valid_data(a)) {\n                            AbstractDelegateActivitiesEnum::from_data(a).show()\n                        } else {\n                            \"‹yikes! invalid nested data›\"\n                        }\n                    }\n                ).join(\"\\n\")\n            }\n        }\n    }\n}\n\nenum DgTknDisposition {\n    Returned\n    Created\n}\n\n// data stored in the Capo, representing basic delegate info\n//   about the connection to a delegate.  \nstruct RelativeDelegateLink {\n    uutName: String \n\n    // delegate links without a validator hash are \"arms-length\" delegates,\n    // which means they won't be checked for possible auto-upgrades \n    //  ... to new versions of their code.\n    // it also means that they won't be able to participate \n    //   ... in validation of configuration changes in the Capo.\n    delegateValidatorHash: Option[ValidatorHash]\n    config: ByteArray\n    // !!! todo ???  - for namedDelegates particularly\n    // stakingCred: stakingKeyRequirement\n\n    func getRedeemer(self,  input : TxInput)  -> AbstractDelegateActivitiesEnum {\n        assert( true || /* not executed */ self == self, \"no way s\");// avoid unused variable\n        AbstractDelegateActivitiesEnum::from_data( \n            mustFindInputRedeemer(input)\n        )\n    }\n\n    func tvAuthorityToken(self, mph: MintingPolicyHash) -> Value {\n        mkTv(mph: mph, tn: self.uutName)\n    }\n\n    func acAuthorityToken(self, mph: MintingPolicyHash) -> AssetClass {\n        AssetClass::new(mph, self.uutName.encode_utf8())\n    }\n\n    // func getTv(self, mph: MintingPolicyHash) -> Value {\n    //     assert(false, \"deprecated getTv(); use RDL.tvAuthorityToken instead\");\n    //     mkTv(mph: mph, tn: self.uutName)\n    // }\n    \n    func validatesUpdatedSettings(self,\n        inputs: []TxInput,\n        mph: MintingPolicyHash,\n        inputRequired: Bool\n    ) -> Option[Bool] {\n        self.hasDelegateInput( // fails if req'd input missing\n            inputs: inputs,\n            mph: mph,\n            required: inputRequired\n        ).switch {            \n            None => Option[Bool]::None, // clean \"not found but the caller indicated that's ok\"\n            Some{spendDelegateInput} => {\n                spendDelegateIsValid : Bool = AbstractDelegateActivitiesEnum::from_data( \n                    mustFindInputRedeemer(spendDelegateInput)\n                ).switch {\n                    DelegateLifecycleActivities{a} => {\n                        a.switch {\n                            ValidatingSettings => self.hasValidOutput(mph),\n                            _ => error(\"delegate not ValidatingSettings: \"+ self.uutName)\n                        }\n                    },\n                    _ => error(\"no way n\") // throws if the redeemer isn't #0.\n                };\n\n                assert(spendDelegateIsValid, \"no way o\"); // it threw any error already\n                Option[Bool]::Some{spendDelegateIsValid}\n            }\n        }\n    }\n\n    func hasDelegateInput(self, \n        inputs: []TxInput, \n        mph: MintingPolicyHash,\n        required: Bool = true\n    ) -> Option[TxInput] {\n        uutName : String = self.uutName;\n        self.delegateValidatorHash.switch{\n            // when no special input is needed by the delegate, \n            None => {\n                if (required) {\n                    error(\"❌❌ ➡️ 💁 missing required input with dgTkn \" + uutName)\n                } else {\n                    Option[TxInput]::None\n                }\n            },\n            Some{vh} => {\n                needsAddrWithCred : SpendingCredential = SpendingCredential::new_validator(vh);\n                // if we arrived here, then we have a delegate that's supposed to be at a specific address.\n                // if we can't find an input with that address, it's an error condition.\n                // we need an input with this address, having the expected UUT.\n\n                ac = AssetClass::new(mph, uutName.encode_utf8());\n                // expectedUut : Value = mkTv(mph: mph, tn: uutName);\n\n                print(\"  -- seeking input dgTkn: \"+ uutName);\n                inputs.find_safe((i: TxInput) -> Bool {\n                    i.address.credential == needsAddrWithCred &&\n                    i.value.get_safe(ac) > 0\n                }).switch {\n                    foundGood: Some => {\n                        print (\"     ✅ ➡️  💁 found ^ input dgTkn\" );\n                        foundGood\n                    },\n                    /* notFound: */ None => {\n                        if (required) {\n                            error(\"_❌ ➡️  💁 missing req'd input dgTkn (at script addr) \" + uutName)\n                        } else {\n                            print (\" <- 🚫 ➡️ 💁 no input with ^ dgTkn; not req'd; returning false\\n\");\n                            Option[TxInput]::None\n                        }\n                    }\n                }\n            }        \n        }\n    }\n    \n    // was requiresValidDelegateOutput \n    func hasValidOutput(\n        self, // delegateLink: RelativeDelegateLink, \n        mph: MintingPolicyHash, \n        required: Bool = true,\n        createdOrReturned: DgTknDisposition = DgTknDisposition::Returned\n    ) -> Bool {\n        RelativeDelegateLink{\n            uut,  \n            validatorHash, \n            _ /* configJson */\n        } = self;\n    \n        // v : Value = mkTv(mph, uut);\n        ac = AssetClass::new(mph, uut.encode_utf8());\n\n        cOrR : String = createdOrReturned.switch{\n            Returned => \"returned\",\n            Created => \"created\"\n        };\n        print(\" ⬅️ 🔎 💁 expect dgTkn \"+ cOrR + \": \"+ uut);\n        hasDelegate : Bool = validatorHash.switch{\n            Some{vh} => {\n                print( \"  ... ^ sent to validator: \"+vh.show());\n                tx.value_locked_by(vh).get_safe(ac) > 0\n            },\n            None => {\n                print(\"   (to anywhere)\");\n\n                tx.outputs.find_safe((o : TxOutput) -> Bool {\n                    o.value.get_safe(ac) > 0\n                }).switch{\n                    Some => true, \n                    None => false\n                }\n            }\n        };\n    \n        if (!hasDelegate && required) {\n            // this branch has no on-chain cost\n            // throws for a missing input \n            createdOrReturned.switch {\n                Created => error(\"⬅️ ❌ 💁 dgTkn not created: \"+ uut),\n                Returned => { // throws unless the right INPUT is                    \n                    _ = self.hasDelegateInput(tx.inputs, mph, true);\n                    error(\"⬅️ ❌ 💁 dgTkn not returned: \"+ uut )\n                }\n            }\n        } else {\n            // print(uut);\n            if (hasDelegate) {\n                print(\"✅ ⬅️ 💁 ok:  ^ dgTkn has \"+cOrR+\" a valid output\")\n            } else {\n                print(\" ⬅️  ok 🚫💁 no delegate but not req'd; false\")\n            }\n        };\n        hasDelegate\n\n                    // self.hasDelegateInput(tx.inputs, mph, true).switch {\n                    //     Some => {\n                    //         // throws if it's spent, but not returned correctly:\n                    //         error(\"⬅️ ❌ 💁 dgTkn not returned: \"+ uut )\n                    //     },\n                    //     _ => error(\"no way p\")\n                    // }\n\n    }\n    \n    // config: Data\n}\n\n\nstruct PendingDelegateChange {\n    action: PendingDelegateAction\n    role: DelegateRole\n    // name: Option[String] // moved to DelegateRole variants for named delegates/dgDataPolicy\n    dgtLink: Option[RelativeDelegateLink]\n\n    func isValid(self) -> Bool {\n        self.role.switch {\n            BothMintAndSpendDgt => error(\n                \"DelegateRole::BothMintAndSpendDgt not applicable in a PendingDelegateChange struct\"\n            ),\n            _ => true\n        }\n    }\n}\n\nenum PendingCharterChange {\n    delegateChange {\n        change: PendingDelegateChange\n    }\n    otherManifestChange {\n        activity: ManifestActivity\n        /**\n         * indicates delegates that are needed to validate a pending change\n         * @remarks\n         * not every manifest change has to be validated by delegates, \n         * ... but those that do can enforce:\n         *   (a) creating this list of delegates that must validate\n         *   (b) that the list becomes empty before the change is committed.\n         *   (c) OR that any remaining delegates are validating the committed data\n         * ... as part of the txn completing the change.\n         *\n         * This helps ensure that the change is validated by the right delegates,\n         *  ... without needing all the validation to be done in a single transaction\n         */ \n         remainingDelegateValidations: []DelegateRole\n    }\n}\n\n// data stored in isDelegate Datum (in the delegate's script)\n// ... links back to the capo info\nstruct DelegationDetail {\n    capoAddr: Address\n    mph: MintingPolicyHash\n    tn: ByteArray\n\n    func acAuthorityToken(self) -> AssetClass {\n        AssetClass::new(self.mph, self.tn)\n    }\n    func tvAuthorityToken(self) -> Value {\n        Value::new(\n            AssetClass::new(self.mph, self.tn), 1\n        )\n    }\n}\n\n// Delegates can define additional Datum in their enums,\n// but this first Datum is essential\nenum BASE_DELEGATE_Datum {\n    Cip68RefToken {  \n        cip68meta: AnyData\n        cip68version: Int\n        otherDetails: Data\n    }\n\n    IsDelegation {\n        dd: DelegationDetail\n    }\n    // same variant-index and structure as Capo's DelegatedData\n    capoStoredData {\n        data: AnyData\n        version: Int\n        otherDetails: Data \n    }\n}\n\nfunc mustReturnValueToScript(\n    value : Value, \n    tokenName: ByteArray = #\n) -> Bool {\n    if (!returnsValueToScript( value)) {\n        print(\"failed matching value: \");\n        print(value.show());\n        print(\"\\n\");\n        error(\" ❌ dgTkn not returned: \" + tokenName.decode_utf8_safe())\n        // error(\"the authZor token MUST be returned\")\n    } else { \n    true\n    }\n}\n\n//!!! call with existing delegate Datum.serialize()\nfunc unmodifiedDelegation(oldDD : ByteArray) -> Bool {\n    o : []TxOutput = get_cont_outputs();\n    //    print(\"::::::::::::::::::::::::::::::::: hi \"+o.head.datum.inline.serialize().show());\n\n    assert(o.head.datum.inline.serialize() == oldDD,\n    // \"delegation datum must not be modified\"\n    \"modified dgtDtm\"\n);\n    true\n    // MintDelegateDatum::IsDelegation{\n    //     ddNew, _\n    // } = MintDelegateDatum::from_data( \n        \n    // );\n\n    //! the datum must be unchanged.\n    // ddNew == dd \n}\n\nfunc requiresNoDelegateInput(\n    delegateLink: RelativeDelegateLink, \n    mph: MintingPolicyHash\n) -> Bool {\n    // v : Value = mkTv(mph: mph, tn: delegateLink.uutName);\n    ac : AssetClass = delegateLink.acAuthorityToken(mph);\n    if (tx.inputs.any((i: TxInput) -> Bool {\n        i.value.get_safe(ac) > 0\n    })) {\n        error(\"must not have dgTkn input: \"+delegateLink.uutName)\n    } else {\n        print(\"ok: no dgTkn input: \"+delegateLink.uutName);\n        true\n    }\n}\n\n// just some convenience stuff to lead people to the right place\nstruct delegateLink_hasValidOutput_asMethod {\n    placeHolder: String \n}\n\n// func requiresValidDelegateOutput(\n//     delegateLink: delegateLink_hasValidOutput_asMethod,\n//     mph: MintingPolicyHash, \n//     required: Bool = true\n// ) -> Bool {\n         ///                  vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n//     assert(false, \"replaced by delegateLink.hasValidOutput(...)\");\n//     assert(delegateLink==delegateLink, \"no way q\");\n//     assert(mph==mph, \"no\");\n//     assert(required==required, \"no way r\");\n//     true\n// }\n// :ladybug emoji: \"🐞xy\"\n\n// !!! this could be really nice but it's difficult to use it in practice.\n// type-aliasing would be amazing.\nenum SomeDelegateDatum[T] {\n    Cip68RefToken {  \n        // NOTE: this datum contains reference details for a user-facing token minted according to the cip-68 standard \n        //  - the asset name (in the Value of this UTXO) MUST be:  #000643b0 + tokenName\n        //     - this asset name can serve user-side tokens using the CIP-68 \"222\", \"333\" or other token types.\n        //     - the user-side asset name with its (222/333/etc) CIP-67 prefix and \n        //       ... its remaining tokenName will be matched to this asset name (#000643b0 +tokenName)\n        //       ... to locate this reference datum; this datum content will be interpreted\n        //       ... according to the semantics implied by the user-side asset-name prefix.\n        //\n        //  - The attached 'meta' field in this Datum variant contains the relevant data, depending on the token type\n        //    - for \"222\" tokens, the meta field should contain the following fields:\n        //        - \"name\" : String\n        //        - \"description\" : String \n        //        - \"files\" :   // {mediaType, src (url), name?, ... otherFields)\n        //        - \"image\": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)\n        //    - for \"333\" tokens, the meta field should contain the following fields:\n        //        - \"name\" : String\n        //        - \"description\" : String \n        //        - \"ticker\" : String\n\n        //        - \"url\": String  // project URL\n        //        - \"logo\": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)\n        //                    - it must have a mime type `image/png`, `image/jpeg` or `image/svg+xml`\n        //        - \"decimals\" : Int\n\n        meta: AnyData\n        version: Int\n        otherDetails: Data // can be Unit () or anything else\n    }\n\n    IsDelegation {\n        dd: DelegationDetail\n    }\n    // same variant-index as Capo's DelegatedData\n    capoStoredData {\n        data: T\n        version: Int\n        otherDetails: Data \n    }\n\n    // func validateSettings(self, _settings: ProtocolSettings) -> Bool{\n    //   ... get the settings from the manifest via ccts\n    //     assert(false, \"not valid (stubbed)\");\n    //     // settings.serialize() != self.serialize() &&\n    //     true\n    // }    \n}\n", {
+    project: "stellar-contracts",
+    purpose: "module",
+    name:  "src/delegation/CapoDelegateHelpers.hl", // source filename
+    moduleName:  "CapoDelegateHelpers",
+});
+
+const StellarHeliosHelpers_hl = makeSource(
+  "module StellarHeliosHelpers\n\nimport {\n    tx, \n    get_current_input,\n    get_current_validator_hash\n} from ScriptContext\n\n// keep this as-is.  Make RealnumSettingsValueV2 or something else if it needs to change\nstruct RealnumSettingsValueV1 {\n    name: String\n    microInt: Int // \"Real\" semantics, times 1_000_000\n}\n\nfunc didSign(a: Address) -> Bool {\n    pkh : PubKeyHash = a.credential.switch{\n        PubKey{h} => h,\n        Validator => error(\"trustee can't be a contract\")\n        // _ => error(\"trustee can't be a contract\")\n    };\n    // print(\"checking if trustee signed: \" + pkh.show());\n\n    tx.is_signed_by(pkh)\n}\n\n/**\n * emits an indication for the start of a logging group.\n * @remarks\n * The end of the group MUST be explicitly indicated by calling logGroupEnd().\n */\nfunc logGroupStart(group: String, collapsed: Bool = false) -> () {\n    // 🐣 = Bird in egg (think \"nest\")\n    if (collapsed) {\n        print(\"🐣🗜️ \"+group)\n    } else {\n        print(\"🐣\"+group);\n    }\n}\n\n/**\n * emits an indication for the end of a logging group.\n * @remarks\n * Can be used with logGroupStart() or REQTgroupStart() to close the logging group.\n * \n * If you don't close the group, log messages will be mis-attributed to the group.\n * Errors and failed assertions will implicitly close the group.\n */\nfunc logGroupEnd(status: String = \"\") -> () {\n    // 🥚 = Egg (think \"close up that container\")\n    print(\"🥚 \"+status)\n}\n\nfunc emptyUnitFunc() -> () { () }\n\n/**\n * Opens a logging group, executing a boolean callback and returning its result.\n * \n * @remarks\n * The group is closed automatically, with an emoji indicating success or failure.\n */\nfunc logGroup(\n    group: String, \n    collapsed: Bool = false,\n    callback: () -> Bool\n) -> Bool {\n    logGroupStart(group, collapsed);\n    result = callback();\n    if (result) {\n        logGroupEnd(\"✅\");\n    } else {\n        logGroupEnd(\"❌\");\n    }\n    result\n}\n\n/**\n * Executes a callback without args or return value, within a logging group.\n * \n * @remarks\n * The group is closed automatically.\n */\nfunc logGroupUnit(\n    group: String, \n    collapsed: Bool = false,\n    callback: () -> () = emptyUnitFunc\n) -> () {\n    logGroupStart(group, collapsed);\n    callback();\n    logGroupEnd();\n}\n\nfunc TODO(task: String) -> () {\n    // 🟥  😳💦 red checkbox, face, sweat droplets\n    print(\"  🟥  😳💦  TODO: \" + task + \"\\n\")\n}\n\nfunc TRACE(id: ByteArray, message: String) -> () {\n    // todo: how to prevent the id from being optimized out?\n    print(id.decode_utf8_safe());\n    print(message)\n}\n\n/**\n * Indicates a self-documenting required behavior\n */\nfunc REQT(\n    reqt: String, \n    assertion : Bool=true, \n    onError: String =\"  ❌ failed reqt: ❗\" + reqt,\n    showSuccess: Bool = false\n) -> () {\n    // ❗red exclamation mark\n    if (showSuccess && assertion) {\n        print(\"✅ ❗\"+ reqt);\n    } else {\n        print(\"❗\"+ reqt);\n    }\n    assert(assertion, onError)\n}\n\n/**\n * Indicates a self-documenting required behavior and returns true\n */\nfunc bREQT(\n    reqt: String, \n    assertion : Bool=true, \n    onError: String =\"  ❌ failed reqt: ❗\" + reqt,\n    showSuccess: Bool = false   \n) -> Bool {\n    REQT(reqt, assertion, onError, showSuccess);\n    true\n}\n\n/**\n * Starts a logging group with the \"Requirement\" indicator included\n * @remarks\n * The end of the group MUST be explicitly indicated by calling logGroupEnd().\n */\nfunc REQTgroupStart(reqt: String, collapsed: Bool = false) -> () {\n    logGroupStart(\"❗\"+ reqt, collapsed);\n}\n\n/**\n * Executes a boolean function within a logging group, labeled with the \"Requirement\" indicator.\n * \n * @remarks\n * The group is closed automatically, with an emoji indicating success or failure.\n * If the function returns false, an assertion is thrown (outside the logging group)\n */\nfunc assertREQTgroup(reqt: String, collapsed: Bool = false, callback: () -> Bool) -> () {\n    result = logGroup(\"❗\"+ reqt, collapsed, callback);\n    assert(result, \"❌ failed reqt: ❗\" + reqt)\n}\n\n/**\n * Returns true after calling a boolean function within a logging group, \n * labeled with the \"Requirement\" indicator.\n * @remarks\n * The group is closed automatically, with an emoji indicating success or failure.\n * If the function returns false, an assertion is thrown (outside the logging group)\n */\nfunc bREQTgroup(reqt: String, collapsed: Bool = false, callback: () -> Bool) -> Bool {\n    result = logGroup(\"❗\"+ reqt, collapsed, callback);\n    assert(result, \"❌ failed reqt: ❗\" + reqt)\n    result\n}\n\n/**\n * Executes a callback without args or return value, within a logging group,\n * labeled with the \"Requirement\" indicator.\n * @remarks\n * The group is closed automatically.\n */\nfunc REQTgroupUnit(reqt: String, collapsed: Bool = false, callback: () -> ()) -> () {\n    logGroupUnit(\"❗\"+ reqt, collapsed, callback);\n}\n\nfunc REQTgroup[T: Any](reqt: String, collapsed: Bool = false, callback: () -> T) -> T {\n    logGroupStart(\"❗\"+ reqt, collapsed);\n    result = callback();\n    logGroupEnd(\"✅\");\n    result\n}\n\nfunc isTrue(_t : Bool) -> () {\n    ()\n    // assert(t, \"validator func throws or is true\")\n}\n\n/**\n  * forms a Value, given minimal details\n  * @remarks\n  * Uses named args to allow `tn` string token name or `tnBytes` for a ByteArray,\n  * and `count` (default 1) to specify the number of tokens.\n  * the `mph` arg is required.\n  */ \nfunc mkTv(\n    mph: MintingPolicyHash, \n    tn: String=\"\", \n    tnBytes: ByteArray=tn.encode_utf8(),\n    count : Int = 1\n) -> Value {\n    assert(tnBytes.length > 0, \"missing reqd tn or tnBytes\");\n    Value::new(\n        AssetClass::new(mph, tnBytes), \n        count\n    )\n}\n\n//! returns the charter-token from our minter, as a Value\nfunc tvCharter(mph: MintingPolicyHash)  -> Value {\n    mkTv(mph: mph, tn: \"charter\")\n}\n\nfunc returnsValueToScript(value : Value) -> Bool {\n    input : TxInput = get_current_input();\n    input.value.contains(value) &&\n    tx.outputs.any( (txo : TxOutput) -> Bool {\n        txo.address == input.address &&\n        txo.value.contains(value)\n    } )\n}\n\n\nfunc getOutputWithValue(v : Value) -> TxOutput {\n    tx.outputs.find((txo: TxOutput) -> { txo.value >= v })\n}\n\nstruct outputAndDatum[T] {\n    output: TxOutput\n    datum: T\n    rawData: Data\n}\n\nfunc getSingleAssetValue(input: TxInput) -> Value{\n    inputMap : Map[MintingPolicyHash]Map[ByteArray]Int = input.value.get_assets().to_map();\n    assert( inputMap.length == 1, \n        \"multiple assets\"\n        // \"getSingleAssetValue needs single-asset input\"\n    );\n\n    inputTokens : Map[ByteArray]Int = inputMap.head_value;\n    assert(inputTokens.length == 1, \n        \"multiple tokens\"\n        // \"getSingleAssetValue needs single-token input\"\n    );\n\n    input.value.get_assets()\n}\n\n// func outputDatum[T](newTxo : TxOutput) -> T {\n//     T::from_data(newTxo.datum.inline)\n// }\n\nfunc getOutputForInput(input: TxInput) -> TxOutput {\n    inputValue : Value = getSingleAssetValue(input);\n\n    getOutputWithValue(inputValue)\n}\n\n//! retrieves the redeemer for a specific input\nfunc mustFindInputRedeemer(\n    txInput: TxInput    \n) -> Data {\n    targetId : TxOutputId = txInput.output_id;\n    redeemers : Map[ScriptPurpose]Data = tx.redeemers;\n    spendsExpectedInput : ScriptPurpose = redeemers.find_key( \n        (purpose : ScriptPurpose) -> { purpose.switch{ \n            sp: Spending => {\n                // print (\"oid: \" + sp.output_id.show());\n                sp.output_id == targetId\n            }, \n            _ => false \n        } }\n    );\n    redeemers.get(spendsExpectedInput)\n}\n\n// XXX this doesn't work because using a field of this type\n//   causes the compiler to believe there would be two enum wrappers,\n//   one for this Solo variant, and another for the T type.\n// Instead, the off-chain code needs to construct the wrapper,\n// but the field needs to pretend there is no wrapper.\n\n// enum NestedTaggedStruct[T] {\n//     Solo{ thing: T }\n\n//     func unwrap(self) -> T {\n//         print(\"NestedTaggedStruct: unwrap\");\n\n//         self.switch {\n//             Solo{ thing } => {\n//                 print(\"NestedTaggedStruct: unwrapped thing\");\n//                 thing\n//             },\n//             _ => error(\"NestedTaggedStruct: unwrap: unknown variant\")\n//         }\n//     }\n// }\n \n// field-names style of struct, arbitrary & extensible\n// field list, can be interpreted by any script that defines a \n// field-names style of struct with its own fields & data types.\nstruct AnyData {\n    id: ByteArray \"@id\"  // same as the UUT name for this data\n    type: String \"tpe\"\n\n    // can have other fields; receiver will interpret their target types.\n}\n\nfunc fromCip68Wrapper(value: Data) -> Data {\n    value.switch {\n        // IntData, ByteArrayData, MapData, ListData and ConstrData\n        ConstrData{_anyIndex, fields} => {\n            fields.head.switch {\n                MapData => fields.head,\n                _ => error(\"bad cast from ConstrData{_, ...fields} to mStruct: first field must be a map\")\n            }\n        },\n        _ => error(\"bad cast to mStruct from non-ConstrData\")\n    }\n}\n\nfunc getTimeRange(granularity: Duration = Duration::HOUR) -> TimeRange {\n    validity : TimeRange = tx.time_range\n    assert(\n        validity.end - validity.start \n            <= granularity,\n        \"txn duration must be at most \"+granularity.show() + \"ms\"\n    );\n    validity\n}\n\nfunc startsExactlyAt(\n    tr: TimeRange,\n    t: Time\n) -> Bool{\n    t == tr.start\n}\n\n// use [optional: tcx.futureData() and] txn.validFor(), then tcx.txnEndTime()\n// to synchronize an off-chain variable with the validity.end seen here.\nfunc endsExactlyAt(\n    tr: TimeRange,\n    t: Time\n) -> Bool{\n    t == tr.end\n}\n\nfunc startsAfter(\n    tr: TimeRange,\n    t : Time\n) -> Bool{\n    tr.start > t\n}\n\nfunc endsBefore(\n    tr: TimeRange,\n    t : Time\n) -> Bool{\n    tr.end < t\n}\n\nfunc now(granularity: Duration = Duration::HOUR) -> Time {\n    validity : TimeRange = getTimeRange(granularity);\n    validity.start\n}        \n\n", {
+    project: "stellar-contracts",
+    purpose: "module",
+    name:  "src/StellarHeliosHelpers.hl", // source filename
+    moduleName:  "StellarHeliosHelpers",
+});
+
+const CapoHelpers_hl = makeSource(
+  "module CapoHelpers \n\nimport {\n    mkTv,\n    tvCharter,\n    mustFindInputRedeemer,\n    outputAndDatum,\n    fromCip68Wrapper,\n    AnyData,\n    REQT,\n    TODO,\n    REQTgroup,\n    bREQTgroup,\n    REQTgroupUnit,\n    REQTgroupStart,\n    logGroupUnit,\n    logGroup,\n    logGroupStart,\n    logGroupEnd\n} from StellarHeliosHelpers\n\nimport {tx, get_current_input} from ScriptContext\n// import {\n//     TypeMap\n// } from TypeMapMetadata\n\nimport { \n    RelativeDelegateLink,\n    AbstractDelegateActivitiesEnum,\n    CapoLifecycleActivity,\n    DgTknDisposition as DgTkn,\n    DelegateRole,\n    PendingCharterChange    \n} from CapoDelegateHelpers\n\nenum UtxoSource {\n    RefInput\n    Input\n\n}\n\nenum dgd_DataSrc {\n    Unk\n    Input { utxo: TxInput }\n    Output { txo: TxOutput }\n    Both {\n        utxo: TxInput\n        txo: TxOutput\n    }\n    // Reference { ref: TxInput }\n}\n\n/**\n * Future: we can require for named tokens to be chartered explicitly\n * by the protocol before they can be minted using this structure.  However,\n * This would only be worthwhile if this structure provides a clear benefit,\n * in terms of reliable enforcement of policy constraints such as supply limits.\n * \n * For now, we leave it out (govAuthority can authorize arbitrary token minting),\n * with a placeholder on the roadmap for a future extension to add\n * constraint expression + enforcement.  In that future moment, we can \n * adopt this kind of extension to the manifest, or we can use a specific type of\n * dgDataPolicy for this purpose, with this structure as a prototype to be pushed\n * down into its internal structure.\n */\nstruct MftDetails {\n    // the token name is mapped to this ManifestEntryType\n    maxSupply: Option[Int]\n    // supplyMintingRecords: []SupplyMintingRecord // points to an aggregate receipt \n\n    func validate(self) -> Bool {\n        REQT(\"MintsFungibleToken: has forward-looking/placeholder structure for future constraint enforcement\");\n\n        self.maxSupply.switch {\n            Some => error(\"maxSupply not yet supported\"),\n            None => true\n        } \n        // && (\n        //     self.supplyMintingRecords.length > 0\n        // ).trace(\"empty supplyMintingRecords? \")\n    }\n}    \n\nenum ManifestEntryType {\n    // the name (entry's key) is simply a reference to a specific token \n    // (typically a specific kind of dgData record \n    //  ...using application-specific convention)\n    NamedTokenRef \n    // the referenced token controls a specific type of dgData record,\n    // ... indicated by the entry's key.  With refCount, it inventories multiple \n    // ... thread tokens, each held by the delegate contract, for parallelism.\n    DgDataPolicy {\n        policyLink: RelativeDelegateLink\n        idPrefix: String\n        refCount: Int\n    }\n    // the referenced token inventories thread-tokens for a specific delegate role\n    //  ... the key is expected to match that delegate role (\n    //    mintDgt, spendDgt, mintInvar, spendInvar,\n    //    govDgt, or ‹name› of otherNamedDelegate)\n    // the first thread doesn't ever require a manifest entry,\n    // ... and the first forked thread makes an entry with refCount = 2\n    DelegateThreads {\n        role: DelegateRole \n        refCount: Int\n    }\n    // the referenced token is a merkle-root of a membership-proof-tree\n    MerkleMembership \n\n    // the referenced token is a merkle-root of a state-root-tree\n    MerkleStateRoot    \n\n    /** the referenced token name has been chartered as an \"official\" \n     * asset class as part of this protocol.  See notes above for roadmap guidance.\n     */\n    // xxxMintsFungibleToken {\n    //     mftDetails: MftDetails\n    // }\n\n    // func validate(self) -> Bool {\n    //     self.switch {\n    //         MintsFungibleToken{mftDetails} => mftDetails.validate(),\n    //         _ => true\n    //     }\n    // }\n}\n\n/*\n * The UtxoManifest is a data structure that references a set of UUTs\n * that are important to the operation of a Capo (and its family of contract \n * scripts).  It is used to maintain positive control over these operational\n * UUTs, inventorying them and giving every transaction a way to easily\n * reference their data for validation, operation, and reporting.\n *\n * A prime use-case for the capo's Manifest is for storing protocol-settings \n * data (\"settings\").  Any application will need its own defined data structures\n * for settings, but the \"settings\" key is reserved for this general purpose.\n * The protocol ensures that every collaborating script (\"delegate\") has a\n * chance to validate any new settings before the (updated settings or the \n * delegate, during installation) are activated.\n *\n * An additional case for manifest entries is for UUTs used as \"thread tokens\",\n * where multiple separate contract utxos are used to manage independent\n * threads of parallel operation for a single contract.  This provides a scalability\n * mechanism.\n */\nstruct CapoManifestEntry {\n    // key: String // redundant / same as its map-key\n    entryType: ManifestEntryType \"tpe\"\n    tokenName: ByteArray \"tn\"\n    mph: Option[MintingPolicyHash] // default = Capo's MPH\n    \n    func validate(self) -> Bool {\n        // 3 bytes plus encoding overhead\n        print(\"foo\".serialize().length.show() + \"<-- 3 chars has this serialized length\");\n        // assert(self.key.serialize().length > 5, \"key too short\");\n        // assert(\"settings\" == self.key, \"manifest only supports 'settings' for now\");\n\n        assert(self.tokenName.length > 0, \"no token name\");\n        // assert(self.refCount == 1, \"only one ref allowed for now\");\n        // assert(!self.isThreadToken, \"thread tokens not yet supported\");\n        self.mph.switch {\n            Some => error(\"custom mph not yet supported\"),\n            _ => true\n        }\n    }\n}\n\n// func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {\n//     (v: Value) -> String {\n//         others : String = Value::from_map(\n//             v.get_assets().to_map().filter( (someMph: MintingPolicyHash, _) -> Bool {\n//                 mph != someMph\n//             })\n//         ).show();\n//         ada : String = (\n//             (\n//                 (0.0 + v.get_lovelace()) / 1_000.0\n//             ).round() / 1_000.0\n//         ).show() + \" ADA\";\n//         mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {\n//             tn = tokenName.decode_utf8_safe();\n//             []String{\n//                 c.show(), \"×💴 \", tn\n//             } + previous\n//         }, []String{}).join(\" + \");\n//         // v.assets()\n\n//         mine + \" + \" + ada  + others\n//     }\n// }\n\n/**************************************************************\n      ************************************************************\n      ************************************************************\n      *******************                      *******************\n      *******************                      *******************\n      *******************        CapoDatum     *******************\n      *******************                      *******************\n      *******************                      *******************\n      ************************************************************\n      ************************************************************\n      ************************************************************\n*/      \n\nenum CapoDatum {\n    CharterData {\n        spendDelegateLink: RelativeDelegateLink\n        spendInvariants: []RelativeDelegateLink\n        otherNamedDelegates: Map[String]RelativeDelegateLink\n        mintDelegateLink: RelativeDelegateLink\n        mintInvariants: []RelativeDelegateLink\n        govAuthorityLink: RelativeDelegateLink\n        manifest: Map[String]CapoManifestEntry\n        pendingChanges: []PendingCharterChange\n        // typeMapUut: Option[ByteArray]   // optional reference to a UUT having TypeMapInfo datum\n    }\n    ScriptReference\n    // settings are now just a distinguished case of delegated data\n    // ... for contracts that use settings,\n    // ... instead of being a special type of Datum\n    // SettingsData {\n    //     data:  Map[String]Data\n    // }\n\n    // same variant-index as delegate's capoStoredData:\n    DelegatedData {  // the Capo redirects control of these to the spend delegate\n        data: Map[String]Data // matches pattern of AnyData + other fields // the spend delegate may redirect control further, depending on what it sees in there\n        version: Int // for CIP-68 compatibility\n        otherDetails: Data // abstract additional info\n    }\n\n    func hasCharterRefInput(\n        self,\n        mph : MintingPolicyHash\n    ) -> Option[CapoDatum::CharterData] {\n        assert(false, \"deprecated use of hasCharterRefInput(); use CapoCtx instead.\");\n\n        assert( // avoid \"unused variable self\" error\n            true || ( /* never executed */\n                self.serialize() != mph.serialize()\n            ), \"never thrown\"\n        );\n        assert(false, \"unused?\"); // see standalone getRefCharterData()\n        \n        // chVal : Value = tvCharter(mph);\n        charterAc : AssetClass = AssetClass::new(mph, \"charter\".encode_utf8());\n        hasCharter = (txin : TxInput) -> Bool { txin.value.get_safe(charterAc) > 0 };\n\n        tx.ref_inputs.find_safe(hasCharter).switch{\n            Some{txin} => Option[CapoDatum::CharterData]::Some{\n                CapoDatum::from_data( \n                    txin.datum.inline\n                ).switch{\n                    c : CharterData => c,\n                    _ => error(\"wrong enum\")\n                }\n            },\n            None => Option[CapoDatum::CharterData]::None\n        }\n    }\n\n    func countUpdatedThings(self, oldDatum: CapoDatum) -> Int {\n        self.switch {\n            CharterData{ \n                nextSpendDelegate, \n                nextSpendInvariants, \n                nextNamedDelegates, \n                nextMintDelegate, \n                nextMintInvariants, \n                nextGovDelegate, \n                nextManifest,\n                _nextPendinghanges\n            } => {\n                CharterData {\n                    oldSpendDelegate,\n                    oldSpendInvariants,\n                    oldNamedDelegates,\n                    oldMintDelegate,\n                    oldMintInvariants,\n                    oldGovDelegate,\n                    oldManifest,\n                    _oldPendingChanges\n                } = oldDatum;\n                changedSpendDgt : Bool = ( nextSpendDelegate.serialize() != oldSpendDelegate.serialize() );\n                changedSpendInvariants : Bool = ( nextSpendInvariants != oldSpendInvariants );\n                changedNamedDelegate : Bool = ( nextNamedDelegates.serialize() != oldNamedDelegates.serialize() );\n\n                changedMintDgt : Bool = ( nextMintDelegate.serialize() != oldMintDelegate.serialize() );    \n                changedMintInvariants : Bool =  ( nextMintInvariants != oldMintInvariants );\n                changedGovDelegate : Bool = ( nextGovDelegate.serialize() != oldGovDelegate.serialize() );\n                changedManifest : Bool = ( nextManifest.serialize() != oldManifest.serialize() );\n    \n                if ((changedSpendDgt).trace(\" -- spendDgt changed? \") ) { 1 } else { 0 } +\n                if ((changedSpendInvariants).trace(\" -- spendInvs changed? \") ) { 1 } else { 0 } +\n                if (changedNamedDelegate.trace(\" -- namedDgt changed? \") ) { 1 } else { 0 }+\n                if ((changedMintDgt).trace(\" -- mintDgt changed? \") ) { 1 } else { 0 } +\n                if ((changedMintInvariants).trace(\" -- mintInvs changed? \") ) { 1 } else { 0 } +\n                if ((changedGovDelegate).trace(\" -- govDgt changed? \")) { 1 } else { 0 } +\n                if ((changedManifest).trace(\" -- manifest changed? \") ) { 1 } else { 0 }\n            },\n            _ => error(\"only CharterData datum can count updated things\")\n        }\n    }\n\n    // func mustFindSettingsOutput(self, mph: MintingPolicyHash, inAddr: Address) -> outputAndDatum[CapoDatum::SettingsData] {\n    //     settingsVal : Value = mkTv(mph: mph, tnBytes: self.switch {\n    //         ct: CharterData => {\n    //             print( \" ⬅️ 🔎 finding settings output: \"+ ct.settingsUut.decode_utf8_safe());\n    //             ct.settingsUut\n    //         },\n    //         _ => error(\"mustFindSettings - only valid on CharterData datum\")\n    //     });\n        \n    //     notFound = Option[outputAndDatum[CapoDatum::SettingsData]]::None;\n    //     foundSettings: []outputAndDatum[CapoDatum::SettingsData] = \n    //         tx.outputs.map_option[\n    //             outputAndDatum[CapoDatum::SettingsData]\n    //         ](\n    //              (output: TxOutput) -> Option[outputAndDatum[CapoDatum::SettingsData]] {\n    //                 if ( output.address != inAddr ) {\n    //                     // print(\"not the right address\");\n    //                     notFound\n    //                 } else {\n    //                     rawDatum : Data = output.datum.inline;\n    //                     CapoDatum::from_data(\n    //                         rawDatum\n    //                     ).switch {\n    //                         settings: SettingsData => {\n    //                             Option[\n    //                                 outputAndDatum[CapoDatum::SettingsData]\n    //                             ]::Some{\n    //                                 outputAndDatum[CapoDatum::SettingsData] {\n    //                                     output, settings, rawDatum\n    //                                 }\n    //                             }\n    //                         },\n    //                         _ => {\n    //                             // print(\"found non-SettingsData\");\n    //                             notFound\n    //                         }\n    //                     }\n    //                 }\n    //             }\n    //         );\n\n    //     assert(foundSettings.length < 2, \"too many settings outputs\") ;\n    //     assert(foundSettings.length == 1, \"no settings output\");\n\n    //     settingsOutput : TxOutput = foundSettings.head.output;\n    //     assert(\n    //         // already checked above.\n    //         // settingsOutput.address == charter.owner &&\n    //         settingsOutput.value.contains(settingsVal),\n    //             \"settings output not found in contract with expected UUT\"\n    //     );\n    //     assert(settingsVal.contains(settingsOutput.value.get_assets()), \n    //         \"excess value in settings output: \"+(settingsOutput.value - settingsVal).show()\n    //     );\n    //     print(\"⬅️ ✅ found CapoDatum::SettingsData\");\n    //     foundSettings.head\n    //     // ^^ fails if there's no settings output to the right address\n\n    // }\n}\n\nenum cctx_CharterInputType {\n    Unk\n    RefInput { \n        datum: CapoDatum::CharterData\n        utxo: TxInput\n    }\n    Input { \n        datum: CapoDatum::CharterData \n        utxo: TxInput \n    }\n    // Minting {\n    //     datum: CapoDatum::CharterData\n    //     address: Address\n    // }\n}    \n\n/**************************************************************\n      ************************************************************\n      ************************************************************\n      *******************                      *******************\n      *******************                      *******************\n      *******************      CapoActivity    *******************\n      *******************                      *******************\n      *******************                      *******************\n      ************************************************************\n      ************************************************************\n      ************************************************************\n*/      \n\nenum CapoActivity {\n    capoLifecycleActivity { // variant 0 mostly delegated to spendDgt\n        activity: CapoLifecycleActivity\n    }\n    usingAuthority // variant 1\n    retiringRefScript // variant 2\n    addingSpendInvariant // variant 3\n    spendingDelegatedDatum // variant 4\n\n    // // possibly move this into CapoLifecycleActivity:\n    // updatingManifest { // variant 5 always delegated to spendDgt\n    //     activity: ManifestActivity\n    // }\n    updatingCharter // deprecated variant 5\n}\n\nfunc getRefCharterUtxo(mph : MintingPolicyHash) -> TxInput {\n    // chVal : Value = tvCharter(mph);\n    charterAc : AssetClass = AssetClass::new(mph, \"charter\".encode_utf8());\n    hasCharter = (txin : TxInput) -> Bool { txin.value.get_safe(charterAc) > 0 };\n    print(\"  -- getting ref_input for charter\");\n    charterUtxo : TxInput = tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        //!!! todo adjust this message: Missing required charter in ref_inputs\n        None => {\n            error(\"Missing charter in required ref_inputs (use tcxWithCharterRef(tcx) in txn building functions)\")\n        }\n    };\n\n    charterUtxo\n}\n\nfunc getRefCharterData(mph : MintingPolicyHash) -> CapoDatum::CharterData {\n    charterUtxo : TxInput = getRefCharterUtxo(mph);\n    ctd : CapoDatum::CharterData = CapoDatum::CharterData::from_data( \n        charterUtxo.datum.inline\n    );\n\n    ctd\n}\n\n//! retrieves a required Capo Charter datum for the indicated minting-policy - \n// ... either from the txn's reference inputs  or inputs.\n// prefer mkCapoCtx.needsCharter() for \"get from anywhere\" semantics\n// and cctx.getCharterData() to get the datum\n//  (... or mkCapoCtx.withCharterRef() to require unchanged charter)\n//  (... or mkCapoCtx.withCharterInput() to require the charter to be spent & maybe updated)\nfunc getTxCharterData(\n    mph : MintingPolicyHash,\n    refInputs : []TxInput = tx.ref_inputs\n) -> CapoDatum::CharterData {\n    // chVal : Value = tvCharter(mph);\n    charterAc : AssetClass = AssetClass::new(mph, \"charter\".encode_utf8());   \n    hasCharter = (txin : TxInput) -> Bool { txin.value.get_safe(charterAc) > 0 };\n\n    charterUtxo : TxInput = refInputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => tx.inputs.find_safe(hasCharter).switch{\n            Some{ch} => ch,\n            None => error(\"Missing charter inputs / ref_inputs\")\n        }\n    };\n    ctd : CapoDatum::CharterData = CapoDatum::CharterData::from_data( \n        charterUtxo.datum.inline\n    );\n\n    ctd\n}\n\nfunc mustHaveGovAuthority(\n    mph : MintingPolicyHash,\n    charterData : CapoDatum::CharterData = getTxCharterData(mph)\n) -> Bool {\n    charterData.govAuthorityLink.hasValidOutput(mph)\n}\n\n/**************************************************************\n      ************************************************************\n      ************************************************************\n      *******************                      *******************\n      *******************                      *******************\n      *******************     DelegateInput    *******************\n      *******************                      *******************\n      *******************                      *******************\n      ************************************************************\n      ************************************************************\n      ************************************************************\n*/\n\n/**\n * A high-level helper for delegates, enabling various kinds of\n * validation and delegation-related operations.  Although this\n * is defined as related to an \"Input\", this object provides a gateway\n * for any script to involve that delegate policy in the abstract, by\n * virtue of having included that input in the transaction.\n * Callers should expect that the other policy will\n * do its responsibilities and may use this object to enforce that\n * the other policy is **triggered** in expected ways.\n */\nstruct DelegateInput {\n    link: RelativeDelegateLink\n    role: DelegateRole\n    idPrefix: Option[String]\n    input: Option[TxInput]\n    mph: MintingPolicyHash\n\n    func genericDelegateActivityAsData(self) -> Data {\n        i : TxInput = self.input.unwrap();\n        inputData : Data = mustFindInputRedeemer(i);\n        inputData.switch {\n            ConstrData{index, fields} => {\n                // ladybug emoji: \"🐞\"\n                print(\"  --🐞 generic delegate activity at index \"+ index.show() );\n                fields.head.switch {\n                    ConstrData{index2, _fields2} => {\n                        print(\"  --🐞 nested activity at index \"+ index2.show() )\n                    }\n                }\n                // doesn't get optimized out:\n                // inpIdStr = i.output_id.tx_id.show() + \"🔹#\" + i.output_id.index.show();\n                // valStr = i.value.show();\n                // print(\"  ---- from input id:\" + inpIdStr + \" = \"+valStr)\n            } \n        };\n        inputData\n    }\n\n    func genericDelegateActivity(self) -> AbstractDelegateActivitiesEnum {\n        AbstractDelegateActivitiesEnum::from_data(\n            self.genericDelegateActivityAsData()\n        )\n    }    \n\n    /**\n     * Throws an error message including the delegation token id,\n     * if the assertion is false.\n     */\n     func assert(self, assertionOk : Bool, msg: String) -> () {\n        assert(true || /* never executed */ self.serialize() == self.serialize(), msg);\n        if(assertionOk) { assert(true, \"\" ) } else {\n            self.error(msg)\n        }\n     }\n\n    /**\n     * Throws an error message including the delegation token id.\n     */     \n    func error(self, msg: String) -> () {\n        assert(true || /* never executed */ self.serialize() == self.serialize(), msg);\n        // warning emoji: \"⚠️\"\n        print(\"⚠️ ⚠️ ⚠️ error executing policy for dgTkn: \"+ self.link.uutName);\n        print(\"  ---- with input value: \"+ self.input.unwrap().value.show());\n        // print( mkTokenShow(self.mph)(\n        //         (self.input.unwrap().value)\n        //     )\n        // );\n        print(\"\\n\");\n        assert(false, msg)\n    }\n\n    func withSpendingActivity(self) -> DelegateInput {\n        self.genericDelegateActivity().switch {\n            SpendingActivities => self,\n            _ => {\n                self.error(\"non-spend activity!\");\n                error(\"\")\n            }\n        }\n    }\n\n    func withMintingActivity(self) -> DelegateInput {\n        self.genericDelegateActivity().switch {\n            MintingActivities => self,\n            _ => {\n                self.error(\"non-mint activity!\"); \n                error(\"\") \n            }\n        }\n    }\n\n    func updatingManifest(self) -> DelegateInput {\n        self.role.switch {\n            SpendDgt => {\n                print(\"  -- updatingManifest(): checking presence of SpendDgt: updatingManifest activity\");\n                self.genericDelegateActivity().switch {                    \n                    CapoLifecycleActivities{cla} => cla.switch {\n                        updatingManifest => self,\n                        _ => {\n                            self.error(\"not using required updatingManifest activity\");\n                            error(\"\") // unreachable\n                        }\n                    },\n                    _ => {\n                        self.error(\"updatingManifest: only valid for CapoLifecycleActivities\");\n                        error(\"unreachable\")\n                    }\n                }\n            },\n            _ => {\n                self.error(\"updatingManifest: only valid for SpendDgt\");\n                error(\"unreachable\")\n            }\n        }\n    }\n\n    func withUniqueSeededMintingActivity(self, seed: TxOutputId) -> DelegateInput {\n        // tnFactory : (String) -> String = mkUutTnFactory(seed);\n\n        logGroupStart(\"\");\n        print(\"-- ensures the delegate is unchanged, so callers needn't.\");\n        result = self.genericDelegateActivity().switch {\n            MintingActivities{ma} => {\n                ma.switch {\n                    ConstrData{_index, fields} => {\n                        // assert(index==index, \"no way\"); // unused field can't be _\n                        assert(\n                            seed == TxOutputId::from_data(fields.get(0)),\n                            \"seed mismatch\"\n                        )\n                    },\n                    _ => error(\"no way\")\n                };\n                self.delegateUnchanged()\n            },\n            MultipleDelegateActivities{activities} => {\n                // can do one or more minting activities, but each one needs to be bound to a separate seed\n                print(\"-- the delegated-data policy is triggered with a multi-activity\");\n\n                assert(activities.length > 0, \"no minting activities found\");\n                foundWithThisSeed : []Data = activities.filter( (a : Data) -> Bool {\n                    AbstractDelegateActivitiesEnum::from_data(a).switch {\n                        MintingActivities{ma} => {\n                            ma.switch {\n                                ConstrData{_, fields} => {\n                                    // assert(index==index, \"no way c\"); // unused field can't be _ in switch\n                                    seed == TxOutputId::from_data(fields.head) &&\n                                    true\n                                },\n                                _ => error(\"no way d\")\n                            }\n                        },\n                        // doesn't match other activities; only seeking unique MINTING activity\n                        // OtherActivities => false,\n                        _ => false\n                    }\n                });\n                REQT(\"one of the delegate multi-activities must be minting with this seed\");\n                self.assert(foundWithThisSeed.length > 0, \"no minting activity found for seed!\");\n                REQT(\"only one of a multi-activity for a given seed is allowed\");\n                self.assert(foundWithThisSeed.length == 1, \"multiple minting activities found for seed\");\n                self.delegateUnchanged()\n            },\n            _ => {\n                self.error(\"non-mint activity!\");\n                error(\"\")\n            }\n        }\n        logGroupEnd(\"✅ unique seeded mint ok!\")\n        result\n    }\n\n    func withUniqueDDSpendingActivity(self, recId: ByteArray) -> DelegateInput {\n        strId : String = recId.decode_utf8_safe();\n\n        logGroupStart( self.role.switch {\n            _ => error(\"withUniqueDDSpendingActivity: only valid for DgDataPolicy\"),\n            DgDataPolicy => \"finding unique spending activity for a delegated-data policy\"\n        })\n\n        REQT(\"ensures the delegated-data controller's is spending recId\");\n        print(\"  -- recId: \"+ strId);\n\n        TODO(\"TEST THIS v\");\n        REQT(\"spendDgt must be acting on the matching record-id\");\n        REQT(\"ensures the delegate is unchanged, so callers needn't also check that\"); \n\n        result = self.genericDelegateActivity().switch {\n            SpendingActivities{sa} => {\n                sa.switch {\n                    ConstrData{index, fields } => {\n                        assert(index==index, \"no way e\"); // unused field can't be _\n                        foundRecId: ByteArray = ByteArray::from_data(fields.head);\n                        if(recId != foundRecId) {\n                            print(\"  -- expected: Spending:\"+strId);\n                            print(\"  -- actual: Spending:\"+foundRecId.show());\n                            self.error(\"recId mismatch\")\n                        } else {\n                            print (\"  -- ok: DD controller spending activity for \"+strId)\n                        }\n                    },\n                    _ => error(\"no way f\")\n                };\n                self.delegateUnchanged()\n            },\n            OtherActivities => error(\"expected spending activity for the recId, got OtherActivities\"),\n            MultipleDelegateActivities{activities} => {\n                print( \"    -- multiple activities found\" );\n\n                self.assert(activities.length > 0, \"no spending activities found\");\n                // can do one or more spending activities, but each one needs to be bound to a separate recId\n                actsOnThisRecord : []Data = activities.filter( (a : Data) -> Bool {\n                    AbstractDelegateActivitiesEnum::from_data(a).switch {\n                        CreatingDelegatedData => {\n                            self.error(\n                                \"dgInput: withSpendingActivity: CreatingDelegatedData invalid\"\n                            );\n                            error(\"\")\n                        },\n                        UpdatingDelegatedData => {\n                            self.error(\n                                \"dgInput: withSpendingActivity: UpdatingDgData invalid; use a Spending variant in the delegated-data policy\"\n                            );\n                            error(\"\")\n                            // \" not the delegate controller's activities (use SpendingDelegatedData for that)\"\n                        },\n                        DeletingDelegatedData => {\n                            self.error(\n                                \"dgInput: withSpendingActivity: DeletingDelegatedData invalid\" \n                                // is only valid in context of a mintDgt- when destroying a data record\n                            );\n                            error(\"\")\n                        },\n                        SpendingActivities{sa} => {\n                            // assert(false && sa.serialize() == sa.serialize(), \"no way g\");\n                            // false\n                            sa.switch {\n                                ConstrData{index, fields} => {\n                                    assert(index==index, \"no way h\"); // unused field can't be _\n                                    foundRecId: ByteArray = ByteArray::from_data(fields.head);\n                                    if(recId != foundRecId) {\n                                        actualIdStr = foundRecId.decode_utf8_safe();\n                                        self.error(\"recId mismatch: found \"+actualIdStr+\" (expected \"+strId+\")\");\n                                        error(\"\")\n                                    } else { \n                                        print(\"  -- matched recId\")\n                                        true \n                                    }\n                                },\n                                _ => {\n                                    self.error(\"wrong structure for spending activity\");\n                                    error(\"\")\n                                }\n                            }\n                        },\n                        // OtherActivities => false,\n                        \n                        _ => false\n                    }\n                });\n                REQT(\"one of the delegate data-controller multi-activities must treat this recId\");\n                self.assert(\n                    (actsOnThisRecord.length > 0).trace(\"dgt acting on this recId? \")\n                    , \"no spending activity found for recId: \"+strId\n                );\n                REQT(\"only one of a multi-activity for a given recId is allowed\");\n                self.assert(\n                    (actsOnThisRecord.length == 1).trace(\"exactly one activity? \")\n                    , \"multiple spending activities found for recId: \"+strId\n                );\n                self.delegateUnchanged()\n            },\n            _ => {\n                self.error(\"non-spend activity!\");\n                error(\"\")\n            }\n        }\n        logGroupEnd()\n        result\n    }\n\n    func requiresValidOutput(self, createdOrReturned : DgTkn=DgTkn::Returned) -> Bool {\n        bREQTgroup(reqt: \"delegate: dgTkn must be returned\", collapsed: true, callback: () -> Bool {\n            // TODO - would want this to be able to call our assert/error methods\n            self.link.hasValidOutput(\n                mph: self.mph, \n                required: true,\n                createdOrReturned: createdOrReturned\n            )\n        })\n    }\n\n    func getActivity[ACTIVITY](self) -> ACTIVITY {\n        ACTIVITY::from_data(\n            mustFindInputRedeemer(self.input.unwrap())\n        )\n    }\n\n    func getDatum[DATUM](self) -> DATUM {\n        DATUM::from_data(\n            self.input.unwrap().datum.inline\n        )\n    }\n\n    func delegateUnchanged(self) -> DelegateInput {\n    REQTgroupUnit(\n        reqt: \"the delegate must be unchanged\", \n        collapsed: true, \n    callback: () -> () {\n        DelegateInput{link, _role, _idPrefix, input, mph} = self;\n        RelativeDelegateLink{\n            uut,\n            validatorHash,\n            _configJson\n        } = link;\n        targetValue : Value = link.tvAuthorityToken(mph);\n        returnedUnchanged : Bool = validatorHash.switch {\n            Some{vh} => {\n                // print(\" ⬅️ 🔎 💁 expect dgTkn \"+uut + \" sent to vh \" + vh.show());\n                self.assert(\n                    tx.value_locked_by(vh)   .\n                    contains(\n                        targetValue\n                    ), \n                    \"dgTkn not returned: \"+ uut\n                );\n                tx.outputs.find_safe((o : TxOutput) -> Bool {\n                    o.datum.serialize() == input.unwrap().datum.serialize()\n                }).switch {\n                    Some => {\n                        print(\"ok: the dgTkn is unchanged: \"+uut);\n                        true\n                    }, \n                    None => {\n                        self.error(\"The delegate's dgTkn datum MUST NOT be modified!\");\n                        error(\"\")\n                    }\n                }\n            },\n            None => {\n                self.error(\"unchOut - no vh\"); // this method not valid on non-contract delegate tokens\n                error(\"\")\n                // todo maybe make it valid by enforcing return to the input address?\n            }\n        };\n        assert(returnedUnchanged, \"no\"); // already thrown\n        assert(link.hasValidOutput(mph), \"no\"); // thrown inside the method\n    })\n        self\n    }\n    // syntax sugar.  Implied is that that any other function calls will trip errors,\n    func orFail(self) -> Bool {\n        // assert(true || /* never executed */ self.serialize() == self.serialize(), \"no way i\");\n        _t = self;\n        true\n    }\n}\n\n// func genericDelegateActivity(\n//     link: RelativeDelegateLink,\n//     input: TxInput\n// ) -> DelegateActivity[AbstractDelegateActivitiesEnum] {\n//     DelegateActivity[AbstractDelegateActivitiesEnum]::new{\n//         link,\n//         input,\n//         // datum: Option[DATUM]::None,\n//         activity: Option[AbstractDelegateActivitiesEnum]::None\n//     }\n// }\n\n\n/**************************************************************\n      ************************************************************\n      ************************************************************\n      *******************                      *******************\n      *******************                      *******************\n      *******************     DgDataDetails    *******************\n      *******************                      *******************\n      *******************                      *******************\n      ************************************************************\n      ************************************************************\n      ************************************************************\n*/      \n\n\nstruct DgDataDetails {\n    dataSrc: dgd_DataSrc\n    // filteredInputs: []TxInput\n    id: ByteArray\n    type: String\n    mph: MintingPolicyHash\n    activity: Option[AbstractDelegateActivitiesEnum]\n    // inputs: []TxInput\n\n    func spendingActivity(self) -> Data {\n        a = self.activity.unwrap();\n        a.switch {\n            _ => error(\n                \"the activity for \"+self.id.decode_utf8_safe()+\n                \" is not a SpendingActivity: \"+a.show()\n            ),\n            SpendingActivities{sa} => sa\n            // Multiple ???\n        }\n    }\n\n    func burningActivity(self) -> Data {\n        a = self.activity.unwrap();\n        a.switch {\n            _ => error(\n                \"the activity for \"+self.id.decode_utf8_safe()+\n                \" is not a BurningActivity: \"+a.show()\n            ),\n            BurningActivities{ba} => ba\n            // Multiple ???\n        }\n    }\n\n    // see CapoCtx::updatingDgData(id)\n    func updating(\n        id : ByteArray, \n        input: TxInput, \n        output : TxOutput, \n        mph : MintingPolicyHash,\n        activity : Option[AbstractDelegateActivitiesEnum] = Option[AbstractDelegateActivitiesEnum]::None\n    ) -> DgDataDetails {\n        DgDataDetails{\n            dataSrc: dgd_DataSrc::Both{input, output},\n            id: id,\n            type: \"\",\n            mph: mph,\n            activity: activity\n        }\n    }\n    \n    // see CapoCtx::creatingDgData(id)\n    func creating(\n        id : ByteArray, \n        output : TxOutput, \n        mph : MintingPolicyHash,\n        activity : Option[AbstractDelegateActivitiesEnum] = Option[AbstractDelegateActivitiesEnum]::None\n    ) -> DgDataDetails {\n        DgDataDetails{\n            dataSrc: dgd_DataSrc::Output{output},\n            id: id,\n            type: \"\",\n            mph: mph,\n            activity: activity\n        }\n    } \n\n    // see CapoCtx::referencingDgData(id)\n    func referencing(id : ByteArray, input : TxInput, mph : MintingPolicyHash) -> DgDataDetails {\n        DgDataDetails{\n            dataSrc: dgd_DataSrc::Input{input},\n            id: id,\n            type: \"\",\n            mph: mph,\n            activity: Option[AbstractDelegateActivitiesEnum]::None\n        }\n    }    \n\n    func uutValue(self) -> Value {\n        Value::new(\n            AssetClass::new(self.mph, self.id), \n            1\n        )\n    }\n\n    // func withOutput(id : ByteArray, input: []TxInput, output : TxOutput) -> DgDataDetails {\n    //     DgDataDetails{\n    //         dataSrc: dgd_DataSrc::Output{output},\n    //         // filteredInputs: []TxInput{},\n    //         id: id,\n    //         type: \"\"\n    //         // inputs: inputs\n    //     }\n    // }\n\n    // func withInput(self) -> DgDataDetails {\n    //     assert(self.id.length > 0, \"no id; try cctx.updatingDgDat (id)\");\n    //     self.dataSrc.switch {\n    //         Input => self,\n    //         Both => self,\n    //         _ => {\n    //             oneInput: []TxInput = self.filterInputs();\n    //             assert(1 == oneInput.length, \"yikes! too many inputs\");\n    //             dataSrc : dgd_DataSrc = self.dataSrc.switch {\n    //                 Unk => dgd_DataSrc::Input{oneInput.head},\n    //                 Output{txo} => dgd_DataSrc::Both{oneInput.head, txo},\n    //                 _ => error(\"no way j \") // already returned self\n    //             };\n\n    //             DgDataDetails{\n    //                 dataSrc: dataSrc,\n    //                    // filteredInputs: oneInput,\n    //                 id: self.id,\n    //                 type: self.type,\n    //                 inputs: self.inputs\n    //             }\n    //         }\n    //     }\n    // }\n\n    func input(self) -> TxInput {\n        // assert(1 == self.filteredInputs.length, \"use withId(id)\");\n        // assert(self.id.length > 0, \"use withId(id) or cctx.updatingDgData(id).withInput()\");\n\n        // self.inputs.head\n        self.dataSrc.switch {\n            Input{utxo} => utxo,\n            Both{utxo, _} => utxo,\n            _ => error(\"no input data; use findInput() first\")\n        }\n    }\n\n    func output(self) -> TxOutput {\n        self.dataSrc.switch {\n            Output{txo} => txo,\n            Both{_, txo} => txo,\n            _ => error(\"no output data\")\n        }\n    }\n\n    // doesn't work - something about the way the IR is generated?\n    //   - seems like it might be the list operations, \n    //   - or scoping of the fields of type []TxInput?\n    //\n    // func findInput(self) -> DgDataDetails {\n    //     self.dataSrc.switch {\n    //         Input => self,\n    //         Both => self,\n    //         _ => {\n    //             targetId : ByteArray = self.id;\n    //             isEmpty : Bool = targetId.length == 0;\n    //             print(\"finding input dgData id: \"+self.id.decode_utf8_safe());\n    //             utxo: TxInput = self.inputs.find_safe( (txin : TxInput) -> Bool {\n    //                 rec : AnyData = AnyData::from_data(\n    //                     txin.datum.inline\n    //                 );\n    //                 rec.type.starts_with(self.type)\n    //                 && (isEmpty || rec.id == targetId)\n    //             }).switch {\n    //                 Some{x} => x,\n    //                 None => error(\"❌ no input dgData\")\n    //             };\n    //             newSrc: dgd_DataSrc = self.dataSrc.switch {\n    //                 Output{txo} => dgd_DataSrc::Both{utxo, txo},\n    //                 Unk => dgd_DataSrc::Input{utxo},\n    //                 _ => error(\"no way k\") // unreachable\n    //             };\n\n    //             DgDataDetails{\n    //                 dataSrc: newSrc,\n    //                 // filteredInputs: [utxo],\n    //                 id: self.id,\n    //                 type: self.type,\n    //                 inputs: self.inputs\n    //             }\n    //         }\n    //     }\n    // }\n\n\n    // func filterInputs(self) -> []TxInput {\n    //     self.inputs\n    //     // targetId : ByteArray = self.id;\n    //     // isEmpty : Bool = targetId.length == 0;\n    //     // self.inputs.filter( (txin : TxInput) -> Bool {\n    //     //     rec : AnyData = AnyData::from_data(\n    //     //         txin.datum.inline\n    //     //     );\n\n    //     //     rec.type.starts_with(self.type)\n    //     //     && (isEmpty || rec.id == targetId)\n    //     // })\n    // }\n\n    // func withFilteredInputs(self) -> DgDataDetails {\n    //     //!!! causes IR assertion error\n    //     // if (self.filteredInputs.is_empty()) {\n    //     // if (self.filteredInputs.length == 0) {\n    //     if(true) {\n    //             self\n    //         // DgDataDetails {\n    //         //     dataSrc: self.dataSrc,\n    //         //     filteredInputs: self.filterInputs(),\n    //         //     id: self.id,\n    //         //     type: self.type,\n    //         //     inputs: self.inputs\n    //         // }\n\n    //     // dataSrc: dgd_DataSrc\n    //     // filteredInputs: []TxInput\n    //     // id: ByteArray\n    //     // type: String\n    //     // inputs: []TxInput\n    \n    //     } else {\n    //         self\n    //     }\n    // }\n\n    func abstractInput(self) -> AnyData {\n        AnyData::from_data(self.inputData())\n    }\n\n    func abstractOutput(self) -> AnyData {\n        AnyData::from_data(self.outputData())\n    }\n\n    func inputData(self) -> Data {\n        self.input().datum.inline.switch {\n            ConstrData{_, fields} => fields.head,\n            _ => error(\"expected ConstrData{mStruct} for DgData input\")\n        }\n        // self.dataSrc.switch {\n        //     Input{utxo} => utxo.datum.inline,\n        //     Both{utxo, _} => utxo.datum.inline,\n        //     _ => error(\"no input data\")\n        // }\n    }\n\n\n\n    func outputData(self) -> Data {\n        self.output().datum.inline.switch {\n            ConstrData{_, fields} => fields.head,\n            _ => error(\"expected ConstrData{mStruct} for DgData output\")\n        }\n\n        // self.dataSrc.switch {\n        //     Output{txo} => txo.datum.inline,\n        //     Both{_, txo} => txo.datum.inline,\n        //     _ => error(\"no output data\")\n        // }\n    }\n    \n    // func mustHaveUut(self, uut: String) -> Bool {\n    //     // todo\n    //     false\n    // }\n\n    /**\n     * Allows the object's creation to be an implicit assertion\n     * of presence / input / output conditions, without the caller having to\n     * use the object in any other way (prevents an unused-variable error).\n     */\n    func orFail(self) -> Bool {\n        _t = self;\n        true\n    }\n}\n\n/**************************************************************\n      ************************************************************\n      ************************************************************\n      *******************                      *******************\n      *******************                      *******************\n      *******************        CapoCtx       *******************\n      *******************                      *******************\n      *******************                      *******************\n      ************************************************************\n      ************************************************************\n      ************************************************************\n*/      \n\nstruct CapoCtx {\n    mph: MintingPolicyHash\n    charter: cctx_CharterInputType\n\n    func mkTv(self,\n        tn: String = \"\",\n        tnBytes : ByteArray = tn.encode_utf8(),\n        count : Int = 1\n    ) -> Value {\n        assert(tnBytes.length > 0, \"missing reqd tn\");\n        Value::new(\n            AssetClass::new(self.mph, tnBytes), \n            count\n        )\n    }\n\n    func mkAc(self, \n        tn: String = \"\",\n        tnBytes : ByteArray = tn.encode_utf8()\n    ) -> AssetClass {\n        AssetClass::new(self.mph, tnBytes)\n    }\n\n    // use this or updatingDgData() instead of getDDOutput()\n    func creatingDgData(\n        self,\n        recId : String=\"\", \n        recIdBytes : ByteArray = recId.encode_utf8(),\n        reqt: String = \"the delegated-data record must be created\"\n    ) -> DgDataDetails {\n        REQTgroupStart(reqt, collapsed: true);\n        output : TxOutput = self.delegatedTxOutput(recIdBytes);\n        recIdAssetClass = AssetClass::new(self.mph, recIdBytes);\n        minted = tx.minted.get_safe(recIdAssetClass)\n        if (minted == 1) {\n            logGroupEnd(\"✅ creating: \"+recIdBytes.decode_utf8_safe())\n        } else {\n            if (tx.minted.contains_policy(self.mph)) {\n                print (\"  -- policy mint: \"+tx.minted.get_policy(self.mph).show());\n            } else {\n                print (\"  -- no mint in this policy\");\n            }\n            error(\"creatingDgData(): required record not minted: \"+recIdBytes.decode_utf8_safe())\n        }\n\n        DgDataDetails::creating(recIdBytes, output, self.mph)\n    }\n\n    func updatingDgData(\n        self,\n        recId : String=\"\", \n        recIdBytes : ByteArray = recId.encode_utf8(),\n        withActivity: Option[String] = Option[String]::None,\n        reqt: String = \"updates the delegated-data record\"\n    ) -> DgDataDetails {\n        REQTgroupStart(\n            reqt: reqt, \n            collapsed: withActivity.switch { \n                Some => false, None => true \n            }\n        );\n        input : TxInput = self.delegatedDataTxInput(recIdBytes: recIdBytes);\n        output : TxOutput = self.delegatedTxOutput(recIdBytes);\n\n        activity = withActivity.map[AbstractDelegateActivitiesEnum](\n            self.findModelActivity\n        )\n        logGroupEnd(\"✅ updating: \"+recIdBytes.decode_utf8_safe())\n        DgDataDetails::updating(recIdBytes, input, output, self.mph, activity)\n    }\n\n    func findModelActivity(self, modelName: String) -> AbstractDelegateActivitiesEnum {\n        delegateInput = self.requiresDgDataPolicyInput(modelName)\n\n        delegateInput.genericDelegateActivity()\n    }\n\n    func referencingDgData(self, \n        recId : String=\"\", \n        recIdBytes : ByteArray = recId.encode_utf8(),\n        reqt: String = \"requires a REFERENCE to the delegated-data record\"\n    ) -> DgDataDetails {\n        REQTgroupStart(reqt: reqt, collapsed: true);\n        input : TxInput = self.delegatedDataRef(recIdBytes: recIdBytes);\n        logGroupEnd(\"✅ input ref: \"+recIdBytes.decode_utf8_safe())\n        DgDataDetails::referencing(recIdBytes, input, self.mph)\n    }\n    \n    func getCharterRedeemer(self) -> CapoActivity {\n        e : String = \"requires charter as input\";\n        self.charter.switch {\n            Unk => error(e),\n            RefInput => error(e),\n            Input{_, utxo} => {\n                activity : CapoActivity = CapoActivity::from_data(\n                    mustFindInputRedeemer(utxo)\n                );\n                // error-factory:\n                wrongActivity = () -> CapoActivity { \n                    if (true) { error(\"non-CharterData activity\") } else { \n                        // unreachable\n                        CapoActivity::usingAuthority\n                    } \n                };\n                // returns any activity valid for the CharterData utxo:\n                activity.switch {\n                    retiringRefScript => wrongActivity(),\n                    // updatingSettings => wrongActivity(),\n                    // retiringSettings => wrongActivity(),                    \n                    spendingDelegatedDatum => wrongActivity(),\n                    usingAuthority => activity,\n                    updatingCharter => activity, //todo: make this obsolete\n                    addingSpendInvariant => activity,\n                    capoLifecycleActivity => activity\n\n                    // _ => // leaving other potential variants out to generate compile errors if they're added\n                }\n            }\n        }\n    }\n\n    func findManifestEntry(self, key: String) -> Option[CapoManifestEntry] {\n        print(\"    -- looking for capo's manifest entry: \"+key);\n        charterData : CapoDatum::CharterData = self.getCharterData();\n        charterData.manifest.get_safe(key)\n    }\n\n    func mustFindManifestEntry(self, key: String) -> CapoManifestEntry {\n        self.findManifestEntry(key).switch {\n            Some{entry} => entry,\n            None => error(\"missing required manifest entry: \" + key)\n        }\n    }\n\n    func findManifestTokenName(self, key: String, required: Bool = true) -> Option[ByteArray] {\n        oe = self.findManifestEntry(key);\n        oe.switch {\n            None => {\n                assert(!required, \"missing required manifest entry: \" + key);\n                Option[ByteArray]::None\n            }, \n            Some{e} => Option[ByteArray]::Some{e.tokenName}\n        }\n    }\n\n    func getSettingsId(self, required : Bool = true) -> Option[ByteArray] {\n        self.findManifestTokenName(\"currentSettings\", required)\n    }\n\n    func getManifestedData(self, key: String,\n        which : UtxoSource = UtxoSource::RefInput\n    ) -> Data {\n        logGroupStart(\"getManifestedData( \"+key+\" )\");\n        REQT(\"finds the manifest data with the given key\");\n\n        manifestEntry : CapoManifestEntry = self.mustFindManifestEntry(key);\n        tnBytes : ByteArray = manifestEntry.tokenName;\n        manifestAc = AssetClass::new(self.mph, tnBytes);\n        // manifestValue : Value = mkTv(mph: self.mph, tnBytes: tokenName);\n        tnStr = tnBytes.decode_utf8_safe();\n        // print(\"     ... with input dgData token name: \"+ tnStr);\n        // print(\"     with value: \"+manifestValue.show());\n\n        inputs: []TxInput = which.switch {\n            RefInput => tx.ref_inputs,\n            Input => tx.inputs\n        };\n        utxo : TxInput = inputs.find_safe((txin : TxInput) -> Bool {\n            txin.value.get_safe(manifestAc) > 0\n        }).switch{\n            Some{txin} => {\n                print (\"     ✅ ➡️  📀💁 found input dgData utxo for \"+tnStr );\n                txin\n            },\n            None => {                \n                error(\n                    \"_❌ ➡️ 📀💁💣💥💣💥💣💥  missing required \"+\n                    which.switch{RefInput => \"ref_input\", Input => \"input\"}+\n                    \" for manifest's '\"+key+\"' data=\"+tnStr+\n                    \"\\n   -- this probably indicates capo.tcxWithSettingsRef(tcx, ...) was not called\"\n                    // lifecycle management should always ensure a good linkage between\n                    // the capo's manifest entry and the matching utxo having that uut.\n                )\n            }\n        };\n\n        result = utxo.datum.inline.switch {\n            ConstrData{_, fields} => {\n                // print(\"utxo: \"+ utxo.output_id.show());\n                // print(\"manifested data fields = \"+fields.length.show());\n                fields.head.switch {\n                    MapData => {\n                        // print(\"mapData found\");\n                        fields.head\n                    },\n                    _ => error(\"expected MapData for manifested data: \"+ key)\n                }\n            },\n            _ => error(\"expected ConstrData{‹any›, mStruct} for manifested data: \"+ key)\n        }\n        logGroupEnd()\n        result\n    }\n\n    func getNextManifestDatum[DATUM_TYPE](self, key: String) -> DATUM_TYPE {\n        DATUM_TYPE::from_data(\n            self.getNextManifestedDatumRaw(key)\n        )\n    }\n\n    func getNextManifestedDatumRaw(self, key: String) -> Data {\n        charterData : CapoDatum::CharterData = self.getCharterData();\n        manifestEntry : CapoManifestEntry = charterData.manifest.get_safe(key).switch{\n            Some{entry} => entry,\n            None => error(\"missing required manifest entry: \" + key)\n        };\n        manifestAc = AssetClass::new(self.mph, manifestEntry.tokenName);\n        // manifestValue : Value = mkTv(mph: self.mph, tnBytes: manifestEntry.tokenName);\n        utxo : TxOutput = tx.outputs.find_safe((txo : TxOutput) -> Bool {\n            txo.value.get_safe(manifestAc) > 0\n        }).switch{\n            Some{txo} => txo,\n            None => error(\"missing required '\"+key+\"' manifest entry in outputs\")\n        };\n\n        utxo.datum.inline.switch {\n            ConstrData{_, fields} => fields.head,\n            _ => error(\"expected ConstrData{mStruct} for manifested data: \"+ key)\n        }\n    }\n\n    // func getRefSettingsUtxo(self) -> TxInput {\n    //     charterData : CapoDatum::CharterData = self.getCharterData();\n    //     settingsValue : Value = mkTv(mph: self.mph, tnBytes: charterData.settingsUut);\n    //     hasSettings = (txin : TxInput) -> Bool { txin.value.contains(settingsValue) };\n\n    //     print(\"getting ref_input for settings\");\n    //     settingsUtxo : TxInput =  tx.ref_inputs.find_safe(hasSettings).switch{\n    //         Some{s} => s,\n    //         //!!! todo adjust this message: Missing required charter in ref_inputs\n    //         None => error(\"Missing settings in required ref_inputs (use capo.addSettingsRef(tcx, 'refInput') in txn builder)\")\n    //     };\n    \n    //     settingsUtxo\n    // }\n\n    func requiresGovAuthority(self) -> CapoCtx {\n        REQTgroup[CapoCtx](\n            reqt: \"MUST have the Capo's govAuthority approval\", \n            collapsed: true, \n            callback: () -> CapoCtx {\n                assert(self.getCharterData().govAuthorityLink.hasValidOutput( \n                    self.mph\n                ), \"^ that fails, this can't\");\n\n            print(\"✅ govAuthority ok!\")\n            self\n        })\n    }\n\n    // func getSettings[SettingsTYPE](self) -> SettingsTYPE {\n    //     settings : TxInput = self.getRefSettingsUtxo();\n\n    //     SettingsTYPE::from_data(settings.datum.inline)\n    // }\n\n    func requiresNamedDelegateInput(self, dgtName: String) -> DelegateInput {\n        self.getCharterData().otherNamedDelegates.get_safe(dgtName).switch{\n            None => error(\"missing required delegate with name: \" + dgtName),\n\n            Some{dgtLink} => {\n                self.requiresDelegateInput(dgtLink, DelegateRole::OtherNamedDgt{dgtName})\n            }\n        }\n    }\n\n    func requiresDgDataPolicyInput(self, \n        typeName: String, \n        required: Bool = true,\n        message: String = \"\"\n    ) -> DelegateInput {\n        if (required) {\n            if (message.encode_utf8().length > 0) {\n                REQTgroupStart(reqt:message, collapsed: true);\n            } else {\n                REQTgroupStart(reqt: \"MUST find the policy for record-type \"+typeName, collapsed: true);\n            }\n        } else {\n            if (message.encode_utf8().length > 0) {\n                logGroupStart(group: message, collapsed: false);\n            } else {\n                logGroupStart(group: \"trying to find the policy for record-type \"+typeName, collapsed: false);\n            }\n        }\n\n        print(\"     -- locates the needed policy through the Capo manifest\");\n        result = self.getCharterData().manifest.get_safe(typeName).switch{\n            None => error(\"missing data-policy manifest for record-type '\" + typeName + \"'\"),\n            Some{entry} => {\n                ( dgtLink : RelativeDelegateLink, idPrefix: String ) = entry.entryType.switch {\n                    DgDataPolicy{policyLink, idPrefix, _refCount} => ( policyLink, idPrefix ),\n                    _ => error(\"manifest entry is not a data policy: \"+typeName)\n                };\n                self.requiresDelegateInput(\n                    dgtLink, \n                    DelegateRole::DgDataPolicy{typeName}, \n                    required,\n                    Option[String]::Some{idPrefix}\n                )\n            }\n        }\n        // todo: use Option::is_present() :pray:\n        if (required || result.input.switch {Some => true, None => false}) {\n            logGroupEnd(\"✅ dgData policy found: \"+typeName)\n        } else {\n            logGroupEnd(\"✅ dgData policy found: \"+typeName)\n        }\n        result\n    }\n\n    func nowActingAsMintDgt(self, required: Bool = true) -> Bool {\n        input : TxInput = get_current_input();\n        acMintDgt : AssetClass = self.getCharterData().mintDelegateLink.acAuthorityToken(self.mph);\n        isUsingMintDgt = (\n            input.value.get_safe(acMintDgt) > 0\n        ).trace(\"    -- acting on mintDgt-* token right now? \");\n        // isMintDgt : Bool = (\n        //     self.requiresMintDelegateInput(required: required).input.switch {\n        //         Some{i} => i == input,\n        //         None => false\n        //     }\n        // ).trace(\"    -- acting on mintDgt-* right now? \");\n        assert(\n            isUsingMintDgt || !required\n            , \"not acting as mint delegate!\"\n        );\n        isUsingMintDgt\n    }\n\n    func nowActingAsSpendDgt(self, required: Bool = true) -> Bool {\n        input : TxInput = get_current_input();\n        acSpendDgt : AssetClass = self.getCharterData().spendDelegateLink.acAuthorityToken(self.mph);\n        isUsingSpendDgt = (\n            input.value.get_safe(acSpendDgt) > 0\n        ).trace(\"    -- acting on spendDgt-* token right now? \");\n        // isSpendDgt : Bool = (\n        //     self.requiresSpendDelegateInput(required: required).input.switch {\n        //         Some{i} => i == input,\n        //         None => false\n        //     }\n        // ).trace(\"    -- acting on spendDgt-* right now? \");\n        assert(\n             isUsingSpendDgt || !required\n            , \"not acting as spend delegate!\"\n        );\n        isUsingSpendDgt\n    }\n\n    func requiresMintDelegateInput(self, required: Bool = true) -> DelegateInput {\n        dgtLink : RelativeDelegateLink = self.getCharterData().mintDelegateLink;\n        self.requiresDelegateInput(\n            dgtLink: dgtLink, \n            role: DelegateRole::MintDgt,\n            required: required\n        )\n    }\n\n    func requiresSpendDelegateInput(self, required: Bool = true) -> DelegateInput {\n        dgtLink : RelativeDelegateLink = self.getCharterData().spendDelegateLink;\n\n        self.requiresDelegateInput(\n            dgtLink: dgtLink, \n            role: DelegateRole::SpendDgt,\n            required: required\n        )\n    }\n\n    // internal / low-level function\n    func getCharterData(self) -> CapoDatum::CharterData {\n        self.charter.switch {\n            RefInput{datum, _} => datum,\n            Input{datum, _} => datum,\n            _ => error(\"CapoCtx.getCharterData(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter datum first\")\n        }\n    }\n\n    func getNextCharterData(self) -> CapoDatum::CharterData {\n        charterAc : AssetClass = AssetClass::new(self.mph, \"charter\".encode_utf8());\n        capoAddr : Address = self.address();\n        self.charter.switch {\n            Input => {\n                charterData : CapoDatum::CharterData = CapoDatum::from_data(\n                    tx.outputs.find( (txo: TxOutput) -> Bool {\n                        txo.address == capoAddr &&\n                        txo.value.get_safe(charterAc) > 0\n                    }).datum.inline\n                );\n                charterData\n            },\n            _ => error(\"CapoCtx.getNextCharterData(): invalid except with charter strategy Input\")\n        }\n    }\n\n    func resolveCharterUtxo(self) -> TxInput {\n        self.charter.switch {\n            RefInput{_, utxo} => utxo,\n            Input{_, utxo} => utxo,\n            // Minting => error(\"can't get utxo during minting; be satisfied with the .address()!\"),\n            _ => error(\"CapoCtx.resolveCharterUtxo(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter utxo first\")\n        }\n    }\n\n    // internal / low-level function\n    func requiresDelegateInput(self, \n        dgtLink: RelativeDelegateLink, \n        role: DelegateRole,\n        required: Bool = true,\n        idPrefix: Option[String] = Option[String]::None\n    ) -> DelegateInput {\n        DelegateInput{\n            dgtLink,\n            role,\n            idPrefix,\n            dgtLink.hasDelegateInput(\n                inputs: tx.inputs, \n                mph: self.mph,\n                required: required\n            ),\n            self.mph\n        }\n    }\n\n    func address(self) -> Address {\n        addr : Address = self.resolveCharterUtxo().address;\n                // print(\"Capo addr: \" + addr.show());\n        addr    \n    }\n\n    func delegatedDataRef(self,\n        recId: String=\"\",\n        recIdBytes: ByteArray=recId.encode_utf8()\n    ) -> TxInput {\n        hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(\n            id: recIdBytes\n        );\n        // REQTgroupStart(reqt: \"Expects reference to delegated-data record\", collapsed: true);\n        recIdStr = recIdBytes.decode_utf8_safe();\n\n        tx.ref_inputs.find_safe(hasDD).switch {\n            None => {\n                error(\"❌❌ 📎 input: delegated-data ref not found: \"+recIdStr)\n            },\n            Some{txin} => {\n                // logGroupEnd(\"✅ 📎 input: delegated-data ref ok: \"+recIdStr);\n\n                txin\n            }\n        }\n    }\n\n    func delegatedDataTxInput(self, \n        recIdBytes: ByteArray,\n        reqt: String = \"MUST have the input data record\"\n    ) -> TxInput {\n        hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(\n            id: recIdBytes\n        );\n        REQTgroupStart(reqt: reqt, collapsed: true);\n        recIdStr = recIdBytes.decode_utf8_safe();\n\n        tx.inputs.find_safe(hasDD).switch {\n            None => {\n                error(\"❌❌ 📎 input: delegated-data record: not found: \"+recIdStr)\n            },\n            Some{txin} => {\n                logGroupEnd(\"✅ 📎 input: delegated-data record: ok: \"+recIdStr);\n\n                txin\n            }\n        }\n    }\n                \n    func mkDelegatedDataPredicate(self, typeName: String=\"\", id: ByteArray=#) -> (TxInput) -> Bool {\n        capoAddr : Address = self.address();\n        assert( \n            id.length > 0 \n            || typeName.serialize().length > 0, \n            \"data predicate must have id or typeName\"\n        );\n        (txin : TxInput) -> Bool {\n            if(txin.address == capoAddr) {\n                data : Data = txin.datum.inline;\n\n                CapoDatum::from_data(data).switch {\n                    DelegatedData => {\n                        x = AnyData::from_data(fromCip68Wrapper(data));\n                        true \n                        && (typeName == \"\" || x.type == typeName) \n                        && (id == # || x.id == id)\n                    },\n                    _ => false\n                }\n            } else { false }\n        }\n    }\n\n    func mkDelegatedDataOutputPredicate(self, typeName: String, id: ByteArray=#) -> (TxOutput) -> Bool {\n        capoAddr : Address = self.address();\n        // print(\"capoAddr: \"+ capoAddr.show());\n        // print(\"seeking type \"+ typeName);\n        (txo : TxOutput) -> Bool {\n            // print(\"txo.address: \"+ txo.address.show());\n            if(txo.address == capoAddr) {\n                data : Data = txo.datum.inline;\n                CapoDatum::from_data(data).switch {\n                    DelegatedData => {\n                        x : AnyData = AnyData::from_data(fromCip68Wrapper(data));\n                        // print( \"found type \" + x.type );\n                        // print( \"found id \" + x.id.decode_utf8_safe() );\n                        // isMatch : Bool = \n                        x.type == typeName && (id == # || x.id == id)\n                        // print( \"isMatch: \" + isMatch.show() );\n                        // isMatch\n                    },\n                    _ => {\n                        // print (\"not DelegatedData\");\n                        false\n                    }\n                }\n            } else { \n                // print (\"not in capoAddr\");\n                false\n             }\n        }\n    }\n\n\n    // func toDelegatedData(self, typeName: String) -> (TxInput) -> Option[Data] {\n    //     capoAddr : Address = self.resolveCharterUtxo().address;\n    //     none : Option[Data]::None = Option[Data]::None;\n    //     (txin : TxInput) -> Option[Data] {\n    //         if(txin.address == capoAddr) {\n    //             data : Data = txin.datum.inline;\n    //             CapoDatum::from_data(data).switch {\n    //                 DelegatedData => {\n    //                     x : AnyData = AnyData::from_data(data);\n    //                     if (x.type == typeName) {\n    //                         Option[Data]::Some{data}\n    //                     } else {\n    //                         none\n    //                     }\n    //                 },\n    //                 _ => none\n    //             }\n    //         } else { none }\n    //     }\n    // }\n\n    // func foldDelegatedData_lazy[RT]( self, \n    //     typeName: String, \n    //     reducer: (\n    //         Data, () -> RT\n    //     ) -> RT, \n    //     final: RT\n    // ) -> RT {\n    //     // filter : (TxInput) -> Bool = self.delegatedDataFilter(typeName);\n    //     hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(typeName);\n    //     // capoAddr : Address = self.resolveCharterUtxo().address;\n    //     tx.inputs.fold_lazy[RT](\n    //         (txin : TxInput, myNext: () -> RT) -> RT {\n    //             hasDD(txin).switch {\n    //                 Some{data} => reducer(data, myNext),\n    //                 None => myNext()\n    //             }\n    //         }, final\n    //     )\n    // }\n\n    // func filterDelegatedData(self, type: String, filter: (Data) -> Bool) -> []TxInput {\n    //     //NOT: hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);\n    //     // use toDelegatedData:\n        \n    //     hasDD : (TxInput) -> Option[Data] = self.mkDelegatedDataPredicate(type);\n    //     tx.inputs.filter( (txin : TxInput) -> Bool {\n    //         hasDD(txin).switch { \n    //             Some{data} => filter(data),\n    //             None => false\n    //         }\n    //     })\n    // }\n\n    // func findDelegatedData[T](self, \n    //     type: String, \n    //     transform: (Data) -> Option[T],\n    //     optional: Bool = false\n    // ) -> []T {\n    //     //not hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);\n    //     // use toDelegatedData:\n    //     hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(type);\n    //     none : Option[T]::None = Option[T]::None;\n    //     result : []T = tx.inputs.map_option[T]( (txin : TxInput) -> Option[T] {\n    //         hasDD(txin).switch { \n    //             Some{data} => {\n    //                 transform(data)\n    //             },\n    //             None => none\n    //         }\n    //     });\n    //     if (!optional && (result.length == 0)) {\n    //         error(type + \": no match\")\n    //     };\n\n    //     result\n    // }\n\n    // func findDelegatedDataUtxos(self, \n    //     type: String, \n    //     filter: (Data, TxInput) -> Bool,\n    //     id: ByteArray=#,\n    //     optional: Bool = false\n    // ) -> []TxInput {\n    //     //not hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);\n    //     // use toDelegatedData:\n    //     hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(type, id);\n    //     none : Option[TxInput]::None = Option[TxInput]::None;\n    //     result : []TxInput = tx.inputs.map_option[TxInput]( (txin : TxInput) -> Option[TxInput]{\n    //         if (hasDD(txin)\n    //             Some{data} => {\n    //                 if (filter(data, txin)) {\n    //                     Option[TxInput]::Some{txin}\n    //                 } else {\n    //                     none\n    //                 }\n    //             },\n    //             None => none\n    //         }\n    //     });\n    //     if (!optional && (result.length == 0)) {\n    //         error(type + \": no match\")\n    //     };\n\n    //     result\n    // }\n\n    func mustOutputDelegatedData(self, newDataId : ByteArray, dataTypePurpose : String) -> Bool{\n    bREQTgroup(reqt: \"The new record MUST be saved in the Capo address\", \n    collapsed: true, callback: () -> Bool {\n        dgData : Data = self.delegatedTxOutput(newDataId).datum.inline;\n        dgDatum : CapoDatum = CapoDatum::from_data(dgData);\n\n        REQT(\"the new record must match type-name in dgDataPolicy manifest\");\n        dgDatum.switch {\n            DelegatedData => {\n                data : AnyData = AnyData::from_data(fromCip68Wrapper(dgData));\n                recIdStr = newDataId.decode_utf8_safe();\n                if (data.id != newDataId) {\n                    actualIdStr = data.id.decode_utf8_safe();\n                    error(\"❌❌ 📎 outDD: wrong id: \"+actualIdStr + \" (expected \"+recIdStr+\")\")\n                } else {\n                    if (data.type != dataTypePurpose) {\n                        error(\"❌❌ 📎 outDD: bad type: \"+data.type + \" (expected \"+dataTypePurpose+\")\")\n                    } else {\n                        // logged in delegatedTxOutput():\n                        // print(\"     ✅ 📎 delegated-data saved in Capo: \"+recIdStr);\n                        true\n                    }\n                }\n            },\n            _ => {\n                error(\"output not delegated data\")\n            }\n        }\n    }) }        \n\n    // func delegatedOutputData(self, \n    //     recId: ByteArray\n    // ) -> Data {\n    //     self.delegatedTxOutput(recId).datum.inline\n    // }\n\n    func delegatedTxOutput(self, \n        recId: ByteArray\n    ) -> TxOutput {\n        recIdStr = recId.decode_utf8_safe();\n        ac = AssetClass::new(self.mph, recId);\n        capoAddr = self.address();\n        tx.outputs.find_safe(\n            (txout : TxOutput) -> Bool {\n                // print(\"?? txOut\" + txout.value.show());\n                // print(\"@addr\" + txout.address.show());\n                true\n                && (txout.value.get_safe(ac) == 1)\n                    // .trace(\"    -- check output has value? \")\n                && (txout.address == capoAddr)\n                    .trace(\"output found!  ... at the right capoAddr? \")\n            }\n        ).switch{\n            None => {\n                error(\"❌❌ 📎 delegated-data output: not found: \" + recIdStr)\n            },\n            Some{txout} => {\n                print(\"✅ 📎 delegated-data output: found \"+ recIdStr);\n                txout\n            }\n        }\n    }\n\n    // func XXXmustFindDelegatedDatum[T](self, mph: MintingPolicyHash, tnBytes: ByteArray, inAddr: Address) -> outputAndDatum[T] {\n    //     notFound = Option[outputAndDatum[T]]::None;\n    //     idTokenValue = mkTv(mph: mph, tnBytes: tnBytes);\n    //     print( \" ⬅️ 🔎 finding DelegatedData output: \"+ tnbBytes.decode_utf8_safe());\n\n    //     foundDelegatedData: []outputAndDatum[T] = \n    //         tx.outputs.map_option[\n    //             outputAndDatum[T]\n    //         ](\n    //             (output: TxOutput) -> Option[outputAndDatum[T]] {\n    //                 if ( output.address != inAddr ) {\n    //                     notFound\n    //                 } else if (!output.value.contains(idTokenValue)) {\n    //                     notFound\n    //                 } else {\n    //                     rawDatum : Data = output.datum.inline;\n    //                     CapoDatum::from_data(\n    //                         rawDatum\n    //                     ).switch {\n    //                         dd: DelegatedData => {\n    //                             Option[\n    //                                 outputAndDatum[T]\n    //                             ]::Some{\n    //                                 outputAndDatum[T] {\n    //                                     output, dd, rawDatum\n    //                                 }\n    //                             }\n    //                         },\n    //                         _ => {\n    //                             notFound\n    //                         }\n    //                     }\n    //                 }\n    //             }\n    //         );\n    //     assert(foundDelegatedData.length < 2, \"too many delegated data outputs\") ;\n    //     assert(foundDelegatedData.length == 1, \"no delegated data output\");\n    //     assert(idTokenValue.contains(foundDelegatedData.value.get_assets()), \n    //         \"excess value in delegated-data output: \"+(settingsOutput.value - settingsVal).show()\n    //     );\n\n    //     print(\"⬅️ ✅ found DelegatedData\");\n    //     foundDelegatedData.head\n    // }\n\n\n    \n    // doesn't care where the charter info comes from - refinput or input, both OK\n    func needsCharter(self) -> CapoCtx {\n        charter : cctx_CharterInputType = self.charter;\n        charter.switch {\n            RefInput => {\n                print(\"      -- needs charter, anywhere in the tx (already found as ref : )\");\n                self\n            },\n            Input => {\n                print(\"      -- needs charter, anywhere in the tx (already found as input : )\");\n                self\n            },\n            Unk => {\n                CapoCtx{mph, _} = self;\n                REQT(\"requires the charter to be available in the transaction (input or ref)\");\n\n                charterAc : AssetClass = AssetClass::new(mph, \"charter\".encode_utf8());\n                hasCharter = (txin : TxInput) -> Bool { txin.value.get_safe(charterAc) > 0 };\n\n                tx.ref_inputs.find_safe(hasCharter).switch{\n                    None => {\n                        print(\"CapoCtx needsCharter(): no charter ref; must be in inputs...\");\n\n                        self.withCharterInput()\n                    },\n                    Some{charterUtxo} => {\n                        print(\"    -- CapoCtx needsCharter(): found charter ref\");\n\n                        datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( \n                            charterUtxo.datum.inline\n                        );\n                        CapoCtx{mph, cctx_CharterInputType::RefInput{datum, charterUtxo}}\n                    }\n                }\n                // _ => self\n            }\n        }\n    }\n\n    func withCharterInput(self) -> CapoCtx {\n\n        charter : cctx_CharterInputType = self.charter;\n        charter.switch {\n            Input => {\n                print(\"      -- needs charter spent in inputs (already checked : )\");\n                self\n            },\n            RefInput => error(\"CapoCtx.withCharterInput(): charter is from ref!\"),\n            Unk => {\n                CapoCtx{mph, _} = self;\n                REQT(\"requires the charter to be spent in the inputs\");\n\n                charterAc : AssetClass = AssetClass::new(mph, \"charter\".encode_utf8());\n                hasCharter = (txin : TxInput) -> Bool { txin.value.get_safe(charterAc) > 0 };\n        \n                print(\"    -- CapoCtx finding charter in inputs\");\n                charterUtxo: TxInput = tx.inputs.find_safe(hasCharter).switch{\n                    Some{ch} => ch,\n                    None => error(\"Missing required charter input\")\n                };\n                datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( \n                    charterUtxo.datum.inline\n                );\n                // datum : CapoDatum::CharterData = getTxCharterData(self.mph);\n                CapoCtx{mph, cctx_CharterInputType::Input{datum, charterUtxo}}\n                // self.copy(charter: cctx_CharterInputType::Input{charterUtxo, datum})\n            }\n        }\n    }\n\n    // func nowMinting(self, address: Address, output: TxOutput) -> Bool {\n    //     self.charter.switch {\n    //         Input => error(\"CapoCtx.nowMinting(): charter is from inputs!\"),\n    //         RefInput => error(\"CapoCtx.nowMinting(): charter is from ref!\"),\n    //         Unk => {\n    //             CapoCtx{mph, _} = self;\n    //             datum: CapoDatum::CharterData = CapoDatum::CharterData::from_data( \n    //                 output.datum.inline\n    //             );\n    //             CapoCtx{mph, cctx_CharterInputType::Minting{datum, address}}\n    //     }\n    // }\n\n    func withCharterRef(self) -> CapoCtx {\n\n        charter : cctx_CharterInputType = self.charter;\n        charter.switch {\n            RefInput => {\n                print(\"      -- needs charter ref (already checked : )\");\n                self\n            },\n            Input => error(\"CapoCtx.withCharterRef(): charter is from inputs!\"),\n            Unk => {\n                CapoCtx{mph, _} = self;\n                REQT(\"requires the charter to be referenced in the txn, but unspent\");\n                utxo : TxInput = getRefCharterUtxo(mph);\n                datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( \n                    utxo.datum.inline \n                );\n            \n                CapoCtx{mph, cctx_CharterInputType::RefInput{datum, utxo}}\n\n                // self.copy(charter: cctx_CharterInputType::RefInput{datum})\n            }\n        }\n    }\n\n    func allDelegatesAreValidatingSettings(self) -> Bool {\n        charterData = self.getCharterData();\n        mph = self.mph;\n        // REQT( \"gov authority must be present to update settings\");\n        // hasGovAuthority : Bool = mustHaveGovAuthority(\n        //     mph: mph,\n        //     charterData: charterData // already resolved\n        // );\n\n        CapoDatum::CharterData{\n            _spendDelegate,\n            spendInvariants,\n            otherNamedDelegates,\n            _mintDelegate,\n            mintInvariants,\n            govDelegate,\n            manifest,\n            _pendingDelegates\n        } = charterData;\n\n        // REQT(\"the current Settings must be spent and updated\");\n        // settingsDgtLink : RelativeDelegateLink = manifest.get_safe(\"settings\").switch {\n        //     None => error(\"'settings' delegate must be present to do updatingSettings activity\"),\n        //     Some{dgt} => dgt.dgDataPolicy.unwrap()\n        // };\n        \n        // //!!! note, this is a hard-coded version of requiring the settings policy script:\n        // settingsDgtInput = settingsDgtLink.hasDelegateInput(\n        //     inputs: tx.inputs,\n        //     mph: mph\n        // ).unwrap();\n        // settingsDelegateIsValid : Bool = AbstractDelegateActivitiesEnum::from_data( \n        //     mustFindInputRedeemer(settingsDgtInput)\n        // ).switch {\n        //     SpendingActivities => true,\n        //     _ => error(\n        //         \"settings delegate must be updating the settings with its SpendingActivities variant\"\n        //     )\n        // };\n        // _nextSettings : Data = self.getNextManifestedDatumRaw(\"settings\");\n        // isUpdatingSettings : Bool = true;\n        \n        inputs: []TxInput = tx.inputs;\n        //!!! actually requiring delegates' SettingsValidation starts here.\n        REQT(\"   -- only the spend delegate calls this function\");\n        spendDelegateIsValidating : Bool = self.nowActingAsSpendDgt();\n        REQT(\"  -- spend delegate requires the other delegates validate (except mint delegate == same as spend delegate)\");\n\n        // govAuthority is checking the settings\n        REQT( \"govDelegate MAY contribute to settings validation\");\n        govDelegateMaybeValidating : Bool = \n            govDelegate.validatesUpdatedSettings(\n                inputs: inputs,\n                mph: mph,\n                inputRequired: false\n            ).switch{\n                Some => true,\n                None => {\n                    print(\"  -- govAuthority isn't a script-based validator; doesn't validate new settings\");\n                    true\n                }\n            };\n        checkOneInvariant : (RelativeDelegateLink) -> Bool = \n        (oneDgt: RelativeDelegateLink) -> Bool {\n            REQT( \"invariant must validate settings\");\n            oneDgt.validatesUpdatedSettings(\n                inputs: inputs,\n                mph: mph,\n                inputRequired: true\n            ).unwrap()\n        };\n        // spendInvariants are checking the settings\n        REQT( \"spend invariants must validate settings\");\n        spendInvariantsAreValidating : Bool = spendInvariants.all( \n            checkOneInvariant\n        );\n        // mintInvariants are checking the settings\n        REQT( \"mint invariants must validate settings\");\n        mintInvariantsAreValidating : Bool = mintInvariants.all( \n            checkOneInvariant\n        );\n        REQT(\"dgDataControllers must validate settings\");\n        // dgDataControllers are checking the settings\n\n        dgDataPoliciesAreValidating :Bool = manifest.all( \n            (key: String, entry: CapoManifestEntry) -> Bool {\n                entry.entryType.switch{\n                    DgDataPolicy{policyLink, _idPrefix, _refCount} => {\n                        policyLink.validatesUpdatedSettings(\n                            inputs: inputs,\n                            mph: mph,\n                            inputRequired: true\n                        ).unwrap()\n                    },\n                    _ => {\n                        print(\"  -- ignoring manifest entry (not a data policy): \" + key);\n                        true\n                    }\n                }\n            }\n        );\n\n        // namedDelegates are checking the settings\n        REQT( \"named delegates must validate settings\");        \n        namedDelegatesAreValidating : Bool = otherNamedDelegates.fold( \n            REQT( \"  - each other-named-delegate must validate settings\");\n            (ok: Bool, key: String, dgt: RelativeDelegateLink) -> Bool {\n                print(\"  - other-named-delegate: \" + key);\n                print(\"\\n\");\n                ok && dgt.validatesUpdatedSettings(\n                    inputs: inputs,\n                    mph: mph,\n                    inputRequired: true\n                ).unwrap()\n            }, true\n        );\n\n        // hasGovAuthority &&\n        // settingsDelegateIsValid &&\n        // isUpdatingSettings &&\n        dgDataPoliciesAreValidating &&\n        spendDelegateIsValidating &&\n        govDelegateMaybeValidating &&\n        spendInvariantsAreValidating &&\n        mintInvariantsAreValidating &&\n        namedDelegatesAreValidating \n    }\n\n    func dgtRolesForLifecycleActivity(self, activity: CapoLifecycleActivity) -> DelegateRole {\n        assert(true || /*never executed*/ self == self, \"prevent unused var\");\n\n        activity.switch {\n            forcingNewSpendDelegate => error(\"the forcingNewSpendDelegate escape-hatch activity is always handled directly by the Capo\"),\n            forcingNewMintDelegate => error(\"the forcingNewMintDelegate escape-hatch activity is always handled directly by the Capo\"),\n\n            updatingManifest => {\n                print(\"-- Updating the Capo manifest uses the spend delegate\");\n                DelegateRole::SpendDgt\n            },\n\n            queuePendingChange => {\n                print(\"-- Queuing a pending dgt-change uses the mint delegate\");\n                DelegateRole::MintDgt\n            },\n            removePendingChange => {\n                print(\"-- Removing a pending dgt-change entry uses the spend delegate\");\n                DelegateRole::SpendDgt\n            },\n            commitPendingChanges => {\n                print(\"-- Committing pending dgt-changes uses both the mint and spend delegates\");\n                DelegateRole::BothMintAndSpendDgt\n            },\n\n            CreatingDelegate => {\n                assert(false, \"Obsolete code path\");\n                REQT(\"Creating a new delegate (deprecated path)...\");\n                TODO(\"deprecate use of CLA::CreatingDelegate\");\n                DelegateRole::MintDgt\n            }\n\n            // we want explicit handling of each case; don't use a default match here.\n            // _ => error(\"DO NOT CATCH DEFAULT CASE HERE\")\n        }\n    }\n\n    // syntax sugar.  Implied is that that any other function calls will trip errors,\n    func orFail(self) -> Bool {\n        _t = self;\n        // assert(true || /* never executed */ self.serialize() == self.serialize(), \"crazy talk\");\n        true\n    }\n    \n}\n\nfunc mkCapoCtx(mph: MintingPolicyHash) -> CapoCtx {\n    CapoCtx{\n        mph, cctx_CharterInputType::Unk\n    }\n}\n\n", {
+    project: "stellar-contracts",
+    purpose: "module",
+    name:  "src/CapoHelpers.hl", // source filename
+    moduleName:  "CapoHelpers",
+});
+
+const TypeMapMetadata_hl = makeSource(
+  "module TypeMapMetadata\n\n// a type definition for a schema\n\nstruct TypeInfo {\n    schemaVariety: String  // e.g. \"json-schema\"\n    schemaContent: String    \n}\n\nenum TypeRefImportDetails {\n    ImportType {  // imports external types and keeps their names\n        typeName: String // use \"*\" to import all types\n    }\n    ImportAs {  // imports a single external type with a local name\n        mapToRemoteNames: Map[String]String  // maps local names to remote names\n        // keys are LOCAL names.  Values are REMOTE names.\n    }\n}\n\nstruct TypeMapRef {\n    importDetails: TypeRefImportDetails  \"imp\"\n    utxoRef: Option[TxOutputId] \"utxo\"  // the referenced utxo is EXPECTED to have {typeMapFlag, TypeMapInfo}\n    variety: String \"trv\"// indicates RESOLUTION semantics for the referenced type-information.\n        // the variety MAY also indicate interpretation semantics for the referenced type-information.\n        // if variety  is \"CIP-123\", use the utxoRef here, and interpret the result as a {{}}-flagged CIP-123 TypeMapInfo\n        // other varieties MAY use the utxoRef, depending on their semantics\n        // other varieties MAY use the ref string to generically point to the external type\n    ref: String \"ref\"\n}\n\nstruct TypeMap {\n    localTypes: Map[String]TypeInfo\n    inheritFlag: String // = \"||\" ; may be the empty string if there are no inherited types\n    inherit: []TypeMapRef\n}\n", {
+    project: "stellar-contracts",
+    purpose: "module",
+    name:  "src/TypeMapMetadata.hl", // source filename
+    moduleName:  "TypeMapMetadata",
+});
+
+const Capo_hl = makeSource(
+  "spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\n// import {\n//     tvCharter\n// } from CapoHelpers\n\nimport {\n    tx, \n    get_current_input,\n    get_current_validator_hash\n} from ScriptContext\n\nimport { \n    AbstractDelegateActivitiesEnum,\n    CapoLifecycleActivity,\n    DgTknDisposition as DgTkn,\n    requiresNoDelegateInput,    \n    RelativeDelegateLink\n} from CapoDelegateHelpers\n\nimport {\n    TODO,\n    REQT,\n    bREQT,\n    mustFindInputRedeemer,\n    outputAndDatum,\n    AnyData,\n    tvCharter,\n    mkTv,\n    didSign,\n    REQTgroup,\n    bREQTgroup,\n    REQTgroupUnit,\n    logGroupUnit,\n    logGroup,\n    logGroupStart,\n    logGroupEnd\n} from StellarHeliosHelpers\n\nimport {\n    getTxCharterData,\n    mkCapoCtx,\n    mustHaveGovAuthority,\n    CapoDatum,\n    CapoActivity\n} from CapoHelpers\n\nimport {\n    mkUutTnFactory,\n    validateUutMinting\n} from CapoMintHelpers\n\n// import {\n//     ProtocolSettings\n// } from ProtocolSettings\n\nfunc requiresAuthorization(ctd: CapoDatum::CharterData) -> Bool {\n    ctd.govAuthorityLink.hasValidOutput(mph)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch {\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc preventCharterChange(datum: CapoDatum::CharterData) -> Bool {\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = get_current_validator_hash();\n    myself : SpendingCredential = SpendingCredential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract \")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    } else { \n        print(\"ok\\n\")\n    };\n\n    newDatum : CapoDatum = CapoDatum::from_data( \n        charterOutput.datum.inline\n    );\n    if (datum.serialize() != newDatum.serialize()) {\n        error(\"invalid update to charter settings\") \n    } else {\n        true\n    }\n}\n\nfunc checkpoint(s: String) -> Bool {\n    print(\"checkpoint: \" + s);\n    print(\"\\n\");\n    true\n}\n\nfunc main(datum: Data, activity: CapoActivity) -> Bool {\n    // now: Time = tx.time_range.start;\n    print(\"🚥❓Capo\\n\");\n\n    input = get_current_input();\n    baseCctx = mkCapoCtx(mph).needsCharter();\n\n    // showMyTokens : (Value) -> String = mkTokenShow(mph);\n    print(\"  -- Capo: checks spend of \" + input.value.show())\n    \n    capoDatum : CapoDatum = CapoDatum::from_data(datum);\n    dgDataCheck = capoDatum.switch {\n        DelegatedData => {\n            REQT(\"j6bmfv: all and only DelegatedData datums must be spent with the Capo's **spendingDelegatedDatum** activity\");\n            // vvv part one of j6bmfv\n            activity.switch {\n                spendingDelegatedDatum => true.trace(\"  -- is spendingDelegatedDatum activity? \"),  // more checks below.\n                _ => error(\"invalid activity on DelegatedData\")\n            }  \n        },\n        _ => false\n    }\n\n    // (isFirstCapoInput, rest) : (Bool, []TxInput) = if (dgDataCheck) {\n    allDatumSpecificChecks: Bool = capoDatum.switch {\n        // checks that unsupported activities for a datum are rejected promptly \n        // +special things we want to always guard against for specific Datum types:\n        ctd : CharterData => {\n            invalid : String = \"invalid activity on CharterData\";\n            activity.switch {\n                updatingCharter => true,  // more activity-checks happen below.\n                capoLifecycleActivity => true, // more checks below.\n                // addingSpendInvariant => error(\"todo: support spendInvariants\"),\n                // addingMintInvariant => error(\"todo: support mintInvariants\"),\n                spendingDelegatedDatum => error(invalid),\n                _ => {\n                    print(\"this charter activity isn't allowed to change the charter\");\n                    preventCharterChange(ctd)  // throws if bad                \n                    // ... plus activity-specific checks below.\n                }\n            }\n        },\n        // SettingsData => activity.switch {\n        //     updatingSettings => true,  // more checks below.\n        //     retiringSettings => error(\"there is no use case for this activity, unless it's part of a complete teardown\"),\n        //     _ => error(\"invalid activity on SettingsData\")\n        // },\n        ScriptReference => activity.switch {\n            retiringRefScript => true,\n            _ => error(\"invalid activity on ScriptReference\")            \n        },\n        DelegatedData => dgDataCheck\n        // maybe bring this back in v2\n        //, TypeMapInfo => activity.switch {\n        //     updatingTypeMap => true,\n        //     _ => error(\"invalid activity on TypeMapInfo\")\n        // }\n\n        // ❗no default case, to ensure that all variants are always covered.\n        // _ => true\n    };\n\n    // the normal case for validation is to use CapoDatum-specific checks.  \n    // however, this section allows activity-specific checks to be included, so extensions aren't painted into a corner.\n    allActivitySpecificChecks : Bool = activity.switch {\n        spendingDelegatedDatum => {\n            // NOT all delegated-data policies need gov authority!\n            // hasGovAuthority = charterData.govAuthorityLink.hasValidOutput(mph);\n\n            // this is part two of j6bmfv\n            REQT(\"j6bmfv: all and **ONLY DelegatedData** datums must be spent with the Capo's spendingDelegatedDatum activity\");\n            // check that the datum is a DelegatedData variant\n            datumId : ByteArray = capoDatum.switch{\n                DelegatedData => {\n                    datum.switch {\n                        ConstrData{_index, fields} => {\n                            print(\"     ✅ is DelegatedData datum-type\");\n                            AnyData::from_data(fields.head).id\n                        },\n                        _ => error(\"unreachable\")\n                    }\n                },\n                _ => {\n                    error(\n                        \"activity spendingDelegatedDatum used on mismatched datum type\"\n                    )\n                }\n            };\n            REQT(\"guards against updating a record if its id doesn't match its token-name\");\n            datumAc : AssetClass = AssetClass::new(mph, datumId);\n            hasMatchingValue : Bool = input.value.get_safe(datumAc) > 0;                        \n\n            TODO(\"deal with DeletingDelegatedData activity (ensure spendDgt AND mintDgt do their parts)\");\n            // Note: CreatingDelegatedData activity doesn't involve the Capo at all; instead,\n            // the minter creates a UUT for the data, on authority of the mintDgt;\n            // ... and the mintDgt requires the presence of the corresponding dgDataPolicy (with its MintingActivity);\n            // ... then the dgDataPolicy checks the validity of the new data, and requires that\n            // ... the new data is created as a DelegatedData record in the Capo address.\n\n            // ?? is this checking the same things as the rest of the code below?\n\n            spendDgtInput = baseCctx.requiresSpendDelegateInput();\n            delegateReturned = spendDgtInput.requiresValidOutput();\n            spendDgtInputRedeemer: Data = mustFindInputRedeemer(\n                spendDgtInput.input.unwrap()\n            )\n            // extracts the record-id from a data-policy delegate's activity (or a single \n            // ... nested activity, without any special expectations about the \n            // ... data-structural details of the activity (just the baseline expectation \n            // ... that its first field is a ByteArray having the record-id).\n            getsSpendingRecId : (Data) -> ByteArray = (dgSpendActivity : Data) -> ByteArray {\n                dgSpendActivity.switch {\n                    ConstrData{_index, fields} => {\n                        fields.head.switch {\n                            ByteArrayData{recId} => {\n                                print(\"  -- found recId: \" + recId.show());\n                                recId\n                            },\n                            _ => error(\"spending activity must have a record-id as first field\")\n                        }\n                    },\n                    _ => error(\"unreachable\")\n                }\n            };\n\n            REQT(\"Ensures that the spend delegate is acting on this record-id\");\n            uniqMatchingSpendDgtActivity : Bool = AbstractDelegateActivitiesEnum::from_data(\n                spendDgtInputRedeemer\n            ).switch {\n                SpendingActivities{sa} => {\n                    assert(false,\n                        \"expected the Spend delegate to use *DelegatedData* activities\\n\"+\n                        \"  ... to describe the operations that are being performed by next-level \"+\n                        \"  ... DgData Policy delegates\"\n                    );\n                    // unwrap the abstract Data from sa, expecting an Enum \n                    // ... with a first data-field having the token-name \n                    // ... that matches with the delegated-data record `id`\n                    recId : ByteArray = getsSpendingRecId(sa);\n                    assert(recId == datumId, \"spendDgt SpendingActivity must act on the correct record-id\");\n                    true\n                },\n                UpdatingDelegatedData{/*dataType*/ _ , recId} => {\n                    // todo: expect that this record-id matches the token in the current UTxO.\n                    assert(recId == datumId, \"spendDgt UpdDgData must act on the correct record-id\");\n                    print(\"  -- ok: activity matches data being updated\");\n                    true\n                },\n                MultipleDelegateActivities{activities} => {\n                    found: []Data = activities.filter(\n                        (act: Data) -> Bool {\n                            AbstractDelegateActivitiesEnum::from_data(act).switch {\n                                SpendingActivities{_sa} => {                                    \n                                    // unwrap / check record-id\n                                    error(\n                                        \"expected the Spend delegate to use only *DelegatedData* activities \"+\n                                        \"to describe the operations that are being performed by next-level \"+\n                                        \"DgDataPolicy delegates\"\n                                    );\n                                },\n                                UpdatingDelegatedData{\n                                    /* dgDataType*/ _ , recId\n                                } => {\n                                    // verify token name match\n                                    recId == datumId\n                                },\n                                _ => false\n                            }\n                        }\n                    );\n                    TODO(\"TEST THIS v\");\n                    print(\"recId: \" + datumId.decode_utf8_safe());\n                    REQT(\"spendDgt must be acting on the matching record-id\");\n                    assert(  // fails a test having a spending activity, but on wrong recId\n                        ( found.length > 0 ).trace( \"found activity for this recId? \")\n                    , \"❗ no spend delegate activity on this dgData\");\n                    TODO(\"TEST THIS too v\");\n                    REQT(\"spendDgt fails with multiple activities for the same recId\");\n                    assert(  // fails a test having multiple spending activities on the same rec id\n                        (found.length == 1).trace(\"has exactly one matching activity? \")\n                        , \"❗IMPOSSIBLE (caught by DelegateInput.withDDSpendingActivity())\"+\n                            \" spend delegate tried to act in multiple ways on the same token\"\n                    );\n                    delegateReturned && true\n                },\n                _ => {\n                    spendDgtInputRedeemer.switch {\n                        ConstrData{index, fields} => {\n                            print(\"unexpected redeemer index #\" + index.show() );\n                            print(\"\\n\");\n                            assert(true || /* never executed */ fields.length > 0, \"unreachable\");\n                            error(\"spend delegate not triggered with a Spending activity\")\n                        },\n                        _ => error(\"unreachable\")\n                    }\n                }\n            };\n\n            true\n            && hasMatchingValue\n            && uniqMatchingSpendDgtActivity\n            && delegateReturned \n        },\n        updatingCharter => {\n            print( \"  ...with activity updatingCharter\\n\");\n            TODO(\"make this obsolete by implementing capoLifecycleActivity\");\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newCtDatum = CapoDatum::CharterData::from_data( \n                charterOutput.datum.inline\n            );\n\n            oldCtDatum : CapoDatum::CharterData = capoDatum.switch {\n                octd: CharterData => octd,\n                _ => error(\"wrong use of updatingCharter action for non-CharterData datum\")                \n            };\n            CapoDatum::CharterData{                \n                spendDelegate, \n                spendInvariants,\n                otherNamedDelegates,\n                mintDelegate, \n                mintInvariants,\n                nextGovDelegate,\n                nextManifest,\n                nextPendingPolicies\n            } = newCtDatum;\n\n            CharterData{\n                oldSpendDelegate, \n                oldSpendInvariants, \n                oldOtherNamedDelegates,\n                oldMintDelegate, \n                oldMintInvariants,\n                oldGovDelegate,\n                oldManifest,\n                oldPendingPolicies\n                // oldTypeMapUut\n            } = capoDatum; // or oldCtDatum - same error result either way\n\n            mustNotModifyMintInvariants : Bool =  ( mintInvariants == oldMintInvariants );\n            mustNotModifySpendInvariants : Bool = ( spendInvariants == oldSpendInvariants );\n            mustNotModifyManifest : Bool = ( nextManifest.serialize() == oldManifest.serialize() );\n            unchangedGovDelegate : Bool = ( nextGovDelegate.serialize() == oldGovDelegate.serialize() );\n\n            hasNeededGovDelegate : Bool =  true ||\n            checkpoint(\"must be validated by existing govDelegate\") && \n            nextGovDelegate.hasValidOutput( mph) && (\n                unchangedGovDelegate || oldGovDelegate.hasDelegateInput( \n                    inputs: tx.inputs, \n                    mph: mph,\n                    required: true\n                ).switch {\n                    None => error(\"unreachable\"),\n                    Some => true\n                }\n            );\n\n            unchangedSpendDgt : Bool = ( spendDelegate.serialize() == oldSpendDelegate.serialize() );\n            unchangedMintDgt : Bool = ( mintDelegate.serialize() == oldMintDelegate.serialize() );\n            // print(\" oldMintDgt: \" + oldMintDelegate.serialize().show());\n            // print(\"\\n\");\n            // print(\" newMintDgt: \" + mintDelegate.serialize().show());\n            // print(\"\\n\");\n            \n            changedAnyNamedDelegate : Bool = ( otherNamedDelegates.serialize() != oldOtherNamedDelegates.serialize() );\n            mustNotChangePendingPolicies = (nextPendingPolicies.serialize() == oldPendingPolicies.serialize());\n            // mustNotModifySettings : Bool = ( settingsUut == oldSettingsUut );\n            // mustNotModifyTypeInfo : Bool = ( typeMapUut == oldTypeMapUut );\n\n            if (true) {\n                print(\"is spendDgt unchanged? \" + unchangedSpendDgt.show());\n                print(\"  - old: \"+ oldSpendDelegate.uutName + \" => \"+ \n                    oldSpendDelegate.delegateValidatorHash.switch{\n                        Some{v} => v.show(), None => \" (any addr)\"\n                });\n                oldSDConfigStr = oldSpendDelegate.config.decode_utf8_safe();\n                print(\"       + cfg \" + oldSDConfigStr);\n                print(\"  - new: \"+ spendDelegate.uutName + \" => \"+ \n                    spendDelegate.delegateValidatorHash.switch{\n                        Some{v} => v.show(), None => \" (any addr)\"\n                });\n                newSDConfigStr = spendDelegate.config.decode_utf8_safe();\n                print(\"       + cfg \" + newSDConfigStr);\n                // print(\" - old: \" + oldSpendDelegate.serialize().show());\n                // print(\" - new: \" + spendDelegate.serialize().show());\n\n                print(\" -- is mintDgt unchanged?  \" + unchangedMintDgt.show());\n                print(\"  - old: \"+ oldMintDelegate.uutName + \" => \"+ \n                    oldMintDelegate.delegateValidatorHash.switch{\n                        Some{v} => v.show(), None => \" (any addr)\"\n                });\n                oldMDConfigStr = oldMintDelegate.config.decode_utf8_safe();\n                print(\"       + cfg \" + oldMDConfigStr);\n                print(\"  - new: \"+ mintDelegate.uutName + \" => \"+ \n                    mintDelegate.delegateValidatorHash.switch{\n                        Some{v} => v.show(), None => \" (any addr)\"\n                });\n                newMDConfigStr = mintDelegate.config.decode_utf8_safe();\n                print(\"       + cfg \" + newMDConfigStr);\n                print(\"\")\n                // print(\" - old: \" + oldMintDelegate.serialize().show());\n                // print(\" - new: \" + mintDelegate.serialize().show());\n\n                // print(\" -- is config unchanged? \" + mustNotModifySettings.show());\n                // print(\"\\n  - old: \"+ oldSettingsUut.decode_utf8_safe());\n                // print(\"\\n  - new: \"+ settingsUut.decode_utf8_safe());\n                // print(\"\\n\")\n            };\n            // assert(mustNotModifySettings, \"cannot change settings uut\");\n            // assert(mustNotModifyTypeInfo, \"cannot change typeInfo uut\");\n\n\n            // the high-level use-cases that can update charter are all mutually exclusive.  Count them\n            // and ensure that only one is present.\n            countUpdatedThings : Int = newCtDatum.countUpdatedThings(capoDatum);\n                // if ((!unchangedGovDelegate).trace(\"\\n -- govDgt changed? \")) { 1 } else { 0 } +\n                // if ((!unchangedSpendDgt).trace(\"\\n -- spendDgt changed? \") ) { 1 } else { 0 } +\n                // if ((!unchangedMintDgt).trace(\"\\n -- mintDgt changed? \") ) { 1 } else { 0 } +\n                // if (changedAnyNamedDelegate.trace(\"\\n -- namedDgt changed? \") ) { 1 } else { 0 };\n\n            assert(countUpdatedThings == 1, \n                \"expected exactly one item updated in charter, got \"+countUpdatedThings.show() + \"\"\n            );            \n\n            // mustNotModifySettings &&\n            // mustNotModifyTypeInfo &&\n            hasNeededGovDelegate &&\n            bREQT(\"must not change the manifest\", \n                mustNotModifyManifest\n            ) &&\n            checkpoint(\"1\") &&\n            if (unchangedMintDgt) {\n                // unchanged mintDgt must not be included in the tx\n                checkpoint(\"2b\") &&\n                mintDelegate.hasDelegateInput(\n                    inputs: tx.inputs, \n                    mph: mph,\n                    required: false\n                ).switch {\n                    None => {\n                        // was requiresNoDelegateInput(mintDelegate, mph)\n                        //  - it's ok to have it not included.\n                        true\n                    },\n                    Some{mintDgtInput} => {\n                        delegateActivity: AbstractDelegateActivitiesEnum = \n                            mintDelegate.getRedeemer(mintDgtInput);\n                        print(\"mint delegate input found\\n\");\n                        delegateActivity.switch {\n                            CapoLifecycleActivities{CLA} => CLA.switch {\n                                CreatingDelegate => {\n                                    print(\"TEMPORARY: allowing delegate creation while **updatingCharter**\\n\");\n\n                                    TODO(\"move delegate-creation to be separate from updatingCharter\");\n                                    TODO(\" ?? use capo ActivatingXxxxDelegate activity when adopting delegate\");\n\n                                    mintDelegate.hasValidOutput(mph)\n                                },\n                                _ => error(\"must use capoLifecycleActivity directly in Capo, not with generic updatingSettings\")\n                                // no other variants exist (yet).\n                                // _ => error(\"invalid use of mint delegate during charter update\")\n                            },\n                            _ => error(\"invalid use of mint delegate during charter update\")\n                        }\n                    }\n                }\n            } else {\n                //  the new one has to go to the right place\n                REQT(\"the updated mintDgt token must be deposited to its own script address\");\n                mintDelegate.hasValidOutput(mph)\n            } && \n            if ( unchangedSpendDgt) {\n                // unchanged spendDgt must not be included in the tx\n                checkpoint(\"4b\") &&\n                requiresNoDelegateInput(spendDelegate, mph)\n            } else {\n                REQT(\"the updated spendDgt token must be deposited to its own script address\");\n                checkpoint(\"4a\") &&\n                spendDelegate.hasValidOutput(mph)\n            } &&\n            checkpoint(\"5\") &&\n            if (!changedAnyNamedDelegate) { true } else {\n                checkpoint(\"5b\") && \n                otherNamedDelegates.fold( (ok: Bool, name : String, dgt : RelativeDelegateLink) -> Bool {\n                    ok && \n                    oldOtherNamedDelegates.get_safe(name).switch {\n                        None => {\n                            print (\" - adopting named delegate: \" + name);\n                            print(\"\\n\");\n                            true\n                        },\n                        Some{oldDgt} => { \n                            if (oldDgt.serialize() == dgt.serialize()) {\n                               // unchanged named delegate must not be included in the tx\n                                requiresNoDelegateInput(dgt, mph)\n                            } else {\n                                TODO(\"the old named delegate must be retired, or be force-replaced (in a different activity?)\");\n                                //  the new one has to go to the right place\n                                dgt.hasValidOutput(\n                                    mph, required: true, \n                                    createdOrReturned: DgTkn::Created)\n                            }\n                        }\n                    }\n                }, true)\n            } &&\n            mustNotChangePendingPolicies &&\n            mustNotModifyMintInvariants &&\n            mustNotModifySpendInvariants &&\n            requiresAuthorization(oldCtDatum) &&\n            checkpoint(\"6\")\n        },\n        capoLifecycleActivity{myCLActivity} => {\n            print( \"  ...with activity capoLifecycleActivity\\n\");\n\n            oldCtDatum : CapoDatum::CharterData = capoDatum.switch {\n                octd: CharterData => octd,\n                _ => error(\"wrong use of updatingCharter action for non-CharterData datum\")                \n            };\n\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newCtDatum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( \n                charterOutput.datum.inline\n            );\n            REQT(\"all capoLifecycleActivities require the govAuthority\");\n            cctx = baseCctx.\n                withCharterInput().\n                requiresGovAuthority();\n\n            myCLActivity.switch {\n                forcingNewMintDelegate{seed, purpose} => {\n                    // we handle it directly\n                    REQT(\"when forcingNewMintDelegate, ONLY the mintDelegate is updated\");\n                    assert(\n                        oldCtDatum.mintDelegateLink.serialize() != \n                        newCtDatum.mintDelegateLink.serialize(), \n                        \"must update mintDelegate\"\n                    );\n                    assert(\n                        oldCtDatum.countUpdatedThings(newCtDatum) == 1, \n                        \"must not update anything except mintDelegate\"\n                    );                    \n                    assert(oldCtDatum.mintDelegateLink.uutName != newCtDatum.mintDelegateLink.uutName,\n                        \"new mintDelegate token must be different from the old one\"\n                    );\n                    tnFactory = mkUutTnFactory(seed);\n                    REQT(\"the new mintDgt must have the new dgTkn\");\n                    expectedTn = tnFactory(purpose);\n                    assert(\n                        newCtDatum.mintDelegateLink.uutName == expectedTn,\n                        \"wrong mintDelegate token name '\"+ \n                            newCtDatum.mintDelegateLink.uutName +\n                            \"' added to charter; should be: \"+ expectedTn\n                    );\n\n                    REQT(\"the new mintDelegate must be present in its own script address\");\n                    newCtDatum.mintDelegateLink.hasValidOutput(mph, true, \n                        DgTkn::Created\n                    ) &&\n                    bREQT(\"Ensures the new mintDgt-* uut is minted with a seed\") &&\n                    validateUutMinting(\n                        mph: mph,\n                        seed: seed,\n                        purposes: []String{purpose},\n                        mkTokenName: tnFactory,\n                        needsMintDelegateApproval: false \n                    )\n                },\n                forcingNewSpendDelegate{seed, purpose} => {\n                    // we handle it directly\n                    REQT(\"when forcingNewSpendDelegate, ONLY the spendDelegate is updated\");\n                    assert(\n                        oldCtDatum.spendDelegateLink.serialize() != newCtDatum.spendDelegateLink.serialize(), \n                        \"must update spendDelegate\"\n                    );\n                    assert(\n                        oldCtDatum.countUpdatedThings(newCtDatum) == 1, \n                        \"must not update anything except spendDelegate\"\n                    );\n\n                    assert(oldCtDatum.spendDelegateLink.uutName != newCtDatum.spendDelegateLink.uutName,\n                        \"new spendDelegate token must be different from the old one\"\n                    );\n                    tnFactory = mkUutTnFactory(seed);\n                    REQT(\"the new spendDgt must have the new dgTkn\");\n                    expectedTn = tnFactory(purpose);\n                    assert(\n                        newCtDatum.spendDelegateLink.uutName == expectedTn,\n                        \"wrong spendDelegate token name '\"+ \n                            newCtDatum.spendDelegateLink.uutName +\n                            \"' added to charter; should be: \"+ expectedTn\n                    );\n\n\n                    REQT(\"the new spendDelegate must be present in its own script address\");\n                    newCtDatum.spendDelegateLink.hasValidOutput(mph, true, \n                        DgTkn::Created\n                    ) &&\n                    bREQT(\"Ensures the new spendDgt-* uut is minted with a seed\") &&\n                    validateUutMinting(\n                        mph: mph,\n                        seed: seed,\n                        purposes: []String{purpose},\n                        mkTokenName: tnFactory,\n                        needsMintDelegateApproval: false\n                    )\n                },\n                _ => {\n                    matchesActivity = (dgtActivity: AbstractDelegateActivitiesEnum) -> Bool {\n                        dgtActivity.switch {\n                            CapoLifecycleActivities{cla} => {\n                                bREQT(\"the delegate's activity must match the capo's lifecycle activity\",\n                                    (cla == myCLActivity)\n                                )\n                            },\n                            _ => error(\"delegate must use CapoLifecycleActivities\")                            \n                        }\n                    };\n                    needsMintDgt = () -> Bool {\n                    bREQTgroup(reqt: \"ensures presence of the mint delegate\", collapsed: true, callback: () -> Bool {\n                        mintDgt = cctx.requiresMintDelegateInput();\n                        assert(mintDgt.requiresValidOutput(), \"<-- that fails, this doesn't\");\n                        if(matchesActivity(mintDgt.genericDelegateActivity())) {\n                            print(\"✅ ok: mint delegate present\")\n                            true\n                        } else { false /* unreachable */ }\n                    }) };\n                    needsSpendDgt = () -> Bool {\n                    bREQTgroup(reqt: \"ensures presence of the spend delegate\", collapsed: true, callback: () -> Bool {\n                        spendDgt = cctx.requiresSpendDelegateInput();\n                        assert(spendDgt.requiresValidOutput(), \"<-- that fails, this doesn't\");\n                        if(matchesActivity(spendDgt.genericDelegateActivity())) {\n                            print(\"✅ ok: spend delegate present\")\n                            true\n                        } else { false /* unreachable */ }\n                    }) };\n                    cctx.dgtRolesForLifecycleActivity(myCLActivity).switch {\n                        HandledByCapoOnly => error(\"unreachable\"),\n                        MintDgt => {\n                            needsMintDgt()\n                        },\n                        SpendDgt => {\n                            needsSpendDgt()\n                        },\n                        BothMintAndSpendDgt => {\n                            needsMintDgt() &&\n                            needsSpendDgt()\n                        },\n                        _ => error(\"dgtRolesForLifecycleActivity should indicate only mint/spend/both delegate-roles\")\n                    },\n\n                    TODO(\"review updatingManifest case\");\n                    // updatingManifest => {\n                    //     // the spend delegate must be triggered with its updatingManifest activity\n                    //     // (exactly the same as our updatingManifest)\n                    //     cctx.requiresSpendDelegateInput()\n                    //         .updatingManifest()\n                    //         .requiresValidOutput()\n                    // }, \n    \n                    // REQT(\"for normal lifecycle activities, the spendDelegate's activity must match the capo's lifecycle activity\");\n                    // assert(\n                    //     delegateCLActivity.serialize() == myCLActivity.serialize(),\n                    //     \"the spendDelegate's CapoLifecycleActivity must match the capo's\"\n                    // );\n                    true\n                }\n            }\n        },\n        retiringRefScript => {\n            print( \"  ...with activity retiringRefScript\\n\");\n            // the ref script is being spent:\n            isSpendingRefScript : Bool = capoDatum.switch{\n                ScriptReference => true,\n                _ => error(\"wrong use of retiringRefScript action for non-ScriptRef datum\")\n            };\n\n            hasGovAuthority : Bool = mustHaveGovAuthority(mph);\n\n            isSpendingRefScript && \n            hasGovAuthority &&\n            true\n            // no other constraints; the ref script could be re-created or\n            // replaced with a new one, or simply destroyed.\n        },\n\n        usingAuthority => {\n            print( \"  ...with activity usingAuthority\\n\");\n            capoDatum.switch {\n                 // throws if bad\n                ctd : CharterData => requiresAuthorization(ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterData datum\")\n            }\n        },\n\n        // updatingSettings => {\n        //     // FUT: possibly move this to the spend-delegate layer\n        //     print( \"  ...with activity updatingSettings\\n\");\n        //     _isRelevantDatum : Bool = capoDatum.switch {\n        //         // SettingsData => true,\n        //         CharterData => true,\n        //         _ => error(\"wrong use of updatingSettings action; must use only on CharterData\")\n        //     };\n\n        //     // it requires the govAuthority to be present \n        //     REQT( \"gov authority must be present to update settings\");\n        //     hasGovAuthority : Bool = mustHaveGovAuthority(\n        //         mph: mph,\n        //         charterData: charterData // already resolved\n        //     );\n\n        //     CapoDatum::CharterData{\n        //         spendDelegate,\n        //         spendInvariants,\n        //         namedDelegates,\n        //         mintDelegate ,\n        //         mintInvariants,\n        //         govDelegate,\n        //         manifest\n        //     } = capoDatum;\n\n        //     REQT(\"the current Settings must be spent and updated\");\n        //     settingsDgtLink : RelativeDelegateLink = namedDelegates.get_safe(\"settings\").switch {\n        //         None => error(\"'settings' delegate must be present to do updatingSettings activity\"),\n        //         Some{dgt} => dgt\n        //     };\n\n        //     settingsDgtInput = settingsDgtLink.hasDelegateInput(\n        //         inputs: tx.inputs,\n        //         mph: mph\n        //     ).unwrap();\n        //     settingsDelegateIsValid : Bool = AbstractDelegateActivitiesEnum::from_data( \n        //         mustFindInputRedeemer(settingsDgtInput)\n        //     ).switch {\n        //         SpendingActivities => true,\n        //         _ => assert(\"settings delegate must be updating the settings with its SpendingActivities variant\")\n        //     };\n        //     _nextSettings : Data = cctx.getNextManifestedDatumRaw(\"settings\");\n        //     isUpdatingSettings : Bool = true;\n\n        //     // ?? can we iterate inputs along with delegates, to reduce the overhead\n        //     //    ... of multiple passes over the tx inputs?\n        //     //  option 1: pay for iterating N inputs, \n        //     //    - times a switch{} for delegate-matching\n        //     //    -    ... and invariants-iteration\n        //     //    -    ... and namedDelegates-iteration\n        //     //    - Plus a \"is-anything-missing\" check over delegates/invariants/namedDelegates\n        //     // option 2: switch and iterate over delegates, invariants, namedDelegates\n        //     //    - times a switch for input-finding\n        //     //    - ... and no separate is-anything-missing checks.\n        //     // ^^^ option 2 has to be cheaper.\n\n        //     inputs: []TxInput = tx.inputs;\n\n        //     REQT( \"spend delegate must validate settings\");\n        //     spendDelegateIsValidating : Bool = \n        //         spendDelegate.validatesUpdatedSettings(\n        //             inputs: inputs,\n        //             mph: mph,\n        //             inputRequired: true\n        //         ).unwrap();\n\n        //     REQT(\"mint delegate must validate settings\");\n        //     mintDelegateIsValidating : Bool = \n        //         mintDelegate.validatesUpdatedSettings(\n        //             inputs: inputs,\n        //             mph: mph,\n        //             inputRequired: true\n        //         ).unwrap();\n\n        //     // govAuthority is checking the settings\n        //     REQT( \"govDelegate MAY contribute to settings validation\");\n        //     govDelegateMaybeValidating : Bool = \n        //         govDelegate.validatesUpdatedSettings(\n        //             inputs: inputs,\n        //             mph: mph,\n        //             inputRequired: false\n        //         ).switch{\n        //             Some => true,\n        //             None => {\n        //                 print(\"  -- govAuthority isn't a script-based validator; doesn't validate new settings\\n\");\n        //                 true\n        //             }\n        //         };\n        //     checkOneInvariant : (RelativeDelegateLink) -> Bool = \n        //     (oneDgt: RelativeDelegateLink) -> Bool {\n        //         REQT( \"invariant must validate settings\");\n        //         oneDgt.validatesUpdatedSettings(\n        //             inputs: inputs,\n        //             mph: mph,\n        //             inputRequired: true\n        //         ).unwrap()\n        //     };\n        //     // spendInvariants are checking the settings\n        //     REQT( \"spend invariants must validate settings\");\n        //     spendInvariantsAreValidating : Bool = spendInvariants.all( \n        //         checkOneInvariant\n        //     );\n        //     // mintInvariants are checking the settings\n        //     REQT( \"mint invariants must validate settings\");\n        //     mintInvariantsAreValidating : Bool = mintInvariants.all( \n        //         checkOneInvariant\n        //     );\n        //     // namedDelegates are checking the settings\n        //     REQT( \"named delegates must validate settings\");\n        //     namedDelegatesAreValidating : Bool = namedDelegates.fold( \n        //         REQT( \"  - each named delegate must validate settings\");\n        //         (ok: Bool, key: String, dgt: RelativeDelegateLink) -> Bool {\n        //             print(\"  - named delegate: \" + key);\n        //             print(\"\\n\");\n        //             ok && dgt.validatesUpdatedSettings(\n        //                 inputs: inputs,\n        //                 mph: mph,\n        //                 inputRequired: true\n        //             ).unwrap()\n        //         }, true\n        //     );\n\n        //     isRelevantDatum &&\n        //     settingsDelegateIsValid &&\n        //     isUpdatingSettings &&\n        //     spendDelegateIsValidating &&\n        //     mintDelegateIsValidating &&\n        //     govDelegateMaybeValidating &&\n        //     spendInvariantsAreValidating &&\n        //     mintInvariantsAreValidating &&\n        //     namedDelegatesAreValidating &&\n        //     hasGovAuthority\n        // },\n        // retiringSettings => {\n        //     print( \"  ...with activity retiringSettings\\n\");\n        //     error(\"implement me\")\n        // },\n        _ => error(\"unhandled activity\")\n    };\n\n    assert(allDatumSpecificChecks, \"some datum-check failed\");\n    assert(allActivitySpecificChecks, \"some redeeemer-check failed\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() /* never */ == mph.serialize(), \n        \"unreachable\"\n    ); \n    print(\"\\n🚥🟢 Capo validator: ok!\\n\\n\");\n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks\n    // tx.serialize() != datum.serialize()\n}\n", {
+    project: "stellar-contracts",
+    purpose: "spending",
+    name:  "src/DefaultCapo.hl", // source filename
+    moduleName:  "Capo",
+});
+
+function mkDeployedScriptConfigs(x) {
+  return x;
+}
+function mkCapoDeployment({
+  capo
+}) {
+  const {
+    config
+    // programBundle
+  } = capo;
+  debugger;
+  return {
+    // scripts,
+    capo: {
+      config: parseCapoJSONConfig(config)
+      // programBundle,
+    }
+  };
+}
+function mkDelegateDeployment(ddd) {
+  return ddd;
+}
+function parseCapoJSONConfig(rawJsonConfig) {
+  const jsonConfig = typeof rawJsonConfig === "string" ? JSON.parse(rawJsonConfig) : rawJsonConfig;
+  const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = jsonConfig;
+  const outputConfig = {};
+  if (!mph) throw new Error("mph is required");
+  if (!seedTxn) throw new Error("seedTxn is required");
+  if (!seedIndex) throw new Error("seedIndex is required");
+  if (!rootCapoScriptHash) throw new Error("rootCapoScriptHash is required");
+  outputConfig.mph = makeMintingPolicyHash(mph.bytes);
+  outputConfig.rev = BigInt(rev || 1);
+  outputConfig.seedTxn = makeTxId(seedTxn.bytes);
+  outputConfig.seedIndex = BigInt(seedIndex);
+  outputConfig.rootCapoScriptHash = makeValidatorHash(
+    rootCapoScriptHash.bytes
+  );
+  return outputConfig;
+}
+function parseCapoMinterJSONConfig(rawJSONConfig) {
+  const { seedTxn, seedIndex } = rawJSONConfig;
+  if (!seedTxn) throw new Error("seedTxn is required");
+  if (!seedIndex) throw new Error("seedIndex is required");
+  return {
+    seedTxn: makeTxId(seedTxn.bytes),
+    seedIndex: BigInt(seedIndex)
+  };
+}
+
+class CapoHeliosBundle extends HeliosScriptBundle {
+  preConfigured;
+  precompiledScriptDetails = { capo: void 0 };
+  scriptParamsSource = "config";
+  requiresGovAuthority = true;
+  get hasAnyVariant() {
+    if (this.preConfigured?.capo?.config) return true;
+    throw new Error("can we live without configuredUplcParams before accessing program?");
+  }
+  parseCapoJSONConfig(config) {
+    return parseCapoJSONConfig(config);
+  }
+  parseCapoMinterJSONConfig(config) {
+    return parseCapoMinterJSONConfig(config);
+  }
+  // static currentRev: bigint = 1n;
+  // static get defaultParams() {
+  //     const params = {
+  //         rev: this.currentRev,
+  //     };
+  //     return params;
+  // }
+  init(setupDetails) {
+    const { setup } = setupDetails;
+    let deployedDetails;
+    if (this.precompiledScriptDetails?.capo) {
+      this.configuredScriptDetails = deployedDetails = this.precompiledScriptDetails.capo;
+      const {
+        config
+        // programBundle
+      } = deployedDetails;
+      this.configuredParams = config;
+      this._selectedVariant = "capo";
+    } else if (setupDetails.deployedDetails) {
+      debugger;
+      this.configuredScriptDetails = deployedDetails = setupDetails.deployedDetails;
+    } else if (!this.configuredScriptDetails) {
+      console.warn(`no script details configured for ${this.constructor.name} (dbpa)`);
+    }
+    this._didInit = true;
+  }
+  initProgramDetails() {
+    const { configuredScriptDetails } = this;
+    const hasParams = configuredScriptDetails?.config || this.setupDetails.params;
+    const uplcParams = hasParams ? this.paramsToUplc(hasParams) : void 0;
+    if (hasParams) {
+      this.configuredParams = hasParams;
+      this.configuredUplcParams = uplcParams;
+    }
+  }
+  get isPrecompiled() {
+    const t = super.isPrecompiled;
+    const hasScriptHash = !!this.precompiledScriptDetails?.capo?.scriptHash;
+    if (t !== hasScriptHash) {
+      debugger;
+      throw new Error("surprise! this code path is used: isPrecompiled() - precompiledScriptDetails mismatch (dbpa)");
+    }
+    return t;
+  }
+  async loadPrecompiledScript() {
+    throw new Error("capo on-chain bundle is not precompiled");
+  }
+  async loadPrecompiledMinterScript() {
+    throw new Error("capo minter on-chain bundle is not precompiled");
+  }
+  // !!! deprecate or change to async? (-> loadPrecompiledVariant() -> programFromCacheEntry())
+  getPreCompiledBundle(variant) {
+    debugger;
+    throw new Error("deprecated");
+  }
+  get main() {
+    return Capo_hl;
+  }
+  getPreconfiguredUplcParams(variantName) {
+    debugger;
+    if (!this.preConfigured?.capo?.config) {
+      return void 0;
+    }
+    return super.getPreconfiguredUplcParams(variantName);
+  }
+  get params() {
+    if (this.configuredParams) {
+      return this.configuredParams;
+    }
+  }
+  datumTypeName = "CapoDatum";
+  capoBundle = this;
+  // ???
+  get scriptConfigs() {
+    throw new Error(`scriptConfigs - do something else instead`);
+  }
+  get bridgeClassName() {
+    if (this.constructor === CapoHeliosBundle) {
+      return "CapoDataBridge";
+    }
+    return this.constructor.name.replace("Helios", "").replace("Bundle", "") + "Bridge";
+  }
+  static isCapoBundle = true;
+  /**
+   * returns only the modules needed for the Capo contract
+   * @remarks
+   * overrides the base class's logic that references a connected
+   * Capo bundle - that policy is not needed here because this IS
+   * the Capo bundle.
+   */
+  getEffectiveModuleList() {
+    return this.modules;
+  }
+  /**
+   * indicates a list of modules available for inclusion in Capo-connected scripts
+   * @remarks
+   * Subclasses can implement this method to provide additional modules
+   * shareable to various Capo-connected scripts; those scripts need to
+   * include the modules by name in their `includeFromCapoModules()` method.
+   *
+   * See the
+   */
+  get sharedModules() {
+    return [];
+  }
+  get modules() {
+    return [
+      CapoMintHelpers_hl,
+      CapoDelegateHelpers_hl,
+      StellarHeliosHelpers_hl,
+      CapoHelpers_hl,
+      TypeMapMetadata_hl
+    ];
+  }
+}
 
 const redirecToCorrectConstructor = "\u{1F422}${this.id}: wrong direct use of new() constructor in CachedHeliosProgram; use forCurrentPlatform() instead";
 class CachedHeliosProgram extends Program {
@@ -269,10 +496,15 @@ class CachedHeliosProgram extends Program {
     const options = typeof optimizeOrOptions === "boolean" ? { optimize: optimizeOrOptions } : optimizeOrOptions;
     const optimize = this.optimizeOptions(optimizeOrOptions);
     const programElements = this.programElements = this.gatherProgramElements();
+    const start = Date.now();
     const cacheKey = this.getCacheKey(options);
     const fromCache = await this.getFromCache(cacheKey);
     if (fromCache) {
       console.log(`\u{1F422}${this.id}: ${cacheKey}: from cache`);
+      const end1 = Date.now();
+      this.compileTime = {
+        fetchedCache: end1 - start
+      };
       return fromCache;
     }
     const weMustCompile = await this.acquireImmediateLock(cacheKey);
@@ -303,7 +535,9 @@ class CachedHeliosProgram extends Program {
       console.log(
         `\u{1F422}${this.id}: compiling program with cacheKey: ${cacheKey}`
       );
+      const start2 = Date.now();
       const uplcProgram = this.compile(options);
+      const end1 = Date.now();
       const cacheEntry = {
         version: "PlutusV2",
         createdBy: this.id,
@@ -335,6 +569,11 @@ class CachedHeliosProgram extends Program {
       }
       this.cacheEntry = cacheEntry;
       this.storeInCache(cacheKey, cacheEntry);
+      const end2 = Date.now();
+      this.compileTime = {
+        compiled: end1 - start2,
+        stored: end2 - end1
+      };
       return uplcProgram;
     } catch (e) {
       debugger;
@@ -345,6 +584,7 @@ class CachedHeliosProgram extends Program {
       throw e;
     }
   }
+  compileTime;
   async waitForCaching(cacheKey) {
     return this.acquireLock(cacheKey).then(async (lock) => {
       if (lock) {
@@ -561,2170 +801,14 @@ function deserializeHeliosCacheEntry(entry) {
   };
 }
 
-class UplcConsoleLogger {
-  didStart = false;
-  lines = [];
-  lastMessage = "";
-  lastReason;
-  history = [];
-  constructor() {
-    this.logPrint = this.logPrint.bind(this);
-    this.reset = this.reset.bind(this);
-  }
-  reset(reason) {
-    this.lastMessage = "";
-    this.lastReason = reason;
-    if (reason == "build") {
-      this.lines = [];
-      return;
-    }
-    if (reason == "validate") {
-      this.flush();
-      return;
-    }
-  }
-  // log(...msgs: string[]) {
-  //     return this.logPrint(...msgs);
-  // }
-  // error(...msgs: string[]) {
-  //     return this.logError(...msgs, "\n");
-  // }
-  // logPrintLn(...msgs: string[]) {
-  //     return this.logPrint(...msgs, "\n");
-  // }
-  logPrint(message, site) {
-    if ("string" != typeof message) {
-      console.log("wtf");
-    }
-    if (message && message.at(-1) != "\n") {
-      message += "\n";
-    }
-    this.lastMessage = message;
-    this.lines.push(message);
-    return this;
-  }
-  logError(message, stack) {
-    this.logPrint("\n");
-    this.logPrint(
-      "-".repeat((process?.stdout?.columns || 65) - 8)
-    );
-    this.logPrint("--- \u26A0\uFE0F  ERROR: " + message.trimStart() + "\n");
-    this.logPrint(
-      "-".repeat((process?.stdout?.columns || 65) - 8) + "\n"
-    );
-  }
-  // printlnFunction(msg) {
-  //     console.log("                              ---- println")
-  //     this.lines.push(msg);
-  //     this.lines.push("\n");
-  //     this.flushLines();
-  // }
-  toggler = 0;
-  toggleDots() {
-    this.toggler = 1 - this.toggler;
-  }
-  get isMine() {
-    return true;
-  }
-  resetDots() {
-    this.toggler = 0;
-  }
-  showDot() {
-    const s = this.toggler ? "\u2502   \u250A " : "\u2502 \u25CF \u250A ";
-    this.toggleDots();
-    return s;
-  }
-  fullHistory() {
-    return this.history.join("\n");
-  }
-  formattedHistory = [];
-  fullFormattedHistory() {
-    return this.formattedHistory.join("\n");
-  }
-  flushLines(footerString) {
-    let content = [];
-    const terminalWidth = process?.stdout?.columns || 65;
-    const thisBatch = this.lines.join("").trimEnd();
-    this.history.push(thisBatch);
-    if (!this.didStart) {
-      this.didStart = true;
-      content.push("\u256D\u2508\u2508\u2508\u252C" + "\u2508".repeat(terminalWidth - 5));
-      this.resetDots();
-    } else if (this.lines.length) {
-      content.push("\u251C\u2508\u2508\u2508\u253C" + "\u2508".repeat(terminalWidth - 5));
-      this.resetDots();
-    }
-    for (const line of thisBatch.split("\n")) {
-      content.push(`${this.showDot()}${line}`);
-    }
-    content.push(this.showDot());
-    if (!this.toggler) {
-      content.push(this.showDot());
-    }
-    if (footerString) {
-      content.push(footerString);
-    }
-    const joined = content.join("\n");
-    this.formattedHistory.push(joined);
-    console.log(joined);
-    this.lines = [];
-  }
-  finish() {
-    this.flushLines(
-      "\u2570\u2508\u2508\u2508\u2534" + "\u2508".repeat((process?.stdout?.columns || 65) - 5)
-    );
-    return this;
-  }
-  flush() {
-    if (this.lines.length) {
-      if (this.lastMessage.at(-1) != "\n") {
-        this.lines.push("\n");
-      }
-      this.flushLines();
-    }
-    return this;
-  }
-  flushError(message = "") {
-    if (this.lastMessage.at(-1) != "\n") {
-      this.lines.push("\n");
-    }
-    if (message.at(-1) == "\n") {
-      message = message.slice(0, -1);
-    }
-    const terminalWidth = process?.stdout?.columns || 65;
-    if (message) this.logError(message);
-    if (this.lines.length) {
-      this.flushLines(
-        "\u23BD\u23BC\u23BB\u23BA\u23BB\u23BA\u23BC\u23BC\u23BB\u23BA\u23BB\u23BD\u23BC\u23BA\u23BB\u23BB\u23BA\u23BC\u23BC\u23BB\u23BA".repeat((terminalWidth - 2) / 21)
-      );
-    }
-    return this;
-  }
-}
-
-let p = process || {}, argv = p.argv || [], env = p.env || {};
-let isColorSupported = !(!!env.NO_COLOR || argv.includes("--no-color")) && (!!env.FORCE_COLOR || argv.includes("--color") || p.platform === "win32" || true);
-let formatter = (open, close, replace = open) => {
-  const f = (input) => {
-    let string = "" + input, index = string.indexOf(close, open.length);
-    return ~index ? open + replaceClose(string, close, replace, index) + close : open + string + close;
-  };
-  f.start = open;
-  f.close = close;
-  return f;
-};
-let replaceClose = (string, close, replace, index) => {
-  let result = "", cursor = 0;
-  do {
-    result += string.substring(cursor, index) + replace;
-    cursor = index + close.length;
-    index = string.indexOf(close, cursor);
-  } while (~index);
-  return result + string.substring(cursor);
-};
-let createColors = (enabled = isColorSupported) => {
-  let f = enabled ? formatter : () => String;
-  return {
-    isColorSupported: enabled,
-    reset: f("\x1B[0m", "\x1B[0m"),
-    bold: f("\x1B[1m", "\x1B[22m", "\x1B[22m\x1B[1m"),
-    dim: f("\x1B[2m", "\x1B[22m", "\x1B[22m\x1B[2m"),
-    italic: f("\x1B[3m", "\x1B[23m"),
-    underline: f("\x1B[4m", "\x1B[24m"),
-    inverse: f("\x1B[7m", "\x1B[27m"),
-    hidden: f("\x1B[8m", "\x1B[28m"),
-    strikethrough: f("\x1B[9m", "\x1B[29m"),
-    black: f("\x1B[30m", "\x1B[39m"),
-    red: f("\x1B[31m", "\x1B[39m"),
-    green: f("\x1B[32m", "\x1B[39m"),
-    yellow: f("\x1B[33m", "\x1B[39m"),
-    blue: f("\x1B[34m", "\x1B[39m"),
-    magenta: f("\x1B[35m", "\x1B[39m"),
-    cyan: f("\x1B[36m", "\x1B[39m"),
-    white: f("\x1B[37m", "\x1B[39m"),
-    gray: f("\x1B[90m", "\x1B[39m"),
-    bgBlack: f("\x1B[40m", "\x1B[49m"),
-    bgRed: f("\x1B[41m", "\x1B[49m"),
-    bgGreen: f("\x1B[42m", "\x1B[49m"),
-    bgYellow: f("\x1B[43m", "\x1B[49m"),
-    bgBlue: f("\x1B[44m", "\x1B[49m"),
-    bgMagenta: f("\x1B[45m", "\x1B[49m"),
-    bgCyan: f("\x1B[46m", "\x1B[49m"),
-    bgWhite: f("\x1B[47m", "\x1B[49m"),
-    blackBright: f("\x1B[90m", "\x1B[39m"),
-    redBright: f("\x1B[91m", "\x1B[39m"),
-    greenBright: f("\x1B[92m", "\x1B[39m"),
-    yellowBright: f("\x1B[93m", "\x1B[39m"),
-    blueBright: f("\x1B[94m", "\x1B[39m"),
-    magentaBright: f("\x1B[95m", "\x1B[39m"),
-    cyanBright: f("\x1B[96m", "\x1B[39m"),
-    whiteBright: f("\x1B[97m", "\x1B[39m"),
-    bgBlackBright: f("\x1B[100m", "\x1B[49m"),
-    bgRedBright: f("\x1B[101m", "\x1B[49m"),
-    bgGreenBright: f("\x1B[102m", "\x1B[49m"),
-    bgYellowBright: f("\x1B[103m", "\x1B[49m"),
-    bgBlueBright: f("\x1B[104m", "\x1B[49m"),
-    bgMagentaBright: f("\x1B[105m", "\x1B[49m"),
-    bgCyanBright: f("\x1B[106m", "\x1B[49m"),
-    bgWhiteBright: f("\x1B[107m", "\x1B[49m")
-  };
-};
-const colors = createColors();
-
-function mkUutValuesEntries(uuts) {
-  const uutNs = Array.isArray(uuts) ? uuts : Object.values(uuts);
-  const uniqs = [];
-  for (const un of uutNs) {
-    if (!uniqs.includes(un)) uniqs.push(un);
-  }
-  return uniqs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
-}
-function mkValuesEntry(tokenName, count) {
-  const tnBytes = Array.isArray(tokenName) ? tokenName : encodeUtf8(tokenName);
-  return [tnBytes, count];
-}
-function mkTv(mph, tokenName, count = 1n) {
-  const v = makeValue(
-    0,
-    makeAssets([[mph, [mkValuesEntry(tokenName, count)]]])
-  );
-  return v;
-}
-function realMul(a, b) {
-  const a2 = Math.trunc(1e6 * a);
-  const b2 = Math.trunc(1e6 * b);
-  const result1 = a2 * b2;
-  const result2 = result1 / 1e12;
-  if (debugRealMath) {
-    console.log("    ---- realMul", a2, b2);
-    console.log("    ---- realMul result1", result1);
-    console.log("    ---- realMul result2", result2);
-  }
-  return result2;
-}
-function realDiv(a, b) {
-  if (b === 0) {
-    throw new Error("Cannot divide by zero");
-  }
-  const a2 = Math.trunc(1e6 * a);
-  const result1 = a2 / b;
-  const result2 = Math.round(result1) / 1e6;
-  if (debugRealMath) {
-    console.log("    ---- realDiv", a, "/", b);
-    console.log("    ---- realDiv", a2);
-    console.log("    ---- realDiv result1", result1);
-    console.log("    ---- realDiv result2", result2);
-  }
-  return result2;
-}
-function toFixedReal(n) {
-  return parseFloat((Math.floor(n * 1e6 + 0.1) / 1e6).toFixed(6));
-}
-function debugMath(callback) {
-  const old = debugRealMath;
-  debugRealMath = true;
-  const result = callback();
-  debugRealMath = old;
-  return result;
-}
-let debugRealMath = false;
-class TxNotNeededError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "TxAlreadyPresentError";
-  }
-}
-class AlreadyPendingError extends TxNotNeededError {
-  constructor(message) {
-    super(message);
-    this.name = "AlreadyPendingError";
-  }
-}
-function checkValidUTF8(data) {
-  let i = 0;
-  while (i < data.length) {
-    if ((data[i] & 128) === 0) {
-      i++;
-    } else if ((data[i] & 224) === 192) {
-      if (i + 1 >= data.length || (data[i + 1] & 192) !== 128) return false;
-      i += 2;
-    } else if ((data[i] & 240) === 224) {
-      if (i + 2 >= data.length || (data[i + 1] & 192) !== 128 || (data[i + 2] & 192) !== 128) return false;
-      i += 3;
-    } else if ((data[i] & 248) === 240) {
-      if (i + 3 >= data.length || (data[i + 1] & 192) !== 128 || (data[i + 2] & 192) !== 128 || (data[i + 3] & 192) !== 128) return false;
-      i += 4;
-    } else {
-      return false;
-    }
-  }
-  return isValidUtf8(data);
-}
-
-const nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
-//!!! if we could access the inputs and outputs in a building Tx,
-const emptyUuts = Object.freeze({});
-class StellarTxnContext {
-  id = nanoid(5);
-  inputs = [];
-  collateral;
-  outputs = [];
-  feeLimit;
-  state;
-  allNeededWitnesses = [];
-  otherPartySigners = [];
-  parentTcx;
-  childReservedUtxos = [];
-  parentId = "";
-  alreadyPresent = void 0;
-  depth = 0;
-  // submitOptions?: SubmitOptions
-  txb;
-  txnName = "";
-  withName(name) {
-    this.txnName = name;
-    return this;
-  }
-  get wallet() {
-    return this.setup.actorContext.wallet;
-  }
-  get uh() {
-    return this.setup.uh;
-  }
-  get networkParams() {
-    return this.setup.networkParams;
-  }
-  get actorContext() {
-    return this.setup.actorContext;
-  }
-  /**
-   * Provides a lightweight, NOT complete, serialization for presenting the transaction context
-   * @remarks
-   * Serves rendering of the transaction context in vitest
-   * @internal
-   */
-  toJSON() {
-    return {
-      kind: "StellarTxnContext",
-      state: !!this.state ? `{${Object.keys(this.state).join(", ")}}` : void 0,
-      inputs: `[${this.inputs.length} inputs]`,
-      outputs: `[${this.outputs.length} outputs]`,
-      isBuilt: !!this._builtTx,
-      hasParent: !!this.parentTcx,
-      //@ts-expect-error
-      addlTxns: this.state.addlTxns ? [
-        //@ts-expect-error
-        ...Object.keys(this.state.addlTxns || {})
-      ] : void 0
-    };
-  }
-  logger = new UplcConsoleLogger();
-  constructor(setup, state = {}, parentTcx) {
-    if (parentTcx) {
-      console.warn(
-        "Deprecated use of 'parentTcx' - use includeAddlTxn() instead\n  ... setup.txBatcher.current holds an in-progress utxo set for all 'parent' transactions"
-      );
-      throw new Error(`parentTcx used where? `);
-    }
-    Object.defineProperty(this, "setup", {
-      enumerable: false,
-      value: setup
-    });
-    Object.defineProperty(this, "_builtTx", {
-      enumerable: false,
-      writable: true
-    });
-    const isMainnet = setup.isMainnet;
-    this.isFacade = void 0;
-    if ("undefined" == typeof isMainnet) {
-      throw new Error(
-        "StellarTxnContext: setup.isMainnet must be defined"
-      );
-    }
-    this.txb = makeTxBuilder({
-      isMainnet
-    });
-    this.state = {
-      ...state,
-      uuts: state.uuts || { ...emptyUuts }
-    };
-    const currentBatch = this.currentBatch;
-    currentBatch?.isOpen;
-    if (!currentBatch || currentBatch.isConfirmationComplete) {
-      this.setup.txBatcher.rotate(this.setup.chainBuilder);
-    }
-    if (!this.setup.isTest && !this.setup.chainBuilder) {
-      if (currentBatch.chainBuilder) {
-        this.setup.chainBuilder = currentBatch.chainBuilder;
-      } else {
-        this.setup.chainBuilder = makeTxChainBuilder(
-          this.setup.network
-        );
-      }
-    }
-    if (parentTcx) {
-      debugger;
-      throw new Error(`parentTcx used where? `);
-    }
-    this.parentTcx = parentTcx;
-  }
-  isFacade;
-  facade() {
-    if (this.isFacade === false)
-      throw new Error(`this tcx already has txn material`);
-    if (this.parentTcx)
-      throw new Error(`no parentTcx allowed for tcx facade`);
-    const t = this;
-    t.state.addlTxns = t.state.addlTxns || {};
-    t.isFacade = true;
-    return this;
-  }
-  noFacade(situation) {
-    if (this.isFacade)
-      throw new Error(
-        `${situation}: ${this.txnName || "this tcx"} is a facade for nested multi-tx`
-      );
-    this.isFacade = false;
-  }
-  withParent(tcx) {
-    this.noFacade("withParent");
-    this.parentTcx = tcx;
-    return this;
-  }
-  get actorWallet() {
-    return this.actorContext.wallet;
-  }
-  dump(tx) {
-    const t = tx || this.builtTx;
-    if (t instanceof Promise) {
-      return t.then((tx2) => {
-        return txAsString(tx2, this.setup.networkParams);
-      });
-    }
-    return txAsString(t, this.setup.networkParams);
-  }
-  includeAddlTxn(txnName, txInfoIn) {
-    const txInfo = {
-      ...txInfoIn
-    };
-    if (!txInfo.id)
-      txInfo.id = //@ts-expect-error - the tcx is never there,
-      // but including the fallback assignment here for
-      // consistency about the policy of syncing to it.
-      txInfo.tcx?.id || nanoid(5);
-    txInfo.parentId = this.id;
-    txInfo.depth = (this.depth || 0) + 1;
-    const thisWithMoreType = this;
-    if ("undefined" == typeof this.isFacade) {
-      throw new Error(
-        `to include additional txns on a tcx with no txn details, call facade() first.
-   ... otherwise, add txn details first or set isFacade to false`
-      );
-    }
-    thisWithMoreType.state.addlTxns = {
-      ...thisWithMoreType.state.addlTxns || {},
-      [txInfo.id]: txInfo
-    };
-    return thisWithMoreType;
-  }
-  /**
-   * @public
-   */
-  get addlTxns() {
-    return this.state.addlTxns || {};
-  }
-  mintTokens(...args) {
-    this.noFacade("mintTokens");
-    const [policy, tokens, r = { }] = args;
-    const { redeemer } = r;
-    if (this.txb.mintPolicyTokensUnsafe) {
-      this.txb.mintPolicyTokensUnsafe(policy, tokens, redeemer);
-    } else {
-      this.txb.mintTokens(policy, tokens, redeemer);
-    }
-    return this;
-  }
-  getSeedAttrs() {
-    this.noFacade("getSeedAttrs");
-    const seedUtxo = this.state.seedUtxo;
-    return { txId: seedUtxo.id.txId, idx: BigInt(seedUtxo.id.index) };
-  }
-  reservedUtxos() {
-    this.noFacade("reservedUtxos");
-    return this.parentTcx ? this.parentTcx.reservedUtxos() : [
-      ...this.inputs,
-      this.collateral,
-      ...this.childReservedUtxos
-    ].filter((x) => !!x);
-  }
-  utxoNotReserved(u) {
-    if (this.collateral?.isEqual(u)) return void 0;
-    if (this.inputs.find((i) => i.isEqual(u))) return void 0;
-    return u;
-  }
-  addUut(uutName, ...names) {
-    this.noFacade("addUut");
-    this.state.uuts = this.state.uuts || {};
-    for (const name of names) {
-      this.state.uuts[name] = uutName;
-    }
-    return this;
-  }
-  addState(key, value) {
-    this.noFacade("addState");
-    this.state[key] = value;
-    return this;
-  }
-  addCollateral(collateral) {
-    this.noFacade("addCollateral");
-    console.warn("explicit addCollateral() should be unnecessary unless a babel payer is covering it");
-    if (!collateral.value.assets.isZero()) {
-      throw new Error(
-        `invalid attempt to add non-pure-ADA utxo as collateral`
-      );
-    }
-    this.collateral = collateral;
-    this.txb.addCollateral(collateral);
-    return this;
-  }
-  getSeedUtxoDetails() {
-    this.noFacade("getSeedUtxoDetails");
-    const seedUtxo = this.state.seedUtxo;
-    return {
-      txId: seedUtxo.id.txId,
-      idx: BigInt(seedUtxo.id.index)
-    };
-  }
-  _txnTime;
-  /**
-   * Sets a future date for the transaction to be executed, returning the transaction context.  Call this before calling validFor().
-   *
-   * @remarks Returns the txn context.
-   * Throws an error if the transaction already has a txnTime set.
-   *
-   * This method does not itself set the txn's validity interval.  You MUST combine it with
-   * a call to validFor(), to set the txn's validity period.  The resulting transaction will
-   * be valid from the moment set here until the end of the validity period set by validFor().
-   *
-   * This can be used anytime to construct a transaction valid in the future.  This is particularly useful
-   * during test scenarios to verify time-sensitive behaviors.
-   *
-   * In the test environment, the network wil normally be advanced to this date
-   * before executing the transaction, unless a different execution time is indicated.
-   * Use the test helper's `submitTxnWithBlock(txn, {futureDate})` or `advanceNetworkTimeForTx()` methods, or args to
-   * use-case-specific functions that those methods.
-   */
-  futureDate(date) {
-    this.noFacade("futureDate");
-    if (this._txnTime) {
-      throw new Error(
-        "txnTime already set; cannot set futureDate() after txnTime"
-      );
-    }
-    const d = new Date(
-      Number(this.slotToTime(this.timeToSlot(BigInt(date.getTime()))))
-    );
-    console.log("  \u23F0\u23F0 setting txnTime to ", d.toString());
-    this._txnTime = d;
-    return this;
-  }
-  assertNumber(obj, msg = "expected a number") {
-    if (obj === void 0 || obj === null) {
-      throw new Error(msg);
-    } else if (typeof obj == "number") {
-      return obj;
-    } else {
-      throw new Error(msg);
-    }
-  }
-  /**
-   * Calculates the time (in milliseconds in 01/01/1970) associated with a given slot number.
-   * @param slot - Slot number
-   */
-  slotToTime(slot) {
-    let secondsPerSlot = this.assertNumber(
-      this.networkParams.secondsPerSlot
-    );
-    let lastSlot = BigInt(this.assertNumber(this.networkParams.refTipSlot));
-    let lastTime = BigInt(this.assertNumber(this.networkParams.refTipTime));
-    let slotDiff = slot - lastSlot;
-    return lastTime + slotDiff * BigInt(secondsPerSlot * 1e3);
-  }
-  /**
-   * Calculates the slot number associated with a given time.
-   * @param time - Milliseconds since 1970
-   */
-  timeToSlot(time) {
-    let secondsPerSlot = this.assertNumber(
-      this.networkParams.secondsPerSlot
-    );
-    let lastSlot = BigInt(this.assertNumber(this.networkParams.refTipSlot));
-    let lastTime = BigInt(this.assertNumber(this.networkParams.refTipTime));
-    let timeDiff = time - lastTime;
-    return lastSlot + BigInt(Math.round(Number(timeDiff) / (1e3 * secondsPerSlot)));
-  }
-  /**
-   * Identifies the time at which the current transaction is expected to be executed.
-   * Use this attribute in any transaction-building code that sets date/time values
-   * for the transaction.
-   * Honors any futureDate() setting or uses the current time if none has been set.
-   */
-  get txnTime() {
-    if (this._txnTime) return this._txnTime;
-    const now = Date.now();
-    const recent = now - 18e4;
-    const d = new Date(
-      Number(this.slotToTime(this.timeToSlot(BigInt(recent))))
-    );
-    console.log("\u23F0\u23F0setting txnTime to ", d.toString());
-    return this._txnTime = d;
-  }
-  _txnEndTime;
-  get txnEndTime() {
-    if (this._txnEndTime) return this._txnEndTime;
-    throw new Error("call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime");
-  }
-  /**
-    * Sets an on-chain validity period for the transaction, in miilliseconds
-    *
-    * @remarks if futureDate() has been set on the transaction, that
-    * date will be used as the starting point for the validity period.
-    *
-    * Returns the transaction context for chaining.
-    *
-    * @param durationMs - the total validity duration for the transaction.  On-chain
-    *  checks using CapoCtx `now(granularity)` can enforce this duration
-    */
-  validFor(durationMs) {
-    this.noFacade("validFor");
-    const startMoment = this.txnTime.getTime();
-    this._validityPeriodSet = true;
-    this.txb.validFromTime(new Date(startMoment)).validToTime(new Date(startMoment + durationMs));
-    return this;
-  }
-  _validityPeriodSet = false;
-  txRefInputs = [];
-  /**
-   * adds a reference input to the transaction context
-   * @remarks
-   *
-   * idempotent version of helios addRefInput()
-   *
-   * @public
-   **/
-  addRefInput(input, refScript) {
-    this.noFacade("addRefInput");
-    if (!input) throw new Error(`missing required input for addRefInput()`);
-    if (this.txRefInputs.find((v) => v.id.isEqual(input.id))) {
-      console.warn("suppressing second add of refInput");
-      return this;
-    }
-    if (this.inputs.find((v) => v.id.isEqual(input.id))) {
-      console.warn(
-        "suppressing add of refInput that is already an input"
-      );
-      return this;
-    }
-    this.txRefInputs.push(input);
-    const v2sBefore = this.txb.v2Scripts;
-    if (refScript) {
-      this.txb.addV2RefScript(refScript);
-    }
-    this.txb.refer(input);
-    const v2sAfter = this.txb.v2Scripts;
-    if (v2sAfter.length > v2sBefore.length) {
-      console.log("       --- addRefInput added a script to tx.scripts");
-    }
-    return this;
-  }
-  /**
-   * @deprecated - use addRefInput() instead.
-   */
-  addRefInputs(...args) {
-    throw new Error(`deprecated`);
-  }
-  addInput(input, r) {
-    this.noFacade("addInput");
-    if (r && !r.redeemer) {
-      console.log("activity without redeemer tag: ", r);
-      throw new Error(
-        `addInput() redeemer must match the isActivity type {redeemer: \u2039activity\u203A}
-`
-        // JSON.stringify(r, delegateLinkSerializer)
-      );
-    }
-    if (input.address.pubKeyHash)
-      this.allNeededWitnesses.push(input.address);
-    this.inputs.push(input);
-    if (this.parentTcx) {
-      this.parentTcx.childReservedUtxos.push(input);
-    }
-    try {
-      this.txb.spendUnsafe(input, r?.redeemer);
-    } catch (e) {
-      debugger;
-      throw new Error(
-        `addInput: ${e.message}
-   ...TODO: dump partial txn from txb above.  Failed TxInput:
-` + dumpAny(input)
-      );
-    }
-    return this;
-  }
-  addOutput(output) {
-    this.noFacade("addOutput");
-    try {
-      this.txb.addOutput(output);
-      this.outputs.push(output);
-    } catch (e) {
-      console.log(
-        "Error adding output to txn: \n  | inputs:\n  | " + utxosAsString(this.inputs, "\n  | ") + "\n  | " + dumpAny(this.outputs).split("\n").join("\n  |   ") + "\n... in context of partial tx above: failed adding output: \n  |  ",
-        dumpAny(output),
-        "\n" + e.message,
-        "\n   (see thrown stack trace below)"
-      );
-      e.message = `addOutput: ${e.message}
-   ...see logged details above`;
-      throw e;
-    }
-    return this;
-  }
-  attachScript(...args) {
-    throw new Error(
-      `use addScriptProgram(), increasing the txn size, if you don't have a referenceScript.
-Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.`
-    );
-  }
-  /**
-   * Adds a UPLC program to the transaction context, increasing the transaction size.
-   * @remarks
-   * Use the Capo's `txnAttachScriptOrRefScript()` method to use a referenceScript
-   * when available. That method uses a fallback approach adding the script to the
-   * transaction if needed.
-   */
-  addScriptProgram(...args) {
-    this.noFacade("addScriptProgram");
-    this.txb.attachUplcProgram(...args);
-    return this;
-  }
-  wasModified() {
-    this.txb.wasModified();
-  }
-  _builtTx;
-  get builtTx() {
-    this.noFacade("builtTx");
-    if (!this._builtTx) {
-      throw new Error(`can't go building the tx willy-nilly`);
-    }
-    return this._builtTx;
-  }
-  async addSignature(wallet) {
-    this.noFacade("addSignature");
-    const builtTx = await this.builtTx;
-    const sig = await wallet.signTx(builtTx);
-    builtTx.addSignature(sig[0]);
-  }
-  hasAuthorityToken(authorityValue) {
-    return this.inputs.some((i) => i.value.isGreaterOrEqual(authorityValue));
-  }
-  async findAnySpareUtxos() {
-    this.noFacade("findAnySpareUtxos");
-    const mightNeedFees = 3500000n;
-    const toSortInfo = this.uh.mkUtxoSortInfo(mightNeedFees);
-    const notReserved = this.utxoNotReserved.bind(this) || ((u) => u);
-    const uh = this.uh;
-    return uh.findActorUtxo(
-      "spares for tx balancing",
-      notReserved,
-      {
-        wallet: this.wallet,
-        dumpDetail: "onFail"
-      },
-      "multiple"
-    ).then(async (utxos) => {
-      if (!utxos) {
-        throw new Error(
-          `no utxos found for spares for tx balancing.  We can ask the user to send a series of 10, 11, 12, ... ADA to themselves or do it automatically`
-        );
-      }
-      const allSpares = utxos.map(toSortInfo).filter(uh.utxoIsSufficient).sort(uh.utxoSortSmallerAndPureADA);
-      if (allSpares.reduce(uh.reduceUtxosCountAdaOnly, 0) > 0) {
-        return allSpares.filter(uh.utxoIsPureADA).map(uh.sortInfoBackToUtxo);
-      }
-      return allSpares.map(uh.sortInfoBackToUtxo);
-    });
-  }
-  async findChangeAddr() {
-    this.noFacade("findChangeAddr");
-    const wallet = this.actorContext.wallet;
-    if (!wallet) {
-      throw new Error(
-        `\u26A0\uFE0F  ${this.constructor.name}: no this.actorContext.wallet; can't get required change address!`
-      );
-    }
-    let unused = (await wallet.unusedAddresses).at(0);
-    if (!unused) unused = (await wallet.usedAddresses).at(-1);
-    if (!unused)
-      throw new Error(
-        `\u26A0\uFE0F  ${this.constructor.name}: can't find a good change address!`
-      );
-    return unused;
-  }
-  /**
-   * Adds required signers to the transaction context
-   * @remarks
-   * Before a transaction can be submitted, signatures from each of its signers must be included.
-   * 
-   * Any inputs from the wallet are automatically added as signers, so addSigners() is not needed
-   * for those.
-   */
-  async addSigners(...signers) {
-    this.noFacade("addSigners");
-    this.allNeededWitnesses.push(...signers);
-  }
-  async build({
-    signers = [],
-    addlTxInfo = {
-      description: this.txnName ? ": " + this.txnName : ""
-    },
-    beforeValidate,
-    paramsOverride,
-    expectError
-  } = {}) {
-    this.noFacade("build");
-    console.timeStamp?.(`submit() txn ${this.txnName}`);
-    console.log("tcx build() @top");
-    if (!this._validityPeriodSet) {
-      this.validFor(12 * 60 * 1e3);
-    }
-    let { description } = addlTxInfo;
-    if (description && !description.match(/^:/)) {
-      description = ": " + description;
-    }
-    const {
-      actorContext: { wallet }
-    } = this;
-    let walletMustSign = false;
-    let tx;
-    const logger = this.logger;
-    if (wallet || signers.length) {
-      console.timeStamp?.(`submit(): findChangeAddr()`);
-      const changeAddress = await this.findChangeAddr();
-      console.timeStamp?.(`submit(): findAnySpareUtxos()`);
-      const spares = await this.findAnySpareUtxos();
-      const willSign = [...signers, ...this.allNeededWitnesses].map((addrOrPkh) => {
-        if (addrOrPkh.kind == "PubKeyHash") {
-          return addrOrPkh;
-        } else if (addrOrPkh.kind == "Address") {
-          if (addrOrPkh.era == "Shelley") {
-            return addrOrPkh.spendingCredential.kind == "PubKeyHash" ? addrOrPkh.spendingCredential : void 0;
-          } else {
-            return void 0;
-          }
-        } else {
-          return void 0;
-        }
-      }).filter((pkh) => !!pkh).flat(1);
-      console.timeStamp?.(`submit(): addSIgners()`);
-      this.txb.addSigners(...willSign);
-      const wHelper = wallet && makeWalletHelper(wallet);
-      const othersMustSign = [];
-      if (wallet && wHelper) {
-        for (const a of willSign) {
-          if (await wHelper.isOwnAddress(a)) {
-            walletMustSign = true;
-          } else {
-            othersMustSign.push(a);
-          }
-        }
-        this.otherPartySigners = othersMustSign;
-        const inputs = this.txb.inputs;
-        if (!inputs) throw new Error(`no inputs in txn`);
-        for (const input of inputs) {
-          if (!await wHelper.isOwnAddress(input.address)) continue;
-          this.allNeededWitnesses.push(input.address);
-          walletMustSign = true;
-          const pubKeyHash = input.address.pubKeyHash;
-          if (pubKeyHash) {
-            this.txb.addSigners(pubKeyHash);
-          }
-        }
-      } else {
-        console.warn(
-          "txn build: no wallet/helper available for txn signining (debugging breakpoint available)"
-        );
-        debugger;
-      }
-      let capturedCosts = {
-        total: { cpu: 0n, mem: 0n },
-        slush: { cpu: 0n, mem: 0n }
-      };
-      const inputValues = this.inputs.map((i) => i.value.assets).reduce((a, b) => a.add(b), makeAssets());
-      const outputValues = this.outputs.map((o) => o.value.assets).reduce((a, b) => a.add(b), makeAssets());
-      const mintValues = this.txb.mintedTokens;
-      const netTxAssets = inputValues.add(mintValues).subtract(outputValues);
-      if (!netTxAssets.isZero()) {
-        console.log(
-          "tx imbalance=" + dumpAny(netTxAssets, this.networkParams)
-        );
-      }
-      try {
-        tx = await this.txb.buildUnsafe({
-          changeAddress,
-          spareUtxos: spares,
-          networkParams: {
-            ...this.networkParams,
-            ...paramsOverride
-          },
-          logOptions: logger,
-          beforeValidate,
-          modifyExBudget: (txi, purpose, index, costs) => {
-            capturedCosts[`${purpose} @${1 + index}`] = {
-              ...costs
-            };
-            const cpuSlush = BigInt(350000000n);
-            const memSlush = BigInt(430000n);
-            capturedCosts.slush.cpu += cpuSlush;
-            capturedCosts.slush.mem += memSlush;
-            costs.cpu += cpuSlush;
-            costs.mem += memSlush;
-            capturedCosts.total.cpu += costs.cpu;
-            capturedCosts.total.mem += costs.mem;
-            if ("minting" == purpose) purpose = "minting ";
-            return costs;
-          }
-        });
-        this._builtTx = tx;
-        this.txb.validToTime;
-        //!!! todo: come back to this later.  Blockfrost's endpoint for this
-      } catch (e) {
-        e.message += "; txn build failed (debugging breakpoint available)\n" + (netTxAssets.isZero() ? "" : "tx imbalance=" + dumpAny(netTxAssets, this.networkParams)) + `  inputs: ${dumpAny(this.inputs)}
-  outputs: ${dumpAny(this.outputs)}
-  mint: ${dumpAny(this.txb.mintedTokens)}
-  refInputs: ${dumpAny(this.txRefInputs)}
-`;
-        logger.logError(`txn build failed: ${e.message}`);
-        if (tx) logger.logPrint(dumpAny(tx));
-        logger.logError(
-          `  (it shouldn't be possible for buildUnsafe to be throwing errors!)`
-        );
-        logger.flushError();
-        throw e;
-      }
-      if (tx.hasValidationError) {
-        const e = tx.hasValidationError;
-        let heliosStack = e.stack?.split("\n") || void 0;
-        heliosStack = heliosStack?.map((line) => {
-          if (line.match(/<helios>@at/)) {
-            line = line.replace(
-              /<helios>@at /,
-              "   ... in helios function "
-            ).replace(
-              /, \[(.*)\],/,
-              (_, bracketed) => ``
-              // ` with scope [\n        ${
-              //     bracketed.replace(/, /g, ",\n        ")
-              // }\n      ]`
-            );
-          }
-          return line;
-        });
-        debugger;
-        const scriptContext = "string" == typeof e ? void 0 : e.scriptContext;
-        logger.logError(
-          `tx validation failure: 
-  \u274C ${//@ts-expect-error
-          tx.hasValidationError.message || tx.hasValidationError}
-` + (heliosStack?.join("\n") || "")
-        );
-        logger.flush();
-        const ctxCbor = scriptContext?.toCbor();
-        const cborHex = ctxCbor ? bytesToHex(ctxCbor) : "";
-        if (!expectError) {
-          console.log(
-            cborHex ? "------------------- failed ScriptContext as cbor-hex -------------------\n" + cborHex + "\n" : "",
-            "------------------- failed tx as cbor-hex -------------------\n" + bytesToHex(tx.toCbor()),
-            "\n------------------^ failed tx details ^------------------\n(debugging breakpoint available)"
-          );
-        }
-      }
-      return {
-        tx,
-        willSign,
-        walletMustSign,
-        wallet,
-        wHelper,
-        costs: capturedCosts
-      };
-    } else {
-      throw new Error("no 'actorContext.wallet'; can't make  a txn");
-    }
-  }
-  log(...msgs) {
-    if (msgs.length > 1) {
-      debugger;
-      throw new Error(`no multi-arg log() calls`);
-    }
-    this.logger.logPrint(msgs[0]);
-    return this;
-  }
-  flush() {
-    this.logger.flush();
-    return this;
-  }
-  finish() {
-    this.logger.finish();
-    return this;
-  }
-  /**
-   * Submits the current transaction and any additional transactions in the context.
-   * @remarks
-   * To submit only the current transaction, use the `submit()` method.
-   *
-   * Uses the TxBatcher to create a new batch of transactions.  This new batch
-   * overlays a TxChainBuilder on the current network-client, using that facade
-   * to provide utxos for chained transactions in the batch.
-   *
-   * The signers array can be used to add additional signers to the transaction, and
-   * is passed through to the submit() for the current txn only; it is not used for
-   * any additional transactions.
-   *
-   * The beforeSubmit, onSubmitted callbacks are used for each additional transaction.
-   *
-   * beforeSubmit can be used to notify the user of the transaction about to be submitted,
-   * and can also be used to add additional signers to the transaction or otherwise modify
-   * it (by returning the modified transaction).
-   *
-   * onSubmitted can be used to notify the user that the transaction has been submitted,
-   * or for logging or any other post-submission processing.
-   */
-  async submitAll(options = {}) {
-    const currentBatch = this.currentBatch;
-    currentBatch?.isOpen;
-    //!!! remove because it's already done in the constructor?
-    //!!! ^^^ remove?
-    return this.buildAndQueueAll(options).then((batch) => {
-      return batch;
-    });
-  }
-  /**
-   * augments a transaction context with a type indicator
-   * that it has additional transactions to be submitted.
-   * @public
-   * @remarks
-   * The optional argument can also be used to include additional
-   * transactions to be chained after the current transaction.
-   */
-  withAddlTxns(addlTxns = {}) {
-    this.state.addlTxns = this.state.addlTxns || {};
-    for (const [name, txn] of Object.entries(addlTxns)) {
-      this.includeAddlTxn(name, txn);
-    }
-    return this;
-  }
-  async buildAndQueueAll(options = {}) {
-    const {
-      addlTxInfo = {
-        description: this.txnName ? this.txnName : "\u2039unnamed tx\u203A",
-        id: this.id,
-        tcx: this
-      },
-      ...generalSubmitOptions
-    } = options;
-    if (options.paramsOverride) {
-      console.warn(
-        "\u26A0\uFE0F  paramsOverride can be useful for extreme cases \nof troubleshooting tx execution by submitting an oversized tx \nwith unoptimized contract scripts having diagnostic print/trace calls\nto a custom preprod node having overloaded network params, thus allowing \nsuch a transaction to be evaluated end-to-end by the Haskell evaluator using \nthe cardano-node's script-budgeting mini-protocol.\n\nThis will cause problems for regular transactions (such as requiring very large collateral)Be sure to remove any params override if you're not dealing with \none of those very special situations. \n"
-      );
-      debugger;
-    }
-    if (this.isFacade == false) {
-      return this.buildAndQueue({
-        ...generalSubmitOptions,
-        addlTxInfo
-      }).then(() => {
-        if (this.state.addlTxns) {
-          console.log(
-            `\u{1F384}\u26C4\u{1F381} ${this.id}   -- B&QA - registering addl txns`
-          );
-          return this.queueAddlTxns(options).then(() => {
-            return this.currentBatch;
-          });
-        }
-        return this.currentBatch;
-      });
-    } else if (this.state.addlTxns) {
-      if (this.isFacade) {
-        this.currentBatch.$txInfo(this.id)?.transition("isFacade");
-      }
-      console.log(
-        `\u{1F384}\u26C4\u{1F381} ${this.id}   -- B&QA - registering txns in facade`
-      );
-      return this.queueAddlTxns(generalSubmitOptions).then(() => {
-        return this.currentBatch;
-      });
-    }
-    console.warn(`\u26A0\uFE0F  submitAll(): no txns to queue/submit`, this);
-    throw new Error(
-      `unreachable? -- nothing to do for submitting this tcx`
-    );
-  }
-  get currentBatch() {
-    return this.setup.txBatcher.current;
-  }
-  /**
-   * Submits only the current transaction.
-   * @remarks
-   * To also submit additional transactions, use the `submitAll()` method.
-   */
-  async buildAndQueue(submitOptions = {}) {
-    let {
-      signers = [],
-      addlTxInfo,
-      paramsOverride,
-      expectError,
-      beforeError,
-      beforeValidate,
-      whenBuilt,
-      fixupBeforeSubmit,
-      onSubmitError,
-      onSubmitted
-    } = submitOptions;
-    this.noFacade("submit");
-    if (!addlTxInfo) {
-      debugger;
-      throw new Error(`expecting addlTxInfo to be passed`);
-    }
-    const {
-      logger,
-      setup: { network }
-    } = this;
-    const {
-      tx,
-      willSign,
-      walletMustSign,
-      wallet,
-      wHelper,
-      costs = {
-        total: { cpu: 0n, mem: 0n }
-      }
-    } = await this.build({
-      signers,
-      paramsOverride,
-      addlTxInfo,
-      beforeValidate,
-      expectError
-    });
-    let { description, id } = addlTxInfo;
-    if (!id) {
-      id = addlTxInfo.id = this.id;
-    }
-    const addlTxInfo2 = {
-      ...addlTxInfo
-    };
-    const txStats = {
-      costs,
-      wallet,
-      walletMustSign,
-      wHelper,
-      willSign
-    };
-    const errMsg = tx.hasValidationError && tx.hasValidationError.toString();
-    if (errMsg) {
-      logger.logPrint(`\u26A0\uFE0F  txn validation failed: ${errMsg}
-`);
-      logger.logPrint(this.dump(tx));
-      this.emitCostDetails(tx, costs);
-      logger.flush();
-      logger.logError(`FAILED submitting tx: ${description}`);
-      logger.logPrint(errMsg);
-      if (expectError) {
-        logger.logPrint(
-          `
-
-\u{1F4A3}\u{1F389} \u{1F4A3}\u{1F389} \u{1F389} \u{1F389} transaction failed (as expected)`
-        );
-      }
-      const txErrorDescription = {
-        ...addlTxInfo2,
-        tcx: this,
-        error: errMsg,
-        tx,
-        stats: txStats,
-        options: submitOptions,
-        txCborHex: bytesToHex(tx.toCbor())
-      };
-      this.currentBatch.txError(txErrorDescription);
-      let errorHandled;
-      if (beforeError) {
-        errorHandled = await beforeError(txErrorDescription);
-      }
-      logger.flushError();
-      if (errMsg.match(
-        /multi:Minting: only dgData activities ok in mintDgt/
-      )) {
-        console.log(
-          `\u26A0\uFE0F  mint delegate for multiple activities should be given delegated-data activities, not the activities of the delegate`
-        );
-      }
-      if (!errorHandled) {
-        debugger;
-        throw new Error(errMsg);
-      }
-    }
-    for (const pkh of willSign) {
-      if (!pkh) continue;
-      if (tx.body.signers.find((s) => pkh.isEqual(s))) continue;
-      throw new Error(
-        `incontheeivable! all signers should have been added to the builder above`
-      );
-    }
-    const txDescr = {
-      ...addlTxInfo2,
-      tcx: this,
-      tx,
-      txId: tx.id(),
-      options: submitOptions,
-      stats: txStats,
-      txCborHex: bytesToHex(tx.toCbor())
-    };
-    const { currentBatch } = this;
-    currentBatch.$txStates[id];
-    logger.logPrint(`tx transcript: ${description}
-`);
-    logger.logPrint(this.dump(tx));
-    this.emitCostDetails(tx, costs);
-    logger.flush();
-    console.timeStamp?.(`tx: add to current-tx-batch`);
-    currentBatch.$addTxns(txDescr);
-    this.setup.chainBuilder?.with(txDescr.tx);
-    await whenBuilt?.(txDescr);
-  }
-  emitCostDetails(tx, costs) {
-    const { logger } = this;
-    const {
-      maxTxExCpu,
-      maxTxExMem,
-      maxTxSize,
-      //@ts-expect-error on our synthetic attributes
-      origMaxTxSize = maxTxSize,
-      //@ts-expect-error on our synthetic attributes
-      origMaxTxExMem = maxTxExMem,
-      //@ts-expect-error on our synthetic attributes
-      origMaxTxExCpu = maxTxExCpu,
-      exCpuFeePerUnit,
-      exMemFeePerUnit,
-      txFeePerByte,
-      txFeeFixed
-    } = this.networkParams;
-    const oMaxSize = origMaxTxSize;
-    const oMaxMem = origMaxTxExMem;
-    const oMaxCpu = origMaxTxExCpu;
-    const { total, ...otherCosts } = costs;
-    const txSize = tx.calcSize();
-    Number(tx.calcMinFee(this.networkParams));
-    const txFee = tx.body.fee;
-    const cpuFee = BigInt((Number(total.cpu) * exCpuFeePerUnit).toFixed(0));
-    const memFee = BigInt((Number(total.mem) * exMemFeePerUnit).toFixed(0));
-    const sizeFee = BigInt(txSize * txFeePerByte);
-    const nCpu = Number(total.cpu);
-    const nMem = Number(total.mem);
-    let refScriptSize = 0;
-    for (const anyInput of [...tx.body.inputs, ...tx.body.refInputs]) {
-      const refScript = anyInput.output.refScript;
-      if (refScript) {
-        const scriptSize = refScript.toCbor().length;
-        refScriptSize += scriptSize;
-      }
-    }
-    let multiplier = 1;
-    let refScriptsFee = 0n;
-    let refScriptsFeePerByte = this.networkParams.refScriptsFeePerByte;
-    let refScriptCostDetails = [];
-    const tierSize = 25600;
-    let alreadyConsumed = 0;
-    for (let tier = 0; tier * tierSize < refScriptSize; tier += 1, multiplier *= 1.2) {
-      const consumedThisTier = Math.min(
-        tierSize,
-        refScriptSize - alreadyConsumed
-      );
-      alreadyConsumed += consumedThisTier;
-      const feeThisTier = Math.round(
-        consumedThisTier * multiplier * refScriptsFeePerByte
-      );
-      refScriptsFee += BigInt(feeThisTier);
-      refScriptCostDetails.push(
-        `
-      -- refScript tier${1 + tier} (${consumedThisTier} \xD7 ${multiplier}) \xD7${refScriptsFeePerByte} = ${lovelaceToAda(
-          feeThisTier
-        )}`
-      );
-    }
-    const fixedTxFeeBigInt = BigInt(txFeeFixed);
-    const remainderUnaccounted = txFee - cpuFee - memFee - sizeFee - fixedTxFeeBigInt - refScriptsFee;
-    if (nCpu > oMaxCpu || nMem > oMaxMem || txSize > oMaxSize) {
-      logger.logPrint(
-        `\u{1F525}\u{1F525}\u{1F525}\u{1F525}  THIS TX EXCEEDS default (overridden in test env) limits on network params  \u{1F525}\u{1F525}\u{1F525}\u{1F525}
-  -- cpu ${intWithGrouping(nCpu)} = ${(100 * nCpu / oMaxCpu).toFixed(1)}% of ${intWithGrouping(
-          oMaxCpu
-        )} (patched to ${intWithGrouping(maxTxExCpu)})
-  -- mem ${nMem} = ${(100 * nMem / oMaxMem).toFixed(
-          1
-        )}% of ${intWithGrouping(
-          oMaxMem
-        )} (patched to ${intWithGrouping(maxTxExMem)})
-  -- tx size ${intWithGrouping(txSize)} = ${(100 * txSize / oMaxSize).toFixed(1)}% of ${intWithGrouping(
-          oMaxSize
-        )} (patched to ${intWithGrouping(maxTxSize)})
-`
-      );
-    }
-    const scriptBreakdown = Object.keys(otherCosts).length > 0 ? `
-    -- per script (with % blame for actual costs):` + Object.entries(otherCosts).map(
-      ([key, { cpu, mem }]) => `
-      -- ${key}: cpu ${lovelaceToAda(
-        Number(cpu) * exCpuFeePerUnit
-      )} = ${(Number(cpu) / Number(total.cpu) * 100).toFixed(1)}%, mem ${lovelaceToAda(
-        Number(mem) * exMemFeePerUnit
-      )} = ${(Number(mem) / Number(total.mem) * 100).toFixed(1)}%`
-    ).join("") : "";
-    logger.logPrint(
-      `costs: ${lovelaceToAda(txFee)}
-  -- fixed fee = ${lovelaceToAda(txFeeFixed)}
-  -- tx size fee = ${lovelaceToAda(sizeFee)} (${intWithGrouping(txSize)} bytes = ${(Number(1e3 * txSize / oMaxSize) / 10).toFixed(1)}% of tx size limit)
-  -- refScripts fee = ${lovelaceToAda(refScriptsFee)}` + refScriptCostDetails.join("") + `
-  -- scripting costs
-    -- cpu units ${intWithGrouping(total.cpu)} = ${lovelaceToAda(cpuFee)} (${(Number(1000n * total.cpu / BigInt(oMaxCpu)) / 10).toFixed(1)}% of cpu limit/tx)
-    -- memory units ${intWithGrouping(total.mem)} = ${lovelaceToAda(memFee)} (${(Number(1000n * total.mem / BigInt(oMaxMem)) / 10).toFixed(1)}% of mem limit/tx)` + scriptBreakdown + `
-  -- remainder ${lovelaceToAda(
-        remainderUnaccounted
-      )} unaccounted-for`
-    );
-  }
-  /**
-   * Executes additional transactions indicated by an existing transaction
-   * @remarks
-   *
-   * During the off-chain txn-creation process, additional transactions may be
-   * queued for execution.  This method is used to register those transactions,
-   * along with any chained transactions THEY may trigger.
-   *
-   * The TxBatcher and batch-controller classes handle wallet-signing
-   * and submission of the transactions for execution.
-   * @public
-   **/
-  async queueAddlTxns(pipelineOptions) {
-    const { addlTxns } = this.state;
-    if (!addlTxns) return;
-    return this.submitTxnChain({
-      ...pipelineOptions,
-      txns: Object.values(addlTxns)
-    });
-  }
-  /**
-   * Resolves a list of tx descriptions to full tcx's, without handing any of their
-   * any chained/nested txns.
-   * @remarks
-   * if submitEach is provided, each txn will be submitted as it is resolved.
-   * If submitEach is not provided, then the network must be capable of tx-chaining
-   * use submitTxnChain() to submit a list of txns with chaining
-   */
-  async resolveMultipleTxns(txns, pipelineOptions) {
-    for (const [txName, addlTxInfo] of Object.entries(txns)) {
-      const { id } = addlTxInfo;
-      let txTracker = this.currentBatch.$txInfo(id);
-      if (!txTracker) {
-        this.currentBatch.$addTxns(addlTxInfo);
-        txTracker = this.currentBatch.$txInfo(id);
-      }
-    }
-    await new Promise((res) => setTimeout(res, 5));
-    for (const [txName, addlTxInfo] of Object.entries(txns)) {
-      const { id, depth, parentId } = addlTxInfo;
-      let txTracker = this.currentBatch.$txInfo(id);
-      txTracker.$transition("building");
-      await new Promise((res) => setTimeout(res, 5));
-      const txInfoResolved = addlTxInfo;
-      const { txName: txName2, description } = txInfoResolved;
-      let alreadyPresent = void 0;
-      console.log("  -- before: " + description);
-      const tcx = "function" == typeof addlTxInfo.mkTcx ? await (async () => {
-        console.log(
-          "  creating TCX just in time for: " + description
-        );
-        const tcx2 = await addlTxInfo.mkTcx();
-        tcx2.parentId = parentId || "";
-        tcx2.depth = depth;
-        if (id) {
-          this.currentBatch.changeTxId(id, tcx2.id);
-          txInfoResolved.id = tcx2.id;
-        } else {
-          addlTxInfo.id = tcx2.id;
-          console.warn(
-            `expected id to be set on addlTxInfo; falling back to JIT-generated id in new tcx`
-          );
-        }
-        return tcx2;
-      })().catch((e) => {
-        if (e instanceof TxNotNeededError) {
-          alreadyPresent = e;
-          const tcx2 = new StellarTxnContext(
-            this.setup
-          ).withName(
-            `addlTxInfo already present: ${description}`
-          );
-          tcx2.alreadyPresent = alreadyPresent;
-          return tcx2;
-        }
-        throw e;
-      }) : (() => {
-        console.log(
-          "  ---------------- warning!!!! addlTxInfo is already built!"
-        );
-        debugger;
-        throw new Error(" unreachable - right?");
-      })();
-      if ("undefined" == typeof tcx) {
-        throw new Error(
-          `no txn provided for addlTx ${txName2 || description}`
-        );
-      }
-      txInfoResolved.tcx = tcx;
-      if (tcx.alreadyPresent) {
-        console.log(
-          "  -- tx effects are already present; skipping: " + txName2 || description
-        );
-        this.currentBatch.$addTxns(txInfoResolved);
-        continue;
-      }
-      const replacementTcx = pipelineOptions?.fixupBeforeSubmit && await pipelineOptions.fixupBeforeSubmit(
-        txInfoResolved
-      ) || tcx;
-      if (false === replacementTcx) {
-        console.log("callback cancelled txn: ", txName2);
-        continue;
-      }
-      if (replacementTcx !== true && replacementTcx !== tcx) {
-        console.log(
-          `callback replaced txn ${txName2} with a different txn: `,
-          dumpAny(replacementTcx)
-        );
-      }
-      const effectiveTcx = true === replacementTcx ? tcx : replacementTcx || tcx;
-      txInfoResolved.tcx = effectiveTcx;
-      //!!! was just buildAndQueue, but that was executing
-      await effectiveTcx.buildAndQueueAll({
-        ...pipelineOptions,
-        addlTxInfo: txInfoResolved
-      });
-    }
-  }
-  /**
-   * To add a script to the transaction context, use `attachScript`
-   *
-   * @deprecated - invalid method name; use `addScriptProgram()` or capo's `txnAttachScriptOrRefScript()` method
-   **/
-  addScript() {
-  }
-  async submitTxnChain(options = {
-    //@ts-expect-error because the type of this context doesn't
-    //   guarantee the presence of addlTxns.  But it might be there!
-    txns: this.state.addlTxns || []
-  }) {
-    const addlTxns = this.state.addlTxns;
-    const { txns, onSubmitError } = options;
-    const newTxns = txns || addlTxns || [];
-    const txChainSubmitOptions = {
-      onSubmitError,
-      // txns,  // see newTxns
-      fixupBeforeSubmit: (txinfo) => {
-        options.fixupBeforeSubmit?.(txinfo);
-      },
-      whenBuilt: async (txinfo) => {
-        const { id: parentId, tx } = txinfo;
-        const stackedPromise = options.whenBuilt?.(txinfo);
-        const more = (
-          //@ts-expect-error on optional prop
-          txinfo.tcx.state.addlTxns || {}
-        );
-        console.log("  \u2705 " + txinfo.description);
-        const moreTxns = Object.values(more);
-        for (const nested of moreTxns) {
-          nested.parentId = parentId;
-        }
-        console.log(
-          `\u{1F384}\u26C4\u{1F381} ${parentId}   -- registering nested txns ASAP`
-        );
-        this.currentBatch.$addTxns(moreTxns);
-        await new Promise((res) => setTimeout(res, 5));
-        return stackedPromise;
-      },
-      onSubmitted: (txinfo) => {
-        this.setup.network.tick?.(1);
-      }
-    };
-    const isolatedTcx = new StellarTxnContext(this.setup);
-    console.log("\u{1F41D}\u{1F63E}\u{1F43B}\u{1F980}");
-    isolatedTcx.id = this.id;
-    console.log(
-      "at d=0: submitting addl txns: \n" + newTxns.map((t2) => `  \u{1F7E9} ${t2.description}
-`).join("")
-    );
-    const t = isolatedTcx.resolveMultipleTxns(
-      newTxns,
-      txChainSubmitOptions
-    );
-    await t;
-    return;
-  }
-}
-
-function hexToPrintableString(hexStr) {
-  let result = "";
-  for (let i = 0; i < hexStr.length; i += 2) {
-    let hexChar = hexStr.substring(i, i + 2);
-    let charCode = parseInt(hexChar, 16);
-    if (charCode >= 32 && charCode <= 126) {
-      result += String.fromCharCode(charCode);
-    } else {
-      result += `\u2039${hexChar}\u203A`;
-    }
-  }
-  return result;
-}
-function displayTokenName(nameBytesOrString) {
-  let nameString = "";
-  let cip68Tag = "";
-  let cip68TagHex = "";
-  let nameBytesHex = "";
-  let isCip68 = false;
-  if (typeof nameBytesOrString === "string") {
-    nameBytesHex = Buffer.from(encodeUtf8(nameBytesOrString)).toString(
-      "hex"
-    );
-    nameString = nameBytesOrString;
-  } else {
-    nameBytesHex = Buffer.from(nameBytesOrString).toString("hex");
-    nameString = stringToPrintableString(nameBytesOrString);
-  }
-  if (nameBytesHex.length >= 8) {
-    if (nameBytesHex.substring(0, 1) === "0" && nameBytesHex.substring(7, 8) === "0") {
-      cip68TagHex = nameBytesHex.substring(1, 5);
-      nameBytesHex.substring(5, 7);
-      cip68Tag = parseInt(cip68TagHex, 16).toString();
-      nameString = stringToPrintableString(nameBytesOrString.slice(4));
-      isCip68 = true;
-    }
-  }
-  if (isCip68) {
-    nameString = `\u2039cip68/${cip68Tag}\u203A${nameString}`;
-  } else {
-    nameString = stringToPrintableString(nameBytesOrString);
-  }
-  return nameString;
-}
-function stringToPrintableString(str) {
-  if ("string" != typeof str) {
-    try {
-      return new TextDecoder("utf-8", { fatal: true }).decode(
-        new Uint8Array(str)
-      );
-    } catch (e) {
-      str = Buffer.from(str).toString("hex");
-    }
-  }
-  let result = "";
-  for (let i = 0; i < str.length; i++) {
-    let charCode = str.charCodeAt(i);
-    if (charCode >= 32 && charCode <= 126) {
-      result += str[i];
-    } else {
-      result += `\u2039${charCode.toString(16)}\u203A`;
-    }
-  }
-  return result;
-}
-function assetsAsString(a, joiner = "\n    ", showNegativeAsBurn, mintRedeemers) {
-  const assets = a.assets;
-  return (assets?.map(([policyId, tokenEntries], index) => {
-    let redeemerInfo = mintRedeemers?.[index] || "";
-    if (redeemerInfo) {
-      redeemerInfo = `
-        r = ${redeemerInfo} `;
-    }
-    const tokenString = tokenEntries.map(([nameBytes, count]) => {
-      const nameString = displayTokenName(nameBytes);
-      const negWarning = count < 1n ? showNegativeAsBurn ? "\u{1F525} " : " \u26A0\uFE0F NEGATIVE\u26A0\uFE0F" : "";
-      const burned = count < 1 ? showNegativeAsBurn ? "- BURN \u{1F525} " : "" : "";
-      return `${negWarning} ${count}\xD7\u{1F4B4} ${nameString} ${burned}`;
-    }).join("+");
-    return `\u2991${policyIdAsString(
-      policyId
-    )} ${tokenString} ${redeemerInfo}\u2992`;
-  }) || []).join(joiner);
-}
-function policyIdAsString(p) {
-  const pIdHex = p.toHex();
-  const abbrev = abbreviatedDetail(pIdHex);
-  return `\u{1F3E6} ${abbrev}`;
-}
-function lovelaceToAda(lovelace) {
-  const asNum = parseInt(lovelace.toString());
-  const whole = Math.floor(asNum / 1e6).toFixed(0);
-  let fraction = (asNum % 1e6).toFixed(0);
-  fraction = fraction.padStart(6, "0");
-  const wholeWithSeparators = whole.replace(/\B(?=(\d{3})+(?!\d))/g, "_");
-  let fractionWithSeparators = fraction.replace(/(\d{3})(?=\d)/g, "$1_").replace(/^-/, "");
-  return `${wholeWithSeparators}.${fractionWithSeparators} ADA`;
-}
-function intWithGrouping(i) {
-  const whole = Math.floor(Number(i)).toFixed(0);
-  const fraction = Math.abs(Number(i) - Math.floor(Number(i))).toFixed(0);
-  const wholeWithSeparators = whole.replace(/\B(?=(\d{3})+(?!\d))/g, "_");
-  const fractionWithSeparators = fraction.replace(/(\d{3})(?=\d)/g, "$1_");
-  return `${wholeWithSeparators}.${fractionWithSeparators}`;
-}
-function valueAsString(v) {
-  const ada = lovelaceToAda(v.lovelace);
-  const assets = assetsAsString(v.assets);
-  return [ada, assets].filter((x) => !!x).join(" + ");
-}
-function txAsString(tx, networkParams) {
-  const outputOrder = [
-    ["body", "inputs"],
-    ["body", "minted"],
-    ["body", "outputs"],
-    ["body", "refInputs"],
-    ["witnesses", "redeemers"],
-    ["body", "signers"],
-    ["witnesses", "v2refScripts"],
-    ["witnesses", "v2scripts"],
-    ["witnesses", "nativeScripts"],
-    ["body", "collateral"],
-    ["body", "collateralReturn"],
-    ["body", "scriptDataHash"],
-    ["body", "metadataHash"],
-    ["witnesses", "signatures"],
-    ["witnesses", "datums"],
-    ["body", "lastValidSlot"],
-    ["body", "firstValidSlot"],
-    ["body", "fee"]
-  ];
-  let details = "";
-  if (!networkParams) {
-    console.warn(
-      new Error(`dumpAny: no networkParams; can't show txn size info!?!`)
-    );
-  }
-  const networkParamsHelper = networkParams ? makeNetworkParamsHelper(networkParams) : void 0;
-  const seenRedeemers = /* @__PURE__ */ new Set();
-  const allRedeemers = tx.witnesses.redeemers;
-  let hasIndeterminate = false;
-  const inputRedeemers = Object.fromEntries(
-    allRedeemers.map((x, index) => {
-      if (x.kind != "TxSpendingRedeemer") return void 0;
-      const { inputIndex } = x;
-      const isIndeterminate = inputIndex == -1;
-      if (isIndeterminate) hasIndeterminate = true;
-      const inpIndex = isIndeterminate ? `\u2039unk${index}\u203A` : inputIndex;
-      if (!x.data) debugger;
-      const showData = x.data.rawData ? uplcDataSerializer("", x.data.rawData) : x.data?.toString() || "\u2039no data\u203A";
-      return [inpIndex, { r: x, display: showData }];
-    }).filter((x) => !!x)
-  );
-  if (hasIndeterminate)
-    inputRedeemers["hasIndeterminate"] = {
-      r: void 0,
-      display: "\u2039unk\u203A"
-    };
-  const mintRedeemers = Object.fromEntries(
-    allRedeemers.map((x) => {
-      if ("TxMintingRedeemer" != x.kind) return void 0;
-      if ("number" != typeof x.policyIndex) {
-        debugger;
-        throw new Error(`non-mint redeemer here not yet supported`);
-      }
-      if (!x.data) debugger;
-      const showData = (x.data.rawData ? uplcDataSerializer("", x.data.rawData) : x.data?.toString() || "\u2039no data\u203A") + "\n" + bytesToHex(x.data.toCbor());
-      return [x.policyIndex, showData];
-    }).filter((x) => !!x)
-  );
-  //!!! todo: improve interface of tx so useful things have a non-private api
-  //!!! todo: get back to type-safety in this diagnostic suite
-  for (const [where, x] of outputOrder) {
-    let item = tx[where][x];
-    let skipLabel = false;
-    if (Array.isArray(item) && !item.length) continue;
-    if (!item) continue;
-    if ("inputs" == x) {
-      item = `
-  ${item.map((x2, i) => {
-        const { r, display } = inputRedeemers[i] || inputRedeemers["hasIndeterminate"] || {};
-        if (!display && x2.datum?.data) debugger;
-        if (r) seenRedeemers.add(r);
-        return txInputAsString(
-          x2,
-          /* unicode blue arrow right -> */
-          `\u27A1\uFE0F  @${1 + i} `,
-          i,
-          display
-          // || "‹failed to find redeemer info›"
-        );
-      }).join("\n  ")}`;
-    }
-    if ("refInputs" == x) {
-      item = `
-  ${item.map((x2) => txInputAsString(x2, "\u2139\uFE0F  ")).join("\n  ")}`;
-    }
-    if ("collateral" == x) {
-      //!!! todo: group collateral with inputs and reflect it being spent either way,
-      //!!! todo: move collateral to bottom with collateralReturn,
-      item = item.map((x2) => txInputAsString(x2, "\u{1F52A}")).join("\n    ");
-    }
-    if ("minted" == x) {
-      if (!item.assets.length) {
-        continue;
-      }
-      item = `
-   \u2747\uFE0F  ${assetsAsString(
-        item,
-        "\n   \u2747\uFE0F  ",
-        "withBURN",
-        mintRedeemers
-      )}`;
-    }
-    if ("outputs" == x) {
-      item = `
-  ${item.map(
-        (x2, i) => txOutputAsString(
-          x2,
-          `\u{1F539}${i} <-`
-        )
-      ).join("\n  ")}`;
-    }
-    if ("firstValidSlot" == x || "lastValidSlot" == x) {
-      if (networkParamsHelper) {
-        const slotTime = new Date(networkParamsHelper.slotToTime(item));
-        const timeDiff = (slotTime.getTime() - Date.now()) / 1e3;
-        const sign = timeDiff > 0 ? "+" : "-";
-        const timeDiffString = sign + Math.abs(timeDiff).toFixed(1) + "s";
-        item = `${item} ${slotTime.toLocaleDateString()} ${slotTime.toLocaleTimeString()} (now ${timeDiffString})`;
-      }
-    }
-    if ("signers" == x) {
-      item = item.map((x2) => {
-        const hex = x2.toHex();
-        return `\u{1F511}#${hex.slice(0, 6)}\u2026${hex.slice(-4)}`;
-      });
-    }
-    if ("fee" == x) {
-      item = lovelaceToAda(item);
-    }
-    if ("collateralReturn" == x) {
-      skipLabel = true;
-      item = `  ${txOutputAsString(
-        item,
-        `0  <- \u2753`
-      )} conditional: collateral change (returned in case of txn failure)`;
-    }
-    if ("scriptDataHash" == x) {
-      item = bytesToHex(item);
-    }
-    if ("datums" == x && !Object.entries(item || {}).length) continue;
-    if ("signatures" == x) {
-      if (!item) continue;
-      item = item.map((s) => {
-        const addr = makeAddress(true, s.pubKeyHash);
-        const hashHex = s.pubKeyHash.toHex();
-        return `\u{1F58A}\uFE0F ${addrAsString(addr)} = \u{1F511}\u2026${hashHex.slice(-4)}`;
-      });
-      if (item.length > 1) item.unshift("");
-      item = item.join("\n    ");
-    }
-    if ("redeemers" == x) {
-      if (!item) continue;
-      //!!! todo: augment with mph when that's available from the Activity.
-      item = item.map((x2) => {
-        const indexInfo = x2.kind == "TxMintingRedeemer" ? `minting policy ${x2.policyIndex}` : `spend txin \u27A1\uFE0F  @${1 + x2.inputIndex}`;
-        const showData = seenRedeemers.has(x2) ? "(see above)" : x2.data.fromData ? uplcDataSerializer("", x2.data.fromData) : x2.data.toString();
-        return `\u{1F3E7}  ${indexInfo} ${showData}`;
-      });
-      if (item.length > 1) item.unshift("");
-      item = item.join("\n    ");
-    }
-    if ("v2Scripts" == x) {
-      if (!item) continue;
-      item = item.map((s) => {
-        try {
-          const mph = s.mintingPolicyHash.toHex();
-          return `\u{1F3E6} ${mph.slice(0, 8)}\u2026${mph.slice(-4)} (minting): ${s.serializeBytes().length} bytes`;
-        } catch (e) {
-          const vh = s.validatorHash;
-          const vhh = vh.toHex();
-          const addr = makeAddress(true, vh);
-          return `\u{1F4DC} ${vhh.slice(0, 8)}\u2026${vhh.slice(
-            -4
-          )} (validator at ${addrAsString(addr)}): ${s.serializeBytes().length} bytes`;
-        }
-      });
-      if (item.length > 1) item.unshift("");
-      item = item.join("\n    ");
-    }
-    if ("v2RefScripts" == x) {
-      item = `${item.length} - see refInputs`;
-    }
-    if (!item) continue;
-    details += `${skipLabel ? "" : "  " + x + ": "}${item}
-`;
-  }
-  try {
-    details += `  txId: ${tx.id().toHex()}`;
-    if (networkParams) details += `  
-
-size: ${tx.toCbor().length} bytes`;
-  } catch (e) {
-    details = details + `(Tx not yet finalized!)`;
-    if (networkParams) details += `
-  - NOTE: can't determine txn size
-`;
-  }
-  return details;
-}
-function txInputAsString(x, prefix = "-> ", index, redeemer) {
-  const { output: oo } = x;
-  const redeemerInfo = redeemer ? `
-    r = ${redeemer}` : " \u2039no redeemer\u203A";
-  const datumInfo = oo.datum?.kind == "InlineTxOutputDatum" ? datumSummary(oo.datum) : "";
-  return `${prefix}${addrAsString(x.address)}${showRefScript(
-    oo.refScript
-  )} ${valueAsString(x.value)} ${datumInfo} = \u{1F4D6} ${txOutputIdAsString(
-    x.id
-  )}${redeemerInfo}`;
-}
-function utxosAsString(utxos, joiner = "\n", utxoDCache) {
-  return utxos.map((u) => utxoAsString(u, " \u{1F4B5}", utxoDCache)).join(joiner);
-}
-function txOutputIdAsString(x, length = 8) {
-  return txidAsString(x.txId, length) + `\u{1F539}#${x.index}`;
-}
-function txidAsString(x, length = 8) {
-  const tid = x.toHex();
-  return `${tid.slice(0, length)}\u2026${tid.slice(-4)}`;
-}
-function utxoAsString(x, prefix = "\u{1F4B5}", utxoDCache) {
-  return ` \u{1F4D6} ${txOutputIdAsString(x.id)}: ${txOutputAsString(
-    x.output,
-    prefix,
-    utxoDCache,
-    x.id
-  )}`;
-}
-function datumSummary(d) {
-  if (!d) return "";
-  const dh = d.hash.toHex();
-  const dhss = `${dh.slice(0, 8)}\u2026${dh.slice(-4)}`;
-  if (d.kind == "InlineTxOutputDatum") {
-    const attachedData = d.data.rawData;
-    if (attachedData) {
-      return `
-    d\u2039inline:${dhss} - ${uplcDataSerializer("", attachedData)}=${d.toCbor().length} bytes\u203A`;
-    } else {
-      return `d\u2039inline:${dhss} - ${d.toCbor().length} bytes\u203A`;
-    }
-  }
-  return `d\u2039hash:${dhss}\u2026\u203A`;
-}
-function showRefScript(rs) {
-  if (!rs) return "";
-  const hash = rs.hash();
-  const hh = bytesToHex(hash);
-  const size = rs.toCbor().length;
-  const rshInfo = `${hh.slice(0, 8)}\u2026${hh.slice(-4)}`;
-  return ` \u2039\u{1F4C0} refScript\u{1F4DC} ${rshInfo}: ${size} bytes\u203A +`;
-}
-function txOutputAsString(x, prefix = "<-", utxoDCache, txoid) {
-  if (utxoDCache && !txoid) {
-    throw new Error(
-      `txOutputAsString: must provide txoid when using cache`
-    );
-  }
-  let cache = utxoDCache?.get(txoid);
-  if (cache) {
-    return `\u267B\uFE0F ${cache} (same as above)`;
-  }
-  cache = `${prefix} ${addrAsString(x.address)}${showRefScript(
-    x.refScript
-  )} ${valueAsString(x.value)}`;
-  utxoDCache?.set(txoid, cache);
-  return `${cache} ${datumSummary(x.datum)}`;
-}
-function addrAsString(address) {
-  const bech32 = address.toString();
-  return `${bech32.slice(0, 14)}\u2026${bech32.slice(-4)}`;
-}
-function errorMapAsString(em, prefix = "  ") {
-  return Object.keys(em).map((k) => `in field ${prefix}${k}: ${JSON.stringify(em[k])}`).join("\n");
-}
-function byteArrayListAsString(items, joiner = "\n  ") {
-  return "[\n  " + items.map((ba) => byteArrayAsString(ba)).join(joiner) + "\n]\n";
-}
-function byteArrayAsString(ba) {
-  return hexToPrintableString(ba.toHex());
-}
-function dumpAny(x, networkParams, forJson = false) {
-  if ("undefined" == typeof x) return "\u2039undefined\u203A";
-  if (x?.kind == "Assets") {
-    return `assets: ${assetsAsString(x)}`;
-  }
-  if (Array.isArray(x)) {
-    if (!x.length) return "\u2039empty array\u203A";
-    const firstItem = x[0];
-    if ("number" == typeof firstItem) {
-      return "num array: " + byteArrayListAsString([makeByteArrayData(x)]);
-    }
-    if (firstItem.kind == "TxOutput") {
-      return "tx outputs: \n" + x.map((txo) => txOutputAsString(txo)).join("\n");
-    }
-    if (firstItem.kind == "TxInput") {
-      return "utxos: \n" + utxosAsString(x);
-    }
-    if (firstItem.kind == "ByteArrayData") {
-      return "byte array:\n" + byteArrayListAsString(x);
-    }
-    if ("object" == typeof firstItem) {
-      if (firstItem instanceof Uint8Array) {
-        return "byte array: " + byteArrayAsString(firstItem);
-      }
-      return `[` + x.map((item) => JSON.stringify(item, betterJsonSerializer)).join(", ") + `]`;
-    }
-    console.log("firstItem", firstItem);
-    throw new Error(
-      `dumpAny(): unsupported array type: ${typeof firstItem}`
-    );
-  }
-  if ("bigint" == typeof x) {
-    return x.toString();
-  }
-  if (x instanceof StellarTxnContext) {
-    debugger;
-    throw new Error(`use await build() and dump the result instead.`);
-  }
-  const xx = x;
-  if (x.kind == "TxOutput") {
-    return txOutputAsString(x);
-  }
-  if (xx.kind == "Tx") {
-    return txAsString(xx, networkParams);
-  }
-  if (xx.kind == "TxOutputId") {
-    return txOutputIdAsString(xx);
-  }
-  if (xx.kind == "TxId") {
-    return txidAsString(xx);
-  }
-  if (xx.kind == "TxInput") {
-    return utxoAsString(xx);
-  }
-  if (xx.kind == "Value") {
-    return valueAsString(xx);
-  }
-  if (xx.kind == "Address") {
-    return addrAsString(xx);
-  }
-  if (xx.kind == "MintingPolicyHash") {
-    return policyIdAsString(xx);
-  }
-  if (forJson) return xx;
-  if ("object" == typeof x) {
-    return `{${Object.entries(x).map(([k, v]) => `${k}: ${dumpAny(v, networkParams)}`).join(",\n")}}`;
-  }
-  debugger;
-  return "dumpAny(): unsupported type or library mismatch";
-}
-const betterJsonSerializer = (key, value) => {
-  return dumpAny(value, void 0, true);
-};
-if ("undefined" == typeof window) {
-  globalThis.peek = dumpAny;
-} else {
-  window.peek = dumpAny;
-}
-
-function delegateLinkSerializer(key, value) {
-  if (typeof value === "bigint") {
-    return value.toString();
-  } else if ("bytes" == key && Array.isArray(value)) {
-    return bytesToHex(value);
-  } else if (value?.kind == "Address") {
-    return value.toString();
-  } else if ("tn" == key && Array.isArray(value)) {
-    return decodeUtf8(value);
-  }
-  if ("capo" == key) return void 0;
-  if ("uh" == key) return '"\u2039utxo helper\u203A"';
-  if ("capoBundle" == key) return '"\u2039capo bundle\u203A"';
-  return value;
-}
-function uplcDataSerializer(key, value, depth = 0) {
-  const indent = "    ".repeat(depth);
-  const outdent = "    ".repeat(Math.max(0, depth - 1));
-  if (typeof value === "bigint") {
-    return `big\u2039${value.toString()}n\u203A`;
-  } else if ("bytes" == key && Array.isArray(value)) {
-    return abbreviatedDetailBytes(`bytes\u2039${value.length}\u203A`, value, 40);
-  } else if ("string" == typeof value) {
-    return `'${value}'`;
-  } else if (value === null) {
-    return `\u2039null\u203A`;
-  } else if ("undefined" == typeof value) {
-    return `\u2039und\u203A`;
-  } else if (value.kind == "Address") {
-    const a = value;
-    const cbor = a.toCbor();
-    return `\u2039${abbrevAddress(value)}\u203A = ` + abbreviatedDetailBytes(`cbor\u2039${cbor.length}\u203A:`, cbor, 99);
-  } else if (value.kind == "ValidatorHash") {
-    return abbreviatedDetailBytes(
-      `script\u2039${value.bytes.length}\u203A`,
-      value.bytes
-    );
-  } else if (value.kind == "MintingPolicyHash") {
-    const v = value;
-    return `mph\u2039${policyIdAsString(v)}\u203A`;
-  } else if (value.kind == "TxOutputId") {
-    return `\u2039txoid:${txOutputIdAsString(value, 8)}\u203A`;
-  }
-  if (value.rawData) {
-    return uplcDataSerializer(key, value.rawData, Math.max(depth, 3));
-  }
-  if (value.kind == "int") {
-    const v = value;
-    return `IntData\u2039${v.value}\u203A`;
-  }
-  if (value.kind == "bytes") {
-    const v = value;
-    return abbreviatedDetailBytes(
-      `ByteArray\u2039${v.bytes.length}\u203A`,
-      v.bytes,
-      40
-    );
-  }
-  if (value.kind == "Value") {
-    return valueAsString(value);
-  }
-  if (value.kind == "Assets") {
-    return `assets:\u2039${assetsAsString(value)}\u203A`;
-  }
-  if (value.kind == "AssetClass") {
-    const ac = value;
-    return `assetClass:\u2039${policyIdAsString(ac.mph)} ${displayTokenName(
-      ac.tokenName
-    )}}\u203A`;
-  }
-  if (value.kind)
-    console.log("info: no special handling for KIND = ", value.kind);
-  if ("tn" == key && Array.isArray(value)) {
-    return decodeUtf8(value);
-  } else if ("number" == typeof value) {
-    return value.toString();
-  } else if (value instanceof Map) {
-    return `map\u2039${value.size}\u203A: { ${uplcDataSerializer(
-      "",
-      Object.fromEntries(value.entries()),
-      Math.max(depth, 3)
-    )}    }`;
-  } else if (Array.isArray(value) && value.length == 0) {
-    return "[]";
-  } else if (Array.isArray(value) && value.every((v) => typeof v === "number")) {
-    return `${abbreviatedDetailBytes(`bytes\u2039${value.length}\u203A`, value, 40)}`;
-  } else if (Array.isArray(value)) {
-    const inner = value.map(
-      (v) => uplcDataSerializer("", v, Math.max(depth + 1, 3))
-    );
-    let extraNewLine2 = "";
-    let usesOutdent2 = "";
-    const multiLine2 = inner.map((s2) => {
-      s2.trim().includes("\n");
-      if (s2.length > 40) {
-        extraNewLine2 = "\n";
-        usesOutdent2 = outdent;
-        return `${indent}${s2}`;
-      }
-      return s2;
-    }).join(`, ${extraNewLine2}`);
-    return `[ ${extraNewLine2}${multiLine2}${extraNewLine2}${usesOutdent2} ]`;
-  }
-  if (!value) {
-    return JSON.stringify(value);
-  }
-  const keys = Object.keys(value);
-  if (keys.length == 0) {
-    return key ? "" : "{}";
-  }
-  if (keys.length == 1) {
-    const singleKey = keys[0];
-    const thisValue = value[singleKey];
-    let inner = uplcDataSerializer("", thisValue, Math.max(depth, 3)) || "";
-    if (Array.isArray(thisValue)) {
-      if (!inner.length) {
-        inner = "[ \u2039empty list\u203A ]";
-      }
-    } else {
-      if (inner.length) inner = `{ ${inner} }`;
-    }
-    let s2 = `${singleKey}: ${inner}`;
-    return s2;
-  }
-  let extraNewLine = "";
-  let usesOutdent = "";
-  let s = keys.map(
-    (k) => `${indent}${k}: ${uplcDataSerializer(k, value[k], Math.max(depth + 1, 2))}`
-  );
-  const multiLineItems = s.map((s2) => {
-    if (s2.length < 40 && !s2.includes("\n")) {
-      return `${s2}`;
-    } else {
-      extraNewLine = "\n";
-      usesOutdent = outdent;
-      return `${s2}`;
-    }
-  });
-  const multiLine = multiLineItems.join(`, ${extraNewLine}`);
-  s = `${multiLine}${extraNewLine}${usesOutdent}`;
-  if (key) return `{${extraNewLine}${s}}`;
-  return `
-${s}`;
-}
-function abbrevAddress(address) {
-  return abbreviatedDetail(address.toString(), 12, false);
-}
-function abbreviatedDetailBytes(prefix, value, initLength = 8) {
-  const hext = bytesToHex(value);
-  value.length;
-  const text = checkValidUTF8(value) ? ` \u2039"${abbreviatedDetail(decodeUtf8(value), initLength)}"\u203A` : ``;
-  if (value.length <= initLength) return `${prefix}${hext}${text}`;
-  const checksumString = encodeBech32("_", value).slice(-4);
-  return `${prefix}${hext.slice(0, initLength)}\u2026 \u2039${checksumString}\u203A${text}`;
-}
-function abbreviatedDetail(hext, initLength = 8, countOmitted = false) {
-  if (process?.env?.EXPAND_DETAIL) {
-    return hext;
-  } else {
-    if (hext.length <= initLength) return hext;
-    const omittedCount = countOmitted ? hext.length - initLength - 4 : 0;
-    let omittedString = countOmitted ? `\u2039\u2026${omittedCount}\u2026\u203A` : "\u2026";
-    if (countOmitted && omittedCount < omittedString.length) {
-      omittedString = hext.slice(initLength, -4);
-    }
-    return `${hext.slice(0, initLength)}${omittedString}${hext.slice(-4)}`;
-  }
-}
-
 const defaultNoDefinedModuleName = "\u2039default-needs-override\u203A";
 const placeholderSetupDetails = {
+  originatorLabel: "for abstract bundleClass",
   setup: {
-    isMainnet: "mainnet" === environment.CARDANO_NETWORK,
-    isPlaceholder: "for abstract bundleClass"
+    isMainnet: "mainnet" === environment.CARDANO_NETWORK
   }
 };
+let T__id = 0;
 class HeliosScriptBundle {
   /**
    * an indicator of a Helios bundle that is intended to be used as a Capo contract
@@ -2747,6 +831,11 @@ class HeliosScriptBundle {
    * @public
    */
   static isAbstract = void 0;
+  // static get defaultParams() {
+  //     return {};
+  // }
+  //
+  // static currentRev = 1n;
   /**
    * Constructs a base class for any Helios script bundle,
    * given the class for an application-specific CapoHeliosBundle.
@@ -2766,14 +855,18 @@ class HeliosScriptBundle {
   //     * XXX - enabling lower-overhead instantiation and re-use across
   //     * XXX - various bundles used within a single Capo,
   //     */
-  static usingCapoBundleClass(c) {
+  static forAnyCapo() {
+    return this.usingCapoBundleClass(CapoHeliosBundle, true);
+  }
+  static usingCapoBundleClass(c, generic = false) {
     const cb = new c(placeholderSetupDetails);
+    const classIsConcrete = !generic;
     class aCapoBoundBundle extends HeliosScriptBundle {
       capoBundle = cb;
       constructor(setupDetails = placeholderSetupDetails) {
         super(setupDetails);
       }
-      isConcrete = true;
+      isConcrete = classIsConcrete;
     }
     return aCapoBoundBundle;
   }
@@ -2784,12 +877,13 @@ class HeliosScriptBundle {
   }
   capoBundle;
   isConcrete = false;
+  configuredScriptDetails = void 0;
   /**
    * optional attribute explicitly naming a type for the datum
    * @remarks
    * This can be used if needed for a contract whose entry point uses an abstract
    * type for the datum; the type-bridge & type-gen system will use this data type
-   * instead of inferrring the type from the entry point.
+   * instead of inferring the type from the entry point.
    */
   datumTypeName;
   /**
@@ -2805,11 +899,19 @@ class HeliosScriptBundle {
   previousOnchainScript = void 0;
   _progIsPrecompiled = false;
   setup;
+  setupDetails;
+  ___id = T__id++;
+  _didInit = false;
+  _selectedVariant;
+  debug = false;
+  // scriptHash?: number[] | undefined;
   configuredUplcParams = void 0;
   configuredParams = void 0;
-  preCompiled;
+  precompiledScriptDetails;
   alreadyCompiledScript;
   constructor(setupDetails = placeholderSetupDetails) {
+    this.setupDetails = setupDetails;
+    this.configuredParams = setupDetails.params;
     this.setup = setupDetails.setup;
     this.isMainnet = this.setup.isMainnet;
     if (this.setup && "undefined" === typeof this.isMainnet) {
@@ -2822,10 +924,86 @@ class HeliosScriptBundle {
   get hasAnyVariant() {
     return true;
   }
-  _didInit = false;
-  debug = false;
-  scriptHash;
   init(setupDetails) {
+    const {
+      deployedDetails,
+      params,
+      params: { delegateName, variant = "singleton" } = {},
+      setup,
+      scriptParamsSource = this.scriptParamsSource,
+      previousOnchainScript,
+      originatorLabel
+    } = setupDetails;
+    if (this.scriptParamsSource !== scriptParamsSource) {
+      console.warn(
+        `   -- ${this.constructor.name}: ${originatorLabel} overrides scriptParamsSource
+        was ${this.scriptParamsSource}, now ${scriptParamsSource}`
+      );
+      this.scriptParamsSource = scriptParamsSource;
+    }
+    if (scriptParamsSource === "config") {
+      if (params) {
+        this.configuredParams = params;
+      } else if (!originatorLabel) {
+        debugger;
+        this.scriptParamsSource;
+        throw new Error(
+          `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
+        );
+      }
+    } else if (scriptParamsSource == "bundle") {
+      if (!this.precompiledScriptDetails) {
+        debugger;
+        throw new Error(
+          `${this.constructor.name}: scriptParamsSource=bundle without precompiled script details (${originatorLabel})`
+        );
+      }
+      const thisVariant = this.precompiledScriptDetails[variant];
+      if (!thisVariant) {
+        const msg = `${this.constructor.name}: no precompiled variant '${variant}' (${originatorLabel})`;
+        console.warn(
+          `${msg}
+  -- available variants: ${Object.keys(
+            this.precompiledScriptDetails
+          ).join(", ")}`
+        );
+        console.log(
+          "configured variant should be in scriptBundle's 'params'"
+        );
+        debugger;
+        throw new Error(msg);
+      }
+      this._selectedVariant = variant;
+      const preConfig = thisVariant.config;
+      preConfig.rev = BigInt(preConfig.rev || 1);
+      if (preConfig.capoMph?.bytes) {
+        preConfig.capoMph = makeMintingPolicyHash(
+          preConfig.capoMph.bytes
+        );
+      }
+      this.configuredParams = preConfig;
+    } else if (this.scriptParamsSource != "none") {
+      throw new Error(
+        `unknown scriptParamsSource: ${this.scriptParamsSource} (${originatorLabel})`
+      );
+    }
+    this._didInit = true;
+  }
+  get scriptHash() {
+    const hash = this.previousOnchainScript?.uplcProgram.hash() || this.configuredScriptDetails?.scriptHash || this.alreadyCompiledScript?.hash();
+    if (!hash) {
+      console.log("scriptHash called before program is loaded.  Call loadProgram() first (expensive!) if this is intentional");
+      const script = this.compiledScript();
+      return script.hash();
+    }
+    return hash;
+  }
+  /**
+   * deferred initialization of program details, preventing the need to
+   * load the program prior to it actually being needed
+   */
+  initProgramDetails() {
+    const { setupDetails } = this;
     const {
       deployedDetails,
       params,
@@ -2833,47 +1011,23 @@ class HeliosScriptBundle {
       setup,
       previousOnchainScript
     } = setupDetails;
-    const { config, programBundle } = deployedDetails || {};
+    const {
+      config
+      // programBundle
+    } = deployedDetails || {};
     if (previousOnchainScript) {
       this.previousOnchainScript = previousOnchainScript;
-      this.scriptHash = previousOnchainScript.uplcProgram.hash();
       return;
     }
     if (this.scriptParamsSource === "config") {
-      if (programBundle) {
-        this.configuredParams = config;
-        this.configuredUplcParams = this.paramsToUplc(config);
-        this.preCompiled = {
-          singleton: { programBundle, config }
-        };
-      } else if (params) {
-        if (this.preCompiled) {
-          const thisVariant = this.preCompiled[variant];
-          if (!thisVariant) {
-            const msg = `${this.constructor.name}: no precompiled variant '${variant}'`;
-            console.warn(
-              `${msg}
-  -- available variants: ${Object.keys(
-                this.preCompiled
-              ).join(", ")}`
-            );
-            console.log(
-              "configured variant should be in scriptBundle's 'params'"
-            );
-            throw new Error(msg);
-          }
-          this._selectedVariant = variant;
-          const preConfig = thisVariant.config;
-          preConfig.rev = BigInt(preConfig.rev);
-          if (preConfig.capoMph?.bytes) {
-            preConfig.capoMph = makeMintingPolicyHash(
-              preConfig.capoMph.bytes
-            );
-          }
-          const uplcPreConfig = this.paramsToUplc(preConfig);
+      if (params) {
+        if (this.precompiledScriptDetails) {
+          const { configuredParams } = this;
+          const uplcPreConfig = this.paramsToUplc(configuredParams);
           const {
             params: { delegateName: delegateName2, ...params2 }
           } = setupDetails;
+          this.isConcrete = true;
           const uplcRuntimeConfig = this.paramsToUplc(params2);
           let didFindProblem = "";
           for (const k of Object.keys(uplcPreConfig)) {
@@ -2889,7 +1043,7 @@ class HeliosScriptBundle {
               }
               console.warn(
                 `\u2022 ${k}:  pre-config: `,
-                preConfig[k] || (pre.rawData ?? pre),
+                configuredParams[k] || (pre.rawData ?? pre),
                 ` at runtime:`,
                 params2[k] || (runtime.rawData ?? runtime)
               );
@@ -2901,22 +1055,8 @@ class HeliosScriptBundle {
             );
           }
         }
-        this.configuredParams = setupDetails.params;
         this.configuredUplcParams = this.paramsToUplc(
           setupDetails.params
-        );
-      } else if (!setup.isPlaceholder) {
-        throw new Error(
-          `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
-        );
-      }
-    } else if (this.scriptParamsSource == "mixed") {
-      debugger;
-      const { params: params2 } = setupDetails;
-      if (this.configuredParams) {
-        debugger;
-        throw new Error(
-          `unreachable: configuredParameters used without deployedDetails? (dbpa)`
         );
       }
     } else if (this.scriptParamsSource == "bundle") {
@@ -2925,22 +1065,169 @@ class HeliosScriptBundle {
       if (this.configuredParams) {
         this.configuredUplcParams = this.getPreconfiguredUplcParams(selectedVariant);
       }
-    } else {
-      throw new Error(`unknown scriptParamsSource: ${this.scriptParamsSource}`);
-    }
-    this._didInit = true;
-  }
-  get isPrecompiled() {
-    return !!this.preCompiled;
-  }
-  getPreCompiledBundle(variant) {
-    const foundVariant = this.preCompiled?.[variant];
-    if (!foundVariant) {
+    } else if (this.scriptParamsSource != "none") {
       throw new Error(
-        `${this.constructor.name}: variant ${variant} not found in preCompiled scripts`
+        `unknown scriptParamsSource: ${this.scriptParamsSource}`
       );
     }
-    return foundVariant.programBundle;
+  }
+  // XXinitProgramDetails() {
+  //     const {setupDetails} = this;
+  //     // if (!setupDetails?.params) {
+  //     //     debugger
+  //     //     console.warn(`setupDetails/params not set (dbpa)`);
+  //     // }
+  //     const {
+  //         deployedDetails,
+  //         params,
+  //         params: { delegateName, variant = "singleton" } = {},
+  //         setup,
+  //         previousOnchainScript
+  //     } = setupDetails;
+  //     const { config,
+  //         // programBundle
+  //     } = deployedDetails || {};
+  //     if (previousOnchainScript) {
+  //         this.previousOnchainScript = previousOnchainScript;
+  //         this.scriptHash = previousOnchainScript.uplcProgram.hash();
+  //             // "string" === typeof deployedDetails?.scriptHash
+  //             //     ? hexToBytes(deployedDetails.scriptHash)
+  //             //     : deployedDetails?.scriptHash;
+  //         return;
+  //     }
+  //     if (this.scriptParamsSource === "config") {
+  //         debugger;
+  //         // WHERE TO GET THE PROGRAM BUNDLE IN THIS CASE??
+  //         //   IS IT MAYBE ALREADY COMPILED?
+  //         if (false) { //programBundle) {
+  //         //     if (!scriptHash)
+  //         //         throw new Error(
+  //         //     `${this.constructor.name}: missing deployedDetails.scriptHash`
+  //         // );
+  //             // debugger; // do we need to cross-check config <=> params ?
+  //             this.configuredParams = config;
+  //             this.configuredUplcParams = this.paramsToUplc(config);
+  //             // change to preCompiledRawProgram,
+  //             // and use async getPreCompiledProgram(variant)
+  //             //    to get either this raw program or async-imported program data
+  //             this.precompiledScriptDetails = {
+  //                 singleton: {
+  //                     // programBundle,
+  //                 config
+  //             },
+  //             };
+  //             // this.precompiledBundle = programBundle;
+  //         } else if (params) {
+  //             if (this.precompiledScriptDetails) {
+  //                 // change to async getPreCompiledProgram(variant)
+  //                 const thisVariant = this.precompiledScriptDetails[variant];
+  //                 if (!thisVariant) {
+  //                     const msg = `${this.constructor.name}: no precompiled variant '${variant}'`;
+  //                     console.warn(
+  //                         `${msg}\n  -- available variants: ${Object.keys(
+  //                             this.precompiledScriptDetails
+  //                         ).join(", ")}`
+  //                     );
+  //                     console.log(
+  //                         "configured variant should be in scriptBundle's 'params'"
+  //                     );
+  //                     throw new Error(msg);
+  //                 }
+  //                 this._selectedVariant = variant;
+  //                 debugger
+  //                 const preConfig = thisVariant.config;
+  //                 preConfig.rev = BigInt(preConfig.rev);
+  //                 if (preConfig.capoMph?.bytes) {
+  //                     preConfig.capoMph = makeMintingPolicyHash(
+  //                         preConfig.capoMph.bytes
+  //                     );
+  //                 }
+  //                 const uplcPreConfig = this.paramsToUplc(preConfig);
+  //                 // omits delegateName from the strict checks
+  //                 //  ... it's provided by the bundle, which the
+  //                 //  ... off-chain wrapper class may not have access to.
+  //                 const {
+  //                     params: { delegateName, ...params },
+  //                 } = setupDetails;
+  //                 this.isConcrete = true;
+  //                 const uplcRuntimeConfig = this.paramsToUplc(params);
+  //                 let didFindProblem: string = "";
+  //                 for (const k of Object.keys(uplcPreConfig)) {
+  //                     const runtime = uplcRuntimeConfig[k];
+  //                     // skips past any runtime setting that was not explicitly set
+  //                     if (!runtime) continue;
+  //                     const pre = uplcPreConfig[k];
+  //                     if (!runtime.isEqual(pre)) {
+  //                         if (!didFindProblem) {
+  //                             console.warn(
+  //                                 `${this.constructor.name}: config mismatch between pre-config and runtime-config`
+  //                             );
+  //                             didFindProblem = k;
+  //                         }
+  //                         console.warn(
+  //                             `• ${k}:  pre-config: `,
+  //                             preConfig[k] || (pre.rawData ?? pre),
+  //                             ` at runtime:`,
+  //                             params[k] || (runtime.rawData ?? runtime)
+  //                         );
+  //                     }
+  //                 }
+  //                 if (didFindProblem) {
+  //                     throw new Error(
+  //                         `runtime-config conflicted with pre-config (see logged details) at key ${didFindProblem}`
+  //                     );
+  //                 }
+  //             }
+  //             // moved to init
+  //             // this.configuredParams = setupDetails.params;
+  //             this.configuredUplcParams = this.paramsToUplc(
+  //                 setupDetails.params
+  //             );
+  //         } else if (!setup.isPlaceholder) {
+  //             debugger
+  //             throw new Error(
+  //                 `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
+  //             );
+  //         }
+  //     } else if (this.scriptParamsSource == "mixed") {
+  //         debugger;
+  //         const {params} = setupDetails
+  //         if (this.configuredParams) {
+  //             debugger;
+  //             throw new Error(
+  //                 `unreachable: configuredParameters used without deployedDetails? (dbpa)`
+  //             );
+  //         }
+  //     } else if (this.scriptParamsSource == "bundle") {
+  //         // the bundle has its own built-in params
+  //         // temp singleton
+  //         const selectedVariant = "singleton";
+  //         this.configuredParams =
+  //             this.getPreconfiguredVariantParams(selectedVariant);
+  //         if (this.configuredParams) {
+  //             this.configuredUplcParams =
+  //                 this.getPreconfiguredUplcParams(selectedVariant);
+  //         }
+  //     } else {
+  //         throw new Error(`unknown scriptParamsSource: ${this.scriptParamsSource}`);
+  //     }
+  // }
+  get isPrecompiled() {
+    if (this.scriptParamsSource == "bundle") {
+      return true;
+    }
+    if (!!this.configuredScriptDetails) {
+      debugger;
+      console.warn(
+        `scriptParamsSource is not 'bundle'; isPrecompiled() returns false at ${this.setupDetails.originatorLabel}`
+      );
+      return false;
+    }
+    return false;
+  }
+  // !!! deprecate or change to async? (-> loadPrecompiledVariant() -> programFromCacheEntry())
+  getPreCompiledBundle(variant) {
+    throw new Error("deprecated");
   }
   getPreconfiguredVariantParams(variantName) {
     const p = this.variants?.[variantName] || this.params;
@@ -2950,17 +1237,6 @@ class HeliosScriptBundle {
     const p = this.getPreconfiguredVariantParams(variantName);
     if (!p) return void 0;
     return this.paramsToUplc(p);
-  }
-  withSetupDetails(details) {
-    if (details.setup.isPlaceholder) {
-      debugger;
-      throw new Error(
-        `unexpected use of placeholder setup for helios script bundle (debugging breakpoint available)`
-      );
-    }
-    const created = new this.constructor(details);
-    created.init(details);
-    return created;
   }
   // these should be unnecessary if we arrange the rollup plugin
   // ... to watch the underlying helios files for changes that would affect the bundle
@@ -3067,7 +1343,9 @@ class HeliosScriptBundle {
     const unsatisfiedIncludes = new Set(includeList);
     const capoModules = this.capoBundle.modules;
     if (!capoModules) {
-      throw new Error(`${this.capoBundle.constructor.name}: no modules() list defined`);
+      throw new Error(
+        `${this.capoBundle.constructor.name}: no modules() list defined`
+      );
     }
     const capoIncludedModules = capoModules.filter((x) => {
       const mName = x.moduleName;
@@ -3140,14 +1418,17 @@ ${this.modules.map(moduleDetails).join("\n")}`
   get moduleName() {
     return this.constructor.name.replace(/Bundle/, "").replace(/Helios/, "");
   }
-  _selectedVariant;
+  /**
+   * Sets the currently-selected variant for this bundle, asserting its presence
+   * in the `variants()` list.
+   */
   withVariant(vn) {
     if (!this.variants) {
       throw new Error(
         `variants not defined for ${this.constructor.name}`
       );
     }
-    const foundVariant = this.variants[vn] ?? this.preCompiled?.[vn];
+    const foundVariant = this.variants[vn] ?? this.precompiledScriptDetails?.[vn];
     if (!foundVariant) {
       throw new Error(
         `${this.constructor.name}: variant ${vn} not found in variants()`
@@ -3175,43 +1456,60 @@ ${this.modules.map(moduleDetails).join("\n")}`
     }
     return uplcProgram;
   }
+  async loadPrecompiledVariant(variant) {
+    debugger;
+    throw new Error(
+      `${this.constructor.name}: Dysfunctional bundler bypass (loadPrecompiledVariant() not found) (dbpa)`
+    );
+  }
   compiledScript(asyncOk) {
     const {
-      configuredUplcParams: params,
       setup,
       previousOnchainScript,
-      program
+      _program: loadedProgram
     } = this;
     if (this.alreadyCompiledScript) {
       return this.alreadyCompiledScript;
     }
+    let program = loadedProgram;
+    if (!asyncOk) {
+      throw new Error(
+        `compiledScript() must be called with asyncOk=true when the script is not already loaded`
+      );
+    }
     if (this.isPrecompiled) {
-      const { singleton } = this.preCompiled;
+      const { singleton } = this.precompiledScriptDetails;
       if (singleton && !this._selectedVariant) {
         this.withVariant("singleton");
       }
-      const bundleForVariant = this.preCompiled?.[this._selectedVariant];
-      if (!bundleForVariant) {
-        throw new Error(
-          `${this.constructor.name}: variant ${this._selectedVariant} not found in preCompiled`
-        );
-      }
-      if (bundleForVariant) {
-        const p = this.alreadyCompiledScript = programFromCacheEntry(
-          bundleForVariant.programBundle
-        );
-        return p;
-      }
-    } else {
-      if (!params || !setup) {
-        debugger;
-        throw new Error(
-          `${this.constructor.name}: missing required params or setup for compiledScript() (debugging breakpoint available)`
-        );
-      }
+      const detailsForVariant = this.precompiledScriptDetails?.[this._selectedVariant];
+      return this.loadPrecompiledVariant(this._selectedVariant).then(
+        (programForVariant) => {
+          if (!detailsForVariant || !programForVariant) {
+            throw new Error(
+              `${this.constructor.name}: variant ${this._selectedVariant} not found in preCompiled`
+            );
+          }
+          const bundleForVariant = {
+            ...detailsForVariant,
+            programBundle: programForVariant
+          };
+          const p = this.alreadyCompiledScript = programFromCacheEntry(bundleForVariant.programBundle);
+          return p;
+        }
+      );
     }
+    if (!this.configuredParams || !setup) {
+      debugger;
+      throw new Error(
+        `${this.constructor.name}: missing required params or setup for compiledScript() (debugging breakpoint available)`
+      );
+    }
+    program = this.loadProgram();
+    const params = this.configuredUplcParams;
+    const maybeOptimizing = this.optimize ? "and optimizing " : "";
     console.warn(
-      `${this.constructor.name}: compiling helios script.  This could take 30s or more... `
+      `${this.constructor.name}: compiling ${maybeOptimizing}helios script.  This could take 30s or more... `
     );
     const t = (/* @__PURE__ */ new Date()).getTime();
     const rawValues = {};
@@ -3239,27 +1537,18 @@ ${this.modules.map(moduleDetails).join("\n")}`
       this.alreadyCompiledScript = uplcProgram;
       const scriptHash = bytesToHex(uplcProgram.hash());
       console.log(
-        `compiled in ${(/* @__PURE__ */ new Date()).getTime() - t}ms -> ${scriptHash}`
+        program.compileTime || `compiled: ${(/* @__PURE__ */ new Date()).getTime() - t}ms`,
+        `-> ${scriptHash}`
       );
       return uplcProgram;
     });
   }
+  // !!! deprecate or change to async? (-> loadPrecompiledVariant() -> programFromCacheEntry())
   get preBundledScript() {
-    if (!this.isPrecompiled) return void 0;
-    const { singleton } = this.preCompiled;
-    if (singleton && !this._selectedVariant) {
-      this.withVariant("singleton");
-    }
-    const bundleForVariant = this.preCompiled?.[this._selectedVariant];
-    if (!bundleForVariant) {
-      throw new Error(
-        `${this.constructor.name}: variant ${this._selectedVariant} not found in preCompiled`
-      );
-    }
-    return programFromCacheEntry(bundleForVariant.programBundle);
+    throw new Error("deprecated");
   }
   async getSerializedProgramBundle() {
-    const compiledScript = await this.compiledScript();
+    const compiledScript = await this.compiledScript(true);
     const cacheEntry = this.program.cacheEntry;
     if (!cacheEntry) throw new Error(`missing cacheEntry`);
     const serializedCacheEntry = serializeCacheEntry(cacheEntry);
@@ -3313,12 +1602,19 @@ ${this.modules.map(moduleDetails).join("\n")}`
   isDefinitelyMainnet() {
     return this.isMainnet ?? false;
   }
-  // _pct: number = 0
   get program() {
+    if (!this._program) {
+      debugger;
+      throw new Error(
+        "call loadProgram() (a one-time expense) before accessing this.program (dbpa)"
+      );
+    }
+    return this._program;
+  }
+  loadProgram() {
     if (this._program) {
       if (this.isPrecompiled != this._progIsPrecompiled || this.setup?.isMainnet !== this.isMainnet) {
-        console.warn("busting program cache");
-        this._program = void 0;
+        throw new Error("unused code path? program cache busting");
       } else {
         return this._program;
       }
@@ -3335,6 +1631,7 @@ ${this.modules.map(moduleDetails).join("\n")}`
       debugger;
     }
     try {
+      console.warn(`${this.constructor.name}: loading program`);
       const p = new HeliosProgramWithCacheAPI(this.main, {
         isTestnet,
         moduleSources,
@@ -3342,9 +1639,10 @@ ${this.modules.map(moduleDetails).join("\n")}`
         // it will fall back to the program name if this is empty
       });
       this._program = p;
+      this.initProgramDetails();
       this._progIsPrecompiled = this.isPrecompiled;
       console.log(
-        `\u{1F4E6} ${mName}: loaded & parsed ${this.isPrecompiled ? "with" : "without"} pre-compiled program: ${Date.now() - ts1}ms`
+        `\u{1F4E6} ${mName}: loaded & parsed ${this.isPrecompiled ? "w/ pre-compiled program" : "for type-gen"}: ${Date.now() - ts1}ms`
         // new Error(`stack`).stack
       );
       return p;
@@ -3367,7 +1665,7 @@ ${this.modules.map(moduleDetails).join("\n")}`
       }
       if (!e.site) {
         console.error(
-          `unexpected error while compiling helios program (or its imported module) 
+          `unexpected error while compiling helios program (or its imported module): ${mName || this.main.name}
 > ${e.message}
 (debugging breakpoint available)
 This likely indicates a problem in Helios' error reporting - 
@@ -3454,9 +1752,12 @@ ${errorInfo}`;
   effectiveDatumTypeName() {
     return this.datumTypeName || this.locateDatumType()?.name || "\u2039unknown datum-type name\u203A";
   }
+  /**
+   * @internal
+   */
   locateDatumType() {
     let datumType;
-    const program = this.program;
+    const program = this.loadProgram();
     const programName = program.name;
     const argTypes = program.entryPoint.mainArgTypes;
     const argCount = argTypes.length;
@@ -3473,6 +1774,9 @@ ${errorInfo}`;
     }
     return datumType;
   }
+  /**
+   * @internal
+   */
   locateRedeemerType() {
     const program = this.program;
     const argTypes = program.entryPoint.mainArgTypes;
@@ -3497,6 +1801,9 @@ ${errorInfo}`;
   get includeEnums() {
     return [];
   }
+  /**
+   * @internal
+   */
   getTopLevelTypes() {
     const types = {
       datum: this.locateDatumType(),
@@ -3541,6 +1848,9 @@ ${errorInfo}`;
     }
     return types;
   }
+  /**
+   * @internal
+   */
   paramsToUplc(params) {
     const namespace = this.program.name;
     const { paramTypes } = this.program;
@@ -3582,6 +1892,9 @@ ${errorInfo}`;
       }).filter((x) => !!x)
     );
   }
+  /**
+   * @internal
+   */
   typeToUplc(type, data, path = "") {
     const schema = type.toSchema();
     if (!this.setup) {
@@ -3601,5 +1914,5 @@ ${errorInfo}`;
   }
 }
 
-export { AlreadyPendingError as A, byteArrayListAsString as B, datumSummary as C, hexToPrintableString as D, betterJsonSerializer as E, abbrevAddress as F, abbreviatedDetail as G, abbreviatedDetailBytes as H, HeliosScriptBundle as I, defaultNoDefinedModuleName as J, placeholderSetupDetails as K, mkTv as L, StellarTxnContext as S, TxNotNeededError as T, mkUutValuesEntries as a, delegateLinkSerializer as b, debugMath as c, dumpAny as d, errorMapAsString as e, realMul as f, colors as g, displayTokenName as h, assetsAsString as i, txAsString as j, utxoAsString as k, utxosAsString as l, mkValuesEntry as m, txOutputAsString as n, txInputAsString as o, policyIdAsString as p, lovelaceToAda as q, realDiv as r, stringToPrintableString as s, toFixedReal as t, uplcDataSerializer as u, valueAsString as v, addrAsString as w, byteArrayAsString as x, txidAsString as y, txOutputIdAsString as z };
+export { CapoHeliosBundle as C, HeliosScriptBundle as H, mkCapoDeployment as a, mkDelegateDeployment as b, parseCapoJSONConfig as c, defaultNoDefinedModuleName as d, parseCapoMinterJSONConfig as e, mkDeployedScriptConfigs as m, placeholderSetupDetails as p };
 //# sourceMappingURL=HeliosScriptBundle.mjs.map

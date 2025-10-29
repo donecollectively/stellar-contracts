@@ -13,7 +13,7 @@ import './DefaultCapo.mjs';
 import './BasicDelegate.mjs';
 
 class DelegatedDataBundle extends CapoDelegateBundle {
-  scriptParamsSource = "bundle";
+  scriptParamsSource = "config";
   get params() {
     return {
       rev: this.rev,

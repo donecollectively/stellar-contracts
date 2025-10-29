@@ -8,12 +8,14 @@ function mkDeployedScriptConfigs(x) {
 function mkCapoDeployment({
   capo
 }) {
-  const { config, programBundle } = capo;
+  const {
+    config
+    // programBundle
+  } = capo;
   return {
     // scripts,
     capo: {
-      config: parseCapoJSONConfig(config),
-      programBundle
+      config: parseCapoJSONConfig(config)
     }
   };
 }
@@ -48,15 +50,13 @@ function parseCapoMinterJSONConfig(rawJSONConfig) {
 }
 
 class CapoHeliosBundle extends HeliosScriptBundle {
-  configuredScriptDetails;
-  static isPreconfigured = false;
-  preConfigured = { capo: void 0 };
+  preConfigured;
+  precompiledScriptDetails = { capo: void 0 };
   scriptParamsSource = "config";
   requiresGovAuthority = true;
   get hasAnyVariant() {
     if (this.preConfigured?.capo?.config) return true;
-    if (this.configuredUplcParams) return true;
-    return false;
+    throw new Error("can we live without configuredUplcParams before accessing program?");
   }
   parseCapoJSONConfig(config) {
     return parseCapoJSONConfig(config);
@@ -65,41 +65,49 @@ class CapoHeliosBundle extends HeliosScriptBundle {
     return parseCapoMinterJSONConfig(config);
   }
   init(setupDetails) {
+    const { setup } = setupDetails;
     let deployedDetails;
-    if (this.preConfigured.capo) {
-      this.configuredScriptDetails = deployedDetails = this.preConfigured.capo;
+    if (this.precompiledScriptDetails?.capo) {
+      this.configuredScriptDetails = deployedDetails = this.precompiledScriptDetails.capo;
       const {
-        config,
-        programBundle
+        config
+        // programBundle
       } = deployedDetails;
-      if (!programBundle) throw new Error(`${this.constructor.name} missing deployedDetails.programBundle`);
-      this.preCompiled = { singleton: { programBundle, config } };
+      this.configuredParams = config;
+      this._selectedVariant = "capo";
     } else if (setupDetails.deployedDetails) {
       this.configuredScriptDetails = deployedDetails = setupDetails.deployedDetails;
     } else if (!this.configuredScriptDetails) {
       console.warn(`no script details configured for ${this.constructor.name} (dbpa)`);
     }
-    const hasParams = deployedDetails?.config || setupDetails.params;
+    this._didInit = true;
+  }
+  initProgramDetails() {
+    const { configuredScriptDetails } = this;
+    const hasParams = configuredScriptDetails?.config || this.setupDetails.params;
     const uplcParams = hasParams ? this.paramsToUplc(hasParams) : void 0;
     if (hasParams) {
       this.configuredParams = hasParams;
       this.configuredUplcParams = uplcParams;
     }
-    this._didInit = true;
   }
   get isPrecompiled() {
-    return !!this.preConfigured?.capo?.programBundle;
+    const t = super.isPrecompiled;
+    const hasScriptHash = !!this.precompiledScriptDetails?.capo?.scriptHash;
+    if (t !== hasScriptHash) {
+      debugger;
+      throw new Error("surprise! this code path is used: isPrecompiled() - precompiledScriptDetails mismatch (dbpa)");
+    }
+    return t;
+  }
+  async loadPrecompiledScript() {
+    throw new Error("capo on-chain bundle is not precompiled");
+  }
+  async loadPrecompiledMinterScript() {
+    throw new Error("capo minter on-chain bundle is not precompiled");
   }
   getPreCompiledBundle(variant) {
-    if (variant !== "singleton") {
-      throw new Error(`Capo bundle: ${this.constructor.name} only singleton variant is supported`);
-    }
-    const { capo } = this.preConfigured;
-    if (!capo?.programBundle) {
-      debugger;
-      throw new Error(`Capo bundle: ${this.constructor.name} - not preConfigured or no programBundle configured (debugging breakpoint available)`);
-    }
-    return capo.programBundle;
+    throw new Error("deprecated");
   }
   get main() {
     return Capo_hl;

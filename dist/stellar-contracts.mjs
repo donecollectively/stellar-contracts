@@ -1,31 +1,30 @@
 export { e as environment } from './environment.mjs';
-import { C as ContractBasedDelegate, A as Activity, d as datum, D as DataBridge, a as ContractDataBridge, i as impliedSeedActivityMaker, b as DataBridgeReaderClass, S as StellarContract, m as mkValuesEntry, c as StellarDelegate, e as dumpAny, f as StellarTxnContext, U as UutName, g as mkUutValuesEntries, h as delegateLinkSerializer, j as errorMapAsString, u as uplcDataSerializer, T as TxNotNeededError, k as AlreadyPendingError, l as hasReqts, p as partialTxn, t as txn } from './ContractBasedDelegate2.mjs';
-export { $ as ContractDataBridgeWithEnumDatum, a0 as ContractDataBridgeWithOtherDatum, Z as SeedActivity, X as UtxoHelper, R as abbrevAddress, V as abbreviatedDetail, W as abbreviatedDetailBytes, J as addrAsString, x as assetsAsString, Q as betterJsonSerializer, K as byteArrayAsString, N as byteArrayListAsString, s as colors, O as datumSummary, n as debugMath, v as displayTokenName, _ as getSeed, P as hexToPrintableString, I as lovelaceToAda, Y as mergesInheritedReqts, F as policyIdAsString, r as realDiv, o as realMul, w as stringToPrintableString, q as toFixedReal, y as txAsString, H as txInputAsString, G as txOutputAsString, M as txOutputIdAsString, L as txidAsString, z as utxoAsString, E as utxosAsString, B as valueAsString } from './ContractBasedDelegate2.mjs';
+import { A as Activity, d as datum, D as DataBridge, C as ContractDataBridge, i as impliedSeedActivityMaker, a as DataBridgeReaderClass, S as StellarContract, m as mkValuesEntry, b as dumpAny, c as StellarTxnContext, U as UutName, e as mkUutValuesEntries, f as delegateLinkSerializer, g as errorMapAsString, u as uplcDataSerializer, T as TxNotNeededError, h as AlreadyPendingError, p as partialTxn, t as txn } from './StellarContract2.mjs';
+export { X as ContractDataBridgeWithEnumDatum, Y as ContractDataBridgeWithOtherDatum, V as SeedActivity, R as UtxoHelper, O as abbrevAddress, P as abbreviatedDetail, Q as abbreviatedDetailBytes, G as addrAsString, q as assetsAsString, N as betterJsonSerializer, H as byteArrayAsString, K as byteArrayListAsString, n as colors, L as datumSummary, j as debugMath, o as displayTokenName, W as getSeed, M as hexToPrintableString, F as lovelaceToAda, z as policyIdAsString, r as realDiv, k as realMul, s as stringToPrintableString, l as toFixedReal, v as txAsString, E as txInputAsString, B as txOutputAsString, J as txOutputIdAsString, I as txidAsString, w as utxoAsString, y as utxosAsString, x as valueAsString } from './StellarContract2.mjs';
+import { C as ContractBasedDelegate, S as StellarDelegate, h as hasReqts } from './ContractBasedDelegate2.mjs';
+export { m as mergesInheritedReqts } from './ContractBasedDelegate2.mjs';
 import { bytesToHex, decodeUtf8, encodeUtf8, equalsBytes } from '@helios-lang/codec-utils';
 export { decodeUtf8 as bytesToText, encodeUtf8 as textToBytes } from '@helios-lang/codec-utils';
 import { makeInlineTxOutputDatum, makeValue, makeAssets, makeAddress, makeTxOutput, makeDummyMintingPolicyHash, makeValidatorHash, makeTxOutputId, makeNetworkParamsHelper, decodeTx, makeTxId, decodeTxWitnesses } from '@helios-lang/ledger';
-import UnspecializedDelegateBundle from '@donecollectively/stellar-contracts/contracts/UnspecializedDelegate.hlb';
-export { UnspecializedDgtBundle } from '@donecollectively/stellar-contracts/contracts/UnspecializedDelegate.hlb';
 import { makeCast } from '@helios-lang/contract-utils';
+import { U as UnspecializedDelegate_hl } from './UnspecializedDelegate.hlb.mjs';
+export { a as UnspecializedDgtBundle } from './UnspecializedDelegate.hlb.mjs';
 import { CapoDelegateBundle } from './CapoDelegateHeliosBundle.mjs';
-import { U as UnspecializedDelegate_hl } from './UnspecializedDelegate.mjs';
-import { C as CapoHeliosBundle } from './CapoHeliosBundle2.mjs';
-export { a as mkCapoDeployment, b as mkDelegateDeployment, m as mkDeployedScriptConfigs, p as parseCapoJSONConfig, c as parseCapoMinterJSONConfig } from './CapoHeliosBundle2.mjs';
 import { makeIntData } from '@helios-lang/uplc';
 import { blake2b } from '@helios-lang/crypto';
-import CapoMinterBundle from '@donecollectively/stellar-contracts/contracts/CapoMinter.hlb';
+import { C as CapoHeliosBundle } from './CapoHeliosBundle2.mjs';
+export { a as mkCapoDeployment, b as mkDelegateDeployment, m as mkDeployedScriptConfigs, p as parseCapoJSONConfig, c as parseCapoMinterJSONConfig } from './CapoHeliosBundle2.mjs';
+import { placeholderSetupDetails } from './HeliosBundle.mjs';
+export { HeliosScriptBundle, defaultNoDefinedModuleName } from './HeliosBundle.mjs';
 import { DelegatedDataContract } from './DelegatedDataContract.mjs';
-import ReqtsConcreteBundle from '@donecollectively/stellar-contracts/contracts/Reqts.concrete.hlb';
-import '@helios-lang/compiler-utils';
-export { HeliosScriptBundle, defaultNoDefinedModuleName, placeholderSetupDetails } from './HeliosBundle.mjs';
-import './DefaultCapo.mjs';
-import './BasicDelegate.mjs';
-import './ReqtsData.mjs';
 export { DelegatedDataBundle } from './DelegatedDataBundle.mjs';
 import { EventEmitter } from 'eventemitter3';
 import { customAlphabet } from 'nanoid';
 import { makeTxChainBuilder } from '@helios-lang/tx-utils';
 import { createInteractionContext, createLedgerStateQueryClient, createTransactionSubmissionClient } from '@cardano-ogmios/client';
+import '@helios-lang/compiler-utils';
+import './DefaultCapo.mjs';
+import './BasicDelegate.mjs';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import '@helios-lang/compiler';
 
@@ -88,8 +87,9 @@ class BasicMintDelegate extends ContractBasedDelegate {
    * specialization.  TODO: a generator to make this easier.  Until then,
    * you can copy the UnspecializedDelegate.hl and specialize it.
    */
-  scriptBundle() {
-    return new UnspecializedDelegateBundle();
+  async scriptBundleClass() {
+    const bundleModule = await import('./contracts/UnspecializedDelegate.hlb.mjs');
+    return bundleModule.UnspecializedDgtBundle;
   }
   // uses the basic delegate script, plus the isMintDelegate param
   static get defaultParams() {
@@ -1177,7 +1177,7 @@ let MintingActivityHelper$1 = class MintingActivityHelper extends EnumBridge {
   * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
   *  - to get a transaction context having the seed needed for this argument, 
   *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-  * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+  * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
   *  - in a context providing an implicit seed utxo, use 
   *    the `$seeded$_placeholder1MA}` variant of this activity instead
   *
@@ -1733,7 +1733,7 @@ let MintingActivityHelperNested$1 = class MintingActivityHelperNested extends En
   * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
   *  - to get a transaction context having the seed needed for this argument, 
   *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-  * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+  * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
   *  - in a context providing an implicit seed utxo, use 
   *    the `$seeded$_placeholder1MA}` variant of this activity instead
   *
@@ -8438,15 +8438,14 @@ class UnspecializedMintDelegate extends BasicMintDelegate {
   get delegateName() {
     return "UnspecializedDelegate";
   }
-  scriptBundle() {
+  async scriptBundleClass() {
     if (process.env.NODE_ENV === "development") {
       console.warn(
         "mint+spend delegate: using unspecialized delegate bundle\n  ... this is good enough for getting started, but you'll need to\n  ... specialize this delegate to fit your application's needs. \nTo do that, you'll add mintDgt and spendDgt entries into \n  ... your Capo's delegateRoles() method, typically with\n  ... both pointing to a single specialized mint-delegate class."
       );
     }
-    return UnspecializedDelegateBundle.create({
-      setup: this.setup
-    });
+    const dgtModule = await import('./contracts/UnspecializedDelegate.hlb.mjs');
+    return dgtModule.UnspecializedDgtBundle;
   }
   activityMintingUutsAppSpecific(seedFrom, purposes) {
     const seed = this.getSeed(seedFrom);
@@ -8472,7 +8471,7 @@ __decorateClass$3([
 
 class MintSpendDelegateBundle extends CapoDelegateBundle {
   requiresGovAuthority = true;
-  scriptParamsSource = "bundle";
+  scriptParamsSource = "config";
   /**
    * returns an unspecialized module that works for basic use-cases of mint/spend delegate
    * @public
@@ -8497,7 +8496,9 @@ class MintSpendDelegateBundle extends CapoDelegateBundle {
 
 const capoConfigurationDetails = Object.freeze({
   capo: void 0,
-  isNullDeployment: true
+  //@ts-ignore - this is simply for nosy developers who may be looking under the hoold
+  isConfigPlaceholder: true
+  // in real life, this is replaced by a real deployment configuration in the stellar rollup plugin
 });
 
 class CapoMinterDataBridge extends ContractDataBridge {
@@ -8618,7 +8619,7 @@ class MinterActivityHelper extends EnumBridge {
   * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
   *  - to get a transaction context having the seed needed for this argument, 
   *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-  * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+  * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
   *  - in a context providing an implicit seed utxo, use 
   *    the `$seeded$addingMintInvariant}` variant of this activity instead
   *
@@ -8657,7 +8658,7 @@ class MinterActivityHelper extends EnumBridge {
   * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
   *  - to get a transaction context having the seed needed for this argument, 
   *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-  * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+  * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
   *  - in a context providing an implicit seed utxo, use 
   *    the `$seeded$addingSpendInvariant}` variant of this activity instead
   *
@@ -8696,7 +8697,7 @@ class MinterActivityHelper extends EnumBridge {
   * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
   *  - to get a transaction context having the seed needed for this argument, 
   *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-  * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+  * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
   *  - in a context providing an implicit seed utxo, use 
   *    the `$seeded$forcingNewMintDelegate}` variant of this activity instead
   *
@@ -8908,10 +8909,19 @@ var __decorateClass$2 = (decorators, target, key, kind) => {
 };
 class CapoMinter extends StellarContract {
   currentRev = 1n;
-  scriptBundle() {
-    return CapoMinterBundle.create({
+  async scriptBundleClass() {
+    const bundleModule = await import('./contracts/CapoMinter.hlb.mjs');
+    return bundleModule.CapoMinterBundle;
+  }
+  async mkScriptBundle(setupDetails = placeholderSetupDetails) {
+    const bundleClass = await this.scriptBundleClass();
+    return bundleClass.create({
+      ...setupDetails,
       setup: this.setup,
       params: this.configIn
+      // defaultParams: (
+      //     this.constructor as typeof CapoMinter
+      // ).defaultParams
     });
   }
   /**
@@ -9001,19 +9011,20 @@ class CapoMinter extends StellarContract {
       mintDgtVE,
       spendDgtVE
     ];
+    const script = await this.asyncCompiledScript();
     const activity = this.activity.mintingCharter(owner);
     return tcx.addScriptProgram(
-      this.compiledScript
+      script
     ).mintTokens(
       this.mintingPolicyHash,
       values,
       activity
     );
   }
-  attachScript(tcx, useRefScript = true) {
+  async attachScript(tcx, useRefScript = true) {
     return this.configIn.capo.txnAttachScriptOrRefScript(
       tcx,
-      this.compiledScript,
+      await this.asyncCompiledScript(),
       useRefScript
     );
   }
@@ -13668,6 +13679,7 @@ class Capo extends StellarContract {
   isChartered = false;
   dataBridgeClass = CapoDataBridge;
   needsCoreDelegateUpdates = false;
+  usesContractScript = true;
   get onchain() {
     return this.getOnchainBridge();
   }
@@ -13694,10 +13706,10 @@ class Capo extends StellarContract {
    * @remarks
    * This object contains named accessors for generating activity-data values for each
    * activity type defined in the contract's on-chain scripts.
-   * 
+   *
    * Most activity types on the Capo are used implicitly by the other methods on the Capo,
    * so you may seldom need to use this object directly.
-   * 
+   *
    * @example
    * ```typescript
    * const activity = capo.activity.usingAuthority;
@@ -13740,18 +13752,15 @@ class Capo extends StellarContract {
     }
     return readDatum;
   }
-  verifyConfigs() {
-    return this.verifyCoreDelegates();
-  }
-  getBundle() {
+  async getBundle() {
     return super.getBundle();
   }
-  scriptBundle() {
+  async scriptBundleClass() {
     console.warn(
-      `${this.constructor.name}: each Capo will need to provide a scriptBundle() method.
+      `${this.constructor.name}: each Capo will need to provide a scriptBundleClass() method.
 It should return an instance of a class defined in a *.hlb.ts file.  At minimum:
 
-    export default class MyAppCapo extends CapoHeliosBundle {
+    export default class MyAppCapoBundle extends CapoHeliosBundle {
        get modules() { 
            return [
                ...super.modules,
@@ -13761,7 +13770,7 @@ It should return an instance of a class defined in a *.hlb.ts file.  At minimum:
     }
 
 We'll generate types for that .js file, based on the types in your Helios sources.
-Your scriptBundle() method can \`return new MyAppCapo();\`
+It's recommended to import your bundle asyncrhonously.Your scriptBundleClass() method can \`module= await import("./MyAppCapoBundle.js"); return module.MyAppCapoBundle;\`
 
 We suggest naming your Capo bundle class with your application's name.
 `
@@ -13769,9 +13778,14 @@ We suggest naming your Capo bundle class with your application's name.
     console.warn(
       "using a generic Capo bundle - just enough for getting started."
     );
-    return CapoHeliosBundle.create({
-      setup: this.setup,
-      params: this.configIn
+    return CapoHeliosBundle;
+  }
+  async mkScriptBundle(setupDetails = placeholderSetupDetails) {
+    const c = await this.scriptBundleClass();
+    return c.create({
+      params: this.configIn,
+      ...setupDetails,
+      setup: this.setup
     });
   }
   /**
@@ -13810,35 +13824,39 @@ We suggest naming your Capo bundle class with your application's name.
       ...otherArgs,
       ...Object.keys(otherConfig).length === 0 ? {} : { config: otherConfig }
     });
-    const {
-      scriptDatumName: onChainDatumName,
-      scriptActivitiesName: onChainActivitiesName
-    } = this;
-    const { CharterData } = this.onChainDatumType.typeMembers;
     const updatingCharter = this.activity.updatingCharter;
     const usingAuthority = this.activity.usingAuthority;
-    if (!CharterData)
-      throw new Error(
-        `datum type ${onChainDatumName} must have a 'CharterData' variant`
-      );
-    if (!updatingCharter)
-      throw new Error(
-        `activities type ${onChainActivitiesName} must have a 'updatingCharter' variant`
-      );
-    if (!usingAuthority)
-      throw new Error(
-        `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
-      );
-    const bundle = this.getBundle();
+    if (!updatingCharter || !usingAuthority) {
+      await this.getBundle();
+      this._bundle.loadProgram();
+      const {
+        scriptDatumName: onChainDatumName,
+        scriptActivitiesName: onChainActivitiesName
+      } = this;
+      const { CharterData } = this.onChainDatumType.typeMembers;
+      if (!CharterData)
+        throw new Error(
+          `datum type ${onChainDatumName} must have a 'CharterData' variant`
+        );
+      if (!updatingCharter)
+        throw new Error(
+          `activities type ${onChainActivitiesName} must have a 'updatingCharter' variant`
+        );
+      if (!usingAuthority)
+        throw new Error(
+          `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
+        );
+    }
+    const bundle = await this.getBundle();
     let seedTxn = void 0;
     let {
       configuredParams,
-      preConfigured: {
+      precompiledScriptDetails: {
         minter: {
-          config: minterConfig,
-          programBundle: minterProgramBundle
-        } = {}
-      }
+          config: minterConfig
+          // programBundle: minterProgramBundle,
+        } = { config: void 0 }
+      } = {}
     } = bundle;
     if (configuredParams) {
       seedTxn = configuredParams.seedTxn;
@@ -13850,11 +13868,13 @@ We suggest naming your Capo bundle class with your application's name.
       this.configIn.seedIndex;
     }
     if (seedTxn) {
-      await this.connectMintingScript(minterConfig, minterProgramBundle);
+      await this.connectMintingScript(
+        minterConfig
+      );
     }
     this._delegateRoles = this.initDelegateRoles();
     if (seedTxn) {
-      await this.verifyConfigs();
+      await this.verifyIsChartered();
     }
     return this;
   }
@@ -14041,7 +14061,7 @@ We suggest naming your Capo bundle class with your application's name.
       const redeemer = redeemerOrRefInput;
       const tcx2 = await this.txnAttachScriptOrRefScript(
         tcx,
-        this.compiledScript
+        await this.asyncCompiledScript()
       );
       tcx2.txb._refInputs = tcx2.txb.refInputs.filter(
         (x) => !x.id.isEqual(ctUtxo.id)
@@ -14092,6 +14112,14 @@ We suggest naming your Capo bundle class with your application's name.
   //     return 1n;
   // }
   get mph() {
+    if (!this._bundle?.configuredScriptDetails && !this.minter) {
+      throw new Error(
+        "Can't get mph until either the minter or a pre-configured bundle is available"
+      );
+    }
+    if (this._bundle?.configuredScriptDetails) {
+      return this._bundle.configuredScriptDetails.config.mph;
+    }
     return this.minter.mintingPolicyHash;
   }
   get mintingPolicyHash() {
@@ -14192,24 +14220,24 @@ We suggest naming your Capo bundle class with your application's name.
    * @remarks
    * A Capo's currentSettings can be different in any deployment, but
    * any deployment can have one.  This function finds the currentSettings
-   * as found in the Capo's `charterData.manifest`, and returns it with its 
+   * as found in the Capo's `charterData.manifest`, and returns it with its
    * underlying `data` and possible application-layer `dataWrapped` object.
-   * 
-   * Provide charterData and capoUtxos to resolve the currentSettings without 
-   * extra queries.  
-   * 
+   *
+   * Provide charterData and capoUtxos to resolve the currentSettings without
+   * extra queries.
+   *
    * Define your SettingsController as a subclass of WrappedDgDataContract
    * to provide a custom data-wrapper.
-   * 
-   * If your protocol doesn't use settings, you probably aren't using 
-   * this method.  If you are writing some protocol-independent code, be sure 
-   * to use the `optional` attribute and be robust to cases of "no settings yet" 
+   *
+   * If your protocol doesn't use settings, you probably aren't using
+   * this method.  If you are writing some protocol-independent code, be sure
+   * to use the `optional` attribute and be robust to cases of "no settings yet"
    * and "the specific current protocol doesn't use settings at all".
-   * 
+   *
    * Future: we will cache charterData and UTxOs so that this function will be
-   * simpler in its interface and fast to execute without external management 
+   * simpler in its interface and fast to execute without external management
    * of `{charterData, capoUtxos}`.
-  * @public
+   * @public
    */
   async findSettingsInfo(options) {
     let { charterData, capoUtxos, optional = false } = options || {};
@@ -14239,22 +14267,21 @@ We suggest naming your Capo bundle class with your application's name.
   /**
    * @public
    */
-  async addStrellaWithConfig(TargetClass, config, programBundle, previousOnchainScript) {
+  async addStrellaWithConfig(TargetClass, config, previousOnchainScript) {
     const args = {
       config,
       setup: this.setup,
-      programBundle,
       previousOnchainScript
     };
     const strella = await TargetClass.createWith(args);
     return strella;
   }
-  async connectMintingScript(params, programBundle) {
-    if (this.minter)
-      throw new Error(`just use this.minter when it's already present`);
+  async connectMintingScript(params) {
+    if (this.minter) return this.minter;
     const { minterClass } = this;
     const { seedTxn, seedIndex } = params;
-    const { mph: expectedMph, rev } = this.getBundle().configuredParams || this.configIn || {
+    const bundle = await this.getBundle();
+    const { mph: expectedMph, rev } = await bundle.configuredParams || this.configIn || {
       mph: void 0,
       ...this.constructor.defaultParams
     };
@@ -14262,15 +14289,16 @@ We suggest naming your Capo bundle class with your application's name.
       rev,
       seedTxn,
       seedIndex,
+      mph: expectedMph,
       capo: this
     };
     const noPreviousOnchainScript = void 0;
     const minter = await this.addStrellaWithConfig(
       minterClass,
       config,
-      programBundle,
       noPreviousOnchainScript
     );
+    await minter.asyncCompiledScript();
     if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
       throw new Error(
         `This minter script with this seed-utxo doesn't produce the required  minting policy hash
@@ -14279,7 +14307,7 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
     } else if (!expectedMph) {
       console.log(`${this.constructor.name}: seeding new minting policy`);
     }
-    minter.mustHaveActivity("mintingCharter");
+    console.log("temp: skipping mintingCharter activity check");
     return this.minter = minter;
   }
   /**
@@ -14545,7 +14573,6 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
       };
       delegate = await this.mustGetDelegate(role, delegateSettings);
       if (delegate.usesContractScript) {
-        await delegate.asyncCompiledScript();
       }
     } catch (e) {
       console.log("error: unable to create delegate: ", e.stack);
@@ -14560,7 +14587,15 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
     if (!uutName) {
       throw new Error(`missing required uutName in delegateSettings`);
     }
-    const { delegateValidatorHash } = delegate;
+    const delegateValidatorHash = await (async () => {
+      if (delegate.usesContractScript) {
+        const bundle = await delegate.getBundle();
+        await bundle.compiledScript(true);
+        return makeValidatorHash(bundle.scriptHash);
+      } else {
+        return delegate.delegateValidatorHash;
+      }
+    })();
     const pcd = {
       ...delegateSettings,
       config: configForOnchainRelativeDelegateLink,
@@ -14569,6 +14604,16 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
       delegate
     };
     return pcd;
+  }
+  /**
+   * loads the pre-compiled minter script from the pre-compiled bundle
+   */
+  /** note, here in this file we show only a stub.  The heliosRollupBundler
+   * actually writes a real implementation that does a JIT import of the 
+   * precompiled bundle 
+   */
+  async loadPrecompiledMinterScript() {
+    throw new Error(`loading the minter script requires a pre-bundled Capo`);
   }
   mkImpliedDelegationDetails(uut) {
     return {
@@ -14660,6 +14705,9 @@ link details: ${this.showDelegateLink(delegateLink)}`
       // reqdAddress,
       // addrHint,
     });
+    if (delegate.usesContractScript) {
+      await delegate.asyncCompiledScript();
+    }
     const previousOnchainScript = await (async () => {
       if (!onchainValidatorHash) return void 0;
       let needsUpgrade = false;
@@ -14738,7 +14786,6 @@ link details: ${this.showDelegateLink(delegateLink)}`
         const configured = await this.addStrellaWithConfig(
           delegateClass,
           config,
-          void 0,
           previousOnchainScript
         );
         return configured;
@@ -14858,6 +14905,17 @@ link details: ${this.showDelegateLink(delegateLink)}`
     });
     return myRoles;
   }
+  async verifyIsChartered() {
+    const maybeFound = await this.findCharterData(void 0, {
+      optional: true
+    });
+    if (!maybeFound) {
+      console.warn(`Capo is not yet chartered`);
+      return void 0;
+    }
+    this.isChartered = true;
+    return maybeFound;
+  }
   /**
    * Performs a validation of all critical delegate connections
    * @remarks
@@ -14882,20 +14940,11 @@ link details: ${this.showDelegateLink(delegateLink)}`
       );
     }
     await this.asyncCompiledScript();
-    let charter;
-    {
-      const maybeFound = await this.findCharterData(void 0, {
-        optional: true
-      });
-      if (!maybeFound) {
-        console.warn(
-          `Capo is not yet bootstrapped; skipping delegate verification`
-        );
-        return;
-      }
-      charter = maybeFound;
+    let charter = await this.verifyIsChartered();
+    if (!charter) {
+      console.warn(`Skipping delegate verification for unchartered Capo`);
+      return;
     }
-    this.isChartered = true;
     const { govAuthorityLink, mintDelegateLink, spendDelegateLink } = charter;
     return Promise.all([
       this.connectDelegateWithOnchainRDLink("mintDelegate", mintDelegateLink),
@@ -14994,7 +15043,9 @@ link details: ${this.showDelegateLink(delegateLink)}`
       throw new Error(
         `${this.constructor.name}.charter.manifest: unknown record type '${recordTypeName}' (debugging breakpoint available)
 Delegated-data-types registered in the manifest: 
- ${Array.from(chD.manifest.entries()).map(
+ ${Array.from(
+          chD.manifest.entries()
+        ).map(
           // bullet-point: •
           ([k, v]) => v.entryType.DgDataPolicy ? `  \u2022 ${k}
 ` : void 0
@@ -15107,9 +15158,8 @@ Delegated-data-types registered in the manifest:
     await minter.asyncCompiledScript();
     const { mintingPolicyHash: mph } = minter;
     if (!didHaveDryRun) {
-      const csp = this.partialConfig;
       const capoParams = {
-        ...csp,
+        ...this.partialConfig,
         mph,
         seedTxn,
         seedIndex
@@ -15117,10 +15167,8 @@ Delegated-data-types registered in the manifest:
       const params = capoParams;
       this.configIn = capoParams;
       await this.prepareBundleWithScriptParams(params);
-      await this.asyncCompiledScript();
-      capoParams.rootCapoScriptHash = makeValidatorHash(
-        this.compiledScript.hash()
-      );
+      const script = await this.asyncCompiledScript();
+      capoParams.rootCapoScriptHash = makeValidatorHash(script.hash());
       this.configIn = capoParams;
     }
     tcxWithSeed.state.bsc = this.configIn;
@@ -15201,6 +15249,9 @@ Delegated-data-types registered in the manifest:
     charterOut.correctLovelace(this.networkParams);
     tcx2.addOutput(charterOut);
     tcx2.state.charterData = charterData;
+    const minterScript = await minter.asyncCompiledScript();
+    const capoScript = await this.asyncCompiledScript();
+    const mintDgtScript = await mintDelegate.delegate.asyncCompiledScript();
     const tcxWithCharterMint = await this.minter.txnMintingCharter(tcx2, {
       owner: this.address,
       capoGov: uuts.capoGov,
@@ -15209,26 +15260,26 @@ Delegated-data-types registered in the manifest:
       spendDelegate: uuts.spendDelegate
       // settingsUut: uuts.set,
     });
-    await this.txnMkAddlRefScriptTxn(
+    const tcx3a = await this.txnMkAddlRefScriptTxn(
       tcxWithCharterMint,
       "mintDelegate",
-      mintDelegate.delegate.compiledScript
+      mintDgtScript
     );
-    await this.txnMkAddlRefScriptTxn(
-      tcxWithCharterMint,
+    const tcx3b = await this.txnMkAddlRefScriptTxn(
+      tcx3a,
       "capo",
-      this.compiledScript
+      capoScript
     );
-    const tcx4c = await this.txnMkAddlRefScriptTxn(
-      tcxWithCharterMint,
+    const tcx3 = await this.txnMkAddlRefScriptTxn(
+      tcx3b,
       "minter",
-      minter.compiledScript
+      minterScript
     );
     console.log(
       " --------------------- CHARTER MINT ---------------------\n"
       // txAsString(tcx4.tx, this.networkParams)
     );
-    return tcx4c;
+    return tcx3;
   }
   async mkTxnUpgradeIfNeeded(charterData) {
     const tcx = this.mkTcx("upgrade if needed").facade();
@@ -15251,7 +15302,9 @@ Delegated-data-types registered in the manifest:
           optional: false
         });
         if (this.autoSetup) {
-          console.log("\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}");
+          console.log(
+            "\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}\u{1F69C}"
+          );
           console.log(
             "autoSetup: checking delegate roles for policies needing creation or update:\n" + Object.keys(this.delegateRoles).map((k) => `- ${k}`).join("\n")
           );
@@ -15266,32 +15319,42 @@ Delegated-data-types registered in the manifest:
               uutPurpose
             } = ds;
             if (!delegateClass.isDgDataPolicy) {
-              console.warn(`${delegateClass.name} is not a dgDataPolicy`);
+              console.warn(
+                `${delegateClass.name} is not a dgDataPolicy`
+              );
               continue;
             }
             const dgDataControllerClass = delegateClass;
-            const delegate = await dgDataControllerClass.createWith(
+            const delegate = await this.addStrellaWithConfig(
+              dgDataControllerClass,
               {
-                setup: this.setup,
-                partialConfig: {
-                  capo: this
-                }
+                ...config,
+                ...this.constructor.defaultParams,
+                capo: this
               }
             );
             if (delegate.recordTypeName !== policyAndTypeName) {
               debugger;
-              throw new Error(`${this.constructor.name}:  delegateRoles.${policyAndTypeName} references class ${dgDataControllerClass.name},
+              throw new Error(
+                `${this.constructor.name}:  delegateRoles.${policyAndTypeName} references class ${dgDataControllerClass.name},
 whose \`get recordTypeName()\` is '${delegate.recordTypeName}'.
-These should match; use the recordTypeName in the delegateRoles map!`);
+These should match; use the recordTypeName in the delegateRoles map!`
+              );
             }
-            await delegate.setupCapoPolicy(tcx3, policyAndTypeName, {
-              charterData: charterData2,
-              capoUtxos: capoUtxos2
-            });
+            await delegate.setupCapoPolicy(
+              tcx3,
+              policyAndTypeName,
+              {
+                charterData: charterData2,
+                capoUtxos: capoUtxos2
+              }
+            );
           }
         }
         this.commitPendingChangesIfNeeded(tcx3);
-        console.log("\u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} end autoSetup \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C}");
+        console.log(
+          "\u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} end autoSetup \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C} \u{1F69C}"
+        );
         console.log("\u{1F69C} Next: addlTxns... \u{1F69C} \u{1F69C} ");
         await this.mkAdditionalTxnsForCharter(tcx3, {
           charterData: charterData2,
@@ -15357,7 +15420,9 @@ These should match; use the recordTypeName in the delegateRoles map!`);
             charterData
           })
         });
-        console.warn("---- vvv   this redundant commitPendingChangesIfNeeded becomes applicable when multiple policies can be queued and installed at once");
+        console.warn(
+          "---- vvv   this redundant commitPendingChangesIfNeeded becomes applicable when multiple policies can be queued and installed at once"
+        );
         this.commitPendingChangesIfNeeded(tcx);
       }
       if (!charterData.manifest.get("currentSettings")) {
@@ -15534,7 +15599,7 @@ These should match; use the recordTypeName in the delegateRoles map!`);
     return tcx.addOutput(txo);
   }
   async txnAttachScriptOrRefScript(tcx, program = void 0, useRefScript = true) {
-    const program2 = program || this._compiledScript || await this.asyncCompiledScript();
+    const program2 = program || await this.asyncCompiledScript();
     let expectedVh = program2.hash();
     const capoUtxos = await this.findCapoUtxos();
     const matchingScriptRef = await this.findRefScriptUtxo(
@@ -15966,10 +16031,11 @@ ADDING SCRIPT DIRECTLY TO TXN!`
     const DelegateName = delegateName[0].toUpperCase() + delegateName.slice(1);
     const bigDelegateName = `namedDelegate${DelegateName}`;
     tcx4.state[bigDelegateName] = newNamedDelegate;
+    const dgtScript = await newNamedDelegate.delegate.asyncCompiledScript();
     const tcx5 = await this.txnMkAddlRefScriptTxn(
       tcx4,
       bigDelegateName,
-      newNamedDelegate.delegate.compiledScript
+      dgtScript
     );
     return tcx5;
   }
@@ -15988,16 +16054,16 @@ ADDING SCRIPT DIRECTLY TO TXN!`
   /**
    * Helper for installing a named policy delegate
    * @remarks
-   * 
+   *
    * Creates a transaction for adding a delegate-data-policy to the Capo, using the same logic as mkTxnInstallingPolicyDelegate.
-   * 
+   *
    * In addition, it also commits the pending changes to the Capo's charter.
-   * 
-   * Use mkTxnInstallingPolicyDelegate to queue a pending change without committing it (useful 
+   *
+   * Use mkTxnInstallingPolicyDelegate to queue a pending change without committing it (useful
    * for tests, or when multiple policies can be queued and installed at once).
-   * 
+   *
    * Note that deploying multiple policies at once is currently disabled, to help prevent resource-exhaustion attacks.
-   * 
+   *
    * @public
    */
   async mkTxnInstallPolicyDelegate(options) {
@@ -16130,7 +16196,8 @@ ADDING SCRIPT DIRECTLY TO TXN!`
           `Cannot replace a policy that doesn't exist: ${typeName} (use Add activity)`
         );
       }
-      const previousCompiledScript = existingDelegate.getBundle().previousCompiledScript();
+      const existingDgtBundle = await existingDelegate.getBundle();
+      const previousCompiledScript = existingDgtBundle.previousCompiledScript();
       if (!previousCompiledScript) {
         if (existingDvh) {
           throw new TxNotNeededError(
@@ -16153,7 +16220,8 @@ ADDING SCRIPT DIRECTLY TO TXN!`
    ... offchain: ${previousDvh}`
           );
         }
-        const nextScript = existingDelegate.getBundle().compiledScript();
+        await existingDelegate.getBundle();
+        const nextScript = await existingDelegate.asyncCompiledScript();
         const nextDvh = makeValidatorHash(nextScript.hash());
         if (nextDvh.isEqual(existingDvh)) {
           console.warn(
@@ -16208,11 +16276,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       }
     );
     const delegateLink = this.mkOnchainRelativeDelegateLink(
-      await this.txnCreateOffchainDelegateLink(
-        tcx2,
-        typeName,
-        dgtOptions
-      )
+      await this.txnCreateOffchainDelegateLink(tcx2, typeName, dgtOptions)
     );
     const pendingChange = {
       delegateChange: {
@@ -16257,17 +16321,18 @@ ADDING SCRIPT DIRECTLY TO TXN!`
     );
     const stateKey = mkDgtStateKey(typeName);
     const tcx5 = tcx4;
+    const newDgtScript = await tempDataPolicyLink.delegate.asyncCompiledScript();
     const tcx6 = await this.txnMkAddlRefScriptTxn(
       tcx5,
       stateKey,
-      tempDataPolicyLink.delegate.compiledScript
+      newDgtScript
     );
     return tcx6;
   }
   /**
    * Looks up a policy in the manifest, returning the policy name and the manifest entry if found.
    * @remarks
-   * Returns a pair of [ policyName, manifestEntry ] if found.  Returns undefined if the policy is not found.  
+   * Returns a pair of [ policyName, manifestEntry ] if found.  Returns undefined if the policy is not found.
    * @public
    */
   hasPolicyInManifest(policyName, charterData) {
@@ -18186,7 +18251,7 @@ class MintingActivityHelper extends EnumBridge {
   * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
   *  - to get a transaction context having the seed needed for this argument, 
   *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-  * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+  * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
   *  - in a context providing an implicit seed utxo, use 
   *    the `$seeded$CreatingRecord}` variant of this activity instead
   *
@@ -18742,7 +18807,7 @@ class MintingActivityHelperNested extends EnumBridge {
   * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
   *  - to get a transaction context having the seed needed for this argument, 
   *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-  * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+  * - or see Stellar Contracts' `hasSeed` type for other ways to feed it with a TxOutputId.
   *  - in a context providing an implicit seed utxo, use 
   *    the `$seeded$CreatingRecord}` variant of this activity instead
   *
@@ -25685,8 +25750,9 @@ class ReqtsController extends DelegatedDataContract {
   // mkDatumAdapter(): DelegatedDatumAdapter<any> {
   //     return new ReqtsAdapter(this);
   // }
-  scriptBundle() {
-    return ReqtsConcreteBundle.create();
+  async scriptBundleClass() {
+    const bundleModule = await import('./contracts/Reqts.concrete.hlb.mjs');
+    return bundleModule.ReqtsConcreteBundle;
   }
   activityCreatingReqt(seedFrom) {
     const seed = this.getSeed(seedFrom);
@@ -28149,5 +28215,5 @@ class DraftEternlMultiSigner extends GenericSigner {
   }
 }
 
-export { Activity, AlreadyPendingError, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, BatchSubmitController, Capo, CapoDelegateBundle, CapoHeliosBundle, CapoMinter, CapoWithoutSettings, ContractBasedDelegate, ContractDataBridge, DataBridge, DataBridgeReaderClass, DelegateConfigNeeded, DelegatedDataContract, DraftEternlMultiSigner, EnumBridge, GenericSigner, JustAnEnum, MintSpendDelegateBundle, Nested, NotNested, OgmiosTxSubmitter, StellarContract, StellarDelegate, StellarTxnContext, TxBatcher, TxNotNeededError, TxSubmissionTracker, TxSubmitMgr, UnspecializedDelegateBridge, UnspecializedDelegate_hl as UnspecializedDelegateScript, UnspecializedMintDelegate, UutName, WalletSigningStrategy, WrappedDgDataContract, capoConfigurationDetails, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, impliedSeedActivityMaker, isDatum, makeOgmiosConnection, mkCancellablePromise, mkDgtStateKey, mkUutValuesEntries, mkValuesEntry, partialTxn, txn, uplcDataSerializer };
+export { Activity, AlreadyPendingError, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, BatchSubmitController, Capo, CapoDelegateBundle, CapoHeliosBundle, CapoMinter, CapoWithoutSettings, ContractBasedDelegate, ContractDataBridge, DataBridge, DataBridgeReaderClass, DelegateConfigNeeded, DelegatedDataContract, DraftEternlMultiSigner, EnumBridge, GenericSigner, JustAnEnum, MintSpendDelegateBundle, Nested, NotNested, OgmiosTxSubmitter, StellarContract, StellarDelegate, StellarTxnContext, TxBatcher, TxNotNeededError, TxSubmissionTracker, TxSubmitMgr, UnspecializedDelegateBridge, UnspecializedDelegate_hl as UnspecializedDelegateScript, UnspecializedMintDelegate, UutName, WalletSigningStrategy, WrappedDgDataContract, capoConfigurationDetails, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, impliedSeedActivityMaker, isDatum, makeOgmiosConnection, mkCancellablePromise, mkDgtStateKey, mkUutValuesEntries, mkValuesEntry, partialTxn, placeholderSetupDetails, txn, uplcDataSerializer };
 //# sourceMappingURL=stellar-contracts.mjs.map

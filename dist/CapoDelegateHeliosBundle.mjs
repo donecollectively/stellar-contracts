@@ -23,14 +23,14 @@ class CapoDelegateBundle extends HeliosScriptBundle {
   /**
    * Creates a CapoDelegateBundle subclass based on a specific CapoHeliosBundle class
    */
-  static usingCapoBundleClass(c) {
+  static usingCapoBundleClass(c, generic = false) {
     const cb = new c(placeholderSetupDetails);
     const newClass = class aCapoBoundBundle extends this {
       capoBundle = cb;
       constructor(setupDetails = placeholderSetupDetails) {
         super(setupDetails);
       }
-      isConcrete = true;
+      isConcrete = !!!generic;
     };
     return newClass;
   }

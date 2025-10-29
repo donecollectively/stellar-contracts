@@ -42,7 +42,11 @@ async function addTestContext(context, TestHelperClass, stConfig, helperState) {
 }
 const ADA = 1000000n;
 
-let p = process || {}, argv = p.argv || [], env = p.env || {};
+let p = typeof process == "undefined" ? {
+  platform: "browser",
+  argv: [],
+  env: {}
+} : process, argv = p.argv, env = p.env;
 let isColorSupported = !(!!env.NO_COLOR || argv.includes("--no-color")) && (!!env.FORCE_COLOR || argv.includes("--color") || p.platform === "win32" || true);
 let formatter = (open, close, replace = open) => {
   const f = (input) => {
@@ -1644,7 +1648,7 @@ class DefaultCapoTestHelper extends CapoTestHelper {
     const tcx = this.mkTcx();
     const tcx2 = await treasury.txnAttachScriptOrRefScript(
       await treasury.txnAddGovAuthority(tcx),
-      treasury.compiledScript
+      await treasury.asyncCompiledScript()
     );
     return treasury.txnMustUseCharterUtxo(
       tcx2,

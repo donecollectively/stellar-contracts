@@ -5,31 +5,160 @@
 ```ts
 
 import { Address } from '@helios-lang/ledger';
+import type { AnyData } from './CapoHeliosBundle.typeInfo.js';
+import type { AnyData as AnyData_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { AnyData as AnyData_3 } from './Reqts.concrete.typeInfo.js';
+import type { AnyDataLike } from './CapoHeliosBundle.typeInfo.js';
+import type { AnyDataLike as AnyDataLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { AnyDataLike as AnyDataLike_3 } from './Reqts.concrete.typeInfo.js';
 import { anyState as anyState_2 } from './StellarTxnContext.js';
 import { AssetClass } from '@helios-lang/ledger';
 import { Assets } from '@helios-lang/ledger';
 import { BasicMintDelegate as BasicMintDelegate_2 } from './minting/BasicMintDelegate.js';
 import { BatchSubmitController as BatchSubmitController_2 } from './networkClients/BatchSubmitController.js';
+import type { BurningActivityLike } from './UnspecializedDelegate.typeInfo.js';
+import type { BurningActivityLike as BurningActivityLike_2 } from './Reqts.concrete.typeInfo.js';
 import { ByteArrayData } from '@helios-lang/uplc';
 import { BytesLike } from '@helios-lang/codec-utils';
 import { decodeUtf8 as bytesToText } from '@helios-lang/codec-utils';
+import type { CapoActivity } from './CapoHeliosBundle.typeInfo.js';
 import { CapoConfig as CapoConfig_2 } from '../../CapoTypes.js';
+import type { CapoCtx } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoCtx as CapoCtx_2 } from './Reqts.concrete.typeInfo.js';
+import type { CapoCtxLike } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoCtxLike as CapoCtxLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { CapoDatum$CharterDataLike } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoDatum$CharterDataLike as CapoDatum$CharterDataLike_2 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { CapoDatum$CharterDataLike as CapoDatum$CharterDataLike_3 } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoDatum$CharterDataLike as CapoDatum$CharterDataLike_4 } from './Reqts.concrete.typeInfo.js';
+import type { CapoDatum$DelegatedDataLike } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoDatum$Ergo$CharterData } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoDatum$Ergo$CharterData as CapoDatum$Ergo$CharterData_2 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { CapoDatum$Ergo$DelegatedData } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoDatum as CapoDatum_2 } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoLifecycleActivity$CreatingDelegateLike } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoLifecycleActivity$CreatingDelegateLike as CapoLifecycleActivity$CreatingDelegateLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoLifecycleActivity$CreatingDelegateLike as CapoLifecycleActivity$CreatingDelegateLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { CapoLifecycleActivity$forcingNewMintDelegateLike } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoLifecycleActivity$forcingNewMintDelegateLike as CapoLifecycleActivity$forcingNewMintDelegateLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoLifecycleActivity$forcingNewMintDelegateLike as CapoLifecycleActivity$forcingNewMintDelegateLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { CapoLifecycleActivity$forcingNewSpendDelegateLike } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoLifecycleActivity$forcingNewSpendDelegateLike as CapoLifecycleActivity$forcingNewSpendDelegateLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoLifecycleActivity$forcingNewSpendDelegateLike as CapoLifecycleActivity$forcingNewSpendDelegateLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { CapoLifecycleActivity } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoLifecycleActivity as CapoLifecycleActivity_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoLifecycleActivity as CapoLifecycleActivity_3 } from './Reqts.concrete.typeInfo.js';
+import type { CapoLifecycleActivityLike } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoLifecycleActivityLike as CapoLifecycleActivityLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoLifecycleActivityLike as CapoLifecycleActivityLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { CapoManifestEntry } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoManifestEntry as CapoManifestEntry_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoManifestEntry as CapoManifestEntry_3 } from './Reqts.concrete.typeInfo.js';
+import type { CapoManifestEntryLike } from './CapoHeliosBundle.typeInfo.js';
+import type { CapoManifestEntryLike as CapoManifestEntryLike_2 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { CapoManifestEntryLike as CapoManifestEntryLike_3 } from './UnspecializedDelegate.typeInfo.js';
+import type { CapoManifestEntryLike as CapoManifestEntryLike_4 } from './Reqts.concrete.typeInfo.js';
+import { CapoMinterBundle } from './CapoMinter.hlb.js';
 import { CardanoClient } from '@helios-lang/tx-utils';
 import type { CardanoTxSubmitter } from '@helios-lang/tx-utils';
 import { Cast } from '@helios-lang/contract-utils';
+import type { cctx_CharterInputType$InputLike } from './UnspecializedDelegate.typeInfo.js';
+import type { cctx_CharterInputType$InputLike as cctx_CharterInputType$InputLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { cctx_CharterInputType$RefInputLike } from './UnspecializedDelegate.typeInfo.js';
+import type { cctx_CharterInputType$RefInputLike as cctx_CharterInputType$RefInputLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { cctx_CharterInputType } from './UnspecializedDelegate.typeInfo.js';
+import type { cctx_CharterInputType as cctx_CharterInputType_2 } from './Reqts.concrete.typeInfo.js';
+import type { cctx_CharterInputTypeLike } from './UnspecializedDelegate.typeInfo.js';
+import type { cctx_CharterInputTypeLike as cctx_CharterInputTypeLike_2 } from './Reqts.concrete.typeInfo.js';
 import { CompileOptions } from '@helios-lang/compiler';
-import { ConcreteCapoDelegateBundle as ConcreteCapoDelegateBundle_2 } from '../helios/scriptBundling/CapoDelegateBundle.js';
+import { ConcreteCapoDelegateBundle as ConcreteCapoDelegateBundle_2 } from '../..';
 import { ConnectionConfig } from '@cardano-ogmios/client';
 import { ContractBasedDelegate as ContractBasedDelegate_2 } from './delegation/ContractBasedDelegate.js';
 import type { Cost } from '@helios-lang/uplc';
 import type { DataType } from '@helios-lang/compiler';
 import { DeferredState as DeferredState_2 } from '../StateMachine.js';
+import type { DelegateActivity$CreatingDelegatedDataLike } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateActivity$CreatingDelegatedDataLike as DelegateActivity$CreatingDelegatedDataLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateActivity$DeletingDelegatedDataLike } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateActivity$DeletingDelegatedDataLike as DelegateActivity$DeletingDelegatedDataLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateActivity$UpdatingDelegatedDataLike } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateActivity$UpdatingDelegatedDataLike as DelegateActivity$UpdatingDelegatedDataLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateActivity } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateActivity as DelegateActivity_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateDatum$capoStoredDataLike } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateDatum$capoStoredDataLike as DelegateDatum$capoStoredDataLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateDatum$Cip68RefTokenLike } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateDatum$Cip68RefTokenLike as DelegateDatum$Cip68RefTokenLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateDatum$Ergo$capoStoredData } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateDatum$Ergo$capoStoredData as DelegateDatum$Ergo$capoStoredData_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateDatum$Ergo$Cip68RefToken } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateDatum$Ergo$Cip68RefToken as DelegateDatum$Ergo$Cip68RefToken_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateDatum } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateDatum as DelegateDatum_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateLifecycleActivity$ReplacingMeLike } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateLifecycleActivity$ReplacingMeLike as DelegateLifecycleActivity$ReplacingMeLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateLifecycleActivity } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateLifecycleActivity as DelegateLifecycleActivity_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateLifecycleActivityLike } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateLifecycleActivityLike as DelegateLifecycleActivityLike_2 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateRole } from './CapoHeliosBundle.typeInfo.js';
+import type { DelegateRole as DelegateRole_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateRole as DelegateRole_3 } from './Reqts.concrete.typeInfo.js';
+import type { DelegateRoleLike } from './CapoHeliosBundle.typeInfo.js';
+import type { DelegateRoleLike as DelegateRoleLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegateRoleLike as DelegateRoleLike_3 } from './Reqts.concrete.typeInfo.js';
 import { DelegateSetup as DelegateSetup_2 } from './delegation/RolesAndDelegates.js';
-import { DeployedProgramBundle as DeployedProgramBundle_2 } from '../CachedHeliosProgram.js';
+import type { DelegationDetail as DelegationDetail_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegationDetail as DelegationDetail_3 } from './Reqts.concrete.typeInfo.js';
+import type { DelegationDetailLike } from './UnspecializedDelegate.typeInfo.js';
+import type { DelegationDetailLike as DelegationDetailLike_2 } from './Reqts.concrete.typeInfo.js';
 import { Emulator } from '@helios-lang/tx-utils';
 import type { EnumMemberType } from '@helios-lang/compiler';
-import { ErgoCapoManifestEntry as ErgoCapoManifestEntry_2 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
-import { ErgoPendingDelegateChange as ErgoPendingDelegateChange_3 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { ErgoBurningActivity } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoBurningActivity as ErgoBurningActivity_2 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoCapoActivity } from './CapoHeliosBundle.typeInfo.js';
+import type { ErgoCapoDatum } from './CapoHeliosBundle.typeInfo.js';
+import type { ErgoCapoDatum as ErgoCapoDatum_2 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { ErgoCapoLifecycleActivity } from './CapoHeliosBundle.typeInfo.js';
+import type { ErgoCapoLifecycleActivity as ErgoCapoLifecycleActivity_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoCapoLifecycleActivity as ErgoCapoLifecycleActivity_3 } from './Reqts.concrete.typeInfo.js';
+import { ErgoCapoManifestEntry } from '../scriptBundling/CapoHeliosBundle.typeInfo.js';
+import { ErgoCapoManifestEntry as ErgoCapoManifestEntry_2 } from '../index.js';
+import type { Ergocctx_CharterInputType } from './UnspecializedDelegate.typeInfo.js';
+import type { Ergocctx_CharterInputType as Ergocctx_CharterInputType_2 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoDelegateActivity } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoDelegateActivity as ErgoDelegateActivity_2 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoDelegateDatum } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoDelegateDatum as ErgoDelegateDatum_2 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoDelegateLifecycleActivity } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoDelegateLifecycleActivity as ErgoDelegateLifecycleActivity_2 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoDelegateRole } from './CapoHeliosBundle.typeInfo.js';
+import type { ErgoDelegateRole as ErgoDelegateRole_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoDelegateRole as ErgoDelegateRole_3 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoDelegationDetail } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoDelegationDetail as ErgoDelegationDetail_2 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoManifestActivity } from './CapoHeliosBundle.typeInfo.js';
+import type { ErgoManifestActivity as ErgoManifestActivity_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoManifestActivity as ErgoManifestActivity_3 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoManifestEntryType } from './CapoHeliosBundle.typeInfo.js';
+import type { ErgoManifestEntryType as ErgoManifestEntryType_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoManifestEntryType as ErgoManifestEntryType_3 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoMinterActivity } from './CapoMinter.typeInfo.js';
+import type { ErgoMintingActivity } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoMintingActivity as ErgoMintingActivity_2 } from './Reqts.concrete.typeInfo.js';
+import { ErgoPendingCharterChange } from '../scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { ErgoPendingCharterChange as ErgoPendingCharterChange_2 } from './CapoHeliosBundle.typeInfo.js';
+import type { ErgoPendingCharterChange as ErgoPendingCharterChange_3 } from './delegation/UnspecializedDelegate.typeInfo.js';
+import type { ErgoPendingCharterChange as ErgoPendingCharterChange_4 } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoPendingCharterChange as ErgoPendingCharterChange_5 } from './Reqts.concrete.typeInfo.js';
+import type { ErgoPendingDelegateAction } from './CapoHeliosBundle.typeInfo.js';
+import type { ErgoPendingDelegateAction as ErgoPendingDelegateAction_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoPendingDelegateAction as ErgoPendingDelegateAction_3 } from './Reqts.concrete.typeInfo.js';
+import { ErgoPendingDelegateChange } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { ErgoRelativeDelegateLink } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { ErgoReqtData } from './Reqts.concrete.typeInfo.d.ts';
+import type { ErgoSpendingActivity } from './UnspecializedDelegate.typeInfo.js';
+import type { ErgoSpendingActivity as ErgoSpendingActivity_2 } from './Reqts.concrete.typeInfo.js';
 import { EventEmitter } from 'eventemitter3';
 import { HeliosProgramWithCacheAPI } from '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import { HeliosProgramWithCacheAPI as HeliosProgramWithCacheAPI_2 } from '../dist/HeliosProgramWithCacheAPI.js';
@@ -37,25 +166,102 @@ import { InlineTxOutputDatum } from '@helios-lang/ledger';
 import { InteractionContext } from '@cardano-ogmios/client';
 import type { IntLike } from '@helios-lang/codec-utils';
 import { isActivity as isActivity_2 } from '../ActivityTypes.js';
-import { LedgerStateQueryClient } from '@cardano-ogmios/client/dist/LedgerStateQuery/Client.js';
+import { LedgerStateQueryClient } from '@cardano-ogmios/client/dist/LedgerStateQuery';
+import type { ManifestActivity$addingEntryLike } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestActivity$addingEntryLike as ManifestActivity$addingEntryLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestActivity$addingEntryLike as ManifestActivity$addingEntryLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { ManifestActivity$burningThreadTokenLike } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestActivity$burningThreadTokenLike as ManifestActivity$burningThreadTokenLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestActivity$burningThreadTokenLike as ManifestActivity$burningThreadTokenLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { ManifestActivity$forkingThreadTokenLike } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestActivity$forkingThreadTokenLike as ManifestActivity$forkingThreadTokenLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestActivity$forkingThreadTokenLike as ManifestActivity$forkingThreadTokenLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { ManifestActivity$updatingEntryLike } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestActivity$updatingEntryLike as ManifestActivity$updatingEntryLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestActivity$updatingEntryLike as ManifestActivity$updatingEntryLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { ManifestActivity } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestActivity as ManifestActivity_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestActivity as ManifestActivity_3 } from './Reqts.concrete.typeInfo.js';
+import type { ManifestActivityLike } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestActivityLike as ManifestActivityLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestActivityLike as ManifestActivityLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { ManifestEntryType$DelegateThreadsLike } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestEntryType$DelegateThreadsLike as ManifestEntryType$DelegateThreadsLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestEntryType$DelegateThreadsLike as ManifestEntryType$DelegateThreadsLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { ManifestEntryType$DgDataPolicyLike } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestEntryType$DgDataPolicyLike as ManifestEntryType$DgDataPolicyLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestEntryType$DgDataPolicyLike as ManifestEntryType$DgDataPolicyLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { ManifestEntryType } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestEntryType as ManifestEntryType_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestEntryType as ManifestEntryType_3 } from './Reqts.concrete.typeInfo.js';
+import type { ManifestEntryTypeLike } from './CapoHeliosBundle.typeInfo.js';
+import type { ManifestEntryTypeLike as ManifestEntryTypeLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { ManifestEntryTypeLike as ManifestEntryTypeLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { minimalReqtData } from './Reqts.concrete.typeInfo.d.ts';
+import type { MinterActivity$CreatingNewSpendDelegateLike } from './CapoMinter.typeInfo.js';
+import type { MinterActivity } from './CapoMinter.typeInfo.js';
+import type { MintingActivityLike } from './UnspecializedDelegate.typeInfo.js';
+import type { MintingActivityLike as MintingActivityLike_2 } from './Reqts.concrete.typeInfo.js';
 import { MintingPolicyHash } from '@helios-lang/ledger';
 import type { MintingPolicyHashLike } from '@helios-lang/ledger';
 import { NetworkParams } from '@helios-lang/ledger';
-import { PendingCharterChange$Ergo$otherManifestChange as PendingCharterChange$Ergo$otherManifestChange_3 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import { PendingCharterChange$Ergo$otherManifestChange } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { PendingCharterChange$otherManifestChangeLike } from './CapoHeliosBundle.typeInfo.js';
+import type { PendingCharterChange$otherManifestChangeLike as PendingCharterChange$otherManifestChangeLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { PendingCharterChange$otherManifestChangeLike as PendingCharterChange$otherManifestChangeLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { PendingCharterChange } from './CapoHeliosBundle.typeInfo.js';
+import type { PendingCharterChange as PendingCharterChange_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { PendingCharterChange as PendingCharterChange_3 } from './Reqts.concrete.typeInfo.js';
+import type { PendingCharterChangeLike } from './CapoHeliosBundle.typeInfo.js';
+import type { PendingDelegateAction$AddLike } from './CapoHeliosBundle.typeInfo.js';
+import type { PendingDelegateAction$AddLike as PendingDelegateAction$AddLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { PendingDelegateAction$AddLike as PendingDelegateAction$AddLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { PendingDelegateAction$ReplaceLike } from './CapoHeliosBundle.typeInfo.js';
+import type { PendingDelegateAction$ReplaceLike as PendingDelegateAction$ReplaceLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { PendingDelegateAction$ReplaceLike as PendingDelegateAction$ReplaceLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { PendingDelegateAction } from './CapoHeliosBundle.typeInfo.js';
+import type { PendingDelegateAction as PendingDelegateAction_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { PendingDelegateAction as PendingDelegateAction_3 } from './Reqts.concrete.typeInfo.js';
+import type { PendingDelegateActionLike } from './CapoHeliosBundle.typeInfo.js';
+import type { PendingDelegateActionLike as PendingDelegateActionLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { PendingDelegateActionLike as PendingDelegateActionLike_3 } from './Reqts.concrete.typeInfo.js';
+import type { PendingDelegateChange } from './CapoHeliosBundle.typeInfo.js';
+import type { PendingDelegateChange as PendingDelegateChange_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { PendingDelegateChange as PendingDelegateChange_3 } from './Reqts.concrete.typeInfo.js';
+import type { PendingDelegateChangeLike } from './CapoHeliosBundle.typeInfo.js';
+import type { PendingDelegateChangeLike as PendingDelegateChangeLike_2 } from './UnspecializedDelegate.typeInfo.js';
+import type { PendingDelegateChangeLike as PendingDelegateChangeLike_3 } from './Reqts.concrete.typeInfo.js';
 import type { Program } from '@helios-lang/compiler';
 import { PubKeyHash } from '@helios-lang/ledger';
+import { RelativeDelegateLink } from '../scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { RelativeDelegateLink as RelativeDelegateLink_2 } from './CapoHeliosBundle.typeInfo.js';
+import type { RelativeDelegateLink as RelativeDelegateLink_3 } from './CapoMinter.typeInfo.js';
+import type { RelativeDelegateLink as RelativeDelegateLink_4 } from './UnspecializedDelegate.typeInfo.js';
+import type { RelativeDelegateLink as RelativeDelegateLink_5 } from './Reqts.concrete.typeInfo.js';
+import type { RelativeDelegateLinkLike } from './CapoHeliosBundle.typeInfo.js';
+import type { RelativeDelegateLinkLike as RelativeDelegateLinkLike_2 } from './CapoMinter.typeInfo.js';
+import type { RelativeDelegateLinkLike as RelativeDelegateLinkLike_3 } from './helios/scriptBundling/CapoHeliosBundle.typeInfo.js';
+import type { RelativeDelegateLinkLike as RelativeDelegateLinkLike_4 } from './UnspecializedDelegate.typeInfo.js';
+import type { RelativeDelegateLinkLike as RelativeDelegateLinkLike_5 } from './Reqts.concrete.typeInfo.js';
+import type { ReqtData } from './Reqts.concrete.typeInfo.d.ts';
+import type { ReqtData as ReqtData_2 } from './Reqts.concrete.typeInfo.js';
+import type { ReqtDataLike } from './Reqts.concrete.typeInfo.d.ts';
+import type { ReqtDataLike as ReqtDataLike_2 } from './Reqts.concrete.typeInfo.js';
+import { ReqtsConcreteBundle } from './Reqts.concrete.hlb.js';
 import { ReqtsMap as ReqtsMap_2 } from './Requirements.js';
 import { ReqtsMap as ReqtsMap_3 } from '../Requirements.js';
 import { Signature } from '@helios-lang/ledger';
 import { SimpleWallet } from '@helios-lang/tx-utils';
 import type { Site } from '@helios-lang/compiler-utils';
 import { Source } from '@helios-lang/compiler-utils';
+import type { SpendingActivityLike } from './UnspecializedDelegate.typeInfo.js';
+import type { SpendingActivityLike as SpendingActivityLike_2 } from './Reqts.concrete.typeInfo.js';
 import { StellarDelegate as StellarDelegate_2 } from './delegation/StellarDelegate.js';
 import type { SubmissionExpiryError } from '@helios-lang/tx-utils';
 import type { SubmissionUtxoError } from '@helios-lang/tx-utils';
 import { encodeUtf8 as textToBytes } from '@helios-lang/codec-utils';
 import { tokenPredicate as tokenPredicate_2 } from '../UtxoHelper.js';
-import { TransactionSubmissionClient } from '@cardano-ogmios/client/dist/TransactionSubmission/Client.js';
+import { TransactionSubmissionClient } from '@cardano-ogmios/client/dist/TransactionSubmission';
 import { Tx } from '@helios-lang/ledger';
 import { TxBuilder } from '@helios-lang/tx-utils';
 import { TxChainBuilder } from '@helios-lang/tx-utils';
@@ -67,6 +273,8 @@ import { TxOutputId } from '@helios-lang/ledger';
 import { TxOutputIdLike } from '@helios-lang/ledger';
 import type { TypeSchema } from '@helios-lang/type-utils';
 import UnspecializedDelegateScript from './src/delegation/UnspecializedDelegate.hl';
+import { UnspecializedDgtBundle as UnspecializedDgtBundle_2 } from '../delegation/UnspecializedDelegate.hlb.js';
+import { UnspecializedDgtBundle as UnspecializedDgtBundle_3 } from './UnspecializedDelegate.hlb.js';
 import { UplcData } from '@helios-lang/uplc';
 import type { UplcLogger } from '@helios-lang/uplc';
 import { UplcProgramV2 } from '@helios-lang/uplc';
@@ -218,7 +426,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     // (undocumented)
     mkDatumScriptReference(): any;
     get needsGovAuthority(): boolean;
-    scriptBundle(): UnspecializedDgtBundle;
+    scriptBundleClass(): Promise<UnspecializedDgtBundle_2>;
     // Warning: (ae-forgotten-export) The symbol "GrantAuthorityOptions" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
@@ -373,10 +581,8 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     addressAuthorityConfig(): DelegateConfigDetails<AuthorityPolicy>;
     // @deprecated (undocumented)
     addSeedUtxo<TCX extends StellarTxnContext>(tcx?: TCX, seedUtxo?: TxInput): Promise<TCX & hasSeedUtxo>;
-    // Warning: (ae-forgotten-export) The symbol "DeployedProgramBundle" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
-    addStrellaWithConfig<SC extends StellarContract<any>>(TargetClass: stellarSubclass<SC>, config: SC extends StellarContract<infer iCT> ? iCT : never, programBundle?: DeployedProgramBundle, previousOnchainScript?: {
+    addStrellaWithConfig<SC extends StellarContract<any>>(TargetClass: stellarSubclass<SC>, config: ConfigFor<SC>, previousOnchainScript?: {
         validatorHash: number[];
         uplcProgram: anyUplcProgram;
     }): Promise<SC>;
@@ -402,9 +608,9 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     get charterTokenPredicate(): tokenPredicate<any>;
     commitPendingChangesIfNeeded(this: SELF, tcx: StellarTxnContext): Promise<hasAddlTxns<StellarTxnContext<anyState>, anyState>>;
     // (undocumented)
-    connectDelegateWithOnchainRDLink<RN extends string & keyof SELF["_delegateRoles"], DT extends StellarDelegate = ContractBasedDelegate>(role: RN, delegateLink: RelativeDelegateLinkLike): Promise<DT>;
+    connectDelegateWithOnchainRDLink<RN extends string & keyof SELF["_delegateRoles"], DT extends StellarDelegate = ContractBasedDelegate>(role: RN, delegateLink: RelativeDelegateLinkLike_3): Promise<DT>;
     // (undocumented)
-    connectMintingScript(params: SeedTxnScriptParams, programBundle?: DeployedProgramBundle): Promise<CapoMinter>;
+    connectMintingScript(params: SeedTxnScriptParams): Promise<CapoMinter>;
     // (undocumented)
     static currentConfig(): Promise<void>;
     // (undocumented)
@@ -467,10 +673,9 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     }): Promise<FoundDatumUtxo<RAW_DATUM_TYPE, PARSED_DATUM_TYPE>[]>;
     // (undocumented)
     findGovDelegate(charterData?: CharterData): Promise<ContractBasedDelegate>;
-    // Warning: (ae-forgotten-export) The symbol "ErgoPendingCharterChange_2" needs to be exported by the entry point index.d.ts
-    findPendingChange(charterData: CapoDatum$Ergo$CharterData, changingThisRole: (pc: ErgoPendingCharterChange_2) => boolean): Partial<{
-        delegateChange: ErgoPendingDelegateChange_3;
-        otherManifestChange: PendingCharterChange$Ergo$otherManifestChange_3;
+    findPendingChange(charterData: CapoDatum$Ergo$CharterData_2, changingThisRole: (pc: ErgoPendingCharterChange_3) => boolean): Partial<{
+        delegateChange: ErgoPendingDelegateChange;
+        otherManifestChange: PendingCharterChange$Ergo$otherManifestChange;
     }> | undefined;
     // (undocumented)
     findRefScriptUtxo(expectedVh: number[], capoUtxos: TxInput[]): Promise<TxInput | undefined>;
@@ -481,7 +686,7 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
         optional?: boolean;
     }): Promise<FoundDatumUtxo<any, any> | undefined>;
     // (undocumented)
-    getBundle(): CapoHeliosBundle;
+    getBundle(): Promise<CapoHeliosBundle>;
     // @deprecated
     getDelegateRoles(): void;
     getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(this: SELF, recordTypeName: RN, options?: FindableViaCharterData): Promise<undefined | DelegatedDataContract<any, any>>;
@@ -504,8 +709,7 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     getSettingsController(this: SELF, options: FindableViaCharterData): Promise<DelegatedDataContract<any, any> | undefined>;
     // (undocumented)
     getSpendDelegate(charterData?: CharterData): Promise<BasicMintDelegate>;
-    // Warning: (ae-forgotten-export) The symbol "CapoDatum$Ergo$CharterData" needs to be exported by the entry point index.d.ts
-    hasPolicyInManifest<const RoLabel extends string & keyof SELF["delegateRoles"]>(policyName: RoLabel, charterData: CapoDatum$Ergo$CharterData): [string, ErgoCapoManifestEntry_2] | undefined;
+    hasPolicyInManifest<const RoLabel extends string & keyof SELF["delegateRoles"]>(policyName: RoLabel, charterData: CapoDatum$Ergo$CharterData_2): [string, ErgoCapoManifestEntry_2] | undefined;
     // (undocumented)
     init(args: StellarSetupDetails<CapoConfig & {
         featureFlags?: Partial<featureFlags>;
@@ -514,6 +718,8 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     abstract initDelegateRoles(): basicDelegateMap<any>;
     // (undocumented)
     isChartered: boolean;
+    // Warning: (ae-forgotten-export) The symbol "PrecompiledProgramJSON" needs to be exported by the entry point index.d.ts
+    loadPrecompiledMinterScript(): Promise<PrecompiledProgramJSON>;
     // (undocumented)
     minter: CapoMinter;
     // (undocumented)
@@ -534,9 +740,13 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     //
     // (undocumented)
     mkImpliedDelegationDetails(uut: UutName): DelegationDetail;
-    mkOnchainRelativeDelegateLink<CT extends ConfiguredDelegate<any>>(configured: CT): RelativeDelegateLinkLike;
+    mkOnchainRelativeDelegateLink<CT extends ConfiguredDelegate<any>>(configured: CT): RelativeDelegateLinkLike_3;
     // (undocumented)
     mkRefScriptTxn(script: anyUplcProgram): Promise<StellarTxnContext>;
+    // Warning: (ae-forgotten-export) The symbol "StellarBundleSetupDetails" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    mkScriptBundle(setupDetails?: StellarBundleSetupDetails<any>): Promise<any>;
     // (undocumented)
     mkTxnAddingMintInvariant<THIS extends Capo<any>, TCX extends hasSeedUtxo = hasSeedUtxo>(this: THIS, delegateInfo: OffchainPartialDelegateLink, tcx?: TCX): Promise<StellarTxnContext>;
     mkTxnAddingNamedDelegate<DT extends StellarDelegate, thisType extends Capo<any>, const delegateName extends string, TCX extends hasSeedUtxo = hasSeedUtxo>(this: thisType, delegateName: delegateName, options: OffchainPartialDelegateLink & NamedPolicyCreationOptions<thisType, DT>, tcx?: TCX): Promise<hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>>;
@@ -580,19 +790,15 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     get newReadDatum(): mustFindReadDatumType<this>;
     // (undocumented)
     get offchain(): mustFindConcreteContractBridgeType<this>["reader"];
-    // Warning: (ae-forgotten-export) The symbol "RelativeDelegateLinkLike" needs to be exported by the entry point index.d.ts
-    //
     // @deprecated
-    offchainLink<T extends MinimalDelegateLink | OffchainPartialDelegateLink | RelativeDelegateLinkLike>(link: T): T;
+    offchainLink<T extends MinimalDelegateLink | OffchainPartialDelegateLink | RelativeDelegateLinkLike_3>(link: T): T;
     // (undocumented)
     get onchain(): mustFindConcreteContractBridgeType<this>;
     // @deprecated (undocumented)
     parseDelegateLinksInCharter(charterData: CharterData): void;
-    // Warning: (ae-forgotten-export) The symbol "ErgoRelativeDelegateLink" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     parseDgtConfig(inLink: // | MinimalDelegateLink
-    ErgoRelativeDelegateLink | RelativeDelegateLinkLike): Partial<capoDelegateConfig>;
+    ErgoRelativeDelegateLink | RelativeDelegateLinkLike_3): Partial<capoDelegateConfig>;
     // @internal (undocumented)
     get reader(): mustFindConcreteContractBridgeType<this>["reader"];
     // (undocumented)
@@ -600,13 +806,13 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     // (undocumented)
     get scriptActivitiesName(): string;
     // (undocumented)
-    scriptBundle(): CapoHeliosBundle;
+    scriptBundleClass(): Promise<typeof CapoHeliosBundle>;
     // (undocumented)
     get scriptDatumName(): string;
     // (undocumented)
     serializeDgtConfig(config: Partial<capoDelegateConfig>): number[];
     // (undocumented)
-    showDelegateLink(delegateLink: RelativeDelegateLinkLike): string;
+    showDelegateLink(delegateLink: RelativeDelegateLinkLike_3): string;
     singleItem<T>(xs: Array<T>): T;
     // (undocumented)
     tcxWithCharterData<TCX extends StellarTxnContext>(this: SELF, tcx: TCX): Promise<TCX & StellarTxnContext<charterDataState>>;
@@ -652,12 +858,14 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     // (undocumented)
     txnUpdateCharterUtxo<TCX extends StellarTxnContext>(tcx: TCX, redeemer: isActivity, newDatum: CharterDataLike): Promise<StellarTxnContext | never>;
     txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], { usingSeedUtxo }: UutCreationAttrsWithSeed, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    // (undocumented)
+    usesContractScript: boolean;
     uutsValue(uutMap: uutPurposeMap<any>): Value;
     uutsValue(tcx: hasUutContext<any>): Value;
     uutsValue(uutName: UutName | number[]): Value;
-    // (undocumented)
-    verifyConfigs(): Promise<any>;
     verifyCoreDelegates(): Promise<[BasicMintDelegate, AuthorityPolicy, ContractBasedDelegate] | undefined>;
+    // (undocumented)
+    verifyIsChartered(): Promise<CapoDatum$Ergo$CharterData_2 | undefined>;
 }
 
 // @public
@@ -687,10 +895,8 @@ export type CapoConfigJSON = {
 // @public
 export const capoConfigurationDetails: CapoDeployedDetails<"native">;
 
-// Warning: (ae-forgotten-export) The symbol "ErgoCapoDatum" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
-export type CapoDatum = ErgoCapoDatum;
+export type CapoDatum = ErgoCapoDatum_2;
 
 // @public
 export abstract class CapoDelegateBundle extends HeliosScriptBundle {
@@ -721,7 +927,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     scriptParamsSource: "bundle" | "config";
     abstract specializedDelegateModule: Source;
     // Warning: (ae-forgotten-export) The symbol "CapoBundleClass" needs to be exported by the entry point index.d.ts
-    static usingCapoBundleClass<THIS extends typeof CapoDelegateBundle, CB extends CapoBundleClass>(this: THIS, c: CB): ConcreteCapoDelegateBundle;
+    static usingCapoBundleClass<THIS extends typeof CapoDelegateBundle, CB extends CapoBundleClass>(this: THIS, c: CB, generic?: "generic" | false): ConcreteCapoDelegateBundle;
 }
 
 // @public
@@ -739,7 +945,6 @@ export type capoDelegateConfig = configBase & {
 export type CapoDeployedDetails<form extends "json" | "native" = "native"> = {
     capo?: DeployedScriptDetails<CapoConfig, form>;
     minter?: DeployedScriptDetails<BasicMinterParams, form>;
-    isNullDeployment?: boolean;
 };
 
 // @public (undocumented)
@@ -752,26 +957,26 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     // (undocumented)
     capoBundle: this;
     // (undocumented)
-    configuredScriptDetails?: DeployedScriptDetails;
-    // (undocumented)
     datumTypeName: string;
     getEffectiveModuleList(): Source[];
     // (undocumented)
-    getPreCompiledBundle(variant: string): DeployedProgramBundle_2;
+    getPreCompiledBundle(variant: string): any;
     // (undocumented)
     getPreconfiguredUplcParams(variantName: string): UplcRecord<any> | undefined;
     // (undocumented)
     get hasAnyVariant(): boolean;
-    // Warning: (ae-forgotten-export) The symbol "StellarBundleSetupDetails" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     init(setupDetails: StellarBundleSetupDetails<any>): void;
+    // (undocumented)
+    initProgramDetails(): void;
     // (undocumented)
     static isCapoBundle: boolean;
     // (undocumented)
     get isPrecompiled(): boolean;
     // (undocumented)
-    static isPreconfigured: boolean;
+    loadPrecompiledMinterScript(): Promise<PrecompiledProgramJSON>;
+    // (undocumented)
+    loadPrecompiledScript(): Promise<PrecompiledProgramJSON>;
     // (undocumented)
     get main(): Source;
     // (undocumented)
@@ -786,7 +991,9 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
         seedIndex: bigint;
     };
     // (undocumented)
-    preConfigured: CapoDeployedDetails<any>;
+    precompiledScriptDetails?: CapoDeployedDetails<any>;
+    // (undocumented)
+    preConfigured?: typeof capoConfigurationDetails;
     // (undocumented)
     requiresGovAuthority: boolean;
     // (undocumented)
@@ -820,11 +1027,13 @@ export class CapoMinter extends StellarContract<BasicMinterParams> implements Mi
     // (undocumented)
     get mintingPolicyHash(): MintingPolicyHash;
     // (undocumented)
+    mkScriptBundle(setupDetails?: StellarBundleSetupDetails<any>): Promise<any>;
+    // (undocumented)
     get onchain(): mustFindConcreteContractBridgeType<this>;
     // (undocumented)
     get scriptActivitiesName(): string;
     // (undocumented)
-    scriptBundle(): any;
+    scriptBundleClass(): Promise<CapoMinterBundle>;
     // (undocumented)
     tvCharter(): Value;
     // (undocumented)
@@ -858,12 +1067,10 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
 }
 
 // @public (undocumented)
-export type CharterData = CapoDatum$Ergo$CharterData;
+export type CharterData = CapoDatum$Ergo$CharterData_2;
 
-// Warning: (ae-forgotten-export) The symbol "CapoDatum$CharterDataLike" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
-export type CharterDataLike = CapoDatum$CharterDataLike;
+export type CharterDataLike = CapoDatum$CharterDataLike_2;
 
 // @public (undocumented)
 export type charterDataState = {
@@ -961,6 +1168,10 @@ export class ContractBasedDelegate extends StellarDelegate {
     static mkDelegateWithArgs(a: capoDelegateConfig): void;
     // (undocumented)
     mkDelegationDatum(txin?: TxInput): TxOutputDatum;
+    // Warning: (ae-forgotten-export) The symbol "PartialStellarBundleDetails" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    mkScriptBundle(setupDetails?: PartialStellarBundleDetails<any>): Promise<any>;
     // (undocumented)
     mkSeededMintingActivity(mintingActivityName: string, args: {
         seed: TxOutputId;
@@ -981,7 +1192,9 @@ export class ContractBasedDelegate extends StellarDelegate {
     // (undocumented)
     get scriptActivitiesName(): string;
     // (undocumented)
-    scriptBundle(): CapoDelegateBundle;
+    _scriptBundle: HeliosScriptBundle | undefined;
+    // (undocumented)
+    scriptBundleClass(): Promise<typeof CapoDelegateBundle>;
     // (undocumented)
     get scriptDatumName(): string;
     // (undocumented)
@@ -1167,14 +1380,14 @@ export abstract class DelegatedDataBundle extends CapoDelegateBundle {
     };
     abstract requiresGovAuthority: boolean;
     // (undocumented)
-    scriptParamsSource: "bundle";
+    scriptParamsSource: "config" | "bundle";
     abstract specializedDelegateModule: Source;
 }
 
 // @public
 export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>, TLike extends AnyDataTemplate<any, any>> extends ContractBasedDelegate {
     // (undocumented)
-    get abstractBundleClass(): undefined | typeof CapoDelegateBundle;
+    get abstractBundleClass(): undefined | typeof DelegatedDataBundle;
     // (undocumented)
     beforeCreate(record: TLike): TLike;
     // (undocumented)
@@ -1211,7 +1424,7 @@ export abstract class DelegatedDataContract<T extends AnyDataTemplate<any, any>,
     // (undocumented)
     returnUpdatedRecord<TCX extends StellarTxnContext & hasCharterRef>(tcx: TCX, returnedValue: Value, updatedRecord: TLike): TCX;
     // (undocumented)
-    scriptBundle(): CapoDelegateBundle;
+    scriptBundleClass(): Promise<typeof DelegatedDataBundle>;
     setupCapoPolicy(tcx: StellarTxnContext, typeName: string, options: {
         charterData: CharterData;
         capoUtxos: TxInput[];
@@ -1269,8 +1482,8 @@ export type DelegateSetupWithoutMintDelegate = {
 export type DeployedScriptDetails<CT extends configBase = configBase, form extends "json" | "native" = "native"> = {
     config: form extends "json" ? any : CT;
     scriptHash?: number[];
-    programBundle?: DeployedProgramBundle;
-} | RequiredDeployedScriptDetails<CT>;
+    programName?: string;
+};
 
 // @public @deprecated (undocumented)
 export type DgDataCreationAttrs<T extends DelegatedDataContract<any, any>> = Omit<DgDataTypeLike<T>, "id" | "type">;
@@ -1350,19 +1563,9 @@ export const environment: {
     cwd: string;
 };
 
-// @public
-export type ErgoCapoManifestEntry = {
-    entryType: ErgoManifestEntryType;
-    tokenName: number[];
-    mph: /*minStructField*/ MintingPolicyHash | undefined;
-};
+export { ErgoCapoManifestEntry }
 
-// @public
-export type ErgoPendingCharterChange = IntersectedEnum<{
-    delegateChange: ErgoPendingDelegateChange;
-} | {
-    otherManifestChange: PendingCharterChange$Ergo$otherManifestChange;
-}>;
+export { ErgoPendingCharterChange }
 
 // @public
 export type ErrorMap = Record<string, string[]>;
@@ -1439,10 +1642,8 @@ export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum & Pick<Unspe
 // @public (undocumented)
 export type GenericDelegateBridgeClass = AbstractNew<GenericDelegateBridge>;
 
-// Warning: (ae-forgotten-export) The symbol "ErgoDelegateDatum" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
-export type GenericDelegateDatum = Pick<ErgoDelegateDatum, "Cip68RefToken" | "IsDelegation"> & {
+export type GenericDelegateDatum = Partial<Pick<ErgoDelegateDatum, "Cip68RefToken" | "IsDelegation">> & {
     capoStoredData?: {
         data: AnyDataTemplate<any, any>;
         version: bigint;
@@ -1535,6 +1736,8 @@ export type HeliosOptimizeOptions = Exclude<Pick<Exclude<Parameters<Program["com
 
 // @public
 export abstract class HeliosScriptBundle {
+    // (undocumented)
+    ___id: number;
     constructor(setupDetails?: StellarBundleSetupDetails<any>);
     // (undocumented)
     addTypeProxies(): void;
@@ -1549,6 +1752,8 @@ export abstract class HeliosScriptBundle {
     compiledScript(asyncOk: true): anyUplcProgram | Promise<anyUplcProgram>;
     // (undocumented)
     configuredParams: any | undefined;
+    // (undocumented)
+    configuredScriptDetails?: DeployedScriptDetails;
     // Warning: (ae-forgotten-export) The symbol "UplcRecord_2" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
@@ -1568,7 +1773,7 @@ export abstract class HeliosScriptBundle {
     effectiveDatumTypeName(): string;
     getEffectiveModuleList(): Source[];
     // (undocumented)
-    getPreCompiledBundle(variant: string): DeployedProgramBundle_2;
+    getPreCompiledBundle(variant: string): void;
     // (undocumented)
     getPreconfiguredUplcParams(variantName: string): UplcRecord_2<any> | undefined;
     // (undocumented)
@@ -1599,6 +1804,7 @@ export abstract class HeliosScriptBundle {
     includeFromCapoModules(): string[];
     // (undocumented)
     init(setupDetails: StellarBundleSetupDetails<any>): void;
+    initProgramDetails(): void;
     static isAbstract?: boolean | undefined;
     // @internal
     static isCapoBundle: boolean;
@@ -1611,6 +1817,10 @@ export abstract class HeliosScriptBundle {
     isMainnet: boolean;
     // (undocumented)
     get isPrecompiled(): boolean;
+    // (undocumented)
+    loadPrecompiledVariant(variant: string): Promise<PrecompiledProgramJSON>;
+    // (undocumented)
+    loadProgram(): HeliosProgramWithCacheAPI;
     // @internal (undocumented)
     locateDatumType(): DataType | undefined;
     // @internal (undocumented)
@@ -1629,10 +1839,10 @@ export abstract class HeliosScriptBundle {
     // @internal (undocumented)
     paramsToUplc<ConfigType extends configBase>(params: Record<string, any>): UplcRecord_2<ConfigType>;
     // (undocumented)
-    get preBundledScript(): UplcProgramV2 | undefined;
+    get preBundledScript(): void;
     // (undocumented)
-    preCompiled?: {
-        [variant: string]: RequiredDeployedScriptDetails<any, "json">;
+    precompiledScriptDetails?: {
+        [variant: string]: DeployedScriptDetails<any, "native">;
     };
     // (undocumented)
     previousCompiledScript(): UplcProgramV2 | undefined;
@@ -1653,25 +1863,24 @@ export abstract class HeliosScriptBundle {
     // (undocumented)
     resolveCapoIncludedModules(): Source[];
     // (undocumented)
-    scriptHash?: number[] | undefined;
+    get scriptHash(): number[];
     // (undocumented)
-    abstract scriptParamsSource: "config" | "bundle" | "mixed";
+    abstract scriptParamsSource: "config" | "bundle" | "none";
     // (undocumented)
     _selectedVariant?: string;
     // Warning: (ae-forgotten-export) The symbol "SetupOrMainnetSignalForBundle" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
     setup: SetupOrMainnetSignalForBundle;
+    // (undocumented)
+    setupDetails: StellarBundleSetupDetails<any>;
     // @internal (undocumented)
     typeToUplc(type: DataType, data: any, path?: string): UplcData;
     // Warning: (ae-forgotten-export) The symbol "HeliosBundleClassWithCapo" needs to be exported by the entry point index.d.ts
-    static usingCapoBundleClass<CB extends CapoBundleClass>(c: CB): HeliosBundleClassWithCapo;
+    static usingCapoBundleClass<CB extends CapoBundleClass>(c: CB, generic?: "generic" | false): HeliosBundleClassWithCapo;
     get variants(): {
         [variantName: string]: any;
     };
-    // (undocumented)
-    withSetupDetails(details: StellarBundleSetupDetails<any>): this;
-    // (undocumented)
     withVariant(vn: string): this;
 }
 
@@ -1739,11 +1948,9 @@ export function makeOgmiosConnection(conn: simpleOgmiosConn): Promise<{
     context: InteractionContext;
 }>;
 
-// Warning: (ae-forgotten-export) The symbol "CapoManifestEntryLike" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
-export type ManifestEntryTokenRef = Omit<CapoManifestEntryLike, "entryType"> & {
-    entryType: Pick<CapoManifestEntryLike["entryType"], "NamedTokenRef">;
+export type ManifestEntryTokenRef = Omit<CapoManifestEntryLike_2, "entryType"> & {
+    entryType: Pick<CapoManifestEntryLike_2["entryType"], "NamedTokenRef">;
 };
 
 // @public
@@ -1808,7 +2015,7 @@ export abstract class MintSpendDelegateBundle extends CapoDelegateBundle {
     // (undocumented)
     requiresGovAuthority: boolean;
     // (undocumented)
-    scriptParamsSource: "bundle";
+    scriptParamsSource: "config";
     abstract specializedDelegateModule: Source;
     get unspecializedDelegateModule(): Source;
 }
@@ -1963,12 +2170,7 @@ export function parseCapoMinterJSONConfig(rawJSONConfig: Pick<CapoConfigJSON, "s
 export function partialTxn(proto: any, thingName: any, descriptor: any): any;
 
 // @public (undocumented)
-export const placeholderSetupDetails: {
-    setup: {
-        isMainnet: boolean;
-        isPlaceholder: string;
-    };
-};
+export const placeholderSetupDetails: StellarBundleSetupDetails<any>;
 
 // @public
 export function policyIdAsString(p: MintingPolicyHash): string;
@@ -1993,28 +2195,13 @@ export function realDiv(a: number, b: number): number;
 // @public
 export function realMul(a: number, b: number): number;
 
-// @public
-export interface RelativeDelegateLink {
-    // (undocumented)
-    config: number[];
-    // (undocumented)
-    delegateValidatorHash: /*minStructField*/ ValidatorHash | undefined;
-    // (undocumented)
-    uutName: string;
-}
+export { RelativeDelegateLink }
 
 // Warning: (ae-forgotten-export) The symbol "TODO_TYPE" needs to be exported by the entry point index.d.ts
 //
 // @public
 export type ReqtsMap<validReqts extends string, inheritedNames extends string | never = never> = {
     [reqtDescription in validReqts]: TODO_TYPE | RequirementEntry<reqtDescription, validReqts, inheritedNames>;
-};
-
-// @public (undocumented)
-export type RequiredDeployedScriptDetails<CT extends configBase, form extends "json" | "native" = "native"> = {
-    config: form extends "json" ? any : CT;
-    programBundle: DeployedProgramBundle;
-    scriptHash?: string;
 };
 
 // @public
@@ -2222,7 +2409,7 @@ export class StellarContract<ConfigType extends configBase> {
     // (undocumented)
     findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>): Promise<TxInput>;
     // (undocumented)
-    getBundle(): HeliosScriptBundle;
+    getBundle(): Promise<HeliosScriptBundle>;
     getContractScriptParams(config: ConfigType): Partial<ConfigType> & Required<Pick<ConfigType, "rev">>;
     // (undocumented)
     getOnchainBridge(): possiblyAbstractContractBridgeType<this>;
@@ -2239,9 +2426,13 @@ export class StellarContract<ConfigType extends configBase> {
     get isConnected(): boolean;
     isDefinitelyMainnet(): boolean;
     // (undocumented)
-    get mintingPolicyHash(): MintingPolicyHash | undefined;
+    loadProgram(): HeliosProgramWithCacheAPI_2;
+    // (undocumented)
+    get mintingPolicyHash(): MintingPolicyHash;
     // (undocumented)
     get missingActorError(): string;
+    // (undocumented)
+    mkScriptBundle(setupDetails?: PartialStellarBundleDetails<any>): Promise<any>;
     mkTcx<TCX extends StellarTxnContext>(tcx: StellarTxnContext | undefined, name?: string): TCX;
     mkTcx(name?: string): StellarTxnContext;
     mustFindMyUtxo(semanticName: string, options: {
@@ -2276,6 +2467,8 @@ export class StellarContract<ConfigType extends configBase> {
     // (undocumented)
     partialConfig?: Partial<ConfigType>;
     // (undocumented)
+    get preloadedBundle(): HeliosScriptBundle;
+    // (undocumented)
     prepareBundleWithScriptParams(params: Partial<ConfigType> & Required<Pick<ConfigType, "rev">>): Promise<void>;
     // (undocumented)
     get program(): HeliosProgramWithCacheAPI_2;
@@ -2286,7 +2479,7 @@ export class StellarContract<ConfigType extends configBase> {
     // (undocumented)
     get reader(): possiblyAbstractContractBridgeType<this>["reader"];
     get scriptActivitiesName(): string;
-    scriptBundle(): HeliosScriptBundle;
+    scriptBundleClass(): Promise<typeof HeliosScriptBundle>;
     get scriptDatumName(): string;
     // (undocumented)
     setup: SetupInfo;
@@ -2348,7 +2541,6 @@ type StellarSetupDetails<CT extends configBase> = {
     setup: SetupInfo;
     config?: CT;
     partialConfig?: Partial<CT>;
-    programBundle?: DeployedProgramBundle;
     previousOnchainScript?: {
         validatorHash: number[];
         uplcProgram: anyUplcProgram;
@@ -2952,7 +3144,7 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
             mph: /*minStructField*/ MintingPolicyHash | string | number[];
             tn: number[];
         }) => UplcData;
-        RelativeDelegateLink: (fields: RelativeDelegateLinkLike_3 | {
+        RelativeDelegateLink: (fields: RelativeDelegateLinkLike_4 | {
             uutName: string;
             delegateValidatorHash: /*minStructField*/ ValidatorHash | string | number[] | undefined;
             config: number[];
@@ -2960,9 +3152,9 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
         PendingDelegateChange: (fields: PendingDelegateChangeLike_2 | {
             action: PendingDelegateActionLike_2;
             role: DelegateRoleLike_2;
-            dgtLink: /*minStructField*/ RelativeDelegateLinkLike_3 | undefined;
+            dgtLink: /*minStructField*/ RelativeDelegateLinkLike_4 | undefined;
         }) => UplcData;
-        CapoManifestEntry: (fields: CapoManifestEntryLike_2 | {
+        CapoManifestEntry: (fields: CapoManifestEntryLike_3 | {
             entryType: ManifestEntryTypeLike_2;
             tokenName: number[];
             mph: /*minStructField*/ MintingPolicyHash | string | number[] | undefined;
@@ -2972,18 +3164,12 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
             charter: cctx_CharterInputTypeLike;
         }) => UplcData;
     };
-    // Warning: (ae-forgotten-export) The symbol "AnyData_2" needs to be exported by the entry point index.d.ts
     ᱺᱺAnyDataCast: Cast<AnyData_2, AnyDataLike_2>;
-    // Warning: (ae-forgotten-export) The symbol "CapoCtx" needs to be exported by the entry point index.d.ts
     ᱺᱺCapoCtxCast: Cast<CapoCtx, CapoCtxLike>;
-    // Warning: (ae-forgotten-export) The symbol "CapoManifestEntry_2" needs to be exported by the entry point index.d.ts
-    ᱺᱺCapoManifestEntryCast: Cast<CapoManifestEntry_2, CapoManifestEntryLike_2>;
-    // Warning: (ae-forgotten-export) The symbol "DelegationDetail_2" needs to be exported by the entry point index.d.ts
+    ᱺᱺCapoManifestEntryCast: Cast<CapoManifestEntry_2, CapoManifestEntryLike_3>;
     ᱺᱺDelegationDetailCast: Cast<DelegationDetail_2, DelegationDetailLike>;
-    // Warning: (ae-forgotten-export) The symbol "PendingDelegateChange_2" needs to be exported by the entry point index.d.ts
     ᱺᱺPendingDelegateChangeCast: Cast<PendingDelegateChange_2, PendingDelegateChangeLike_2>;
-    // Warning: (ae-forgotten-export) The symbol "RelativeDelegateLink_3" needs to be exported by the entry point index.d.ts
-    ᱺᱺRelativeDelegateLinkCast: Cast<RelativeDelegateLink_3, RelativeDelegateLinkLike_3>;
+    ᱺᱺRelativeDelegateLinkCast: Cast<RelativeDelegateLink_4, RelativeDelegateLinkLike_4>;
 }
 
 export { UnspecializedDelegateScript }
@@ -3024,7 +3210,7 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
     // (undocumented)
     get delegateName(): string;
     // (undocumented)
-    scriptBundle(): any;
+    scriptBundleClass(): Promise<UnspecializedDgtBundle_3>;
 }
 
 // @public (undocumented)
@@ -3199,10 +3385,7 @@ export type WrappedPromise<T> = {
 
 // Warnings were encountered during analysis:
 //
-// .api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts:290:5 - (ae-forgotten-export) The symbol "ErgoManifestEntryType" needs to be exported by the entry point index.d.ts
-// .api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts:743:5 - (ae-forgotten-export) The symbol "ErgoPendingDelegateChange" needs to be exported by the entry point index.d.ts
-// .api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts:745:5 - (ae-forgotten-export) The symbol "PendingCharterChange$Ergo$otherManifestChange" needs to be exported by the entry point index.d.ts
-// src/Capo.ts:1209:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
+// src/Capo.ts:1233:13 - (ae-forgotten-export) The symbol "anyUplcProgram" needs to be exported by the entry point index.d.ts
 // src/CapoTypes.ts:191:5 - (ae-forgotten-export) The symbol "useRawMinterSetup" needs to be exported by the entry point index.d.ts
 // src/StellarContract.ts:307:5 - (ae-forgotten-export) The symbol "UtxoDisplayCache" needs to be exported by the entry point index.d.ts
 // src/StellarTxnContext.ts:93:5 - (ae-forgotten-export) The symbol "BuiltTcxStats" needs to be exported by the entry point index.d.ts
@@ -3217,16 +3400,6 @@ export type WrappedPromise<T> = {
 // src/delegation/UnspecializedDelegate.bridge.ts:201:7 - (ae-forgotten-export) The symbol "ManifestEntryTypeHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:205:7 - (ae-forgotten-export) The symbol "PendingCharterChangeHelper_2" needs to be exported by the entry point index.d.ts
 // src/delegation/UnspecializedDelegate.bridge.ts:209:7 - (ae-forgotten-export) The symbol "cctx_CharterInputTypeHelper" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:214:7 - (ae-forgotten-export) The symbol "AnyDataLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:224:7 - (ae-forgotten-export) The symbol "DelegationDetailLike" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:235:7 - (ae-forgotten-export) The symbol "RelativeDelegateLinkLike_3" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:246:7 - (ae-forgotten-export) The symbol "PendingDelegateChangeLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:247:5 - (ae-forgotten-export) The symbol "PendingDelegateActionLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:248:5 - (ae-forgotten-export) The symbol "DelegateRoleLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:257:7 - (ae-forgotten-export) The symbol "CapoManifestEntryLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:258:5 - (ae-forgotten-export) The symbol "ManifestEntryTypeLike_2" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:268:7 - (ae-forgotten-export) The symbol "CapoCtxLike" needs to be exported by the entry point index.d.ts
-// src/delegation/UnspecializedDelegate.bridge.ts:270:5 - (ae-forgotten-export) The symbol "cctx_CharterInputTypeLike" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

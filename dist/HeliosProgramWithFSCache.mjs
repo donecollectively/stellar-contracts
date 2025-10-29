@@ -587,7 +587,7 @@ function deserializeHeliosCacheEntry(entry) {
 }
 
 // src/helios/CachedHeliosProgramFS.ts
-var cacheStore = ".hltemp/cache";
+var cacheStore = ".stellar/cache";
 var CachedHeliosProgramFS = class extends CachedHeliosProgram {
   constructor(mainSource, props) {
     if (!existsSync(cacheStore)) {

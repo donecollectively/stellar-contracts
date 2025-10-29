@@ -1,6 +1,6 @@
 import { LoadResult } from 'rollup';
+import { PartialResolvedId } from 'rollup';
 import { PluginContext } from 'rollup';
-import { ResolvedId } from 'rollup';
 import type { ResolveIdResult } from 'rollup';
 import { SourceMap } from 'magic-string';
 
@@ -34,7 +34,7 @@ export declare function heliosRollupBundler(opts?: {
     };
     resolveId: {
         order: string;
-        handler(this: PluginContext, source: any, importer: any, options: any): Promise<string | ResolvedId | null>;
+        handler: (this: PluginContext, source: string, importer: string, options: any) => Promise<string | PartialResolvedId | null>;
     };
     load: {
         order: string;

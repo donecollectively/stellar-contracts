@@ -2136,17 +2136,30 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!BasicMintDelegate#scriptBundle:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!BasicMintDelegate#scriptBundleClass:member(1)",
               "docComment": "/**\n * the scriptBundle for the BasicMintDelegate looks concrete, but it's actually just referencing a generic, unspecialized delegate script that may not provide much value to any specific application.\n *\n * Subclasses should expect to override this and provide a specialized `get scriptBundle() { return new ‹YourMintDelegateBundle› }`, using a class you derive from CapoDelegateBundle and your own delegate specialization. TODO: a generator to make this easier. Until then, you can copy the UnspecializedDelegate.hl and specialize it.\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "scriptBundle(): "
+                  "text": "scriptBundleClass(): "
                 },
                 {
                   "kind": "Reference",
-                  "text": "UnspecializedDelegateBundle",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<typeof import(\"../delegation/UnspecializedDelegate.hlb.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UnspecializedDgtBundle",
                   "canonicalReference": "@donecollectively/stellar-contracts!UnspecializedDgtBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -2156,7 +2169,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -2164,7 +2177,7 @@
               "parameters": [],
               "isOptional": false,
               "isAbstract": false,
-              "name": "scriptBundle"
+              "name": "scriptBundleClass"
             },
             {
               "kind": "Method",
@@ -4510,26 +4523,13 @@
                   "text": ", config: "
                 },
                 {
-                  "kind": "Content",
-                  "text": "SC extends "
-                },
-                {
                   "kind": "Reference",
-                  "text": "StellarContract",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!ConfigFor:type"
                 },
                 {
                   "kind": "Content",
-                  "text": "<infer iCT> ? iCT : never"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", programBundle?: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "DeployedProgramBundle",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~DeployedProgramBundle:type"
+                  "text": "<SC>"
                 },
                 {
                   "kind": "Content",
@@ -4581,8 +4581,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 17,
-                "endIndex": 19
+                "startIndex": 14,
+                "endIndex": 16
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -4600,23 +4600,15 @@
                   "parameterName": "config",
                   "parameterTypeTokenRange": {
                     "startIndex": 7,
-                    "endIndex": 10
+                    "endIndex": 9
                   },
                   "isOptional": false
                 },
                 {
-                  "parameterName": "programBundle",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 11,
-                    "endIndex": 12
-                  },
-                  "isOptional": true
-                },
-                {
                   "parameterName": "previousOnchainScript",
                   "parameterTypeTokenRange": {
-                    "startIndex": 13,
-                    "endIndex": 16
+                    "startIndex": 10,
+                    "endIndex": 13
                   },
                   "isOptional": true
                 }
@@ -5220,7 +5212,7 @@
                 {
                   "kind": "Reference",
                   "text": "RelativeDelegateLinkLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RelativeDelegateLinkLike:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -5310,15 +5302,6 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", programBundle?: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "DeployedProgramBundle",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~DeployedProgramBundle:type"
-                },
-                {
-                  "kind": "Content",
                   "text": "): "
                 },
                 {
@@ -5346,8 +5329,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 9
+                "startIndex": 3,
+                "endIndex": 7
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -5360,14 +5343,6 @@
                     "endIndex": 2
                   },
                   "isOptional": false
-                },
-                {
-                  "parameterName": "programBundle",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 4
-                  },
-                  "isOptional": true
                 }
               ],
               "isOptional": false,
@@ -6462,7 +6437,7 @@
                 {
                   "kind": "Reference",
                   "text": "CapoDatum$Ergo$CharterData",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoDatum$Ergo$CharterData:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -6475,7 +6450,7 @@
                 {
                   "kind": "Reference",
                   "text": "ErgoPendingCharterChange",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ErgoPendingCharterChange_2:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -6492,25 +6467,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<{\n        delegateChange: import(\"./helios/scriptBundling/CapoHeliosBundle.typeInfo.js\")."
-                },
-                {
-                  "kind": "Reference",
-                  "text": "ErgoPendingDelegateChange",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ErgoPendingDelegateChange:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";\n        otherManifestChange: import(\"./helios/scriptBundling/CapoHeliosBundle.typeInfo.js\")."
-                },
-                {
-                  "kind": "Reference",
-                  "text": "PendingCharterChange$Ergo$otherManifestChange",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~PendingCharterChange$Ergo$otherManifestChange:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";\n    }> | undefined"
+                  "text": "<{\n        delegateChange: import(\"./helios/scriptBundling/CapoHeliosBundle.typeInfo.js\").ErgoPendingDelegateChange;\n        otherManifestChange: import(\"./helios/scriptBundling/CapoHeliosBundle.typeInfo.js\").PendingCharterChange$Ergo$otherManifestChange;\n    }> | undefined"
                 },
                 {
                   "kind": "Content",
@@ -6520,7 +6477,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 7,
-                "endIndex": 13
+                "endIndex": 9
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -6804,8 +6761,21 @@
                 },
                 {
                   "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
                   "text": "CapoHeliosBundle",
                   "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -6815,7 +6785,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -7472,7 +7442,7 @@
                 {
                   "kind": "Reference",
                   "text": "CapoDatum$Ergo$CharterData",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoDatum$Ergo$CharterData:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -7480,12 +7450,12 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "[string, import(\"./helios/scriptBundling/CapoHeliosBundle.typeInfo.js\")."
+                  "text": "[string, import(\"../index.js\")."
                 },
                 {
                   "kind": "Reference",
                   "text": "ErgoCapoManifestEntry",
-                  "canonicalReference": "@donecollectively/stellar-contracts!ErgoCapoManifestEntry:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -7680,6 +7650,51 @@
               "isStatic": false,
               "isProtected": false,
               "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#loadPrecompiledMinterScript:member(1)",
+              "docComment": "/**\n * note, here in this file we show only a stub. The heliosRollupBundler actually writes a real implementation that does a JIT import of the precompiled bundle\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "loadPrecompiledMinterScript(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "PrecompiledProgramJSON",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~PrecompiledProgramJSON:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "loadPrecompiledMinterScript"
             },
             {
               "kind": "Property",
@@ -8001,7 +8016,7 @@
                 {
                   "kind": "Reference",
                   "text": "ErgoRelativeDelegateLink",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ErgoRelativeDelegateLink:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -8126,7 +8141,7 @@
                 {
                   "kind": "Reference",
                   "text": "RelativeDelegateLinkLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RelativeDelegateLinkLike:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -8230,6 +8245,64 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "mkRefScriptTxn"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#mkScriptBundle:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkScriptBundle(setupDetails?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarBundleSetupDetails",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~StellarBundleSetupDetails:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 4,
+                "endIndex": 6
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "setupDetails",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkScriptBundle"
             },
             {
               "kind": "Method",
@@ -10583,7 +10656,7 @@
                 {
                   "kind": "Reference",
                   "text": "ErgoRelativeDelegateLink",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ErgoRelativeDelegateLink:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -10969,7 +11042,7 @@
                 {
                   "kind": "Reference",
                   "text": "RelativeDelegateLinkLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RelativeDelegateLinkLike:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -11123,7 +11196,7 @@
                 {
                   "kind": "Reference",
                   "text": "ErgoRelativeDelegateLink",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ErgoRelativeDelegateLink:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -11132,7 +11205,7 @@
                 {
                   "kind": "Reference",
                   "text": "RelativeDelegateLinkLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RelativeDelegateLinkLike:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -11255,17 +11328,30 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!Capo#scriptBundle:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#scriptBundleClass:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "scriptBundle(): "
+                  "text": "scriptBundleClass(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<typeof "
                 },
                 {
                   "kind": "Reference",
                   "text": "CapoHeliosBundle",
                   "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -11275,7 +11361,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -11283,7 +11369,7 @@
               "parameters": [],
               "isOptional": false,
               "isAbstract": false,
-              "name": "scriptBundle"
+              "name": "scriptBundleClass"
             },
             {
               "kind": "Property",
@@ -11389,7 +11475,7 @@
                 {
                   "kind": "Reference",
                   "text": "RelativeDelegateLinkLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RelativeDelegateLinkLike:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -12150,7 +12236,7 @@
                 {
                   "kind": "Reference",
                   "text": "ErgoRelativeDelegateLink",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ErgoRelativeDelegateLink:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -14191,6 +14277,36 @@
               "name": "txnWillMintUuts"
             },
             {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#usesContractScript:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "usesContractScript: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "boolean"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "usesContractScript",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#uutsValue:member(1)",
               "docComment": "/**\n * returns a value representing the provided UUT(s)\n *\n * @remarks\n *\n * The inputs can be of a few forms - see the overload variants\n *\n * @param uutMap - a set of UUTs, all of which will be represented in the returned value\n *\n * @param tcx - a transaction context, whose `state.uuts` will be processed as in the `uutMap` variant\n *\n * @param uutName - a UutName object representinga single UUT\n *\n * @public\n */\n",
@@ -14354,42 +14470,6 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!Capo#verifyConfigs:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "verifyConfigs(): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "Promise",
-                  "canonicalReference": "!Promise:interface"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<any>"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 3
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "verifyConfigs"
-            },
-            {
-              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#verifyCoreDelegates:member(1)",
               "docComment": "/**\n * Performs a validation of all critical delegate connections\n *\n * @remarks\n *\n * Checks that each delegate connection is correct and that the underlying scripts for those delegates have not been modified in unplanned ways.\n *\n * Every Capo subclass that adds new delegate types SHOULD implement this method, performing any checks needed to verify the scripts underlying those delegate-types. It should return `Promise.all([ super(), ...myOwnChecks])`.\n *\n * @public\n */\n",
               "excerptTokens": [
@@ -14450,6 +14530,51 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "verifyCoreDelegates"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#verifyIsChartered:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "verifyIsChartered(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CapoDatum$Ergo$CharterData",
+                  "canonicalReference": "!unknown"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "verifyIsChartered"
             }
           ],
           "extendsTokenRange": {
@@ -14621,7 +14746,7 @@
             {
               "kind": "Reference",
               "text": "ErgoCapoDatum",
-              "canonicalReference": "@donecollectively/stellar-contracts!~ErgoCapoDatum:type"
+              "canonicalReference": "!unknown"
             },
             {
               "kind": "Content",
@@ -15069,6 +15194,14 @@
                 },
                 {
                   "kind": "Content",
+                  "text": ", generic?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "\"generic\" | false"
+                },
+                {
+                  "kind": "Content",
                   "text": "): "
                 },
                 {
@@ -15107,8 +15240,8 @@
               ],
               "isStatic": true,
               "returnTypeTokenRange": {
-                "startIndex": 10,
-                "endIndex": 11
+                "startIndex": 12,
+                "endIndex": 13
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -15129,6 +15262,14 @@
                     "endIndex": 9
                   },
                   "isOptional": false
+                },
+                {
+                  "parameterName": "generic",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 10,
+                    "endIndex": 11
+                  },
+                  "isOptional": true
                 }
               ],
               "isOptional": false,
@@ -15272,7 +15413,7 @@
             },
             {
               "kind": "Content",
-              "text": ", form>;\n    isNullDeployment?: boolean;\n}"
+              "text": ", form>;\n}"
             },
             {
               "kind": "Content",
@@ -15418,37 +15559,6 @@
             },
             {
               "kind": "Property",
-              "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle#configuredScriptDetails:member",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "configuredScriptDetails?: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "DeployedScriptDetails",
-                  "canonicalReference": "@donecollectively/stellar-contracts!DeployedScriptDetails:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isReadonly": false,
-              "isOptional": true,
-              "releaseTag": "Public",
-              "name": "configuredScriptDetails",
-              "propertyTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "isStatic": false,
-              "isProtected": false,
-              "isAbstract": false
-            },
-            {
-              "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle#datumTypeName:member",
               "docComment": "",
               "excerptTokens": [
@@ -15532,12 +15642,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "import(\"../CachedHeliosProgram.js\")."
-                },
-                {
-                  "kind": "Reference",
-                  "text": "DeployedProgramBundle",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~DeployedProgramBundle:type"
+                  "text": "any"
                 },
                 {
                   "kind": "Content",
@@ -15547,7 +15652,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 3,
-                "endIndex": 5
+                "endIndex": 4
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -15707,6 +15812,37 @@
               "name": "init"
             },
             {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle#initProgramDetails:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "initProgramDetails(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "void"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "initProgramDetails"
+            },
+            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle.isCapoBundle:member",
               "docComment": "",
@@ -15767,34 +15903,94 @@
               "isAbstract": false
             },
             {
-              "kind": "Property",
-              "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle.isPreconfigured:member",
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle#loadPrecompiledMinterScript:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "static isPreconfigured: "
+                  "text": "loadPrecompiledMinterScript(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
                 },
                 {
                   "kind": "Content",
-                  "text": "boolean"
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "PrecompiledProgramJSON",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~PrecompiledProgramJSON:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
                   "text": ";"
                 }
               ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "isPreconfigured",
-              "propertyTypeTokenRange": {
+              "isStatic": false,
+              "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
-              "isStatic": true,
+              "releaseTag": "Public",
               "isProtected": false,
-              "isAbstract": false
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "loadPrecompiledMinterScript"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle#loadPrecompiledScript:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "loadPrecompiledScript(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "PrecompiledProgramJSON",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~PrecompiledProgramJSON:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "loadPrecompiledScript"
             },
             {
               "kind": "Property",
@@ -16004,12 +16200,12 @@
             },
             {
               "kind": "Property",
-              "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle#preConfigured:member",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle#precompiledScriptDetails:member",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "preConfigured: "
+                  "text": "precompiledScriptDetails?: "
                 },
                 {
                   "kind": "Reference",
@@ -16026,7 +16222,42 @@
                 }
               ],
               "isReadonly": false,
-              "isOptional": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "precompiledScriptDetails",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoHeliosBundle#preConfigured:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "preConfigured?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "typeof "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "capoConfigurationDetails",
+                  "canonicalReference": "@donecollectively/stellar-contracts!capoConfigurationDetails:var"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
               "releaseTag": "Public",
               "name": "preConfigured",
               "propertyTypeTokenRange": {
@@ -16825,6 +17056,64 @@
               "isAbstract": false
             },
             {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoMinter#mkScriptBundle:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkScriptBundle(setupDetails?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarBundleSetupDetails",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~StellarBundleSetupDetails:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 4,
+                "endIndex": 6
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "setupDetails",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkScriptBundle"
+            },
+            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!CapoMinter#onchain:member",
               "docComment": "",
@@ -16891,16 +17180,30 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!CapoMinter#scriptBundle:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoMinter#scriptBundleClass:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "scriptBundle(): "
+                  "text": "scriptBundleClass(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
                 },
                 {
                   "kind": "Content",
-                  "text": "any"
+                  "text": "<typeof import(\"./CapoMinter.hlb.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CapoMinterBundle",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoMinterBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -16910,7 +17213,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -16918,7 +17221,7 @@
               "parameters": [],
               "isOptional": false,
               "isAbstract": false,
-              "name": "scriptBundle"
+              "name": "scriptBundleClass"
             },
             {
               "kind": "Method",
@@ -17397,7 +17700,7 @@
             {
               "kind": "Reference",
               "text": "CapoDatum$Ergo$CharterData",
-              "canonicalReference": "@donecollectively/stellar-contracts!~CapoDatum$Ergo$CharterData:type"
+              "canonicalReference": "!unknown"
             },
             {
               "kind": "Content",
@@ -17424,7 +17727,7 @@
             {
               "kind": "Reference",
               "text": "CapoDatum$CharterDataLike",
-              "canonicalReference": "@donecollectively/stellar-contracts!~CapoDatum$CharterDataLike:interface"
+              "canonicalReference": "!unknown"
             },
             {
               "kind": "Content",
@@ -17838,6 +18141,41 @@
               "propertyTypeTokenRange": {
                 "startIndex": 1,
                 "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!ContractBasedDelegate#_scriptBundle:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "_scriptBundle: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "HeliosScriptBundle",
+                  "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "_scriptBundle",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
               },
               "isStatic": false,
               "isProtected": false,
@@ -19115,6 +19453,64 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!ContractBasedDelegate#mkScriptBundle:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkScriptBundle(setupDetails?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "PartialStellarBundleDetails",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~PartialStellarBundleDetails:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 4,
+                "endIndex": 6
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "setupDetails",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkScriptBundle"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!ContractBasedDelegate#mkSeededMintingActivity:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -19512,17 +19908,30 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!ContractBasedDelegate#scriptBundle:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!ContractBasedDelegate#scriptBundleClass:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "scriptBundle(): "
+                  "text": "scriptBundleClass(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<typeof "
                 },
                 {
                   "kind": "Reference",
                   "text": "CapoDelegateBundle",
                   "canonicalReference": "@donecollectively/stellar-contracts!CapoDelegateBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -19532,7 +19941,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -19540,7 +19949,7 @@
               "parameters": [],
               "isOptional": false,
               "isAbstract": false,
-              "name": "scriptBundle"
+              "name": "scriptBundleClass"
             },
             {
               "kind": "Property",
@@ -21205,7 +21614,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "\"bundle\""
+                  "text": "\"config\" | \"bundle\""
                 },
                 {
                   "kind": "Content",
@@ -21352,8 +21761,8 @@
                 },
                 {
                   "kind": "Reference",
-                  "text": "CapoDelegateBundle",
-                  "canonicalReference": "@donecollectively/stellar-contracts!CapoDelegateBundle:class"
+                  "text": "DelegatedDataBundle",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DelegatedDataBundle:class"
                 },
                 {
                   "kind": "Content",
@@ -22565,17 +22974,30 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!DelegatedDataContract#scriptBundle:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!DelegatedDataContract#scriptBundleClass:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "scriptBundle(): "
+                  "text": "scriptBundleClass(): "
                 },
                 {
                   "kind": "Reference",
-                  "text": "CapoDelegateBundle",
-                  "canonicalReference": "@donecollectively/stellar-contracts!CapoDelegateBundle:class"
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<typeof "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DelegatedDataBundle",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DelegatedDataBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -22585,7 +23007,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -22593,7 +23015,7 @@
               "parameters": [],
               "isOptional": false,
               "isAbstract": false,
-              "name": "scriptBundle"
+              "name": "scriptBundleClass"
             },
             {
               "kind": "Method",
@@ -23793,25 +24215,7 @@
             },
             {
               "kind": "Content",
-              "text": "{\n    config: form extends \"json\" ? any : CT;\n    scriptHash?: number[];\n    programBundle?: "
-            },
-            {
-              "kind": "Reference",
-              "text": "DeployedProgramBundle",
-              "canonicalReference": "@donecollectively/stellar-contracts!~DeployedProgramBundle:type"
-            },
-            {
-              "kind": "Content",
-              "text": ";\n} | "
-            },
-            {
-              "kind": "Reference",
-              "text": "RequiredDeployedScriptDetails",
-              "canonicalReference": "@donecollectively/stellar-contracts!RequiredDeployedScriptDetails:type"
-            },
-            {
-              "kind": "Content",
-              "text": "<CT>"
+              "text": "{\n    config: form extends \"json\" ? any : CT;\n    scriptHash?: number[];\n    programName?: string;\n}"
             },
             {
               "kind": "Content",
@@ -23847,7 +24251,7 @@
           ],
           "typeTokenRange": {
             "startIndex": 9,
-            "endIndex": 14
+            "endIndex": 10
           }
         },
         {
@@ -24925,99 +25329,6 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@donecollectively/stellar-contracts!ErgoCapoManifestEntry:type",
-          "docComment": "/**\n * An ergonomic, though less strictly-safe form of CapoManifestEntry\n *\n * @remarks\n *\n * This type can use enums expressed as merged unions of the enum variants. You might think of this type as being \"read-only\", in that it's possible to create data with this type that would not be suitable for conversion to on-chain use. For creating such data, use the CapoManifestEntryLike type, or the on-chain data-building helpers instead.\n *\n * @public\n */\n",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export type ErgoCapoManifestEntry = "
-            },
-            {
-              "kind": "Content",
-              "text": "{\n    entryType: "
-            },
-            {
-              "kind": "Reference",
-              "text": "ErgoManifestEntryType",
-              "canonicalReference": "@donecollectively/stellar-contracts!~ErgoManifestEntryType:type"
-            },
-            {
-              "kind": "Content",
-              "text": ";\n    tokenName: number[];\n    mph: /*minStructField*/ "
-            },
-            {
-              "kind": "Reference",
-              "text": "MintingPolicyHash",
-              "canonicalReference": "@helios-lang/ledger!MintingPolicyHash:type"
-            },
-            {
-              "kind": "Content",
-              "text": " | undefined;\n}"
-            },
-            {
-              "kind": "Content",
-              "text": ";"
-            }
-          ],
-          "fileUrlPath": ".api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts",
-          "releaseTag": "Public",
-          "name": "ErgoCapoManifestEntry",
-          "typeTokenRange": {
-            "startIndex": 1,
-            "endIndex": 6
-          }
-        },
-        {
-          "kind": "TypeAlias",
-          "canonicalReference": "@donecollectively/stellar-contracts!ErgoPendingCharterChange:type",
-          "docComment": "/**\n * ergonomic type enabling easy access to values converted from the on-chain form\n *\n * @remarks\n *\n * The data will be expressed in canonical form, and enum variants are merged to a single type with optional fields. Nested enums are also merged in this ergonomic way.\n *\n * @public\n */\n",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export type ErgoPendingCharterChange = "
-            },
-            {
-              "kind": "Reference",
-              "text": "IntersectedEnum",
-              "canonicalReference": "@donecollectively/stellar-contracts!IntersectedEnum:type"
-            },
-            {
-              "kind": "Content",
-              "text": "<{\n    delegateChange: "
-            },
-            {
-              "kind": "Reference",
-              "text": "ErgoPendingDelegateChange",
-              "canonicalReference": "@donecollectively/stellar-contracts!~ErgoPendingDelegateChange:type"
-            },
-            {
-              "kind": "Content",
-              "text": ";\n} | {\n    otherManifestChange: "
-            },
-            {
-              "kind": "Reference",
-              "text": "PendingCharterChange$Ergo$otherManifestChange",
-              "canonicalReference": "@donecollectively/stellar-contracts!~PendingCharterChange$Ergo$otherManifestChange:type"
-            },
-            {
-              "kind": "Content",
-              "text": ";\n}>"
-            },
-            {
-              "kind": "Content",
-              "text": ";"
-            }
-          ],
-          "fileUrlPath": ".api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts",
-          "releaseTag": "Public",
-          "name": "ErgoPendingCharterChange",
-          "typeTokenRange": {
-            "startIndex": 1,
-            "endIndex": 7
-          }
-        },
-        {
-          "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!ErrorMap:type",
           "docComment": "/**\n * Reveals errors found during delegate selection\n *\n * @remarks\n *\n * Each field name is mapped to an array of string error messages found on that field.\n *\n * @public\n */\n",
           "excerptTokens": [
@@ -26002,6 +26313,15 @@
             },
             {
               "kind": "Reference",
+              "text": "Partial",
+              "canonicalReference": "!Partial:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
               "text": "Pick",
               "canonicalReference": "!Pick:type"
             },
@@ -26012,11 +26332,11 @@
             {
               "kind": "Reference",
               "text": "ErgoDelegateDatum",
-              "canonicalReference": "@donecollectively/stellar-contracts!~ErgoDelegateDatum:type"
+              "canonicalReference": "!unknown"
             },
             {
               "kind": "Content",
-              "text": ", \"Cip68RefToken\" | \"IsDelegation\"> & {\n    capoStoredData?: {\n        data: "
+              "text": ", \"Cip68RefToken\" | \"IsDelegation\">> & {\n    capoStoredData?: {\n        data: "
             },
             {
               "kind": "Reference",
@@ -26037,7 +26357,7 @@
           "name": "GenericDelegateDatum",
           "typeTokenRange": {
             "startIndex": 1,
-            "endIndex": 7
+            "endIndex": 9
           }
         },
         {
@@ -26708,7 +27028,7 @@
             {
               "kind": "Reference",
               "text": "ErgoRelativeDelegateLink",
-              "canonicalReference": "@donecollectively/stellar-contracts!~ErgoRelativeDelegateLink:type"
+              "canonicalReference": "!unknown"
             },
             {
               "kind": "Content",
@@ -27327,6 +27647,36 @@
           "members": [
             {
               "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#___id:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "___id: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "number"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "___id",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#_didInit:member",
               "docComment": "",
               "excerptTokens": [
@@ -27749,6 +28099,37 @@
             },
             {
               "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#configuredScriptDetails:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "configuredScriptDetails?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DeployedScriptDetails",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DeployedScriptDetails:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "configuredScriptDetails",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#configuredUplcParams:member",
               "docComment": "",
               "excerptTokens": [
@@ -27880,7 +28261,7 @@
             {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#datumTypeName:member",
-              "docComment": "/**\n * optional attribute explicitly naming a type for the datum\n *\n * @remarks\n *\n * This can be used if needed for a contract whose entry point uses an abstract type for the datum; the type-bridge & type-gen system will use this data type instead of inferrring the type from the entry point.\n */\n",
+              "docComment": "/**\n * optional attribute explicitly naming a type for the datum\n *\n * @remarks\n *\n * This can be used if needed for a contract whose entry point uses an abstract type for the datum; the type-bridge & type-gen system will use this data type instead of inferring the type from the entry point.\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -28168,12 +28549,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "import(\"../CachedHeliosProgram.js\")."
-                },
-                {
-                  "kind": "Reference",
-                  "text": "DeployedProgramBundle",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~DeployedProgramBundle:type"
+                  "text": "void"
                 },
                 {
                   "kind": "Content",
@@ -28183,7 +28559,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 3,
-                "endIndex": 5
+                "endIndex": 4
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -28551,6 +28927,37 @@
               "name": "init"
             },
             {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#initProgramDetails:member(1)",
+              "docComment": "/**\n * deferred initialization of program details, preventing the need to load the program prior to it actually being needed\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "initProgramDetails(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "void"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "initProgramDetails"
+            },
+            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle.isAbstract:member",
               "docComment": "/**\n * an opt-in indicator of abstractness\n *\n * @remarks\n *\n * Subclasses that aren't intended for instantiation can set this to true.\n *\n * Subclasses that don't set this will not be treated as abstract.\n *\n * @public\n */\n",
@@ -28731,6 +29138,100 @@
               "isStatic": false,
               "isProtected": false,
               "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#loadPrecompiledVariant:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "loadPrecompiledVariant(variant: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "PrecompiledProgramJSON",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~PrecompiledProgramJSON:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 7
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "variant",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "loadPrecompiledVariant"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#loadProgram:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "loadProgram(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "HeliosProgramWithCacheAPI",
+                  "canonicalReference": "@donecollectively/stellar-contracts!HeliosProgramWithCacheAPI:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "loadProgram"
             },
             {
               "kind": "Method",
@@ -28964,13 +29465,8 @@
                   "text": "get preBundledScript(): "
                 },
                 {
-                  "kind": "Reference",
-                  "text": "UplcProgramV2",
-                  "canonicalReference": "@helios-lang/uplc!UplcProgramV2:type"
-                },
-                {
                   "kind": "Content",
-                  "text": " | undefined"
+                  "text": "void"
                 },
                 {
                   "kind": "Content",
@@ -28983,7 +29479,7 @@
               "name": "preBundledScript",
               "propertyTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 3
+                "endIndex": 2
               },
               "isStatic": false,
               "isProtected": false,
@@ -28991,12 +29487,12 @@
             },
             {
               "kind": "Property",
-              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#preCompiled:member",
+              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#precompiledScriptDetails:member",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "preCompiled?: "
+                  "text": "precompiledScriptDetails?: "
                 },
                 {
                   "kind": "Content",
@@ -29004,12 +29500,12 @@
                 },
                 {
                   "kind": "Reference",
-                  "text": "RequiredDeployedScriptDetails",
-                  "canonicalReference": "@donecollectively/stellar-contracts!RequiredDeployedScriptDetails:type"
+                  "text": "DeployedScriptDetails",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DeployedScriptDetails:type"
                 },
                 {
                   "kind": "Content",
-                  "text": "<any, \"json\">;\n    }"
+                  "text": "<any, \"native\">;\n    }"
                 },
                 {
                   "kind": "Content",
@@ -29019,7 +29515,7 @@
               "isReadonly": false,
               "isOptional": true,
               "releaseTag": "Public",
-              "name": "preCompiled",
+              "name": "precompiledScriptDetails",
               "propertyTypeTokenRange": {
                 "startIndex": 1,
                 "endIndex": 4
@@ -29237,19 +29733,19 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "scriptHash?: "
+                  "text": "get scriptHash(): "
                 },
                 {
                   "kind": "Content",
-                  "text": "number[] | undefined"
+                  "text": "number[]"
                 },
                 {
                   "kind": "Content",
                   "text": ";"
                 }
               ],
-              "isReadonly": false,
-              "isOptional": true,
+              "isReadonly": true,
+              "isOptional": false,
               "releaseTag": "Public",
               "name": "scriptHash",
               "propertyTypeTokenRange": {
@@ -29271,7 +29767,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "\"config\" | \"bundle\" | \"mixed\""
+                  "text": "\"config\" | \"bundle\" | \"none\""
                 },
                 {
                   "kind": "Content",
@@ -29322,6 +29818,41 @@
               "isAbstract": false
             },
             {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#setupDetails:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "setupDetails: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarBundleSetupDetails",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~StellarBundleSetupDetails:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "setupDetails",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle.usingCapoBundleClass:member(1)",
               "docComment": "/**\n * Constructs a base class for any Helios script bundle, given the class for an application-specific CapoHeliosBundle.\n *\n * @remarks\n *\n * The resulting class provides its own CapoHeliosBundle instance for independent use (specifically, for compiling this bundle using the dependency libraries provided by the Capo bundle).\n */\n",
@@ -29342,6 +29873,14 @@
                 {
                   "kind": "Content",
                   "text": "CB"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", generic?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "\"generic\" | false"
                 },
                 {
                   "kind": "Content",
@@ -29372,8 +29911,8 @@
               ],
               "isStatic": true,
               "returnTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 6
+                "startIndex": 7,
+                "endIndex": 8
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -29386,6 +29925,14 @@
                     "endIndex": 4
                   },
                   "isOptional": false
+                },
+                {
+                  "parameterName": "generic",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": true
                 }
               ],
               "isOptional": false,
@@ -29424,61 +29971,8 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#withSetupDetails:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "withSetupDetails(details: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "StellarBundleSetupDetails",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~StellarBundleSetupDetails:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<any>"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Content",
-                  "text": "this"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 4,
-                "endIndex": 5
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "details",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 3
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "withSetupDetails"
-            },
-            {
-              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle#withVariant:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * Sets the currently-selected variant for this bundle, asserting its presence in the `variants()` list.\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -30217,7 +30711,7 @@
             },
             {
               "kind": "Content",
-              "text": "<{\n    submitter: import(\"@cardano-ogmios/client/dist/TransactionSubmission/Client.js\")."
+              "text": "<{\n    submitter: import(\"@cardano-ogmios/client/dist/TransactionSubmission\")."
             },
             {
               "kind": "Reference",
@@ -30226,7 +30720,7 @@
             },
             {
               "kind": "Content",
-              "text": ";\n    ledgerState: import(\"@cardano-ogmios/client/dist/LedgerStateQuery/Client.js\")."
+              "text": ";\n    ledgerState: import(\"@cardano-ogmios/client/dist/LedgerStateQuery\")."
             },
             {
               "kind": "Reference",
@@ -30291,7 +30785,7 @@
             {
               "kind": "Reference",
               "text": "CapoManifestEntryLike",
-              "canonicalReference": "@donecollectively/stellar-contracts!~CapoManifestEntryLike:interface"
+              "canonicalReference": "!unknown"
             },
             {
               "kind": "Content",
@@ -30309,7 +30803,7 @@
             {
               "kind": "Reference",
               "text": "CapoManifestEntryLike",
-              "canonicalReference": "@donecollectively/stellar-contracts!~CapoManifestEntryLike:interface"
+              "canonicalReference": "!unknown"
             },
             {
               "kind": "Content",
@@ -31367,7 +31861,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "\"bundle\""
+                  "text": "\"config\""
                 },
                 {
                   "kind": "Content",
@@ -33370,7 +33864,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "import(\"@cardano-ogmios/client/dist/LedgerStateQuery/Client.js\")."
+                  "text": "import(\"@cardano-ogmios/client/dist/LedgerStateQuery\")."
                 },
                 {
                   "kind": "Reference",
@@ -33405,7 +33899,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "import(\"@cardano-ogmios/client/dist/TransactionSubmission/Client.js\")."
+                  "text": "import(\"@cardano-ogmios/client/dist/TransactionSubmission\")."
                 },
                 {
                   "kind": "Reference",
@@ -33835,8 +34329,13 @@
               "text": "placeholderSetupDetails: "
             },
             {
+              "kind": "Reference",
+              "text": "StellarBundleSetupDetails",
+              "canonicalReference": "@donecollectively/stellar-contracts!~StellarBundleSetupDetails:type"
+            },
+            {
               "kind": "Content",
-              "text": "{\n    setup: {\n        isMainnet: boolean;\n        isPlaceholder: string;\n    };\n}"
+              "text": "<any>"
             }
           ],
           "fileUrlPath": "src/helios/scriptBundling/HeliosScriptBundle.ts",
@@ -33845,7 +34344,7 @@
           "name": "placeholderSetupDetails",
           "variableTypeTokenRange": {
             "startIndex": 1,
-            "endIndex": 2
+            "endIndex": 3
           }
         },
         {
@@ -34299,110 +34798,6 @@
           "name": "realMul"
         },
         {
-          "kind": "Interface",
-          "canonicalReference": "@donecollectively/stellar-contracts!RelativeDelegateLink:interface",
-          "docComment": "/**\n * A strong type for the canonical form of RelativeDelegateLink\n *\n * @remarks\n *\n * Note that any enum fields in this type are expressed as a disjoint union of the enum variants. Processing enum data conforming to this type can be a bit of a pain. For a more ergonomic, though less strictly-safe form of this type, see ErgoRelativeDelegateLink instead.\n *\n * @public\n */\n",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export interface RelativeDelegateLink "
-            }
-          ],
-          "fileUrlPath": ".api-extractor-temp/src/helios/scriptBundling/CapoHeliosBundle.typeInfo.d.ts",
-          "releaseTag": "Public",
-          "name": "RelativeDelegateLink",
-          "preserveMemberOrder": false,
-          "members": [
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@donecollectively/stellar-contracts!RelativeDelegateLink#config:member",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "config: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "number[]"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "config",
-              "propertyTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              }
-            },
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@donecollectively/stellar-contracts!RelativeDelegateLink#delegateValidatorHash:member",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "delegateValidatorHash: /*minStructField*/ "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "ValidatorHash",
-                  "canonicalReference": "@helios-lang/ledger!ValidatorHash:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": " | undefined"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "delegateValidatorHash",
-              "propertyTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 3
-              }
-            },
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@donecollectively/stellar-contracts!RelativeDelegateLink#uutName:member",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "uutName: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "string"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "uutName",
-              "propertyTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              }
-            }
-          ],
-          "extendsTokenRanges": []
-        },
-        {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!ReqtsMap:type",
           "docComment": "/**\n * Describes the requirements for a unit of software\n *\n * @remarks\n *\n * A requirements map is a list of described requirements, in which each requirement has a synopsis, a description of its purpose, descriptive detail, and technical requirements for the mechanism used for implementation. The mech strings should be usable as unit-test titles.\n *\n * use the hasReqts() helper method to declare a type-safe set of requirements following this data structure.\n *\n * Each requirement also has space for nested 'requires', without the need for deeply nested data structures; these reference other requirements in the same hasReqts() data structure. As a result, high-level and detail- level requirements and 'impl' details can have progressive levels of detail.\n *\n * @typeParam reqts - the list of known requirement names. Implicitly detected by the hasReqts() helper.\n *\n * @public\n */\n",
@@ -34492,90 +34887,6 @@
           "typeTokenRange": {
             "startIndex": 7,
             "endIndex": 12
-          }
-        },
-        {
-          "kind": "TypeAlias",
-          "canonicalReference": "@donecollectively/stellar-contracts!RequiredDeployedScriptDetails:type",
-          "docComment": "/**\n * @public\n */\n",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export type RequiredDeployedScriptDetails<CT extends "
-            },
-            {
-              "kind": "Reference",
-              "text": "configBaseWithRev",
-              "canonicalReference": "@donecollectively/stellar-contracts!configBase:interface"
-            },
-            {
-              "kind": "Content",
-              "text": ", form extends "
-            },
-            {
-              "kind": "Content",
-              "text": "\"json\" | \"native\""
-            },
-            {
-              "kind": "Content",
-              "text": " = "
-            },
-            {
-              "kind": "Content",
-              "text": "\"native\""
-            },
-            {
-              "kind": "Content",
-              "text": "> = "
-            },
-            {
-              "kind": "Content",
-              "text": "{\n    config: form extends \"json\" ? any : CT;\n    programBundle: "
-            },
-            {
-              "kind": "Reference",
-              "text": "DeployedProgramBundle",
-              "canonicalReference": "@donecollectively/stellar-contracts!~DeployedProgramBundle:type"
-            },
-            {
-              "kind": "Content",
-              "text": ";\n    scriptHash?: string;\n}"
-            },
-            {
-              "kind": "Content",
-              "text": ";"
-            }
-          ],
-          "fileUrlPath": "src/configuration/DeployedScriptConfigs.ts",
-          "releaseTag": "Public",
-          "name": "RequiredDeployedScriptDetails",
-          "typeParameters": [
-            {
-              "typeParameterName": "CT",
-              "constraintTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "defaultTypeTokenRange": {
-                "startIndex": 0,
-                "endIndex": 0
-              }
-            },
-            {
-              "typeParameterName": "form",
-              "constraintTokenRange": {
-                "startIndex": 3,
-                "endIndex": 4
-              },
-              "defaultTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 6
-              }
-            }
-          ],
-          "typeTokenRange": {
-            "startIndex": 7,
-            "endIndex": 10
           }
         },
         {
@@ -37154,8 +37465,21 @@
                 },
                 {
                   "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
                   "text": "HeliosScriptBundle",
                   "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -37165,7 +37489,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -37581,6 +37905,37 @@
               "name": "isDefinitelyMainnet"
             },
             {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#loadProgram:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "loadProgram(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "import(\"../dist/HeliosProgramWithCacheAPI.js\").HeliosProgramWithCacheAPI"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "loadProgram"
+            },
+            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#mintingPolicyHash:member",
               "docComment": "",
@@ -37596,10 +37951,6 @@
                 },
                 {
                   "kind": "Content",
-                  "text": " | undefined"
-                },
-                {
-                  "kind": "Content",
                   "text": ";"
                 }
               ],
@@ -37609,7 +37960,7 @@
               "name": "mintingPolicyHash",
               "propertyTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 3
+                "endIndex": 2
               },
               "isStatic": false,
               "isProtected": false,
@@ -37644,6 +37995,64 @@
               "isStatic": false,
               "isProtected": false,
               "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#mkScriptBundle:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkScriptBundle(setupDetails?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "PartialStellarBundleDetails",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~PartialStellarBundleDetails:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 4,
+                "endIndex": 6
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "setupDetails",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkScriptBundle"
             },
             {
               "kind": "Method",
@@ -38574,6 +38983,37 @@
               "isAbstract": false
             },
             {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#preloadedBundle:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get preloadedBundle(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "HeliosScriptBundle",
+                  "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "preloadedBundle",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#prepareBundleWithScriptParams:member(1)",
               "docComment": "",
@@ -38746,17 +39186,30 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#scriptBundle:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#scriptBundleClass:member(1)",
               "docComment": "/**\n * each StellarContracts subclass needs to provide a scriptBundle class.\n *\n * @remarks\n *\n * Your script bundle MUST be defined in a separate file using a convention of `‹scriptName›.hlb.ts`, and exported as a default class. It should inherit from HeliosScriptBundle or one of its subclasses. Stellar Contracts processes this file, analyzes the on-chain types defined in your Helios sources, and generates Typescript types and a data-bridging class for your script.\n *\n * Once the data-bridge class is generated, you should import it into your contract module and assign it to your `dataBridgeClass` attribute.\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "scriptBundle(): "
+                  "text": "scriptBundleClass(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<typeof "
                 },
                 {
                   "kind": "Reference",
                   "text": "HeliosScriptBundle",
                   "canonicalReference": "@donecollectively/stellar-contracts!HeliosScriptBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -38766,7 +39219,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -38774,7 +39227,7 @@
               "parameters": [],
               "isOptional": false,
               "isAbstract": false,
-              "name": "scriptBundle"
+              "name": "scriptBundleClass"
             },
             {
               "kind": "Property",
@@ -40142,7 +40595,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarDelegate#txnGrantAuthority:member(1)",
-              "docComment": "/**\n * Finds and adds the delegate's authority token to the transaction\n *\n * @remarks\n *\n * calls the delegate-specific DelegateAddsAuthorityToken() method, with the uut found by DelegateMustFindAuthorityToken().\n *\n * Returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken()}, automatically, unless the `skipReturningDelegate` option is provided.\n *\n * If the authority token\n *\n * @param tcx - transaction context\n *\n * @public\n */\n",
+              "docComment": "/**\n * Finds and adds the delegate's authority token to the transaction\n *\n * @remarks\n *\n * calls the delegate-specific DelegateAddsAuthorityToken() method, with the uut found by DelegateMustFindAuthorityToken().\n *\n * Returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken()}, automatically, unless the `skipReturningDelegate` option is provided.\n *\n * If the authority token\n *\n * @param tcx - transaction context\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -40477,16 +40930,7 @@
             },
             {
               "kind": "Content",
-              "text": "<CT>;\n    programBundle?: "
-            },
-            {
-              "kind": "Reference",
-              "text": "DeployedProgramBundle",
-              "canonicalReference": "@donecollectively/stellar-contracts!~DeployedProgramBundle:type"
-            },
-            {
-              "kind": "Content",
-              "text": ";\n    previousOnchainScript?: {\n        validatorHash: number[];\n        uplcProgram: "
+              "text": "<CT>;\n    previousOnchainScript?: {\n        validatorHash: number[];\n        uplcProgram: "
             },
             {
               "kind": "Reference",
@@ -40520,7 +40964,7 @@
           ],
           "typeTokenRange": {
             "startIndex": 3,
-            "endIndex": 12
+            "endIndex": 10
           }
         },
         {
@@ -49955,7 +50399,7 @@
                 {
                   "kind": "Reference",
                   "text": "ErgoDelegateDatum",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ErgoDelegateDatum:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50138,7 +50582,7 @@
                 {
                   "kind": "Reference",
                   "text": "AnyDataLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~AnyDataLike_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50156,7 +50600,7 @@
                 {
                   "kind": "Reference",
                   "text": "DelegationDetailLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~DelegationDetailLike:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50192,7 +50636,7 @@
                 {
                   "kind": "Reference",
                   "text": "RelativeDelegateLinkLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RelativeDelegateLinkLike_3:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50219,7 +50663,7 @@
                 {
                   "kind": "Reference",
                   "text": "PendingDelegateChangeLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~PendingDelegateChangeLike_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50228,7 +50672,7 @@
                 {
                   "kind": "Reference",
                   "text": "PendingDelegateActionLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~PendingDelegateActionLike_2:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50237,7 +50681,7 @@
                 {
                   "kind": "Reference",
                   "text": "DelegateRoleLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~DelegateRoleLike_2:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50246,7 +50690,7 @@
                 {
                   "kind": "Reference",
                   "text": "RelativeDelegateLinkLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RelativeDelegateLinkLike_3:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50264,7 +50708,7 @@
                 {
                   "kind": "Reference",
                   "text": "CapoManifestEntryLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoManifestEntryLike_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50273,7 +50717,7 @@
                 {
                   "kind": "Reference",
                   "text": "ManifestEntryTypeLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ManifestEntryTypeLike_2:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50300,7 +50744,7 @@
                 {
                   "kind": "Reference",
                   "text": "CapoCtxLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoCtxLike:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50318,7 +50762,7 @@
                 {
                   "kind": "Reference",
                   "text": "cctx_CharterInputTypeLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~cctx_CharterInputTypeLike:type"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50371,7 +50815,7 @@
                 {
                   "kind": "Reference",
                   "text": "AnyData",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~AnyData_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50380,7 +50824,7 @@
                 {
                   "kind": "Reference",
                   "text": "AnyDataLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~AnyDataLike_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50424,7 +50868,7 @@
                 {
                   "kind": "Reference",
                   "text": "CapoCtx",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoCtx:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50433,7 +50877,7 @@
                 {
                   "kind": "Reference",
                   "text": "CapoCtxLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoCtxLike:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50477,7 +50921,7 @@
                 {
                   "kind": "Reference",
                   "text": "CapoManifestEntry",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoManifestEntry_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50486,7 +50930,7 @@
                 {
                   "kind": "Reference",
                   "text": "CapoManifestEntryLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoManifestEntryLike_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50530,7 +50974,7 @@
                 {
                   "kind": "Reference",
                   "text": "DelegationDetail",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~DelegationDetail_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50539,7 +50983,7 @@
                 {
                   "kind": "Reference",
                   "text": "DelegationDetailLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~DelegationDetailLike:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50583,7 +51027,7 @@
                 {
                   "kind": "Reference",
                   "text": "PendingDelegateChange",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~PendingDelegateChange_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50592,7 +51036,7 @@
                 {
                   "kind": "Reference",
                   "text": "PendingDelegateChangeLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~PendingDelegateChangeLike_2:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50636,7 +51080,7 @@
                 {
                   "kind": "Reference",
                   "text": "RelativeDelegateLink",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RelativeDelegateLink_3:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -50645,7 +51089,7 @@
                 {
                   "kind": "Reference",
                   "text": "RelativeDelegateLinkLike",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RelativeDelegateLinkLike_3:interface"
+                  "canonicalReference": "!unknown"
                 },
                 {
                   "kind": "Content",
@@ -51120,16 +51564,30 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!UnspecializedMintDelegate#scriptBundle:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!UnspecializedMintDelegate#scriptBundleClass:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "scriptBundle(): "
+                  "text": "scriptBundleClass(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
                 },
                 {
                   "kind": "Content",
-                  "text": "any"
+                  "text": "<typeof import(\"./UnspecializedDelegate.hlb.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UnspecializedDgtBundle",
+                  "canonicalReference": "@donecollectively/stellar-contracts!UnspecializedDgtBundle:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -51139,7 +51597,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -51147,7 +51605,7 @@
               "parameters": [],
               "isOptional": false,
               "isAbstract": false,
-              "name": "scriptBundle"
+              "name": "scriptBundleClass"
             }
           ],
           "extendsTokenRange": {
