@@ -241,9 +241,9 @@ export function heliosRollupBundler(
             handler(this: PluginContext, error?: Error) {
                 // write the project file after the build, skipping any
                 // pending delay from calls to `deferredWriteProjectFile()`
-                this.warn(
-                    "@buildEnd: " + (error ? "error: " + error?.message : "")
-                );
+                // this.warn(
+                //     "@buildEnd: " + (error ? "error: " + error?.message : "")
+                // );
                 if (pluginOptions.vite) return;
 
                 this.emitFile({
