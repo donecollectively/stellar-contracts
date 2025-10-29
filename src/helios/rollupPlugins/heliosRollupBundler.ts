@@ -985,7 +985,7 @@ export function heliosRollupBundler(
                                 `Error in Helios script (see above)`
                             );
                         }
-                        console.error(`Error generating types for ${id}:\n`, e);
+                        this.error(`Error generating types for ${id}:\n`+ e.message);
                         return new Promise((resolve, reject) => {
                             setTimeout(() => {
                                 reject(
