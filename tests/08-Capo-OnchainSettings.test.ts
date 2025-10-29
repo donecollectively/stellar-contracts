@@ -158,6 +158,8 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
                 charterData,
                 capoUtxos,
             });
+            if (!settingsInfo) throw new Error("settingsInfo not found");
+            
             const settingsController = (await capo.getSettingsController({
                 charterData,
             })) as BadSettingsController;
