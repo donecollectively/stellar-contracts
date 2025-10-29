@@ -130,6 +130,7 @@ exitIfError() {
 }
 
 logProblemWith() {
+    echo "$1 problem: exit code $?" >&2
     echo "$1" >> $hasProblem
 }
 
