@@ -195,7 +195,6 @@ const ShowSingleTx = (props: {
         depth = 0,
         parentId,
     } = txd;
-    debugger;
     if (!txName) {
         txName = description;
         description = "";

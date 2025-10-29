@@ -30,7 +30,7 @@
         "emitDecoratorMetadata": true,
         // "traceResolution": true,
         
-        "outDir": "./.stellar/d.ts",
+        "outDir": "./.stellar/api",
         // "outFile": ".stellar/d.ts/stellar-contracts-raw.d.ts",
         // "importHelpers": true,
         "rootDir": ".",

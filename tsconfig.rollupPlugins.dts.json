@@ -2,7 +2,7 @@
     "$schema": "http://json.schemastore.org/tsconfig",
     "extends": "./tsconfig.dts.json",
     "compilerOptions": {
-        // "outFile": "./.stellar/d.ts/rollupPlugins.d.ts",
+        // "outFile": "./.stellar/api/rollupPlugins.d.ts",
     },
     "include": [],
     "files": [ 

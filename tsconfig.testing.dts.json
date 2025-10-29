@@ -9,7 +9,7 @@
         // "outFile": "./.stellar/d.ts/testing.d.ts",
         "skipLibCheck": true,
         "rootDir": ".",
-        "outDir": "./.stellar/d.ts"
+        "outDir": "./.stellar/api"
     },
     "include": [
         // "src/testing/**/*"

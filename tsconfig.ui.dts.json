@@ -8,7 +8,7 @@
     "sourceMap": true,
     "skipLibCheck": true,
     "rootDir": ".",
-    "outDir": "./.stellar/d.ts",
+    "outDir": "./.stellar/api",
     "jsx": "react",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "paths": {
