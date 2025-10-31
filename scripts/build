@@ -29,14 +29,14 @@ makeHeliosProgramWithCacheAPI() {
 }
 
 testingDTS() {
-    tsc -p ./tsconfig.testing.dts.json &&
-    withDocs api-extractor run --local -c api-extractor.testing.json 
+    tsc -p ./tsconfig.testing.dts.json
+    # withDocs api-extractor run --local -c api-extractor.testing.json 
 }
 
 uiDTS() {
     echo "Generating UI types..."
     tsc -p ./tsconfig.ui.dts.json &&
-    withDocs api-extractor run --local -c api-extractor.ui.json &&
+    # withDocs api-extractor run --local -c api-extractor.ui.json &&
     echo "UI types generated successfully"
 }
 
@@ -57,10 +57,10 @@ playStartSound &
 
 echo "In foreground: rollup main code bundle" 
 ./scripts/rollup || {
-    logProblemWith "rollup main code bundle"
-    echo "error in rollup main code bundle"
-    wait
-    exit 42
+   logProblemWith "rollup main code bundle"
+   echo "error in rollup main code bundle"
+   wait
+   exit 42
 }
 
 sleep 0.5
@@ -71,14 +71,17 @@ playCheckpointSound
 copyTypeInfoDTSFiles
 
 {
-    inBackground "main .d.ts and docs" \
-        withDocs api-extractor run --local  &
+    # inBackground "main .d.ts rollup using rollup-plugin-dts" \
+    #     ./scripts/rollup  &
 
-    inBackground "testing.d.ts" \
-        testingDTS &
+   inBackground "doc generation (api-extractor)" \
+       withDocs api-extractor run --local  &
 
-    inBackground "ui.d.ts" \
-        uiDTS
+   inBackground "testing.d.ts" \
+       testingDTS &
+
+   inBackground "ui.d.ts" \
+       uiDTS
 }
 
 wait

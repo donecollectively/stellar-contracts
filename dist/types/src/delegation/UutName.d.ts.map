@@ -1,0 +1,1 @@
+{"version":3,"file":"UutName.d.ts","sourceRoot":"","sources":["../../../../src/delegation/UutName.ts"],"names":[],"mappings":"AAEA,eAAO,MAAM,UAAU,KAAK,CAAC;AAE7B;;;;;;;;IAQI;AACJ,qBAAa,OAAO;IAChB,QAAQ,EAAE,MAAM,CAAC;IACjB,OAAO,EAAE,MAAM,CAAC;gBACJ,OAAO,EAAE,MAAM,EAAE,WAAW,EAAE,MAAM,GAAG,MAAM,EAAE;IAY3D;;;;;;QAMI;IACJ,IAAI,IAAI,WAEP;IACD,QAAQ;CAGX"}

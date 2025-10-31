@@ -9,14 +9,14 @@
         // "outFile": "./.stellar/d.ts/testing.d.ts",
         "skipLibCheck": true,
         "rootDir": ".",
-        "outDir": "./.stellar/api"
+        "outDir": "./dist/types"
     },
     "include": [
         // "src/testing/**/*"
     ],
     "files": [ 
         "./src/@types/heliosModule.d.ts",
-        "src/testing/index.ts",
+        "./src/testing/index.ts",
     ],
     "exclude": []
 }

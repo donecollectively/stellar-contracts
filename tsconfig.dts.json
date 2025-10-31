@@ -30,7 +30,7 @@
         "emitDecoratorMetadata": true,
         // "traceResolution": true,
         
-        "outDir": "./.stellar/api",
+        "outDir": "./dist/types",
         // "outFile": ".stellar/d.ts/stellar-contracts-raw.d.ts",
         // "importHelpers": true,
         "rootDir": ".",
@@ -42,7 +42,7 @@
         "paths": {
             // "@donecollectively/stellar-contracts": ["./src/index.ts"],
             "src/*": ["./src/*"],
-            "@donecollectively/stellar-contracts/contracts/CapoMinter.hlb": ["./dist/contracts/CapoMinter.hlb.mjs"]
+            // "@donecollectively/stellar-contracts/contracts/CapoMinter.hlb": ["./dist/contracts/CapoMinter.hlb.mjs"]
             // "@donecollectively/stellar-contracts/contract"
         }
     },

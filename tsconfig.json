@@ -29,7 +29,7 @@
         "experimentalDecorators": true,
         // "emitDecoratorMetadata": false,
 
-        "outDir": ".stellar/api",
+        "outDir": "dist/types",
         // "outFile": none!
         "importHelpers": true,
         "rootDir": ".",
@@ -48,6 +48,9 @@
     },
     "files": [
          "index.ts", 
+        //  "src/@types/heliosModule.d.ts",
+         "src/ui/index.ts",
+         "src/testing/index.ts",
      //"src/helios/HeliosScriptBundle.js" 
      ],
     "include": [
