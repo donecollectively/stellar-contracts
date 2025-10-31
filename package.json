@@ -14,7 +14,7 @@
     "exports": {
         ".": {
             "typescriptNative": "./index.ts",
-            "types": "./dist/types/index.d.ts",
+            "types": "./dist/stellar-contracts.d.ts",
             "import": "./dist/stellar-contracts.mjs"
         },
         "./contracts/*": {
@@ -22,7 +22,7 @@
             "default": "./dist/contracts/*.mjs"
         },
         "./testing": {
-            "types": "./dist/types/src/testing/testing.d.ts",
+            "types": "./dist/testing.d.ts",
             "node": "./dist/testing-node.mjs",
             "import": "./dist/testing-browser.mjs"
         },
@@ -36,7 +36,7 @@
             "import": "./dist/HeliosProgramWithMockCacheAPI.mjs"
         },
         "./ui": {
-            "types": "./dist/types/ui.d.ts",
+            "types": "./dist/ui.d.ts",
             "import": "./dist/ui.mjs"
         }
     },

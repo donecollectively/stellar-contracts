@@ -84,6 +84,11 @@ copyTypeInfoDTSFiles
        uiDTS
 }
 
+pushd dist.overlay ; find . -type f | while read a ; do {
+    cp $a ../dist/$a    
+    touch ../dist/$a
+} done ; popd
+
 wait
 
 # Verify UI types were generated
