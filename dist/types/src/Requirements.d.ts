@@ -91,7 +91,7 @@ export declare namespace hasReqts {
  * @param reqtsMap - the requirements of the subclass
  * @public
  **/
-export declare function mergesInheritedReqts<IR extends ReqtsMap<inheritedReqts["inheriting"]>, R extends ReqtsMap<string & myReqts, inheritedReqts>, const inheritedReqts extends {
+export declare function mergesInheritedReqts<IR extends ReqtsMap<inheritedReqts["inheriting"], any>, R extends ReqtsMap<string & myReqts, inheritedReqts>, const inheritedReqts extends {
     inheriting: string;
 } = {
     inheriting: string & keyof IR;
