@@ -57,8 +57,8 @@ playStartSound &
 
 echo "In foreground: rollup main code bundle" 
 ./scripts/rollup || {
-    echo "error in rollup main code bundle"
     logProblemWith "rollup main code bundle"
+    echo "error in rollup main code bundle"
     wait
     exit 42
 }
@@ -67,6 +67,8 @@ sleep 0.5
 echo "------------------------------ waiting ------------------------------"
 wait
 playCheckpointSound
+
+copyTypeInfoDTSFiles
 
 {
     inBackground "main .d.ts and docs" \

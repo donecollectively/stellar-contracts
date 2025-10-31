@@ -41,6 +41,15 @@ makeRollupPlugin() {
         rollupPluginDTS  &
 } 
 
+copyTypeInfoDTSFiles() {
+    find src/ -type d | tail -n +2 | while read a ; do { 
+        mkdir -p .stellar/api/$a ; 
+    } done
+
+    find src/ -name \*.typeInfo.d.ts | grep -v '/tests/' | while read a ; do { 
+        cp $a .stellar/api/$a ; 
+    } done
+}
 
 rollupPluginDTS() {
     # stage 1: raw DTS to be fed to api-extractor
