@@ -115,7 +115,7 @@ hasReqts.TODO = TODO;
  * @public
  **/
 export function mergesInheritedReqts<
-    IR extends ReqtsMap<inheritedReqts["inheriting"]>,
+    IR extends ReqtsMap<inheritedReqts["inheriting"], any>,
     R extends ReqtsMap<string & myReqts, inheritedReqts>,
     const inheritedReqts extends {inheriting: string} = {inheriting: string & keyof IR},
     const myReqts extends string | TypeError<any> = keyof R extends keyof IR
@@ -185,6 +185,15 @@ function typeTester() {
     });
 
     const assignable: typeof pReqts = mergedReqts;
+
+    const mergedAgain = mergesInheritedReqts(mergedReqts, {
+        L2req5: {
+            purpose: "outer dep to inherited req (good)",
+            ...stub,
+            requiresInherited: ["req1", "mreq4"],
+            // requires: ["req1"],
+        },
+    });
 
     return mergedReqts;
 }
