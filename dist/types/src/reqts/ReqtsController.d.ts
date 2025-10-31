@@ -18,6 +18,8 @@ export declare class ReqtsController extends DelegatedDataContract<ReqtData, Req
     txnCreatingReqt<TCX extends StellarTxnContext & hasSeedUtxo & hasSettingsRef & hasUutContext<"reqt">>(tcx: TCX, reqt: ReqtDataLike, initialStake: bigint): Promise<TCX>;
     txnUpdateReqt(tcx: hasSettingsRef & hasSeedUtxo, reqtDetails: FoundDatumUtxo<ErgoReqtData>, newDepositIncrement: bigint, // can be positive or negative
     newDatum?: any): Promise<hasSettingsRef & hasSeedUtxo>;
-    requirements(): import("../Requirements.js").ReqtsMap<"stores requirements connected to any target object" | "the target object can gradually adopt further requirements as needed", never>;
+    requirements(): import("../Requirements.js").ReqtsMap<"stores requirements connected to any target object" | "the target object can gradually adopt further requirements as needed", {
+        inheriting: "‹empty/base class›";
+    }>;
 }
 //# sourceMappingURL=ReqtsController.d.ts.map

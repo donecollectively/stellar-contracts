@@ -1,3 +1,8 @@
+import type { TypeError } from "./helios/typeUtils";
+declare const notInherited: {
+    inheriting: "‹empty/base class›";
+};
+type nothingInherited = typeof notInherited;
 /**
  * Documents one specific requirement
  * @remarks
@@ -14,13 +19,15 @@
  * @typeParam reqts - constrains `requires` entries to the list of requirements in the host ReqtsMap structure
  * @public
  **/
-export type RequirementEntry<reqtName extends string, reqts extends string, inheritedNames extends string | never> = {
+export type RequirementEntry<reqtName extends string, reqts extends string, inheritedNames extends {
+    inheriting: string;
+} | nothingInherited> = {
     purpose: string;
     details: string[];
     mech: string[];
     impl?: string;
-    requires?: reqtName extends inheritedNames ? inheritedNames[] : Exclude<reqts, reqtName | inheritedNames>[];
-    requiresInherited?: inheritedNames[];
+    requires?: inheritedNames extends nothingInherited ? Exclude<reqts, reqtName>[] : reqtName extends keyof inheritedNames["inheriting"] ? Exclude<inheritedNames["inheriting"], reqtName>[] : (Exclude<reqts, reqtName | inheritedNames["inheriting"]>)[];
+    requiresInherited?: inheritedNames["inheriting"][];
 };
 declare const TODO: unique symbol;
 /**
@@ -45,7 +52,9 @@ export type TODO_TYPE = typeof TODO;
  * @typeParam reqts - the list of known requirement names.  Implicitly detected by the hasReqts() helper.
  * @public
  **/
-export type ReqtsMap<validReqts extends string, inheritedNames extends string | never = never> = {
+export type ReqtsMap<validReqts extends string, inheritedNames extends {
+    inheriting: string;
+} | nothingInherited = nothingInherited> = {
     [reqtDescription in validReqts]: TODO_TYPE | RequirementEntry<reqtDescription, validReqts, inheritedNames>;
 };
 /**
@@ -63,7 +72,9 @@ export type ReqtsMap<validReqts extends string, inheritedNames extends string | 
  * NOTE: Type parameters are inferred from the provided data structure
  * @param reqtsMap - the ReqtsMap structure for the software unit
  */
-export declare function hasReqts<R extends ReqtsMap<validReqts, inheritedNames>, const validReqts extends string = string & keyof R, const inheritedNames extends string | never = never>(reqtsMap: R): ReqtsMap<validReqts, inheritedNames>;
+export declare function hasReqts<R extends ReqtsMap<validReqts, inheritedNames>, const validReqts extends string = string & keyof R, const inheritedNames extends {
+    inheriting: string;
+} | nothingInherited = nothingInherited>(reqtsMap: R): ReqtsMap<validReqts, inheritedNames>;
 export declare namespace hasReqts {
     var TODO: unique symbol;
 }
@@ -80,6 +91,10 @@ export declare namespace hasReqts {
  * @param reqtsMap - the requirements of the subclass
  * @public
  **/
-export declare function mergesInheritedReqts<IR extends ReqtsMap<inheritedReqts>, R extends ReqtsMap<myReqts, inheritedReqts>, const inheritedReqts extends string = string & keyof IR, const myReqts extends string = keyof R extends keyof IR ? never : string & keyof R>(inherits: IR, reqtsMap: R): ReqtsMap<myReqts | inheritedReqts, inheritedReqts> & IR;
+export declare function mergesInheritedReqts<IR extends ReqtsMap<inheritedReqts["inheriting"]>, R extends ReqtsMap<string & myReqts, inheritedReqts>, const inheritedReqts extends {
+    inheriting: string;
+} = {
+    inheriting: string & keyof IR;
+}, const myReqts extends string | TypeError<any> = keyof R extends keyof IR ? TypeError<"myReqts can't override inherited reqts"> : string & keyof R>(inherits: IR, reqtsMap: R): ReqtsMap<(string & myReqts) | inheritedReqts["inheriting"], inheritedReqts> & IR;
 export {};
 //# sourceMappingURL=Requirements.d.ts.map

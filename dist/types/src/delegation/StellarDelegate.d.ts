@@ -133,6 +133,8 @@ export declare abstract class StellarDelegate extends StellarContract<capoDelega
      * see reqts structure
      * @public
      **/
-    delegateRequirements(): import("../Requirements.js").ReqtsMap<"provides an interface for providing arms-length proof of authority to any other contract" | "implementations SHOULD positively govern spend of the UUT" | "implementations MUST provide an essential interface for transaction-building" | "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)" | "requires a mustFindAuthorityToken(tcx)" | "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)" | "requires txnRetireCred(tcx, fromFoundUtxo)", never>;
+    delegateRequirements(): import("../Requirements.js").ReqtsMap<"provides an interface for providing arms-length proof of authority to any other contract" | "implementations SHOULD positively govern spend of the UUT" | "implementations MUST provide an essential interface for transaction-building" | "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)" | "requires a mustFindAuthorityToken(tcx)" | "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)" | "requires txnRetireCred(tcx, fromFoundUtxo)", {
+        inheriting: "‹empty/base class›";
+    }>;
 }
 //# sourceMappingURL=StellarDelegate.d.ts.map
