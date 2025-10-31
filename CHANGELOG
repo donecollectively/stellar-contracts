@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.9.3-beta.4] - 2025-10-31
+ - repairing .d.ts definitions in dist/
+ - enhanced hasReqts() protocol and related types
+ - (beta.2 and beta.3 were checkpoints to here)
+
 ## [0.9.3-beta.1] - 2025-10-26
 
 - offchain: Optimized script loading with deferred compilation and just-in-time bundle loading
