@@ -1,4 +1,7 @@
-import { BasicMintDelegate } from "@donecollectively/stellar-contracts";
+import {
+    BasicMintDelegate,
+    type ConcreteCapoDelegateBundle,
+} from "@donecollectively/stellar-contracts";
 
 import uutMintingMintDelegateBundle from "./uutMintingMintDelegate.hlb.js";
 import ummdDataBridge from "./uutMintingMintDelegate.bridge.js";
@@ -9,9 +12,9 @@ export class MintDelegateWithGenericUuts extends BasicMintDelegate {
         return "uutMintingDelegate";
     }
 
-    async scriptBundleClass() {
+    async scriptBundleClass(): Promise<ConcreteCapoDelegateBundle> {
         const bundleModule = await import("./uutMintingMintDelegate.hlb.js");
-        return bundleModule.BundleMintDelegateWithGenericUuts
+
+        return bundleModule.BundleMintDelegateWithGenericUuts as any;
     }
-    
 }

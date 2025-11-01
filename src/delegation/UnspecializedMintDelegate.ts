@@ -4,6 +4,7 @@ import { BasicMintDelegate } from "../minting/BasicMintDelegate.js";
 
 import {UnspecializedDelegateBridge} from "./UnspecializedDelegate.bridge.js"
 import type { hasSeed } from "../ActivityTypes.js";
+import type { ConcreteCapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
 
 /**
  * @public
@@ -12,7 +13,7 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
     dataBridgeClass = UnspecializedDelegateBridge;
     get delegateName() { return "UnspecializedDelegate" }
 
-    async scriptBundleClass() {
+    async scriptBundleClass() : Promise<ConcreteCapoDelegateBundle>{
         if (process.env.NODE_ENV === "development") {
             console.warn(
                 "mint+spend delegate: using unspecialized delegate bundle\n"+

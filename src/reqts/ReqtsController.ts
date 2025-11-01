@@ -24,6 +24,7 @@ import type { hasSeed } from "../ActivityTypes.js";
 import { textToBytes } from "../HeliosPromotedTypes.js";
 import { makeTxOutput, makeValue } from "@helios-lang/ledger";
 import type { minimalData } from "../delegation/DelegatedData.js";
+import type { DelegatedDataBundle } from "../helios/scriptBundling/DelegatedDataBundle.js";
 
 export class ReqtsController extends DelegatedDataContract<
     ReqtData,
@@ -65,7 +66,6 @@ export class ReqtsController extends DelegatedDataContract<
         }; //as minimalData<ReqtDataLike>;
     }
 
-
     // this method is only needed if the app needs a class for
     // implementing app-specific "business logic" on the data,
     // e.g. for presentation in a UI
@@ -73,11 +73,11 @@ export class ReqtsController extends DelegatedDataContract<
     //     return new ReqtsAdapter(this);
     // }
 
-    async scriptBundleClass() {    
+    async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
         const bundleModule = await import("./Reqts.concrete.hlb.js");
-        return bundleModule.ReqtsConcreteBundle
+        return bundleModule.ReqtsConcreteBundle;
     }
-    
+
     @Activity.redeemer
     activityCreatingReqt(seedFrom: hasSeed) {
         const seed = this.getSeed(seedFrom);

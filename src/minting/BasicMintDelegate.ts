@@ -1,11 +1,12 @@
 import { Activity, datum } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
- 
+
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import type { GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
 import type { hasSeed, isActivity } from "../ActivityTypes.js";
 import type { GrantAuthorityOptions } from "../delegation/StellarDelegate.js";
+import type { ConcreteCapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
 
 /**
  * Serves a delegated minting-policy role for Capo contracts
@@ -41,17 +42,19 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     /**
      * the scriptBundle for the BasicMintDelegate looks concrete,
      * but it's actually just referencing a generic, unspecialized delegate script
-     * that may not provide much value to any specific application.  
-     * 
+     * that may not provide much value to any specific application.
+     *
      * Subclasses should expect to override this and provide a specialized
      * `get scriptBundle() { return new ‹YourMintDelegateBundle› }`, using
      *  a class you derive from CapoDelegateBundle and your own delegate
      * specialization.  TODO: a generator to make this easier.  Until then,
      * you can copy the UnspecializedDelegate.hl and specialize it.
      */
-    async scriptBundleClass() {
-        const bundleModule = await import("../delegation/UnspecializedDelegate.hlb.js");
-        return bundleModule.UnspecializedDgtBundle
+    async scriptBundleClass(): Promise<ConcreteCapoDelegateBundle> {
+        const bundleModule = await import(
+            "../delegation/UnspecializedDelegate.hlb.js"
+        );
+        return bundleModule.UnspecializedDgtBundle;
     }
 
     // uses the basic delegate script, plus the isMintDelegate param

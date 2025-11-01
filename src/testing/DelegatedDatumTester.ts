@@ -11,6 +11,7 @@ import type {
     hasSettingsRef,
     DgDataTypeLike,
     capoDelegateConfig,
+    DelegatedDataBundle,
 } from "@donecollectively/stellar-contracts";
 
 import { DelegateDatumTesterDataBridge } from "./DelegatedDatumTester.bridge.js";
@@ -30,9 +31,9 @@ export class DelegatedDatumTester extends DelegatedDataContract<
     dataBridgeClass = DelegateDatumTesterDataBridge;
     static currentRev: bigint = 1n;
 
-    async scriptBundleClass() {
+    async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
         const bundleModule = await import("./DelegatedDatumTester.hlb.js");
-        return bundleModule.DelegatedDatumTesterBundle
+        return bundleModule.DelegatedDatumTesterBundle;
     }
 
     getContractScriptParams(config: capoDelegateConfig) {
