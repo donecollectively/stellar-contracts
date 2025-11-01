@@ -1,5 +1,5 @@
 import { makeTxOutput } from "@helios-lang/ledger";
-import { 
+import {
     StellarTxnContext,
     DelegatedDataContract,
     hasReqts,
@@ -13,23 +13,21 @@ import type {
     capoDelegateConfig,
 } from "@donecollectively/stellar-contracts";
 
-import {
-    DelegateDatumTesterDataBridge
-} from "./DelegatedDatumTester.bridge.js"
+import { DelegateDatumTesterDataBridge } from "./DelegatedDatumTester.bridge.js";
 import type {
     DgDatumTestData,
     DgDatumTestDataLike,
-    minimalDgDatumTestData
-} from "./DelegatedDatumTester.typeInfo.js"
+    minimalDgDatumTestData,
+} from "./DelegatedDatumTester.typeInfo.js";
 
-import type {DelegatedDatumTesterBundle} from "./DelegatedDatumTester.hlb.js"
+import type { DelegatedDatumTesterBundle } from "./DelegatedDatumTester.hlb.js";
 import { textToBytes } from "../HeliosPromotedTypes.js";
 
 export class DelegatedDatumTester extends DelegatedDataContract<
     DgDatumTestData,
     DgDatumTestDataLike
 > {
-    dataBridgeClass = DelegateDatumTesterDataBridge
+    dataBridgeClass = DelegateDatumTesterDataBridge;
     static currentRev: bigint = 1n;
 
     async scriptBundleClass() {
@@ -38,12 +36,12 @@ export class DelegatedDatumTester extends DelegatedDataContract<
     }
 
     getContractScriptParams(config: capoDelegateConfig) {
-        if (DelegatedDatumTester.currentRev > 1n) debugger
+        if (DelegatedDatumTester.currentRev > 1n) debugger;
         return {
-            ... super.getContractScriptParams(config),
+            ...super.getContractScriptParams(config),
             requiresGovAuthority: true,
             rev: DelegatedDatumTester.currentRev,
-        }
+        };
     }
 
     get delegateName() {
@@ -58,13 +56,13 @@ export class DelegatedDatumTester extends DelegatedDataContract<
         return "testData";
     }
 
-    exampleData() : minimalDgDatumTestData {
+    exampleData(): minimalDgDatumTestData {
         return {
             // id: textToBytes("tData-‹replaceMe›"),
             // type: "testData",
             name: "Fred",
             number: 42,
-        }
+        };
     }
 
     // get capo(): Capo<any> {
@@ -80,7 +78,7 @@ export class DelegatedDatumTester extends DelegatedDataContract<
             hasUutContext<this["idPrefix"]>
     >(
         this: DelegatedDatumTester,
-        tcx: TCX, 
+        tcx: TCX,
         testData: DgDataTypeLike<DelegatedDatumTester>
     ): Promise<TCX> {
         const tcx2 = await this.txnGrantAuthority(
@@ -90,11 +88,16 @@ export class DelegatedDatumTester extends DelegatedDataContract<
 
         const testDataOutput = makeTxOutput(
             this.capo.address,
-            this.uh.mkMinTv(this.capo.mph, tcx2.state.uuts[this.idPrefix] as any),
-            this.mkDgDatum({
-                ...testData,
-                id: tcx.state.uuts[this.idPrefix]!.toString(),
-            }as any /* !!!!!!! */ )
+            this.uh.mkMinTv(
+                this.capo.mph,
+                tcx2.state.uuts[this.idPrefix] as any
+            ),
+            this.mkDgDatum(
+                {
+                    ...testData,
+                    id: tcx.state.uuts[this.idPrefix]!.toString(),
+                } as any /* !!!!!!! */
+            )
         );
         console.log("tData: ", dumpAny(testDataOutput));
         const tcx4 = tcx2.addOutput(testDataOutput);
@@ -102,8 +105,7 @@ export class DelegatedDatumTester extends DelegatedDataContract<
     }
 
     requirements() {
-        return hasReqts({
-        });
+        return hasReqts({});
     }
 }
 

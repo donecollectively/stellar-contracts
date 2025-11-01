@@ -12,18 +12,18 @@ import type { GrantAuthorityOptions } from "../delegation/StellarDelegate.js";
  * @remarks
  *
  * shifts detailed minting policy out of the minter and into the delegate.
- * 
+ *
  * By default, this delegate policy serves also as a spend delegate.  To use a separate
  * spend delegate, define `static isMintAndSpendDelegate = false;` in the subclass,
  * define a separate ContractBasedDelegate subclass for the spend delegate, and
  * register it in the Capo contract's `delegateRoles.spendDelegate`.
- * 
+ *
  * @public
  **/
 export class BasicMintDelegate extends ContractBasedDelegate {
     static currentRev = 1n;
     static isMintDelegate = true;
-    declare dataBridgeClass : GenericDelegateBridgeClass
+    declare dataBridgeClass: GenericDelegateBridgeClass;
 
     /**
      * Enforces that the mint delegate needs gov-authority by default
@@ -36,7 +36,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
         return "mintDelegate";
     }
 
-    static isMintAndSpendDelegate = true
+    static isMintAndSpendDelegate = true;
 
     /**
      * the scriptBundle for the BasicMintDelegate looks concrete,
@@ -74,9 +74,12 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      * @public
      */
     @Activity.redeemer
-    activityCreatingDelegatedData(seedFrom: hasSeed, uutPurpose: string): isActivity {
+    activityCreatingDelegatedData(
+        seedFrom: hasSeed,
+        uutPurpose: string
+    ): isActivity {
         throw new Error(`deprecated: explicit activity helper`);
-        const seed = this.getSeed(seedFrom);        
+        const seed = this.getSeed(seedFrom);
         const redeemer = this.activityVariantToUplc("CreatingDelegatedData", {
             seed,
             dataType: uutPurpose,
@@ -101,7 +104,10 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      * {@link DelegatedDataContract} class to create the off-chain data controller and its on-chain policy.
      */
     @Activity.redeemer
-    activityCreatingDataDelegate(seedFrom: hasSeed, uutPurpose: string): isActivity {
+    activityCreatingDataDelegate(
+        seedFrom: hasSeed,
+        uutPurpose: string
+    ): isActivity {
         throw new Error(`deprecated: explicit activity helper`);
 
         const seed = this.getSeed(seedFrom);
@@ -142,7 +148,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
         const { capo } = this.configIn!;
         // await capo.txnAttachScriptOrRefScript(tcx, this.compiledScript);
 
-        const {redeemer: expectedRedeemer} = redeemerActivity;
+        const { redeemer: expectedRedeemer } = redeemerActivity;
         return super.txnGrantAuthority(tcx, redeemerActivity, {
             ifExists: (existingInput, existingRedeemer) => {
                 if (!existingRedeemer.rawData.MultipleDelegateActivities) {
@@ -152,11 +158,14 @@ export class BasicMintDelegate extends ContractBasedDelegate {
                         existingRedeemer
                     );
                 }
-                if (existingRedeemer.kind != "constr") throw new Error(`non-enum redeemer`)
-                const list = existingRedeemer.fields[0]
-                if (list.kind != "list") throw new Error(`non-list redeemer`)
+                if (existingRedeemer.kind != "constr")
+                    throw new Error(`non-enum redeemer`);
+                const list = existingRedeemer.fields[0];
+                if (list.kind != "list") throw new Error(`non-list redeemer`);
 
-                const existingActivity = list.items.find(f => f.isEqual(expectedRedeemer))
+                const existingActivity = list.items.find((f) =>
+                    f.isEqual(expectedRedeemer)
+                );
                 if (!existingActivity) {
                     throw this.existingRedeemerError(
                         "mint delegate authority (multiple-activity redeemer doesn't include the needed activity)",
