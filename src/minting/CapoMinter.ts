@@ -291,15 +291,22 @@ export class CapoMinter
 
     async attachScript<TCX extends StellarTxnContext<anyState>>(
         tcx: TCX,
-        useRefScript = true
+        // useRefScript = true
     ) {
         return this.configIn!.capo.txnAttachScriptOrRefScript(
             tcx,
             await this.asyncCompiledScript(),
-            useRefScript
+            // useRefScript
         ) as Promise<TCX>;
     }
 
+    /**
+     * Mints or burns tokens by sole authority of the Capo's governance token
+     * @remarks
+     * 
+     * The minting policy and the governance token policy will be executed to gate the described activities.
+     * @public
+     */
     @Activity.partialTxn
     async txnMintingWithoutDelegate<TCX extends StellarTxnContext>(
         tcx: TCX,
@@ -313,11 +320,26 @@ export class CapoMinter
         ) as TCX;
     }
 
+    /**
+     * Mints or burns tokens, with authority provided by the Capo's mint delegate 
+     * @remarks
+     * 
+     * The mint delegate is used to authorize the minting or burning of the tokens.
+     * The activity/redeemer is used to specify the exact minting or burning operation to be performed.
+     * The options are used to specify additional options for the grant authority operation, used for specialized mint/burn use-cases.
+     * 
+     * The minting policy and the mint-delegate policy will be executed to gate the described activities.
+     * @public
+     */
     @Activity.partialTxn
     async txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(
+        /** the transaction context; additional mints, minter reference script, and delegate-input are added to it, and the augmented context is returned */
         tcx: TCX,
+        /** indicates the tokens to be minted.  The minting policy hash is implied, so only the token-names and quantities are needed.  Use negative quantities to burn tokens. */
         vEntries: valuesEntry[],
+        /** the mint delegate to be used for minting authority */
         mintDelegate: BasicMintDelegate,
+        /** the activity/redeemer to be used for minting authority */
         mintDgtRedeemer: isActivity,
         options: GrantAuthorityOptions = {}
     ): Promise<TCX> {

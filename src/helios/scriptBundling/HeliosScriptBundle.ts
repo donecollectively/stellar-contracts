@@ -1378,9 +1378,9 @@ export abstract class HeliosScriptBundle {
         const { mainModule } = program.entryPoint;
         const mainTypes = userTypes[mainModule.name.value];
         for (const [typeName, type] of Object.entries(mainTypes)) {
-            const s = type.toSchema();
+            const s = (type as DataType).toSchema();
             if (s.kind == "struct") {
-                types[typeName] = type;
+                types[typeName] = type as DataType;
             }
             if (s.kind == "enum" && this.includeEnums.includes(typeName)) {
                 types[typeName] = type;
@@ -1402,12 +1402,12 @@ export abstract class HeliosScriptBundle {
             for (const [typeName, type] of Object.entries(
                 specializationTypes
             )) {
-                const s = type.toSchema();
+                const s = (type as DataType).toSchema();
                 if (s.kind == "struct") {
-                    types[typeName] = type;
+                    types[typeName] = type as DataType;
                 }
                 if (s.kind == "enum" && this.includeEnums.includes(typeName)) {
-                    types[typeName] = type;
+                    types[typeName] = type as DataType;
                 }
             }
         }

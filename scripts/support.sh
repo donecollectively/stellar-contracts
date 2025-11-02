@@ -32,13 +32,13 @@ makeRollupPlugin() {
     $ESBUILD $WATCH --platform=node $ESBUILD_EXTERNALS \
         --drop-labels=__BROWSER_ONLY__ \
         --outfile=dist/rollup-plugins.mjs \
-        index-rollup-plugins.ts || {
+        rollup-plugins.ts || {
             logProblemWith "rollup plugin"
         }
 
-    # raw DTS to be fed to api-extractor 
-    inBackground "updating rollup-plugin.d.ts..." \
-        rollupPluginDTS  &
+    # # raw DTS to be fed to api-extractor 
+    # inBackground "updating rollup-plugin.d.ts..." \
+    #     rollupPluginDTS  &
 } 
 
 copyTypeInfoDTSFiles() {
@@ -51,14 +51,14 @@ copyTypeInfoDTSFiles() {
     } done
 }
 
-rollupPluginDTS() {
-    # stage 1: raw DTS to be fed to api-extractor
-    tsc -p ./tsconfig.rollupPlugins.dts.json  &&
-    withDocs api-extractor run --local -c api-extractor.rollupPlugins.json 
-    # .d.ts only for now (do we need separate docs?)
-    # stage 2: api extractor brings it all together
-    # only if WITHDOCS isn't 0
-}
+# rollupPluginDTS() {
+#     # stage 1: raw DTS to be fed to api-extractor
+#     tsc -p ./tsconfig.rollupPlugins.dts.json  &&
+#     # withDocs api-extractor run --local -c api-extractor.rollupPlugins.json 
+#     # .d.ts only for now (do we need separate docs?)
+#     # stage 2: api extractor brings it all together
+#     # only if WITHDOCS isn't 0
+# }
 
 
 # Set trap to call cleanup function on script exit or interruption

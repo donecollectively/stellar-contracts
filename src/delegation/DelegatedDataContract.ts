@@ -103,10 +103,16 @@ export abstract class DelegatedDataContract<
      * when set to true, the controller class will include the Capo's
      * gov authority in the transaction, to ease transaction setup.
      * @remarks
+     * This getter is derived from the contract-bundle's `requiresGovAuthority` property.
+     * 
      * This is a convenience for the controller, and should be used along with
      * the appropriate on-chain policy to require the gov token's presence.
+     * 
+     * @see {@link scriptBundleClass | scriptBundleClass()} in the controller, and 
+     * {@link DelegatedDataBundle#requiresGovAuthority | requiresGovAuthority} in 
+     * the bundle.
+     * 
      * @public
-     * @deprecated - set requiresGovAuthority in the contract-bundle instead
      */
     get needsGovAuthority() {
         return this._bundle!.requiresGovAuthority;
@@ -349,6 +355,23 @@ export abstract class DelegatedDataContract<
         return record;
     }
 
+    /**
+     * core transaction-building method creating a record of this delegate's type in the on-chain data store
+     * @remarks
+     * 
+     * The options can include special-cased record-creation activities, targeting one of the policy's on-chain MintingActivities other than the default {@link DelegatedDataContract.activity.MintingActivities.$seeded$CreatingRecord | $seeded$CreatingRecord}.
+     * 
+     * The delegate MAY provide a {@link beforeCreate | beforeCreate()} method to augment the record before it is created.
+     * 
+     * The transaction context is augmented by adding the authority token enforcing the on-chain data-creation policy for this delegate.
+     * 
+     * Includes the Capo's govAuthority if the contract's script bundle indicates the need for 
+     * it (see {@link DelegatedDataBundle#requiresGovAuthority | requiresGovAuthority}) in the script bundle class.
+     * 
+     * @param tcx - the transaction context to be augmented
+     * @param options - the options for the creation
+     * @returns the augmented transaction context
+     */
     async txnCreatingRecord<
         THIS extends DelegatedDataContract<any, any>,
         TCX extends StellarTxnContext &
@@ -417,26 +440,15 @@ export abstract class DelegatedDataContract<
         ) as any; // the return type above provides the result type directly to the caller.
     }
 
+    /** @ignore */
     /**
-     * Creates an indirect reference to an an update activity with arguments,
-     * using a record-id placeholder.
-     *
-     * @remarks
-     * Provide an update activity function, a placeholder for the record-id, any other args
-     * for the on-chain activity/redeemer.  The update-activity function can be any of this
-     * contract's `activity.SpendingActivities.*` functions.
-     *
-     * This approach is similar to the creation-time {@link DelegatedDataContract.usesSeedActivity|usesSeedActivity()} method,
-     * with a "...recId" placeholder instead of a "...seed" placeholder.
-     *
-     * The arguments are passed to the update activity function, which is expected to return
-     * an {@link isActivity} object serializing the `{redeemer}` data as a UplcData object.
-     * Normally that's done with {@link ContractBasedDelegate.mkSpendingActivity | mkSpendingActivity()}.
+     * @deprecated use activity.SpendingActivities.* instead.
      */
     usesUpdateActivity<
         UA extends updateActivityFunc<any>
         // (...args: [hasRecId, ...any]) => isActivity
     >(a: UA, _idPlaceholder: "...recId", ...args: UpdateActivityArgs<UA>) {
+        throw new Error(`deprecated: explicit activity helper; use activity.SpendingActivities.* instead`);
         return new UpdateActivity(this, a, args);
     }
 

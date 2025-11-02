@@ -549,7 +549,7 @@ export class ContractBasedDelegate extends StellarDelegate {
     }
 
     /**
-     * {@inheritdoc StellarDelegate.DelegateMustFindAuthorityToken}
+     * @see {@link StellarDelegate.DelegateMustFindAuthorityToken|DelegateMustFindAuthorityToken()}
      **/
     async DelegateMustFindAuthorityToken(
         tcx: StellarTxnContext,
@@ -616,7 +616,7 @@ export class ContractBasedDelegate extends StellarDelegate {
      **/
     async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
-        uutxo: TxInput,
+        utxo: TxInput,
         redeemer: isActivity
     ): Promise<TCX> {
         const { capo } = this.configIn!;
@@ -630,7 +630,7 @@ export class ContractBasedDelegate extends StellarDelegate {
             (await this.asyncCompiledScript());
         const tcx2 = await capo.txnAttachScriptOrRefScript(tcx, script);
         if (!redeemer.redeemer) debugger;
-        return tcx2.addInput(uutxo, redeemer);
+        return tcx2.addInput(utxo, redeemer);
 
         // return this.txnKeepValue(
         //     tcx,

@@ -98,7 +98,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         //@ts-expect-error - same as above
         const newClass = class aCapoBoundBundle extends this {
             capoBundle = cb;
-            constructor(setupDetails: StellarBundleSetupDetails<any>=placeholderSetupDetails) {
+            constructor(setupDetails: StellarBundleSetupDetails<any> = placeholderSetupDetails) {
                 super(setupDetails);
             }
             isConcrete = !!!generic;

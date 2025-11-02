@@ -45,6 +45,8 @@
         "build": "scripts/build",
         "dev": "scripts/rollup --watch",
         "dev:rollupPlugin": "scripts/esbuild-rollup-dev",
+        "docs:build": "tsc -p ./tsconfig.all.dts.json ; pnpm docs:generate",
+        "docs:generate": "typedoc --cleanOutputDir --tsconfig tsconfig.all.dts.json index.ts --json docs/info.json --html docs/html",
         "smoke:test": "SMOKE=1 vitest run 02 04",
         "smoke:testing": "SMOKE=1 vitest --inspect --poolOptions.forks.singleFork watch 02 04",
         "test": "vitest run ",
@@ -107,6 +109,8 @@
         "rollup-pluginutils": "^2.8.2",
         "semver": ">=7.5.2",
         "tslib": "^2.5.3",
+        "typedoc": "^0.28.14",
+        "typedoc-plugin-markdown": "^4.9.0",
         "typescript": "5.6.2",
         "vite": "^7.1.11",
         "vitest": "^3.2.4"

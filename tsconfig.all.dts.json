@@ -2,14 +2,29 @@
     "$schema": "http://json.schemastore.org/tsconfig",
     "extends": "./tsconfig.dts.json",
     "compilerOptions": {
-        "baseUrl": ".stellar/api",
+        "baseUrl": ".",
         "rootDir": ".",
+        "jsx": "react",
         "paths": {
-            "*": ["src/*", "../src/*"]
-          }  
+            "@donecollectively/stellar-contracts": ["./index.ts"],
+            "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI": ["./src/helios/HeliosProgramWithMockCacheAPI.ts"],
+            "@donecollectively/stellar-contracts/ui": ["./src/ui/index.ts"],
+            "@donecollectively/stellar-contracts/testing": ["./src/testing/index.ts"],
+            "@donecollectively/stellar-contracts/rollup-plugins": ["./rollup-plugins.ts"]
+            // "*": ["src/*", "../src/*"]
+        },
+        "typeRoots": ["./node_modules/@types", "./src/@types"]
     },
-    "files": [ 
+    "files": [
         "index.ts",
-        "src/@types/heliosModule.d.ts",
-    ]
+        "./src/ui/index.ts",
+        "./src/HeliosPromotedTypes.ts",
+        "./src/testing/index.ts",
+        "./rollup-plugins.ts",
+        "./src/@types/heliosModule.d.ts",
+        "./src/helios/HeliosProgramWithMockCacheAPI.ts",
+        "./src/@types/svg.d.ts",
+
+    ],
+    "exclude": ["dist/**/*", "**/node_modules/"]
 }

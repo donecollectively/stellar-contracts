@@ -7,7 +7,7 @@ import type { anyUplcProgram } from "../HeliosPromotedTypes.js";
 import type { CacheableProgramProps, HeliosProgramCacheEntry } from "./CachedHeliosProgram.js";
 import type { Source } from "@helios-lang/compiler-utils";
 
-export { type CompileOptionsForCachedHeliosProgram } from "../HeliosPromotedTypes.js";
+export type { CompileOptionsForCachedHeliosProgram } from "../HeliosPromotedTypes.js";
 export type { anyUplcProgram } from "../HeliosPromotedTypes.js";
 
 /**

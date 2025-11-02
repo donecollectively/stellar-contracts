@@ -116,14 +116,14 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
     async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
-        fromFoundUtxo: TxInput,
+        utxo: TxInput,
         redeemer?: isActivity
     ): Promise<TCX> {
         //! no need to specify a redeemer, but we pass it through
         //  ... in case the authority token is stored in a contract,
         //  ... which would need a redeemer to spend it.  In that case,
         //  ... the caller will need to add the script to the transaction.
-        return tcx.addInput(fromFoundUtxo, redeemer);
+        return tcx.addInput(utxo, redeemer);
     }
 
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
@@ -131,9 +131,9 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
     async DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
-        fromFoundUtxo: TxInput
+        utxo: TxInput
     ): Promise<TCX> {
         //! no need to specify a redeemer
-        return tcx.addInput(fromFoundUtxo) as TCX;
+        return tcx.addInput(utxo) as TCX;
     }
 }

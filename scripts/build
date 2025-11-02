@@ -9,14 +9,14 @@ STC_PROJECT_PITCH=0
 
 startTime=$(date)
 
-programDTS() {
-    tsc -p ./tsconfig.programWithCacheAPI.dts.json &&
-    withDocs api-extractor run --local  -c api-extractor.programWithCacheAPI.json 
-}
+# programDTS() {
+#     tsc -p ./tsconfig.programWithCacheAPI.dts.json &&
+#     withDocs api-extractor run --local  -c api-extractor.programWithCacheAPI.json 
+# }
 
 makeHeliosProgramWithCacheAPI() {
-    inBackground "-- cacheable program .d.ts" \
-        programDTS
+    # inBackground "-- cacheable program .d.ts" \
+    #     programDTS
 
     $ESBUILD --platform=node $ESBUILD_EXTERNALS \
         --drop-labels=__BROWSER_ONLY__ \
@@ -28,31 +28,30 @@ makeHeliosProgramWithCacheAPI() {
         src/helios/HeliosProgramWithMockCacheAPI.ts    
 }
 
-testingDTS() {
-    tsc -p ./tsconfig.testing.dts.json
-    # withDocs api-extractor run --local -c api-extractor.testing.json 
-}
-
-uiDTS() {
-    echo "Generating UI types..."
-    tsc -p ./tsconfig.ui.dts.json &&
-    # withDocs api-extractor run --local -c api-extractor.ui.json &&
-    echo "UI types generated successfully"
-}
 
 playStartSound &
 {
-    # raw DTS to be fed to api-extractor
+    pushd dist.overlay >/dev/null
+    find . -type f | while read a ; do {
+        cp $a ../dist/$a    
+        touch ../dist/$a    
+    } done
+    popd >/dev/null
+
     inBackground "make dist/HeliosProgramWithCacheAPI" \
         makeHeliosProgramWithCacheAPI &
         # ... has nested background jobs.
         # ... needed for the rollup plugin
 
     wait  # for stuff above to finish
+    copyTypeInfoDTSFiles
+
     makeRollupPlugin &
-    inBackground "typecheck all, prep for doc-gen and main .d.ts" \
+    inBackground "typecheck all, create .d.ts types for all packages" \
         tsc -p ./tsconfig.all.dts.json  &
 
+    inBackground "build docs" \
+        pnpm docs:generate &
 }  
 
 echo "In foreground: rollup main code bundle" 
@@ -68,34 +67,18 @@ echo "------------------------------ waiting ------------------------------"
 wait
 playCheckpointSound
 
-copyTypeInfoDTSFiles
 
-{
+# {
     # inBackground "main .d.ts rollup using rollup-plugin-dts" \
     #     ./scripts/rollup  &
 
-   inBackground "doc generation (api-extractor)" \
-       withDocs api-extractor run --local  &
+#    inBackground "doc generation (api-extractor)" \
+#        withDocs api-extractor run --local  &
 
-   inBackground "testing.d.ts" \
-       testingDTS &
+# }
 
-   inBackground "ui.d.ts" \
-       uiDTS
-}
-
-pushd dist.overlay ; find . -type f | while read a ; do {
-    cp $a ../dist/$a    
-    touch ../dist/$a
-} done ; popd
 
 wait
-
-# Verify UI types were generated
-if [ ! -f "dist/ui.d.ts" ]; then
-    echo "Error: UI types were not generated at dist/ui.d.ts"
-    exit 1
-fi
 
 echo "build started at  $startTime"
 echo "build finished at $(date)"

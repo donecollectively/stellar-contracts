@@ -160,8 +160,7 @@ import type { ErgoReqtData } from './Reqts.concrete.typeInfo.d.ts';
 import type { ErgoSpendingActivity } from './UnspecializedDelegate.typeInfo.js';
 import type { ErgoSpendingActivity as ErgoSpendingActivity_2 } from './Reqts.concrete.typeInfo.js';
 import { EventEmitter } from 'eventemitter3';
-import { HeliosProgramWithCacheAPI } from '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
-import { HeliosProgramWithCacheAPI as HeliosProgramWithCacheAPI_2 } from '../dist/HeliosProgramWithCacheAPI.js';
+import { HeliosProgramWithCacheAPI as HeliosProgramWithCacheAPI_2 } from './helios/HeliosProgramWithMockCacheAPI.js';
 import { InlineTxOutputDatum } from '@helios-lang/ledger';
 import { InteractionContext } from '@cardano-ogmios/client';
 import type { IntLike } from '@helios-lang/codec-utils';
@@ -231,7 +230,8 @@ import type { PendingDelegateChange as PendingDelegateChange_3 } from './Reqts.c
 import type { PendingDelegateChangeLike } from './CapoHeliosBundle.typeInfo.js';
 import type { PendingDelegateChangeLike as PendingDelegateChangeLike_2 } from './UnspecializedDelegate.typeInfo.js';
 import type { PendingDelegateChangeLike as PendingDelegateChangeLike_3 } from './Reqts.concrete.typeInfo.js';
-import type { Program } from '@helios-lang/compiler';
+import { Program } from '@helios-lang/compiler';
+import { ProgramProps } from '@helios-lang/compiler';
 import { PubKeyHash } from '@helios-lang/ledger';
 import { RelativeDelegateLink } from '../scriptBundling/CapoHeliosBundle.typeInfo.js';
 import type { RelativeDelegateLink as RelativeDelegateLink_2 } from './CapoHeliosBundle.typeInfo.js';
@@ -247,7 +247,6 @@ import type { ReqtData } from './Reqts.concrete.typeInfo.d.ts';
 import type { ReqtData as ReqtData_2 } from './Reqts.concrete.typeInfo.js';
 import type { ReqtDataLike } from './Reqts.concrete.typeInfo.d.ts';
 import type { ReqtDataLike as ReqtDataLike_2 } from './Reqts.concrete.typeInfo.js';
-import { ReqtsConcreteBundle } from './Reqts.concrete.hlb.js';
 import { ReqtsMap as ReqtsMap_2 } from './Requirements.js';
 import { ReqtsMap as ReqtsMap_3 } from '../Requirements.js';
 import { Signature } from '@helios-lang/ledger';
@@ -273,8 +272,6 @@ import { TxOutputId } from '@helios-lang/ledger';
 import { TxOutputIdLike } from '@helios-lang/ledger';
 import type { TypeSchema } from '@helios-lang/type-utils';
 import UnspecializedDelegateScript from './src/delegation/UnspecializedDelegate.hl';
-import { UnspecializedDgtBundle as UnspecializedDgtBundle_2 } from '../delegation/UnspecializedDelegate.hlb.js';
-import { UnspecializedDgtBundle as UnspecializedDgtBundle_3 } from './UnspecializedDelegate.hlb.js';
 import { UplcData } from '@helios-lang/uplc';
 import type { UplcLogger } from '@helios-lang/uplc';
 import { UplcProgramV2 } from '@helios-lang/uplc';
@@ -426,7 +423,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     // (undocumented)
     mkDatumScriptReference(): any;
     get needsGovAuthority(): boolean;
-    scriptBundleClass(): Promise<UnspecializedDgtBundle_2>;
+    scriptBundleClass(): Promise<ConcreteCapoDelegateBundle>;
     // Warning: (ae-forgotten-export) The symbol "GrantAuthorityOptions" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
@@ -802,7 +799,9 @@ export abstract class Capo<SELF extends Capo<any>, featureFlags extends CapoFeat
     // @internal (undocumented)
     get reader(): mustFindConcreteContractBridgeType<this>["reader"];
     // (undocumented)
-    requirements(): ReqtsMap_2<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using txnCreateDelegateLink()" | "given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name" | "can locate UUTs in the user's wallet" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the charter token is always kept in the contract" | "the charter details can be updated by authority of the capoGov-* token" | "can mint other tokens, on the authority of the charter's registered mintDgt- token" | "can handle large transactions with reference scripts" | "has a singleton minting policy" | "can update the minting delegate in the charter data" | "can update the spending delegate in the charter data" | "can add invariant minting delegates to the charter data" | "can add invariant spending delegates to the charter data" | "supports an abstract Settings structure stored in the contact" | "added and updated delegates always validate the present configuration data" | "can commit new delegates" | "supports storing new types of datum not pre-defined in the Capo's on-chain script" | "the charter has a namedDelegates structure for semantic delegate links" | "CreatingDelegatedDatum: creates a UTxO with any custom datum" | "UpdatingDelegatedDatum: checks that a custom data element can be updated", never>;
+    requirements(): ReqtsMap_2<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using txnCreateDelegateLink()" | "given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name" | "can locate UUTs in the user's wallet" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the charter token is always kept in the contract" | "the charter details can be updated by authority of the capoGov-* token" | "can mint other tokens, on the authority of the charter's registered mintDgt- token" | "can handle large transactions with reference scripts" | "has a singleton minting policy" | "can update the minting delegate in the charter data" | "can update the spending delegate in the charter data" | "can add invariant minting delegates to the charter data" | "can add invariant spending delegates to the charter data" | "supports an abstract Settings structure stored in the contact" | "added and updated delegates always validate the present configuration data" | "can commit new delegates" | "supports storing new types of datum not pre-defined in the Capo's on-chain script" | "the charter has a namedDelegates structure for semantic delegate links" | "CreatingDelegatedDatum: creates a UTxO with any custom datum" | "UpdatingDelegatedDatum: checks that a custom data element can be updated", {
+    inheriting: "‹empty/base class›";
+    }>;
     // (undocumented)
     get scriptActivitiesName(): string;
     // (undocumented)
@@ -1701,8 +1700,12 @@ export type hasNamedDelegate<DT extends StellarDelegate, N extends string, PREFI
     [k in dgtStateKey<N, PREFIX>]: ConfiguredDelegate<DT> & ErgoRelativeDelegateLink;
 }>;
 
+// Warning: (ae-forgotten-export) The symbol "nothingInherited" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function hasReqts<R extends ReqtsMap<validReqts, inheritedNames>, const validReqts extends string = string & keyof R, const inheritedNames extends string | never = never>(reqtsMap: R): ReqtsMap<validReqts, inheritedNames>;
+export function hasReqts<R extends ReqtsMap<validReqts, inheritedNames>, const validReqts extends string = string & keyof R, const inheritedNames extends {
+    inheriting: string;
+} | nothingInherited = nothingInherited>(reqtsMap: R): ReqtsMap<validReqts, inheritedNames>;
 
 // @public (undocumented)
 export namespace hasReqts {
@@ -1855,6 +1858,8 @@ export abstract class HeliosScriptBundle {
     _progIsPrecompiled: boolean;
     // (undocumented)
     get program(): HeliosProgramWithCacheAPI;
+    // Warning: (ae-forgotten-export) The symbol "HeliosProgramWithCacheAPI" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
     _program: HeliosProgramWithCacheAPI | undefined;
     redeemerTypeName: string;
@@ -1953,8 +1958,14 @@ export type ManifestEntryTokenRef = Omit<CapoManifestEntryLike_2, "entryType"> &
     entryType: Pick<CapoManifestEntryLike_2["entryType"], "NamedTokenRef">;
 };
 
+// Warning: (ae-forgotten-export) The symbol "TypeError_2" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function mergesInheritedReqts<IR extends ReqtsMap<inheritedReqts>, R extends ReqtsMap<myReqts, inheritedReqts>, const inheritedReqts extends string = string & keyof IR, const myReqts extends string = keyof R extends keyof IR ? never : string & keyof R>(inherits: IR, reqtsMap: R): ReqtsMap<myReqts | inheritedReqts, inheritedReqts> & IR;
+export function mergesInheritedReqts<IR extends ReqtsMap<inheritedReqts["inheriting"], any>, R extends ReqtsMap<string & myReqts, inheritedReqts>, const inheritedReqts extends {
+    inheriting: string;
+} = {
+    inheriting: string & keyof IR;
+}, const myReqts extends string | TypeError_2<any> = keyof R extends keyof IR ? TypeError_2<"myReqts can't override inherited reqts"> : string & keyof R>(inherits: IR, reqtsMap: R): ReqtsMap<(string & myReqts) | inheritedReqts["inheriting"], inheritedReqts> & IR;
 
 // @public
 export interface MinimalCharterDataArgs extends configBase {
@@ -2200,18 +2211,22 @@ export { RelativeDelegateLink }
 // Warning: (ae-forgotten-export) The symbol "TODO_TYPE" needs to be exported by the entry point index.d.ts
 //
 // @public
-export type ReqtsMap<validReqts extends string, inheritedNames extends string | never = never> = {
+export type ReqtsMap<validReqts extends string, inheritedNames extends {
+    inheriting: string;
+} | nothingInherited = nothingInherited> = {
     [reqtDescription in validReqts]: TODO_TYPE | RequirementEntry<reqtDescription, validReqts, inheritedNames>;
 };
 
 // @public
-export type RequirementEntry<reqtName extends string, reqts extends string, inheritedNames extends string | never> = {
+export type RequirementEntry<reqtName extends string, reqts extends string, inheritedNames extends {
+    inheriting: string;
+} | nothingInherited> = {
     purpose: string;
     details: string[];
     mech: string[];
     impl?: string;
-    requires?: reqtName extends inheritedNames ? inheritedNames[] : Exclude<reqts, reqtName | inheritedNames>[];
-    requiresInherited?: inheritedNames[];
+    requires?: inheritedNames extends nothingInherited ? Exclude<reqts, reqtName>[] : reqtName extends keyof inheritedNames["inheriting"] ? Exclude<inheritedNames["inheriting"], reqtName>[] : (Exclude<reqts, reqtName | inheritedNames["inheriting"]>)[];
+    requiresInherited?: inheritedNames["inheriting"][];
 };
 
 // @public (undocumented)
@@ -2254,8 +2269,6 @@ export class SeedActivity<FactoryFunc extends seedActivityFunc<any, any>> {
 // @internal (undocumented)
 export type SeedActivityArg<SA extends seedFunc<any, any>> = SA extends seedFunc<SA, infer ARG, infer RV> ? ARG : never;
 
-// Warning: (ae-forgotten-export) The symbol "TypeError_2" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export type seedActivityFunc<ARGS extends [...any] | never, RV extends isActivity | UplcData | TypeError_2<any>> = IFISNEVER<ARGS, (seed: hasSeed) => RV, (seed: hasSeed, ...args: ARGS) => RV>;
 
@@ -2521,7 +2534,9 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
     };
     abstract DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, uutxo: TxInput, redeemer?: isActivity): Promise<TCX>;
     abstract DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string): Promise<TxInput>;
-    delegateRequirements(): ReqtsMap_3<"provides an interface for providing arms-length proof of authority to any other contract" | "implementations SHOULD positively govern spend of the UUT" | "implementations MUST provide an essential interface for transaction-building" | "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)" | "requires a mustFindAuthorityToken(tcx)" | "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)" | "requires txnRetireCred(tcx, fromFoundUtxo)", never>;
+    delegateRequirements(): ReqtsMap_3<"provides an interface for providing arms-length proof of authority to any other contract" | "implementations SHOULD positively govern spend of the UUT" | "implementations MUST provide an essential interface for transaction-building" | "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)" | "requires a mustFindAuthorityToken(tcx)" | "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)" | "requires txnRetireCred(tcx, fromFoundUtxo)", {
+    inheriting: "‹empty/base class›";
+    }>;
     abstract DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput): Promise<TCX>;
     // (undocumented)
     get delegateValidatorHash(): ValidatorHash | undefined;
@@ -3210,7 +3225,7 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
     // (undocumented)
     get delegateName(): string;
     // (undocumented)
-    scriptBundleClass(): Promise<UnspecializedDgtBundle_3>;
+    scriptBundleClass(): Promise<ConcreteCapoDelegateBundle>;
 }
 
 // @public (undocumented)

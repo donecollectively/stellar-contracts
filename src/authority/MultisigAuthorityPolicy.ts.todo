@@ -38,7 +38,7 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
     async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
-        fromFoundUtxo: TxInput,
+        utxo: TxInput,
         redeemer: isActivity = this.activityAuthorizing()
     ): Promise<TCX> {
         throw new Error(`todo`)

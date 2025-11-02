@@ -729,7 +729,8 @@ export abstract class Capo<
      *
      * The transaction is typed with the presence of the charter reference (found in tcx.state.charterRef).
      *
-     * If the charter reference is already present in the transaction context, the transaction will not be modified.
+     * If the charter reference is already present in the transaction context, the transaction is not modified.
+     * @public
      */
     async tcxWithCharterRef<TCX extends StellarTxnContext>(
         tcx: TCX
@@ -1371,11 +1372,6 @@ export abstract class Capo<
 
     /**
      * Creates a new delegate link, given a delegation role and and strategy-selection details
-     * @param tcx - A transaction-context having state.uuts[roleName] matching the roleName
-     * @param role - the role of the delegate, matched with the `delegateRoles()` of `this`
-     * @param delegateInfo - partial detail of the delegation with any
-     *     details required by the particular role.  Its delegate type may be a subclass of the type
-     *     indicated by the `roleName`.
      * @remarks
      *
      * Combines partal and implied configuration settings, validating the resulting configuration.
@@ -1406,6 +1402,11 @@ export abstract class Capo<
      *   ... along with any explicit `config` from the provided `delegateInfo`
      *   ... and automatically applies a `uut` setting.
      *   ... The later properties in this sequence take precedence.
+     * @param tcx - A transaction-context having state.uuts[roleName] matching the roleName
+     * @param role - the role of the delegate, matched with the `delegateRoles()` of `this`
+     * @param delegateInfo - partial detail of the delegation with any
+     *     details required by the particular role.  Its delegate type may be a subclass of the type
+     *     indicated by the `roleName`.
      **/
     async txnCreateOffchainDelegateLink<
         RN extends string & keyof SELF["_delegateRoles"],
@@ -3119,17 +3120,19 @@ export abstract class Capo<
      * If this makes the transaction too big, the console
      * warning will be followed by a thrown error during the transaction's
      * wallet-submission sequence.
-     * @param program2 - the UPLC program to attach to the script
+     * 
+     * @param tcx - the transaction context to be augmented
+     * @param program - the script to be attached to the transaction
+     * @returns the augmented transaction context
      * @public
      **/
     @partialTxn
     async txnAttachScriptOrRefScript<TCX extends StellarTxnContext>(
         tcx: TCX,
-        program: anyUplcProgram | undefined = undefined,
-        useRefScript = true
+        program: anyUplcProgram
+        // useRefScript = true
     ): Promise<TCX> {
-        const program2 = program || (await this.asyncCompiledScript())!;
-        let expectedVh = program2.hash();
+        let expectedVh = program.hash();
 
         const capoUtxos = await this.findCapoUtxos();
         const matchingScriptRef = await this.findRefScriptUtxo(
@@ -3147,10 +3150,10 @@ export abstract class Capo<
                 ).stack?.replace(/^Error/, "")
             );
             // console.log("------------------- NO REF SCRIPT")
-            return tcx.addScriptProgram(program2);
+            return tcx.addScriptProgram(program);
         }
         // console.log("------------------- REF SCRIPT")
-        return tcx.addRefInput(matchingScriptRef, program2);
+        return tcx.addRefInput(matchingScriptRef, program);
     }
 
     async findRefScriptUtxo(
@@ -3899,7 +3902,7 @@ export abstract class Capo<
      * delegating some portion of validation responsibility to the other script
      *
      * @param delegateName - the key that will be used in the on-chain data structures and in dependent contracts.
-     *  @param options - configuration for the delegate
+     * @param options - configuration for the delegate
      * @public
      **/
     async mkTxnAddingNamedDelegate<

@@ -1309,8 +1309,8 @@ export class StellarContract<
         return ActivitiesType;
     }
 
+    /** @ignore */
     /**
-     * @deprecated - see {@link StellarContract.activityVariantToUplc|this.activityVariantToUplc(variant, data)} instead
      * Retrieves an on-chain type for a specific named activity ("redeemer")
      * @remarks
      *
@@ -1318,7 +1318,7 @@ export class StellarContract<
      * Throws a helpful error if the requested activity name isn't present.'
      *
      * @param activityName - the name of the requested activity
-     * @public
+     * 
      **/
     mustGetActivity(activityName: string): EnumMemberType | null {
         const ocat = this.onChainActivitiesType;
@@ -1557,18 +1557,19 @@ export class StellarContract<
      *
      * Throws an error if no matching UTxO can be found
      * @param semanticName - descriptive name; used in diagnostic messages and any errors thrown
-     * @param predicate - filter function; returns its utxo if it matches expectations
-     * @param exceptInTcx - any utxos already in the transaction context are disregarded and not passed to the predicate function
-     * @param extraErrorHint - user- or developer-facing guidance for guiding them to deal with the miss
+     * @param options - options for the search
      * @public
-     **/
-    //! finds a utxo (
+    **/
     async mustFindMyUtxo(
         semanticName: string,
         options: {
+            /** filter function; returns its utxo if it matches expectations */
             predicate: utxoPredicate;
+            /** any utxos already in the transaction context are disregarded and not passed to the predicate function */
             exceptInTcx?: StellarTxnContext;
+            /** developer-facing guidance for dealing with the miss if the utxo is not found.  The developer might pass this along to the user; try to make it helpful. */
             extraErrorHint?: string;
+            /** any utxos already in the transaction context are disregarded and not passed to the predicate function */
             utxos?: TxInput[];
         }
     ): Promise<TxInput> {

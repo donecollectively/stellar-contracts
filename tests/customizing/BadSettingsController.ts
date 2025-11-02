@@ -1,4 +1,3 @@
-import BadSettingsBundle from "./BadSettings.hlb.js";
 import type {
     // SpendingActivity,
     // SpendingActivityLike,

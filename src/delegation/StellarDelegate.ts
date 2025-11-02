@@ -235,7 +235,7 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
      **/
     abstract DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
-        uutxo: TxInput,
+        utxo: TxInput,
         redeemer?: isActivity
     ): Promise<TCX>;
 
