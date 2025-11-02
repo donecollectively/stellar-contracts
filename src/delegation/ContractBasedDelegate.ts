@@ -87,7 +87,7 @@ export class ContractBasedDelegate extends StellarDelegate {
     ) {
         if (this._scriptBundle) return this._scriptBundle;
 
-        const bundle = await super.mkScriptBundle();
+        const bundle = await super.mkScriptBundle(setupDetails);
         if (bundle.isConcrete) return (this._scriptBundle = bundle);
 
         const bundleClass = await this.scriptBundleClass();
