@@ -495,7 +495,7 @@ export declare class StellarContract<ConfigType extends configBaseWithRev> {
      **/
     get scriptActivitiesName(): string;
     getSeed(arg: hasSeed): TxOutputId;
-    loadProgram(): import("../dist/HeliosProgramWithCacheAPI.js").HeliosProgramWithCacheAPI;
+    loadProgram(): import("./helios/HeliosProgramWithMockCacheAPI.js").HeliosProgramWithCacheAPI;
     /**
      * returns the on-chain type for activities ("redeemers")
      * @remarks
@@ -508,8 +508,8 @@ export declare class StellarContract<ConfigType extends configBaseWithRev> {
      * @public
      **/
     get onChainActivitiesType(): DataType;
+    /** @ignore */
     /**
-     * @deprecated - see {@link StellarContract.activityVariantToUplc|this.activityVariantToUplc(variant, data)} instead
      * Retrieves an on-chain type for a specific named activity ("redeemer")
      * @remarks
      *
@@ -517,7 +517,7 @@ export declare class StellarContract<ConfigType extends configBaseWithRev> {
      * Throws a helpful error if the requested activity name isn't present.'
      *
      * @param activityName - the name of the requested activity
-     * @public
+     *
      **/
     mustGetActivity(activityName: string): EnumMemberType | null;
     /**
@@ -547,7 +547,7 @@ export declare class StellarContract<ConfigType extends configBaseWithRev> {
     isDefinitelyMainnet(): boolean;
     paramsToUplc(params: Record<string, any>): UplcRecord<ConfigType>;
     typeToUplc(type: DataType, data: any, path?: string): UplcData;
-    get program(): import("../dist/HeliosProgramWithCacheAPI.js").HeliosProgramWithCacheAPI;
+    get program(): import("./helios/HeliosProgramWithMockCacheAPI.js").HeliosProgramWithCacheAPI;
     _utxoHelper: UtxoHelper;
     /**
      * Provides access to a UtxoHelper instance
@@ -574,15 +574,17 @@ export declare class StellarContract<ConfigType extends configBaseWithRev> {
      *
      * Throws an error if no matching UTxO can be found
      * @param semanticName - descriptive name; used in diagnostic messages and any errors thrown
-     * @param predicate - filter function; returns its utxo if it matches expectations
-     * @param exceptInTcx - any utxos already in the transaction context are disregarded and not passed to the predicate function
-     * @param extraErrorHint - user- or developer-facing guidance for guiding them to deal with the miss
+     * @param options - options for the search
      * @public
-     **/
+    **/
     mustFindMyUtxo(semanticName: string, options: {
+        /** filter function; returns its utxo if it matches expectations */
         predicate: utxoPredicate;
+        /** any utxos already in the transaction context are disregarded and not passed to the predicate function */
         exceptInTcx?: StellarTxnContext;
+        /** developer-facing guidance for dealing with the miss if the utxo is not found.  The developer might pass this along to the user; try to make it helpful. */
         extraErrorHint?: string;
+        /** any utxos already in the transaction context are disregarded and not passed to the predicate function */
         utxos?: TxInput[];
     }): Promise<TxInput>;
     /**

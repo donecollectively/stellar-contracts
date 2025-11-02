@@ -5,13 +5,14 @@ import { DelegatedDataContract } from "../delegation/DelegatedDataContract.js";
 import { ReqtsPolicyDataBridge } from "./Reqts.concrete.bridge.js";
 import type { ReqtDataLike, ErgoReqtData, ReqtData, minimalReqtData } from "./Reqts.concrete.typeInfo.d.ts";
 import type { hasSeed } from "../ActivityTypes.js";
+import type { DelegatedDataBundle } from "../helios/scriptBundling/DelegatedDataBundle.js";
 export declare class ReqtsController extends DelegatedDataContract<ReqtData, ReqtDataLike> {
     dataBridgeClass: typeof ReqtsPolicyDataBridge;
     get delegateName(): string;
     get idPrefix(): string;
     get recordTypeName(): string;
     exampleData(): minimalReqtData;
-    scriptBundleClass(): Promise<typeof import("./Reqts.concrete.hlb.js").ReqtsConcreteBundle>;
+    scriptBundleClass(): Promise<typeof DelegatedDataBundle>;
     activityCreatingReqt(seedFrom: hasSeed): import("../ActivityTypes.js").isActivity;
     activityUpdatingReqt(id: any): import("../ActivityTypes.js").isActivity;
     activityCreatingRequirement(seedFrom: hasSeed): import("../ActivityTypes.js").isActivity;

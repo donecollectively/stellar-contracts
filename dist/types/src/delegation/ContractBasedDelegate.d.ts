@@ -143,7 +143,7 @@ export declare class ContractBasedDelegate extends StellarDelegate {
      **/
     get delegateValidatorHash(): ValidatorHash | undefined;
     /**
-     * {@inheritdoc StellarDelegate.DelegateMustFindAuthorityToken}
+     * @see {@link StellarDelegate.DelegateMustFindAuthorityToken|DelegateMustFindAuthorityToken()}
      **/
     DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string): Promise<TxInput>;
     /**
@@ -195,7 +195,7 @@ export declare class ContractBasedDelegate extends StellarDelegate {
      * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
      * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
      **/
-    DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, uutxo: TxInput, redeemer: isActivity): Promise<TCX>;
+    DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, utxo: TxInput, redeemer: isActivity): Promise<TCX>;
     /**
      * {@inheritdoc StellarDelegate.DelegateAddsAuthorityToken}
      **/

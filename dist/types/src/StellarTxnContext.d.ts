@@ -136,6 +136,7 @@ type MintTokensParams = [
 ];
 /**
  * Provides notifications for various stages of transaction submission
+ * @public
  */
 type TxPipelineOptions = Expand<TxSubmitCallbacks & {
     fixupBeforeSubmit?: MultiTxnCallback;

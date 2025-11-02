@@ -3958,8 +3958,8 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
     } = this.program.userTypes;
     return ActivitiesType;
   }
+  /** @ignore */
   /**
-   * @deprecated - see {@link StellarContract.activityVariantToUplc|this.activityVariantToUplc(variant, data)} instead
    * Retrieves an on-chain type for a specific named activity ("redeemer")
    * @remarks
    *
@@ -3967,7 +3967,7 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
    * Throws a helpful error if the requested activity name isn't present.'
    *
    * @param activityName - the name of the requested activity
-   * @public
+   * 
    **/
   mustGetActivity(activityName) {
     const ocat = this.onChainActivitiesType;
@@ -4153,12 +4153,9 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
    *
    * Throws an error if no matching UTxO can be found
    * @param semanticName - descriptive name; used in diagnostic messages and any errors thrown
-   * @param predicate - filter function; returns its utxo if it matches expectations
-   * @param exceptInTcx - any utxos already in the transaction context are disregarded and not passed to the predicate function
-   * @param extraErrorHint - user- or developer-facing guidance for guiding them to deal with the miss
+   * @param options - options for the search
    * @public
-   **/
-  //! finds a utxo (
+  **/
   async mustFindMyUtxo(semanticName, options) {
     const { predicate, exceptInTcx, extraErrorHint, utxos } = options;
     const { address } = this;

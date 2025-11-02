@@ -49,10 +49,16 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
      * when set to true, the controller class will include the Capo's
      * gov authority in the transaction, to ease transaction setup.
      * @remarks
+     * This getter is derived from the contract-bundle's `requiresGovAuthority` property.
+     *
      * This is a convenience for the controller, and should be used along with
      * the appropriate on-chain policy to require the gov token's presence.
+     *
+     * @see {@link scriptBundleClass | scriptBundleClass()} in the controller, and
+     * {@link DelegatedDataBundle#requiresGovAuthority | requiresGovAuthority} in
+     * the bundle.
+     *
      * @public
-     * @deprecated - set requiresGovAuthority in the contract-bundle instead
      */
     get needsGovAuthority(): boolean;
     abstract get recordTypeName(): string;
@@ -101,22 +107,27 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
     mkTxnCreateRecord<THIS extends DelegatedDataContract<any, any>, TCX extends StellarTxnContext>(this: THIS, options: DgDataCreationOptions<TLike>, tcx?: TCX): Promise<hasUutContext<THIS["idPrefix"] | "recordId"> & TCX & hasCharterRef & hasSeedUtxo & hasUutContext<"recordId" | (string extends THIS["idPrefix"] ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›" : THIS["idPrefix"])>>;
     creationDefaultDetails(): Partial<TLike>;
     beforeCreate(record: TLike): TLike;
-    txnCreatingRecord<THIS extends DelegatedDataContract<any, any>, TCX extends StellarTxnContext & hasCharterRef & hasSeedUtxo & hasUutContext<"recordId">>(this: THIS, tcx: TCX, options: CoreDgDataCreationOptions<TLike>): Promise<TCX & hasUutContext<"recordId" | (string extends DelegatedDatumIdPrefix<THIS> ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›" : DelegatedDatumIdPrefix<THIS>)>>;
     /**
-     * Creates an indirect reference to an an update activity with arguments,
-     * using a record-id placeholder.
-     *
+     * core transaction-building method creating a record of this delegate's type in the on-chain data store
      * @remarks
-     * Provide an update activity function, a placeholder for the record-id, any other args
-     * for the on-chain activity/redeemer.  The update-activity function can be any of this
-     * contract's `activity.SpendingActivities.*` functions.
      *
-     * This approach is similar to the creation-time {@link DelegatedDataContract.usesSeedActivity|usesSeedActivity()} method,
-     * with a "...recId" placeholder instead of a "...seed" placeholder.
+     * The options can include special-cased record-creation activities, targeting one of the policy's on-chain MintingActivities other than the default {@link DelegatedDataContract.activity.MintingActivities.$seeded$CreatingRecord | $seeded$CreatingRecord}.
      *
-     * The arguments are passed to the update activity function, which is expected to return
-     * an {@link isActivity} object serializing the `{redeemer}` data as a UplcData object.
-     * Normally that's done with {@link ContractBasedDelegate.mkSpendingActivity | mkSpendingActivity()}.
+     * The delegate MAY provide a {@link beforeCreate | beforeCreate()} method to augment the record before it is created.
+     *
+     * The transaction context is augmented by adding the authority token enforcing the on-chain data-creation policy for this delegate.
+     *
+     * Includes the Capo's govAuthority if the contract's script bundle indicates the need for
+     * it (see {@link DelegatedDataBundle#requiresGovAuthority | requiresGovAuthority}) in the script bundle class.
+     *
+     * @param tcx - the transaction context to be augmented
+     * @param options - the options for the creation
+     * @returns the augmented transaction context
+     */
+    txnCreatingRecord<THIS extends DelegatedDataContract<any, any>, TCX extends StellarTxnContext & hasCharterRef & hasSeedUtxo & hasUutContext<"recordId">>(this: THIS, tcx: TCX, options: CoreDgDataCreationOptions<TLike>): Promise<TCX & hasUutContext<"recordId" | (string extends DelegatedDatumIdPrefix<THIS> ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›" : DelegatedDatumIdPrefix<THIS>)>>;
+    /** @ignore */
+    /**
+     * @deprecated use activity.SpendingActivities.* instead.
      */
     usesUpdateActivity<UA extends updateActivityFunc<any>>(a: UA, _idPlaceholder: "...recId", ...args: UpdateActivityArgs<UA>): UpdateActivity<UA, UpdateActivityArgs<UA>>;
     /**

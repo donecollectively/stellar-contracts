@@ -268,7 +268,7 @@ class ContractBasedDelegate extends StellarDelegate {
   _scriptBundle;
   async mkScriptBundle(setupDetails = placeholderSetupDetails) {
     if (this._scriptBundle) return this._scriptBundle;
-    const bundle = await super.mkScriptBundle();
+    const bundle = await super.mkScriptBundle(setupDetails);
     if (bundle.isConcrete) return this._scriptBundle = bundle;
     const bundleClass = await this.scriptBundleClass();
     const myCapoBundle = await this.capo.mkScriptBundle();
@@ -464,7 +464,7 @@ We'll generate an additional .typeInfo.d.ts, based on the types in your Helios s
     return this.validatorHash;
   }
   /**
-   * {@inheritdoc StellarDelegate.DelegateMustFindAuthorityToken}
+   * @see {@link StellarDelegate.DelegateMustFindAuthorityToken|DelegateMustFindAuthorityToken()}
    **/
   async DelegateMustFindAuthorityToken(tcx, label) {
     return this.mustFindMyUtxo(
@@ -524,12 +524,12 @@ We'll generate an additional .typeInfo.d.ts, based on the types in your Helios s
    * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
    * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
    **/
-  async DelegateAddsAuthorityToken(tcx, uutxo, redeemer) {
+  async DelegateAddsAuthorityToken(tcx, utxo, redeemer) {
     const { capo } = this.configIn;
     const script = this._bundle?.previousCompiledScript() || await this.asyncCompiledScript();
     const tcx2 = await capo.txnAttachScriptOrRefScript(tcx, script);
     if (!redeemer.redeemer) debugger;
-    return tcx2.addInput(uutxo, redeemer);
+    return tcx2.addInput(utxo, redeemer);
   }
   /**
    * {@inheritdoc StellarDelegate.DelegateAddsAuthorityToken}

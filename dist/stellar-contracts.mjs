@@ -79,8 +79,8 @@ class BasicMintDelegate extends ContractBasedDelegate {
   /**
    * the scriptBundle for the BasicMintDelegate looks concrete,
    * but it's actually just referencing a generic, unspecialized delegate script
-   * that may not provide much value to any specific application.  
-   * 
+   * that may not provide much value to any specific application.
+   *
    * Subclasses should expect to override this and provide a specialized
    * `get scriptBundle() { return new ‹YourMintDelegateBundle› }`, using
    *  a class you derive from CapoDelegateBundle and your own delegate
@@ -128,10 +128,13 @@ class BasicMintDelegate extends ContractBasedDelegate {
             existingRedeemer
           );
         }
-        if (existingRedeemer.kind != "constr") throw new Error(`non-enum redeemer`);
+        if (existingRedeemer.kind != "constr")
+          throw new Error(`non-enum redeemer`);
         const list = existingRedeemer.fields[0];
         if (list.kind != "list") throw new Error(`non-list redeemer`);
-        const existingActivity = list.items.find((f) => f.isEqual(expectedRedeemer));
+        const existingActivity = list.items.find(
+          (f) => f.isEqual(expectedRedeemer)
+        );
         if (!existingActivity) {
           throw this.existingRedeemerError(
             "mint delegate authority (multiple-activity redeemer doesn't include the needed activity)",
@@ -9021,11 +9024,11 @@ class CapoMinter extends StellarContract {
       activity
     );
   }
-  async attachScript(tcx, useRefScript = true) {
+  async attachScript(tcx) {
     return this.configIn.capo.txnAttachScriptOrRefScript(
       tcx,
-      await this.asyncCompiledScript(),
-      useRefScript
+      await this.asyncCompiledScript()
+      // useRefScript
     );
   }
   async txnMintingWithoutDelegate(tcx, vEntries, minterActivity) {
@@ -9151,16 +9154,16 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
   }
   //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
   //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-  async DelegateAddsAuthorityToken(tcx, fromFoundUtxo, redeemer) {
+  async DelegateAddsAuthorityToken(tcx, utxo, redeemer) {
     //! no need to specify a redeemer, but we pass it through
-    return tcx.addInput(fromFoundUtxo, redeemer);
+    return tcx.addInput(utxo, redeemer);
   }
   //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
   //  ... allowing the token to be burned by the minting policy.
   //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-  async DelegateRetiresAuthorityToken(tcx, fromFoundUtxo) {
+  async DelegateRetiresAuthorityToken(tcx, utxo) {
     //! no need to specify a redeemer
-    return tcx.addInput(fromFoundUtxo);
+    return tcx.addInput(utxo);
   }
 }
 
@@ -14014,7 +14017,8 @@ We suggest naming your Capo bundle class with your application's name.
    *
    * The transaction is typed with the presence of the charter reference (found in tcx.state.charterRef).
    *
-   * If the charter reference is already present in the transaction context, the transaction will not be modified.
+   * If the charter reference is already present in the transaction context, the transaction is not modified.
+   * @public
    */
   async tcxWithCharterRef(tcx) {
     if (
@@ -14367,11 +14371,6 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
   }
   /**
    * Creates a new delegate link, given a delegation role and and strategy-selection details
-   * @param tcx - A transaction-context having state.uuts[roleName] matching the roleName
-   * @param role - the role of the delegate, matched with the `delegateRoles()` of `this`
-   * @param delegateInfo - partial detail of the delegation with any
-   *     details required by the particular role.  Its delegate type may be a subclass of the type
-   *     indicated by the `roleName`.
    * @remarks
    *
    * Combines partal and implied configuration settings, validating the resulting configuration.
@@ -14402,6 +14401,11 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
    *   ... along with any explicit `config` from the provided `delegateInfo`
    *   ... and automatically applies a `uut` setting.
    *   ... The later properties in this sequence take precedence.
+   * @param tcx - A transaction-context having state.uuts[roleName] matching the roleName
+   * @param role - the role of the delegate, matched with the `delegateRoles()` of `this`
+   * @param delegateInfo - partial detail of the delegation with any
+   *     details required by the particular role.  Its delegate type may be a subclass of the type
+   *     indicated by the `roleName`.
    **/
   async txnCreateOffchainDelegateLink(tcx, role, delegateInfo) {
     const configured = await this.txnCreateConfiguredDelegate(
@@ -15598,9 +15602,8 @@ These should match; use the recordTypeName in the delegateRoles map!`
     }
     return tcx.addOutput(txo);
   }
-  async txnAttachScriptOrRefScript(tcx, program = void 0, useRefScript = true) {
-    const program2 = program || await this.asyncCompiledScript();
-    let expectedVh = program2.hash();
+  async txnAttachScriptOrRefScript(tcx, program) {
+    let expectedVh = program.hash();
     const capoUtxos = await this.findCapoUtxos();
     const matchingScriptRef = await this.findRefScriptUtxo(
       expectedVh,
@@ -15616,9 +15619,9 @@ These should match; use the recordTypeName in the delegateRoles map!`
 ADDING SCRIPT DIRECTLY TO TXN!`
         ).stack?.replace(/^Error/, "")
       );
-      return tcx.addScriptProgram(program2);
+      return tcx.addScriptProgram(program);
     }
-    return tcx.addRefInput(matchingScriptRef, program2);
+    return tcx.addRefInput(matchingScriptRef, program);
   }
   async findRefScriptUtxo(expectedVh, capoUtxos) {
     const matchesRefScript = this.uh.mkRefScriptPredicate(expectedVh);
@@ -15982,7 +15985,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
    * delegating some portion of validation responsibility to the other script
    *
    * @param delegateName - the key that will be used in the on-chain data structures and in dependent contracts.
-   *  @param options - configuration for the delegate
+   * @param options - configuration for the delegate
    * @public
    **/
   async mkTxnAddingNamedDelegate(delegateName, options, tcx = this.mkTcx()) {

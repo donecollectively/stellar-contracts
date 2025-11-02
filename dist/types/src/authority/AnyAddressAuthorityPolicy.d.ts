@@ -22,7 +22,7 @@ export declare class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     get delegateValidatorHash(): undefined;
     DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string, options?: UtxoSearchScope): Promise<TxInput>;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo: TxInput): Promise<TCX>;
-    DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput, redeemer?: isActivity): Promise<TCX>;
-    DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput): Promise<TCX>;
+    DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, utxo: TxInput, redeemer?: isActivity): Promise<TCX>;
+    DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, utxo: TxInput): Promise<TCX>;
 }
 //# sourceMappingURL=AnyAddressAuthorityPolicy.d.ts.map

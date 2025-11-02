@@ -96,7 +96,7 @@ export declare abstract class StellarDelegate extends StellarContract<capoDelega
      * transaction-building logic needed to include the UUT into the `tcx`.
      * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
      **/
-    abstract DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, uutxo: TxInput, redeemer?: isActivity): Promise<TCX>;
+    abstract DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, utxo: TxInput, redeemer?: isActivity): Promise<TCX>;
     /**
      * Adds any important transaction elemements supporting the authority token being retired, closing the delegate contracts' utxo.
      * @remarks

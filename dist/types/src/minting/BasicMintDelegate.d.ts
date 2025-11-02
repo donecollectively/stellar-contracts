@@ -3,6 +3,7 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import type { GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
 import type { hasSeed, isActivity } from "../ActivityTypes.js";
 import type { GrantAuthorityOptions } from "../delegation/StellarDelegate.js";
+import type { ConcreteCapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
 /**
  * Serves a delegated minting-policy role for Capo contracts
  * @remarks
@@ -37,7 +38,7 @@ export declare class BasicMintDelegate extends ContractBasedDelegate {
      * specialization.  TODO: a generator to make this easier.  Until then,
      * you can copy the UnspecializedDelegate.hl and specialize it.
      */
-    scriptBundleClass(): Promise<typeof import("../delegation/UnspecializedDelegate.hlb.js").UnspecializedDgtBundle>;
+    scriptBundleClass(): Promise<ConcreteCapoDelegateBundle>;
     static get defaultParams(): {
         delegateName: string;
         isMintDelegate: boolean;

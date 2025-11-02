@@ -230,7 +230,8 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      *
      * The transaction is typed with the presence of the charter reference (found in tcx.state.charterRef).
      *
-     * If the charter reference is already present in the transaction context, the transaction will not be modified.
+     * If the charter reference is already present in the transaction context, the transaction is not modified.
+     * @public
      */
     tcxWithCharterRef<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX & hasCharterRef>;
     tcxWithSettingsRef<TCX extends StellarTxnContext>(this: SELF, tcx: TCX, { charterData, capoUtxos, }: {
@@ -370,11 +371,6 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
     txnMustGetSeedUtxo(tcx: StellarTxnContext, purpose: string, tokenNames: string[]): Promise<TxInput | never>;
     /**
      * Creates a new delegate link, given a delegation role and and strategy-selection details
-     * @param tcx - A transaction-context having state.uuts[roleName] matching the roleName
-     * @param role - the role of the delegate, matched with the `delegateRoles()` of `this`
-     * @param delegateInfo - partial detail of the delegation with any
-     *     details required by the particular role.  Its delegate type may be a subclass of the type
-     *     indicated by the `roleName`.
      * @remarks
      *
      * Combines partal and implied configuration settings, validating the resulting configuration.
@@ -405,6 +401,11 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      *   ... along with any explicit `config` from the provided `delegateInfo`
      *   ... and automatically applies a `uut` setting.
      *   ... The later properties in this sequence take precedence.
+     * @param tcx - A transaction-context having state.uuts[roleName] matching the roleName
+     * @param role - the role of the delegate, matched with the `delegateRoles()` of `this`
+     * @param delegateInfo - partial detail of the delegation with any
+     *     details required by the particular role.  Its delegate type may be a subclass of the type
+     *     indicated by the `roleName`.
      **/
     txnCreateOffchainDelegateLink<RN extends string & keyof SELF["_delegateRoles"], DT extends StellarDelegate = ContractBasedDelegate>(tcx: hasUutContext<RN>, role: RN, delegateInfo: OffchainPartialDelegateLink): Promise<ConfiguredDelegate<DT> & Required<OffchainPartialDelegateLink>>;
     /**
@@ -616,10 +617,13 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      * If this makes the transaction too big, the console
      * warning will be followed by a thrown error during the transaction's
      * wallet-submission sequence.
-     * @param program2 - the UPLC program to attach to the script
+     *
+     * @param tcx - the transaction context to be augmented
+     * @param program - the script to be attached to the transaction
+     * @returns the augmented transaction context
      * @public
      **/
-    txnAttachScriptOrRefScript<TCX extends StellarTxnContext>(tcx: TCX, program?: anyUplcProgram | undefined, useRefScript?: boolean): Promise<TCX>;
+    txnAttachScriptOrRefScript<TCX extends StellarTxnContext>(tcx: TCX, program: anyUplcProgram): Promise<TCX>;
     findRefScriptUtxo(expectedVh: number[], capoUtxos: TxInput[]): Promise<TxInput | undefined>;
     /** finds UTXOs in the capo that are of tnhe ReferenceScript variety of its datum
      * @remarks
@@ -687,7 +691,7 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      * delegating some portion of validation responsibility to the other script
      *
      * @param delegateName - the key that will be used in the on-chain data structures and in dependent contracts.
-     *  @param options - configuration for the delegate
+     * @param options - configuration for the delegate
      * @public
      **/
     mkTxnAddingNamedDelegate<DT extends StellarDelegate, thisType extends Capo<any>, const delegateName extends string, TCX extends hasSeedUtxo = hasSeedUtxo>(this: thisType, delegateName: delegateName, options: OffchainPartialDelegateLink & NamedPolicyCreationOptions<thisType, DT>, tcx?: TCX): Promise<hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>>;
