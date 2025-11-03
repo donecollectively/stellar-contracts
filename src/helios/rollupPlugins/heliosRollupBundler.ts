@@ -885,7 +885,7 @@ export function heliosRollupBundler(
                             this.warn(
                                 "have explicitCapoBundle...  AND another, with a different lineage: " +
                                     JSON.stringify(
-                                        { id, existing: state.capoBundle },
+                                        { id, existing: state.capoBundle.constructor.name },
                                         null,
                                         2
                                     )
