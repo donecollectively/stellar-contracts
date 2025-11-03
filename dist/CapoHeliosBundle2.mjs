@@ -78,6 +78,7 @@ class CapoHeliosBundle extends HeliosScriptBundle {
     } else if (setupDetails.deployedDetails) {
       this.configuredScriptDetails = deployedDetails = setupDetails.deployedDetails;
     } else if (!this.configuredScriptDetails) {
+      debugger;
       console.warn(`no script details configured for ${this.constructor.name} (dbpa)`);
     }
     this._didInit = true;

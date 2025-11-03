@@ -1,10 +1,10 @@
 # Changelog
 
-## [0.9.3-beta.6] - 2025-11-02
+## [0.9.3-beta.7] - 2025-11-02
  - repairing .d.ts definitions in dist/
  - enhanced hasReqts() protocol and related types
  - removed api-extractor in favor of typedoc
- - (beta.1-6 were checkpoints to here)
+ - (beta.1-7 were checkpoints to here)
 
 ## [0.9.3-beta.1] - 2025-10-26
 
