@@ -231,12 +231,10 @@ export abstract class HeliosScriptBundle {
         }
         if (scriptParamsSource === "config") {
             if (params) {
-                this.configuredParams = params;
-                debugger;
-                this.scriptParamsSource;
-                throw new Error(
-                    `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
-                );
+                this.configuredParams = {
+                    ...params,
+                    ...this.params
+                }
             } else {
                 if (!specialOriginatorLabel) {
                     debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
@@ -303,7 +301,6 @@ export abstract class HeliosScriptBundle {
             console.log("scriptHash called before program is loaded.  Call loadProgram() first (expensive!) if this is intentional")
             const script = this.compiledScript()
             return script.hash()
-            // debugger;
             throw new Error(
                 "no scriptHash available yet (dbpa) - has the program been loaded and compiled?"
             );
@@ -320,11 +317,10 @@ export abstract class HeliosScriptBundle {
 
         const {
             deployedDetails,
-            params,
-            params: { delegateName, variant = "singleton" } = {},
             setup,
             previousOnchainScript,
         } = setupDetails;
+        let { params } = setupDetails;
         const {
             config,
             // programBundle
@@ -352,9 +348,13 @@ export abstract class HeliosScriptBundle {
                     //  ... it's provided by the bundle, which the
                     //  ... off-chain wrapper class may not have access to.
                     const {
-                        params: { delegateName, ...params },
+                        params: { delegateName, ...otherParams },
                     } = setupDetails;
                     this.isConcrete = true;
+                    params = {
+                        ...otherParams,
+                        ...this.params
+                    }
                     const uplcRuntimeConfig = this.paramsToUplc(params);
                     let didFindProblem: string = "";
                     for (const k of Object.keys(uplcPreConfig)) {
@@ -382,11 +382,16 @@ export abstract class HeliosScriptBundle {
                             `runtime-config conflicted with pre-config (see logged details) at key ${didFindProblem}`
                         );
                     }
+                } else {
+                    params = {
+                        ...params,
+                        ...this.params
+                    }
                 }
                 // moved to init
                 // this.configuredParams = setupDetails.params;
                 this.configuredUplcParams = this.paramsToUplc(
-                    setupDetails.params
+                    params
                 );
             }
         } else if (this.scriptParamsSource == "bundle") {
