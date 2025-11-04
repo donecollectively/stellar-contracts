@@ -519,7 +519,7 @@ export function heliosRollupBundler(
                                     SomeBundleClass.create({
                                         ...placeholderSetup,
                                         scriptParamsSource: "config",
-                                        originatorLabel: "variant generation",
+                                        specialOriginatorLabel: "variant generation",
                                     });
                                 if (SomeBundleClass.isCapoBundle) {
                                     if (!hlBundler.capoBundle) {
@@ -837,7 +837,7 @@ export function heliosRollupBundler(
                 let bundle = SomeBundleClass.create({
                     ...placeholderSetup,
                     scriptParamsSource: "config",
-                    originatorLabel: "load() before type-gen",
+                    specialOriginatorLabel: "load() before type-gen",
                 });
 
                 // compile the program seen in that bundle!
@@ -920,7 +920,7 @@ export function heliosRollupBundler(
                         state.project.loadBundleWithClass({
                             absoluteFilename: id,
                             bundleClass: SomeBundleClass,
-                            originatorLabel: "load() specific Capo bundle for type-gen",
+                            specialOriginatorLabel: "load() specific Capo bundle for type-gen",
                             scriptParamsSource: "none",
                         });
                         state.project.generateBundleTypes(id);
@@ -950,7 +950,7 @@ export function heliosRollupBundler(
                             state.project.loadBundleWithClass({
                                 absoluteFilename: "src/helios/scriptBundling/CapoHeliosBundle.ts",
                                 bundleClass: bundle.capoBundle.constructor as any,
-                                originatorLabel: "load() default Capo bundle",
+                                specialOriginatorLabel: "load() default Capo bundle",
                                 scriptParamsSource: "none",
                             });
                             this.warn(
@@ -967,7 +967,7 @@ export function heliosRollupBundler(
                     state.project.loadBundleWithClass({
                         absoluteFilename: id,
                         bundleClass: SomeBundleClass,
-                        originatorLabel: "load() Capo bundle for type-gen",
+                        specialOriginatorLabel: "load() Capo bundle for type-gen",
                         scriptParamsSource: "none",
                     });
                     try {
@@ -1181,7 +1181,7 @@ export function heliosRollupBundler(
                     ...capoConfig,
                     variant: "capo"
                 },
-                originatorLabel: `stellar bundler, inserting pre-compiled Capo details`,
+                specialOriginatorLabel: `stellar bundler, inserting pre-compiled Capo details`,
                 setup: {
                     isMainnet: networkId === "mainnet",
                 }
@@ -1366,7 +1366,7 @@ export function heliosRollupBundler(
                 return null;
             }
             let hlBundler: HeliosScriptBundle = SomeBundleClass.create({
-                originatorLabel: `stellar bundler for finding pre-compiled script variants`,                
+                specialOriginatorLabel: `stellar bundler for finding pre-compiled script variants`,                
                 scriptParamsSource: "config",
                 setup: {
                     isMainnet: networkId === "mainnet",
@@ -1430,7 +1430,7 @@ export function heliosRollupBundler(
                     const configuredBundle = SomeBundleClass.create({
                         params,
                         scriptParamsSource: "config",
-                        originatorLabel: `stellar bundler, inserting pre-compiled script details for variant '${variant}'`,
+                        specialOriginatorLabel: `stellar bundler, inserting pre-compiled script details for variant '${variant}'`,
                         setup: { isMainnet: networkId === "mainnet" },
                     });
 

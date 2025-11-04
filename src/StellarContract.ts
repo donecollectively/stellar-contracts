@@ -345,7 +345,7 @@ export type PartialStellarBundleDetails<CT extends configBaseWithRev>
 export type StellarBundleSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupOrMainnetSignalForBundle;
     scriptParamsSource?: "config" | "bundle" | "none";
-    originatorLabel?: string;
+    specialOriginatorLabel?: string;
     previousOnchainScript?: {
         validatorHash: number[];
         uplcProgram: anyUplcProgram;

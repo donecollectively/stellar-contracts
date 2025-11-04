@@ -78,7 +78,7 @@ export class StellarHeliosProject {
         replacement.loadBundleWithClass({
             absoluteFilename,
             bundleClass: newCapoClass,
-            originatorLabel: "replaceWithNewCapo",
+            specialOriginatorLabel: "replaceWithNewCapo",
             scriptParamsSource: "none",
         });
         replacement.generateBundleTypes(absoluteFilename);
@@ -87,7 +87,7 @@ export class StellarHeliosProject {
                 replacement.loadBundleWithClass({
                     absoluteFilename: filename,
                     bundleClass: entry.bundleClass!,
-                    originatorLabel: "replaceWithNewCapo",
+                    specialOriginatorLabel: "replaceWithNewCapo",
                     scriptParamsSource: "none",
                 });
                 replacement.generateBundleTypes(filename);
@@ -107,7 +107,7 @@ export class StellarHeliosProject {
         absoluteFilename: string,
         bundleClass: typeof HeliosScriptBundle,
         harmlessSecondCapo?: boolean,
-        originatorLabel: string,
+        specialOriginatorLabel: string,
         scriptParamsSource?: "config" | "bundle" | "none"
     }) {
         const { 
@@ -115,7 +115,7 @@ export class StellarHeliosProject {
             bundleClass, 
             harmlessSecondCapo=false,
             scriptParamsSource,
-            originatorLabel
+            specialOriginatorLabel
         } = options;
         if (harmlessSecondCapo) {
             throw new Error("deprecated use of arg3 'harmlessSecondCapo'");
@@ -226,7 +226,7 @@ export class StellarHeliosProject {
                 parentClassName,
             };
             bundle = bundleClass.create({ 
-                originatorLabel,
+                specialOriginatorLabel,
                 scriptParamsSource,
                 setup: { 
                     isMainnet: false,

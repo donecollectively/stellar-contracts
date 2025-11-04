@@ -44,7 +44,7 @@ export const defaultNoDefinedModuleName = "‹default-needs-override›";
  * @public
  */
 export const placeholderSetupDetails: StellarBundleSetupDetails<any> = {
-    originatorLabel: "for abstract bundleClass",
+    specialOriginatorLabel: "for abstract bundleClass",
     setup: {
         isMainnet: "mainnet" === environment.CARDANO_NETWORK,
     },
@@ -197,7 +197,7 @@ export abstract class HeliosScriptBundle {
         this.isMainnet = this.setup.isMainnet;
 
         if (this.setup && "undefined" === typeof this.isMainnet) {
-            debugger;
+            debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
             throw new Error(
                 `${this.constructor.name}: setup.isMainnet must be defined (debugging breakpoint available)`
             );
@@ -216,7 +216,7 @@ export abstract class HeliosScriptBundle {
             setup,
             scriptParamsSource = this.scriptParamsSource,
             previousOnchainScript,
-            originatorLabel,
+            specialOriginatorLabel,
         } = setupDetails;
         // const { config,
         //     // programBundle
@@ -224,7 +224,7 @@ export abstract class HeliosScriptBundle {
 
         if (this.scriptParamsSource !== scriptParamsSource) {
             console.warn(
-                `   -- ${this.constructor.name}: ${originatorLabel} overrides scriptParamsSource\n        was ${this.scriptParamsSource}, now ${scriptParamsSource}`
+                `   -- ${this.constructor.name}: overrides scriptParamsSource (originator '${specialOriginatorLabel || "‹unknown›"}')    '\n        was ${this.scriptParamsSource}, now ${scriptParamsSource}`
             );
             // debugger
             this.scriptParamsSource = scriptParamsSource;
@@ -232,25 +232,32 @@ export abstract class HeliosScriptBundle {
         if (scriptParamsSource === "config") {
             if (params) {
                 this.configuredParams = params;
-            } else if (!originatorLabel) {
                 debugger;
                 this.scriptParamsSource;
                 throw new Error(
                     `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
                 );
+            } else {
+                if (!specialOriginatorLabel) {
+                    debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
+                    throw new Error(
+                        `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
+                    );
+                }
+                console.log(`special originator '${specialOriginatorLabel}' initializing with basic config`)
             }
         } else if (scriptParamsSource == "bundle") {
             // the bundle has its own built-in params
 
             if (!this.precompiledScriptDetails) {
-                debugger;
+                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
                 throw new Error(
-                    `${this.constructor.name}: scriptParamsSource=bundle without precompiled script details (${originatorLabel})`
+                    `${this.constructor.name}: scriptParamsSource=bundle without precompiled script details (originator '${specialOriginatorLabel || "‹unknown›"}')`
                 );
             }
             const thisVariant = this.precompiledScriptDetails[variant];
             if (!thisVariant) {
-                const msg = `${this.constructor.name}: no precompiled variant '${variant}' (${originatorLabel})`;
+                const msg = `${this.constructor.name}: no precompiled variant '${variant}' (originator '${specialOriginatorLabel || "‹unknown›"}') (dbpa)`;
                 console.warn(
                     `${msg}\n  -- available variants: ${Object.keys(
                         this.precompiledScriptDetails
@@ -259,7 +266,7 @@ export abstract class HeliosScriptBundle {
                 console.log(
                     "configured variant should be in scriptBundle's 'params'"
                 );
-                debugger;
+                debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
                 throw new Error(msg);
             }
             this._selectedVariant = variant;
@@ -280,7 +287,7 @@ export abstract class HeliosScriptBundle {
             //     this.getPreconfiguredVariantParams(selectedVariant);
         } else if (this.scriptParamsSource != "none") {
             throw new Error(
-                `unknown scriptParamsSource: ${this.scriptParamsSource} (${originatorLabel})`
+                `unknown scriptParamsSource: ${this.scriptParamsSource} (${specialOriginatorLabel})`
             );
         }
 
@@ -556,9 +563,14 @@ export abstract class HeliosScriptBundle {
         if (!!this.configuredScriptDetails) {
             debugger;
             // ^^  inspect this situation to verify   vvvv
+            if (this.setupDetails.specialOriginatorLabel) {
+                // it's normal for the rollup bundler to get here
+                return false
+            }
             console.warn(
-                `scriptParamsSource is not 'bundle'; isPrecompiled() returns false at ${this.setupDetails.originatorLabel}`
+                `scriptParamsSource is not 'bundle'; isPrecompiled() returns false for originator '${this.setupDetails.specialOriginatorLabel || "‹unknown›"}'`
             );
+            throw new Error(`check isPrecompiled() logic here`);
             return false;
         }
         return false;
@@ -846,7 +858,7 @@ export abstract class HeliosScriptBundle {
     async loadPrecompiledVariant(
         variant: string
     ): Promise<PrecompiledProgramJSON> {
-        debugger
+        debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
         throw new Error(
             `${this.constructor.name}: Dysfunctional bundler bypass (loadPrecompiledVariant() not found) (dbpa)`
         );
@@ -953,6 +965,7 @@ export abstract class HeliosScriptBundle {
                 )
             )
         );
+        console.log(new Error(`(special originator ${this.setupDetails.specialOriginatorLabel || "‹unknown›"} where?)`).stack)
 
         return program
             .compileWithCache({
@@ -1198,6 +1211,7 @@ export abstract class HeliosScriptBundle {
                 }
                 // throw e;
             }
+            //eslint-disable-next-line no-debugger
             debugger;
             const [_, notFoundModule] =
                 e.message.match(/module '(.*)' not found/) || [];
@@ -1245,6 +1259,7 @@ export abstract class HeliosScriptBundle {
             const { startLine, startColumn } = e.site;
             const t = new Error(errorInfo);
             const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
+            //eslint-disable-next-line no-debugger
             debugger;
             const additionalErrors = (e.otherErrors || []).slice(1).map(
                 (oe) =>
