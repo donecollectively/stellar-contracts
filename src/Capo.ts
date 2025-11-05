@@ -78,6 +78,7 @@ import { hasReqts } from "./Requirements.js";
 
 import {
     AlreadyPendingError,
+    isLibraryMatchedTcx,
     mkUutValuesEntries,
     mkValuesEntry,
     TxNotNeededError,
@@ -606,16 +607,17 @@ export abstract class Capo<
     uutsValue(
         x: UutName | number[] | uutPurposeMap<any> | hasUutContext<any>
     ): Value {
-        let uutMap =
-            x instanceof StellarTxnContext
-                ? x.state.uuts!
-                : x instanceof UutName
-                ? { single: x }
-                : Array.isArray(x)
-                ? { single: new UutName("some-uut", x) }
-                : x;
+        let uutMap = isLibraryMatchedTcx(x)
+            ? (x as hasUutContext<any>).state.uuts!
+            : x instanceof UutName
+            ? { single: x }
+            : Array.isArray(x)
+            ? { single: new UutName("some-uut", x) }
+            : x;
 
-        const vEntries = this.mkUutValuesEntries(uutMap);
+        const vEntries = this.mkUutValuesEntries(
+            uutMap as UutName[] | uutPurposeMap<any>
+        );
 
         return makeValue(0, makeAssets([[this.mintingPolicyHash!, vEntries]]));
     }
@@ -1571,7 +1573,7 @@ export abstract class Capo<
             );
         }
         const impliedDelegationDetails = this.mkImpliedDelegationDetails(uut);
-
+// debugger
         const selectedDgt =
             delegateRoles[role] as SELF["_delegateRoles"][RN] //prettier-ignore
         // if (!foundStrategies) {

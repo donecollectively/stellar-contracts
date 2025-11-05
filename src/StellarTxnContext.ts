@@ -311,6 +311,7 @@ export type FacadeTxnContext<S extends anyState = anyState> = hasAddlTxns<
  * @public
  **/
 export class StellarTxnContext<S extends anyState = anyState> {
+    kind: "StellarTxnContext" = "StellarTxnContext";
     id: string = nanoid(5);
     inputs: TxInput[] = [];
     collateral?: TxInput;

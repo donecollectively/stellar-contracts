@@ -33,6 +33,7 @@ import {
     type InlineDatum,
 } from "./HeliosPromotedTypes.js";
 import type { UtxoDisplayCache } from "./StellarContract.js";
+import { isLibraryMatchedTcx } from "./utils.js";
 
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
@@ -861,7 +862,8 @@ export function dumpAny(
     if ("bigint" == typeof x) {
         return (x as bigint).toString();
     }
-    if (x instanceof StellarTxnContext) {
+
+    if (isLibraryMatchedTcx(x)) {
         debugger;
         throw new Error(`use await build() and dump the result instead.`);
     }

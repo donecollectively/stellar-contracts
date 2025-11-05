@@ -59,6 +59,7 @@ import type {
 import type { DeployedScriptDetails } from "./configuration/DeployedScriptConfigs.js";
 import type { TxBatcher } from "./networkClients/TxBatcher.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
+import { isLibraryMatchedTcx } from "./utils.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -559,6 +560,7 @@ export class StellarContract<
     _bundle: HeliosScriptBundle | undefined;
     async getBundle(): Promise<HeliosScriptBundle> {
         if (!this._bundle) {
+            // debugger
             const bundle = await this.mkScriptBundle({});
             if (
                 // this._bundle.precompiledScriptDetails &&
@@ -1598,14 +1600,20 @@ export class StellarContract<
     mkTcx(name?: string): StellarTxnContext;
     mkTcx(tcxOrName?: StellarTxnContext | string, name?: string) {
         const tcx =
-            tcxOrName instanceof StellarTxnContext
+            //@ts-expect-error on this type probe
+            tcxOrName?.kind === "StellarTxnContext"
                 ? tcxOrName
-                : new StellarTxnContext(this.setup).withName(name || "");
+                : new StellarTxnContext(this.setup).withName(
+                      name || "‹no-name›"
+                  );
 
         const effectiveName =
-            tcxOrName instanceof StellarTxnContext ? name : tcxOrName;
+            tcxOrName && isLibraryMatchedTcx(tcxOrName)
+                ? name
+                : tcxOrName || "‹unnamed context›";
 
-        if (effectiveName && !tcx.txnName) return tcx.withName(effectiveName);
+        if (effectiveName && !(tcx as StellarTxnContext)?.txnName)
+            return (tcx as StellarTxnContext).withName(effectiveName as string);
         return tcx;
     }
 

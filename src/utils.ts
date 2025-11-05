@@ -8,6 +8,7 @@ import {
     type Value,
     type MintingPolicyHash,
 } from "@helios-lang/ledger";
+import { StellarTxnContext } from "./StellarTxnContext.js";
 
 /**
  * Creates Value-creation entires for a list of uuts
@@ -174,6 +175,20 @@ export class AlreadyPendingError extends TxNotNeededError {
         this.name = "AlreadyPendingError";
     }
 }
+
+/**
+ * @internal
+ */
+export function isLibraryMatchedTcx(arg: any) : arg is StellarTxnContext {
+    if (arg instanceof StellarTxnContext) {
+        return true;
+    }
+    if (arg.kind === "StellarTxnContext") {
+        throw new Error("Stellar Contracts: library mismatch detected.  Ensure you're using only one version of the library");
+    }
+    return false
+}
+
 
 /**
  * @public

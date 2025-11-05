@@ -2,6 +2,7 @@ import type { UplcData } from "@helios-lang/uplc";
 import { StellarTxnContext, type hasSeedUtxo } from "./StellarTxnContext.js";
 import type { IFISNEVER, TypeError } from "./helios/typeUtils.js";
 import { makeTxOutputId, type TxId, type TxOutputId, type TxOutputIdLike } from "@helios-lang/ledger";
+import { isLibraryMatchedTcx } from "./utils.js";
 
 /**
  * @public
@@ -166,9 +167,11 @@ export function getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
     if (arg.kind == "TxOutputId") return arg;
 
     if (arg instanceof StellarTxnContext) {
-        const { txId, idx } = arg.getSeedUtxoDetails();
+        const { txId, idx } = (arg as StellarTxnContext & hasSeedUtxo).getSeedUtxoDetails();
         return makeTxOutputId(txId, idx);
     }
+    isLibraryMatchedTcx(arg);
+
     //@ts-expect-error on this type probe
     if (arg.idx && arg.txId) {
         const attr: SeedAttrs = arg as SeedAttrs;
@@ -177,3 +180,5 @@ export function getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
     const txoIdLike = arg as Exclude<typeof arg, SeedAttrs>;
     return makeTxOutputId(txoIdLike);
 }
+
+
