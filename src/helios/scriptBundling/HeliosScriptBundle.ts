@@ -110,7 +110,8 @@ export abstract class HeliosScriptBundle {
     //     * XXX - various bundles used within a single Capo,
     //     */
     static usingCapoBundleClass<CB extends CapoBundleClass>(
-        c: CB, generic : "generic" | false = false
+        c: CB,
+        generic: "generic" | false = false
     ): HeliosBundleClassWithCapo {
         //@ts-expect-error returning a subclass without concrete implementations
         // of the abstract members; hopefully the subclass will error if they're missing
@@ -224,7 +225,13 @@ export abstract class HeliosScriptBundle {
 
         if (this.scriptParamsSource !== scriptParamsSource) {
             console.warn(
-                `   -- ${this.constructor.name}: overrides scriptParamsSource (originator '${specialOriginatorLabel || "‹unknown›"}')    '\n        was ${this.scriptParamsSource}, now ${scriptParamsSource}`
+                `   -- ${
+                    this.constructor.name
+                }: overrides scriptParamsSource (originator '${
+                    specialOriginatorLabel || "‹unknown›"
+                }')    '\n        was ${
+                    this.scriptParamsSource
+                }, now ${scriptParamsSource}`
             );
             // debugger
             this.scriptParamsSource = scriptParamsSource;
@@ -242,7 +249,9 @@ export abstract class HeliosScriptBundle {
                         `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
                     );
                 }
-                console.log(`special originator '${specialOriginatorLabel}' initializing with basic config`)
+                console.log(
+                    `special originator '${specialOriginatorLabel}' initializing with basic config`
+                );
             }
         } else if (scriptParamsSource == "bundle") {
             // the bundle has its own built-in params
@@ -250,12 +259,20 @@ export abstract class HeliosScriptBundle {
             if (!this.precompiledScriptDetails) {
                 debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
                 throw new Error(
-                    `${this.constructor.name}: scriptParamsSource=bundle without precompiled script details (originator '${specialOriginatorLabel || "‹unknown›"}')`
+                    `${
+                        this.constructor.name
+                    }: scriptParamsSource=bundle without precompiled script details (originator '${
+                        specialOriginatorLabel || "‹unknown›"
+                    }')`
                 );
             }
             const thisVariant = this.precompiledScriptDetails[variant];
             if (!thisVariant) {
-                const msg = `${this.constructor.name}: no precompiled variant '${variant}' (originator '${specialOriginatorLabel || "‹unknown›"}') (dbpa)`;
+                const msg = `${
+                    this.constructor.name
+                }: no precompiled variant '${variant}' (originator '${
+                    specialOriginatorLabel || "‹unknown›"
+                }') (dbpa)`;
                 console.warn(
                     `${msg}\n  -- available variants: ${Object.keys(
                         this.precompiledScriptDetails
@@ -298,9 +315,11 @@ export abstract class HeliosScriptBundle {
             this.configuredScriptDetails?.scriptHash ||
             this.alreadyCompiledScript?.hash();
         if (!hash) {
-            console.log("scriptHash called before program is loaded.  Call loadProgram() first (expensive!) if this is intentional")
-            const script = this.compiledScript()
-            return script.hash()
+            console.log(
+                "scriptHash called before program is loaded.  Call loadProgram() first (expensive!) if this is intentional"
+            );
+            const script = this.compiledScript();
+            return script.hash();
             throw new Error(
                 "no scriptHash available yet (dbpa) - has the program been loaded and compiled?"
             );
@@ -315,11 +334,7 @@ export abstract class HeliosScriptBundle {
     initProgramDetails() {
         const { setupDetails } = this;
 
-        const {
-            deployedDetails,
-            setup,
-            previousOnchainScript,
-        } = setupDetails;
+        const { deployedDetails, setup, previousOnchainScript } = setupDetails;
         let { params } = setupDetails;
         const {
             config,
@@ -353,8 +368,8 @@ export abstract class HeliosScriptBundle {
                     this.isConcrete = true;
                     params = {
                         ...otherParams,
-                        ...this.params
-                    }
+                        ...this.params,
+                    };
                     const uplcRuntimeConfig = this.paramsToUplc(params);
                     let didFindProblem: string = "";
                     for (const k of Object.keys(uplcPreConfig)) {
@@ -385,8 +400,8 @@ export abstract class HeliosScriptBundle {
                 } else {
                     params = {
                         ...params,
-                        ...this.params
-                    }
+                        ...this.params,
+                    };
                 }
                 // moved to init
                 // this.configuredParams = setupDetails.params;
@@ -570,10 +585,12 @@ export abstract class HeliosScriptBundle {
             // ^^  inspect this situation to verify   vvvv
             if (this.setupDetails.specialOriginatorLabel) {
                 // it's normal for the rollup bundler to get here
-                return false
+                return false;
             }
             console.warn(
-                `scriptParamsSource is not 'bundle'; isPrecompiled() returns false for originator '${this.setupDetails.specialOriginatorLabel || "‹unknown›"}'`
+                `scriptParamsSource is not 'bundle'; isPrecompiled() returns false for originator '${
+                    this.setupDetails.specialOriginatorLabel || "‹unknown›"
+                }'`
             );
             throw new Error(`check isPrecompiled() logic here`);
             return false;
@@ -884,11 +901,7 @@ export abstract class HeliosScriptBundle {
     compiledScript(): anyUplcProgram;
     compiledScript(asyncOk: true): anyUplcProgram | Promise<anyUplcProgram>;
     compiledScript(asyncOk?: true): anyUplcProgram | Promise<anyUplcProgram> {
-        const {
-            setup,
-            previousOnchainScript,
-            _program: loadedProgram,
-        } = this;
+        const { setup, previousOnchainScript, _program: loadedProgram } = this;
 
         if (this.alreadyCompiledScript) {
             return this.alreadyCompiledScript;
@@ -970,7 +983,13 @@ export abstract class HeliosScriptBundle {
                 )
             )
         );
-        console.log(new Error(`(special originator ${this.setupDetails.specialOriginatorLabel || "‹unknown›"} where?)`).stack)
+        console.log(
+            new Error(
+                `(special originator ${
+                    this.setupDetails.specialOriginatorLabel || "‹unknown›"
+                } where?)`
+            ).stack
+        );
 
         return program
             .compileWithCache({

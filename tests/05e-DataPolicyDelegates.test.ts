@@ -246,12 +246,10 @@ describe("Capo", async () => {
             if (!testDataController)
                 throw new Error("testDataController not found");
 
-            const uplcProgram = await testDataController.asyncCompiledScript()
-            if (!uplcProgram)
-                throw new Error("uplcProgram not found");
+            const uplcProgram = await testDataController.asyncCompiledScript();
+            if (!uplcProgram) throw new Error("uplcProgram not found");
             const validatorHash = uplcProgram.hash();
-            if (!validatorHash)
-                throw new Error("validatorHash not found");
+            if (!validatorHash) throw new Error("validatorHash not found");
 
             await h.snapToReplacingTestDataPolicy();
             // testDataController._bundle = undefined;
@@ -265,8 +263,7 @@ describe("Capo", async () => {
 
             charterData = await capo.findCharterData();
             const updatedDelegate = await capo.getDgDataController("testData", { charterData });
-            if (!updatedDelegate)
-                throw new Error("updatedDelegate not found");
+            if (!updatedDelegate) throw new Error("updatedDelegate not found");
             // updatedDelegate.getBundle()!.previousOnchainScript = {
             //     validatorHash,
             //     uplcProgram
@@ -291,7 +288,10 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            expect(process.env.OPTIMIZE, "OPTIMIZE must == 1 for this test").toBeTruthy();
+            expect(
+                process.env.OPTIMIZE,
+                "OPTIMIZE must == 1 for this test"
+            ).toBeTruthy();
             await h.snapToInstalledTestDataPolicy();
             // building on top of the single-delegate snapshot:
 
@@ -305,15 +305,13 @@ describe("Capo", async () => {
             capo.autoSetup = true;
             //@ts-expect-error for now
             capo.featureFlags = {
-            //@ts-expect-error for now
-            ...capo.featureFlags,
+                //@ts-expect-error for now
+                ...capo.featureFlags,
                 testData: true,
                 testData2: true,
-            }
+            };
 
-            const tcx = await capo.mkTxnUpgradeIfNeeded(
-                charterData
-            );
+            const tcx = await capo.mkTxnUpgradeIfNeeded(charterData);
             await tcx.submitAll();
             network.tick(1);
             // console.log("🐞🐞🐞 -- now it has active delegates policies for two types of testData")
@@ -330,7 +328,6 @@ describe("Capo", async () => {
                 "testData",
                 { charterData: charterDataMark2 }
             )) as DelegatedDatumTester;
-            debugger
             const prevTestD2Controller = (await capo.getDgDataController(
                 "testData2",
                 { charterData: charterDataMark2 }
@@ -346,9 +343,7 @@ describe("Capo", async () => {
 
             DelegatedDatumTester.currentRev = 2n;
 
-            const tcx2 = await capo.mkTxnUpgradeIfNeeded(
-                charterDataMark2
-            );
+            const tcx2 = await capo.mkTxnUpgradeIfNeeded(charterDataMark2);
 
             // const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
             //     idPrefix: "tData",
@@ -361,7 +356,7 @@ describe("Capo", async () => {
                 { charterData: charterDataMark2 }
             )) as DelegatedDatumTester;
             if (!nextTestDataController)
-                throw new Error("nextTestDataController not found");    
+                throw new Error("nextTestDataController not found");
             const nextTestD2Controller = (await capo.getDgDataController(
                 "testData2",
                 { charterData: charterDataMark2 }
@@ -387,30 +382,50 @@ describe("Capo", async () => {
             const nextTestDataManifest = finalManifest.get("testData")!;
             const nextTestD2Manifest = finalManifest.get("testData2")!;
 
-            const nextTestDataHash = nextTestDataManifest.entryType.DgDataPolicy!.policyLink.delegateValidatorHash;
-            const nextTestD2Hash = nextTestD2Manifest.entryType.DgDataPolicy!.policyLink.delegateValidatorHash;
+            const nextTestDataHash =
+                nextTestDataManifest.entryType.DgDataPolicy!.policyLink
+                    .delegateValidatorHash;
+            const nextTestD2Hash =
+                nextTestD2Manifest.entryType.DgDataPolicy!.policyLink
+                    .delegateValidatorHash;
             expect(nextTestDataHash).toBeTruthy();
             expect(nextTestD2Hash).toBeTruthy();
 
-            const prevTestDataBundle = await prevTestDataController.getBundle();            
-            const prevTestDataScript = await prevTestDataBundle!.compiledScript(true);
-            const prevTestDataHash = makeValidatorHash(prevTestDataScript.hash());
+            const prevTestDataBundle = await prevTestDataController.getBundle();
+            const prevTestDataScript = await prevTestDataBundle!.compiledScript(
+                true
+            );
+            const prevTestDataHash = makeValidatorHash(
+                prevTestDataScript.hash()
+            );
             const prevTestD2Bundle = await prevTestD2Controller.getBundle();
-            const prevTestD2Script = await prevTestD2Bundle!.compiledScript(true);
+            const prevTestD2Script = await prevTestD2Bundle!.compiledScript(
+                true
+            );
             const prevTestD2Hash = makeValidatorHash(prevTestD2Script.hash());
 
             expect(nextTestDataHash!.isEqual(prevTestDataHash)).toBeFalsy();
             expect(nextTestD2Hash!.isEqual(prevTestD2Hash)).toBeFalsy();
 
             const nextTestDataBundle = await nextTestDataController.getBundle();
-            const nextTestDataScript = await nextTestDataBundle!.compiledScript(true);
-            const nextTestDataHashMark2 = makeValidatorHash(nextTestDataScript.hash());
+            const nextTestDataScript = await nextTestDataBundle!.compiledScript(
+                true
+            );
+            const nextTestDataHashMark2 = makeValidatorHash(
+                nextTestDataScript.hash()
+            );
 
             const nextTestD2Bundle = await nextTestD2Controller.getBundle();
-            const nextTestD2Script = await nextTestD2Bundle!.compiledScript(true);
-            const nextTestD2HashMark2 = makeValidatorHash(nextTestD2Script.hash());
+            const nextTestD2Script = await nextTestD2Bundle!.compiledScript(
+                true
+            );
+            const nextTestD2HashMark2 = makeValidatorHash(
+                nextTestD2Script.hash()
+            );
 
-            expect(nextTestDataHash!.isEqual(nextTestDataHashMark2)).toBeTruthy();
+            expect(
+                nextTestDataHash!.isEqual(nextTestDataHashMark2)
+            ).toBeTruthy();
             expect(nextTestD2Hash!.isEqual(nextTestD2HashMark2)).toBeTruthy();
         });
 

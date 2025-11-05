@@ -330,12 +330,13 @@ describe("Capo", async () => {
             const refScriptTxD: TxDescription<any, "submitted"> = tcx.state
                 .addlTxns.refScriptMinter as any;
 
-            const utxos = await capo.findCapoUtxos()
+            const utxos = await capo.findCapoUtxos();
             const script = (await minter.asyncCompiledScript())!;
             const refScriptUtxo = await capo.findRefScriptUtxo(
-                script.hash(), utxos
-            )
-            expect(refScriptUtxo).toBeTruthy()
+                script.hash(),
+                utxos
+            );
+            expect(refScriptUtxo).toBeTruthy();
         });
 
         it("creates refScript for capo during charter creation", async (context: localTC) => {
@@ -346,10 +347,13 @@ describe("Capo", async () => {
             const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
                 h.state.mintedCharterToken;
 
-            const utxos = await capo.findCapoUtxos()
+            const utxos = await capo.findCapoUtxos();
             const script = (await capo.asyncCompiledScript())!;
-            const refScriptUtxo = await capo.findRefScriptUtxo(script.hash(), utxos)
-            expect(refScriptUtxo).toBeTruthy()
+            const refScriptUtxo = await capo.findRefScriptUtxo(
+                script.hash(),
+                utxos
+            );
+            expect(refScriptUtxo).toBeTruthy();
         });
 
         it("creates refScript for mintDgt during charter creation", async (context: localTC) => {
@@ -361,11 +365,14 @@ describe("Capo", async () => {
                 h.state.mintedCharterToken;
             const mintDelegate = await capo.getMintDelegate();
 
-            const utxos = await capo.findCapoUtxos()
+            const utxos = await capo.findCapoUtxos();
             const script = (await mintDelegate.asyncCompiledScript())!;
-            const refScriptUtxo = await capo.findRefScriptUtxo(script.hash(), utxos)
+            const refScriptUtxo = await capo.findRefScriptUtxo(
+                script.hash(),
+                utxos
+            );
 
-            expect(refScriptUtxo).toBeTruthy()
+            expect(refScriptUtxo).toBeTruthy();
         });
 
         it("finds refScripts in the Capo's utxos", async (context: localTC) => {
@@ -373,7 +380,7 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
-            const capoUtxos = await capo.findCapoUtxos()
+            const capoUtxos = await capo.findCapoUtxos();
             const refScripts = await capo.findScriptReferences(capoUtxos);
             expect(refScripts.length).toBe(3);
         });
@@ -384,7 +391,7 @@ describe("Capo", async () => {
 
             const capo = await h.bootstrap();
             const tcx = capo.mkTcx("uses scriptRefs");
-            console.log("----------------------------------------------")
+            console.log("----------------------------------------------");
             const tcx2 = await capo.txnAttachScriptOrRefScript(tcx);
             const script = (await capo.asyncCompiledScript())!;
             const minterScript = (await capo.minter.asyncCompiledScript())!;
@@ -400,7 +407,7 @@ describe("Capo", async () => {
                 minterScript.toString()
             );
 
-            const {tx} = await tcx3.build()
+            const { tx } = await tcx3.build();
             expect(tx.witnesses.v2RefScripts.length).toBe(2);
         });
     });

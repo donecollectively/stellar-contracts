@@ -472,7 +472,7 @@ export abstract class Capo<
                 minter: {
                     config: minterConfig,
                     // programBundle: minterProgramBundle,
-                } = {config: undefined},
+                } = { config: undefined },
             } = {},
         } = bundle;
 
@@ -488,9 +488,7 @@ export abstract class Capo<
         }
 
         if (seedTxn) {
-            await this.connectMintingScript(
-                minterConfig
-            );
+            await this.connectMintingScript(minterConfig);
         }
 
         //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
@@ -1281,7 +1279,7 @@ export abstract class Capo<
             config,
             noPreviousOnchainScript
         );
-        await minter.asyncCompiledScript()
+        await minter.asyncCompiledScript();
 
         if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
             throw new Error(
@@ -1294,7 +1292,7 @@ export abstract class Capo<
         } else if (!expectedMph) {
             console.log(`${this.constructor.name}: seeding new minting policy`);
         }
-        console.log("temp: skipping mintingCharter activity check")
+        console.log("temp: skipping mintingCharter activity check");
         // minter.mustHaveActivity("mintingCharter");
 
         //@ts-ignore-error - can't seem to indicate to typescript that minter's type can be relied on to be enough
@@ -1554,7 +1552,7 @@ export abstract class Capo<
     >(
         tcx: hasUutContext<RN>,
         role: RN,
-        delegateInfo: OffchainPartialDelegateLink
+        delegateInfo: OffchainPartialDelegateLink,
     ): Promise<ConfiguredDelegate<DT>> {
         const {
             // strategyName,
@@ -1573,7 +1571,7 @@ export abstract class Capo<
             );
         }
         const impliedDelegationDetails = this.mkImpliedDelegationDetails(uut);
-// debugger
+        // debugger
         const selectedDgt =
             delegateRoles[role] as SELF["_delegateRoles"][RN] //prettier-ignore
         // if (!foundStrategies) {
@@ -1669,13 +1667,13 @@ export abstract class Capo<
 
         const delegateValidatorHash = await (async () => {
             if (delegate.usesContractScript) {
-                const bundle = await delegate.getBundle()
+                const bundle = await delegate.getBundle();
                 await bundle.compiledScript(true);
-                return makeValidatorHash(bundle.scriptHash)
+                return makeValidatorHash(bundle.scriptHash);
             } else {
-                return delegate.delegateValidatorHash
+                return delegate.delegateValidatorHash;
             }
-        })()
+        })();
         const pcd: ConfiguredDelegate<DT> & { uutName: string } = {
             ...delegateSettings,
             config: configForOnchainRelativeDelegateLink,
@@ -1691,11 +1689,13 @@ export abstract class Capo<
      * loads the pre-compiled minter script from the pre-compiled bundle
      */
     /** note, here in this file we show only a stub.  The heliosRollupBundler
-     * actually writes a real implementation that does a JIT import of the 
-     * precompiled bundle 
+     * actually writes a real implementation that does a JIT import of the
+     * precompiled bundle
      */
     async loadPrecompiledMinterScript(): Promise<PrecompiledProgramJSON> {
-        throw new Error(`loading the minter script requires a pre-bundled Capo`)
+        throw new Error(
+            `loading the minter script requires a pre-bundled Capo`
+        );
     }
     mkImpliedDelegationDetails(uut: UutName): DelegationDetail {
         return {
@@ -1849,7 +1849,7 @@ export abstract class Capo<
         });
 
         if (delegate.usesContractScript) {
-            await delegate.asyncCompiledScript()
+            await delegate.asyncCompiledScript();
         }
 
         const previousOnchainScript = await (async () => {
@@ -2145,7 +2145,8 @@ export abstract class Capo<
         }
         await this.asyncCompiledScript();
 
-        let charter: CapoDatum$Ergo$CharterData = (await this.verifyIsChartered())!;
+        let charter: CapoDatum$Ergo$CharterData =
+            (await this.verifyIsChartered())!;
         if (!charter) {
             console.warn(`Skipping delegate verification for unchartered Capo`);
             return;
@@ -2379,7 +2380,7 @@ export abstract class Capo<
             return this.connectDelegateWithOnchainRDLink<
                 RN,
                 DelegatedDataContract<any, any>
-            >(recordTypeName, foundME.entryType.DgDataPolicy.policyLink); // as Promise<>;
+            >(recordTypeName, foundME.entryType.DgDataPolicy.policyLink);
         } else {
             const actualEntryType = Object.keys(foundME.entryType)[0];
             throw new Error(
@@ -2671,9 +2672,10 @@ export abstract class Capo<
 
         const minterScript = (await minter.asyncCompiledScript())!;
         const capoScript = (await this.asyncCompiledScript())!;
-        const mintDgtScript = (await mintDelegate.delegate.asyncCompiledScript())!;
+        const mintDgtScript =
+            (await mintDelegate.delegate.asyncCompiledScript())!;
 
-        // mints the charter, along with the capoGov and mintDgt UUTs.        
+        // mints the charter, along with the capoGov and mintDgt UUTs.
         // TODO: if there are additional UUTs needed for other delegates, include them here.
         const tcxWithCharterMint = await this.minter.txnMintingCharter(tcx2, {
             owner: this.address,
@@ -2778,8 +2780,8 @@ export abstract class Capo<
                             dgDataControllerClass,
                             {
                                 ...config,
-                                ... (this.constructor as any).defaultParams,
-                                capo: this
+                                ...(this.constructor as any).defaultParams,
+                                capo: this,
                             }
                         );
 
@@ -3122,7 +3124,7 @@ export abstract class Capo<
      * If this makes the transaction too big, the console
      * warning will be followed by a thrown error during the transaction's
      * wallet-submission sequence.
-     * 
+     *
      * @param tcx - the transaction context to be augmented
      * @param program - the script to be attached to the transaction
      * @returns the augmented transaction context
@@ -3982,7 +3984,8 @@ export abstract class Capo<
         const bigDelegateName = `namedDelegate${DelegateName}`;
         tcx4.state[bigDelegateName] = newNamedDelegate;
 
-        const dgtScript = (await newNamedDelegate.delegate.asyncCompiledScript())!
+        const dgtScript =
+            (await newNamedDelegate.delegate.asyncCompiledScript())!;
         const tcx5 = await this.txnMkAddlRefScriptTxn(
             tcx4 as typeof tcx4 & TCX & hasNamedDelegate<DT, delegateName>,
             bigDelegateName,
@@ -4176,10 +4179,13 @@ export abstract class Capo<
             );
         }
 
-        const existingDelegate = await this.getDgDataController(typeName, {
-            charterData,
-            optional: true,
-        });
+        const existingDelegate = await this.getDgDataController(
+            typeName,
+            {
+                charterData,
+                optional: true,
+            }
+        );
 
         const mintDgt = await this.getMintDelegate(charterData);
         const mintDgtActivity = mintDgt.activity as SomeDgtActivityHelper;
@@ -4260,7 +4266,8 @@ export abstract class Capo<
                     );
                 }
                 const existingDgtBundle = await existingDelegate.getBundle();
-                const nextScript = (await existingDelegate.asyncCompiledScript())!
+                const nextScript =
+                    (await existingDelegate.asyncCompiledScript())!;
                 const nextDvh = makeValidatorHash(nextScript.hash());
                 if (nextDvh.isEqual(existingDvh)) {
                     console.warn(
@@ -4372,7 +4379,8 @@ export abstract class Capo<
         const stateKey = mkDgtStateKey<TypeName>(typeName);
         //@ts-expect-error "could be instantiated with different subtype"
         const tcx5: TCX & hasNamedDelegate<DT, TypeName, "dgData"> = tcx4;
-        const newDgtScript = (await tempDataPolicyLink.delegate.asyncCompiledScript())!
+        const newDgtScript =
+            (await tempDataPolicyLink.delegate.asyncCompiledScript())!;
         // this type doesn't resolve because of abstract DT ^
         //  tcx5.state[stateKey] = delegateLink;
 
