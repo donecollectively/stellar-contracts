@@ -42,7 +42,6 @@ export type BasicMinterParams = configBaseWithRev & SeedTxnScriptParams & {
  * @public
  **/
 export declare class CapoMinter extends StellarContract<BasicMinterParams> implements MinterBaseMethods {
-    currentRev: bigint;
     scriptBundleClass(): Promise<typeof import("./CapoMinter.hlb.js").CapoMinterBundle>;
     mkScriptBundle(setupDetails?: StellarBundleSetupDetails<any>): Promise<any>;
     /**

@@ -38,6 +38,17 @@ export declare abstract class HeliosScriptBundle {
      */
     static needsCapoConfiguration: boolean;
     /**
+     * the current revision of the bundle
+     * @remarks
+     * Allows forced incrementing of the on-chain policy script.  This supports test scenarios,
+     * and allows the the bundle script to be swapped out even when nothing else is changed
+     * (we don't have specific cases for this, but it's better to have and not need it, than to need
+     * it and not have it)
+     * @public
+     */
+    static currentRev: bigint;
+    get rev(): bigint;
+    /**
      * an opt-in indicator of abstractness
      * @remarks
      * Subclasses that aren't intended for instantiation can set this to true.

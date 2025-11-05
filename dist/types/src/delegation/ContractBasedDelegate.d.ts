@@ -23,7 +23,6 @@ export declare class ContractBasedDelegate extends StellarDelegate {
      */
     dataBridgeClass: GenericDelegateBridgeClass;
     _dataBridge: GenericDelegateBridge;
-    static currentRev: bigint;
     /**
      * Configures the matching parameter name in the on-chain script, indicating
      * that this delegate serves the Capo by enforcing policy for spending the Capo's utxos.

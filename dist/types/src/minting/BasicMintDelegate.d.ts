@@ -18,7 +18,6 @@ import type { ConcreteCapoDelegateBundle } from "../helios/scriptBundling/CapoDe
  * @public
  **/
 export declare class BasicMintDelegate extends ContractBasedDelegate {
-    static currentRev: bigint;
     static isMintDelegate: boolean;
     dataBridgeClass: GenericDelegateBridgeClass;
     /**

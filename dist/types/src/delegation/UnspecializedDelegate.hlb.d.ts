@@ -6,7 +6,6 @@ declare const UnspecializedDgtBundle_base: import("../..").ConcreteCapoDelegateB
 export declare class UnspecializedDgtBundle extends UnspecializedDgtBundle_base {
     specializedDelegateModule: Source;
     requiresGovAuthority: boolean;
-    get rev(): bigint;
     get params(): {
         rev: bigint;
         delegateName: string;

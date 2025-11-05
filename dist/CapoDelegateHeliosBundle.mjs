@@ -40,9 +40,6 @@ class CapoDelegateBundle extends HeliosScriptBundle {
   get main() {
     return BasicDelegate_hl;
   }
-  get rev() {
-    return 1n;
-  }
   get params() {
     return {
       rev: this.rev,

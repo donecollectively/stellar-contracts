@@ -232,14 +232,15 @@ export type charterDataState = {
     charterData: CharterDataLike;
     uuts: uutMap;
 };
+export type PreviousOnchainScript = {
+    validatorHash: number[];
+    uplcProgram: anyUplcProgram;
+};
 /**
  * @public
  */
 export type PreconfiguredDelegate<T extends StellarDelegate> = Omit<ConfiguredDelegate<T>, "delegate" | "delegateValidatorHash"> & {
-    previousOnchainScript?: {
-        validatorHash: number[];
-        uplcProgram: anyUplcProgram;
-    };
+    previousOnchainScript?: PreviousOnchainScript;
 };
 /**
  * @public

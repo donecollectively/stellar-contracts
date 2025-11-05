@@ -2,6 +2,7 @@ import type { uutPurposeMap } from "./CapoTypes.js";
 import { type valuesEntry } from "./HeliosPromotedTypes.js";
 import { UutName } from "./delegation/UutName.js";
 import { type Value, type MintingPolicyHash } from "@helios-lang/ledger";
+import { StellarTxnContext } from "./StellarTxnContext.js";
 /**
  * Creates Value-creation entires for a list of uuts
  * @remarks
@@ -80,6 +81,10 @@ export declare class TxNotNeededError extends Error {
 export declare class AlreadyPendingError extends TxNotNeededError {
     constructor(message: string);
 }
+/**
+ * @internal
+ */
+export declare function isLibraryMatchedTcx(arg: any): arg is StellarTxnContext;
 /**
  * @public
  */

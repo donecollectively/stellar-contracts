@@ -1,6 +1,6 @@
 export { e as environment } from './environment.mjs';
-import { A as Activity, d as datum, D as DataBridge, C as ContractDataBridge, i as impliedSeedActivityMaker, a as DataBridgeReaderClass, S as StellarContract, m as mkValuesEntry, b as dumpAny, c as StellarTxnContext, U as UutName, e as mkUutValuesEntries, f as delegateLinkSerializer, g as errorMapAsString, u as uplcDataSerializer, T as TxNotNeededError, h as AlreadyPendingError, p as partialTxn, t as txn } from './StellarContract2.mjs';
-export { X as ContractDataBridgeWithEnumDatum, Y as ContractDataBridgeWithOtherDatum, V as SeedActivity, R as UtxoHelper, O as abbrevAddress, P as abbreviatedDetail, Q as abbreviatedDetailBytes, G as addrAsString, q as assetsAsString, N as betterJsonSerializer, H as byteArrayAsString, K as byteArrayListAsString, n as colors, L as datumSummary, j as debugMath, o as displayTokenName, W as getSeed, M as hexToPrintableString, F as lovelaceToAda, z as policyIdAsString, r as realDiv, k as realMul, s as stringToPrintableString, l as toFixedReal, v as txAsString, E as txInputAsString, B as txOutputAsString, J as txOutputIdAsString, I as txidAsString, w as utxoAsString, y as utxosAsString, x as valueAsString } from './StellarContract2.mjs';
+import { A as Activity, d as datum, D as DataBridge, C as ContractDataBridge, i as impliedSeedActivityMaker, a as DataBridgeReaderClass, S as StellarContract, m as mkValuesEntry, b as dumpAny, c as isLibraryMatchedTcx, U as UutName, e as mkUutValuesEntries, f as delegateLinkSerializer, g as errorMapAsString, u as uplcDataSerializer, T as TxNotNeededError, h as StellarTxnContext, j as AlreadyPendingError, p as partialTxn, t as txn } from './StellarContract2.mjs';
+export { Y as ContractDataBridgeWithEnumDatum, Z as ContractDataBridgeWithOtherDatum, W as SeedActivity, V as UtxoHelper, P as abbrevAddress, Q as abbreviatedDetail, R as abbreviatedDetailBytes, H as addrAsString, v as assetsAsString, O as betterJsonSerializer, I as byteArrayAsString, L as byteArrayListAsString, o as colors, M as datumSummary, k as debugMath, q as displayTokenName, X as getSeed, N as hexToPrintableString, G as lovelaceToAda, B as policyIdAsString, r as realDiv, l as realMul, s as stringToPrintableString, n as toFixedReal, w as txAsString, F as txInputAsString, E as txOutputAsString, K as txOutputIdAsString, J as txidAsString, x as utxoAsString, z as utxosAsString, y as valueAsString } from './StellarContract2.mjs';
 import { C as ContractBasedDelegate, S as StellarDelegate, h as hasReqts } from './ContractBasedDelegate2.mjs';
 export { m as mergesInheritedReqts } from './ContractBasedDelegate2.mjs';
 import { bytesToHex, decodeUtf8, encodeUtf8, equalsBytes } from '@helios-lang/codec-utils';
@@ -64,7 +64,6 @@ var __decorateClass$4 = (decorators, target, key, kind) => {
   return result;
 };
 class BasicMintDelegate extends ContractBasedDelegate {
-  static currentRev = 1n;
   static isMintDelegate = true;
   /**
    * Enforces that the mint delegate needs gov-authority by default
@@ -8499,7 +8498,7 @@ class MintSpendDelegateBundle extends CapoDelegateBundle {
 
 const capoConfigurationDetails = Object.freeze({
   capo: void 0,
-  //@ts-ignore - this is simply for nosy developers who may be looking under the hoold
+  //@ts-ignore - this is simply for nosy developers who may be looking under the hood
   isConfigPlaceholder: true
   // in real life, this is replaced by a real deployment configuration in the stellar rollup plugin
 });
@@ -8911,7 +8910,6 @@ var __decorateClass$2 = (decorators, target, key, kind) => {
   return result;
 };
 class CapoMinter extends StellarContract {
-  currentRev = 1n;
   async scriptBundleClass() {
     const bundleModule = await import('./contracts/CapoMinter.hlb.mjs');
     return bundleModule.CapoMinterBundle;
@@ -9091,11 +9089,9 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     return void 0;
   }
   usesContractScript = false;
-  getContractScriptParams() {
-    return {
-      rev: 0n
-    };
-  }
+  static defaultParams = {
+    rev: 1n
+  };
   get delegateValidatorHash() {
     return void 0;
   }
@@ -13809,7 +13805,7 @@ We suggest naming your Capo bundle class with your application's name.
   }
   static get defaultParams() {
     const params = {
-      rev: this.currentRev
+      rev: 0n
     };
     return params;
   }
@@ -13871,9 +13867,7 @@ We suggest naming your Capo bundle class with your application's name.
       this.configIn.seedIndex;
     }
     if (seedTxn) {
-      await this.connectMintingScript(
-        minterConfig
-      );
+      await this.connectMintingScript(minterConfig);
     }
     this._delegateRoles = this.initDelegateRoles();
     if (seedTxn) {
@@ -13923,8 +13917,10 @@ We suggest naming your Capo bundle class with your application's name.
   }
   minter;
   uutsValue(x) {
-    let uutMap = x instanceof StellarTxnContext ? x.state.uuts : x instanceof UutName ? { single: x } : Array.isArray(x) ? { single: new UutName("some-uut", x) } : x;
-    const vEntries = this.mkUutValuesEntries(uutMap);
+    let uutMap = isLibraryMatchedTcx(x) ? x.state.uuts : x instanceof UutName ? { single: x } : Array.isArray(x) ? { single: new UutName("some-uut", x) } : x;
+    const vEntries = this.mkUutValuesEntries(
+      uutMap
+    );
     return makeValue(0, makeAssets([[this.mintingPolicyHash, vEntries]]));
   }
   /**
@@ -14543,7 +14539,7 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
       config: { validateConfig, partialConfig: paramsFromRole = {} }
     } = selectedDgt;
     const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
-    const configForOnchainRelativeDelegateLink = {
+    let configForOnchainRelativeDelegateLink = {
       ...defaultParamsFromDelegateClass,
       ...paramsFromRole || {},
       ...explicitConfig
@@ -14562,10 +14558,10 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
         { errors }
       );
     }
-    let delegateSettings = {};
+    let configuredDelegate = {};
     let delegate = void 0;
     try {
-      delegateSettings = {
+      configuredDelegate = {
         ...delegateInfo,
         roleName: role,
         //@ts-expect-error "could be instantiated with a different type" - TS2352
@@ -14575,19 +14571,24 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
         fullCapoDgtConfig,
         config: configForOnchainRelativeDelegateLink
       };
-      delegate = await this.mustGetDelegate(role, delegateSettings);
+      delegate = await this.mustGetDelegate(role, configuredDelegate);
       if (delegate.usesContractScript) {
+        await delegate.getBundle();
+        configForOnchainRelativeDelegateLink = {
+          ...configForOnchainRelativeDelegateLink,
+          ...delegate._bundle.configuredParams
+        };
       }
     } catch (e) {
       console.log("error: unable to create delegate: ", e.stack);
       debugger;
-      this.mustGetDelegate(role, delegateSettings).catch(
+      this.mustGetDelegate(role, configuredDelegate).catch(
         (sameErrorIgnored) => void 0
       );
       e.message = `${e.message} (see logged details; debugging breakpoint available)`;
       throw e;
     }
-    const { uutName } = delegateSettings;
+    const { uutName } = configuredDelegate;
     if (!uutName) {
       throw new Error(`missing required uutName in delegateSettings`);
     }
@@ -14601,7 +14602,7 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
       }
     })();
     const pcd = {
-      ...delegateSettings,
+      ...configuredDelegate,
       config: configForOnchainRelativeDelegateLink,
       uutName,
       delegateValidatorHash,
@@ -14613,11 +14614,13 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
    * loads the pre-compiled minter script from the pre-compiled bundle
    */
   /** note, here in this file we show only a stub.  The heliosRollupBundler
-   * actually writes a real implementation that does a JIT import of the 
-   * precompiled bundle 
+   * actually writes a real implementation that does a JIT import of the
+   * precompiled bundle
    */
   async loadPrecompiledMinterScript() {
-    throw new Error(`loading the minter script requires a pre-bundled Capo`);
+    throw new Error(
+      `loading the minter script requires a pre-bundled Capo`
+    );
   }
   mkImpliedDelegationDetails(uut) {
     return {
@@ -14656,8 +14659,6 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
       // strategyName,
       uutName,
       delegateValidatorHash: onchainValidatorHash,
-      // addrHint,  //moved to config
-      // reqdAddress,  // removed
       config: configBytesFromLink
     } = onchainDgtLink;
     if (!selectedDgt) {
@@ -16159,10 +16160,13 @@ ADDING SCRIPT DIRECTLY TO TXN!`
    ... adjust this separately from the policyName with options.uutName`
       );
     }
-    const existingDelegate = await this.getDgDataController(typeName, {
-      charterData,
-      optional: true
-    });
+    const existingDelegate = await this.getDgDataController(
+      typeName,
+      {
+        charterData,
+        optional: true
+      }
+    );
     const mintDgt = await this.getMintDelegate(charterData);
     const mintDgtActivity = mintDgt.activity;
     const tcx1 = (
@@ -16203,8 +16207,9 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       const previousCompiledScript = existingDgtBundle.previousCompiledScript();
       if (!previousCompiledScript) {
         if (existingDvh) {
+          debugger;
           throw new TxNotNeededError(
-            `Policy doesn't need an update: ${typeName}`
+            `Policy doesn't need an update: ${typeName} (dbpa)`
           );
         }
       } else {
@@ -27724,7 +27729,6 @@ class BatchSubmitController {
         if (!parentId2) return txd;
         const parent = this.$txInfo(parentId2);
         if (!parent) {
-          debugger;
           console.warn("tx batcher: no parent", parentId2);
           return txd;
         }

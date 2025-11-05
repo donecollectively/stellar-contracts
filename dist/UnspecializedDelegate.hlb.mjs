@@ -28,9 +28,6 @@ class UnspecializedDgtBundle extends CapoDelegateBundle.usingCapoBundleClass(Cap
   }
   specializedDelegateModule = UnspecializedDelegate_hl;
   requiresGovAuthority = true;
-  get rev() {
-    return 1n;
-  }
   get params() {
     return {
       rev: this.rev,

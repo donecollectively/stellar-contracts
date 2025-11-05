@@ -1,7 +1,7 @@
 import { makeValue, makeTxOutput } from '@helios-lang/ledger';
 import { makeIntData } from '@helios-lang/uplc';
 import { C as ContractBasedDelegate } from './ContractBasedDelegate2.mjs';
-import { u as uplcDataSerializer, N as betterJsonSerializer, b as dumpAny } from './StellarContract2.mjs';
+import { u as uplcDataSerializer, O as betterJsonSerializer, b as dumpAny } from './StellarContract2.mjs';
 import { encodeUtf8 } from '@helios-lang/codec-utils';
 import './HeliosBundle.mjs';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';

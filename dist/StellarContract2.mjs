@@ -180,6 +180,15 @@ class AlreadyPendingError extends TxNotNeededError {
     this.name = "AlreadyPendingError";
   }
 }
+function isLibraryMatchedTcx(arg) {
+  if (arg instanceof StellarTxnContext) {
+    return true;
+  }
+  if (arg.kind === "StellarTxnContext") {
+    throw new Error("Stellar Contracts: library mismatch detected.  Ensure you're using only one version of the library");
+  }
+  return false;
+}
 function checkValidUTF8(data) {
   let i = 0;
   while (i < data.length) {
@@ -797,7 +806,7 @@ function dumpAny(x, networkParams, forJson = false) {
   if ("bigint" == typeof x) {
     return x.toString();
   }
-  if (x instanceof StellarTxnContext) {
+  if (isLibraryMatchedTcx(x)) {
     debugger;
     throw new Error(`use await build() and dump the result instead.`);
   }
@@ -1120,6 +1129,7 @@ const nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
 //!!! if we could access the inputs and outputs in a building Tx,
 const emptyUuts = Object.freeze({});
 class StellarTxnContext {
+  kind = "StellarTxnContext";
   id = nanoid(5);
   inputs = [];
   collateral;
@@ -3011,6 +3021,7 @@ function getSeed(arg) {
     const { txId, idx } = arg.getSeedUtxoDetails();
     return makeTxOutputId(txId, idx);
   }
+  isLibraryMatchedTcx(arg);
   if (arg.idx && arg.txId) {
     const attr = arg;
     return makeTxOutputId(attr.txId, attr.idx);
@@ -3399,7 +3410,9 @@ The function is async, so you can await a dynamic import() and reduce the initia
         // !this._bundle.precompiledScriptDetails.singleton
         !bundle.configuredScriptDetails
       ) {
-        console.log("first-time configuration of bundle ${bundle.constructor.name}");
+        console.log(
+          "first-time configuration of bundle ${bundle.constructor.name}"
+        );
       }
       if (!bundle._didInit) {
         console.warn(
@@ -3669,7 +3682,9 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
     this.configIn = config;
     let partialConfig = void 0;
     if (pCfg && Object.keys(pCfg).length == 0) {
-      console.warn(`${this.constructor.name}: ignoring empty partialConfig; change the upstream code to leave it out`);
+      console.warn(
+        `${this.constructor.name}: ignoring empty partialConfig; change the upstream code to leave it out`
+      );
     } else {
       partialConfig = pCfg;
     }
@@ -3702,7 +3717,9 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
       this._bundle = bundle;
     } else if (config || partialConfig) {
       const variant = (config || partialConfig).variant;
-      console.log(`${this.constructor.name}: stellar offchain class init with config`);
+      console.log(
+        `${this.constructor.name}: stellar offchain class init with config`
+      );
       let params = config ? this.getContractScriptParams(config) : void 0;
       if (this.usesContractScript) {
         const deployedDetails = {
@@ -3731,10 +3748,7 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
           try {
             if (false) ;
           } catch (e) {
-            console.warn(
-              "while loading program: ",
-              e.message
-            );
+            console.warn("while loading program: ", e.message);
           }
         } else if (bundle.setup && bundle.params) {
           debugger;
@@ -3789,12 +3803,16 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
   }
   async asyncCompiledScript() {
     if (!this.usesContractScript) {
-      throw new Error(`${this.constructor.name}: usesContractScript is false; don't call asyncCompiledScript().`);
+      throw new Error(
+        `${this.constructor.name}: usesContractScript is false; don't call asyncCompiledScript().`
+      );
     }
     const b = await this.getBundle();
     const compiledScript = await b.compiledScript(true);
     if (b.alreadyCompiledScript !== compiledScript) {
-      throw new Error("impossible! alreadyCompiledScript should be present");
+      throw new Error(
+        "impossible! alreadyCompiledScript should be present"
+      );
     }
     return compiledScript;
   }
@@ -3814,9 +3832,13 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
     const { vh } = this._cache;
     if (vh) return vh;
     if (this._bundle?.scriptHash) {
-      return this._cache.vh = makeValidatorHash(this._bundle.scriptHash);
+      return this._cache.vh = makeValidatorHash(
+        this._bundle.scriptHash
+      );
     }
-    throw new Error("bundle not initialized with getBundle() before getting validatorHash");
+    throw new Error(
+      "bundle not initialized with getBundle() before getting validatorHash"
+    );
   }
   //  todo: stakingAddress?: Address or credential or whatever;
   get address() {
@@ -3850,7 +3872,9 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
     if (mph) return mph;
     const hash = this._bundle?.scriptHash;
     if (!hash) {
-      throw new Error("bundle not initialized with getBundle() before getting mintingPolicyHash");
+      throw new Error(
+        "bundle not initialized with getBundle() before getting mintingPolicyHash"
+      );
     }
     const nMph = makeMintingPolicyHash(hash);
     return this._cache.mph = nMph;
@@ -3935,7 +3959,10 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
     return getSeed(arg);
   }
   loadProgram() {
-    if (!this._bundle) throw new Error(`${this.constructor.name}: no bundle / script program`);
+    if (!this._bundle)
+      throw new Error(
+        `${this.constructor.name}: no bundle / script program`
+      );
     return this._bundle.loadProgram();
   }
   /**
@@ -3967,7 +3994,7 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
    * Throws a helpful error if the requested activity name isn't present.'
    *
    * @param activityName - the name of the requested activity
-   * 
+   *
    **/
   mustGetActivity(activityName) {
     const ocat = this.onChainActivitiesType;
@@ -4138,7 +4165,9 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
       debugger;
     }
     if (bundle.isConcrete || bundle.configuredParams) {
-      throw new Error(`can't prepare bundle when there's already a good one`);
+      throw new Error(
+        `can't prepare bundle when there's already a good one`
+      );
     }
     bundle = this._bundle = await this.mkScriptBundle({
       params,
@@ -4155,7 +4184,7 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
    * @param semanticName - descriptive name; used in diagnostic messages and any errors thrown
    * @param options - options for the search
    * @public
-  **/
+   **/
   async mustFindMyUtxo(semanticName, options) {
     const { predicate, exceptInTcx, extraErrorHint, utxos } = options;
     const { address } = this;
@@ -4168,9 +4197,15 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
     });
   }
   mkTcx(tcxOrName, name) {
-    const tcx = tcxOrName instanceof StellarTxnContext ? tcxOrName : new StellarTxnContext(this.setup).withName(name || "");
-    const effectiveName = tcxOrName instanceof StellarTxnContext ? name : tcxOrName;
-    if (effectiveName && !tcx.txnName) return tcx.withName(effectiveName);
+    const tcx = (
+      //@ts-expect-error on this type probe
+      tcxOrName?.kind === "StellarTxnContext" ? tcxOrName : new StellarTxnContext(this.setup).withName(
+        name || "\u2039no-name\u203A"
+      )
+    );
+    const effectiveName = tcxOrName && isLibraryMatchedTcx(tcxOrName) ? name : tcxOrName || "\u2039unnamed context\u203A";
+    if (effectiveName && !tcx?.txnName)
+      return tcx.withName(effectiveName);
     return tcx;
   }
   /**
@@ -4233,5 +4268,5 @@ __decorateClass([
   partialTxn
 ], StellarContract.prototype, "txnKeepValue");
 
-export { Activity as A, txOutputAsString as B, ContractDataBridge as C, DataBridge as D, txInputAsString as E, lovelaceToAda as F, addrAsString as G, byteArrayAsString as H, txidAsString as I, txOutputIdAsString as J, byteArrayListAsString as K, datumSummary as L, hexToPrintableString as M, betterJsonSerializer as N, abbrevAddress as O, abbreviatedDetail as P, abbreviatedDetailBytes as Q, UtxoHelper as R, StellarContract as S, TxNotNeededError as T, UutName as U, SeedActivity as V, getSeed as W, ContractDataBridgeWithEnumDatum as X, ContractDataBridgeWithOtherDatum as Y, mkTv as Z, isUplcData as _, DataBridgeReaderClass as a, dumpAny as b, StellarTxnContext as c, datum as d, mkUutValuesEntries as e, delegateLinkSerializer as f, errorMapAsString as g, AlreadyPendingError as h, impliedSeedActivityMaker as i, debugMath as j, realMul as k, toFixedReal as l, mkValuesEntry as m, colors as n, displayTokenName as o, partialTxn as p, assetsAsString as q, realDiv as r, stringToPrintableString as s, txn as t, uplcDataSerializer as u, txAsString as v, utxoAsString as w, valueAsString as x, utxosAsString as y, policyIdAsString as z };
+export { isUplcData as $, Activity as A, policyIdAsString as B, ContractDataBridge as C, DataBridge as D, txOutputAsString as E, txInputAsString as F, lovelaceToAda as G, addrAsString as H, byteArrayAsString as I, txidAsString as J, txOutputIdAsString as K, byteArrayListAsString as L, datumSummary as M, hexToPrintableString as N, betterJsonSerializer as O, abbrevAddress as P, abbreviatedDetail as Q, abbreviatedDetailBytes as R, StellarContract as S, TxNotNeededError as T, UutName as U, UtxoHelper as V, SeedActivity as W, getSeed as X, ContractDataBridgeWithEnumDatum as Y, ContractDataBridgeWithOtherDatum as Z, mkTv as _, DataBridgeReaderClass as a, dumpAny as b, isLibraryMatchedTcx as c, datum as d, mkUutValuesEntries as e, delegateLinkSerializer as f, errorMapAsString as g, StellarTxnContext as h, impliedSeedActivityMaker as i, AlreadyPendingError as j, debugMath as k, realMul as l, mkValuesEntry as m, toFixedReal as n, colors as o, partialTxn as p, displayTokenName as q, realDiv as r, stringToPrintableString as s, txn as t, uplcDataSerializer as u, assetsAsString as v, txAsString as w, utxoAsString as x, valueAsString as y, utxosAsString as z };
 //# sourceMappingURL=StellarContract2.mjs.map

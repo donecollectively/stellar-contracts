@@ -186,7 +186,7 @@ export type PartialStellarBundleDetails<CT extends configBaseWithRev> = Omit<Ste
 export type StellarBundleSetupDetails<CT extends configBaseWithRev> = {
     setup: SetupOrMainnetSignalForBundle;
     scriptParamsSource?: "config" | "bundle" | "none";
-    originatorLabel?: string;
+    specialOriginatorLabel?: string;
     previousOnchainScript?: {
         validatorHash: number[];
         uplcProgram: anyUplcProgram;
@@ -576,7 +576,7 @@ export declare class StellarContract<ConfigType extends configBaseWithRev> {
      * @param semanticName - descriptive name; used in diagnostic messages and any errors thrown
      * @param options - options for the search
      * @public
-    **/
+     **/
     mustFindMyUtxo(semanticName: string, options: {
         /** filter function; returns its utxo if it matches expectations */
         predicate: utxoPredicate;

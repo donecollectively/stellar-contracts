@@ -20,7 +20,6 @@ export type GrantAuthorityOptions = {
  * @typeParam CT - type of any specialized configuration; use capoDelegateConfig by default.
  **/
 export declare abstract class StellarDelegate extends StellarContract<capoDelegateConfig> {
-    static currentRev: bigint;
     static get defaultParams(): {
         rev: bigint;
     };

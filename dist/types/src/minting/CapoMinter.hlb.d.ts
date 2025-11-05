@@ -7,13 +7,17 @@ declare const CapoMinterBundle_base: import("../helios/HeliosMetaTypes.js").Heli
  * to the minter for imports
  **/
 export declare class CapoMinterBundle extends CapoMinterBundle_base {
+    static currentRev: bigint;
     scriptParamsSource: "config" | "bundle";
     requiresGovAuthority: boolean;
     static needsSpecializedDelegateModule: boolean;
     static needsCapoConfiguration: boolean;
     capoBundle: CapoHeliosBundle;
-    get rev(): bigint;
     get params(): {
+        rev: bigint;
+        seedTxn?: undefined;
+        seedIndex?: undefined;
+    } | {
         rev: bigint;
         seedTxn: import("@helios-lang/ledger").TxId;
         seedIndex: bigint;

@@ -48,7 +48,7 @@ export declare class StellarHeliosProject {
         absoluteFilename: string;
         bundleClass: typeof HeliosScriptBundle;
         harmlessSecondCapo?: boolean;
-        originatorLabel: string;
+        specialOriginatorLabel: string;
         scriptParamsSource?: "config" | "bundle" | "none";
     }): void;
     hasBundleClass(filename: string): any;

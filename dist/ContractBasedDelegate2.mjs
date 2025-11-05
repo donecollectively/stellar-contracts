@@ -1,5 +1,5 @@
 import { makeTxOutput, makeTxInput } from '@helios-lang/ledger';
-import { S as StellarContract, b as dumpAny, Z as mkTv, A as Activity, d as datum } from './StellarContract2.mjs';
+import { S as StellarContract, b as dumpAny, _ as mkTv, A as Activity, d as datum } from './StellarContract2.mjs';
 import { decodeUtf8 } from '@helios-lang/codec-utils';
 import { placeholderSetupDetails } from './HeliosBundle.mjs';
 
@@ -13,10 +13,9 @@ function mergesInheritedReqts(inherits, reqtsMap) {
 }
 
 class StellarDelegate extends StellarContract {
-  static currentRev = 1n;
   static get defaultParams() {
     return {
-      rev: this.currentRev
+      rev: 0n
     };
   }
   existingRedeemerError(label, authorityVal, existingRedeemer, redeemerActivity) {
@@ -246,7 +245,6 @@ var __decorateClass = (decorators, target, key, kind) => {
   return result;
 };
 class ContractBasedDelegate extends StellarDelegate {
-  static currentRev = 1n;
   /**
    * Configures the matching parameter name in the on-chain script, indicating
    * that this delegate serves the Capo by enforcing policy for spending the Capo's utxos.
@@ -349,7 +347,7 @@ We'll generate an additional .typeInfo.d.ts, based on the types in your Helios s
   static isDgDataPolicy = false;
   static get defaultParams() {
     const params = {
-      rev: this.currentRev,
+      rev: 0n,
       isMintDelegate: this.isMintDelegate,
       isSpendDelegate: this.isMintAndSpendDelegate,
       isDgDataPolicy: this.isDgDataPolicy

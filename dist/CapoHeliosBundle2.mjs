@@ -50,6 +50,7 @@ function parseCapoMinterJSONConfig(rawJSONConfig) {
 }
 
 class CapoHeliosBundle extends HeliosScriptBundle {
+  static currentRev = 1n;
   preConfigured;
   precompiledScriptDetails = { capo: void 0 };
   scriptParamsSource = "config";
@@ -77,6 +78,9 @@ class CapoHeliosBundle extends HeliosScriptBundle {
       this._selectedVariant = "capo";
     } else if (setupDetails.deployedDetails) {
       this.configuredScriptDetails = deployedDetails = setupDetails.deployedDetails;
+    } else if (this.scriptParamsSource === "config" && //@ts-expect-error - left out of the type definition for pragmatic reasons but it's sometimes there.
+    this.preConfigured?.isConfigPlaceholder) {
+      console.log("capo initializing with placeholder config");
     } else if (!this.configuredScriptDetails) {
       debugger;
       console.warn(`no script details configured for ${this.constructor.name} (dbpa)`);

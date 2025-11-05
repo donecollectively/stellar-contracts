@@ -1,5 +1,5 @@
 import '@helios-lang/ledger';
-export { A as Activity, S as StellarContract, d as datum, _ as isUplcData, p as partialTxn, t as txn } from './StellarContract2.mjs';
+export { A as Activity, S as StellarContract, d as datum, $ as isUplcData, p as partialTxn, t as txn } from './StellarContract2.mjs';
 import './HeliosBundle.mjs';
 import '@helios-lang/contract-utils';
 import '@helios-lang/codec-utils';

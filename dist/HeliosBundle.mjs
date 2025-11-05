@@ -574,7 +574,7 @@ function deserializeHeliosCacheEntry(entry) {
 
 const defaultNoDefinedModuleName = "\u2039default-needs-override\u203A";
 const placeholderSetupDetails = {
-  originatorLabel: "for abstract bundleClass",
+  specialOriginatorLabel: "for abstract bundleClass",
   setup: {
     isMainnet: "mainnet" === environment.CARDANO_NETWORK
   }
@@ -593,6 +593,19 @@ class HeliosScriptBundle {
    * @public
    */
   static needsCapoConfiguration = false;
+  /**
+   * the current revision of the bundle
+   * @remarks
+   * Allows forced incrementing of the on-chain policy script.  This supports test scenarios,
+   * and allows the the bundle script to be swapped out even when nothing else is changed
+   * (we don't have specific cases for this, but it's better to have and not need it, than to need
+   * it and not have it)
+   * @public
+   */
+  static currentRev = 1n;
+  get rev() {
+    return this.constructor.currentRev;
+  }
   /**
    * an opt-in indicator of abstractness
    * @remarks
@@ -699,35 +712,42 @@ class HeliosScriptBundle {
       setup,
       scriptParamsSource = this.scriptParamsSource,
       previousOnchainScript,
-      originatorLabel
+      specialOriginatorLabel
     } = setupDetails;
     if (this.scriptParamsSource !== scriptParamsSource) {
       console.warn(
-        `   -- ${this.constructor.name}: ${originatorLabel} overrides scriptParamsSource
+        `   -- ${this.constructor.name}: overrides scriptParamsSource (originator '${specialOriginatorLabel || "\u2039unknown\u203A"}')    '
         was ${this.scriptParamsSource}, now ${scriptParamsSource}`
       );
       this.scriptParamsSource = scriptParamsSource;
     }
     if (scriptParamsSource === "config") {
       if (params) {
-        this.configuredParams = params;
-      } else if (!originatorLabel) {
-        debugger;
-        this.scriptParamsSource;
-        throw new Error(
-          `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
+        this.configuredParams = {
+          ...params,
+          ...this.params
+        };
+      } else {
+        if (!specialOriginatorLabel) {
+          debugger;
+          throw new Error(
+            `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
+          );
+        }
+        console.log(
+          `special originator '${specialOriginatorLabel}' initializing with basic config`
         );
       }
     } else if (scriptParamsSource == "bundle") {
       if (!this.precompiledScriptDetails) {
         debugger;
         throw new Error(
-          `${this.constructor.name}: scriptParamsSource=bundle without precompiled script details (${originatorLabel})`
+          `${this.constructor.name}: scriptParamsSource=bundle without precompiled script details (originator '${specialOriginatorLabel || "\u2039unknown\u203A"}')`
         );
       }
       const thisVariant = this.precompiledScriptDetails[variant];
       if (!thisVariant) {
-        const msg = `${this.constructor.name}: no precompiled variant '${variant}' (${originatorLabel})`;
+        const msg = `${this.constructor.name}: no precompiled variant '${variant}' (originator '${specialOriginatorLabel || "\u2039unknown\u203A"}') (dbpa)`;
         console.warn(
           `${msg}
   -- available variants: ${Object.keys(
@@ -751,7 +771,7 @@ class HeliosScriptBundle {
       this.configuredParams = preConfig;
     } else if (this.scriptParamsSource != "none") {
       throw new Error(
-        `unknown scriptParamsSource: ${this.scriptParamsSource} (${originatorLabel})`
+        `unknown scriptParamsSource: ${this.scriptParamsSource} (${specialOriginatorLabel})`
       );
     }
     this._didInit = true;
@@ -759,7 +779,9 @@ class HeliosScriptBundle {
   get scriptHash() {
     const hash = this.previousOnchainScript?.uplcProgram.hash() || this.configuredScriptDetails?.scriptHash || this.alreadyCompiledScript?.hash();
     if (!hash) {
-      console.log("scriptHash called before program is loaded.  Call loadProgram() first (expensive!) if this is intentional");
+      console.log(
+        "scriptHash called before program is loaded.  Call loadProgram() first (expensive!) if this is intentional"
+      );
       const script = this.compiledScript();
       return script.hash();
     }
@@ -771,13 +793,8 @@ class HeliosScriptBundle {
    */
   initProgramDetails() {
     const { setupDetails } = this;
-    const {
-      deployedDetails,
-      params,
-      params: { delegateName, variant = "singleton" } = {},
-      setup,
-      previousOnchainScript
-    } = setupDetails;
+    const { deployedDetails, setup, previousOnchainScript } = setupDetails;
+    let { params } = setupDetails;
     const {
       config
       // programBundle
@@ -792,10 +809,14 @@ class HeliosScriptBundle {
           const { configuredParams } = this;
           const uplcPreConfig = this.paramsToUplc(configuredParams);
           const {
-            params: { delegateName: delegateName2, ...params2 }
+            params: { delegateName, ...otherParams }
           } = setupDetails;
           this.isConcrete = true;
-          const uplcRuntimeConfig = this.paramsToUplc(params2);
+          params = {
+            ...otherParams,
+            ...this.params
+          };
+          const uplcRuntimeConfig = this.paramsToUplc(params);
           let didFindProblem = "";
           for (const k of Object.keys(uplcPreConfig)) {
             const runtime = uplcRuntimeConfig[k];
@@ -812,7 +833,7 @@ class HeliosScriptBundle {
                 `\u2022 ${k}:  pre-config: `,
                 configuredParams[k] || (pre.rawData ?? pre),
                 ` at runtime:`,
-                params2[k] || (runtime.rawData ?? runtime)
+                params[k] || (runtime.rawData ?? runtime)
               );
             }
           }
@@ -821,10 +842,14 @@ class HeliosScriptBundle {
               `runtime-config conflicted with pre-config (see logged details) at key ${didFindProblem}`
             );
           }
+        } else {
+          params = {
+            ...params,
+            ...this.params
+          };
         }
-        this.configuredUplcParams = this.paramsToUplc(
-          setupDetails.params
-        );
+        this.configuredParams = params;
+        this.configuredUplcParams = this.paramsToUplc(params);
       }
     } else if (this.scriptParamsSource == "bundle") {
       const selectedVariant = "singleton";
@@ -985,10 +1010,13 @@ class HeliosScriptBundle {
     }
     if (!!this.configuredScriptDetails) {
       debugger;
+      if (this.setupDetails.specialOriginatorLabel) {
+        return false;
+      }
       console.warn(
-        `scriptParamsSource is not 'bundle'; isPrecompiled() returns false at ${this.setupDetails.originatorLabel}`
+        `scriptParamsSource is not 'bundle'; isPrecompiled() returns false for originator '${this.setupDetails.specialOriginatorLabel || "\u2039unknown\u203A"}'`
       );
-      return false;
+      throw new Error(`check isPrecompiled() logic here`);
     }
     return false;
   }
@@ -1230,11 +1258,7 @@ ${this.modules.map(moduleDetails).join("\n")}`
     );
   }
   compiledScript(asyncOk) {
-    const {
-      setup,
-      previousOnchainScript,
-      _program: loadedProgram
-    } = this;
+    const { setup, previousOnchainScript, _program: loadedProgram } = this;
     if (this.alreadyCompiledScript) {
       return this.alreadyCompiledScript;
     }
@@ -1297,6 +1321,11 @@ ${this.modules.map(moduleDetails).join("\n")}`
           }
         )
       )
+    );
+    console.log(
+      new Error(
+        `(special originator ${this.setupDetails.specialOriginatorLabel || "\u2039unknown\u203A"} where?)`
+      ).stack
     );
     return program.compileWithCache({
       optimize: this.optimize

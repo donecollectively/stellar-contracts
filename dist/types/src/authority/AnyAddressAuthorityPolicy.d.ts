@@ -16,7 +16,7 @@ import type { UtxoSearchScope } from "../UtxoHelper.js";
 export declare class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     loadBundle(params: any): undefined;
     usesContractScript: false;
-    getContractScriptParams(): {
+    static defaultParams: {
         rev: bigint;
     };
     get delegateValidatorHash(): undefined;

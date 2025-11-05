@@ -51,7 +51,6 @@ export declare abstract class CapoDelegateBundle extends HeliosScriptBundle {
      */
     static usingCapoBundleClass<THIS extends typeof CapoDelegateBundle, CB extends CapoBundleClass>(this: THIS, c: CB, generic?: "generic" | false): ConcreteCapoDelegateBundle;
     get main(): Source;
-    get rev(): bigint;
     get params(): {
         rev: bigint;
         delegateName: string;
