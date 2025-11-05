@@ -123,12 +123,14 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
 
     async replacingTestDataPolicy() {
         await this.snapToInstalledTestDataPolicy();
+        const testDataController1 = await this.capo.getTestDataController();
+        const bundle1 = await testDataController1.getBundle();
+        (bundle1.constructor as any).currentRev = 2n;
 
         this.capo._delegateCache["testData"] = {};
-        DelegatedDatumTester.currentRev = 2n;
-        
-        console.log("        --- ⚗️🐞🐞🐞🐞🐞🐞🐞🐞 ⚗️🐞 ⚗️🐞 ⚗️🐞 ")
+        const testDataController = await this.capo.getTestDataController();
 
+        console.log("        --- ⚗️🐞🐞🐞🐞🐞🐞🐞🐞 ⚗️🐞 ⚗️🐞 ⚗️🐞 ")
         const charterData = await this.capo.findCharterData();
         const tcx = await this.capo.mkTxnInstallingPolicyDelegate({
             typeName: "testData",

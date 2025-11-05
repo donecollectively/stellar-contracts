@@ -15,10 +15,11 @@ import {
     helperState,
     TestContext_CapoForDgData,
 } from "./CapoForDgDataPolicyTestHelper.js";
+
 import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
 import { bytesToText, environment } from "@donecollectively/stellar-contracts";
-import { UplcProgramV2 } from "@helios-lang/uplc";
 import { makeValidatorHash } from "@helios-lang/ledger";
+import type { ErgoCapoManifestEntry } from "../src/testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
 
 const it = itWithContext<localTC>;
 function TEST_REQT(s: string) {
@@ -187,8 +188,20 @@ describe("Capo", async () => {
                 throw new Error("testDataController not found");
 
             capo._delegateCache["testData"] = {};
+            testDataController._bundle = undefined;
+            //@ts-expect-error
+            testDataController.constructor.debugDelegateCreation = true;
 
-            DelegatedDatumTester.currentRev = 2n;
+            const bundle = await testDataController.getBundle();
+
+            vi.spyOn(
+                bundle.constructor as any,
+                "currentRev",
+                "get"
+            ).mockImplementation(() => {
+                return 2n;
+            });
+
 
             const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
                 idPrefix: "tData",
@@ -229,6 +242,27 @@ describe("Capo", async () => {
                 finalManifest.get("testData")!.entryType.DgDataPolicy!
                     .policyLink.delegateValidatorHash
             ).toEqual(newChange.dgtLink?.delegateValidatorHash);
+
+
+            const nextCharterData = await capo.findCharterData();
+
+            const newDetails = nextCharterData.manifest.get(
+                "testData"
+            ) as ErgoCapoManifestEntry;
+
+            expect(newDetails).toBeTruthy();
+            const policyDetails =
+                newDetails?.entryType.DgDataPolicy;
+            expect(policyDetails).toBeTruthy();
+            if (!policyDetails) {
+                throw new Error(
+                    "new controller's manifest entry should be a DgDataPolicy "
+                );
+            }
+            const parsed = JSON.parse(
+                bytesToText(policyDetails!.policyLink.config)
+            );
+            expect(parsed.rev).toBe("2");
         });
 
         it("refuses to queue an additional Change if a policy already in pendingChanges", async (context: localTC) => {
@@ -253,8 +287,11 @@ describe("Capo", async () => {
 
             await h.snapToReplacingTestDataPolicy();
             // testDataController._bundle = undefined;
-            DelegatedDatumTester.currentRev = 3n;
+            // DelegatedDatumTester.currentRev = 3n;
             h.capo._delegateCache["testData"] = {};
+            vi.spyOn(testDataController._bundle!.constructor as any, "currentRev", "get").mockImplementation(() => 3n);
+            testDataController._bundle = undefined;
+            const bundle = await testDataController.getBundle();
 
             // allows the txn-builder to get past its guard for a pending change:
             vi.spyOn(capo, "findPendingChange").mockImplementation(
@@ -262,7 +299,9 @@ describe("Capo", async () => {
             );
 
             charterData = await capo.findCharterData();
-            const updatedDelegate = await capo.getDgDataController("testData", { charterData });
+            const updatedDelegate = await capo.getTestDataController(
+                charterData,
+            );
             if (!updatedDelegate) throw new Error("updatedDelegate not found");
             // updatedDelegate.getBundle()!.previousOnchainScript = {
             //     validatorHash,
@@ -333,6 +372,8 @@ describe("Capo", async () => {
                 { charterData: charterDataMark2 }
             )) as DelegatedDatumTester;
 
+            (prevTestDataController._bundle!.constructor as any).currentRev = 2n;
+
             if (!prevTestDataController)
                 throw new Error("testDataController not found");
             if (!prevTestD2Controller)
@@ -340,8 +381,6 @@ describe("Capo", async () => {
 
             capo._delegateCache["testData"] = {};
             capo._delegateCache["testData2"] = {};
-
-            DelegatedDatumTester.currentRev = 2n;
 
             const tcx2 = await capo.mkTxnUpgradeIfNeeded(charterDataMark2);
 
@@ -428,7 +467,6 @@ describe("Capo", async () => {
             ).toBeTruthy();
             expect(nextTestD2Hash!.isEqual(nextTestD2HashMark2)).toBeTruthy();
         });
-
 
         TEST_REQT("dgt-change: the idPrefix must not be modified");
 

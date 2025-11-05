@@ -15,11 +15,17 @@ import {
     CapoWithoutSettings,
     type ConfigFor,
     TxDescription,
+    bytesToText,
 } from "@donecollectively/stellar-contracts";
 
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
-import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { expectTxnError } from "../src/testing/StellarTestHelper";
+import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
+import { expectTxnError } from "../src/testing/StellarTestHelper.js";
+import type {
+    CapoDatum$Ergo$CharterData,
+    ErgoCapoManifestEntry,
+    ErgoRelativeDelegateLink,
+} from "../src/helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -74,6 +80,17 @@ describe("Capo", async () => {
             await h.bootstrap();
 
             expect(t1.mph.toHex()).not.toEqual(t2.mph.toHex());
+        });
+
+        it("has rev=1 for the minter", async (context: localTC) => {
+            const {
+                h,
+                h: { network, actors, delay, state },
+            } = context;
+
+            const capo = await h.bootstrap();
+            const minter = await capo.minter;
+            expect(minter._bundle!.configuredParams!.rev).toEqual(1n);
         });
     });
 
@@ -310,6 +327,60 @@ describe("Capo", async () => {
         );
     });
 
+    describe("on-chain delegate links", () => {
+        it("includes the configuration provided by the script-bundle", async (context: localTC) => {
+            // gets the delegate-link for the reqtsController from the charter
+
+            const {
+                h,
+                h: { network, actors, delay, state },
+            } = context;
+
+            const capo = await h.bootstrap();
+
+            // Get the charter data from the contract
+            const charterData = await capo.findCharterData();
+            expect(charterData).toBeTruthy();
+
+            type t = CapoDatum$Ergo$CharterData["mintDelegateLink"];
+            {
+                const mintDelegateDetails = charterData!
+                    .mintDelegateLink as ErgoRelativeDelegateLink;
+                expect(mintDelegateDetails).toBeTruthy();
+                if (!mintDelegateDetails) {
+                    throw new Error(
+                        "mintDelegateDetails is missing DgDataPolicy"
+                    );
+                }
+                const parsed = JSON.parse(
+                    bytesToText(mintDelegateDetails!.config)
+                );
+                expect(parsed.rev).toBe("1");
+            }
+
+            if (false) {
+                // todo: repeat with the reqtsController delegate
+                const reqtsControllerDetails = charterData.manifest.get(
+                    "reqtsController"
+                ) as ErgoCapoManifestEntry;
+
+                expect(reqtsControllerDetails).toBeTruthy();
+                const policyDetails =
+                    reqtsControllerDetails?.entryType.DgDataPolicy;
+                expect(policyDetails).toBeTruthy();
+                if (!policyDetails) {
+                    throw new Error(
+                        "reqtsControllerDetails is missing DgDataPolicy"
+                    );
+                }
+                const parsed = JSON.parse(
+                    bytesToText(policyDetails!.policyLink.config)
+                );
+                expect(parsed.rev).toBe(1);
+            }
+        });
+    });
+
     describe("the charter details can be updated by authority of the capoGov-* token", () => {
         it(" updates details of the datum", async (context: localTC) => {
             // tested with kc983ndk
@@ -392,8 +463,8 @@ describe("Capo", async () => {
             const capo = await h.bootstrap();
             const tcx = capo.mkTcx("uses scriptRefs");
             console.log("----------------------------------------------");
-            const tcx2 = await capo.txnAttachScriptOrRefScript(tcx);
             const script = (await capo.asyncCompiledScript())!;
+            const tcx2 = await capo.txnAttachScriptOrRefScript(tcx, script);
             const minterScript = (await capo.minter.asyncCompiledScript())!;
             expect(tcx2.txRefInputs[0].output.refScript?.toString()).toEqual(
                 script.toString()

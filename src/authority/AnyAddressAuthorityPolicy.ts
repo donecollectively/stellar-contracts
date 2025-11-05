@@ -26,10 +26,8 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     }
 
     usesContractScript = false as const;
-    getContractScriptParams() {
-        return {
-            rev: 0n,
-        };
+    static defaultParams = {
+        rev: 1n,
     }
 
     get delegateValidatorHash() {

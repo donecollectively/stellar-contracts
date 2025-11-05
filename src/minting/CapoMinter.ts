@@ -64,8 +64,6 @@ export class CapoMinter
     extends StellarContract<BasicMinterParams>
     implements MinterBaseMethods
 {
-
-    currentRev: bigint = 1n;
     async scriptBundleClass() {
         const bundleModule = await import("./CapoMinter.hlb.js");
         

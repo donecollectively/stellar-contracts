@@ -23,6 +23,8 @@ import type { StellarBundleSetupDetails } from "../StellarContract.js";
  **/
 export class CapoMinterBundle 
 extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
+    static currentRev = 1n;
+    
     scriptParamsSource: "config" | "bundle" = "config"
     //pro-forma to make TypeScript happy
     requiresGovAuthority = true;
@@ -38,14 +40,9 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
     //     //@ts-expect-error setting the required property
     // }
 
-    get rev(): bigint {
-        return 1n
-    }
-
     get params() {
         const {configuredScriptDetails, configuredParams } = this.capoBundle || {}
         
-        debugger
         const noConfig = `${this.constructor.name}: capoMph not found in deployed capo bundle; can't make config yet (dbpa)`;
         if (!configuredScriptDetails) {
             
@@ -53,7 +50,7 @@ extends HeliosScriptBundle.usingCapoBundleClass(CapoHeliosBundle) {
                 console.warn(noConfig);
                 debugger
             }
-            return undefined
+            return {rev: this.rev}
         }
         const capoConfig = (configuredScriptDetails as DeployedScriptDetails<CapoConfig>).config
         const {

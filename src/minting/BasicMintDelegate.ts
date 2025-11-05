@@ -22,7 +22,6 @@ import type { ConcreteCapoDelegateBundle } from "../helios/scriptBundling/CapoDe
  * @public
  **/
 export class BasicMintDelegate extends ContractBasedDelegate {
-    static currentRev = 1n;
     static isMintDelegate = true;
     declare dataBridgeClass: GenericDelegateBridgeClass;
 

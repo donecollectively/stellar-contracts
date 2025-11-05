@@ -116,10 +116,6 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         return BasicDelegate;
     }
 
-    get rev() : bigint {
-        return 1n;
-    }
-
     get params() {
         return {
             rev: this.rev,

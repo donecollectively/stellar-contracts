@@ -11,6 +11,7 @@ import {
     DelegatedDatumTester,
     DelegatedDatumTester2,
 } from "../src/testing/DelegatedDatumTester.js";
+import type { CapoDatum$Ergo$CharterData } from "../src/helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     static useExtraModel = false;
@@ -21,7 +22,7 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     async getSpendDelegate(): Promise<MintDelegateWithGenericUuts> {
         return super.getSpendDelegate() as any;
     }
-    
+
     async scriptBundleClass(): Promise<typeof CapoHeliosBundle> {
         return CapoHeliosBundle;
     }
@@ -29,7 +30,21 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
         const t = await this.getSpendDelegate();
         t.activity.CapoLifecycleActivities.commitPendingChanges;
     }
-    
+
+    /**
+     * Finds and instantiates the controller for S3 Driver records
+     */
+    async getTestDataController(
+        charterData?: CapoDatum$Ergo$CharterData
+    ): Promise<DelegatedDatumTester> {
+        if (!charterData) {
+            charterData = await this.findCharterData();
+        }
+        return this.getDgDataController("testData", {
+            charterData: charterData as CapoDatum$Ergo$CharterData,
+        }) as Promise<DelegatedDatumTester>;
+    }
+
     initDelegateRoles() {
         const inherited = super.initDelegateRoles();
         const {

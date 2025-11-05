@@ -29,21 +29,12 @@ export class DelegatedDatumTester extends DelegatedDataContract<
     DgDatumTestDataLike
 > {
     dataBridgeClass = DelegateDatumTesterDataBridge;
-    static currentRev: bigint = 1n;
 
     async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
         const bundleModule = await import("./DelegatedDatumTester.hlb.js");
         return bundleModule.DelegatedDatumTesterBundle;
     }
 
-    getContractScriptParams(config: capoDelegateConfig) {
-        if (DelegatedDatumTester.currentRev > 1n) debugger;
-        return {
-            ...super.getContractScriptParams(config),
-            requiresGovAuthority: true,
-            rev: DelegatedDatumTester.currentRev,
-        };
-    }
 
     get delegateName() {
         return "TestDataDgt";

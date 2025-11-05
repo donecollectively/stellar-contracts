@@ -9,9 +9,10 @@ import type { isActivity } from "../StellarContract.js";
 
 //! a contract enforcing policy for a registered credential
 export class MultisigAuthorityPolicy extends AuthorityPolicy {
-    static currentRev = 1n;
     static get defaultParams() {
-        return { rev: this.currentRev };
+        return { 
+            rev: 0n;
+        };
     }
     contractSource() {
         return contract;

@@ -837,7 +837,6 @@ export class StellarContract<
         const c: StellarContract<configType> = new Class(setup);
 
         // now all internal property assignments have been triggered,
-        //  (e.g. class-level currentRev = .... declarations)
         // so we can do initialization activities post-construction
         return c.init(args);
     }
@@ -919,7 +918,6 @@ export class StellarContract<
             } = {},
         } = args;
         this.configIn = config;
-        
 
         let partialConfig: typeof pCfg = undefined;
         if (pCfg && Object.keys(pCfg).length == 0) {

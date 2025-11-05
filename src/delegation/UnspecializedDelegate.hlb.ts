@@ -35,10 +35,6 @@ extends CapoDelegateBundle.usingCapoBundleClass( CapoHeliosBundle ) {
     specializedDelegateModule = UnspecializedDelegateScript;
     requiresGovAuthority = true;
 
-    get rev() {
-        return 1n;
-    }
-
     get params() {
         return {
             rev: this.rev,

@@ -59,7 +59,6 @@ export class ContractBasedDelegate extends StellarDelegate {
      */
     declare dataBridgeClass: GenericDelegateBridgeClass;
     declare _dataBridge: GenericDelegateBridge;
-    static currentRev = 1n;
 
     /**
      * Configures the matching parameter name in the on-chain script, indicating
@@ -187,7 +186,7 @@ export class ContractBasedDelegate extends StellarDelegate {
 
     static get defaultParams() {
         const params = {
-            rev: this.currentRev,
+            rev: 0n,
             isMintDelegate: this.isMintDelegate,
             isSpendDelegate: this.isMintAndSpendDelegate,
             isDgDataPolicy: this.isDgDataPolicy,

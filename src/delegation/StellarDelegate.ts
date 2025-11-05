@@ -30,10 +30,9 @@ export type GrantAuthorityOptions = {
  * @typeParam CT - type of any specialized configuration; use capoDelegateConfig by default.
  **/
 export abstract class StellarDelegate extends StellarContract<capoDelegateConfig> {
-    static currentRev = 1n;
     static get defaultParams() {
         return {
-            rev: this.currentRev,
+            rev: 0n,
         };
     }
     // not required except for Contract-based delegates.  A subclass can represent a delegation

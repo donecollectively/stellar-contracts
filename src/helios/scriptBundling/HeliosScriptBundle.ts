@@ -75,6 +75,21 @@ export abstract class HeliosScriptBundle {
     static needsCapoConfiguration = false;
 
     /**
+     * the current revision of the bundle
+     * @remarks
+     * Allows forced incrementing of the on-chain policy script.  This supports test scenarios,
+     * and allows the the bundle script to be swapped out even when nothing else is changed
+     * (we don't have specific cases for this, but it's better to have and not need it, than to need
+     * it and not have it)
+     * @public
+     */
+    static currentRev = 1n;
+    get rev(): bigint {
+        //@ts-expect-error - currentRev is a static property
+        return this.constructor.currentRev;
+    }
+
+    /**
      * an opt-in indicator of abstractness
      * @remarks
      * Subclasses that aren't intended for instantiation can set this to true.
@@ -403,11 +418,8 @@ export abstract class HeliosScriptBundle {
                         ...this.params,
                     };
                 }
-                // moved to init
-                // this.configuredParams = setupDetails.params;
-                this.configuredUplcParams = this.paramsToUplc(
-                    params
-                );
+                this.configuredParams = params;
+                this.configuredUplcParams = this.paramsToUplc(params);
             }
         } else if (this.scriptParamsSource == "bundle") {
             // the bundle has its own built-in params

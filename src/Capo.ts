@@ -136,6 +136,7 @@ import type {
     MinimalDelegateUpdateLink,
     NormalDelegateSetup,
     PreconfiguredDelegate,
+    PreviousOnchainScript,
     UutCreationAttrsWithSeed,
     basicDelegateMap,
     basicDelegateRoles,
@@ -405,7 +406,7 @@ export abstract class Capo<
 
     static get defaultParams() {
         const params = {
-            rev: this.currentRev,
+            rev: 0n,
         };
         return params;
     }
@@ -1552,7 +1553,7 @@ export abstract class Capo<
     >(
         tcx: hasUutContext<RN>,
         role: RN,
-        delegateInfo: OffchainPartialDelegateLink,
+        delegateInfo: OffchainPartialDelegateLink
     ): Promise<ConfiguredDelegate<DT>> {
         const {
             // strategyName,
@@ -1599,7 +1600,7 @@ export abstract class Capo<
         } = selectedDgt;
         const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
 
-        const configForOnchainRelativeDelegateLink = {
+        let configForOnchainRelativeDelegateLink = {
             ...defaultParamsFromDelegateClass,
             ...(paramsFromRole || {}),
             ...explicitConfig,
@@ -1623,10 +1624,10 @@ export abstract class Capo<
 
         // console.log({fullCapoDgtConfig});
 
-        let delegateSettings: PreconfiguredDelegate<DT> = {} as any;
+        let configuredDelegate: PreconfiguredDelegate<DT> = {} as any;
         let delegate: DT = undefined as any;
         try {
-            delegateSettings = {
+            configuredDelegate = {
                 ...delegateInfo,
                 roleName: role,
                 //@ts-expect-error "could be instantiated with a different type" - TS2352
@@ -1636,13 +1637,24 @@ export abstract class Capo<
                 fullCapoDgtConfig,
                 config: configForOnchainRelativeDelegateLink,
             };
-            delegate = await this.mustGetDelegate<DT>(role, delegateSettings);
+            delegate = await this.mustGetDelegate<DT>(role, configuredDelegate);
             if (delegate.usesContractScript) {
+                // get the final configuration details from the script-bundle, which is typically
+                // pre-compiled (however, there can be cases, including dynamic runtime/SaaS situations
+                // and the test-automation environment, where it's not precompiled).  To support this
+                // range of cases, this is an asynchronous activity.
+                await delegate.getBundle();
+
+                // 💭 we don't need to compile the script to see the parameters that WILL be used to compile it
+                configForOnchainRelativeDelegateLink = {
+                    ...configForOnchainRelativeDelegateLink,
+                    ...delegate._bundle!.configuredParams,
+                };
             }
         } catch (e: any) {
             console.log("error: unable to create delegate: ", e.stack);
             debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
-            this.mustGetDelegate<DT>(role, delegateSettings).catch(
+            this.mustGetDelegate<DT>(role, configuredDelegate).catch(
                 (sameErrorIgnored) => undefined
             );
 
@@ -1660,7 +1672,7 @@ export abstract class Capo<
         //     }
         // }
 
-        const { uutName } = delegateSettings;
+        const { uutName } = configuredDelegate;
         if (!uutName) {
             throw new Error(`missing required uutName in delegateSettings`);
         }
@@ -1675,7 +1687,7 @@ export abstract class Capo<
             }
         })();
         const pcd: ConfiguredDelegate<DT> & { uutName: string } = {
-            ...delegateSettings,
+            ...configuredDelegate,
             config: configForOnchainRelativeDelegateLink,
             uutName,
 
@@ -1759,21 +1771,15 @@ export abstract class Capo<
             return delegate as DT;
         }
         console.log(`   🔎delegate 💁 ${role}`);
-        // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
 
         const {
             // strategyName,
             uutName,
             delegateValidatorHash: onchainValidatorHash,
-            // addrHint,  //moved to config
-            // reqdAddress,  // removed
             config: configBytesFromLink,
         } = onchainDgtLink;
 
-        // as ConfiguredDelegate<StellarDelegate>;
-        // variants[
-        //     strategyName
-        /* ]as unknown */ if (!selectedDgt) {
+        if (!selectedDgt) {
             throw new Error(
                 `no selected dgt for role '${role}'\n` +
                     `link details: ${this.showDelegateLink(delegateLink)}`
@@ -2684,7 +2690,6 @@ export abstract class Capo<
             spendDelegate: uuts.spendDelegate,
             // settingsUut: uuts.set,
         });
-
 
         // creates an addl txn that stores a refScript in the delegate;
         //   that refScript could be stored somewhere else instead (e.g. the Capo)
@@ -4240,8 +4245,9 @@ export abstract class Capo<
             if (!previousCompiledScript) {
                 // when no previous script is there, it means an existing policy is fine as-is
                 if (existingDvh) {
+                    debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
                     throw new TxNotNeededError(
-                        `Policy doesn't need an update: ${typeName}`
+                        `Policy doesn't need an update: ${typeName} (dbpa)`
                     );
                 }
                 // however, if the previous delegate had no script but the new one does,

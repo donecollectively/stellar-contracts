@@ -32,6 +32,8 @@ export type CapoHeliosBundleClass = AbstractNew<CapoHeliosBundle>;
  * @public
  */
 export class CapoHeliosBundle extends HeliosScriptBundle {
+    static currentRev = 1n;
+    
     preConfigured?: typeof capoConfigurationDetails
     precompiledScriptDetails?: CapoDeployedDetails<any> = {capo: undefined};
     scriptParamsSource = "config" as const
