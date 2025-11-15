@@ -37,6 +37,8 @@ import {
     createLedgerStateQueryClient,
 } from "@cardano-ogmios/client";
 
+import { CapoDappProviderContext } from "./CapoDappProviderContext.js";
+
 import type {
     Capo,
     CapoConfig,
@@ -962,6 +964,7 @@ export class CapoDAppProvider<
                 }
             );
         }
+
         if (!this.isWalletSupported(selectedWallet)) {
             debugger;
             this.reportError(
@@ -1993,48 +1996,6 @@ export type UserActionMap<actions extends string> = Record<
 > &
     BaseUserActionMap;
 
-/**
- * @public
- */
-export const CapoDappProviderContext =
-    React.createContext<CapoDAppProvider<any> | null>(null);
-
-/**
- * React hook for accessing the CapoDappProvider context.
- * @remarks
- * The context data now includes the capo instance as well as the provider.
- *
- * Indicate your Capo's type in the type parameter to access your Capo's methods and properties.
- * @typeParam C - the type of the capo instance
- * @public
- */
-export function useCapoDappProvider<
-    C extends Capo<any, any> = Capo<any, any>
->() {
-    const provider = React.useContext(
-        CapoDappProviderContext as React.Context<CapoDAppProvider<C> | null>
-    );
-    if (!provider) {
-        throw new Error(
-            "useCapoDappProvider must be used within a CapoDappProvider"
-        );
-    }
-    const [isMounted, setIsMounted] = React.useState(false);
-    const [capo, setCapo] = React.useState<C>();
-    const [checking, keepChecking] = React.useState(1);
-
-    React.useEffect(() => {
-        setIsMounted(true);
-        setTimeout(() => {
-            if (capo !== provider?.capo) {
-                setCapo(provider?.capo);
-            }
-            keepChecking(1 + checking);
-        }, 2000);
-    }, [checking, provider, provider?.userInfo.wallet, capo]);
-
-    return { capo, provider, isMounted };
-}
 
 /**
  * Status details emitted by the CapoDappProvider to indicate progress and current state

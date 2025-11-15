@@ -123,7 +123,7 @@ export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
 export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
 
 export { hasReqts, mergesInheritedReqts } from "./src/Requirements.js";
-export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
+export type { ReqtsMap, RequirementEntry, noInheritedReqts } from "./src/Requirements.js";
 
 export {
     StellarTxnContext,

@@ -27,8 +27,9 @@ import {
     StellarDelegate,
     DelegatedDataContract,
 } from "@donecollectively/stellar-contracts";
-import { useCapoDappProvider } from "./CapoDappProvider.js";
-import { TxBatchViewer } from "./TxBatchViewer.js";
+import {
+    useCapoDappProvider,
+} from "./CapoDappProviderContext.js";
 
 /**
  * Shows a Capo-based dApp's charter status as a dashboard-style screen

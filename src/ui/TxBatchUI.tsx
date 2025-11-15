@@ -1,8 +1,9 @@
 import { BatchSubmitController } from "@donecollectively/stellar-contracts";
 import React from "react";
-import { useCapoDappProvider } from "./CapoDappProvider.js";
+
 import { TxBatchViewer } from "./TxBatchViewer.js";
 import { Button } from "./Button.js";
+import { useCapoDappProvider } from "./CapoDappProviderContext.js";
 
 export function TxBatchUI() {
     const provider = useCapoDappProvider();
