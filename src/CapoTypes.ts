@@ -7,6 +7,14 @@ import type {
     ValidatorHash,
 } from "@helios-lang/ledger";
 import type { Capo } from "./Capo.js";
+
+export type {
+    ErgoCapoDatum,
+    CapoDatum$Ergo$CharterData,
+    CapoDatum$CharterDataLike,
+    ErgoRelativeDelegateLink,
+    CapoManifestEntryLike,
+} from "./helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
 import type {
     ErgoCapoDatum,
     CapoDatum$Ergo$CharterData,
@@ -14,6 +22,8 @@ import type {
     ErgoRelativeDelegateLink,
     CapoManifestEntryLike,
 } from "./helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
+
+
 import type {
     OffchainPartialDelegateLink,
     ConfiguredDelegate,
