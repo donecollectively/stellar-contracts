@@ -40,7 +40,7 @@ export class BadSettingsController extends DelegatedDataContract<
         return "settingsPolicy";
     }
     get recordTypeName() {
-        return "settings";
+        return "settings" as const;
     }
     get idPrefix() {
         return "set";
@@ -90,7 +90,7 @@ export class BadSettingsControllerWithWrapper extends WrappedDgDataContract<
         return "settingsPolicy";
     }
     get recordTypeName() {
-        return "settings";
+        return "settings" as const;
     }
     get idPrefix() {
         return "set";

@@ -42,7 +42,7 @@ export class ReqtsController extends DelegatedDataContract<
     }
 
     get recordTypeName() {
-        return "Reqt";
+        return "Reqt" as const;
     }
 
     exampleData(): minimalReqtData {

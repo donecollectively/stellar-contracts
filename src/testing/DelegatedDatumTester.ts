@@ -45,7 +45,7 @@ export class DelegatedDatumTester extends DelegatedDataContract<
     }
 
     get recordTypeName() {
-        return "testData";
+        return "testData" as const;
     }
 
     exampleData(): minimalDgDatumTestData {

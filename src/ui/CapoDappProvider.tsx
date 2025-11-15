@@ -1212,6 +1212,7 @@ export class CapoDAppProvider<
                 );
                 return;
             }
+            
             wallet = makeCip30Wallet(walletHandle);
         } else {
             if (!simpleWallet) {
