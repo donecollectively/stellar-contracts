@@ -3,7 +3,7 @@ import type { IFISNEVER, TypeError } from "./helios/typeUtils";
 const notInherited = {
     inheriting: "‹empty/base class›" as const,
 };
-type nothingInherited = typeof notInherited;
+export type noInheritedReqts = typeof notInherited;
 
 /**
  * Documents one specific requirement
@@ -24,7 +24,7 @@ type nothingInherited = typeof notInherited;
 export type RequirementEntry<
     reqtName extends string,
     reqts extends string,
-    inheritedNames extends { inheriting: string } | nothingInherited
+    inheritedNames extends { inheriting: string } | noInheritedReqts
 > = {
     purpose: string;
     details: string[];
@@ -34,7 +34,7 @@ export type RequirementEntry<
     // excludes the requirement from being referenced as its own dependendcy
     // excludes inherited reqt names from being referenced as dependencies (use requiresInherited instead)
     // allows inherited names to reference other inherited names
-    requires?: inheritedNames extends nothingInherited
+    requires?: inheritedNames extends noInheritedReqts
         ? Exclude<reqts, reqtName>[]
         : reqtName extends keyof inheritedNames["inheriting"]
         ? Exclude<inheritedNames["inheriting"], reqtName>[]
@@ -69,7 +69,7 @@ export type TODO_TYPE = typeof TODO;
  **/
 export type ReqtsMap<
     validReqts extends string,
-    inheritedNames extends {inheriting: string} | nothingInherited = nothingInherited
+    inheritedNames extends {inheriting: string} | noInheritedReqts = noInheritedReqts
 > = {
     [reqtDescription in validReqts]:
         | TODO_TYPE
@@ -89,7 +89,7 @@ export type ReqtsMap<
 export function hasReqts<
     R extends ReqtsMap<validReqts, inheritedNames>,
     const validReqts extends string = string & keyof R,
-    const inheritedNames extends {inheriting: string} | nothingInherited = nothingInherited
+    const inheritedNames extends {inheriting: string} | noInheritedReqts = noInheritedReqts
 >(reqtsMap: R): ReqtsMap<validReqts, inheritedNames> {
     return reqtsMap;
 }

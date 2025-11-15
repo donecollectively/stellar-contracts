@@ -13,7 +13,7 @@ import type {
     hasUutContext,
 } from "../CapoTypes.js";
 import type { hasSettingsRef } from "../CapoTypes.js";
-import type { ReqtsMap } from "../Requirements.js";
+import type { noInheritedReqts, ReqtsMap } from "../Requirements.js";
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { UutName } from "./UutName.js";
@@ -118,7 +118,7 @@ export abstract class DelegatedDataContract<
         return this._bundle!.requiresGovAuthority;
     }
 
-    abstract get recordTypeName(): string;
+    abstract get recordTypeName():  string
     abstract get idPrefix(): string;
 
     abstract exampleData(): minimalData<TLike>;
@@ -135,8 +135,9 @@ export abstract class DelegatedDataContract<
         return `${this.recordTypeName}Pol`;
     }
 
+
     // abstract get capo(): Capo<any>;
-    abstract requirements(): ReqtsMap<any, any> | ReqtsMap<any, never>;
+    abstract requirements(): ReqtsMap<any, any> | ReqtsMap<any, noInheritedReqts>;
 
     // async findRecord(id: string | UutName) {
     //     return this.capo
