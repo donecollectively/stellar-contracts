@@ -7,10 +7,17 @@ import type {
     minimalData,
     minimalDgDataTypeLike,
 } from "@donecollectively/stellar-contracts";
-import { useContext, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type RefObject,
+} from "react";
 import type { CapoDAppProvider } from "./CapoDappProvider";
 import { useCapoDappProvider } from "./CapoDappProviderContext";
-import type { CapoDatum$Ergo$CharterData } from "@donecollectively/stellar-contracts"
+import type { CapoDatum$Ergo$CharterData } from "@donecollectively/stellar-contracts";
 
 export class FormManager<DataContract extends DelegatedDataContract<any, any>> {
     options: FormManagerOptions<DataContract>;
@@ -27,11 +34,16 @@ export class FormManager<DataContract extends DelegatedDataContract<any, any>> {
         this.capo = provider.capo;
         this.options = options;
         this.handleChange = this.handleChange.bind(this);
-        this.el.addEventListener("change", this.handleChange, { capture: true });
+        this.el.addEventListener("change", this.handleChange, {
+            capture: true,
+        });
     }
 
     handleChange(event: Event) {
-        const target = event.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+        const target = event.target as
+            | HTMLInputElement
+            | HTMLSelectElement
+            | HTMLTextAreaElement;
         console.log("change event", target.name, target.value);
     }
 
@@ -39,7 +51,9 @@ export class FormManager<DataContract extends DelegatedDataContract<any, any>> {
         return this.el;
     }
     destroy() {
-        this.form.removeEventListener("change", this.handleChange, { capture: true });
+        this.form.removeEventListener("change", this.handleChange, {
+            capture: true,
+        });
     }
 
     getFieldError(name: string) {}
@@ -47,12 +61,17 @@ export class FormManager<DataContract extends DelegatedDataContract<any, any>> {
 
 type FormManagerOptions<
     DataContract extends DelegatedDataContract<any, any>,
-    DataType extends DataContract extends DelegatedDataContract<infer T, infer TLike>
-        ? T
-        : never = DataContract extends DelegatedDataContract<infer T, infer TLike> ? T : never,
-    DataTypeLike extends DataContract extends DelegatedDataContract<infer T, infer TLike>
+    DataTypeLike extends DataContract extends DelegatedDataContract<
+        infer T,
+        infer TLike
+    >
         ? TLike
-        : never = DataContract extends DelegatedDataContract<infer T, infer TLike> ? TLike : never,
+        : never = DataContract extends DelegatedDataContract<
+        infer T,
+        infer TLike
+    >
+        ? TLike
+        : never
 > = {
     typeName: DataContract["recordTypeName"];
     recordId: string;
@@ -64,47 +83,72 @@ type FormManagerOptions<
 // export type DgDataType<T extends DelegatedDataContract<any, any>> =
 //     T extends DelegatedDataContract<infer T, infer TLike> ? T : never;
 
-export function useFormManager<DataContract extends DelegatedDataContract<any, any>>(
+export function useFormManager<
+    DataContract extends DelegatedDataContract<any, any>,
+    DataType extends DataContract extends DelegatedDataContract<
+        infer T,
+        infer TLike
+    >
+        ? T
+        : never = DataContract extends DelegatedDataContract<
+        infer T,
+        infer TLike
+    >
+        ? T
+        : never
+>(
     formRef: React.RefObject<HTMLFormElement | null>,
     options: FormManagerOptions<DataContract>
 ) {
     const { capo, provider } = useCapoDappProvider();
     if (!provider) {
-        throw new Error("FormManager: missing required CapoDAppProviderContext");
+        throw new Error(
+            "FormManager: missing required CapoDAppProviderContext"
+        );
     }
 
     const formManagerRef = useRef<FormManager<DataContract> | null>(null);
-    const [controller, setController] = useState<DataContract | undefined>(undefined);
+    const [controller, setController] = useState<DataContract | undefined>(
+        undefined
+    );
     useEffect(() => {
         (async function getController() {
             if (!capo) return undefined;
 
             const charterData = await capo.findCharterData();
 
-            const controller = await capo.getDgDataController(options.typeName, {
-                charterData: charterData as CapoDatum$Ergo$CharterData,
-            }) as DataContract
-        
+            const controller = (await capo.getDgDataController(
+                options.typeName,
+                {
+                    charterData: charterData as CapoDatum$Ergo$CharterData,
+                }
+            )) as DataContract;
+
             setController(controller);
-        })()
+        })();
     }, [capo, options.typeName]);
 
-    const [utxo, setUtxo] = useState<FoundDatumUtxo<DataContract, any> | null>(null);
+    const [utxo, setUtxo] = useState<FoundDatumUtxo<DataType, any> | null>(
+        null
+    );
 
     useEffect(() => {
         if (!controller) return;
-        controller.findRecords({id: options.recordId}).then((utxo) => {
+        controller.findRecords({ id: options.recordId }).then((utxo) => {
             setUtxo(utxo);
         });
     }, [controller, options.recordId]);
-                
+
     useEffect(() => {
         const form = formRef.current;
-        if (!form) return;
-        if (!controller) return;
+        if (!controller || !utxo || !form || !capo) return;
         if (form && !formManagerRef.current) {
             // Create FormManager only once when form element becomes available
-            formManagerRef.current = new FormManager<DataContract>(form, provider, options);
+            formManagerRef.current = new FormManager<DataContract>(
+                form,
+                provider,
+                options
+            );
         }
 
         return () => {
@@ -114,7 +158,7 @@ export function useFormManager<DataContract extends DelegatedDataContract<any, a
                 formManagerRef.current = null;
             }
         };
-    }, [provider, capo]);
+    }, [provider, capo, controller, utxo]);
 
     return formManagerRef.current;
 }
