@@ -16,7 +16,11 @@
         "lib": ["esnext", "dom"],
         "module": "preserve",
         "esModuleInterop": true,        
-        "types": ["node", "vitest/globals"],
+        "types": [
+            "@arktype/schema",
+            "node", 
+            "vitest/globals",
+        ],
         "verbatimModuleSyntax": true,
 
         "moduleResolution": "bundler",

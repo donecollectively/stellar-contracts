@@ -1,7 +1,7 @@
 import type { UtxoStoreGeneric } from "./UtxoStoreGeneric";
 
 import {dexieBlockDetails} from "./dexieRecords/BlockDetails.js";
-import {UtxoDetails} from "./dexieRecords/UtxoDetails.js";
+import {dexieUtxoDetails} from "./dexieRecords/UtxoDetails.js";
 import Dexie, { type EntityTable } from "dexie";
 
 export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
@@ -15,7 +15,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             utxos: "utxoId, blockId, blockHeight",
         });
         this.blocks.mapToClass(dexieBlockDetails);
-        this.utxos.mapToClass(UtxoDetails);
+        this.utxos.mapToClass(dexieUtxoDetails);
     }
 
     async findBlockByBlockId(blockId: string): Promise<dexieBlockDetails | undefined> {

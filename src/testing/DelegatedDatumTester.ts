@@ -108,7 +108,8 @@ export class DelegatedDatumTester2 extends DelegatedDatumTester {
     get delegateName() {
         return "TestDataDgt2";
     }
+    //@ts-expect-error overriding the type name
     get recordTypeName() {
-        return "testData2";
+        return "testData2" as const;
     }
 }

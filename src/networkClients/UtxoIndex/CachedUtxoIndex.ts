@@ -14,6 +14,7 @@ import { decodeTx, type Tx } from "@helios-lang/ledger";
 import { DexieUtxoStore } from "./DexieUtxoStore";
 import type { UtxoStoreGeneric } from "./UtxoStoreGeneric";
 import type { dexieBlockDetails } from "./dexieRecords/BlockDetails";
+import type { BlockDetailsType } from "./blockfrostTypes/BlockDetails";
 
 // uses a specific base page size for fetching capo utxos
 const capoUpdaterPageSize = 20;

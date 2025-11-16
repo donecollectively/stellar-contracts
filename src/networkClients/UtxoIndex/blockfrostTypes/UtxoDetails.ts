@@ -4,7 +4,7 @@
 // also used for responses from https://docs.blockfrost.io/#tag/cardano--addresses/get/addresses/{address}/utxos
 
 import { jsonSchemaToType } from "@ark/json-schema";
-import { scope } from "arktype";
+import { scope, type } from "arktype";
 
 export const UtxoDetailsFactory = scope({ 
     Value: {
