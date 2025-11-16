@@ -4,9 +4,9 @@
         "strict": true,
         "noEmit": false,
         "allowJs": true,
-        "declaration": true,
+        // "declaration": true,
         // "emitDeclarationOnly": false,
-        "declarationMap": true,
+        // "declarationMap": true,
         // "sourceMap": true, // provided by esbuild?
         "allowSyntheticDefaultImports": true,
         "allowArbitraryExtensions": true,

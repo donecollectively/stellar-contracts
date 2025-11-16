@@ -23,8 +23,11 @@
         "./rollup-plugins.ts",
         "./src/@types/heliosModule.d.ts",
         "./src/helios/HeliosProgramWithMockCacheAPI.ts",
-        "./src/@types/svg.d.ts",
-
+        "./src/@types/svg.d.ts"
     ],
-    "exclude": ["dist/**/*", "**/node_modules/"]
+    "exclude": [
+        "dist/**/*",
+        "**/node_modules/",
+        "**/dist/**"
+    ]
 }
