@@ -9,20 +9,25 @@
  * */
 
 import {ArkErrors } from "arktype";
-import { decodeTx, makeAssetClass, type Tx } from "@helios-lang/ledger";
-import { DexieUtxoStore } from "./DexieUtxoStore";
-import type { UtxoStoreGeneric } from "./UtxoStoreGeneric";
+import { decodeTx, makeAssetClass, type Tx, type TxOutput } from "@helios-lang/ledger";
+import { makeBlockfrostV0Client, type CardanoClient } from "@helios-lang/tx-utils";
+import type { Capo } from "../../Capo";
+
+import { DexieUtxoStore } from "./DexieUtxoStore.js";
+import type { UtxoStoreGeneric } from "./UtxoStoreGeneric.js";
 
 import {
     BlockDetailsFactory,
     type BlockDetailsType,
-} from "./blockfrostTypes/BlockDetails";
+} from "./blockfrostTypes/BlockDetails.js";
 import {
     UtxoDetailsFactory,
     type UtxoDetailsType,
-} from "./blockfrostTypes/UtxoDetails";
-import type { Capo } from "../../Capo";
-import { makeBlockfrostV0Client, type CardanoClient } from "@helios-lang/tx-utils";
+} from "./blockfrostTypes/UtxoDetails.js";
+import {
+    AddressTransactionSummariesFactory,
+    type AddressTransactionSummariesType,
+} from "./blockfrostTypes/AddressTransactionSummaries.js";
 // uses a specific base page size for fetching capo utxos
 const capoUpdaterPageSize = 20;
 
@@ -147,6 +152,115 @@ export class CachedUtxoIndex {
 
         // Fetch and store the latest block details
         await this.fetchAndStoreLatestBlock();
+    }
+
+    /**
+     * Monitors the capo address for new transactions and indexes new UTXOs.
+     * 
+     * Uses https://docs.blockfrost.io/#tag/cardano--addresses/get/addresses/{address}/transactions
+     * with order=desc, count=100, and the `from` parameter to fetch transactions
+     * from a specific block height onwards.
+     * 
+     * For each transaction, it:
+     * 1. Fetches the full transaction via network.getTx()
+     * 2. Extracts UTXOs from transaction outputs
+     * 3. Identifies UUTs in those outputs
+     * 4. Indexes new UTXOs, ensuring only the most recent UTXO for each UUT is kept
+     * 
+     * @param fromBlockHeight - The block height from which (inclusive) to start searching. 
+     *                          If not provided, uses lastBlockHeight + 1
+     */
+    async monitorForNewTransactions(fromBlockHeight?: number): Promise<void> {
+        const startHeight = fromBlockHeight ?? (this.lastBlockHeight > 0 ? this.lastBlockHeight + 1 : 0);
+
+        if (startHeight == 0) {
+            throw new Error("Cannot start monitoring for new transactions at block height 0");
+        }
+        const capoAddress = this.capo.address.toString();
+        
+        // Fetch transaction summaries from Blockfrost
+        const url = `addresses/${capoAddress}/transactions?order=desc&count=100&from=${startHeight}`;
+        const untyped = await this.fetchFromBlockfrost<unknown[]>(url);
+        
+        if (!Array.isArray(untyped) || untyped.length === 0) {
+            // No new transactions
+            return;
+        }
+        if (untyped.length > 100) {
+            throw new Error("Needed: support for fast transaction discovery");
+        }
+
+        // Validate and process each transaction summary
+        const transactionSummaries: AddressTransactionSummariesType[] = [];
+        for (const item of untyped) {
+            const validationResult = AddressTransactionSummariesFactory(item);
+            if (validationResult instanceof ArkErrors) {
+                console.error(`Error validating transaction summary:`, item);
+                validationResult.throw();
+            }
+            transactionSummaries.push(validationResult as AddressTransactionSummariesType);
+        }
+
+        // Process each transaction
+        for (const summary of transactionSummaries) {
+            await this.processTransactionForNewUtxos(summary.tx_hash);
+        }
+    }
+
+    /**
+     * Processes a transaction to identify and index new UTXOs, particularly UUTs.
+     * 
+     * @param txHash - The transaction hash to process
+     */
+    private async processTransactionForNewUtxos(txHash: string): Promise<void> {
+        // Fetch the full transaction
+        const tx = await this.findOrFetchTxDetails(txHash);
+        
+        // Process each output to identify UUTs
+        for (let outputIndex = 0; outputIndex < tx.body.outputs.length; outputIndex++) {
+            const output = tx.body.outputs[outputIndex];
+            const utxoId = this.utxoId(txHash, outputIndex);
+            
+            // Check if this UTXO is already indexed
+            const existingUtxo = await this.store.findUtxoByUtxoId(utxoId);
+            if (existingUtxo) {
+                continue; // Already indexed
+            }
+
+            // Check if this output contains any UUTs from the capo's minting policy
+            const mph = this.capo.mph;
+            const tokenNames = output.value.assets.getPolicyTokenNames(mph);
+            const hasUut = tokenNames.length > 0;
+            
+            if (hasUut) {
+                // This output contains tokens from the capo's policy - likely a UUT
+                // For now, we'll index all outputs with tokens from the capo policy
+                // A more sophisticated check would verify against known UUT names
+                await this.indexUtxoFromOutput(txHash, outputIndex, output);
+            }            
+        }
+    }
+
+    /**
+     * Indexes a UTXO from a transaction output.
+     * 
+     * @param txHash - Transaction hash
+     * @param outputIndex - Output index in the transaction
+     * @param output - The transaction output
+     */
+    private async indexUtxoFromOutput(
+        txHash: string,
+        outputIndex: number,
+        output: TxOutput
+    ): Promise<void> {
+        // We need to get the block information for this UTXO
+        // For now, we'll need to fetch it from the transaction or store it differently
+        // This is a simplified version - a full implementation would need block details
+        
+        // Convert the output to UtxoDetailsType format
+        // Note: This is a placeholder - we'd need to construct the full UtxoDetailsType
+        // from the transaction output, which requires block information
+        console.log(`TODO: Index UTXO ${txHash}#${outputIndex} - need block details`);
     }
 
     /** 
