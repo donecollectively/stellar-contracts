@@ -8,12 +8,11 @@
  * names and related script addresses are found in the charter data.
  * */
 
-import { type, scope, ArkErrors } from "arktype";
-import { jsonSchemaToType } from "@ark/json-schema";
-import { decodeTx, type Tx } from "@helios-lang/ledger";
+import {ArkErrors } from "arktype";
+import { decodeTx, makeAssetClass, type Tx } from "@helios-lang/ledger";
 import { DexieUtxoStore } from "./DexieUtxoStore";
 import type { UtxoStoreGeneric } from "./UtxoStoreGeneric";
-import type { dexieBlockDetails } from "./dexieRecords/BlockDetails";
+
 import {
     BlockDetailsFactory,
     type BlockDetailsType,
@@ -22,7 +21,8 @@ import {
     UtxoDetailsFactory,
     type UtxoDetailsType,
 } from "./blockfrostTypes/UtxoDetails";
-
+import type { Capo } from "../../Capo";
+import { makeBlockfrostV0Client, type CardanoClient } from "@helios-lang/tx-utils";
 // uses a specific base page size for fetching capo utxos
 const capoUpdaterPageSize = 20;
 
@@ -34,14 +34,21 @@ export class CachedUtxoIndex {
     lastBlockHeight: number;
     store: UtxoStoreGeneric;
 
+
+    network: CardanoClient;
+
     constructor({
+        capo,
         blockfrostKey,
         storeIn: strategy = "dexie",
     }: {
+        capo: Capo<any,any>;
         blockfrostKey: string;
         storeIn?: "dexie" | "memory" | "dred";
     }) {
+        this.capo = capo;
         this.blockfrostKey = blockfrostKey;
+        this.network = capo.setup.network;
         if (blockfrostKey.startsWith("mainnet")) {
             this.blockfrostBaseUrl = "https://cardano-mainnet.blockfrost.io";
         } else if (blockfrostKey.startsWith("preprod")) {
@@ -62,6 +69,107 @@ export class CachedUtxoIndex {
         } else {
             throw new Error(`Invalid strategy: ${strategy}`);
         }
+        this.syncNow()
+    }
+
+    async syncNow() {
+        // Fetch all UTXOs from the capo address using the Capo's findCapoUtxos() method
+        const capoUtxos = await this.capo.findCapoUtxos();
+
+        // Extract unique transaction IDs from the UTXOs and fetch/store transaction details
+        // TxInput.id is in format "txHash#index", so we extract the tx hash part
+        const uniqueTxIds = new Set(
+            capoUtxos.map(utxo => {
+                const id = utxo.id.toString();
+                return id.split('#')[0]; // Extract tx hash from "txHash#index" format
+            })
+        );
+        for (const txId of uniqueTxIds) {
+            const t = await this.findOrFetchTxDetails(txId);
+
+        }
+
+        // Find the charter UTXO
+        const charterUtxo = await this.capo.mustFindCharterUtxo(capoUtxos);
+
+        // Get charter data to resolve delegates
+        const charterData = await this.capo.findCharterData(charterUtxo, {
+            optional: false,
+            capoUtxos: capoUtxos
+        });
+
+        // Resolve and index delegate UUTs
+        await this.indexDelegateUuts(charterData);
+    }
+
+    /** 
+     * Indexes delegate UUTs (Unique Unit Tokens) mentioned in the charter.
+     * Fetches the most recent UTXO for each delegate UUT asset class.
+     */
+    private async indexDelegateUuts(charterData: any): Promise<void> {
+        const mph = this.capo.mph;
+
+        // Get mint delegate UUT from charter link
+        try {
+            const mintDelegateLink = charterData.mintDelegateLink;
+            if (mintDelegateLink?.uutName) {
+                const uutAssetClass = makeAssetClass(mph, mintDelegateLink.uutName);
+                await this.fetchAndIndexUut(uutAssetClass, mintDelegateLink);
+            }
+        } catch (e) {
+            // Delegate may not exist yet
+            console.warn("Could not resolve mint delegate UUT:", e);
+        }
+
+        // Get spend delegate UUT from charter link
+        try {
+            const spendDelegateLink = charterData.spendDelegateLink;
+            if (spendDelegateLink?.uutName) {
+                const uutAssetClass = makeAssetClass(mph, spendDelegateLink.uutName);
+                await this.fetchAndIndexUut(uutAssetClass, spendDelegateLink);
+            }
+        } catch (e) {
+            // Delegate may not exist yet
+            console.warn("Could not resolve spend delegate UUT:", e);
+        }
+
+        // Get dgData controller UUTs from manifest
+        for (const [entryName, entryInfo] of charterData.manifest.entries()) {
+            if (entryInfo.entryType.DgDataPolicy) {
+                try {
+                    const controller = await this.capo.getDgDataController(entryName, {
+                        charterData,
+                        optional: true
+                    });
+                    // The controller's UUT name would be in the manifest entry
+                    // For now, we'll skip this as it requires more investigation
+                    // TODO: Extract UUT name from manifest entry for dgData controllers
+                } catch (e) {
+                    // Controller may not exist yet
+                    console.warn(`Could not resolve dgData controller ${entryName}:`, e);
+                }
+            }
+        }
+    }
+
+    /**
+     * Fetches the most recent UTXO for a given UUT asset class and stores it.
+     * Uses Blockfrost API: GET /addresses/{address}/utxos/{asset} with count=1 and order=desc
+     */
+    private async fetchAndIndexUut(assetClass: any, delegateLink?: any): Promise<void> {
+        // Convert asset class to Blockfrost format (policyId + assetName)
+        const policyId = assetClass.mph.hex;
+        const assetName = assetClass.tokenName.hex;
+        const asset = `${policyId}${assetName}`;
+
+        // For now, we need the delegate address to fetch the UUT
+        // The delegate address can be derived from delegateValidatorHash if available
+        // This is a placeholder - full implementation would:
+        // 1. Get delegate address from delegateLink.delegateValidatorHash
+        // 2. Use Blockfrost API: addresses/{address}/utxos/{asset}?count=1&order=desc
+        // 3. Store the resulting UTXO in the index
+        
+        console.log(`TODO: Fetch UUT for asset ${asset} - need delegate address from charter`);
     }
 
     async fetchFromBlockfrost<T>(url: string): Promise<T> {
