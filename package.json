@@ -58,6 +58,7 @@
     "author": "Done Collectively LCA",
     "dependencies": {
         "@ark/json-schema": "^0.0.4",
+        "@arktype/schema": "^0.54.0",
         "arktype": "^2.1.26",
         "clsx": "2.1.1",
         "dexie": "^4.2.1",
