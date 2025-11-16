@@ -1,10 +1,10 @@
-import type {dexieBlockDetails} from "./dexieRecords/BlockDetails.js";
-import type {UtxoDetails} from "./dexieRecords/UtxoDetails.js";
+import type { BlockDetailsType } from "./blockfrostTypes/BlockDetails.js";
+import type { UtxoDetailsType } from "./blockfrostTypes/UtxoDetails.js";
 
 export interface UtxoStoreGeneric {
-    findBlockByBlockId(blockId: string): Promise<dexieBlockDetails | undefined>;
-    saveBlock(block: dexieBlockDetails): Promise<void>;
-    findUtxoByUtxoId(utxoId: string): Promise<UtxoDetails | undefined>;
-    saveUtxo(utxo: UtxoDetails): Promise<void>;
+    findBlockByBlockId(blockId: string): Promise<BlockDetailsType | undefined>;
+    saveBlock(block: BlockDetailsType): Promise<void>;
+    findUtxoByUtxoId(utxoId: string): Promise<UtxoDetailsType | undefined>;
+    saveUtxo(utxo: UtxoDetailsType): Promise<void>;
 }
 
