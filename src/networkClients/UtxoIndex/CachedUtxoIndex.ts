@@ -216,14 +216,15 @@ export class CachedUtxoIndex {
 
         // Process each transaction
         for (const summary of transactionSummaries) {
-            await this.processTransactionForNewUtxos(summary.tx_hash);
+            await this.processTransactionForNewUtxos(summary.tx_hash, summary);
         }
     }
 
     /**
      * Processes a transaction to identify and index new UTXOs, particularly UUTs.
-     * 
+     *
      * @param txHash - The transaction hash to process
+     * @param summary - The transaction summary containing block information
      */
     private async processTransactionForNewUtxos(
         txHash: string,
@@ -231,7 +232,7 @@ export class CachedUtxoIndex {
     ): Promise<void> {
         // Fetch the full transaction
         const tx = await this.findOrFetchTxDetails(txHash);
-        
+
         // Process each output to identify UUTs
         for (
             let outputIndex = 0;
@@ -240,7 +241,7 @@ export class CachedUtxoIndex {
         ) {
             const output = tx.body.outputs[outputIndex];
             const utxoId = this.utxoId(txHash, outputIndex);
-            
+
             // Check if this UTXO is already indexed
             const existingUtxo = await this.store.findUtxoByUtxoId(utxoId);
             if (existingUtxo) {
@@ -251,22 +252,28 @@ export class CachedUtxoIndex {
             const mph = this.capo.mph;
             const tokenNames = output.value.assets.getPolicyTokenNames(mph);
             const hasUut = tokenNames.length > 0;
-            
+
             if (hasUut) {
                 // This output contains tokens from the capo's policy - likely a UUT
                 // For now, we'll index all outputs with tokens from the capo policy
                 // A more sophisticated check would verify against known UUT names
-                await this.indexUtxoFromOutput(txHash, outputIndex, output);
-            }            
+                await this.indexUtxoFromOutput(
+                    txHash,
+                    outputIndex,
+                    output,
+                    summary,
+                );
+            }
         }
     }
 
     /**
      * Indexes a UTXO from a transaction output.
-     * 
+     *
      * @param txHash - Transaction hash
      * @param outputIndex - Output index in the transaction
      * @param output - The transaction output
+     * @param summary - Transaction summary containing block information
      */
     private async indexUtxoFromOutput(
         txHash: string,
