@@ -7,7 +7,7 @@
         "emitDeclarationOnly": true,
         "declarationMap": true,
         "sourceMap": true,
-        "allowJs": true,
+        // "allowJs": true, // Disabled - causes TypeScript to emit .d.mts for .mjs files in dist/
         "allowSyntheticDefaultImports": true,
         "allowArbitraryExtensions": true,
         "skipLibCheck": true,
@@ -22,7 +22,7 @@
 
         "moduleResolution": "bundler",
         "customConditions": ["dev"],
-        "baseUrl": "dist/",
+        "baseUrl": ".",
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
         // "isolatedModules": false,
@@ -57,6 +57,7 @@
     ],
     "exclude": [
         "node_modules",
-        "**/node_modules/"
+        "**/node_modules/",
+        "dist/**/*"
     ]
 }
