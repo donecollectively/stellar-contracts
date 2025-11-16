@@ -15,13 +15,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         this.version(1).stores({
             blocks: "hash, height",
             utxos: "utxoId, blockId, blockHeight",
+            txs: "txid",
         });
         this.blocks.mapToClass(dexieBlockDetails);
         this.utxos.mapToClass(dexieUtxoDetails);
     }
 
     async findBlockByBlockId(blockId: string): Promise<dexieBlockDetails | undefined> {
-        return await this.blocks.where("blockId").equals(blockId).first();
+        return await this.blocks.where("hash").equals(blockId).first();
     }
 
     async saveBlock(block: dexieBlockDetails): Promise<void> {
@@ -37,7 +38,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     async findTxById(txId: string): Promise<txCBOR | undefined> {
-        return await this.txs.where("txId").equals(txId).first();
+        return await this.txs.where("txid").equals(txId).first();
     }
 
     async saveTx(tx: txCBOR): Promise<void> {

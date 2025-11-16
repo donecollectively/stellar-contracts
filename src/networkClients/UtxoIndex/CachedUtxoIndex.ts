@@ -18,11 +18,15 @@ import {
     BlockDetailsFactory,
     type BlockDetailsType,
 } from "./blockfrostTypes/BlockDetails";
+import {
+    UtxoDetailsFactory,
+    type UtxoDetailsType,
+} from "./blockfrostTypes/UtxoDetails";
 
 // uses a specific base page size for fetching capo utxos
 const capoUpdaterPageSize = 20;
 
-class CachedUtxoIndex {
+export class CachedUtxoIndex {
     blockfrostKey: string;
     blockfrostBaseUrl: string = "https://cardano-mainnet.blockfrost.io";
     // remembers the last block-id and height seen in any capo utxo
@@ -124,10 +128,95 @@ class CachedUtxoIndex {
 
         return decodeTx(cborHex);
     }
+
+    /** 
+     * Constructs a UTXO ID from tx_hash and output_index 
+     */
+    private utxoId(txHash: string, outputIndex: number): string {
+        return `${txHash}#${outputIndex}`;
+    }
+
+    /** Fetches UTXOs from an address with pagination support.
+     *
+     * Uses a growth factor of ~1.6 for page sizes (20, 32, 51, 81, 100, ...)
+     * Stops when a page returns no new UTXOs or runs out of UTXOs.
+     * Updates lastBlockId and lastBlockHeight based on fetched UTXOs.
+     *
+     * @param address - The Cardano address to fetch UTXOs from
+     * @returns Array of fetched UTXO details
+     */
+    async fetchUtxosFromAddress(address: string): Promise<UtxoDetailsType[]> {
+        const fetchedUtxos: UtxoDetailsType[] = [];
+        const seenUtxoIds = new Set<string>();
+        const seenBlockIds = new Set<string>();
+        let page = 1;
+        let pageSize = capoUpdaterPageSize;
+        const maxPageSize = 100;
+        const growthFactor = 1.6;
+
+        while (true) {
+            const url = `addresses/${address}/utxos?page=${page}&count=${pageSize}&order=desc`;
+            const untyped = await this.fetchFromBlockfrost<unknown[]>(url);
+
+            if (!Array.isArray(untyped) || untyped.length === 0) {
+                // No more UTXOs to fetch
+                break;
+            }
+
+            // Validate and process each UTXO
+            let newUtxosInPage = 0;
+            for (const item of untyped) {
+                const validationResult = UtxoDetailsFactory(item);
+                if (validationResult instanceof ArkErrors) {
+                    console.error(`Error while fetching utxos from address ${address}:`);
+                    validationResult.throw();
+                }
+                const typed = validationResult as UtxoDetailsType;
+
+                const utxoId = this.utxoId(typed.tx_hash, typed.output_index);
+                if (!seenUtxoIds.has(utxoId)) {
+                    seenUtxoIds.add(utxoId);
+                    fetchedUtxos.push(typed);
+                    newUtxosInPage++;
+
+                    // Store the UTXO (with utxoId added for Dexie)
+                    const utxoWithId = {
+                        ...typed,
+                        utxoId,
+                    }
+                    await this.store.saveUtxo(utxoWithId);
+
+                    // Update lastBlockId and lastBlockHeight (only fetch height once per block)
+                    if (typed.block && !seenBlockIds.has(typed.block)) {
+                        seenBlockIds.add(typed.block);
+                        const blockHeight = await this.findOrFetchBlockHeight(
+                            typed.block
+                        );
+                        if (blockHeight > this.lastBlockHeight) {
+                            this.lastBlockHeight = blockHeight;
+                            this.lastBlockId = typed.block;
+                        }
+                    }
+                }
+            }
+
+            // If no new UTXOs were found in this page, we're done
+            if (newUtxosInPage === 0) {
+                break;
+            }
+
+            // Prepare for next page with growth factor
+            page++;
+            pageSize = Math.min(
+                Math.floor(pageSize * growthFactor),
+                maxPageSize
+            );
+        }
+
+        return fetchedUtxos;
+    }
 }
 
-// fetches additional pages with a ~1.6 growth factor (max=100) until it finds a page with no new utxos
-// or runs out of utxos at the address.
 
 // When a new utxo of any specific data-type is found at the capo address,
 // the index is updated to include the new utxo.
