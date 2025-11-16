@@ -2,8 +2,8 @@
     "$schema": "http://json.schemastore.org/tsconfig",
     "compilerOptions": {
         "strict": true,
-        "noEmit": false,
-        "allowJs": true,
+        "noEmit": true,
+        // "allowJs": true,
         // "declaration": true,
         // "emitDeclarationOnly": false,
         // "declarationMap": true,
@@ -16,7 +16,11 @@
         "lib": ["esnext", "dom"],
         "module": "preserve",
         "esModuleInterop": true,        
-        "types": ["node", "vitest/globals"],
+        "types": [
+            // "@arktype/schema",
+            "node"
+            // "vitest/globals"
+        ],
         "verbatimModuleSyntax": true,
 
         "moduleResolution": "bundler",
@@ -29,10 +33,9 @@
         "experimentalDecorators": true,
         // "emitDecoratorMetadata": false,
 
-        "outDir": "dist/types",
         // "outFile": none!
         "importHelpers": true,
-        "rootDir": ".",
+        // "rootDir": ".", // Not needed when outDir is not set
 
         // "exactOptionalPropertyTypes": true,        
         "noImplicitAny": false,
