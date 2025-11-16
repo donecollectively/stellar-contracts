@@ -144,6 +144,9 @@ export class CachedUtxoIndex {
 
         // Resolve and index delegate UUTs
         await this.indexDelegateUuts(charterData);
+
+        // Fetch and store the latest block details
+        await this.fetchAndStoreLatestBlock();
     }
 
     /** 
@@ -255,6 +258,32 @@ export class CachedUtxoIndex {
         if (typed instanceof ArkErrors) {
             return typed.throw();
         }
+        return typed;
+    }
+
+    /** 
+     * Fetches and stores the latest block details from Blockfrost.
+     * 
+     * Uses https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/latest
+     * to get the latest block and store it in the index.
+     * Updates lastBlockId and lastBlockHeight with the latest block information.
+     */
+    async fetchAndStoreLatestBlock(): Promise<BlockDetailsType> {
+        const untyped = await this.fetchFromBlockfrost(`blocks/latest`);
+        const typed = BlockDetailsFactory(untyped);
+        if (typed instanceof ArkErrors) {
+            return typed.throw();
+        }
+        
+        // Store the latest block in the index
+        await this.store.saveBlock(typed);
+        
+        // Update lastBlockId and lastBlockHeight
+        if (typed.height > this.lastBlockHeight) {
+            this.lastBlockHeight = typed.height;
+            this.lastBlockId = typed.hash;
+        }
+        
         return typed;
     }
 
