@@ -8,9 +8,18 @@
  * names and related script addresses are found in the charter data.
  * */
 
-import {ArkErrors } from "arktype";
-import { decodeTx, makeAssetClass, type Tx, type TxOutput } from "@helios-lang/ledger";
-import { makeBlockfrostV0Client, type CardanoClient } from "@helios-lang/tx-utils";
+import { ArkErrors } from "arktype";
+import {
+    decodeTx,
+    makeAssetClass,
+    type Tx,
+    type TxOutput,
+} from "@helios-lang/ledger";
+import { bytesToHex } from "@helios-lang/codec-utils";
+import {
+    makeBlockfrostV0Client,
+    type CardanoClient,
+} from "@helios-lang/tx-utils";
 import type { Capo } from "../../Capo";
 
 import { DexieUtxoStore } from "./DexieUtxoStore.js";
@@ -38,16 +47,16 @@ export class CachedUtxoIndex {
     lastBlockId: string;
     lastBlockHeight: number;
     store: UtxoStoreGeneric;
-    capo: Capo<any,any>;
+    capo: Capo<any, any>;
 
-    // Uses the Capo to locate the UTXO's, via its setup.network.  
-    // Also uses that network's getTx(TxId) for transaction-fetching, 
+    // Uses the Capo to locate the UTXO's, via its setup.network.
+    // Also uses that network's getTx(TxId) for transaction-fetching,
     // getUtxo(TxOutputId) for UTXO-fetching, and getUtxosWithAssetClass(...) for fetching UUTs.
     // use the Capo's mustFindCharterUtxo(...) to locate the charter UTXO and
-    // to access its datum.  
-    
+    // to access its datum.
+
     // Given the full list of capo UTXO's, use the capo's methods for resolving the delegates:
-    // - getDgDataController(...) to resolve the dgData controllers 
+    // - getDgDataController(...) to resolve the dgData controllers
     // - getMintDelegate(...) to resolve the mint delegate
     // - getSpendDelegate(...) to resolve the spend delegate
 
@@ -55,9 +64,9 @@ export class CachedUtxoIndex {
     // delegate UUTs are updated, that the current entry for each UUT is updated.
 
     // the store should have a table for singleton pointers to the charter UTXO, the mint delegate UTXO, the spend delegate UTXO, and the dgData controllers.
-    
+
     // Once the capo utxo's are found,the indexer should use
-    //  https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/latest 
+    //  https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/latest
     // to get the the lastest block details, and store it in the index.
 
     // Once the full set of capo UTXO's and delegate-UUT utxos are indexed,
@@ -74,15 +83,14 @@ export class CachedUtxoIndex {
     // given this set of UUTs, it should ensure that the corresponding utxo is not already indexed,
     // before it is indexed; this ensures that only the most recent utxo for each UUT is recongized
     // as the most current utxo for that UUT.
-    
+
     // the data store should additionally have a UutChanges table for tx-outputs, indexed by the UUT id.
     // this table should store the tx-output id, the input utxo id, and the output datum.  It is
     // used to track data change-history for each UUT.
 
     // if needed, it can use the latest block details to fetch later blocks using
     // https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/{hash_or_number}/next
-    // 
-
+    //
 
     network: CardanoClient;
 
@@ -91,7 +99,7 @@ export class CachedUtxoIndex {
         blockfrostKey,
         storeIn: strategy = "dexie",
     }: {
-        capo: Capo<any,any>;
+        capo: Capo<any, any>;
         blockfrostKey: string;
         storeIn?: "dexie" | "memory" | "dred";
     }) {
@@ -118,7 +126,7 @@ export class CachedUtxoIndex {
         } else {
             throw new Error(`Invalid strategy: ${strategy}`);
         }
-        this.syncNow()
+        this.syncNow();
     }
 
     async syncNow() {
@@ -128,14 +136,13 @@ export class CachedUtxoIndex {
         // Extract unique transaction IDs from the UTXOs and fetch/store transaction details
         // TxInput.id is in format "txHash#index", so we extract the tx hash part
         const uniqueTxIds = new Set(
-            capoUtxos.map(utxo => {
+            capoUtxos.map((utxo) => {
                 const id = utxo.id.toString();
-                return id.split('#')[0]; // Extract tx hash from "txHash#index" format
+                return id.split("#")[0]; // Extract tx hash from "txHash#index" format
             })
         );
         for (const txId of uniqueTxIds) {
             const t = await this.findOrFetchTxDetails(txId);
-
         }
 
         // Find the charter UTXO
@@ -144,7 +151,7 @@ export class CachedUtxoIndex {
         // Get charter data to resolve delegates
         const charterData = await this.capo.findCharterData(charterUtxo, {
             optional: false,
-            capoUtxos: capoUtxos
+            capoUtxos: capoUtxos,
         });
 
         // Resolve and index delegate UUTs
@@ -156,32 +163,36 @@ export class CachedUtxoIndex {
 
     /**
      * Monitors the capo address for new transactions and indexes new UTXOs.
-     * 
+     *
      * Uses https://docs.blockfrost.io/#tag/cardano--addresses/get/addresses/{address}/transactions
      * with order=desc, count=100, and the `from` parameter to fetch transactions
      * from a specific block height onwards.
-     * 
+     *
      * For each transaction, it:
      * 1. Fetches the full transaction via network.getTx()
      * 2. Extracts UTXOs from transaction outputs
      * 3. Identifies UUTs in those outputs
      * 4. Indexes new UTXOs, ensuring only the most recent UTXO for each UUT is kept
-     * 
-     * @param fromBlockHeight - The block height from which (inclusive) to start searching. 
+     *
+     * @param fromBlockHeight - The block height from which (inclusive) to start searching.
      *                          If not provided, uses lastBlockHeight + 1
      */
     async monitorForNewTransactions(fromBlockHeight?: number): Promise<void> {
-        const startHeight = fromBlockHeight ?? (this.lastBlockHeight > 0 ? this.lastBlockHeight + 1 : 0);
+        const startHeight =
+            fromBlockHeight ??
+            (this.lastBlockHeight > 0 ? this.lastBlockHeight + 1 : 0);
 
         if (startHeight == 0) {
-            throw new Error("Cannot start monitoring for new transactions at block height 0");
+            throw new Error(
+                "Cannot start monitoring for new transactions at block height 0"
+            );
         }
         const capoAddress = this.capo.address.toString();
-        
+
         // Fetch transaction summaries from Blockfrost
         const url = `addresses/${capoAddress}/transactions?order=desc&count=100&from=${startHeight}`;
         const untyped = await this.fetchFromBlockfrost<unknown[]>(url);
-        
+
         if (!Array.isArray(untyped) || untyped.length === 0) {
             // No new transactions
             return;
@@ -198,7 +209,9 @@ export class CachedUtxoIndex {
                 console.error(`Error validating transaction summary:`, item);
                 validationResult.throw();
             }
-            transactionSummaries.push(validationResult as AddressTransactionSummariesType);
+            transactionSummaries.push(
+                validationResult as AddressTransactionSummariesType
+            );
         }
 
         // Process each transaction
@@ -212,12 +225,19 @@ export class CachedUtxoIndex {
      * 
      * @param txHash - The transaction hash to process
      */
-    private async processTransactionForNewUtxos(txHash: string): Promise<void> {
+    private async processTransactionForNewUtxos(
+        txHash: string,
+        summary: AddressTransactionSummariesType
+    ): Promise<void> {
         // Fetch the full transaction
         const tx = await this.findOrFetchTxDetails(txHash);
         
         // Process each output to identify UUTs
-        for (let outputIndex = 0; outputIndex < tx.body.outputs.length; outputIndex++) {
+        for (
+            let outputIndex = 0;
+            outputIndex < tx.body.outputs.length;
+            outputIndex++
+        ) {
             const output = tx.body.outputs[outputIndex];
             const utxoId = this.utxoId(txHash, outputIndex);
             
@@ -251,19 +271,126 @@ export class CachedUtxoIndex {
     private async indexUtxoFromOutput(
         txHash: string,
         outputIndex: number,
-        output: TxOutput
+        output: TxOutput,
+        summary: AddressTransactionSummariesType
     ): Promise<void> {
-        // We need to get the block information for this UTXO
-        // For now, we'll need to fetch it from the transaction or store it differently
-        // This is a simplified version - a full implementation would need block details
-        
-        // Convert the output to UtxoDetailsType format
-        // Note: This is a placeholder - we'd need to construct the full UtxoDetailsType
-        // from the transaction output, which requires block information
-        console.log(`TODO: Index UTXO ${txHash}#${outputIndex} - need block details`);
+        // Get block hash from block height
+        // First try to find block by height, or fetch block details
+        const blockHash = await this.getBlockHashFromHeight(
+            summary.block_height
+        );
+
+        // Convert Value to Blockfrost amount format
+        const amount = this.convertValueToBlockfrostAmount(output.value);
+
+        // Extract datum information
+        let dataHash: string | null = null;
+        let inlineDatum: string | null = null;
+        if (output.datum?.kind === "InlineTxOutputDatum") {
+            const cborBytes = output.datum.data.toCbor();
+            inlineDatum = bytesToHex(cborBytes);
+            // Calculate data hash if needed (Blockfrost format)
+            dataHash = null; // Blockfrost may calculate this differently
+        } else if (output.datum?.kind === "HashedTxOutputDatum") {
+            dataHash = output.datum.hash.toHex();
+        }
+
+        // Extract reference script hash
+        let referenceScriptHash: string | null = null;
+        if (output.refScript) {
+            // Calculate script hash - this would need the actual script hash calculation
+            // For now, we'll leave it as null and can enhance later
+            referenceScriptHash = null;
+        }
+
+        // Construct UtxoDetailsType
+        // Note: amount.quantity is typed as number by the factory (parsed from string),
+        // but we provide strings which get validated and parsed by the factory
+        const utxoDetails = {
+            address: output.address.toString(),
+            tx_hash: txHash,
+            tx_index: summary.tx_index,
+            output_index: outputIndex,
+            amount: amount as any, // Factory validates and parses string quantities to numbers
+            block: blockHash,
+            data_hash: dataHash,
+            inline_datum: inlineDatum,
+            reference_script_hash: referenceScriptHash,
+        } as UtxoDetailsType;
+
+        // Add utxoId for Dexie
+        const utxoWithId = {
+            ...utxoDetails,
+            utxoId: this.utxoId(txHash, outputIndex),
+        };
+
+        // Store the UTXO
+        await this.store.saveUtxo(utxoWithId);
     }
 
-    /** 
+    /**
+     * Gets block hash from block height by fetching block details.
+     *
+     * @param blockHeight - The block height
+     * @returns The block hash
+     */
+    private async getBlockHashFromHeight(blockHeight: number): Promise<string> {
+        // Fetch block details by height
+        const blockDetails = await this.fetchFromBlockfrost<BlockDetailsType>(
+            `blocks/${blockHeight}`
+        );
+        const typed = BlockDetailsFactory(blockDetails);
+        if (typed instanceof ArkErrors) {
+            return typed.throw();
+        }
+
+        // Store the block for future reference
+        await this.store.saveBlock(typed);
+
+        return typed.hash;
+    }
+
+    /**
+     * Converts a Value to Blockfrost amount format.
+     *
+     * @param value - The Value to convert
+     * @returns Array of {unit: string, quantity: string} objects
+     */
+    private convertValueToBlockfrostAmount(
+        value: any
+    ): Array<{ unit: string; quantity: string | number }> {
+        const amount: Array<{ unit: string; quantity: string | number }> = [];
+
+        // Add lovelace
+        if (value.lovelace > 0n) {
+            amount.push({
+                unit: "lovelace",
+                quantity: value.lovelace.toString(),
+            });
+        }
+
+        // Add assets
+        if (value.assets && value.assets.assets) {
+            for (const [policyId, tokenEntries] of value.assets.assets) {
+                const policyIdHex = policyId.toHex();
+
+                for (const [tokenNameBytes, quantity] of tokenEntries) {
+                    const tokenNameHex = Array.isArray(tokenNameBytes)
+                        ? bytesToHex(tokenNameBytes)
+                        : bytesToHex([tokenNameBytes]);
+
+                    amount.push({
+                        unit: `${policyIdHex}${tokenNameHex}`,
+                        quantity: quantity.toString(),
+                    });
+                }
+            }
+        }
+
+        return amount;
+    }
+
+    /**
      * Indexes delegate UUTs (Unique Unit Tokens) mentioned in the charter.
      * Fetches the most recent UTXO for each delegate UUT asset class.
      */
@@ -274,7 +401,10 @@ export class CachedUtxoIndex {
         try {
             const mintDelegateLink = charterData.mintDelegateLink;
             if (mintDelegateLink?.uutName) {
-                const uutAssetClass = makeAssetClass(mph, mintDelegateLink.uutName);
+                const uutAssetClass = makeAssetClass(
+                    mph,
+                    mintDelegateLink.uutName
+                );
                 await this.fetchAndIndexUut(uutAssetClass, mintDelegateLink);
             }
         } catch (e) {
@@ -286,7 +416,10 @@ export class CachedUtxoIndex {
         try {
             const spendDelegateLink = charterData.spendDelegateLink;
             if (spendDelegateLink?.uutName) {
-                const uutAssetClass = makeAssetClass(mph, spendDelegateLink.uutName);
+                const uutAssetClass = makeAssetClass(
+                    mph,
+                    spendDelegateLink.uutName
+                );
                 await this.fetchAndIndexUut(uutAssetClass, spendDelegateLink);
             }
         } catch (e) {
@@ -298,16 +431,22 @@ export class CachedUtxoIndex {
         for (const [entryName, entryInfo] of charterData.manifest.entries()) {
             if (entryInfo.entryType.DgDataPolicy) {
                 try {
-                    const controller = await this.capo.getDgDataController(entryName, {
-                        charterData,
-                        optional: true
-                    });
+                    const controller = await this.capo.getDgDataController(
+                        entryName,
+                        {
+                            charterData,
+                            optional: true,
+                        }
+                    );
                     // The controller's UUT name would be in the manifest entry
                     // For now, we'll skip this as it requires more investigation
                     // TODO: Extract UUT name from manifest entry for dgData controllers
                 } catch (e) {
                     // Controller may not exist yet
-                    console.warn(`Could not resolve dgData controller ${entryName}:`, e);
+                    console.warn(
+                        `Could not resolve dgData controller ${entryName}:`,
+                        e
+                    );
                 }
             }
         }
@@ -317,7 +456,10 @@ export class CachedUtxoIndex {
      * Fetches the most recent UTXO for a given UUT asset class and stores it.
      * Uses Blockfrost API: GET /addresses/{address}/utxos/{asset} with count=1 and order=desc
      */
-    private async fetchAndIndexUut(assetClass: any, delegateLink?: any): Promise<void> {
+    private async fetchAndIndexUut(
+        assetClass: any,
+        delegateLink?: any
+    ): Promise<void> {
         // Convert asset class to Blockfrost format (policyId + assetName)
         const policyId = assetClass.mph.hex;
         const assetName = assetClass.tokenName.hex;
@@ -329,8 +471,10 @@ export class CachedUtxoIndex {
         // 1. Get delegate address from delegateLink.delegateValidatorHash
         // 2. Use Blockfrost API: addresses/{address}/utxos/{asset}?count=1&order=desc
         // 3. Store the resulting UTXO in the index
-        
-        console.log(`TODO: Fetch UUT for asset ${asset} - need delegate address from charter`);
+
+        console.log(
+            `TODO: Fetch UUT for asset ${asset} - need delegate address from charter`
+        );
     }
 
     async fetchFromBlockfrost<T>(url: string): Promise<T> {
@@ -375,9 +519,9 @@ export class CachedUtxoIndex {
         return typed;
     }
 
-    /** 
+    /**
      * Fetches and stores the latest block details from Blockfrost.
-     * 
+     *
      * Uses https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/latest
      * to get the latest block and store it in the index.
      * Updates lastBlockId and lastBlockHeight with the latest block information.
@@ -388,16 +532,16 @@ export class CachedUtxoIndex {
         if (typed instanceof ArkErrors) {
             return typed.throw();
         }
-        
+
         // Store the latest block in the index
         await this.store.saveBlock(typed);
-        
+
         // Update lastBlockId and lastBlockHeight
         if (typed.height > this.lastBlockHeight) {
             this.lastBlockHeight = typed.height;
             this.lastBlockId = typed.hash;
         }
-        
+
         return typed;
     }
 
@@ -424,8 +568,8 @@ export class CachedUtxoIndex {
         return decodeTx(cborHex);
     }
 
-    /** 
-     * Constructs a UTXO ID from tx_hash and output_index 
+    /**
+     * Constructs a UTXO ID from tx_hash and output_index
      */
     private utxoId(txHash: string, outputIndex: number): string {
         return `${txHash}#${outputIndex}`;
@@ -463,7 +607,9 @@ export class CachedUtxoIndex {
             for (const item of untyped) {
                 const validationResult = UtxoDetailsFactory(item);
                 if (validationResult instanceof ArkErrors) {
-                    console.error(`Error while fetching utxos from address ${address}:`);
+                    console.error(
+                        `Error while fetching utxos from address ${address}:`
+                    );
                     validationResult.throw();
                 }
                 const typed = validationResult as UtxoDetailsType;
@@ -478,7 +624,7 @@ export class CachedUtxoIndex {
                     const utxoWithId = {
                         ...typed,
                         utxoId,
-                    }
+                    };
                     await this.store.saveUtxo(utxoWithId);
 
                     // Update lastBlockId and lastBlockHeight (only fetch height once per block)
@@ -511,7 +657,6 @@ export class CachedUtxoIndex {
         return fetchedUtxos;
     }
 }
-
 
 // When a new utxo of any specific data-type is found at the capo address,
 // the index is updated to include the new utxo.
