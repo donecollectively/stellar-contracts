@@ -33,6 +33,50 @@ export class CachedUtxoIndex {
     lastBlockId: string;
     lastBlockHeight: number;
     store: UtxoStoreGeneric;
+    capo: Capo<any,any>;
+
+    // Uses the Capo to locate the UTXO's, via its setup.network.  
+    // Also uses that network's getTx(TxId) for transaction-fetching, 
+    // getUtxo(TxOutputId) for UTXO-fetching, and getUtxosWithAssetClass(...) for fetching UUTs.
+    // use the Capo's mustFindCharterUtxo(...) to locate the charter UTXO and
+    // to access its datum.  
+    
+    // Given the full list of capo UTXO's, use the capo's methods for resolving the delegates:
+    // - getDgDataController(...) to resolve the dgData controllers 
+    // - getMintDelegate(...) to resolve the mint delegate
+    // - getSpendDelegate(...) to resolve the spend delegate
+
+    // ensure that when new utxos are found, the underlying transaction is fetched and if the
+    // delegate UUTs are updated, that the current entry for each UUT is updated.
+
+    // the store should have a table for singleton pointers to the charter UTXO, the mint delegate UTXO, the spend delegate UTXO, and the dgData controllers.
+    
+    // Once the capo utxo's are found,the indexer should use
+    //  https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/latest 
+    // to get the the lastest block details, and store it in the index.
+
+    // Once the full set of capo UTXO's and delegate-UUT utxos are indexed,
+    // it should monitor the capo address for new UTXOs, using
+    // https://docs.blockfrost.io/#tag/cardano--addresses/get/addresses/{address}/transactions
+    // with order=desc and count=100, and with the `from` parameter:
+    //   // from : string
+    //  // The block number from which (inclusive) to start search for results
+    // Use the AddressTransactionSummariesType and AddressTransactionSummariesFactory
+    // to validate the response from blockfrost.
+    // Given these details, it should fetch each transaction via the CardanoClient's getTx(TxId) method.
+    // for each utxo emitted by that transaction, it should identify all the UUTs,
+    // including for mint and spend delegates, govAuthority, and dgDataControllers and delegated-data record-ids.
+    // given this set of UUTs, it should ensure that the corresponding utxo is not already indexed,
+    // before it is indexed; this ensures that only the most recent utxo for each UUT is recongized
+    // as the most current utxo for that UUT.
+    
+    // the data store should additionally have a UutChanges table for tx-outputs, indexed by the UUT id.
+    // this table should store the tx-output id, the input utxo id, and the output datum.  It is
+    // used to track data change-history for each UUT.
+
+    // if needed, it can use the latest block details to fetch later blocks using
+    // https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/{hash_or_number}/next
+    // 
 
 
     network: CardanoClient;
