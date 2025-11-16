@@ -8,10 +8,11 @@
  * names and related script addresses are found in the charter data.
  * */
 
-import {Dexie} from "dexie";
+import Dexie, { type EntityTable } from "dexie";
+
 import {type, scope, } from "arktype";
 import {jsonSchemaToType} from "@ark/json-schema";
-import type { BlockfrostV0Client } from "@helios-lang/tx-utils";
+import { decodeTx, type Tx } from "@helios-lang/ledger";
 
 // uses a specific base page size for fetching capo utxos
 const capoUpdaterPageSize = 20;
@@ -24,32 +25,44 @@ db.version(1).stores({
 });
 
 class DexieCachedUtxoIndex {
-    bf: BlockfrostV0Client;
-
+    blockfrostKey: string;
+    blockfrostBaseUrl: string = "https://cardano-mainnet.blockfrost.io";
     // remembers the last block-id and height seen in any capo utxo
     lastBlockId: string;
     lastBlockHeight: number;
 
-    constructor(bf: BlockfrostV0Client) {
-        this.bf = bf;
+    constructor(blockfrostKey: string) {
+        this.blockfrostKey = blockfrostKey
+        if (blockfrostKey.startsWith("mainnet")) {
+            this.blockfrostBaseUrl = "https://cardano-mainnet.blockfrost.io";
+        } else if (blockfrostKey.startsWith("preprod")) {
+            this.blockfrostBaseUrl = "https://cardano-preprod.blockfrost.io";
+        } else if (blockfrostKey.startsWith("preview")) {
+            this.blockfrostBaseUrl = "https://cardano-preview.blockfrost.io";
+        }
         this.lastBlockId = "";
         this.lastBlockHeight = 0;
 
     }
 
-    fetchFromBlockfrost<T>(url: string): Promise<T> {
-        
-        return fetch('https://cardano-mainnet.blockfrost.io/api/v0/addresses/addr1qxqs59lphg8g6qndelq8xwqn60ag3aeyfcp33c2kdp46a09re5df3pzwwmyq946axfcejy5n4x0y99wqpgtp2gd0k09qsgy6pz/utxos?count=100&page=1&order=asc', {
+    async fetchFromBlockfrost<T>(url: string): Promise<T> {
+        return fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
             headers: {
-              project_id: this.bf.projectId
+              project_id: this.blockfrostKey
             }
           })
-          .then(res => res.json() as Promise<T>)
-    }          
+          .then(res => {
+            const result = await res.json();
+            if (!res.ok) {
+                throw new Error(result.message)
+            }
+            return result as T;
+        })
+    }
 
     // can locate the height of a block by its block-id, either from the local index, or by fetching it from blockfrost
     async findOrFetchBlockHeight(blockId: string): Promise<number> {
-        const block = await this.db.blocks.get(blockId);
+        const block = await db.blocks.where("blockId").equals(blockId).first();
         if (block) {
             return block.height;
         }
@@ -64,13 +77,13 @@ class DexieCachedUtxoIndex {
     * to resolve and store the details of each block (see response schema below)
     */
     async fetchBlockDetails(blockId: string): Promise<BlockDetails> {
-        const details = await fetch(`https://cardano-mainnet.blockfrost.io/api/v0/blocks/${blockId}`).then(res => res.json());
-
-        return BlockDetailsTypeDef.parse(details);
+        return this.fetchFromBlockfrost<BlockDetails>(`blocks/${blockId}`);
     }
 
-    async fetchTxDetails(txId: string): Promise<TxDetails> {
+    async fetchTxDetails(txId: string): Promise<Tx> {
+        const {cbor: cborHex} = await this.fetchFromBlockfrost<{cbor: string}>(`txs/${txId}/cbor`);
 
+        return decodeTx(cborHex)
     }
 }
 
