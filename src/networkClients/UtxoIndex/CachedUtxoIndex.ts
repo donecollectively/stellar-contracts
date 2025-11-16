@@ -4,22 +4,23 @@
  * and all the delegated-data records stored in the capo address.
  *
  * The delegate UUTs are stored at other addresses, but their
- * asset-ids always use the capo minter's policy-id; their asset 
+ * asset-ids always use the capo minter's policy-id; their asset
  * names and related script addresses are found in the charter data.
  * */
 
-import {type, scope, } from "arktype";
-import {jsonSchemaToType} from "@ark/json-schema";
+import { type, scope, ArkErrors } from "arktype";
+import { jsonSchemaToType } from "@ark/json-schema";
 import { decodeTx, type Tx } from "@helios-lang/ledger";
 import { DexieUtxoStore } from "./DexieUtxoStore";
 import type { UtxoStoreGeneric } from "./UtxoStoreGeneric";
 import type { dexieBlockDetails } from "./dexieRecords/BlockDetails";
-import type { BlockDetailsType } from "./blockfrostTypes/BlockDetails";
+import {
+    BlockDetailsFactory,
+    type BlockDetailsType,
+} from "./blockfrostTypes/BlockDetails";
 
 // uses a specific base page size for fetching capo utxos
 const capoUpdaterPageSize = 20;
-
-
 
 class CachedUtxoIndex {
     blockfrostKey: string;
@@ -28,15 +29,15 @@ class CachedUtxoIndex {
     lastBlockId: string;
     lastBlockHeight: number;
     store: UtxoStoreGeneric;
-    
+
     constructor({
         blockfrostKey,
-        storeIn: strategy = "dexie"
+        storeIn: strategy = "dexie",
     }: {
-        blockfrostKey: string, 
-        storeIn?: "dexie" | "memory" | "dred"
+        blockfrostKey: string;
+        storeIn?: "dexie" | "memory" | "dred";
     }) {
-        this.blockfrostKey = blockfrostKey
+        this.blockfrostKey = blockfrostKey;
         if (blockfrostKey.startsWith("mainnet")) {
             this.blockfrostBaseUrl = "https://cardano-mainnet.blockfrost.io";
         } else if (blockfrostKey.startsWith("preprod")) {
@@ -62,19 +63,19 @@ class CachedUtxoIndex {
     async fetchFromBlockfrost<T>(url: string): Promise<T> {
         return fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
             headers: {
-              project_id: this.blockfrostKey
-            }
-          })
-          .then(async res => {
+                project_id: this.blockfrostKey,
+            },
+        }).then(async (res) => {
             const result = await res.json();
             if (!res.ok) {
-                throw new Error(result.message)
+                throw new Error(result.message);
             }
             return result as T;
-        })
+        });
     }
 
-    // can locate the height of a block by its block-id, either from the local index, or by fetching it from blockfrost
+    // can locate the height of a block by its block-id, either from the local index,
+    // or by fetching it from blockfrost
     async findOrFetchBlockHeight(blockId: string): Promise<number> {
         const block = await this.store.findBlockByBlockId(blockId);
         if (block) {
@@ -82,22 +83,46 @@ class CachedUtxoIndex {
         }
 
         const details = await this.fetchBlockDetails(blockId);
+        await this.store.saveBlock(details);
+
         return details?.height ?? 0;
     }
 
-    /** Fetches the details of a block from blockfrost 
-     * 
-    * uses https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/{hash_or_number}
-    * to resolve and store the details of each block (see response schema below)
-    */
+    /** Fetches the details of a block from blockfrost
+     *
+     * uses https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/{hash_or_number}
+     * to resolve and store the details of each block (see response schema below)
+     */
     async fetchBlockDetails(blockId: string): Promise<BlockDetailsType> {
-        return this.fetchFromBlockfrost<BlockDetailsType>(`blocks/${blockId}`);
+        const untyped = await this.fetchFromBlockfrost(`blocks/${blockId}`);
+        const typed = BlockDetailsFactory(untyped);
+        if (typed instanceof ArkErrors) {
+            return typed.throw();
+        }
+        return typed;
+    }
+
+    async findOrFetchTxDetails(txId: string): Promise<Tx> {
+        const txCbor = await this.store.findTxById(txId);
+
+        if (txCbor) {
+            return decodeTx(txCbor.cbor);
+        }
+        const { cbor: cborHex } = await this.fetchFromBlockfrost<{
+            cbor: string;
+        }>(`txs/${txId}/cbor`);
+        await this.store.saveTx({ txid: txId, cbor: cborHex });
+
+        const decodedTx = decodeTx(cborHex);
+        return decodedTx;
     }
 
     async fetchTxDetails(txId: string): Promise<Tx> {
-        const {cbor: cborHex} = await this.fetchFromBlockfrost<{cbor: string}>(`txs/${txId}/cbor`);
+        const { cbor: cborHex } = await this.fetchFromBlockfrost<{
+            cbor: string;
+        }>(`txs/${txId}/cbor`);
 
-        return decodeTx(cborHex)
+        return decodeTx(cborHex);
     }
 }
 
@@ -105,12 +130,12 @@ class CachedUtxoIndex {
 // or runs out of utxos at the address.
 
 // When a new utxo of any specific data-type is found at the capo address,
-// the index is updated to include the new utxo.  
+// the index is updated to include the new utxo.
 //
-// Additionally, the related transaction is fetched, with fetchTxDetails(), 
-// and any of the delegate UUTs are freshened so they point to the 
+// Additionally, the related transaction is fetched, with fetchTxDetails(),
+// and any of the delegate UUTs are freshened so they point to the
 // most recent utxo having that asset-id.
-// 
+//
 
 // indexes utxos in the capo address, by type
 // indexes utxos in the capo address, by id
@@ -119,13 +144,11 @@ class CachedUtxoIndex {
 const refreshInterval = 60 * 1000; // 1 minute
 const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
 
-
 // remembers the last block-id seen in any capo utxo
 
-
 // indexes, by UUT asset-id, the utxos and block-ids for each delegate mentioned in the charter:
-//  - mint delegate 
-//  - spend delegate 
+//  - mint delegate
+//  - spend delegate
 //  - gov authority
 //  - other named delegates
 //  - spend invariants
@@ -134,18 +157,11 @@ const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
 //  - other named invariants
 //  - delegated-data types
 
-// uses https://docs.blockfrost.io/#tag/cardano--addresses/get/addresses/{address}/utxos/{asset} 
+// uses https://docs.blockfrost.io/#tag/cardano--addresses/get/addresses/{address}/utxos/{asset}
 // with count=1 and order=desc to get utxo-ids and block-ids for each UUT asset-id (see response  schema below)
-
-
 
 // periodically traverses the most-current charter data and updates
 // the index
 
 // provides a way to find utxos by type or id
-// provides a way to find utxos by invariant    
 // provides a way to find utxos by delegate
-
-
-
-

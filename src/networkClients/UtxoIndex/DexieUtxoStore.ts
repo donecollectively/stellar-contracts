@@ -1,4 +1,4 @@
-import type { UtxoStoreGeneric } from "./UtxoStoreGeneric";
+import type { txCBOR, UtxoStoreGeneric } from "./UtxoStoreGeneric";
 import type { UtxoDetailsType } from "./blockfrostTypes/UtxoDetails";
 
 import {dexieBlockDetails} from "./dexieRecords/BlockDetails.js";
@@ -8,6 +8,7 @@ import Dexie, { type EntityTable } from "dexie";
 export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     blocks!: EntityTable<dexieBlockDetails, "hash">;
     utxos!: EntityTable<dexieUtxoDetails, "utxoId">;
+    txs!: EntityTable<txCBOR, "txid">;
 
     constructor() {
         super("StellarDappIndex-v0.1");
@@ -33,5 +34,13 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
 
     async saveUtxo(utxo: UtxoDetailsType): Promise<void> {
         await this.utxos.put(utxo);
+    }
+
+    async findTxById(txId: string): Promise<txCBOR | undefined> {
+        return await this.txs.where("txId").equals(txId).first();
+    }
+
+    async saveTx(tx: txCBOR): Promise<void> {
+        await this.txs.put(tx);
     }
 }

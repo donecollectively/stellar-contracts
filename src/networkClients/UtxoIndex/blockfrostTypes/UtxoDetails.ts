@@ -71,7 +71,7 @@ const utxoDetailSchema = jsonSchemaToType({
               "unit",
               "quantity"
             ]
-          }
+          } 
         },
         "block": {
           "type": "string",
