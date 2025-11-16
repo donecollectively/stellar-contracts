@@ -24,7 +24,7 @@ db.version(1).stores({
     utxos: "utxoId, blockId, blockHeight",
 });
 
-class DexieCachedUtxoIndex {
+class CachedUtxoIndex {
     blockfrostKey: string;
     blockfrostBaseUrl: string = "https://cardano-mainnet.blockfrost.io";
     // remembers the last block-id and height seen in any capo utxo
