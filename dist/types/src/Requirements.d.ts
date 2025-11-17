@@ -2,7 +2,7 @@ import type { TypeError } from "./helios/typeUtils";
 declare const notInherited: {
     inheriting: "‹empty/base class›";
 };
-type nothingInherited = typeof notInherited;
+export type noInheritedReqts = typeof notInherited;
 /**
  * Documents one specific requirement
  * @remarks
@@ -21,12 +21,12 @@ type nothingInherited = typeof notInherited;
  **/
 export type RequirementEntry<reqtName extends string, reqts extends string, inheritedNames extends {
     inheriting: string;
-} | nothingInherited> = {
+} | noInheritedReqts> = {
     purpose: string;
     details: string[];
     mech: string[];
     impl?: string;
-    requires?: inheritedNames extends nothingInherited ? Exclude<reqts, reqtName>[] : reqtName extends keyof inheritedNames["inheriting"] ? Exclude<inheritedNames["inheriting"], reqtName>[] : (Exclude<reqts, reqtName | inheritedNames["inheriting"]>)[];
+    requires?: inheritedNames extends noInheritedReqts ? Exclude<reqts, reqtName>[] : reqtName extends keyof inheritedNames["inheriting"] ? Exclude<inheritedNames["inheriting"], reqtName>[] : (Exclude<reqts, reqtName | inheritedNames["inheriting"]>)[];
     requiresInherited?: inheritedNames["inheriting"][];
 };
 declare const TODO: unique symbol;
@@ -54,7 +54,7 @@ export type TODO_TYPE = typeof TODO;
  **/
 export type ReqtsMap<validReqts extends string, inheritedNames extends {
     inheriting: string;
-} | nothingInherited = nothingInherited> = {
+} | noInheritedReqts = noInheritedReqts> = {
     [reqtDescription in validReqts]: TODO_TYPE | RequirementEntry<reqtDescription, validReqts, inheritedNames>;
 };
 /**
@@ -69,7 +69,7 @@ export type ReqtsMap<validReqts extends string, inheritedNames extends {
  */
 export declare function hasReqts<R extends ReqtsMap<validReqts, inheritedNames>, const validReqts extends string = string & keyof R, const inheritedNames extends {
     inheriting: string;
-} | nothingInherited = nothingInherited>(reqtsMap: R): ReqtsMap<validReqts, inheritedNames>;
+} | noInheritedReqts = noInheritedReqts>(reqtsMap: R): ReqtsMap<validReqts, inheritedNames>;
 export declare namespace hasReqts {
     var TODO: unique symbol;
 }

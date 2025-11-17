@@ -1,5 +1,5 @@
 import * as React from 'react';
-import React__default, { useState, useEffect, Component, Fragment } from 'react';
+import React__default, { useState, useEffect, Component, Fragment, useRef } from 'react';
 import clsx from 'clsx';
 import { makeBlockfrostV0Client, makeRandomRootPrivateKey, makeRootPrivateKey, makeHydraClient, makeSimpleWallet, makeCip30Wallet, makeWalletHelper } from '@helios-lang/tx-utils';
 import '@cardano-ogmios/client';
@@ -49,6 +49,31 @@ const Button = function(props) {
   };
   return /* @__PURE__ */ React__default.createElement("button", { ...bprops });
 };
+
+const CapoDappProviderContext = React__default.createContext(null);
+function useCapoDappProvider() {
+  const provider = React__default.useContext(
+    CapoDappProviderContext
+  );
+  if (!provider) {
+    throw new Error(
+      "useCapoDappProvider must be used within a CapoDappProvider"
+    );
+  }
+  const [isMounted, setIsMounted] = React__default.useState(false);
+  const [capo, setCapo] = React__default.useState();
+  const [checking, keepChecking] = React__default.useState(1);
+  React__default.useEffect(() => {
+    setIsMounted(true);
+    setTimeout(() => {
+      if (capo !== provider?.capo) {
+        setCapo(provider?.capo);
+      }
+      keepChecking(1 + checking);
+    }, 2e3);
+  }, [checking, provider, provider?.userInfo.wallet, capo]);
+  return { capo, provider, isMounted };
+}
 
 class ClientSideOnly extends React.Component {
   constructor(props) {
@@ -2003,30 +2028,6 @@ class CapoDAppProvider extends Component {
     return this.state.capo;
   }
 }
-const CapoDappProviderContext = React__default.createContext(null);
-function useCapoDappProvider() {
-  const provider = React__default.useContext(
-    CapoDappProviderContext
-  );
-  if (!provider) {
-    throw new Error(
-      "useCapoDappProvider must be used within a CapoDappProvider"
-    );
-  }
-  const [isMounted, setIsMounted] = React__default.useState(false);
-  const [capo, setCapo] = React__default.useState();
-  const [checking, keepChecking] = React__default.useState(1);
-  React__default.useEffect(() => {
-    setIsMounted(true);
-    setTimeout(() => {
-      if (capo !== provider?.capo) {
-        setCapo(provider?.capo);
-      }
-      keepChecking(1 + checking);
-    }, 2e3);
-  }, [checking, provider, provider?.userInfo.wallet, capo]);
-  return { capo, provider, isMounted };
-}
 
 function CharterStatus() {
   const { capo, provider, isMounted } = useCapoDappProvider();
@@ -2334,5 +2335,88 @@ function ShowFailedActivity({
   return /* @__PURE__ */ React.createElement("div", null, "Activity failed: ", failed, " ", /* @__PURE__ */ React.createElement("br", null), "Message: ", message, " ", /* @__PURE__ */ React.createElement("br", null), moreDetail);
 }
 
-export { ActionButton, Button, CapoDAppProvider, CapoDappProviderContext, CharterHighlights, CharterStatus, ClientSideOnly, Column, DashHighlightItem, DashSummaryItem, DashboardHighlights, DashboardRow, DashboardSummary, DashboardTemplate, Highlight, InPortal, Lowlight, Progress, ShowFailedActivity, ShowPendingTxns, Softlight, TxBatchViewer, useCapoDappProvider };
+class FormManager {
+  options;
+  el;
+  provider;
+  capo;
+  constructor(form, provider, options) {
+    this.el = form;
+    this.provider = provider;
+    this.capo = provider.capo;
+    this.options = options;
+    this.handleChange = this.handleChange.bind(this);
+    this.el.addEventListener("change", this.handleChange, {
+      capture: true
+    });
+  }
+  handleChange(event) {
+    const target = event.target;
+    console.log("change event", target.name, target.value);
+  }
+  get form() {
+    return this.el;
+  }
+  destroy() {
+    this.form.removeEventListener("change", this.handleChange, {
+      capture: true
+    });
+  }
+  getFieldError(name) {
+  }
+}
+function useFormManager(formRef, options) {
+  const { capo, provider } = useCapoDappProvider();
+  if (!provider) {
+    throw new Error(
+      "FormManager: missing required CapoDAppProviderContext"
+    );
+  }
+  const formManagerRef = useRef(null);
+  const [controller, setController] = useState(
+    void 0
+  );
+  useEffect(() => {
+    (async function getController() {
+      if (!capo) return void 0;
+      const charterData = await capo.findCharterData();
+      const controller2 = await capo.getDgDataController(
+        options.typeName,
+        {
+          charterData
+        }
+      );
+      setController(controller2);
+    })();
+  }, [capo, options.typeName]);
+  const [utxo, setUtxo] = useState(
+    null
+  );
+  useEffect(() => {
+    if (!controller) return;
+    controller.findRecords({ id: options.recordId }).then((utxo2) => {
+      setUtxo(utxo2);
+    });
+  }, [controller, options.recordId]);
+  useEffect(() => {
+    const form = formRef.current;
+    if (!controller || !utxo || !form || !capo) return;
+    if (form && !formManagerRef.current) {
+      formManagerRef.current = new FormManager(
+        form,
+        provider,
+        options
+      );
+    }
+    return () => {
+      if (formManagerRef.current) {
+        formManagerRef.current.destroy();
+        formManagerRef.current = null;
+      }
+    };
+  }, [provider, capo, controller, utxo]);
+  return formManagerRef.current;
+}
+
+export { ActionButton, Button, CapoDAppProvider, CapoDappProviderContext, CharterHighlights, CharterStatus, ClientSideOnly, Column, DashHighlightItem, DashSummaryItem, DashboardHighlights, DashboardRow, DashboardSummary, DashboardTemplate, FormManager, Highlight, InPortal, Lowlight, Progress, ShowFailedActivity, ShowPendingTxns, Softlight, TxBatchViewer, useCapoDappProvider, useFormManager };
 //# sourceMappingURL=ui.mjs.map

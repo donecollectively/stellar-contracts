@@ -29,7 +29,7 @@ export type { GenericDelegateBridge, GenericDelegateBridgeClass, GenericDelegate
 export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
 export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
 export { hasReqts, mergesInheritedReqts } from "./src/Requirements.js";
-export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
+export type { ReqtsMap, RequirementEntry, noInheritedReqts } from "./src/Requirements.js";
 export { StellarTxnContext, type anyState, type hasSeedUtxo, type hasAddlTxns, type TxDescription, type MultiTxnCallback, type SubmitOptions, } from "./src/StellarTxnContext.js";
 export { type SeedAttrs, type isActivity, type hasSeed, type seedActivityFunc, type SeedActivityArg, type funcWithImpliedSeed, SeedActivity, impliedSeedActivityMaker, getSeed, } from "./src/ActivityTypes.js";
 export type { stellarSubclass, anyDatumProps, configBaseWithRev as configBase, // as paramsBase,

@@ -46,10 +46,8 @@ import { bytesToHex } from "@helios-lang/codec-utils";
 import type { UtxoHelper } from "./UtxoHelper.js";
 import type { IF_ISANY } from "./helios/typeUtils.js";
 import type { Expand } from "./helios/typeUtils.js";
-import { customAlphabet } from "nanoid";
-const nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
 import { TxNotNeededError } from "./utils.js";
-
+import { nanoid } from "./util/nanoid.js";
 /**
  * A txn context having a seedUtxo in its state
  * @public

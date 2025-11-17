@@ -9,4 +9,6 @@ export * from "./Progress.jsx";
 export * from "./ShowFailedActivity.jsx";
 export * from "./TxBatchViewer.jsx";
 export * from "./Button.jsx";
+export * from "./CapoDappProviderContext.js";
+export * from "./FormManager.js";
 //# sourceMappingURL=index.d.ts.map
