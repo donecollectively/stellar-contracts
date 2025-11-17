@@ -1,6 +1,6 @@
 import { type TxInput, type Value } from "@helios-lang/ledger";
 import type { CharterData, FoundDatumUtxo, hasCharterRef, hasUutContext } from "../CapoTypes.js";
-import type { ReqtsMap } from "../Requirements.js";
+import type { noInheritedReqts, ReqtsMap } from "../Requirements.js";
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { UutName } from "./UutName.js";
@@ -73,7 +73,7 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
      * output in the script-cache on-disk or in browser's storage.
      */
     get delegateName(): string;
-    abstract requirements(): ReqtsMap<any, any> | ReqtsMap<any, never>;
+    abstract requirements(): ReqtsMap<any, any> | ReqtsMap<any, noInheritedReqts>;
     get abstractBundleClass(): undefined | typeof DelegatedDataBundle;
     scriptBundleClass(): Promise<typeof DelegatedDataBundle>;
     /**

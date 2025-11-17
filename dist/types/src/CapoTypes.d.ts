@@ -1,4 +1,5 @@
 import type { Address, MintingPolicyHash, MintingPolicyHashLike, TxInput, TxOutputId, ValidatorHash } from "@helios-lang/ledger";
+export type { ErgoCapoDatum, CapoDatum$Ergo$CharterData, CapoDatum$CharterDataLike, ErgoRelativeDelegateLink, CapoManifestEntryLike, } from "./helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
 import type { ErgoCapoDatum, CapoDatum$Ergo$CharterData, CapoDatum$CharterDataLike, ErgoRelativeDelegateLink, CapoManifestEntryLike } from "./helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
 import type { OffchainPartialDelegateLink, ConfiguredDelegate, DelegateSetup } from "./delegation/RolesAndDelegates.js";
 import type { StellarDelegate } from "./delegation/StellarDelegate.js";
@@ -309,5 +310,4 @@ export type FindableViaCharterData = {
  * @public
  */
 export type CapoFeatureFlags = Record<string, boolean>;
-export {};
 //# sourceMappingURL=CapoTypes.d.ts.map

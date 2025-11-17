@@ -10,7 +10,7 @@ export declare class ReqtsController extends DelegatedDataContract<ReqtData, Req
     dataBridgeClass: typeof ReqtsPolicyDataBridge;
     get delegateName(): string;
     get idPrefix(): string;
-    get recordTypeName(): string;
+    get recordTypeName(): "Reqt";
     exampleData(): minimalReqtData;
     scriptBundleClass(): Promise<typeof DelegatedDataBundle>;
     activityCreatingReqt(seedFrom: hasSeed): import("../ActivityTypes.js").isActivity;

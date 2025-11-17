@@ -6121,7 +6121,7 @@ This will use deployment details from ${deployDetailsFile}
         deployedDetails: {
           config: capoConfig
         },
-        placeholderAt: `rollupBundlerPlugin for inserting pre-compiled Minter details`,
+        specialOriginatorLabel: `rollupBundlerPlugin for inserting pre-compiled Minter details`,
         setup: {
           isMainnet: networkId === "mainnet"
         }

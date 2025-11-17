@@ -18,7 +18,7 @@ export type DataBridgeOptions = {
  * @internal
  */
 export type callWith<ARGS, T extends DataBridge> = T & ((x: ARGS) => ReturnType<T["ᱺᱺcast"]["toUplcData"]>);
-declare const DataBridge_base: ObjectConstructor;
+declare const DataBridge_base: typeof Object;
 /**
  * @internal
  */
