@@ -1,6 +1,8 @@
 import { makeTxOutput, makeTxInput } from '@helios-lang/ledger';
 import { S as StellarContract, b as dumpAny, _ as mkTv, A as Activity, d as datum } from './StellarContract2.mjs';
 import { decodeUtf8 } from '@helios-lang/codec-utils';
+import '@helios-lang/crypto';
+import '@helios-lang/tx-utils';
 import { placeholderSetupDetails } from './HeliosBundle.mjs';
 
 const TODO = Symbol("needs to be implemented");
@@ -464,12 +466,14 @@ We'll generate an additional .typeInfo.d.ts, based on the types in your Helios s
   /**
    * @see {@link StellarDelegate.DelegateMustFindAuthorityToken|DelegateMustFindAuthorityToken()}
    **/
-  async DelegateMustFindAuthorityToken(tcx, label) {
+  async DelegateMustFindAuthorityToken(tcx, label, options = {}) {
+    const { findCached } = options;
     return this.mustFindMyUtxo(
       `${label}: ${decodeUtf8(this.configIn.tn)}`,
       {
         predicate: this.uh.mkTokenPredicate(this.tvAuthorityToken()),
-        extraErrorHint: "this delegate strategy might need to override txnMustFindAuthorityToken()"
+        extraErrorHint: "this delegate strategy might need to override txnMustFindAuthorityToken()",
+        findCached
       }
     );
   }

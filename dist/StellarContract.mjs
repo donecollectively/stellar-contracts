@@ -3,10 +3,10 @@ export { A as Activity, S as StellarContract, d as datum, $ as isUplcData, p as 
 import './HeliosBundle.mjs';
 import '@helios-lang/contract-utils';
 import '@helios-lang/codec-utils';
-import '@helios-lang/uplc';
 import '@helios-lang/crypto';
 import '@helios-lang/tx-utils';
 import 'nanoid';
+import '@helios-lang/uplc';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import '@helios-lang/compiler';
 import './environment.mjs';

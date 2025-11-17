@@ -1,17 +1,18 @@
 export { e as environment } from './environment.mjs';
 import { A as Activity, d as datum, D as DataBridge, C as ContractDataBridge, i as impliedSeedActivityMaker, a as DataBridgeReaderClass, S as StellarContract, m as mkValuesEntry, b as dumpAny, c as isLibraryMatchedTcx, U as UutName, e as mkUutValuesEntries, f as delegateLinkSerializer, g as errorMapAsString, u as uplcDataSerializer, T as TxNotNeededError, h as StellarTxnContext, j as AlreadyPendingError, p as partialTxn, t as txn } from './StellarContract2.mjs';
 export { Y as ContractDataBridgeWithEnumDatum, Z as ContractDataBridgeWithOtherDatum, W as SeedActivity, V as UtxoHelper, P as abbrevAddress, Q as abbreviatedDetail, R as abbreviatedDetailBytes, H as addrAsString, v as assetsAsString, O as betterJsonSerializer, I as byteArrayAsString, L as byteArrayListAsString, o as colors, M as datumSummary, k as debugMath, q as displayTokenName, X as getSeed, N as hexToPrintableString, G as lovelaceToAda, B as policyIdAsString, r as realDiv, l as realMul, s as stringToPrintableString, n as toFixedReal, w as txAsString, F as txInputAsString, E as txOutputAsString, K as txOutputIdAsString, J as txidAsString, x as utxoAsString, z as utxosAsString, y as valueAsString } from './StellarContract2.mjs';
-import { C as ContractBasedDelegate, S as StellarDelegate, h as hasReqts } from './ContractBasedDelegate2.mjs';
-export { m as mergesInheritedReqts } from './ContractBasedDelegate2.mjs';
 import { bytesToHex, decodeUtf8, encodeUtf8, equalsBytes } from '@helios-lang/codec-utils';
 export { decodeUtf8 as bytesToText, encodeUtf8 as textToBytes } from '@helios-lang/codec-utils';
+import { blake2b } from '@helios-lang/crypto';
 import { makeInlineTxOutputDatum, makeValue, makeAssets, makeAddress, makeTxOutput, makeDummyMintingPolicyHash, makeValidatorHash, makeTxOutputId, makeNetworkParamsHelper, decodeTx, makeTxId, decodeTxWitnesses } from '@helios-lang/ledger';
+import { makeTxChainBuilder } from '@helios-lang/tx-utils';
+import { C as ContractBasedDelegate, S as StellarDelegate, h as hasReqts } from './ContractBasedDelegate2.mjs';
+export { m as mergesInheritedReqts } from './ContractBasedDelegate2.mjs';
 import { makeCast } from '@helios-lang/contract-utils';
 import { U as UnspecializedDelegate_hl } from './UnspecializedDelegate.hlb.mjs';
 export { a as UnspecializedDgtBundle } from './UnspecializedDelegate.hlb.mjs';
 import { CapoDelegateBundle } from './CapoDelegateHeliosBundle.mjs';
 import { makeIntData } from '@helios-lang/uplc';
-import { blake2b } from '@helios-lang/crypto';
 import { C as CapoHeliosBundle } from './CapoHeliosBundle2.mjs';
 export { a as mkCapoDeployment, b as mkDelegateDeployment, m as mkDeployedScriptConfigs, p as parseCapoJSONConfig, c as parseCapoMinterJSONConfig } from './CapoHeliosBundle2.mjs';
 import { placeholderSetupDetails } from './HeliosBundle.mjs';
@@ -20,7 +21,6 @@ import { DelegatedDataContract } from './DelegatedDataContract.mjs';
 export { DelegatedDataBundle } from './DelegatedDataBundle.mjs';
 import { EventEmitter } from 'eventemitter3';
 import { customAlphabet } from 'nanoid';
-import { makeTxChainBuilder } from '@helios-lang/tx-utils';
 import { createInteractionContext, createLedgerStateQueryClient, createTransactionSubmissionClient } from '@cardano-ogmios/client';
 import '@helios-lang/compiler-utils';
 import './DefaultCapo.mjs';
@@ -9117,6 +9117,7 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
       {
         exceptInTcx: tcx,
         searchOthers: true,
+        findCached: options.findCached,
         extraErrorHint
       }
     );

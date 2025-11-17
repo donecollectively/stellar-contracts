@@ -212,10 +212,10 @@ export class ContractBasedDelegate extends StellarDelegate {
      * Adds a mint-delegate-specific authority token to the txn output
      * @remarks
      *
-     * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
+     * Implements {@link StellarDelegate#txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
      *
-     * Uses {@link ContractBasedDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
-     * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
+     * Uses {@link ContractBasedDelegate#mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
+     * @see {@link StellarDelegate#txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
      * @public
      **/
     async txnReceiveAuthorityToken<TCX extends StellarTxnContext>(
