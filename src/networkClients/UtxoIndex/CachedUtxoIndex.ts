@@ -37,6 +37,7 @@ import {
     AddressTransactionSummariesFactory,
     type AddressTransactionSummariesType,
 } from "./blockfrostTypes/AddressTransactionSummaries.js";
+import type { CharterData } from "../../CapoTypes";
 // uses a specific base page size for fetching capo utxos
 const capoUpdaterPageSize = 20;
 
@@ -126,6 +127,10 @@ export class CachedUtxoIndex {
         } else {
             throw new Error(`Invalid strategy: ${strategy}`);
         }
+        this.store.log(
+            "agsbb",
+            `CachedUtxoIndex created for capo: ${this.capo.address.toString()}`
+        );
         this.syncNow();
     }
 
@@ -133,6 +138,7 @@ export class CachedUtxoIndex {
         // Fetch all UTXOs from the capo address using the Capo's findCapoUtxos() method
         const capoUtxos = await this.capo.findCapoUtxos();
 
+        await this.store.log("yz58q", `Found ${capoUtxos.length} capo UTXOs`);
         // Extract unique transaction IDs from the UTXOs and fetch/store transaction details
         // TxInput.id is in format "txHash#index", so we extract the tx hash part
         const uniqueTxIds = new Set(
@@ -141,7 +147,16 @@ export class CachedUtxoIndex {
                 return id.split("#")[0]; // Extract tx hash from "txHash#index" format
             })
         );
+
+        await this.store.log(
+            "yuyqy",
+            `Found ${uniqueTxIds.size} unique transaction IDs`
+        );
         for (const txId of uniqueTxIds) {
+            await this.store.log(
+                "48nyb",
+                `Fetching transaction details for ${txId}`
+            );
             const t = await this.findOrFetchTxDetails(txId);
         }
 
@@ -261,7 +276,7 @@ export class CachedUtxoIndex {
                     txHash,
                     outputIndex,
                     output,
-                    summary,
+                    summary
                 );
             }
         }
@@ -401,7 +416,8 @@ export class CachedUtxoIndex {
      * Indexes delegate UUTs (Unique Unit Tokens) mentioned in the charter.
      * Fetches the most recent UTXO for each delegate UUT asset class.
      */
-    private async indexDelegateUuts(charterData: any): Promise<void> {
+    private async indexDelegateUuts(charterData: CharterData): Promise<void> {
+        await this.store.log("z5h89", `Indexing delegate UUTs`);
         const mph = this.capo.mph;
 
         // Get mint delegate UUT from charter link
@@ -411,6 +427,10 @@ export class CachedUtxoIndex {
                 const uutAssetClass = makeAssetClass(
                     mph,
                     mintDelegateLink.uutName
+                );
+                await this.store.log(
+                    "ht8mg",
+                    `Fetching mint delegate UUT: ${mintDelegateLink.uutName}`
                 );
                 await this.fetchAndIndexUut(uutAssetClass, mintDelegateLink);
             }
@@ -427,6 +447,10 @@ export class CachedUtxoIndex {
                     mph,
                     spendDelegateLink.uutName
                 );
+                await this.store.log(
+                    "fgmtv",
+                    `Fetching spend delegate UUT: ${spendDelegateLink.uutName}`
+                );
                 await this.fetchAndIndexUut(uutAssetClass, spendDelegateLink);
             }
         } catch (e) {
@@ -436,25 +460,37 @@ export class CachedUtxoIndex {
 
         // Get dgData controller UUTs from manifest
         for (const [entryName, entryInfo] of charterData.manifest.entries()) {
-            if (entryInfo.entryType.DgDataPolicy) {
-                try {
-                    const controller = await this.capo.getDgDataController(
-                        entryName,
-                        {
-                            charterData,
-                            optional: true,
-                        }
-                    );
-                    // The controller's UUT name would be in the manifest entry
-                    // For now, we'll skip this as it requires more investigation
-                    // TODO: Extract UUT name from manifest entry for dgData controllers
-                } catch (e) {
-                    // Controller may not exist yet
-                    console.warn(
-                        `Could not resolve dgData controller ${entryName}:`,
-                        e
-                    );
-                }
+            const { DgDataPolicy } = entryInfo.entryType;
+            if (!DgDataPolicy) {
+                const actualType = Object.keys(entryInfo.entryType)[0];
+                this.store.log(
+                    "pm5rq",
+                    `${entryName} is a ${actualType}, not a DgDataPolicy; skipping`
+                );
+                continue;
+            }
+            try {
+                const controller = await this.capo.getDgDataController(
+                    entryName,
+                    {
+                        charterData,
+                        optional: true,
+                    }
+                );
+                const { policyLink } = DgDataPolicy;
+                const uutName = policyLink.uutName;
+                const uutAssetClass = makeAssetClass(mph, uutName);
+                await this.store.log(
+                    "c6awj",
+                    `Fetching dgData controller UUT: ${uutName}`
+                );
+                await this.fetchAndIndexUut(uutAssetClass, policyLink);
+            } catch (e) {
+                // Controller may not exist yet
+                console.warn(
+                    `Could not resolve dgData controller ${entryName}:`,
+                    e
+                );
             }
         }
     }
@@ -492,8 +528,10 @@ export class CachedUtxoIndex {
         }).then(async (res) => {
             const result = await res.json();
             if (!res.ok) {
+                await this.store.log("3ecxh", `Error fetching from blockfrost: ${url} ${result.message}`);
                 throw new Error(result.message);
             }
+            await this.store.log("rm7g8", `Successfully fetched from blockfrost: ${url} ${JSON.stringify(result)}`);
             return result as T;
         });
     }
@@ -518,6 +556,7 @@ export class CachedUtxoIndex {
      * to resolve and store the details of each block (see response schema below)
      */
     async fetchBlockDetails(blockId: string): Promise<BlockDetailsType> {
+        await this.store.log("78q9n", `Fetching block details for ${blockId} from blockfrost`);
         const untyped = await this.fetchFromBlockfrost(`blocks/${blockId}`);
         const typed = BlockDetailsFactory(untyped);
         if (typed instanceof ArkErrors) {
@@ -534,17 +573,19 @@ export class CachedUtxoIndex {
      * Updates lastBlockId and lastBlockHeight with the latest block information.
      */
     async fetchAndStoreLatestBlock(): Promise<BlockDetailsType> {
+        await this.store.log("x2xzt", `Fetching latest block from blockfrost`);
         const untyped = await this.fetchFromBlockfrost(`blocks/latest`);
         const typed = BlockDetailsFactory(untyped);
         if (typed instanceof ArkErrors) {
             return typed.throw();
         }
-
+        await this.store.log("8y2yn", `latest block from blockfrost: #${typed.height} ${typed.hash}`);
         // Store the latest block in the index
         await this.store.saveBlock(typed);
 
         // Update lastBlockId and lastBlockHeight
         if (typed.height > this.lastBlockHeight) {
+            await this.store.log("2k3uq", `new latest block: #${typed.height} ${typed.hash}`);
             this.lastBlockHeight = typed.height;
             this.lastBlockId = typed.hash;
         }
@@ -558,6 +599,7 @@ export class CachedUtxoIndex {
         if (txCbor) {
             return decodeTx(txCbor.cbor);
         }
+        await this.store.log("qwmrh", `Fetching tx details for ${txId} from blockfrost`);
         const { cbor: cborHex } = await this.fetchFromBlockfrost<{
             cbor: string;
         }>(`txs/${txId}/cbor`);
@@ -568,6 +610,7 @@ export class CachedUtxoIndex {
     }
 
     async fetchTxDetails(txId: string): Promise<Tx> {
+        await this.store.log("64qjp", `Fetching tx details for ${txId}`);
         const { cbor: cborHex } = await this.fetchFromBlockfrost<{
             cbor: string;
         }>(`txs/${txId}/cbor`);
@@ -600,6 +643,7 @@ export class CachedUtxoIndex {
         const maxPageSize = 100;
         const growthFactor = 1.6;
 
+        throw new Error("unused?");
         while (true) {
             const url = `addresses/${address}/utxos?page=${page}&count=${pageSize}&order=desc`;
             const untyped = await this.fetchFromBlockfrost<unknown[]>(url);

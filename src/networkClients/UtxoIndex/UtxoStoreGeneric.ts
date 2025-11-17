@@ -7,6 +7,7 @@ export type txCBOR = {
 };
 
 export interface UtxoStoreGeneric {
+    log(id: string, message: string): Promise<any>;
     findBlockByBlockId(blockId: string): Promise<BlockDetailsType | undefined>;
     saveBlock(block: BlockDetailsType): Promise<void>;
     findUtxoByUtxoId(utxoId: string): Promise<UtxoDetailsType | undefined>;
