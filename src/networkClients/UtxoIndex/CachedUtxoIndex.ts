@@ -11,8 +11,12 @@
 import { ArkErrors } from "arktype";
 import {
     decodeTx,
+    makeAddress,
     makeAssetClass,
+    makeValidatorHash,
+    type Address,
     type Tx,
+    type TxInput,
     type TxOutput,
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
@@ -39,8 +43,14 @@ import {
 } from "./blockfrostTypes/AddressTransactionSummaries.js";
 import type { CharterData } from "../../CapoTypes";
 import type { RelativeDelegateLink } from "../../delegation/UnspecializedDelegate.typeInfo";
+import type { StellarDelegate } from "../../delegation/StellarDelegate";
+
 // uses a specific base page size for fetching capo utxos
 const capoUpdaterPageSize = 20;
+
+// periodically queries for new utxos at the capo address
+const refreshInterval = 60 * 1000; // 1 minute
+const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
 
 export class CachedUtxoIndex {
     blockfrostKey: string;
@@ -415,25 +425,24 @@ export class CachedUtxoIndex {
 
     /**
      * Indexes delegate UUTs (Unique Unit Tokens) mentioned in the charter.
-     * Fetches the most recent UTXO for each delegate UUT asset class.
+     * Uses each delegate's DelegateMustFindAuthorityToken method to locate the current UTXO.
      */
     private async indexDelegateUuts(charterData: CharterData): Promise<void> {
         await this.store.log("z5h89", `Indexing delegate UUTs`);
-        const mph = this.capo.mph;
 
         // Get mint delegate UUT from charter link
         try {
             const mintDelegateLink = charterData.mintDelegateLink;
             if (mintDelegateLink?.uutName) {
-                const uutAssetClass = makeAssetClass(
-                    mph,
-                    mintDelegateLink.uutName
-                );
                 await this.store.log(
                     "ht8mg",
                     `Fetching mint delegate UUT: ${mintDelegateLink.uutName}`
                 );
-                await this.fetchAndIndexUut(uutAssetClass, mintDelegateLink);
+                const delegate = await this.capo.getMintDelegate(charterData);
+                await this.fetchAndIndexDelegateUut(
+                    delegate,
+                    "mintDelegate"
+                );
             }
         } catch (e) {
             // Delegate may not exist yet
@@ -444,15 +453,15 @@ export class CachedUtxoIndex {
         try {
             const spendDelegateLink = charterData.spendDelegateLink;
             if (spendDelegateLink?.uutName) {
-                const uutAssetClass = makeAssetClass(
-                    mph,
-                    spendDelegateLink.uutName
-                );
                 await this.store.log(
                     "fgmtv",
                     `Fetching spend delegate UUT: ${spendDelegateLink.uutName}`
                 );
-                await this.fetchAndIndexUut(uutAssetClass, spendDelegateLink);
+                const delegate = await this.capo.getSpendDelegate(charterData);
+                await this.fetchAndIndexDelegateUut(
+                    delegate,
+                    "spendDelegate"
+                );
             }
         } catch (e) {
             // Delegate may not exist yet
@@ -463,15 +472,16 @@ export class CachedUtxoIndex {
         try {
             const govAuthorityLink = charterData.govAuthorityLink;
             if (govAuthorityLink?.uutName) {
-                const uutAssetClass = makeAssetClass(
-                    mph,
-                    govAuthorityLink.uutName
-                );
                 await this.store.log(
                     "g8xpk",
                     `Fetching gov authority UUT: ${govAuthorityLink.uutName}`
                 );
-                await this.fetchAndIndexUut(uutAssetClass, govAuthorityLink);
+                // use capo's findGovDelegate() method here:
+                const delegate = await this.capo.findGovDelegate(charterData);
+                await this.fetchAndIndexDelegateUut(
+                    delegate,
+                    "govAuthority"
+                );
             }
         } catch (e) {
             // Delegate may not exist yet
@@ -481,44 +491,48 @@ export class CachedUtxoIndex {
         // Get spend invariant UUTs from charter
         if (charterData.spendInvariants) {
             for (let i = 0; i < charterData.spendInvariants.length; i++) {
-                try {
-                    const invariantLink = charterData.spendInvariants[i];
-                    if (invariantLink?.uutName) {
-                        const uutAssetClass = makeAssetClass(
-                            mph,
-                            invariantLink.uutName
-                        );
-                        await this.store.log(
-                            "sp9iv",
-                            `Fetching spend invariant[${i}] UUT: ${invariantLink.uutName}`
-                        );
-                        await this.fetchAndIndexUut(uutAssetClass, invariantLink);
-                    }
-                } catch (e) {
-                    console.warn(`Could not resolve spend invariant[${i}] UUT:`, e);
-                }
+                throw new Error(`TODO: support for invariants`)
+                // try {
+                //     const invariantLink = charterData.spendInvariants[i];
+                //     if (invariantLink?.uutName) {
+                //         await this.store.log(
+                //             "sp9iv",
+                //             `Fetching spend invariant[${i}] UUT: ${invariantLink.uutName}`
+                //         );
+                //         // Spend invariants don't have a predefined role, use generic connection
+                //         await this.fetchAndIndexDelegateUut(
+                //             tcx,
+                //             invariantLink,
+                //             `spendInvariant[${i}]`
+                //         );
+                //     }
+                // } catch (e) {
+                //     console.warn(`Could not resolve spend invariant[${i}] UUT:`, e);
+                // }
             }
         }
 
         // Get mint invariant UUTs from charter
         if (charterData.mintInvariants) {
             for (let i = 0; i < charterData.mintInvariants.length; i++) {
-                try {
-                    const invariantLink = charterData.mintInvariants[i];
-                    if (invariantLink?.uutName) {
-                        const uutAssetClass = makeAssetClass(
-                            mph,
-                            invariantLink.uutName
-                        );
-                        await this.store.log(
-                            "mt7iv",
-                            `Fetching mint invariant[${i}] UUT: ${invariantLink.uutName}`
-                        );
-                        await this.fetchAndIndexUut(uutAssetClass, invariantLink);
-                    }
-                } catch (e) {
-                    console.warn(`Could not resolve mint invariant[${i}] UUT:`, e);
-                }
+                throw new Error(`TODO: support for invariants`)
+                // try {
+                //     const invariantLink = charterData.mintInvariants[i];
+                //     if (invariantLink?.uutName) {
+                //         await this.store.log(
+                //             "mt7iv",
+                //             `Fetching mint invariant[${i}] UUT: ${invariantLink.uutName}`
+                //         );
+                //         // Mint invariants don't have a predefined role, use generic connection
+                //         await this.fetchAndIndexDelegateUut(
+                //             tcx,
+                //             invariantLink,
+                //             `mintInvariant[${i}]`
+                //         );
+                //     }
+                // } catch (e) {
+                //     console.warn(`Could not resolve mint invariant[${i}] UUT:`, e);
+                // }
             }
         }
 
@@ -537,13 +551,16 @@ export class CachedUtxoIndex {
                         "uutName" in delegateLink &&
                         delegateLink.uutName
                     ) {
-                        const link = delegateLink as RelativeDelegateLink;
-                        const uutAssetClass = makeAssetClass(mph, link.uutName);
+                        // use capo's getOtherNamedDelegate() method here:  
+                        const delegate = await this.capo.getOtherNamedDelegate(delegateName, charterData);
                         await this.store.log(
                             "nd8uu",
-                            `Fetching named delegate '${delegateName}' UUT: ${link.uutName}`
+                            `Fetching named delegate '${delegateName}' UUT`
                         );
-                        await this.fetchAndIndexUut(uutAssetClass, link);
+                        await this.fetchAndIndexDelegateUut(
+                            delegate,
+                            `namedDelegate:${delegateName}`
+                        );
                     }
                 } catch (e) {
                     console.warn(
@@ -575,12 +592,17 @@ export class CachedUtxoIndex {
                 );
                 const { policyLink } = DgDataPolicy;
                 const uutName = policyLink.uutName;
-                const uutAssetClass = makeAssetClass(mph, uutName);
+
                 await this.store.log(
                     "c6awj",
                     `Fetching dgData controller UUT: ${uutName}`
                 );
-                await this.fetchAndIndexUut(uutAssetClass, policyLink);
+                if (controller) {
+                    await this.fetchAndIndexDelegateUut(
+                        controller,
+                        `dgDataController:${entryName}`
+                    );
+                }
             } catch (e) {
                 // Controller may not exist yet
                 console.warn(
@@ -592,28 +614,129 @@ export class CachedUtxoIndex {
     }
 
     /**
-     * Fetches the most recent UTXO for a given UUT asset class and stores it.
-     * Uses Blockfrost API: GET /addresses/{address}/utxos/{asset} with count=1 and order=desc
+     * Fetches and indexes a delegate's authority token UTXO using DelegateMustFindAuthorityToken.
+     * @param delegate - The delegate instance
+     * @param label - Label for logging
      */
-    private async fetchAndIndexUut(
-        assetClass: any,
-        delegateLink: RelativeDelegateLink
+    private async fetchAndIndexDelegateUut(
+        delegate: StellarDelegate,
+        label: string
     ): Promise<void> {
-        // Convert asset class to Blockfrost format (policyId + assetName)
-        const policyId = assetClass.mph.hex;
-        const assetName = assetClass.tokenName.hex;
+        try {
+            // Use the delegate's method to find its authority token, with findCached: false
+            // to ensure we're fetching from the network rather than any existing cache
+            const utxo = await delegate.DelegateMustFindAuthorityToken(this.capo.mkTcx(), label, {
+                findCached: false,
+            });
+
+            // Convert the TxInput to the format needed for storage
+            await this.indexUtxoFromTxInput(utxo);
+        } catch (e) {
+            console.warn(`Failed to fetch delegate UUT for ${label}:`, e);
+            throw e;
+        }
+    }
+
+    /**
+     * Fetches and indexes a delegate's authority token UTXO from a delegate link.
+     * For delegates that don't have predefined roles (like invariants).
+     * @param tcx - Transaction context
+     * @param delegateLink - The relative delegate link
+     * @param label - Label for logging
+     */
+    private async fetchAndIndexDelegateLinkUut(
+        delegateLink: RelativeDelegateLink,
+        label: string
+    ): Promise<void> {
+        const mph = this.capo.mph;
+        const assetClass = makeAssetClass(mph, delegateLink.uutName);
+
+        // For invariants and other non-role delegates, we need to fetch directly by asset and address
+        const address = delegateLink.delegateValidatorHash
+            ? makeAddress(
+                  this.capo.setup.isMainnet,
+                  makeValidatorHash(delegateLink.delegateValidatorHash)
+              )
+            : this.capo.address;
+
+        await this.store.log(
+            "dx8pq",
+            `Fetching UUT for ${label} at address ${address.toString()}`
+        );
+
+        // Fetch UTXOs with this asset from the address
+        const policyId = assetClass.mph.toHex();
+        const assetName = bytesToHex(assetClass.tokenName);
         const asset = `${policyId}${assetName}`;
 
-        // For now, we need the delegate address to fetch the UUT
-        // The delegate address can be derived from delegateValidatorHash if available
-        // This is a placeholder - full implementation would:
-        // 1. Get delegate address from delegateLink.delegateValidatorHash
-        // 2. Use Blockfrost API: addresses/{address}/utxos/{asset}?count=1&order=desc
-        // 3. Store the resulting UTXO in the index
+        const url = `addresses/${address.toString()}/utxos/${asset}?count=1&order=desc`;
+        const untyped = await this.fetchFromBlockfrost<unknown[]>(url);
 
-        console.log(
-            `TODO: Fetch UUT for asset ${asset} - need delegate address from charter`
-        );
+        if (!Array.isArray(untyped) || untyped.length === 0) {
+            await this.store.log(
+                "no8uu",
+                `No UTXO found for ${label} with asset ${asset}`
+            );
+            return;
+        }
+
+        // Validate and store the UTXO
+        const validationResult = UtxoDetailsFactory(untyped[0]);
+        if (validationResult instanceof ArkErrors) {
+            console.error(`Error validating UTXO for ${label}:`, validationResult);
+            throw new Error("Validation error fetching delegate UTXO");
+        }
+
+        const typed = validationResult as UtxoDetailsType;
+        const utxoId = this.utxoId(typed.tx_hash, typed.output_index);
+        const utxoWithId = {
+            ...typed,
+            utxoId,
+        };
+        await this.store.saveUtxo(utxoWithId);
+    }
+
+    /**
+     * Indexes a UTXO from a TxInput object (returned by DelegateMustFindAuthorityToken).
+     * Fetches full UTXO details from Blockfrost and stores them.
+     */
+    private async indexUtxoFromTxInput(txInput: TxInput): Promise<void> {
+        const utxoIdStr = txInput.id.toString();
+        const [txHash, outputIndexStr] = utxoIdStr.split("#");
+        const outputIndex = parseInt(outputIndexStr, 10);
+
+        // Fetch full UTXO details from Blockfrost
+        const url = `txs/${txHash}/utxos`;
+        const untyped = await this.fetchFromBlockfrost<any>(url);
+
+        // Find the specific output
+        if (!untyped.outputs || !Array.isArray(untyped.outputs)) {
+            throw new Error(`No outputs found for transaction ${txHash}`);
+        }
+
+        const output = untyped.outputs[outputIndex];
+        if (!output) {
+            throw new Error(
+                `Output index ${outputIndex} not found in transaction ${txHash}`
+            );
+        }
+
+        // Validate the output
+        const validationResult = UtxoDetailsFactory(output);
+        if (validationResult instanceof ArkErrors) {
+            console.error(
+                `Error validating UTXO ${utxoIdStr}:`,
+                validationResult
+            );
+            throw new Error("Validation error indexing delegate UTXO");
+        }
+
+        const typed = validationResult as UtxoDetailsType;
+        const utxoWithId = {
+            ...typed,
+            utxoId: utxoIdStr,
+        };
+        await this.store.saveUtxo(utxoWithId);
     }
 
     async fetchFromBlockfrost<T>(url: string): Promise<T> {
@@ -817,9 +940,6 @@ export class CachedUtxoIndex {
 // indexes utxos in the capo address, by type
 // indexes utxos in the capo address, by id
 
-// periodically queries for new utxos at the capo address
-const refreshInterval = 60 * 1000; // 1 minute
-const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
 
 // remembers the last block-id seen in any capo utxo
 
