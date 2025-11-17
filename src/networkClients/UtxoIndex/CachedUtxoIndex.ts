@@ -38,6 +38,7 @@ import {
     type AddressTransactionSummariesType,
 } from "./blockfrostTypes/AddressTransactionSummaries.js";
 import type { CharterData } from "../../CapoTypes";
+import type { RelativeDelegateLink } from "../../delegation/UnspecializedDelegate.typeInfo";
 // uses a specific base page size for fetching capo utxos
 const capoUpdaterPageSize = 20;
 
@@ -458,6 +459,101 @@ export class CachedUtxoIndex {
             console.warn("Could not resolve spend delegate UUT:", e);
         }
 
+        // Get gov authority UUT from charter link
+        try {
+            const govAuthorityLink = charterData.govAuthorityLink;
+            if (govAuthorityLink?.uutName) {
+                const uutAssetClass = makeAssetClass(
+                    mph,
+                    govAuthorityLink.uutName
+                );
+                await this.store.log(
+                    "g8xpk",
+                    `Fetching gov authority UUT: ${govAuthorityLink.uutName}`
+                );
+                await this.fetchAndIndexUut(uutAssetClass, govAuthorityLink);
+            }
+        } catch (e) {
+            // Delegate may not exist yet
+            console.warn("Could not resolve gov authority UUT:", e);
+        }
+
+        // Get spend invariant UUTs from charter
+        if (charterData.spendInvariants) {
+            for (let i = 0; i < charterData.spendInvariants.length; i++) {
+                try {
+                    const invariantLink = charterData.spendInvariants[i];
+                    if (invariantLink?.uutName) {
+                        const uutAssetClass = makeAssetClass(
+                            mph,
+                            invariantLink.uutName
+                        );
+                        await this.store.log(
+                            "sp9iv",
+                            `Fetching spend invariant[${i}] UUT: ${invariantLink.uutName}`
+                        );
+                        await this.fetchAndIndexUut(uutAssetClass, invariantLink);
+                    }
+                } catch (e) {
+                    console.warn(`Could not resolve spend invariant[${i}] UUT:`, e);
+                }
+            }
+        }
+
+        // Get mint invariant UUTs from charter
+        if (charterData.mintInvariants) {
+            for (let i = 0; i < charterData.mintInvariants.length; i++) {
+                try {
+                    const invariantLink = charterData.mintInvariants[i];
+                    if (invariantLink?.uutName) {
+                        const uutAssetClass = makeAssetClass(
+                            mph,
+                            invariantLink.uutName
+                        );
+                        await this.store.log(
+                            "mt7iv",
+                            `Fetching mint invariant[${i}] UUT: ${invariantLink.uutName}`
+                        );
+                        await this.fetchAndIndexUut(uutAssetClass, invariantLink);
+                    }
+                } catch (e) {
+                    console.warn(`Could not resolve mint invariant[${i}] UUT:`, e);
+                }
+            }
+        }
+
+        // Get other named delegate UUTs from charter
+        if (charterData.otherNamedDelegates) {
+            const namedDelegates =
+                charterData.otherNamedDelegates instanceof Map
+                    ? [...charterData.otherNamedDelegates.entries()]
+                    : Object.entries(charterData.otherNamedDelegates);
+
+            for (const [delegateName, delegateLink] of namedDelegates) {
+                try {
+                    if (
+                        delegateLink &&
+                        typeof delegateLink === "object" &&
+                        "uutName" in delegateLink &&
+                        delegateLink.uutName
+                    ) {
+                        const link = delegateLink as RelativeDelegateLink;
+                        const uutAssetClass = makeAssetClass(mph, link.uutName);
+                        await this.store.log(
+                            "nd8uu",
+                            `Fetching named delegate '${delegateName}' UUT: ${link.uutName}`
+                        );
+                        await this.fetchAndIndexUut(uutAssetClass, link);
+                    }
+                } catch (e) {
+                    console.warn(
+                        `Could not resolve named delegate '${delegateName}' UUT:`,
+                        e
+                    );
+                }
+            }
+        }
+
         // Get dgData controller UUTs from manifest
         for (const [entryName, entryInfo] of charterData.manifest.entries()) {
             const { DgDataPolicy } = entryInfo.entryType;
@@ -501,7 +597,7 @@ export class CachedUtxoIndex {
      */
     private async fetchAndIndexUut(
         assetClass: any,
-        delegateLink?: any
+        delegateLink: RelativeDelegateLink
     ): Promise<void> {
         // Convert asset class to Blockfrost format (policyId + assetName)
         const policyId = assetClass.mph.hex;
@@ -659,9 +755,10 @@ export class CachedUtxoIndex {
                 const validationResult = UtxoDetailsFactory(item);
                 if (validationResult instanceof ArkErrors) {
                     console.error(
-                        `Error while fetching utxos from address ${address}:`
+                        `Error while fetching utxos from address ${address}:`,
+                        validationResult.toString()
                     );
-                    validationResult.throw();
+                    throw new Error("Validation error fetching UTXOs");
                 }
                 const typed = validationResult as UtxoDetailsType;
 
