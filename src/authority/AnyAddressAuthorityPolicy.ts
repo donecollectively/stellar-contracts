@@ -28,7 +28,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     usesContractScript = false as const;
     static defaultParams = {
         rev: 1n,
-    }
+    };
 
     get delegateValidatorHash() {
         return undefined;
@@ -47,22 +47,22 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     async DelegateMustFindAuthorityToken(
         tcx: StellarTxnContext,
         label: string,
-        options : UtxoSearchScope = {}
+        options: UtxoSearchScope = {}
     ): Promise<TxInput> {
         const v = this.tvAuthorityToken();
 
         const { addrHint } = this.configIn!;
-        const extraErrorHint = "are you connected to the right wallet address? " +
+        const extraErrorHint =
+            "are you connected to the right wallet address? " +
             (addrHint?.length
                 ? "\nauthority token originally issued to " +
-                addrHint
-                    .map((x) => {
-                        const addr = "string" == typeof x ? makeAddress(x) : x;
-                        return (
-                            dumpAny(addr) + " = " + addr.toString()
-                        );
-                    })
-                    .join("\n or ")
+                  addrHint
+                      .map((x) => {
+                          const addr =
+                              "string" == typeof x ? makeAddress(x) : x;
+                          return dumpAny(addr) + " = " + addr.toString();
+                      })
+                      .join("\n or ")
                 : "");
         const found = await this.uh.findActorUtxo(
             `${label}: ${bytesToText(this.configIn!.tn)}`,
@@ -70,6 +70,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
             {
                 exceptInTcx: tcx,
                 searchOthers: true,
+                findCached: options.findCached,
                 extraErrorHint,
             }
         );

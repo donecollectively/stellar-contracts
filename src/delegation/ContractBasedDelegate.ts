@@ -45,6 +45,7 @@ import {
     placeholderSetupDetails,
     type HeliosScriptBundle,
 } from "../helios/index.js";
+import type { UtxoSearchScope } from "../UtxoHelper.js";
 
 /**
  * Base class for delegates controlled by a smart contract, as opposed
@@ -552,14 +553,17 @@ export class ContractBasedDelegate extends StellarDelegate {
      **/
     async DelegateMustFindAuthorityToken(
         tcx: StellarTxnContext,
-        label: string
+        label: string,
+        options: UtxoSearchScope = {}
     ): Promise<TxInput> {
+        const { findCached } = options;
         return this.mustFindMyUtxo(
             `${label}: ${bytesToText(this.configIn!.tn)}`,
             {
                 predicate: this.uh.mkTokenPredicate(this.tvAuthorityToken()),
                 extraErrorHint:
                     "this delegate strategy might need to override txnMustFindAuthorityToken()",
+                findCached,
             }
         );
     }

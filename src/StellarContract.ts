@@ -1595,9 +1595,11 @@ export class StellarContract<
             extraErrorHint?: string;
             /** any utxos already in the transaction context are disregarded and not passed to the predicate function */
             utxos?: TxInput[];
+            findCached?: false;
         }
     ): Promise<TxInput> {
-        const { predicate, exceptInTcx, extraErrorHint, utxos } = options;
+        const { predicate, exceptInTcx, extraErrorHint, utxos, findCached } =
+            options;
         const { address } = this;
 
         return this.utxoHelper.mustFindUtxo(semanticName, {
@@ -1606,6 +1608,7 @@ export class StellarContract<
             exceptInTcx,
             extraErrorHint,
             utxos,
+            findCached,
         });
     }
 
