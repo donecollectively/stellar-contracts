@@ -2,9 +2,9 @@ import { dumpAny as dumpAny$1, TxBatcher, GenericSigner, UtxoHelper, txAsString 
 import { makeNetworkParamsHelper, makeAddress, makeAssets, DEFAULT_NETWORK_PARAMS, makeTxOutputId, makeStakingAddress } from '@helios-lang/ledger';
 import { encodeBech32, generateBytes, mulberry32 } from '@helios-lang/crypto';
 import { bytesToHex, decodeUtf8, encodeUtf8, isValidUtf8 } from '@helios-lang/codec-utils';
-import { makeByteArrayData } from '@helios-lang/uplc';
 import { makeTxBuilder, makeTxChainBuilder, makeWalletHelper, SECOND, makeEmulatorGenesisTx, makeEmulatorRegularTx, BIP39_DICT_EN, restoreRootPrivateKey, signCip30CoseData, makeRootPrivateKey } from '@helios-lang/tx-utils';
 import { customAlphabet } from 'nanoid';
+import { makeByteArrayData } from '@helios-lang/uplc';
 import { expectDefined } from '@helios-lang/type-utils';
 
 async function addTestContext(context, TestHelperClass, stConfig, helperState) {
@@ -936,6 +936,7 @@ class UplcConsoleLogger {
 }
 
 const nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
+
 //!!! if we could access the inputs and outputs in a building Tx,
 const emptyUuts = Object.freeze({});
 class StellarTxnContext {

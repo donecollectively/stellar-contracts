@@ -1062,8 +1062,12 @@ import {
   makeAssets
 } from "@helios-lang/ledger";
 import { bytesToHex as bytesToHex3 } from "@helios-lang/codec-utils";
+
+// src/util/nanoid.ts
 import { customAlphabet } from "nanoid";
 var nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
+
+// src/StellarTxnContext.ts
 var emptyUuts = Object.freeze({});
 var StellarTxnContext2 = class _StellarTxnContext {
   kind = "StellarTxnContext";

@@ -586,6 +586,7 @@ export declare class StellarContract<ConfigType extends configBaseWithRev> {
         extraErrorHint?: string;
         /** any utxos already in the transaction context are disregarded and not passed to the predicate function */
         utxos?: TxInput[];
+        findCached?: false;
     }): Promise<TxInput>;
     /**
      * Reuses an existing transaction context, or creates a new one with the given name and the current actor context

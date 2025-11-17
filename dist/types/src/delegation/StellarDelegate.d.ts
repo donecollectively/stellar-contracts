@@ -7,6 +7,7 @@ import type { ContractDataBridgeWithEnumDatum } from "../helios/dataBridge/DataB
 import type { AbstractNew } from "../helios/typeUtils.js";
 import type { isActivity } from "../ActivityTypes.js";
 import type { UplcData } from "@helios-lang/uplc";
+import type { UtxoSearchScope } from "../UtxoHelper.js";
 export type GrantAuthorityOptions = {
     skipReturningDelegate?: true;
     ifExists?: (existingInput: TxInput, existingRedeemer: UplcData) => void;
@@ -86,7 +87,7 @@ export declare abstract class StellarDelegate extends StellarContract<capoDelega
      * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
      *  ... or throw an informative error
      **/
-    abstract DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string): Promise<TxInput>;
+    abstract DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string, options?: UtxoSearchScope): Promise<TxInput>;
     /**
      * Adds the delegate's authority token to a transaction
      * @public
