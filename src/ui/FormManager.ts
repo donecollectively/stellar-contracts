@@ -8,16 +8,11 @@ import type {
     minimalDgDataTypeLike,
 } from "@donecollectively/stellar-contracts";
 import {
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type RefObject,
-} from "react";
-import type { CapoDAppProvider } from "./CapoDappProvider";
-import { useCapoDappProvider } from "./CapoDappProviderContext";
-import type { CapoDatum$Ergo$CharterData } from "@donecollectively/stellar-contracts";
+    CapoDAppProvider,
+    CapoDappProviderContext,
+    useCapoDappProvider,
+} from "@donecollectively/stellar-contracts/ui";
+import { useCallback, useContext, useEffect, useRef, useState, type RefObject } from "react";
 
 export class FormManager<DataContract extends DelegatedDataContract<any, any>> {
     options: FormManagerOptions<DataContract>;
@@ -34,16 +29,11 @@ export class FormManager<DataContract extends DelegatedDataContract<any, any>> {
         this.capo = provider.capo;
         this.options = options;
         this.handleChange = this.handleChange.bind(this);
-        this.el.addEventListener("change", this.handleChange, {
-            capture: true,
-        });
+        this.el.addEventListener("change", this.handleChange, { capture: true });
     }
 
     handleChange(event: Event) {
-        const target = event.target as
-            | HTMLInputElement
-            | HTMLSelectElement
-            | HTMLTextAreaElement;
+        const target = event.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
         console.log("change event", target.name, target.value);
     }
 
@@ -51,27 +41,36 @@ export class FormManager<DataContract extends DelegatedDataContract<any, any>> {
         return this.el;
     }
     destroy() {
-        this.form.removeEventListener("change", this.handleChange, {
-            capture: true,
-        });
+        this.form.removeEventListener("change", this.handleChange, { capture: true });
     }
 
-    getFieldError(name: string) {}
+    getFieldError(name: string) {
+        // TODO: Implement field error checking
+        return undefined;
+    }
+    useRecordId(id: string) {
+        const [utxo, setUtxo] = useState<FoundDatumUtxo<any, any> | null>(null);
+        useEffect(() => {
+            // TODO: Implement record lookup if provider has findRecords method
+            // if (this.provider.findRecords) {
+            //     this.provider.findRecords(id).then((utxo: FoundDatumUtxo<any, any> | null) => {
+            //         setUtxo(utxo);
+            //     });
+            // }
+        }, [id]);
+
+        return utxo;
+    }
 }
 
 type FormManagerOptions<
     DataContract extends DelegatedDataContract<any, any>,
-    DataTypeLike extends DataContract extends DelegatedDataContract<
-        infer T,
-        infer TLike
-    >
+    DataType extends DataContract extends DelegatedDataContract<infer T, infer TLike>
+        ? T
+        : never = DataContract extends DelegatedDataContract<infer T, infer TLike> ? T : never,
+    DataTypeLike extends DataContract extends DelegatedDataContract<infer T, infer TLike>
         ? TLike
-        : never = DataContract extends DelegatedDataContract<
-        infer T,
-        infer TLike
-    >
-        ? TLike
-        : never
+        : never = DataContract extends DelegatedDataContract<infer T, infer TLike> ? TLike : never,
 > = {
     typeName: DataContract["recordTypeName"];
     recordId: string;
@@ -83,83 +82,47 @@ type FormManagerOptions<
 // export type DgDataType<T extends DelegatedDataContract<any, any>> =
 //     T extends DelegatedDataContract<infer T, infer TLike> ? T : never;
 
-export function useFormManager<
-    DataContract extends DelegatedDataContract<any, any>,
-    DataType extends DataContract extends DelegatedDataContract<
-        infer T,
-        infer TLike
-    >
-        ? T
-        : never = DataContract extends DelegatedDataContract<
-        infer T,
-        infer TLike
-    >
-        ? T
-        : never
->(
-    formRef: React.RefObject<HTMLFormElement | null>,
+export function useFormManager<DataContract extends DelegatedDataContract<any, any>>(
     options: FormManagerOptions<DataContract>
 ) {
-    const { capo, provider } = useCapoDappProvider() || {};
-    // if (!provider) {
-    //     throw new Error(
-    //         "FormManager: missing required CapoDAppProviderContext"
-    //     );
-    // }
+    const providerContext = useCapoDappProvider();
+    if (!providerContext || !providerContext.provider) {
+        throw new Error("FormManager: missing required CapoDAppProviderContext");
+    }
+    const { provider } = providerContext;
 
     const formManagerRef = useRef<FormManager<DataContract> | null>(null);
-    const [controller, setController] = useState<DataContract | undefined>(
-        undefined
-    );
+    // Track the form element using state - this will trigger re-renders when it changes
+    const [formElement, setFormElement] = useState<HTMLFormElement | null>(null);
+
+    // Callback ref that gets called when form element is mounted/unmounted
+    // This is the key: callback refs trigger when elements are mounted, unlike RefObjects
+    // When the element is mounted, React calls this with the element
+    // When unmounted, React calls this with null
+    const formCallbackRef = useCallback((element: HTMLFormElement | null) => {
+        // State update triggers effect re-run
+        setFormElement(element);
+    }, []);
+
+    // Create FormManager when form element and provider are available
     useEffect(() => {
-        (async function getController() {
-            if (!capo) return undefined;
-            if (!provider) return undefined;
-
-            const charterData = await capo.findCharterData();
-
-            const controller = (await capo.getDgDataController(
-                options.typeName,
-                {
-                    charterData: charterData as CapoDatum$Ergo$CharterData,
-                }
-            )) as DataContract;
-
-            setController(controller);
-        })();
-    }, [capo, options.typeName, provider]);
-
-    const [utxo, setUtxo] = useState<FoundDatumUtxo<DataType, any> | null>(
-        null
-    );
-
-    useEffect(() => {
-        if (!controller) return;
-        controller.findRecords({ id: options.recordId }).then((utxo) => {
-            setUtxo(utxo);
-        });
-    }, [controller, options.recordId]);
-
-    useEffect(() => {
-        const form = formRef.current;
-        if (!controller || !utxo || !form || !capo || !provider) return;
-        if (form && !formManagerRef.current) {
-            // Create FormManager only once when form element becomes available
-            formManagerRef.current = new FormManager<DataContract>(
-                form,
-                provider,
-                options
-            );
+        if (formElement && provider && !formManagerRef.current) {
+            formManagerRef.current = new FormManager<DataContract>(formElement, provider, options);
         }
 
         return () => {
-            // Cleanup when component unmounts
+            // Cleanup when component unmounts or dependencies change
             if (formManagerRef.current) {
                 formManagerRef.current.destroy();
                 formManagerRef.current = null;
             }
         };
-    }, [provider, capo, controller, utxo]);
+    }, [provider, formElement, options]);
 
-    return formManagerRef.current;
+    // Return both the formManager and the callback ref
+    // The component should use formRef on the form element
+    return {
+        formManager: formManagerRef.current,
+        formRef: formCallbackRef,
+    };
 }
