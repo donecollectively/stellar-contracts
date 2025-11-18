@@ -74,7 +74,7 @@ type FormManagerOptions<
 > = {
     typeName: DataContract["recordTypeName"];
     recordId: string;
-    emptyData: Partial<DataTypeLike>;
+    emptyData?: Partial<DataTypeLike>;
     // mockData: DataTypeLike;
 };
 // DelegatedDataContract<ErgoDriverData, DriverDataLike>
@@ -90,8 +90,8 @@ export function useFormManager<DataContract extends DelegatedDataContract<any, a
         throw new Error("FormManager: missing required CapoDAppProviderContext");
     }
     const { provider } = providerContext;
+    const [formManager, setFormManager] = useState<FormManager<DataContract> | null>(null);
 
-    const formManagerRef = useRef<FormManager<DataContract> | null>(null);
     // Track the form element using state - this will trigger re-renders when it changes
     const [formElement, setFormElement] = useState<HTMLFormElement | null>(null);
 
@@ -106,23 +106,23 @@ export function useFormManager<DataContract extends DelegatedDataContract<any, a
 
     // Create FormManager when form element and provider are available
     useEffect(() => {
-        if (formElement && provider && !formManagerRef.current) {
-            formManagerRef.current = new FormManager<DataContract>(formElement, provider, options);
+        if (formElement && provider) {
+            setFormManager(new FormManager<DataContract>(formElement, provider, options));
         }
 
         return () => {
             // Cleanup when component unmounts or dependencies change
-            if (formManagerRef.current) {
-                formManagerRef.current.destroy();
-                formManagerRef.current = null;
+            if (formManager) {
+                formManager.destroy();
+                setFormManager(null);
             }
         };
-    }, [provider, formElement, options]);
+    }, [provider, formElement, options.typeName, options.recordId]);
 
     // Return both the formManager and the callback ref
     // The component should use formRef on the form element
     return {
-        formManager: formManagerRef.current,
+        formManager: formManager,
         formRef: formCallbackRef,
     };
 }
