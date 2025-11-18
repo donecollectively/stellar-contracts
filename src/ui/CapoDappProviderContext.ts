@@ -24,6 +24,7 @@ export function useCapoDappProvider<
         CapoDappProviderContext as React.Context<CapoDAppProvider<C> | null>
     );
     if (!provider) {
+        return null;
         throw new Error(
             "useCapoDappProvider must be used within a CapoDappProvider"
         );

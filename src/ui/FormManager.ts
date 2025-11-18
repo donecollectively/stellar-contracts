@@ -100,12 +100,12 @@ export function useFormManager<
     formRef: React.RefObject<HTMLFormElement | null>,
     options: FormManagerOptions<DataContract>
 ) {
-    const { capo, provider } = useCapoDappProvider();
-    if (!provider) {
-        throw new Error(
-            "FormManager: missing required CapoDAppProviderContext"
-        );
-    }
+    const { capo, provider } = useCapoDappProvider() || {};
+    // if (!provider) {
+    //     throw new Error(
+    //         "FormManager: missing required CapoDAppProviderContext"
+    //     );
+    // }
 
     const formManagerRef = useRef<FormManager<DataContract> | null>(null);
     const [controller, setController] = useState<DataContract | undefined>(
@@ -114,6 +114,7 @@ export function useFormManager<
     useEffect(() => {
         (async function getController() {
             if (!capo) return undefined;
+            if (!provider) return undefined;
 
             const charterData = await capo.findCharterData();
 
@@ -126,7 +127,7 @@ export function useFormManager<
 
             setController(controller);
         })();
-    }, [capo, options.typeName]);
+    }, [capo, options.typeName, provider]);
 
     const [utxo, setUtxo] = useState<FoundDatumUtxo<DataType, any> | null>(
         null
@@ -141,7 +142,7 @@ export function useFormManager<
 
     useEffect(() => {
         const form = formRef.current;
-        if (!controller || !utxo || !form || !capo) return;
+        if (!controller || !utxo || !form || !capo || !provider) return;
         if (form && !formManagerRef.current) {
             // Create FormManager only once when form element becomes available
             formManagerRef.current = new FormManager<DataContract>(
