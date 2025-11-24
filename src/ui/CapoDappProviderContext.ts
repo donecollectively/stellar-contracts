@@ -1,6 +1,8 @@
 import type { Capo } from "@donecollectively/stellar-contracts";
 import type { CapoDAppProvider } from "./CapoDappProvider.js";
-import React from "react";
+import React, { useMemo, useState } from "react";
+import { nanoid } from "../util/nanoid.js";
+import { debugBox } from "../util/consoleHelper.js";
 
 /**
  * @public
@@ -20,6 +22,8 @@ export const CapoDappProviderContext =
 export function useCapoDappProvider<
     C extends Capo<any, any> = Capo<any, any>
 >() {
+    const providerLocation = new Error().stack?.split("\n")[2].trim();
+
     const provider = React.useContext(
         CapoDappProviderContext as React.Context<CapoDAppProvider<C> | null>
     );
@@ -29,19 +33,30 @@ export function useCapoDappProvider<
             "useCapoDappProvider must be used within a CapoDappProvider"
         );
     }
+    const [id, setId] = useState(nanoid(4))
     const [isMounted, setIsMounted] = React.useState(false);
-    const [capo, setCapo] = React.useState<C>();
+    const [capo, setCapo] = React.useState<C | undefined>(provider.capo!);
     const [checking, keepChecking] = React.useState(1);
-
+    const  [timeout, replaceTimeout] = React.useState<NodeJS.Timeout | null>(null);
     React.useEffect(() => {
-        setIsMounted(true);
-        setTimeout(() => {
-            if (capo !== provider?.capo) {
-                setCapo(provider?.capo);
-            }
+        if (!isMounted) {
+            setIsMounted(true);
+        }
+        // console.log("useCapoDappProvider checking for new capo")// capo, provider?.capo);
+        if (capo !== provider?.capo) {
+
+            debugBox(`useCapoDappProvider ${id} setting capo`, capo, "->", provider?.capo, `\n${providerLocation}`);
+            setCapo(provider?.capo);
+        }
+       replaceTimeout(setTimeout(() => {
             keepChecking(1 + checking);
-        }, 2000);
+        }, 2000));
     }, [checking, provider, provider?.userInfo.wallet, capo]);
 
-    return { capo, provider, isMounted };
+    const memoized = useMemo(() => {
+        debugBox(`useCapoDappProvider ${id} updated:`, capo, provider, isMounted);
+        return { capo, provider, isMounted };
+    }, [capo, provider, isMounted]);
+
+    return memoized;
 }
