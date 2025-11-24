@@ -95,7 +95,7 @@ export function TxBatchViewer({
                         : "";
 
                     const cardStyle =
-                        "bg-(--color-card) text-(--color-card-foreground)";
+                        "bg-card text-card-foreground";
 
                     if (!selectedId) {
                         return (
@@ -228,7 +228,7 @@ const ShowSingleTx = (props: {
 
     // Visual indicator for nested transactions
     const nestedIndicator = depth
-        ? `${indentClass} border-(--color-accent-foreground)/30`
+        ? `${indentClass} border-accent/30`
         : "";
 
     // <Softlight>{submitterStates}</Softlight>

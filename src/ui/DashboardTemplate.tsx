@@ -237,12 +237,20 @@ export function ActionButton(props: {
     children: React.ReactNode;
 }) {
     const { children, onClick, className = "", size = "md" } = props;
+    // for tailwind:
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const sizeClasses = {
+        xs: "text-xs",
+        sm: "text-sm",
+        md: "text-md",
+        lg: "text-lg",
+    };
     return (
         <button
             onClick={onClick}
             className={`${
                 className
-            } font-bold bg-(--color-primary) text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${
+            } font-bold bg-primary text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${
                 " hi-there "
             } text-${size} border-2 border-(--color-border) rounded-${size} cursor-pointer px-2 py-1`}
         >
@@ -275,7 +283,7 @@ export function Column(props: {
 }
 
 /**
- * shows its content in the theme color of the accent foreground
+ * shows its content in the "accent" theme color
  * @remarks
  * Allows for any as=‹htmlTag› to be used instead of the default <p> tag.
  * 
@@ -292,7 +300,7 @@ export function Highlight(props: {
     const { as: As = "p", className = "", children } = props;
     return (
         <As
-            className={`${className} text-(--color-accent-foreground) text-[13px] font-normal`}
+            className={`${className} text-accent text-[13px] font-normal`}
         >
             {children}
         </As>
@@ -317,7 +325,7 @@ export function Lowlight(props: {
     const { as: As = "div", className = "", children } = props;
     return (
         <As
-            className={`${className} text-(--color-accent-foreground) font-normal opacity-50`}
+            className={`${className} text-accent font-normal opacity-50`}
         >
             {children}
         </As>
