@@ -33,28 +33,44 @@ export function useCapoDappProvider<
             "useCapoDappProvider must be used within a CapoDappProvider"
         );
     }
-    const [id, setId] = useState(nanoid(4))
+    const [id, setId] = useState(nanoid(4));
     const [isMounted, setIsMounted] = React.useState(false);
     const [capo, setCapo] = React.useState<C | undefined>(provider.capo!);
     const [checking, keepChecking] = React.useState(1);
-    const  [timeout, replaceTimeout] = React.useState<NodeJS.Timeout | null>(null);
+    const [timeout, replaceTimeout] = React.useState<NodeJS.Timeout | null>(
+        null
+    );
     React.useEffect(() => {
         if (!isMounted) {
             setIsMounted(true);
         }
         // console.log("useCapoDappProvider checking for new capo")// capo, provider?.capo);
         if (capo !== provider?.capo) {
-
-            debugBox(`useCapoDappProvider ${id} setting capo`, capo, "->", provider?.capo, `\n${providerLocation}`);
+            debugBox(
+                `useCapoDappProvider ${id} setting capo`,
+                capo,
+                "->",
+                provider?.capo,
+                `\n${providerLocation}`
+            );
             setCapo(provider?.capo);
         }
-       replaceTimeout(setTimeout(() => {
-            keepChecking(1 + checking);
-        }, 2000));
-    }, [checking, provider, provider?.userInfo.wallet, capo]);
+        if (!capo?.isConnected || !provider?.userInfo.wallet) {
+            replaceTimeout(
+                setTimeout(() => {
+                    keepChecking(1 + checking);
+                }, 2000)
+            );
+        }
+    }, [provider, provider?.userInfo.wallet, capo, provider.capo]);
 
     const memoized = useMemo(() => {
-        debugBox(`useCapoDappProvider ${id} updated:`, capo, provider, isMounted);
+        debugBox(
+            `useCapoDappProvider ${id} updated:`,
+            capo,
+            provider,
+            isMounted
+        );
         return { capo, provider, isMounted };
     }, [capo, provider, isMounted]);
 

@@ -248,8 +248,10 @@ export class CapoDAppProvider<
         super(props);
 
         if (singleton) {
-            console.warn(`CapoDAppProvider - not a singleton : /`)
-            throw new Error("CapoDAppProvider - not a singleton : /");
+            console.warn(`CapoDAppProvider - not a singleton : /\n`+
+                `Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
+            )
+            // throw new Error("CapoDAppProvider - not a singleton : /");
         }
         singleton = this;
 
@@ -1331,6 +1333,22 @@ export class CapoDAppProvider<
             return this.connectCapo(autoNext);
         }
     }
+    //     if (
+    //         this.state.capo && !(await this.state.capo.isConfigured)
+    //     ) {
+    //         // Capo exists but not configured - reconnect
+    //         return this.connectCapo(autoNext);
+    //     } else if (this.state.networkParams && autoNext && !this.state.capo) {
+    //         // No capo yet, autoNext=true - create capo
+    //         await this.updateStatus(
+    //             `reconnecting to ${this.dAppName} with connected wallet`,
+    //             { developerGuidance: "status message for the user" },
+    //             "//reinit after wallet"
+    //         );
+    //         return this.connectCapo(autoNext);
+    //     }
+    //     // When autoNext=false and no capo, let doInitialize() call connectCapo(true) next
+    // }
 
     async checkWalletTokens() {
         const { capo } = this.state;
@@ -1467,7 +1485,7 @@ export class CapoDAppProvider<
         type t = ConfigFor<CapoType>;
         let { txBatcher } = this.state;
         if (!txBatcher) {
-            if (!this.submitters) {
+            if (!this.submitters || Object.keys(this.submitters).length === 0) {
                 await this.setupSubmitters();
             }
             const batcherOptions: TxBatcherOptions = {
@@ -1564,16 +1582,22 @@ export class CapoDAppProvider<
                 debugger
             }
 
-            if (!autoNext)
-                return this.updateStatus(
+            if (!autoNext) {
+                await this.updateStatus(
                     "",
                     {
                         developerGuidance:
-                            "capture this capo object for use in transaction-building.  See also the dataDelegates...",
+                            "capture this capo object for use in transaction-building...",
                     },
                     `//${id}: Capo is connected to wallet, ready to do an on-chain activity`,
                     { capo }
                 );
+                // Still check wallet tokens if wallet is connected
+                if (wallet) {
+                    this.checkWalletTokens();
+                }
+                return;
+            }
 
             await this.updateStatus(
                 "... searching ...",
