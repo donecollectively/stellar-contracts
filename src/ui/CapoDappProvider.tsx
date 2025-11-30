@@ -717,6 +717,20 @@ export class CapoDAppProvider<
     //     thisAction.call(this);
     // }
 
+    copyWalletAddress = () => {
+        const {
+            userInfo: {
+                walletAddress,
+            },
+        } = this.state;
+        if (!walletAddress) return;
+        navigator.clipboard.writeText(walletAddress);
+        this.updateStatus("✅ address copied to clipboard", {
+            developerGuidance: "simple user notification",
+            clearAfter: 2500,
+        }, "// Wallet address copied to clipboard");
+    }
+
     /**
      * renders a lightweight wallet connection button.
      * @remarks
@@ -755,9 +769,12 @@ export class CapoDAppProvider<
                             // make it small by default, but allow it to grow on hover
                             // also, make it right-aligned and chop the overflow
                             // color the text black
-                            className="mb-0 text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
+                            className="mb-0 pl-0 pr-2 py-0 overflow-visible text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500  text-sm shadow-none outline-none hover:cursor-text"
                         >
-                            {walletAddress} {selectedWallet}
+                            <span key="icon" aria-hidden="true" className="-ml-2 mr-1">👜</span>
+                            <span id="clickToCopy" aria-label="click to copy" key="address" className="hover:cursor-grabbing" onClick={this.copyWalletAddress}>
+                                {this.state.status?.message?.match(/copied/i) ? this.state.status?.message : walletAddress}
+                            </span>&nbsp;{selectedWallet}
                             <a
                                 href="#"
                                 onClick={() => this.newWalletSelected("")}
