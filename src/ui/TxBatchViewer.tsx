@@ -45,27 +45,33 @@ export function TxBatchViewer({
         initialId
     );
     const [selectedTx, setSelectedTx] = React.useState<Tx | undefined>();
-    const [txMgr, setTxMgr] = React.useState<TxSubmissionTracker | undefined>();
+    const [txTracker, setTxTracker] = React.useState<TxSubmissionTracker | undefined>(
+        batch.$txStates[initialId]
+    );
     const [gen, setGen] = React.useState(0);
 
     const renderNow = React.useMemo(() => () => setGen((g) => g + 1), []);
 
+    const batchSize = batch.$allTxns.length;
     React.useEffect(() => {
         if (!selectedId) return;
-        const tx = batch.$txStates[selectedId];
-        if (!tx) return;
-        setTxMgr(tx);
-    }, [selectedId, batch]);
+        const txTracker = batch.$txStates[selectedId];
+        if (!txTracker) {
+            debugger
+            return;
+        }
+        setTxTracker(txTracker);
+    }, [selectedId, batch, batchSize]);
 
     React.useEffect(() => {
-        if (!txMgr?.txd.tx) return;
-        const tx = txMgr.txd.tx;
+        if (!txTracker?.txd.tx) return;
+        const tx = txTracker.txd.tx;
         if (typeof tx === "string") {
             setSelectedTx(decodeTx(tx));
         } else {
             setSelectedTx(tx);
         }
-    }, [txMgr]);
+    }, [txTracker]);
 
     React.useEffect(() => {
         batch.$txChanges.on("txAdded", renderNow);
@@ -74,12 +80,24 @@ export function TxBatchViewer({
             batch.$txChanges.off("txAdded", renderNow);
             batch.$txChanges.off("statusUpdate", renderNow);
         };
-    }, [batch, renderNow]);
+    }, [batch]);
 
+    console.error("rendering TxBatchViewer", {
+        selectedId,
+        batch,
+        initialId,
+        renderNow, 
+        advancedView, 
+        txTracker, 
+        selectedTx,
+        batchSize,
+        gen        
+    });
     const width = advancedView ? "w-9/12" : "";
 
     return (
         <>
+            {selectedId && <div>selectedId: {selectedId}</div>}
             <div className="border-1 border-(--color-card) flex w-full flex-row gap-2 rounded-md drop-shadow-md">
                 <ShowTxList
                     batch={batch}
@@ -91,7 +109,7 @@ export function TxBatchViewer({
                 />
                 {(() => {
                     const indicateSelectedTx = selectedId
-                        ? "border-s-4 border-s-brand-orange/20"
+                        ? "border-s-4 border-s-accent/20"
                         : "";
 
                     const cardStyle =
@@ -109,7 +127,7 @@ export function TxBatchViewer({
                         );
                     }
 
-                    if (!txMgr) {
+                    if (!txTracker) {
                         return (
                             <div
                                 className={`${indicateSelectedTx} ${cardStyle} ${width} rounded-md border border-white/10 p-2`}
@@ -126,7 +144,7 @@ export function TxBatchViewer({
                             className={`${indicateSelectedTx} z-3 ${cardStyle} ${width} flex flex-col rounded-md border border-white/10 p-2`}
                         >
                             <ShowTxDescription
-                                txTracker={txMgr}
+                                txTracker={txTracker}
                                 tx={selectedTx}
                                 advancedView={advancedView}
                             />
@@ -246,7 +264,6 @@ const ShowSingleTx = (props: {
             key={id}
             onClick={isCurrent ? undefined : () => setSelectedId(id)}
             className={`${outerMarginClass}`}
-            // className={`${indentClass}`}
         >
             <div className={`${nestedIndicator} pl-2`}>
                 <div
@@ -347,7 +364,7 @@ function ShowTxDescription({
             <div className="flex flex-col justify-between">
                 {/* Sign & Submit button */}
                 <div className="basis-1/9">
-                    {tx && txTracker && tcx && !tcx.isFacade && $state != "confirmed" &&  (
+                    {tx && txTracker && tcx && !tcx.isFacade && $state != "confirmed" && (
                         <ActionButton
                             className="mt-2 self-start"
                             onClick={() => txTracker.$signAndSubmit?.()}
@@ -355,6 +372,11 @@ function ShowTxDescription({
                             Sign&nbsp;&amp;&nbsp;Submit
                         </ActionButton>
                     )}
+                    {!!tx && <div>tx ok</div> || <div>no tx</div>}
+                    {!!txTracker && <div>txTracker ok</div> || <div>no txTracker</div>}
+                    {!!tcx && <div>tcx ok</div> || <div>no tcx</div>}
+                    {!tcx?.isFacade && <div>not a facade</div> || <div>is a facade</div>}
+                    {$state != "confirmed" && <div>state '{$state}'' not confirmed</div> || <div>confirmed</div>}
                 </div>
                 {advancedView && (
                     <>
@@ -444,15 +466,15 @@ function ShowTxDescription({
                                                         ?.split("\n")
                                                         .map((line2) => {
                                                             let prefix:
-                                                                    | React.ReactNode
-                                                                    | string = (
+                                                                | React.ReactNode
+                                                                | string = (
                                                                     <></>
                                                                 ),
                                                                 rest:
                                                                     | React.ReactNode
                                                                     | string = (
-                                                                    <></>
-                                                                );
+                                                                        <></>
+                                                                    );
                                                             /*.replaceAll("", "<span className=font-formal")*/
                                                             [prefix, rest] =
                                                                 line2.split(
