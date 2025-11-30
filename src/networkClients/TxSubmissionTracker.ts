@@ -4,6 +4,7 @@ import type { SetupInfo } from "../StellarContract.js";
 import type { TxDescription } from "../StellarTxnContext.js";
 import type { namedSubmitters } from "./BatchSubmitController.js";
 import { TxSubmitMgr, type SubmitManagerState } from "./TxSubmitMgr.js";
+import { hasReqts } from "../Requirements.js";
 
 type SubmissionsStates =
     | "registered"
@@ -74,8 +75,24 @@ export class TxSubmissionTracker extends StateMachine<
         this.submitters = submitters;
         this.txSubmitters = {};
 
-        if (txd.tcx) {
-            this.log("created directly from tcx");
+        if (!txd.tx) {
+            this.log("📥 registered txn still being built");
+            if (!txd.tcx) {
+                throw new Error(`a tx stil being built should have a tcx callback or object in its txd.tcx`);
+            }
+            if (txd.tcx._builtTx) {
+                throw new Error(`this tx description has a tcx already built; its \`tx\` attribute should reflect it`);
+            }
+        } else if (txd.tx) {            
+            this.log("created with already-built tcx");
+            if (!txd.tcx) {
+                console.warn("Note: unexpected registration of a built tx without a tcx context\n"+
+                    "indicates this tx being built outside the normal flow of a StellarTxnContext, or is registered incorrectly"
+                );
+                // this isn't inherently a problem, ^ but for now, we'll throw an error
+                // so we can be sure we're doing all of OUR registrations correctly.
+                throw new Error(`temp: missing tcx ?`);
+            }
             this.transition("built");
         } else {
             this.log("📥 registered");
@@ -435,6 +452,20 @@ export class TxSubmissionTracker extends StateMachine<
         // this.transition("emulatorConfirmed");
 
         this.log(` --  ⚗️ ⚗️  🥅 emulatorConfirmed ⚗️ ⚗️`);
+    }
+
+    reqts() {
+        return hasReqts({
+            "tracks the submission of a single tx via one or more submitter clients": {
+                purpose: "provides a unified state of the transaction's submission",
+                details: [
+                    "tracks the state of the transaction's submission through the state machine",
+                ],
+                mech: [
+                    "uses a state machine to track the state of the transaction's submission",
+                ]
+            },
+        });
     }
 }
 
