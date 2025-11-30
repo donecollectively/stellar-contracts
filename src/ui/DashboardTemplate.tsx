@@ -1,5 +1,6 @@
 import React from "react";
-import ellipse from "./assets/ellipse.svg";
+
+import { ThemedBackgroundDecorations } from "./ThemedBackgroundDecorations.js";
 
 /**
  * A template for a dashboard layout
@@ -13,24 +14,10 @@ export function DashboardTemplate(props: {
 }) {
     return (
         <div className="relative my-2 flex w-full flex-col gap-4">
-            <img
-                alt="blurred background"
-                height={260}
-                width={260}
-                src={ellipse}
-                className="size-40 absolute -left-44 top-20 -z-10 h-96 w-96 overflow-hidden bg-black/20 opacity-50 blur-[344px]"
-            />
-            <img
-                alt="blurred background"
-                height={260}
-                width={260}
-                src={ellipse}
-                className="size-40 absolute -right-44 top-20 -z-10 h-96 w-96 overflow-hidden bg-black/20 opacity-50 blur-[344px]"
-            />
             <div className="self-start text-2xl font-semibold">
                 <h3>{props.title}</h3>
             </div>
-            {props.children}
+                {props.children}
         </div>
     );
 }
@@ -70,12 +57,12 @@ export function DashboardSummary(props: {
     children: React.ReactNode;
 }) {
     return (
-        <div className="bg-background/20 col-span-1 flex h-full flex-col items-start justify-between rounded-3xl border border-white/10 p-6">
+        <ThemedBackgroundDecorations className="bg-card/38 col-span-1 flex h-full flex-col items-start justify-between rounded-3xl border border-white/10 p-6">
             <h5 className="text-lg">{props.title}</h5>
             <ul className="grid w-full grid-cols-2 grid-rows-3 gap-4">
                 {props.children}
             </ul>
-        </div>
+        </ThemedBackgroundDecorations>
     );
 }
 
@@ -154,14 +141,14 @@ export function DashboardHighlights(props: {
         </div>
     ) : null;
     return (
-        <div
+        <ThemedBackgroundDecorations
             key="dash-highlight-box"
             className={`${className} ${colSpanClasses[colSpan]} ${normalClasses}`}
         >
             {titleMarkup}
             <ul className="grid w-full grid-cols-3 gap-4">{children}</ul>
             {footerContent}
-        </div>
+        </ThemedBackgroundDecorations>
     );
 }
 
@@ -248,11 +235,9 @@ export function ActionButton(props: {
     return (
         <button
             onClick={onClick}
-            className={`${
-                className
-            } font-bold bg-primary text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${
-                " hi-there "
-            } text-${size} border-2 border-(--color-border) rounded-${size} cursor-pointer px-2 py-1`}
+            className={`${className
+                } font-bold bg-primary text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${" hi-there "
+                } text-${size} border-2 border-(--color-border) rounded-${size} cursor-pointer px-2 py-1`}
         >
             {children}
         </button>
@@ -273,9 +258,8 @@ export function Column(props: {
     const { widthPercent, children } = props;
     return (
         <div
-            className={`flex flex-col ${
-                widthPercent ? "w-" + widthPercent.toString() : ""
-            } p-8`}
+            className={`flex flex-col ${widthPercent ? "w-" + widthPercent.toString() : ""
+                } p-8`}
         >
             {children}
         </div>
