@@ -463,10 +463,10 @@ function ShowTxDescription({
                                     <code>
                                         <pre className="mt-4 max-h-[90vh] overflow-auto bg-neutral-200 text-xs text-black">
                                             {tcx.logger.formattedHistory?.map(
-                                                (line1) =>
+                                                (line1, lineIndex) =>
                                                     line1
                                                         ?.split("\n")
-                                                        .map((line2) => {
+                                                        .map((line2, lineIndex2) => {
                                                             let prefix:
                                                                 | React.ReactNode
                                                                 | string = (
@@ -499,11 +499,11 @@ function ShowTxDescription({
                                                                         "…"
                                                                     );
                                                                     size =
-                                                                        "text-[1.35em] -ml-2";
+                                                                        "text-[1.35em] -ml-2 -mt-2";
                                                                 }
                                                                 rest = (
                                                                     <span
-                                                                        className={`text-[1.6em] font-formal -ml-5 font-bold`}
+                                                                        className={`text-[1.6em] font-formal -ml-5 font-bold -mt-2`}
                                                                     >
                                                                         ❗
                                                                         <span
@@ -517,17 +517,17 @@ function ShowTxDescription({
                                                                 );
                                                             } else {
                                                                 prefix = (
-                                                                    <span className="text-gray-600">
+                                                                    <span className="text-gray-400">
                                                                         {prefix}
                                                                     </span>
                                                                 );
                                                             }
                                                             return (
-                                                                <>
-                                                                    {prefix}{" "}
+                                                                <React.Fragment key={`${lineIndex}-${lineIndex2}`}>
+                                                                    {" "}{prefix}{" "}
                                                                     {rest}
-                                                                    <br />{" "}
-                                                                </>
+                                                                    <br />
+                                                                </React.Fragment>
                                                             );
                                                         })
                                             )}

@@ -8,6 +8,7 @@ import resolve from "@rollup/plugin-node-resolve";
 import json from "@rollup/plugin-json";
 import svgr from '@svgr/rollup';
 import image from '@rollup/plugin-image';
+import css from "rollup-plugin-import-css";
 
 // const packageJson = await import("./package.json", { assert: { type: "json" } });
 import { createRequire } from 'node:module';
@@ -159,6 +160,9 @@ export default [
         input: browserTargetedEntryPoints,
         plugins: [
             // externals(),
+            css({
+                output: 'styles.css', // Specify output filename if desired
+            }),
             heliosLoader, 
             heliosRollupBundler(),
             json(),
@@ -173,7 +177,7 @@ export default [
                 target: ["node20" ],
                 dropLabels: [ "__NODEJS_ONLY__" ],
                 sourceMap: true,
-            })
+            }),
         ],
         output: [
             {
@@ -189,6 +193,9 @@ export default [
         input: platformIndependentEntryPoints,
         plugins: [
             // externals(),
+            css({
+                output: 'ui.css', // Specify output filename if desired
+            }),
             heliosLoader, 
             heliosRollupBundler({
                 emitBundled: true,
