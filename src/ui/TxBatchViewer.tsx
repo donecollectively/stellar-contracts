@@ -46,7 +46,7 @@ export function TxBatchViewer({
     );
     const [selectedTx, setSelectedTx] = React.useState<Tx | undefined>();
     const [txTracker, setTxTracker] = React.useState<TxSubmissionTracker | undefined>(
-        batch.$txStates[initialId]
+        initialId ? batch.$txInfo(initialId) : undefined
     );
     const [gen, setGen] = React.useState(0);
 
@@ -55,7 +55,7 @@ export function TxBatchViewer({
     const batchSize = batch.$allTxns.length;
     React.useEffect(() => {
         if (!selectedId) return;
-        const txTracker = batch.$txStates[selectedId];
+        const txTracker = batch.$txInfo(selectedId);
         if (!txTracker) {
             debugger
             return;
@@ -71,7 +71,7 @@ export function TxBatchViewer({
         } else {
             setSelectedTx(tx);
         }
-    }, [txTracker]);
+    }, [txTracker, selectedId, gen]);
 
     React.useEffect(() => {
         batch.$txChanges.on("txAdded", renderNow);
@@ -97,7 +97,7 @@ export function TxBatchViewer({
 
     return (
         <>
-            {selectedId && <div>selectedId: {selectedId}</div>}
+            {/* {selectedId && <div>selectedId: {selectedId}</div>} */}
             <div className="border-1 border-(--color-card) flex w-full flex-row gap-2 rounded-md drop-shadow-md">
                 <ShowTxList
                     batch={batch}
@@ -358,6 +358,7 @@ function ShowTxDescription({
             console.error("Failed to decode signed transaction:", e);
         }
     }, [signedTxCborHex]);
+    const debugSubmitButton = false;
 
     return (
         <div className="flex flex-col gap-2 ">
@@ -371,12 +372,13 @@ function ShowTxDescription({
                         >
                             Sign&nbsp;&amp;&nbsp;Submit
                         </ActionButton>
-                    )}
-                    {!!tx && <div>tx ok</div> || <div>no tx</div>}
-                    {!!txTracker && <div>txTracker ok</div> || <div>no txTracker</div>}
-                    {!!tcx && <div>tcx ok</div> || <div>no tcx</div>}
-                    {!tcx?.isFacade && <div>not a facade</div> || <div>is a facade</div>}
-                    {$state != "confirmed" && <div>state '{$state}'' not confirmed</div> || <div>confirmed</div>}
+                    ) || (debugSubmitButton && <div className="text-xs">
+                        {!!tx && <div>✅ tx ok</div> || <div>❌  no tx</div>}
+                        {!!txTracker && <div>✅ txTracker ok</div> || <div>❌ no txTracker</div>}
+                        {!!tcx && <div>✅ tcx ok</div> || <div>❌ no tcx</div>}
+                        {!tcx?.isFacade && <div>✅ not a facade</div> || <div>❌ is a facade</div>}
+                        {$state != "confirmed" && <div>✅ state '{$state}' not confirmed</div> || <div>❌ confirmed</div>}
+                    </div>)}
                 </div>
                 {advancedView && (
                     <>
