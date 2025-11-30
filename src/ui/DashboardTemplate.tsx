@@ -232,12 +232,20 @@ export function ActionButton(props: {
         md: "text-md",
         lg: "text-lg",
     };
+    const roundedClasses = {
+        xs: "rounded-xs",
+        sm: "rounded-sm",
+        md: "rounded-md",
+        lg: "rounded-lg",
+    };
+    const textSizeClass = sizeClasses[size];
+    const roundedClass = roundedClasses[size];
     return (
         <button
             onClick={onClick}
             className={`${className
-                } font-bold bg-primary text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${" hi-there "
-                } text-${size} border-2 border-(--color-border) rounded-${size} cursor-pointer px-2 py-1`}
+                } font-bold bg-primary hover:bg-primary/60 text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${
+                textSizeClass} border-2 border-(--color-border) ${roundedClass} cursor-pointer px-2 py-1`}
         >
             {children}
         </button>

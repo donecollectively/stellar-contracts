@@ -398,16 +398,16 @@ function ShowTxDescription({
                     </>
                 )}
                 {advancedView && (
-                    <div id="tab-selector">
+                    <div id="tab-selector" className="mt-1 z-10 -mb-1">
                         {Object.keys(availableTabs).map((key) => {
                             const isSelected = key === tab;
                             const selectedTabClass = isSelected
-                                ? "rounded-t-md bg-(--color-card) text-(--color-card-foreground) border-x-1 border-t-3 border-(--color-border)/50"
-                                : " rounded-t-md bg-(--color-secondary)/70 text-(--color-secondary-foreground)";
+                                ? "mt-0 pt-0 pb-1 rounded-t-md bg-card border-x-1 border-t-3 border-border/80"
+                                : "-mt-1 pt-1 pb-0 border-1 rounded-t-md bg-secondary/20 border-border/40";
                             return (
                                 <button
                                     key={key}
-                                    className={`${selectedTabClass} ml-1 px-2 py-1 text-sm`}
+                                    className={`${selectedTabClass} ml-1 px-2 text-sm text-card-foreground border-b-0 rounded-b-none`}
                                     onClick={() =>
                                         setTab(
                                             key as keyof typeof availableTabs
@@ -424,7 +424,7 @@ function ShowTxDescription({
 
                 {/* Tab content */}
                 {advancedView && (
-                    <div className="-mt-2 border-t border-white/10 pt-1">
+                    <div className="z-9 bg-card border-t border-white/20 pt-1">
                         {/* Transcript tab */}
                         {tab === "transcript" && (
                             <>
