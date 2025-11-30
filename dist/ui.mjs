@@ -1,13 +1,17 @@
 import * as React from 'react';
-import React__default, { useState, useEffect, Component, Fragment, useRef } from 'react';
+import React__default, { useState, useMemo, useEffect, Component, Fragment, useCallback } from 'react';
 import clsx from 'clsx';
 import { makeBlockfrostV0Client, makeRandomRootPrivateKey, makeRootPrivateKey, makeHydraClient, makeSimpleWallet, makeCip30Wallet, makeWalletHelper } from '@helios-lang/tx-utils';
 import '@cardano-ogmios/client';
+import { n as nanoid } from './nanoid.mjs';
+import { d as debugBox } from './consoleHelper.mjs';
 import { dumpAny, OgmiosTxSubmitter, GenericSigner, TxBatcher, uplcDataSerializer, bytesToText, abbrevAddress } from '@donecollectively/stellar-contracts';
 import { createPortal } from 'react-dom';
 import { decodeTx, makeShelleyAddress } from '@helios-lang/ledger';
 import { e as environment } from './environment.mjs';
 import { bytesToHex, hexToBytes } from '@helios-lang/codec-utils';
+import { useCapoDappProvider as useCapoDappProvider$1 } from '@donecollectively/stellar-contracts/ui';
+import 'nanoid';
 
 const styles = {
   primary: {
@@ -17,7 +21,7 @@ const styles = {
     className: "not-prose rounded-md bg-blue-900 py-2 px-4 text-sm font-medium border border-solid border-blue-500/66 text-neutral-400 hover:bg-slate-700 disabled:bg-slate-700 disabled:border-blue-900 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50 active:text-slate-400"
   },
   "secondary-sm": {
-    className: "not-prose rounded-md bg-blue-900 px-4 text-sm border border-solid border-blue-500/75 text-neutral-200 hover:bg-slate-700 disabled:bg-slate-700 disabled:border-blue-900 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50 active:text-slate-400"
+    className: "not-prose rounded-md bg-blue-900 py-1 px-3 text-xs border border-solid border-blue-500/75 text-neutral-200 hover:bg-slate-700 disabled:bg-slate-700 disabled:border-blue-900 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50 active:text-slate-400"
   }
 };
 const Button = function(props) {
@@ -52,27 +56,53 @@ const Button = function(props) {
 
 const CapoDappProviderContext = React__default.createContext(null);
 function useCapoDappProvider() {
+  const providerLocation = new Error().stack?.split("\n")[2].trim();
   const provider = React__default.useContext(
     CapoDappProviderContext
   );
   if (!provider) {
-    throw new Error(
-      "useCapoDappProvider must be used within a CapoDappProvider"
-    );
+    return null;
   }
+  const [id, setId] = useState(nanoid(4));
   const [isMounted, setIsMounted] = React__default.useState(false);
-  const [capo, setCapo] = React__default.useState();
+  const [capo, setCapo] = React__default.useState(provider.capo);
   const [checking, keepChecking] = React__default.useState(1);
+  const [timeout, replaceTimeout] = React__default.useState(
+    null
+  );
   React__default.useEffect(() => {
-    setIsMounted(true);
-    setTimeout(() => {
-      if (capo !== provider?.capo) {
-        setCapo(provider?.capo);
-      }
-      keepChecking(1 + checking);
-    }, 2e3);
-  }, [checking, provider, provider?.userInfo.wallet, capo]);
-  return { capo, provider, isMounted };
+    if (!isMounted) {
+      setIsMounted(true);
+    }
+    if (capo !== provider?.capo) {
+      debugBox(
+        `useCapoDappProvider ${id} setting capo`,
+        capo,
+        "->",
+        provider?.capo,
+        `
+${providerLocation}`
+      );
+      setCapo(provider?.capo);
+    }
+    if (!capo?.isConnected || !provider?.userInfo.wallet) {
+      replaceTimeout(
+        setTimeout(() => {
+          keepChecking(1 + checking);
+        }, 2e3)
+      );
+    }
+  }, [provider, provider?.userInfo.wallet, capo, provider.capo]);
+  const memoized = useMemo(() => {
+    debugBox(
+      `useCapoDappProvider ${id} updated:`,
+      capo,
+      provider,
+      isMounted
+    );
+    return { capo, provider, isMounted };
+  }, [capo, provider, isMounted]);
+  return memoized;
 }
 
 class ClientSideOnly extends React.Component {
@@ -208,34 +238,73 @@ const Progress = ({ children, progressPercent }) => {
   )));
 };
 
-var img = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='UTF-8'%3f%3e%3csvg width='693' height='1115' viewBox='0 0 693 1115' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cg opacity='0.1' filter='url(%23filter0_f_2041_227)'%3e%3ccircle cx='82' cy='504' r='267' fill='%23B44795'/%3e%3c/g%3e%3cdefs%3e%3cfilter id='filter0_f_2041_227' x='-529' y='-107' width='1222' height='1222' filterUnits='userSpaceOnUse' color-interpolation-filters='sRGB'%3e%3cfeFlood flood-opacity='0' result='BackgroundImageFix'/%3e%3cfeBlend mode='normal' in='SourceGraphic' in2='BackgroundImageFix' result='shape'/%3e%3cfeGaussianBlur stdDeviation='172' result='effect1_foregroundBlur_2041_227'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e";
+function ThemedBackgroundDecorations(props) {
+  const {
+    as: As = "div",
+    className = "",
+    style = {},
+    clip: noClip = false,
+    topLeftColor = "var(--color-decoration1,var(--color-accent))",
+    bottomRightColor = "var(--color-decoration2,var(--color-primary))",
+    topRightColor = "var(--color-decoration3,transparent)",
+    bottomLeftColor = "var(--color-decoration4,transparent)",
+    bottomCenterColor = "var(--color-decoration5,transparent)",
+    rightMiddleColor = "var(--color-decoration6,transparent)",
+    bottomCenterOpacity = "var(--decoration-opacity,0.19)",
+    topLeftOpacity = "var(--decoration-opacity,0.19)",
+    topRightOpacity = "var(--decoration-opacity,0.19)",
+    bottomLeftOpacity = "var(--decoration-opacity,0.19)",
+    bottomRightOpacity = "var(--decoration-opacity,0.19)",
+    rightMiddleOpacity = "var(--decoration-opacity,0.19)",
+    children
+  } = props;
+  return /* @__PURE__ */ React__default.createElement(As, { className: `${className} relative ${noClip ? "" : "overflow-clip"}`, style }, children, /* @__PURE__ */ React__default.createElement("div", { className: "display-contents pointer-events-none", "data-note": "------------- decorations vvvv ---------" }, topLeftColor && /* @__PURE__ */ React__default.createElement(
+    "div",
+    {
+      className: `absolute left-0 top-0 -translate-x-2/5 -translate-y-1/2 -z-10 w-[120%] aspect-[3/2] rounded-full`,
+      style: { background: `radial-gradient(ellipse, ${topLeftColor}, transparent 75%, transparent 100%)`, opacity: topLeftOpacity }
+    }
+  ), bottomRightColor && /* @__PURE__ */ React__default.createElement(
+    "div",
+    {
+      className: `absolute right-0 translate-x-1/4  bottom-0 translate-y-1/3 -z-10 w-[50%] aspect-[3/1] rounded-full`,
+      style: { background: `radial-gradient(ellipse, ${bottomRightColor}, transparent 75%, transparent 100%)`, opacity: bottomRightOpacity }
+    }
+  ), topRightColor && /* @__PURE__ */ React__default.createElement(
+    "div",
+    {
+      className: `absolute right-4 -translate-y-1/2 top-0 -z-10 w-[50%] aspect-[2/1] rounded-full`,
+      style: { background: `radial-gradient(ellipse, ${topRightColor}, transparent 75%, transparent 100%)`, opacity: topRightOpacity }
+    }
+  ), bottomLeftColor && /* @__PURE__ */ React__default.createElement(
+    "div",
+    {
+      className: `absolute left-0 -translate-x-1/4 bottom-0 translate-y-1/2 -z-10 w-[50%] aspect-[1/2] rounded-full`,
+      style: { background: `radial-gradient(ellipse, ${bottomLeftColor}, transparent 75%, transparent 100%)`, opacity: bottomLeftOpacity }
+    }
+  ), bottomCenterColor && /* @__PURE__ */ React__default.createElement(
+    "div",
+    {
+      className: `absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 -z-10 w-[80%] aspect-[3/1] rounded-full`,
+      style: { background: `radial-gradient(ellipse, ${bottomCenterColor}, transparent 75%, transparent 100%)`, opacity: bottomCenterOpacity }
+    }
+  ), rightMiddleColor && /* @__PURE__ */ React__default.createElement(
+    "div",
+    {
+      className: `absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 -z-10 w-[50%] aspect-[1/2] rounded-full`,
+      style: { background: `radial-gradient(ellipse, ${rightMiddleColor}, transparent 75%, transparent 100%)`, opacity: rightMiddleOpacity }
+    }
+  )));
+}
 
 function DashboardTemplate(props) {
-  return /* @__PURE__ */ React__default.createElement("div", { className: "relative my-2 flex w-full flex-col gap-4" }, /* @__PURE__ */ React__default.createElement(
-    "img",
-    {
-      alt: "blurred background",
-      height: 260,
-      width: 260,
-      src: img,
-      className: "size-40 absolute -left-44 top-20 -z-10 h-96 w-96 overflow-hidden bg-black/20 opacity-50 blur-[344px]"
-    }
-  ), /* @__PURE__ */ React__default.createElement(
-    "img",
-    {
-      alt: "blurred background",
-      height: 260,
-      width: 260,
-      src: img,
-      className: "size-40 absolute -right-44 top-20 -z-10 h-96 w-96 overflow-hidden bg-black/20 opacity-50 blur-[344px]"
-    }
-  ), /* @__PURE__ */ React__default.createElement("div", { className: "self-start text-2xl font-semibold" }, /* @__PURE__ */ React__default.createElement("h3", null, props.title)), props.children);
+  return /* @__PURE__ */ React__default.createElement("div", { className: "relative my-2 flex w-full flex-col gap-4" }, /* @__PURE__ */ React__default.createElement("div", { className: "self-start text-2xl font-semibold" }, /* @__PURE__ */ React__default.createElement("h3", null, props.title)), props.children);
 }
 function DashboardRow(props) {
   return /* @__PURE__ */ React__default.createElement("div", null, props.title && /* @__PURE__ */ React__default.createElement("h4", { className: "text-lg font-semibold" }, props.title), /* @__PURE__ */ React__default.createElement("div", { className: "grid grid-cols-3 gap-x-4 rounded-3xl" }, props.children));
 }
 function DashboardSummary(props) {
-  return /* @__PURE__ */ React__default.createElement("div", { className: "bg-background/20 col-span-1 flex h-full flex-col items-start justify-between rounded-3xl border border-white/10 p-6" }, /* @__PURE__ */ React__default.createElement("h5", { className: "text-lg" }, props.title), /* @__PURE__ */ React__default.createElement("ul", { className: "grid w-full grid-cols-2 grid-rows-3 gap-4" }, props.children));
+  return /* @__PURE__ */ React__default.createElement(ThemedBackgroundDecorations, { className: "bg-card/38 col-span-1 flex h-full flex-col items-start justify-between rounded-3xl border border-white/10 p-6" }, /* @__PURE__ */ React__default.createElement("h5", { className: "text-lg" }, props.title), /* @__PURE__ */ React__default.createElement("ul", { className: "grid w-full grid-cols-2 grid-rows-3 gap-4" }, props.children));
 }
 function DashSummaryItem(props) {
   const firstChild = Array.isArray(props.children) ? props.children[0] : props.children;
@@ -261,7 +330,7 @@ function DashboardHighlights(props) {
   const titleMarkup = title ? /* @__PURE__ */ React__default.createElement("h5", { className: "text-lg" }, title) : null;
   const footerContent = footer ? /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row w-full justify-between mt-auto" }, /* @__PURE__ */ React__default.createElement("div", { className: "text-sm text-gray-500 flex-1 text-right" }, footer)) : null;
   return /* @__PURE__ */ React__default.createElement(
-    "div",
+    ThemedBackgroundDecorations,
     {
       key: "dash-highlight-box",
       className: `${className} ${colSpanClasses[colSpan]} ${normalClasses}`
@@ -296,11 +365,25 @@ function DashHighlightItem(props) {
 }
 function ActionButton(props) {
   const { children, onClick, className = "", size = "md" } = props;
+  const sizeClasses = {
+    xs: "text-xs",
+    sm: "text-sm",
+    md: "text-md",
+    lg: "text-lg"
+  };
+  const roundedClasses = {
+    xs: "rounded-xs",
+    sm: "rounded-sm",
+    md: "rounded-md",
+    lg: "rounded-lg"
+  };
+  const textSizeClass = sizeClasses[size];
+  const roundedClass = roundedClasses[size];
   return /* @__PURE__ */ React__default.createElement(
     "button",
     {
       onClick,
-      className: `${className} font-bold bg-(--color-primary) text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${" hi-there "} text-${size} border-2 border-(--color-border) rounded-${size} cursor-pointer px-2 py-1`
+      className: `${className} font-bold bg-primary hover:bg-primary/60 text-[color-mix(in srgb, var(--color-foreground) 50%, white 50%)] ${textSizeClass} border-2 border-(--color-border) ${roundedClass} cursor-pointer px-2 py-1`
     },
     children
   );
@@ -320,7 +403,7 @@ function Highlight(props) {
   return /* @__PURE__ */ React__default.createElement(
     As,
     {
-      className: `${className} text-(--color-accent-foreground) text-[13px] font-normal`
+      className: `${className} text-accent text-[13px] font-normal`
     },
     children
   );
@@ -330,7 +413,7 @@ function Lowlight(props) {
   return /* @__PURE__ */ React__default.createElement(
     As,
     {
-      className: `${className} text-(--color-accent-foreground) font-normal opacity-50`
+      className: `${className} text-accent font-normal opacity-50`
     },
     children
   );
@@ -350,24 +433,30 @@ function TxBatchViewer({
     initialId
   );
   const [selectedTx, setSelectedTx] = React.useState();
-  const [txMgr, setTxMgr] = React.useState();
+  const [txTracker, setTxTracker] = React.useState(
+    initialId ? batch.$txInfo(initialId) : void 0
+  );
   const [gen, setGen] = React.useState(0);
   const renderNow = React.useMemo(() => () => setGen((g) => g + 1), []);
+  const batchSize = batch.$allTxns.length;
   React.useEffect(() => {
     if (!selectedId) return;
-    const tx = batch.$txStates[selectedId];
-    if (!tx) return;
-    setTxMgr(tx);
-  }, [selectedId, batch]);
+    const txTracker2 = batch.$txInfo(selectedId);
+    if (!txTracker2) {
+      debugger;
+      return;
+    }
+    setTxTracker(txTracker2);
+  }, [selectedId, batch, batchSize]);
   React.useEffect(() => {
-    if (!txMgr?.txd.tx) return;
-    const tx = txMgr.txd.tx;
+    if (!txTracker?.txd.tx) return;
+    const tx = txTracker.txd.tx;
     if (typeof tx === "string") {
       setSelectedTx(decodeTx(tx));
     } else {
       setSelectedTx(tx);
     }
-  }, [txMgr]);
+  }, [txTracker, selectedId, gen]);
   React.useEffect(() => {
     batch.$txChanges.on("txAdded", renderNow);
     batch.$txChanges.on("statusUpdate", renderNow);
@@ -375,7 +464,18 @@ function TxBatchViewer({
       batch.$txChanges.off("txAdded", renderNow);
       batch.$txChanges.off("statusUpdate", renderNow);
     };
-  }, [batch, renderNow]);
+  }, [batch]);
+  console.error("rendering TxBatchViewer", {
+    selectedId,
+    batch,
+    initialId,
+    renderNow,
+    advancedView,
+    txTracker,
+    selectedTx,
+    batchSize,
+    gen
+  });
   const width = advancedView ? "w-9/12" : "";
   return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "border-1 border-(--color-card) flex w-full flex-row gap-2 rounded-md drop-shadow-md" }, /* @__PURE__ */ React.createElement(
     ShowTxList,
@@ -388,8 +488,8 @@ function TxBatchViewer({
       advancedView
     }
   ), (() => {
-    const indicateSelectedTx = selectedId ? "border-s-4 border-s-brand-orange/20" : "";
-    const cardStyle = "bg-(--color-card) text-(--color-card-foreground)";
+    const indicateSelectedTx = selectedId ? "border-s-4 border-s-accent/20" : "";
+    const cardStyle = "bg-card text-card-foreground";
     if (!selectedId) {
       return /* @__PURE__ */ React.createElement(
         "div",
@@ -399,7 +499,7 @@ function TxBatchViewer({
         /* @__PURE__ */ React.createElement(Softlight, null, "Select a transaction to view details")
       );
     }
-    if (!txMgr) {
+    if (!txTracker) {
       return /* @__PURE__ */ React.createElement(
         "div",
         {
@@ -416,7 +516,7 @@ function TxBatchViewer({
       /* @__PURE__ */ React.createElement(
         ShowTxDescription,
         {
-          txTracker: txMgr,
+          txTracker,
           tx: selectedTx,
           advancedView
         }
@@ -478,7 +578,7 @@ const ShowSingleTx = (props) => {
   ][depth];
   const innerMarginClass = ["ml-0", "ml-1", "ml-3", "ml-5", "ml-7", "ml-9"][depth];
   const outerMarginClass = depth ? "ml-2" : "ml-0";
-  const nestedIndicator = depth ? `${indentClass} border-(--color-accent-foreground)/30` : "";
+  const nestedIndicator = depth ? `${indentClass} border-accent/30` : "";
   const indicateSelectedTx = isCurrent ? "text-bold rounded-md border-e-0 -mr-5 pe-6 z-3" : "cursor-pointer opacity-55";
   return /* @__PURE__ */ React.createElement(
     "div",
@@ -546,6 +646,7 @@ function ShowTxDescription({
       console.error("Failed to decode signed transaction:", e);
     }
   }, [signedTxCborHex]);
+  const debugSubmitButton = false;
   return /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2 " }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "basis-1/9" }, tx && txTracker && tcx && !tcx.isFacade && $state != "confirmed" && /* @__PURE__ */ React.createElement(
     ActionButton,
     {
@@ -553,21 +654,21 @@ function ShowTxDescription({
       onClick: () => txTracker.$signAndSubmit?.()
     },
     "Sign\xA0&\xA0Submit"
-  )), advancedView && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "ml-4 flex-grow self-start" }, /* @__PURE__ */ React.createElement(Highlight, { className: "text-xl" }, txd.txName || txd.description), txd.txName && txd.description && /* @__PURE__ */ React.createElement("div", { className: "text-md display-inline ml-4 opacity-50" }, txd.description), txd.moreInfo && /* @__PURE__ */ React.createElement("div", { className: "text-brand-orange/66 ml-8 text-sm italic" }, txd.moreInfo))), advancedView && /* @__PURE__ */ React.createElement("div", { id: "tab-selector" }, Object.keys(availableTabs).map((key) => {
+  ) || debugSubmitButton), advancedView && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "ml-4 flex-grow self-start" }, /* @__PURE__ */ React.createElement(Highlight, { className: "text-xl" }, txd.txName || txd.description), txd.txName && txd.description && /* @__PURE__ */ React.createElement("div", { className: "text-md display-inline ml-4 opacity-50" }, txd.description), txd.moreInfo && /* @__PURE__ */ React.createElement("div", { className: "text-brand-orange/66 ml-8 text-sm italic" }, txd.moreInfo))), advancedView && /* @__PURE__ */ React.createElement("div", { id: "tab-selector", className: "mt-1 z-10 -mb-1" }, Object.keys(availableTabs).map((key) => {
     const isSelected = key === tab;
-    const selectedTabClass = isSelected ? "rounded-t-md bg-(--color-card) text-(--color-card-foreground) border-x-1 border-t-3 border-(--color-border)/50" : " rounded-t-md bg-(--color-secondary)/70 text-(--color-secondary-foreground)";
+    const selectedTabClass = isSelected ? "mt-0 pt-0 pb-1 rounded-t-md bg-card border-x-1 border-t-3 border-border/80" : "-mt-1 pt-1 pb-0 border-1 rounded-t-md bg-secondary/20 border-border/40";
     return /* @__PURE__ */ React.createElement(
       "button",
       {
         key,
-        className: `${selectedTabClass} ml-1 px-2 py-1 text-sm`,
+        className: `${selectedTabClass} ml-1 px-2 text-sm text-card-foreground border-b-0 rounded-b-none`,
         onClick: () => setTab(
           key
         )
       },
       key
     );
-  }), /* @__PURE__ */ React.createElement(Lowlight, { className: "float-right" }, $state)), advancedView && /* @__PURE__ */ React.createElement("div", { className: "-mt-2 border-t border-white/10 pt-1" }, tab === "transcript" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-1" }, Object.entries(txSubmitters).map(
+  }), /* @__PURE__ */ React.createElement(Lowlight, { className: "float-right" }, $state)), advancedView && /* @__PURE__ */ React.createElement("div", { className: "z-9 bg-card border-t border-white/20 pt-1" }, tab === "transcript" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-1" }, Object.entries(txSubmitters).map(
     ([key, submitter]) => /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -582,7 +683,7 @@ function ShowTxDescription({
       ))))
     )
   )), tcx?.logger?.formattedHistory && /* @__PURE__ */ React.createElement("code", null, /* @__PURE__ */ React.createElement("pre", { className: "mt-4 max-h-[90vh] overflow-auto bg-neutral-200 text-xs text-black" }, tcx.logger.formattedHistory?.map(
-    (line1) => line1?.split("\n").map((line2) => {
+    (line1, lineIndex) => line1?.split("\n").map((line2, lineIndex2) => {
       let prefix = /* @__PURE__ */ React.createElement(React.Fragment, null), rest = /* @__PURE__ */ React.createElement(React.Fragment, null);
       [prefix, rest] = line2.split(
         "\u2757",
@@ -597,12 +698,12 @@ function ShowTxDescription({
             /^\s+\.\.\.\s+/,
             "\u2026"
           );
-          size = "text-[1.35em] -ml-2";
+          size = "text-[1.35em] -ml-2 -mt-2";
         }
         rest = /* @__PURE__ */ React.createElement(
           "span",
           {
-            className: `text-[1.6em] font-formal -ml-5 font-bold`
+            className: `text-[1.6em] font-formal -ml-5 font-bold -mt-2`
           },
           "\u2757",
           /* @__PURE__ */ React.createElement(
@@ -614,9 +715,9 @@ function ShowTxDescription({
           )
         );
       } else {
-        prefix = /* @__PURE__ */ React.createElement("span", { className: "text-gray-600" }, prefix);
+        prefix = /* @__PURE__ */ React.createElement("span", { className: "text-gray-400" }, prefix);
       }
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, prefix, " ", rest, /* @__PURE__ */ React.createElement("br", null), " ");
+      return /* @__PURE__ */ React.createElement(React.Fragment, { key: `${lineIndex}-${lineIndex2}` }, " ", prefix, " ", rest, /* @__PURE__ */ React.createElement("br", null));
     })
   )))), tab === "structure" && tx && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm" }, "Unsigned Tx:", " ", tx.id?.()?.toString?.() || "Unknown ID"), /* @__PURE__ */ React.createElement("code", { className: "text-sm" }, /* @__PURE__ */ React.createElement("pre", { className: "font-formal text-[1.30em]/4.5 tracking-wide max-h-[80vh] overflow-auto" }, dumpAny(
     tx,
@@ -646,14 +747,41 @@ function TxBatchUI() {
   );
   const [advancedView, setAdvancedView] = React__default.useState(false);
   const batchSize = currentBatch?.$allTxns.length;
-  const viewSwitcher = /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row justify-between p-2" }, /* @__PURE__ */ React__default.createElement("div", null, /* @__PURE__ */ React__default.createElement("h3", { className: "bg-transparent mt-0 mb-2" }, "Pending Txns"), batchSize && batchSize > 1 && /* @__PURE__ */ React__default.createElement(React__default.Fragment, null, batchSize, " txns in batch")), /* @__PURE__ */ React__default.createElement("div", null, /* @__PURE__ */ React__default.createElement(
+  const allTxns = currentBatch?.$allTxns || [];
+  const hasError = allTxns.some((t) => t.$state === "failed");
+  const allFinished = allTxns.length > 0 && allTxns.every(
+    (t) => t.$state === "confirmed" || t.$state === "not needed"
+  );
+  const canClose = hasError || allFinished;
+  const viewSwitcher = /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row justify-between p-2" }, /* @__PURE__ */ React__default.createElement("div", null, /* @__PURE__ */ React__default.createElement("h3", { className: "bg-transparent mt-0 mb-2" }, "Pending Txns"), batchSize && batchSize > 1 && /* @__PURE__ */ React__default.createElement(React__default.Fragment, null, batchSize, " txns in batch")), /* @__PURE__ */ React__default.createElement("div", null, canClose ? /* @__PURE__ */ React__default.createElement(
     Button,
     {
       variant: "secondary-sm",
-      className: "ml-3",
+      className: "ml-3 bg-emerald-900 border-emerald-500/50 text-emerald-100 hover:bg-emerald-800",
+      onClick: () => {
+        capo?.setup?.txBatcher?.rotate();
+      }
+    },
+    "Close Batch"
+  ) : /* @__PURE__ */ React__default.createElement(
+    Button,
+    {
+      variant: "secondary-sm",
+      className: "ml-3 bg-red-900 border-red-500/50 text-yellow-400 hover:bg-red-800",
+      onClick: () => {
+        capo?.setup?.txBatcher?.cancel();
+      }
+    },
+    "Cancel"
+  ), /* @__PURE__ */ React__default.createElement(
+    Button,
+    {
+      variant: "secondary-sm",
+      className: "ml-3 cursor-pointer",
       onClick: () => {
         setAdvancedView(!advancedView);
-      }
+      },
+      "aria-label": "toggle detail view of transaction batch"
     },
     advancedView ? "Hide details" : "Show details"
   )));
@@ -679,12 +807,12 @@ function TxBatchUI() {
     [capo, capo?.setup.txBatcher]
   );
   const hasBatch = !!currentBatch && !!currentBatch?.$allTxns.length;
-  const width = advancedView ? "w-[80vw]" : "";
+  const width = advancedView ? "w-[80vw]" : "w-[3in]";
   if (!hasBatch) return null;
   return /* @__PURE__ */ React__default.createElement(
     "div",
     {
-      className: `z-100 bg-background/66 absolute top-10 right-4 ${width} flex flex-col rounded-lg border border-white/10 backdrop-blur-md`
+      className: `bg-background/66 right-4 ${width} flex flex-col rounded-lg border border-white/10 backdrop-blur-md`
     },
     viewSwitcher,
     /* @__PURE__ */ React__default.createElement(
@@ -703,6 +831,7 @@ const networkNames = {
   2: "preview"
 };
 let mountCount = 0;
+let singleton = void 0;
 class CapoDAppProvider extends Component {
   bf;
   // bfFast: TxChainBuilder & BlockfrostV0Client;
@@ -722,6 +851,13 @@ class CapoDAppProvider extends Component {
   }
   constructor(props) {
     super(props);
+    if (singleton) {
+      console.warn(
+        `CapoDAppProvider - not a singleton : /
+Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
+      );
+    }
+    singleton = this;
     this.capoClass = props.capoClass;
     this.i = mountCount += 1;
     this.bootstrapCapo = this.bootstrapCapo.bind(this);
@@ -1044,6 +1180,19 @@ class CapoDAppProvider extends Component {
   //     const thisAction = actions[action];
   //     thisAction.call(this);
   // }
+  copyWalletAddress = () => {
+    const {
+      userInfo: {
+        walletAddress
+      }
+    } = this.state;
+    if (!walletAddress) return;
+    navigator.clipboard.writeText(walletAddress);
+    this.updateStatus("\u2705 address copied to clipboard", {
+      developerGuidance: "simple user notification",
+      clearAfter: 2500
+    }, "// Wallet address copied to clipboard");
+  };
   /**
    * renders a lightweight wallet connection button.
    * @remarks
@@ -1072,10 +1221,11 @@ class CapoDAppProvider extends Component {
         "span",
         {
           key: "chip-walletAddr",
-          className: "mb-0 text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
+          className: "mb-0 pl-0 pr-2 py-0 overflow-visible text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500  text-sm shadow-none outline-none hover:cursor-text"
         },
-        walletAddress,
-        " ",
+        /* @__PURE__ */ React__default.createElement("span", { key: "icon", "aria-hidden": "true", className: "-ml-2 mr-1" }, "\u{1F45C}"),
+        /* @__PURE__ */ React__default.createElement("span", { id: "clickToCopy", "aria-label": "click to copy", key: "address", className: "hover:cursor-grabbing", onClick: this.copyWalletAddress }, this.state.status?.message?.match(/copied/i) ? this.state.status?.message : walletAddress),
+        "\xA0",
         selectedWallet,
         /* @__PURE__ */ React__default.createElement(
           "a",
@@ -1147,6 +1297,9 @@ class CapoDAppProvider extends Component {
   _isInitializing = void 0;
   async doInitialize() {
     const networkParams = await this.bf.parameters;
+    const id = nanoid(4);
+    const location = new Error("um?").stack.split("\n").slice(2).join("\n");
+    debugBox(`${id}: doInitialize ${location}`);
     if ("undefined" != typeof window) {
       const autoWallet = window.localStorage.getItem(
         "capoAutoConnectWalletName"
@@ -1155,33 +1308,34 @@ class CapoDAppProvider extends Component {
         await this.newWalletSelected(autoWallet, false);
       }
     }
-    await this.updateStatus(
-      "initializing on-chain contracts",
-      {
-        developerGuidance: "status message for the user"
-      },
-      "//component did mount",
-      {
-        networkParams
-      }
-    );
-    if (this.props.onNetwork) this.props.onNetwork(this.bf);
-    if (this.props.onStatusChange)
-      this.props.onStatusChange(this.state.status);
-    if (this.props.onUserInfo) this.props.onUserInfo(this.state.userInfo);
-    if (this.props.onContextChange) this.props.onContextChange(this);
+    if (!this.capo) {
+      await this.updateStatus(
+        "initializing on-chain contracts",
+        {
+          developerGuidance: "status message for the user"
+        },
+        `//${id}: doInitialize: component did mount`,
+        {
+          networkParams
+        }
+      );
+      if (this.props.onNetwork) this.props.onNetwork(this.bf);
+      if (this.props.onStatusChange)
+        this.props.onStatusChange(this.state.status);
+      if (this.props.onUserInfo) this.props.onUserInfo(this.state.userInfo);
+      if (this.props.onContextChange) this.props.onContextChange(this);
+      this.connectCapo();
+    }
+  }
+  submitters = {};
+  async setupSubmitters() {
     await this.updateStatus(
       "setting up tx submitters",
       {
         developerGuidance: "just show the message to the user"
       },
-      "//setupSubmitters"
+      `// setupSubmitters`
     );
-    await this.setupSubmitters();
-    this.connectCapo();
-  }
-  submitters = {};
-  async setupSubmitters() {
     this.submitters = {
       blockfrost: this.bf,
       ...this.props.otherSubmitters || {}
@@ -1414,7 +1568,7 @@ class CapoDAppProvider extends Component {
     }
     let wallet = simpleWallet;
     let addrString;
-    console.warn("CIP-30 Wallet Handle", walletHandle);
+    debugBox("CIP-30 Wallet Handle", walletHandle);
     let foundNetworkName;
     if (walletHandle) {
       const netId = await walletHandle.getNetworkId();
@@ -1552,6 +1706,22 @@ class CapoDAppProvider extends Component {
       return this.connectCapo(autoNext);
     }
   }
+  //     if (
+  //         this.state.capo && !(await this.state.capo.isConfigured)
+  //     ) {
+  //         // Capo exists but not configured - reconnect
+  //         return this.connectCapo(autoNext);
+  //     } else if (this.state.networkParams && autoNext && !this.state.capo) {
+  //         // No capo yet, autoNext=true - create capo
+  //         await this.updateStatus(
+  //             `reconnecting to ${this.dAppName} with connected wallet`,
+  //             { developerGuidance: "status message for the user" },
+  //             "//reinit after wallet"
+  //         );
+  //         return this.connectCapo(autoNext);
+  //     }
+  //     // When autoNext=false and no capo, let doInitialize() call connectCapo(true) next
+  // }
   async checkWalletTokens() {
     const { capo } = this.state;
     if (!capo?.actorContext.wallet) {
@@ -1614,14 +1784,20 @@ class CapoDAppProvider extends Component {
       capo,
       userInfo: { wallet }
     } = this.state;
+    const id = nanoid(4);
+    debugBox(`${id}: connectCapo
+${new Error().stack.split("\n").slice(2).join("\n")}`);
     let config = {};
-    if (!wallet) console.warn("connecting to capo with no wallet");
+    if (!wallet) console.warn(`${id}: connecting to capo with no wallet`);
     if (!networkParams) {
-      console.warn("no network params");
+      console.warn(`${id}: no network params`);
       return;
     }
     let { txBatcher } = this.state;
     if (!txBatcher) {
+      if (!this.submitters || Object.keys(this.submitters).length === 0) {
+        await this.setupSubmitters();
+      }
       const batcherOptions = {
         submitters: this.submitters,
         ...wallet ? {
@@ -1653,14 +1829,14 @@ class CapoDAppProvider extends Component {
       ...config
     };
     try {
-      console.log("init with cfg", cfg);
+      console.log(`${id}: init with cfg`, cfg);
       await this.updateStatus(
         `connecting: ${this.dAppName}`,
         {
           progressBar: true,
           developerGuidance: "wait for connection; possibly show a spinner"
         },
-        "//init",
+        `//${id}: init`,
         {
           txBatcher
         }
@@ -1670,19 +1846,18 @@ class CapoDAppProvider extends Component {
         cfg
       );
       const capoBundle = await capo2.getBundle();
-      debugger;
       const configured = capoBundle.configuredParams;
       const { isChartered } = capo2;
       if (!configured || !isChartered) {
         const problem = configured ? isChartered ? "impossible" : "is preconfigured and ready to be chartered!" : isChartered ? "impossible" : "needs to be configured and chartered.   Add a configuration if you have it, or create the Capo charter now.";
-        const message = autoNext ? `The Capo contract ${problem} ` : "";
+        const message = autoNext ? `${id}: The Capo contract ${problem} ` : "";
         await this.updateStatus(
           message,
           {
             nextAction: "initializeCapo",
             developerGuidance: "likely administrative moment for dev-time creation of the capo"
           },
-          "//bootstrap needed",
+          `//${id}: bootstrap needed`,
           {
             capo: capo2
           }
@@ -1694,31 +1869,37 @@ class CapoDAppProvider extends Component {
       if (capo2._bundle?.configuredScriptDetails) {
         await capo2.connectMintingScript(config2);
       } else {
-        console.warn("no config yet for this capo (dbpa)");
+        console.warn(`${id}: no config yet for this capo (dbpa)`);
         debugger;
       }
-      if (!autoNext)
-        return this.updateStatus(
+      if (!autoNext) {
+        await this.updateStatus(
           "",
           {
-            developerGuidance: "capture this capo object for use in transaction-building.  See also the dataDelegates..."
+            developerGuidance: "capture this capo object for use in transaction-building..."
           },
-          "// Capo is connected to wallet, ready to do an on-chain activity",
+          `//${id}: Capo is connected to wallet, ready to do an on-chain activity`,
           { capo: capo2 }
         );
+        if (wallet) {
+          this.checkWalletTokens();
+        }
+        return;
+      }
       await this.updateStatus(
         "... searching ...",
         {
           busy: true,
           developerGuidance: "display a spinner or other indicator that the dApp is doing something"
         },
-        "//searching (or freshening search after wallet connection)",
+        `//${id}: searching (or freshening search after wallet connection)`,
         {
           capo: capo2
         }
       );
       this.checkWalletTokens();
     } catch (error) {
+      console.error(`${id}: error checking ${this.dAppName} configuration`, error);
       this.reportError(error, `checking ${this.dAppName} configuration`, {
         nextAction: "initializeCapo",
         moreInstructions: "Developer error: Some error has occurred during initialization of on-chain Capo.development" == process.env.NODE_ENV ? "You can try again, or check the console for more information." : `You might need to contact ${this.dAppName}'s support channels for assistance.`,
@@ -1956,7 +2137,7 @@ class CapoDAppProvider extends Component {
     if (!clearAfter) {
       otherStatusProps.keepOnscreen = true;
     }
-    console.log(`instance ${this.i}`, { status: message });
+    debugBox(`instance ${this.i}`, { status: message });
     const status = "undefined" === typeof message ? {
       message: void 0,
       developerGuidance: "the current state was cleared, indicating no pending actions.  You MAY clear the most recent message."
@@ -2030,7 +2211,7 @@ class CapoDAppProvider extends Component {
 }
 
 function CharterStatus() {
-  const { capo, provider, isMounted } = useCapoDappProvider();
+  const { capo, provider, isMounted } = useCapoDappProvider() || {};
   provider?.bf;
   const [charterData, setCharterData] = React.useState();
   const [statusMessage, setStatusMessage] = React.useState("");
@@ -2346,9 +2527,7 @@ class FormManager {
     this.capo = provider.capo;
     this.options = options;
     this.handleChange = this.handleChange.bind(this);
-    this.el.addEventListener("change", this.handleChange, {
-      capture: true
-    });
+    this.el.addEventListener("change", this.handleChange, { capture: true });
   }
   handleChange(event) {
     const target = event.target;
@@ -2358,65 +2537,45 @@ class FormManager {
     return this.el;
   }
   destroy() {
-    this.form.removeEventListener("change", this.handleChange, {
-      capture: true
-    });
+    this.form.removeEventListener("change", this.handleChange, { capture: true });
   }
   getFieldError(name) {
+    return void 0;
+  }
+  useRecordId(id) {
+    const [utxo, setUtxo] = useState(null);
+    useEffect(() => {
+    }, [id]);
+    return utxo;
   }
 }
-function useFormManager(formRef, options) {
-  const { capo, provider } = useCapoDappProvider();
-  if (!provider) {
-    throw new Error(
-      "FormManager: missing required CapoDAppProviderContext"
-    );
+function useFormManager(options) {
+  const providerContext = useCapoDappProvider$1();
+  if (!providerContext || !providerContext.provider) {
+    throw new Error("FormManager: missing required CapoDAppProviderContext");
   }
-  const formManagerRef = useRef(null);
-  const [controller, setController] = useState(
-    void 0
-  );
+  const { provider } = providerContext;
+  const [formManager, setFormManager] = useState(null);
+  const [formElement, setFormElement] = useState(null);
+  const formCallbackRef = useCallback((element) => {
+    setFormElement(element);
+  }, []);
   useEffect(() => {
-    (async function getController() {
-      if (!capo) return void 0;
-      const charterData = await capo.findCharterData();
-      const controller2 = await capo.getDgDataController(
-        options.typeName,
-        {
-          charterData
-        }
-      );
-      setController(controller2);
-    })();
-  }, [capo, options.typeName]);
-  const [utxo, setUtxo] = useState(
-    null
-  );
-  useEffect(() => {
-    if (!controller) return;
-    controller.findRecords({ id: options.recordId }).then((utxo2) => {
-      setUtxo(utxo2);
-    });
-  }, [controller, options.recordId]);
-  useEffect(() => {
-    const form = formRef.current;
-    if (!controller || !utxo || !form || !capo) return;
-    if (form && !formManagerRef.current) {
-      formManagerRef.current = new FormManager(
-        form,
-        provider,
-        options
-      );
+    if (formElement && provider) {
+      setFormManager(new FormManager(formElement, provider, options));
     }
     return () => {
-      if (formManagerRef.current) {
-        formManagerRef.current.destroy();
-        formManagerRef.current = null;
+      if (formManager) {
+        formManager.destroy();
+        setFormManager(null);
       }
     };
-  }, [provider, capo, controller, utxo]);
-  return formManagerRef.current;
+  }, [provider, formElement, options.typeName, options.recordId]);
+  return {
+    formManager,
+    formRef: formCallbackRef
+  };
 }
 
-export { ActionButton, Button, CapoDAppProvider, CapoDappProviderContext, CharterHighlights, CharterStatus, ClientSideOnly, Column, DashHighlightItem, DashSummaryItem, DashboardHighlights, DashboardRow, DashboardSummary, DashboardTemplate, FormManager, Highlight, InPortal, Lowlight, Progress, ShowFailedActivity, ShowPendingTxns, Softlight, TxBatchViewer, useCapoDappProvider, useFormManager };
+export { ActionButton, Button, CapoDAppProvider, CapoDappProviderContext, CharterHighlights, CharterStatus, ClientSideOnly, Column, DashHighlightItem, DashSummaryItem, DashboardHighlights, DashboardRow, DashboardSummary, DashboardTemplate, FormManager, Highlight, InPortal, Lowlight, Progress, ShowFailedActivity, ShowPendingTxns, Softlight, ThemedBackgroundDecorations, TxBatchViewer, useCapoDappProvider, useFormManager };
 //# sourceMappingURL=ui.mjs.map

@@ -6,15 +6,16 @@ export { decodeUtf8 as bytesToText, encodeUtf8 as textToBytes } from '@helios-la
 import { blake2b } from '@helios-lang/crypto';
 import { makeInlineTxOutputDatum, makeValue, makeAssets, makeAddress, makeTxOutput, makeDummyMintingPolicyHash, makeValidatorHash, makeTxOutputId, makeNetworkParamsHelper, decodeTx, makeTxId, decodeTxWitnesses } from '@helios-lang/ledger';
 import { makeTxChainBuilder } from '@helios-lang/tx-utils';
+import './nanoid.mjs';
 import { C as ContractBasedDelegate, S as StellarDelegate, h as hasReqts } from './ContractBasedDelegate2.mjs';
 export { m as mergesInheritedReqts } from './ContractBasedDelegate2.mjs';
 import { makeCast } from '@helios-lang/contract-utils';
-import { U as UnspecializedDelegate_hl } from './UnspecializedDelegate.hlb.mjs';
-export { a as UnspecializedDgtBundle } from './UnspecializedDelegate.hlb.mjs';
+import { makeSource } from '@helios-lang/compiler-utils';
 import { CapoDelegateBundle } from './CapoDelegateHeliosBundle.mjs';
-import { makeIntData } from '@helios-lang/uplc';
 import { C as CapoHeliosBundle } from './CapoHeliosBundle2.mjs';
 export { a as mkCapoDeployment, b as mkDelegateDeployment, m as mkDeployedScriptConfigs, p as parseCapoJSONConfig, c as parseCapoMinterJSONConfig } from './CapoHeliosBundle2.mjs';
+export { d as debugBox } from './consoleHelper.mjs';
+import { makeIntData } from '@helios-lang/uplc';
 import { placeholderSetupDetails } from './HeliosBundle.mjs';
 export { HeliosScriptBundle, defaultNoDefinedModuleName } from './HeliosBundle.mjs';
 import { DelegatedDataContract } from './DelegatedDataContract.mjs';
@@ -22,9 +23,7 @@ export { DelegatedDataBundle } from './DelegatedDataBundle.mjs';
 import { EventEmitter } from 'eventemitter3';
 import { customAlphabet } from 'nanoid';
 import { createInteractionContext, createLedgerStateQueryClient, createTransactionSubmissionClient } from '@cardano-ogmios/client';
-import '@helios-lang/compiler-utils';
 import './DefaultCapo.mjs';
-import './BasicDelegate.mjs';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import '@helios-lang/compiler';
 
@@ -87,7 +86,7 @@ class BasicMintDelegate extends ContractBasedDelegate {
    * you can copy the UnspecializedDelegate.hl and specialize it.
    */
   async scriptBundleClass() {
-    const bundleModule = await import('./contracts/UnspecializedDelegate.hlb.mjs');
+    const bundleModule = await Promise.resolve().then(function () { return UnspecializedDelegate_hlb; });
     return bundleModule.UnspecializedDgtBundle;
   }
   // uses the basic delegate script, plus the isMintDelegate param
@@ -8446,7 +8445,7 @@ class UnspecializedMintDelegate extends BasicMintDelegate {
         "mint+spend delegate: using unspecialized delegate bundle\n  ... this is good enough for getting started, but you'll need to\n  ... specialize this delegate to fit your application's needs. \nTo do that, you'll add mintDgt and spendDgt entries into \n  ... your Capo's delegateRoles() method, typically with\n  ... both pointing to a single specialized mint-delegate class."
       );
     }
-    const dgtModule = await import('./contracts/UnspecializedDelegate.hlb.mjs');
+    const dgtModule = await Promise.resolve().then(function () { return UnspecializedDelegate_hlb; });
     return dgtModule.UnspecializedDgtBundle;
   }
   activityMintingUutsAppSpecific(seedFrom, purposes) {
@@ -8470,6 +8469,55 @@ __decorateClass$3([
 __decorateClass$3([
   Activity.redeemer
 ], UnspecializedMintDelegate.prototype, "activityCreatingTestNamedDelegate");
+
+const UnspecializedDelegate_hl = makeSource(
+  "module UnspecializedDelegate\n\nimport {\n    tx, \n    get_current_input,\n    get_current_validator_hash,\n    get_cont_outputs\n} from ScriptContext\n\n// specialized to ...\n//   -   NOT YET SPECIALIZED (replace with your specialization notes here) - \n// original notes about (un)specialization follow:\n\n\n//  //! provides a basic version, not yet specialized,\n//  // of the \"specializedDelegate\" interface, which simply\n//  // exports a DelegateDatum enum and DelegateActivities (redeemer enum).  \n\n//  //! Your specialization MUST include the enum variants found in this\n//  //  ... unspecialized version.  It MAY include additional Datum variants.\n//  // Any additional Redeemer/Activity variants should be added underneath \n//  // the SpendingActivity / MintingActivity top-level enum variants, instead \n//  // of adding new top-level enum variants to DelegateActivity.\n\n//  // The DelegateActivity (redeemer) enum conforms to the \n//  // Delegate Redeemer protocol, in which enum 0 is reserved for\n//  // lifecycle activities, enum 1 is used for spend-related activities \n//  // (if the delegate is used as a spend delegate), and enum 2 is called\n//  // for authorizing minting.  Enum 3 and beyond are reserved for\n//  // extensions to the Delegate Redeemer protocol.\n\n//  // Within the minting and spending activities, the specialization can \n//  // indicate a nested activity enum to support various dApp-specific\n//  // activities.  \n\n//  // Activities that validate minting of UUTs should contain enum fields \n//  // to identify the seed-transaction details needed for properly validating \n//  // UUT mints fitting the use-case.\n\n//  //! Your specialization MAY include any additional functions, imports or \n//  //  methods defined on any of the types in this file.\n\nimport {\n    AnyData,\n    REQT,\n    bREQT,\n    TODO,\n    REQTgroup,\n    REQTgroupUnit,\n    logGroupUnit,\n    logGroup,\n    logGroupStart,\n    logGroupEnd\n} from StellarHeliosHelpers\n\nimport {\n    DelegationDetail,\n    mustReturnValueToScript,\n    DelegateLifecycleActivity,\n    CapoLifecycleActivity,\n    unmodifiedDelegation\n} from CapoDelegateHelpers\n\nimport {\n    validateUutMinting,\n    mkUutTnFactory\n} from CapoMintHelpers\n\nimport {\n    CapoCtx,\n    mkCapoCtx\n} from CapoHelpers\n \n// import {\n//     ProtocolSettings\n// } from ProtocolSettings\n\nenum DelegateDatum {\n    // we only have to use this if we decide Constr#0 is essential for practical CIP-68 compat\n    Cip68RefToken {  \n        // NOTE: this datum contains reference details for a user-facing token minted according to the cip-68 standard \n        //  - the asset name (in the Value of this UTXO) MUST be:  #000643b0 + tokenName\n        //     - this asset name can serve user-side tokens using the CIP-68 \"222\", \"333\" or other token types.\n        //     - the user-side asset name with its (222/333/etc) CIP-67 prefix and \n        //       ... its remaining tokenName will be matched to this asset name (#000643b0 +tokenName)\n        //       ... to locate this reference datum; this datum content will be interpreted\n        //       ... according to the semantics implied by the user-side asset-name prefix.\n        //\n        //  - The attached 'meta' field in this Datum variant contains the relevant data, depending on the token type\n        //    - for \"222\" tokens, the meta field should contain the following fields:\n        //        - \"name\" : String\n        //        - \"description\" : String \n        //        - \"files\" :   // {mediaType, src (url), name?, ... otherFields)\n        //        - \"image\": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)\n        //    - for \"333\" tokens, the meta field should contain the following fields:\n        //        - \"name\" : String\n        //        - \"description\" : String \n        //        - \"ticker\" : String\n        //        - \"url\": String  // project URL\n        //        - \"logo\": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)\n        //                    - it must have a mime type `image/png`, `image/jpeg` or `image/svg+xml`\n        //        - \"decimals\" : Int\n\n        cip68meta: AnyData\n        cip68version: Int\n        otherDetails: Data\n        // otherDetails: Data // can be Unit () or anything else\n    }\n\n    IsDelegation {\n        dd: DelegationDetail\n    }\n    // same variant-index as Capo's DelegatedData\n    capoStoredData {\n        data: AnyData\n        version: Int\n        otherDetails: Data \n    }\n\n    // func validateSettings(self, settings: ProtocolSettings) -> Bool{\n    // ... get the settings object from the contract manifest via cctx\n    //     assert(false, \"not valid (stubbed)\");\n    //     settings.serialize() != self.serialize() &&\n    //     true\n    // }\n}\n\nenum MintingActivity {\n    // application can replace the placeholder, which is only here to \n    // avoid a syntax error in the unspecialized version\n    _placeholder1MA {\n        seed: TxOutputId\n    }\n}\n\n//! The minting delegate can also be used as a general spending \n// delegate (this is the default arrangement during the Capo \n// charter mint).  These activities are required by the Capo when\n// spending utxos having DelegatedDatum type.\nenum SpendingActivity {\n    // application can replace the placeholder, which is only here to \n    // avoid a syntax error in the unspecialized version\n    _placeholder1SA  {\n        recId: ByteArray\n    }\n}\n\nenum BurningActivity {\n    // application can replace the placeholder, which is only here to \n    // avoid a syntax error in the unspecialized version\n    _placeholder1BA {\n        recId: ByteArray\n    }\n}\nenum DelegateActivity {\n    // must ALWAYS be at Enum position 0\n    CapoLifecycleActivities {\n        activity: CapoLifecycleActivity\n    }\n\n    // must ALWAYS be at Enum position 1\n    DelegateLifecycleActivities {\n        // administrative activities for the delegate lifecycle, enforced\n        //  by the basic mint delegate code.  Specializations can add more \n        //  restrictions, but in many/most cases they will not need to.\n        activity: DelegateLifecycleActivity\n    }\n\n    // application-specific spending activities, ALWAYS at Enum position 2\n    SpendingActivities {\n        activity: SpendingActivity\n    }\n\n    // application-specific minting activities, ALWAYS at Enum position 3\n    // remember:M and 3 have a similar shape.\n    MintingActivities {\n        activity: MintingActivity\n    }\n\n    BurningActivities {\n        // application-specific burning activities, ALWAYS at Enum position 4\n        activity: BurningActivity\n    }\n\n    CreatingDelegatedData {\n        seed: TxOutputId\n        dataType: String\n        // id from seed\n    }\n\n    UpdatingDelegatedData {\n        // seed not used\n        dataType: String\n        recId: ByteArray\n    }\n\n    DeletingDelegatedData {\n        // seed not used\n        dataType: String\n        recId: ByteArray\n    }\n\n    OtherActivities {\n        activity: Data // anything defined in the specialization; nothing here.\n    }\n\n    MultipleDelegateActivities {\n        activities: []Data // actually a []DelegateActivity\n        // todo: change this back when the recursive enum's `__is_valid_data not found` error is resolved\n    }\n\n    // this function gives a general-purpose implementation of checking for \n    // valid uut minting. \n    //\n    // A specialization might modify it to use different policies\n    // or enforce additional requirements\n    // \n    // func genericUutMinting(self, \n    //     mdd: DelegateDatum,\n    // ) -> Bool {\n    //     //!!! replace with an activity using the same seed-txn pattern:\n    //     // MintingActivities::SomethingMintingUuts{seed, purposes} = self;\n    //     DelegateDatum::IsDelegation{dd} = mdd;\n    //     returnsAuthzToken : Bool = mustReturnValueToScript(dd.tvAuthorityToken());\n\n    //     o : []TxOutput = get_cont_outputs();\n    //     if (o.length != 1) { error(\"single utxo only\") };\n\n    //     print (\"in unsp_MD\");\n    //     isOk : Bool = returnsAuthzToken && \n\n    //     unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize()) &&\n\n    //     // This call can serve as a template for enforcing expected mints \n    //     // of uuts (and additional token values) in validation of application-\n    //     // specific activities, given (mph, seed, purposes)\n    //     validateUutMinting(\n    //         mph: dd.mph,\n    //         seed: seed,\n    //         purposes: purposes,\n    //         // otherMintedValue: ()\n    //         mkTokenName: mkUutTnFactory(seed)\n    //     );\n\n    //     isOk\n    // }\n\n    //! used only for validating IsDelegation datum, that is,\n    //   ... to approve minting requests or any customize spending modes \n    //   ... of that datum.  \n    \n    //  Note that the basic delegate already enforces some basic\n    //    administrative expectations for DelegateLifecycleActivities and CapoLifecycleActivities\n    //    so a specialization doesn't need to re-implement those checks.\n    func additionalDelegateValidation( self,\n        priorMddd: DelegateDatum::IsDelegation,\n        cctx: CapoCtx\n    ) -> Bool {\n        // print(\"  ----- checking additional delegate validation\");\n        mph : MintingPolicyHash = priorMddd.dd.mph;\n\n        self.switch {\n            // generic DelegateLifecycleActivities is already validated, but \n            //  ... you can add more constraints here if needed\n            DelegateLifecycleActivities => true,\n            CapoLifecycleActivities{CLA} => {\n                // CapoLifecycleActivites.queuePendingChange is only relevant for the MINT delegate.\n                // CapoLifecycleActivites.{removing, committing}PendingChange(s) are served by the SPEND delegate\n                // Capo\n                // CapoLifecycleActivites.{forcing}* are ONLY ever served by the Capo itself as an escape-hatch\n                //  assert(isMintingDelegate, \"unreachable\"); // TODO access this const defined in the main script\n\n                // They're normally rejected in this unspecialized (minting) delegate:\n                //   ... but if you have cases for creating new delegates, such as \n                //   ... named delegates for advanced constellations of contracts \n                //   ... in your Capo, you can implement checks for that here.\n                //  You can use this construct as-is, or modify it to suit your needs.\n                CLA.switch {\n                    // queuePendingChange{action, role, name} => {\n                    //     print(\"unspecialized mint delegate allowing queuePendingChange\");\n                    // },\n                    // committingPendingDgtChange{action, role, name} => {\n                    //     print(\"unspecialized mint delegate allowing committingPendingChange\");\n                    // },\n                    CreatingDelegate{seed, purpose} => {\n                        self.supportedCapoDelegatePurposes().find_safe(\n                            (p : String) -> Bool { p == purpose } \n                        ).switch {\n                            None => {\n                                if (self.supportedCapoDelegatePurposes().length == 0) {\n                                    print(\"note: unspecialized delegate has no supported purposes\")\n                                };\n                                error(\"can't mint delegate with unsupported purpose\")\n                            },\n                            Some => {\n                                validateUutMinting(\n                                    mph: mph,\n                                    seed: seed,\n                                    purposes: []String{purpose},\n                                    // otherMintedValue: ()\n                                    mkTokenName: mkUutTnFactory(seed),\n                                    // WE ARE the mint delegate.\n                                    needsMintDelegateApproval: false \n                                )\n                            }\n                        }\n                    },\n                    _ => {\n                        REQT(\"   -- to customize: mint/spend delegates have an option to validate additional lifecycle constraints here\");\n                        true\n                    }\n                 }\n            },\n            MintingActivities => {\n                assert(cctx.withCharterRef().orFail(), \"can't\");\n\n                error(\"unspecialized mint delegate doesn't have any MintingActivities\")\n            },\n            CreatingDelegatedData{_, dataType} => {\n                print(\" ℹ️  mint: delegates CreatingDelegatedData authority to \"+dataType);\n                true\n            },\n            UpdatingDelegatedData{dataType, _recId} => {\n                print(\" ℹ️  spend: delegates UpdatingDelegatedData authority to \"+dataType);\n                true\n            },\n            DeletingDelegatedData{dataType, _recId} => {\n                print(\" ℹ️  spend: delegates DeletingDelegatedData authority to \"+dataType);\n                true\n            },\n            MultipleDelegateActivities => {\n                print(\"    -- mint/spend delegate: MultipleDelegateActivities: no special validation in this unspecialized delegate\");\n                true\n            },\n            OtherActivities => error(\n                \"no other activities exist in this unspecialized delegate\"\n            ),\n            _ => {\n                assert(false, \"mint/spend delegate rejecting other activity\");\n                false\n            }\n        } || tx.serialize() == priorMddd.serialize()\n    }\n\n    func supportedCapoDelegatePurposes(self) -> []String {\n        assert(true || /* prevent unused variable */ self == self, \"no way, man\" );\n         []String{ \n            // \"nothingHereYet\",\n        }\n    }\n\n    //! Use this only for validating non-IsDelegation datum types and activities,\n    //  stored in the delegate's own address, for special cases where that could \n    // be important (so far, it's never been used - please open a discussion if you \n    //    think it's needed for your special case)\n    // Typically, you should look to Activity validations above in additionalDelegateValidation,\n    // ...  in which the unique isDelegation token is being spent with an application-specific\n    // ...  activity/redeemer\n    func otherDatumValidation(self,\n        _priorMdd: DelegateDatum\n    ) -> Bool {\n        neverTriggered = () -> {  error(\"never called\") };\n        self.switch{\n            // Note: this set of DelegateActivities is reserved for the IsDelegation datum.\n            //  Using it on any other Datum type will always fail and execution will never arrive here.\n            DelegateLifecycleActivities => neverTriggered(),\n            CapoLifecycleActivities => neverTriggered(),\n\n            // -- Application-specific activities can be added here \n            // -- for special & app-specific types of datum in a delegate,\n            // -- for EXCEPTIONAL cases, if you really know what you're doing.  \n            //  -- see above for normal cases\n\n            _ => false  // prevents non-exhaustive match errors, even if you remove the above neverTriggered() calls\n        }\n    }\n}\n\n", {
+    project: "stellar-contracts",
+    purpose: "module",
+    name:  "src/delegation/UnspecializedDelegate.hl", // source filename
+    moduleName:  "UnspecializedDelegate",
+});
+
+class UnspecializedDgtBundle extends CapoDelegateBundle.usingCapoBundleClass(CapoHeliosBundle) {
+  precompiledScriptDetails = {
+    singleton: {
+      scriptHash: "59f23403adf538c6a8e6a5413c197a227a12fb877ff70e7045bc095a",
+      config: { "rev": "1", "delegateName": "UnspecializedDelegate", "isMintDelegate": true, "isSpendDelegate": true, "isDgDataPolicy": false, "requiresGovAuthority": true }
+    }
+  };
+  scriptParamsSource = "bundle";
+  async loadPrecompiledVariant(variant) {
+    const module = await import('@donecollectively/stellar-contracts/contracts/UnspecializedDelegate.compiled.hlb');
+    const foundVariant = module.precompiled[variant];
+    if (!foundVariant) {
+      throw new Error(`unknown variant: ${variant}`);
+    }
+    return foundVariant;
+  }
+  specializedDelegateModule = UnspecializedDelegate_hl;
+  requiresGovAuthority = true;
+  get params() {
+    return {
+      rev: this.rev,
+      delegateName: this.moduleName,
+      isMintDelegate: true,
+      isSpendDelegate: true,
+      isDgDataPolicy: false,
+      requiresGovAuthority: this.requiresGovAuthority
+    };
+  }
+  get moduleName() {
+    return "UnspecializedDelegate";
+  }
+  get bridgeClassName() {
+    return "UnspecializedDelegateBridge";
+  }
+}
+
+var UnspecializedDelegate_hlb = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    UnspecializedDgtBundle: UnspecializedDgtBundle
+});
 
 class MintSpendDelegateBundle extends CapoDelegateBundle {
   requiresGovAuthority = true;
@@ -8911,7 +8959,7 @@ var __decorateClass$2 = (decorators, target, key, kind) => {
 };
 class CapoMinter extends StellarContract {
   async scriptBundleClass() {
-    const bundleModule = await import('./contracts/CapoMinter.hlb.mjs');
+    const bundleModule = await import('./CapoMinter.hlb.mjs');
     return bundleModule.CapoMinterBundle;
   }
   async mkScriptBundle(setupDetails = placeholderSetupDetails) {
@@ -9117,7 +9165,6 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
       {
         exceptInTcx: tcx,
         searchOthers: true,
-        findCached: options.findCached,
         extraErrorHint
       }
     );
@@ -14653,6 +14700,7 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
         // strategyName,
         delegate: delegate2
       } = cachedRole;
+      console.log(`  \u2705 \u{1F481} ${role} - from cache `);
       return delegate2;
     }
     console.log(`   \u{1F50E}delegate \u{1F481} ${role}`);
@@ -25760,7 +25808,7 @@ class ReqtsController extends DelegatedDataContract {
   //     return new ReqtsAdapter(this);
   // }
   async scriptBundleClass() {
-    const bundleModule = await import('./contracts/Reqts.concrete.hlb.mjs');
+    const bundleModule = await import('./Reqts.concrete.hlb.mjs');
     return bundleModule.ReqtsConcreteBundle;
   }
   activityCreatingReqt(seedFrom) {
@@ -27230,8 +27278,22 @@ class TxSubmissionTracker extends StateMachine {
     this.setup = setup;
     this.submitters = submitters;
     this.txSubmitters = {};
-    if (txd.tcx) {
-      this.log("created directly from tcx");
+    if (!txd.tx) {
+      this.log("\u{1F4E5} registered txn still being built");
+      if (!txd.tcx) {
+        throw new Error(`a tx stil being built should have a tcx callback or object in its txd.tcx`);
+      }
+      if (txd.tcx._builtTx) {
+        throw new Error(`this tx description has a tcx already built; its \`tx\` attribute should reflect it`);
+      }
+    } else if (txd.tx) {
+      this.log("created with already-built tcx");
+      if (!txd.tcx) {
+        console.warn(
+          "Note: unexpected registration of a built tx without a tcx context\nindicates this tx being built outside the normal flow of a StellarTxnContext, or is registered incorrectly"
+        );
+        throw new Error(`temp: missing tcx ?`);
+      }
       this.transition("built");
     } else {
       this.log("\u{1F4E5} registered");
@@ -27537,6 +27599,19 @@ class TxSubmissionTracker extends StateMachine {
     this.isBuilt = true;
     this.log(` --  \u2697\uFE0F \u2697\uFE0F  \u{1F945} emulatorConfirmed \u2697\uFE0F \u2697\uFE0F`);
   }
+  reqts() {
+    return hasReqts({
+      "tracks the submission of a single tx via one or more submitter clients": {
+        purpose: "provides a unified state of the transaction's submission",
+        details: [
+          "tracks the state of the transaction's submission through the state machine"
+        ],
+        mech: [
+          "uses a state machine to track the state of the transaction's submission"
+        ]
+      }
+    });
+  }
 }
 
 const nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
@@ -27642,34 +27717,35 @@ class BatchSubmitController {
   //, options?: TxBatchOptions);
   async $addTxns(tcxd) {
     this.notDestroyed();
-    if (!tcxd.isFacade && !!tcxd.state) {
-      const tcx = tcxd;
-      tcx._builtTx ? await tcx._builtTx : void 0;
-      const id = tcx?.id ?? nanoid(5);
-      debugger;
-      this.addTxDescr({
-        description: tcx.txnName || "\u2039unnamed txn\u203A",
-        id,
-        tcx,
-        txName: tcx.txnName,
-        depth: tcx.depth,
-        // should typically be 0
-        parentId: tcx.parentId
-        // should typically be empty
-      });
-      for (const [name, txd] of Object.entries(tcx.addlTxns)) {
-        this.addTxDescr(txd);
-      }
-    } else if (
-      //prettier-ignore
-      //@ts-ignore-error on type probe
-      !!tcxd.state && tcxd.addlTxns
-    ) {
-      const tcx = tcxd;
-      return this.$addTxns(Object.values(tcx.addlTxns));
-    } else if (Array.isArray(tcxd)) {
+    if (Array.isArray(tcxd)) {
       for (const txd of tcxd) {
         this.addTxDescr(txd);
+      }
+    } else if (tcxd.kind == "StellarTxnContext") {
+      const tcx = tcxd;
+      if (!tcx.isFacade && !!tcx.state) {
+        const tx = tcx._builtTx ? await tcx._builtTx : void 0;
+        const id = tcx?.id ?? nanoid(5);
+        debugger;
+        this.addTxDescr({
+          description: tcx.txnName || "\u2039unnamed txn\u203A",
+          id,
+          tcx,
+          tx,
+          txName: tcx.txnName,
+          depth: tcx.depth,
+          // should typically be 0
+          parentId: tcx.parentId
+          // should typically be empty
+        });
+        for (const [name, txd] of Object.entries(tcx.addlTxns)) {
+          this.addTxDescr(txd);
+        }
+      } else if (!!tcx.state && tcx.addlTxns) {
+        return this.$addTxns(Object.values(tcx.addlTxns));
+      } else {
+        debugger;
+        throw new Error(`unexpected tcx state: ${tcx.state} (dbpa)`);
       }
     } else {
       const txd = tcxd;
@@ -27680,7 +27756,7 @@ class BatchSubmitController {
     this.notDestroyed();
     return this.$txStates[id] || this.$registeredTxs[id];
   }
-  submitToTestnet(txd, tracker) {
+  submitIfIsTestnet(txd, tracker) {
     if (!this.setup.isTest) return;
     const { network } = this.setup;
     const {
@@ -27718,7 +27794,7 @@ class BatchSubmitController {
       } else if (txd.tcx?.isFacade) {
         pendingTracker.transition("isFacade");
       } else {
-        this.submitToTestnet(
+        this.submitIfIsTestnet(
           txd,
           pendingTracker
         );
@@ -27736,6 +27812,8 @@ class BatchSubmitController {
         const pDepth = parent.txd.depth;
         return { ...txd, depth: 1 + pDepth };
       })();
+      debugger;
+      console.log("making new tracker here");
       tracker = new TxSubmissionTracker({
         txd: patchedTxd,
         submitters: this.submitters,
@@ -27745,13 +27823,17 @@ class BatchSubmitController {
         "changed",
         this.updateAggregateState.bind(this)
       );
-      if (txd.tcx) {
+      console.log("made new tracker, listening for changes");
+      if (txd.tx) {
+        console.log("adding tx to txStates");
         this.$txStates[id] = tracker;
-        this.submitToTestnet(
+        console.log("submitting tx if it's testnet");
+        this.submitIfIsTestnet(
           txd,
           tracker
         );
       } else {
+        console.log("adding tx to registeredTxs");
         const [others, sameParentId] = Object.entries(
           this.$registeredTxs
         ).reduce(
@@ -27771,10 +27853,13 @@ class BatchSubmitController {
           ...others
         };
       }
+      console.log("updated tracker");
+      debugger;
       tracker.update(patchedTxd);
       this.$txChanges.emit("txAdded", tracker);
       this.$txChanges.emit("txListUpdated", this);
     }
+    console.log("emitting txListUpdated");
     this.$txChanges.emit("txListUpdated", this);
   }
   get $allTxns() {
@@ -27852,8 +27937,10 @@ class BatchSubmitController {
       ...Object.values(this.$txStates)
     ];
     const count = txTrackers.length;
-    const allConfirmed = count && txTrackers.every((t) => t.$state == "confirmed");
-    const allFailed = count && txTrackers.every((txTracker) => txTracker.$state == "failed");
+    const allConfirmed = count && txTrackers.every(
+      (t) => t.$state == "confirmed" || t.$state == "not needed"
+    );
+    const anyFailed = count && txTrackers.some((txTracker) => txTracker.$state == "failed");
     if (!count) {
       console.warn(
         "unreachable updateAggregateState before having tx trackers?"
@@ -27864,7 +27951,7 @@ class BatchSubmitController {
       this.$stateInfoCombined = [`${txTrackers.length} confirmed`];
       this.$stateShortSummary = "confirmed";
       this.isConfirmationComplete = true;
-    } else if (allFailed) {
+    } else if (anyFailed) {
       this.$stateInfoCombined = [`${txTrackers.length} failed`];
       this.$stateShortSummary = "failed";
     } else {
@@ -27915,50 +28002,217 @@ class BatchSubmitController {
     this.$txChanges.emit("statusUpdate", this.$stateInfoCombined);
   }
   reqts() {
-    return {
-      "allows multiple underlying submitters": {
-        purpose: "enables multiple paths to distributing a tx to the network",
+    return hasReqts({
+      "manages the submission of transactions to the network": {
+        purpose: "provides users with simple status info on multiple txns",
+        details: [
+          "accepts one or more transactions to be tracked",
+          "supports transactions built via callback, with details only known later",
+          "automaticallly registered additional txns chained on the end of any other txn",
+          "manages the tree of txns for visualization in UI",
+          "organizes them into a consistent state model (pending, building, signing, submitting, confirming, confirmed, failed)",
+          "aggregates the state of all tracked transactions into a single summary",
+          "emits events that collaborators can subscribe to for updates when individual or aggregate state changes"
+        ],
         mech: [
-          "? each submitter is a MinimalCardanoClient with submitTx() and hasUtxo()",
-          "? each submitter can be of a different underlying type",
-          "? all submitters should be connected to different nodes on the same network"
+          "uses `TxSubmissionTracker` to manage state for each transaction",
+          "its $txChanges is a typed event emitter ",
+          "the `txAdded` event is emitted when a new transaction is added",
+          "the `statusUpdate` event is emitted when the aggregate state changes",
+          "the `txListUpdated` event is emitted when the list of transactions changes",
+          "the `destroyed` event is emitted when the batch controller is destroyed"
+        ],
+        requires: [
+          "processes each submitted transaction through its own tracking pipeline",
+          "maintains the tree of transactions for visualizing nested txns",
+          "accepts multiple txns for persistent async submission",
+          "allows multiple underlying submitters",
+          "has an organized structure for the state of submitting each individual txn",
+          "processes updated states of any transaction by id",
+          "uses each submitter's basic hasUtxo() function to check for tx confirmations",
+          "is resistant to slot/block battles and rollbacks",
+          "supports tcx callback transactions"
         ]
       },
-      "uses the basic hasUtxo() function to check for transaction inclusion": {
-        purpose: "uses lowest common functionality for simplicity",
+      "supports tcx callback transactions": {
+        purpose: "supports transactions built via callback, with details only known later",
+        details: [
+          "accepts transactions built via callback, with details only known later"
+        ],
         mech: [
-          "? each submitter has a hasUtxo() function",
-          "? checking for any txn needs only to check for one of its output-ids' presence"
+          "adds a new transaction to the `$registeredTxs` group when a callback transaction is added",
+          "the resulting tcx from a callback transaction MAY be a facade, without its own tx details",
+          "when the callback transaction is built, any nested transactions are detected at that time",
+          "relies on incrementa;l txd updates and the StellarTxnContext's buildAndQueueAll() for building the transactions ",
+          "relies on the StellarTxnContext to build transactions in depth-first order for execution"
+        ],
+        requires: [
+          "processes nested transactions (facades and child txns)",
+          "processes updated states of any transaction by id",
+          "accepts multiple txns for persistent async submission",
+          "has an organized structure for the state of submitting each individual txn"
+        ]
+      },
+      "maintains aggregate state of all transactions": {
+        purpose: "provides a simple view of the state of all transactions",
+        details: [
+          "by tracking all the known transactions, and watching their state changes, it can provide a simple view of the state of all transactions",
+          "when an transaction fails, it reflects the entire batch as `failed`",
+          "when all the transactions are confirmed (or not needed), the batch is `confirmed`",
+          "aggregation logic is applied to other combinations of states"
+        ],
+        mech: [
+          "subscribes to the `statusUpdate` event from each TxSubmissionTracker",
+          "calculates aggregate state in `updateAggregateState`",
+          "iterates the transactions in `$txStates` and `$registeredTxs`",
+          "emits a `statusUpdate` event when the aggregate state changes"
+        ],
+        requires: [
+          "processes each submitted transaction through its own tracking pipeline",
+          "has an organized structure for the state of submitting each individual txn",
+          "accepts multiple txns for persistent async submission",
+          "processes nested transactions (facades and child txns)"
+        ]
+      },
+      "processes nested transactions (facades and child txns)": {
+        purpose: "supports the management of nested transactions",
+        details: [
+          "accepts nested transactions (facades and child txns)",
+          "maintains the tree of transactions for visualization in UI"
+        ],
+        mech: [
+          "adds nested transactions to the `$registeredTxs` group",
+          "doesn't create a TxSubmissionTracker for facade transactions",
+          "automatically registers parent-tx-id's for visualizing nested txns"
+        ],
+        requires: [
+          "processes each submitted transaction through its own tracking pipeline",
+          "accepts multiple txns for persistent async submission"
+        ]
+      },
+      "processes each submitted transaction through its own tracking pipeline": {
+        purpose: "proactively manages each transaction and supports UI interactions",
+        details: [
+          "accepts new transactions to the batch (via `$addTxns()`)",
+          "allows the same tx description to be added multiple times for continuing evolution",
+          "maintains two groups of registered and already-built transactions",
+          "keeps the transactions in order of addition to match on-chain submission order needs"
+        ],
+        mech: [
+          "exposes an $addTxns method for adding transactions to the batch",
+          "$addTxns accepts a StellarTxnContext, TxDescription, or array of TxDescriptions",
+          "adds new transactions to the end of the list of known transactions",
+          "creates a TxSubmissionTracker for each added transaction",
+          "adds unbuilt transactions to the `$registeredTxs` group",
+          "adds built transactions to the `$txStates` group",
+          "moves a transaction from the `$registeredTxs` group to the `$txStates` group when a built tx is found",
+          "sends updated txd to the TxSubmissionTracker to handle tx-level state progression",
+          "relies on event subscriptions on the TxSubmissionTracker to for its own aggregate state progression"
+        ],
+        requires: [
+          "has an organized structure for the state of submitting each individual txn",
+          "processes updated states of any transaction by id"
+        ]
+      },
+      "processes updated states of any transaction by id": {
+        purpose: "retains a unified state of all its transactions while tracking them in two groups",
+        details: [
+          "exposes a $txInfo method for getting the state of any transaction by id",
+          "$txInfo returns a TxSubmissionTracker for the transaction",
+          "TxSubmissionTracker maintains the state of the transaction",
+          "the `registered` group is for transactions that are not yet done being built",
+          "the `submitting` group is for transactions that are built and are being submitted"
+        ],
+        mech: [
+          "uses a map of all transactions by id in $txStates and $registeredTxs",
+          "merges the `registered` and `submitting` maps into a $allTxns as a single list of TxSubmissionTrackers",
+          "allows iterating over the transactions with a map() method",
+          "has a $txInfo method for getting the state of any transaction by id"
+        ]
+      },
+      "maintains the tree of transactions for visualizing nested txns": {
+        purpose: "supports the UI to visualize the tx batch structure",
+        details: [
+          "recognizes transactions that are their own batch ('facades')",
+          "recognizes transactions containing chained transactions ('child txns')"
+        ],
+        mech: [
+          "adds nested transactions to batch automatically",
+          "registers parent-tx-id's for nested txns",
+          "orders parent transactions (facade or otherwise) before child txns",
+          "orders newly-detected child transactions after other transactions in the same parent-tx-id group"
+        ],
+        requires: [
+          "processes nested transactions (facades and child txns)"
+        ]
+      },
+      "allows multiple underlying submitters": {
+        purpose: "enables multiple paths to distributing a tx to the network",
+        details: [
+          "accepts a map of named submitters in constructor",
+          "validates that all submitters are on the same network (mainnet vs testnet)",
+          "distributes each transaction to all configured submitters"
+        ],
+        mech: [
+          "stores submitters in `this.submitters`",
+          "passes the full list of submitters to each `TxSubmissionTracker`",
+          "TxSubmissionTracker creates a `TxSubmitMgr` for each submitter"
+        ]
+      },
+      "uses each submitter's basic hasUtxo() function to check for tx confirmations": {
+        purpose: "uses lowest common functionality for simplicity",
+        details: [
+          "checks for transaction confirmation by looking for its outputs on-chain",
+          "supports submitters that only provide `hasUtxo` without full `getTx` capability"
+        ],
+        mech: [
+          "delegates confirmation check to `TxSubmitMgr`",
+          "`TxSubmitMgr` prefers `getTx` if available, otherwise calls `hasUtxo` with the 0th output ID of the tx"
         ]
       },
       "accepts multiple txns for persistent async submission": {
         purpose: "ensures that each transaction is reliably delivered to the network",
+        details: [
+          "allows adding transactions via `StellarTxnContext` or `TxDescription`",
+          "supports adding dependent transactions (facade or child txns)",
+          "persists in submitting until confirmed or failed/expired"
+        ],
         mech: [
-          "? each transaction is queued for delivery through each submitter",
-          "? allows that each transaction may not be acceptable at the same time",
-          "? ensures that txns are retried as needed until confirmed at all submitters",
-          "? doesn't give up until the tx is confirmed or until least 3m after its expiration"
+          "`$addTxns` method handles various input formats and creates trackers",
+          "trackers persist through `TxSubmissionTracker` state machine",
+          "retry logic is handled within `TxSubmitMgr` with backoff strategies"
+        ],
+        requires: [
+          "processes each submitted transaction through its own tracking pipeline"
         ]
       },
-      "is resistant to slot battles and rollbacks": {
+      "is resistant to slot/block battles and rollbacks": {
         purpose: "ensures persistent delivery of txns into the network",
+        details: [
+          "detects if a transaction is not confirmed as expected",
+          "monitors multiple submitters for consensus or failure",
+          "re-submits if necessary when one path fails but validity allows"
+        ],
         mech: [
-          "? continues to check each submitter for tx confirmation",
-          "? each a transaction must be found at the submitter 3 separate times"
+          "`TxSubmitMgr` detects `battleDetected` scenarios",
+          "if one submitter fails (e.g. `otherSubmitterProblem`), others are notified to maintain vigilance or re-submit",
+          "confirmation depth is tracked in `TxSubmitMgr` (requires multiple confirmations for 'hard' confirm)"
         ]
       },
-      "has an organized structure for the state of submitting each txn": {
+      "has an organized structure for the state of submitting each individual txn": {
         purpose: "transparency of submission progress and responsiveness to possible problems",
+        details: [
+          "tracks lifecycle: registered -> building -> built -> signing -> submitting -> confirming -> confirmed",
+          "handles failure and retries explicitly",
+          "provides granular state for each submitter of each transaction"
+        ],
         mech: [
-          "? each transaction has a state object with its description and submission state",
-          "? each transaction's state object has a record of the submission state for each submitter",
-          "? the state is 'submitting' until the txn is accepted by all submitters",
-          "? the state is 'confirming' until the txn is confirmed by all submitters",
-          "? if a txn is not confirmed by all submitters after 30s, it changes to  'resubmitting' state",
-          "? after a txn is confirmed by all submitters, its state is 'confirmed'"
+          "uses `TxSubmissionTracker`' StateMachine for each specific transaction",
+          "uses `TxSubmitMgr`'s StateMachine for per-submitter progress",
+          "states are aggregated up from submit-mgr to tx-submission-tracker to batch-controller"
         ]
       }
-    };
+    });
   }
 }
 
@@ -28012,7 +28266,7 @@ class TxBatcher {
     }
     return false;
   }
-  rotate(chainBuilder) {
+  rotate(newChainBuilder) {
     if (!this.setup) {
       throw new Error(`setup not set`);
     }
@@ -28024,6 +28278,29 @@ class TxBatcher {
     }
     this.previous?.destroy();
     this.previous = this.current;
+    const chainBuilder = newChainBuilder || makeTxChainBuilder(this.setup.network);
+    this._current = new BatchSubmitController({
+      submitters: this.submitters,
+      setup: {
+        ...this.setup,
+        chainBuilder
+      },
+      signingStrategy: this.signingStrategy
+    });
+    this.$notifier.emit("rotated", this._current);
+  }
+  cancel() {
+    if (!this.setup) {
+      throw new Error(`setup not set`);
+    }
+    if (!this.signingStrategy) {
+      throw new Error(`signingStrategy not set`);
+    }
+    this.previous?.destroy();
+    this._current?.destroy();
+    this.previous = void 0;
+    const chainBuilder = this.setup.isTest ? void 0 : makeTxChainBuilder(this.setup.network);
+    this.setup.chainBuilder = chainBuilder;
     this._current = new BatchSubmitController({
       submitters: this.submitters,
       setup: {
@@ -28223,5 +28500,5 @@ class DraftEternlMultiSigner extends GenericSigner {
   }
 }
 
-export { Activity, AlreadyPendingError, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, BatchSubmitController, Capo, CapoDelegateBundle, CapoHeliosBundle, CapoMinter, CapoWithoutSettings, ContractBasedDelegate, ContractDataBridge, DataBridge, DataBridgeReaderClass, DelegateConfigNeeded, DelegatedDataContract, DraftEternlMultiSigner, EnumBridge, GenericSigner, JustAnEnum, MintSpendDelegateBundle, Nested, NotNested, OgmiosTxSubmitter, StellarContract, StellarDelegate, StellarTxnContext, TxBatcher, TxNotNeededError, TxSubmissionTracker, TxSubmitMgr, UnspecializedDelegateBridge, UnspecializedDelegate_hl as UnspecializedDelegateScript, UnspecializedMintDelegate, UutName, WalletSigningStrategy, WrappedDgDataContract, capoConfigurationDetails, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, impliedSeedActivityMaker, isDatum, makeOgmiosConnection, mkCancellablePromise, mkDgtStateKey, mkUutValuesEntries, mkValuesEntry, partialTxn, placeholderSetupDetails, txn, uplcDataSerializer };
+export { Activity, AlreadyPendingError, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, BatchSubmitController, Capo, CapoDelegateBundle, CapoHeliosBundle, CapoMinter, CapoWithoutSettings, ContractBasedDelegate, ContractDataBridge, DataBridge, DataBridgeReaderClass, DelegateConfigNeeded, DelegatedDataContract, DraftEternlMultiSigner, EnumBridge, GenericSigner, JustAnEnum, MintSpendDelegateBundle, Nested, NotNested, OgmiosTxSubmitter, StellarContract, StellarDelegate, StellarTxnContext, TxBatcher, TxNotNeededError, TxSubmissionTracker, TxSubmitMgr, UnspecializedDelegateBridge, UnspecializedDelegate_hl as UnspecializedDelegateScript, UnspecializedDgtBundle, UnspecializedMintDelegate, UutName, WalletSigningStrategy, WrappedDgDataContract, capoConfigurationDetails, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, impliedSeedActivityMaker, isDatum, makeOgmiosConnection, mkCancellablePromise, mkDgtStateKey, mkUutValuesEntries, mkValuesEntry, partialTxn, placeholderSetupDetails, txn, uplcDataSerializer };
 //# sourceMappingURL=stellar-contracts.mjs.map

@@ -6,7 +6,7 @@ import type { namedSubmitters } from "./BatchSubmitController.js";
 import { TxSubmitMgr, type SubmitManagerState } from "./TxSubmitMgr.js";
 import { hasReqts } from "../Requirements.js";
 
-type SubmissionsStates =
+export type SubmissionsStates =
     | "registered"
     | "building"
     | "nested batch"

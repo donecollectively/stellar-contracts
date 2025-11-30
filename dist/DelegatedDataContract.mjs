@@ -4,6 +4,7 @@ import { C as ContractBasedDelegate } from './ContractBasedDelegate2.mjs';
 import { u as uplcDataSerializer, O as betterJsonSerializer, b as dumpAny } from './StellarContract2.mjs';
 import { encodeUtf8 } from '@helios-lang/codec-utils';
 import '@helios-lang/tx-utils';
+import './nanoid.mjs';
 import '@helios-lang/crypto';
 import './HeliosBundle.mjs';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
@@ -128,6 +129,20 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
     throw new Error(
       `make an implied-seed activity with this.activity.MintingActivites.$seeded$*`
     );
+  }
+  /**
+   * Validates a record of this type
+   * @remarks
+   * The default validation returns true, indicating that the record is valid.
+   * 
+   * dApp developers should override this method to provide validation logic in support of the application's business rules.
+   * 
+   * The FormManager will use this method to validate the record when fields are changed, providing interactive feedback to the user.
+   * 
+   * @returns true if the record is valid, or a record of paths to error messages for each invalid path.
+   */
+  validate(record, context = "update") {
+    return true;
   }
   /**
    * builds a txn creating a record of this type in the data store

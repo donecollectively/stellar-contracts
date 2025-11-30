@@ -89,7 +89,7 @@ export class TxBatcher {
         return false;
     }
 
-    rotate(chainBuilder?: TxChainBuilder) {
+    rotate(newChainBuilder?: TxChainBuilder) {
         if (!this.setup) {
             throw new Error(`setup not set`);
         }
@@ -101,6 +101,35 @@ export class TxBatcher {
         }
         this.previous?.destroy();
         this.previous = this.current;
+        const chainBuilder = newChainBuilder || makeTxChainBuilder(this.setup.network);
+
+        this._current = new BatchSubmitController({
+            submitters: this.submitters,
+            setup: {
+                ...this.setup,
+                chainBuilder,
+            },
+            signingStrategy: this.signingStrategy,
+        });
+        this.$notifier.emit("rotated", this._current);
+    }
+
+    cancel() {
+        if (!this.setup) {
+            throw new Error(`setup not set`);
+        }
+        if (!this.signingStrategy) {
+            throw new Error(`signingStrategy not set`);
+        }
+
+        this.previous?.destroy();
+        this._current?.destroy();
+        this.previous = undefined;
+
+        const chainBuilder = this.setup.isTest
+            ? undefined
+            : makeTxChainBuilder(this.setup.network);
+        this.setup.chainBuilder = chainBuilder;
 
         this._current = new BatchSubmitController({
             submitters: this.submitters,
