@@ -1548,9 +1548,15 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (!id) {
             id = addlTxInfo.id = this.id;
         }
-        const addlTxInfo2: TxDescription<any, "buildLater!"> = {
+        const existing = this.currentBatch.$txInfo(id);
+        const existingInfo = existing?.txd || {};
+
+        const addlTxInfo2: TxDescription<any, "resolved"> = {
             ...addlTxInfo,
-        } as any;
+            ...existingInfo,
+            // tx,
+            tcx: this,
+        }// as any;
 
         const txStats = {
             costs: costs,

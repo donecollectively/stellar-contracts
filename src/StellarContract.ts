@@ -1624,18 +1624,19 @@ export class StellarContract<
      */
     mkTcx(name?: string): StellarTxnContext;
     mkTcx(tcxOrName?: StellarTxnContext | string, name?: string) {
+        const effectiveName =
+            tcxOrName && isLibraryMatchedTcx(tcxOrName)
+                ? name
+                : tcxOrName || "‹unnamed context›";
+
         const tcx =
             //@ts-expect-error on this type probe
             tcxOrName?.kind === "StellarTxnContext"
                 ? tcxOrName
                 : new StellarTxnContext(this.setup).withName(
-                      name || "‹no-name›"
+                      name || tcxOrName as string || "‹no-name›"
                   );
 
-        const effectiveName =
-            tcxOrName && isLibraryMatchedTcx(tcxOrName)
-                ? name
-                : tcxOrName || "‹unnamed context›";
 
         if (effectiveName && !(tcx as StellarTxnContext)?.txnName)
             return (tcx as StellarTxnContext).withName(effectiveName as string);

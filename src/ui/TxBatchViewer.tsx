@@ -45,27 +45,33 @@ export function TxBatchViewer({
         initialId
     );
     const [selectedTx, setSelectedTx] = React.useState<Tx | undefined>();
-    const [txMgr, setTxMgr] = React.useState<TxSubmissionTracker | undefined>();
+    const [txTracker, setTxTracker] = React.useState<TxSubmissionTracker | undefined>(
+        initialId ? batch.$txInfo(initialId) : undefined
+    );
     const [gen, setGen] = React.useState(0);
 
     const renderNow = React.useMemo(() => () => setGen((g) => g + 1), []);
 
+    const batchSize = batch.$allTxns.length;
     React.useEffect(() => {
         if (!selectedId) return;
-        const tx = batch.$txStates[selectedId];
-        if (!tx) return;
-        setTxMgr(tx);
-    }, [selectedId, batch]);
+        const txTracker = batch.$txInfo(selectedId);
+        if (!txTracker) {
+            debugger
+            return;
+        }
+        setTxTracker(txTracker);
+    }, [selectedId, batch, batchSize]);
 
     React.useEffect(() => {
-        if (!txMgr?.txd.tx) return;
-        const tx = txMgr.txd.tx;
+        if (!txTracker?.txd.tx) return;
+        const tx = txTracker.txd.tx;
         if (typeof tx === "string") {
             setSelectedTx(decodeTx(tx));
         } else {
             setSelectedTx(tx);
         }
-    }, [txMgr]);
+    }, [txTracker, selectedId, gen]);
 
     React.useEffect(() => {
         batch.$txChanges.on("txAdded", renderNow);
@@ -74,12 +80,24 @@ export function TxBatchViewer({
             batch.$txChanges.off("txAdded", renderNow);
             batch.$txChanges.off("statusUpdate", renderNow);
         };
-    }, [batch, renderNow]);
+    }, [batch]);
 
+    console.error("rendering TxBatchViewer", {
+        selectedId,
+        batch,
+        initialId,
+        renderNow, 
+        advancedView, 
+        txTracker, 
+        selectedTx,
+        batchSize,
+        gen        
+    });
     const width = advancedView ? "w-9/12" : "";
 
     return (
         <>
+            {/* {selectedId && <div>selectedId: {selectedId}</div>} */}
             <div className="border-1 border-(--color-card) flex w-full flex-row gap-2 rounded-md drop-shadow-md">
                 <ShowTxList
                     batch={batch}
@@ -91,11 +109,11 @@ export function TxBatchViewer({
                 />
                 {(() => {
                     const indicateSelectedTx = selectedId
-                        ? "border-s-4 border-s-brand-orange/20"
+                        ? "border-s-4 border-s-accent/20"
                         : "";
 
                     const cardStyle =
-                        "bg-(--color-card) text-(--color-card-foreground)";
+                        "bg-card text-card-foreground";
 
                     if (!selectedId) {
                         return (
@@ -109,7 +127,7 @@ export function TxBatchViewer({
                         );
                     }
 
-                    if (!txMgr) {
+                    if (!txTracker) {
                         return (
                             <div
                                 className={`${indicateSelectedTx} ${cardStyle} ${width} rounded-md border border-white/10 p-2`}
@@ -126,7 +144,7 @@ export function TxBatchViewer({
                             className={`${indicateSelectedTx} z-3 ${cardStyle} ${width} flex flex-col rounded-md border border-white/10 p-2`}
                         >
                             <ShowTxDescription
-                                txTracker={txMgr}
+                                txTracker={txTracker}
                                 tx={selectedTx}
                                 advancedView={advancedView}
                             />
@@ -228,7 +246,7 @@ const ShowSingleTx = (props: {
 
     // Visual indicator for nested transactions
     const nestedIndicator = depth
-        ? `${indentClass} border-(--color-accent-foreground)/30`
+        ? `${indentClass} border-accent/30`
         : "";
 
     // <Softlight>{submitterStates}</Softlight>
@@ -246,7 +264,6 @@ const ShowSingleTx = (props: {
             key={id}
             onClick={isCurrent ? undefined : () => setSelectedId(id)}
             className={`${outerMarginClass}`}
-            // className={`${indentClass}`}
         >
             <div className={`${nestedIndicator} pl-2`}>
                 <div
@@ -341,20 +358,27 @@ function ShowTxDescription({
             console.error("Failed to decode signed transaction:", e);
         }
     }, [signedTxCborHex]);
+    const debugSubmitButton = false;
 
     return (
         <div className="flex flex-col gap-2 ">
             <div className="flex flex-col justify-between">
                 {/* Sign & Submit button */}
                 <div className="basis-1/9">
-                    {tx && txTracker && tcx && !tcx.isFacade && $state != "confirmed" &&  (
+                    {tx && txTracker && tcx && !tcx.isFacade && $state != "confirmed" && (
                         <ActionButton
                             className="mt-2 self-start"
                             onClick={() => txTracker.$signAndSubmit?.()}
                         >
                             Sign&nbsp;&amp;&nbsp;Submit
                         </ActionButton>
-                    )}
+                    ) || (debugSubmitButton && <div className="text-xs">
+                        {!!tx && <div>✅ tx ok</div> || <div>❌  no tx</div>}
+                        {!!txTracker && <div>✅ txTracker ok</div> || <div>❌ no txTracker</div>}
+                        {!!tcx && <div>✅ tcx ok</div> || <div>❌ no tcx</div>}
+                        {!tcx?.isFacade && <div>✅ not a facade</div> || <div>❌ is a facade</div>}
+                        {$state != "confirmed" && <div>✅ state '{$state}' not confirmed</div> || <div>❌ confirmed</div>}
+                    </div>)}
                 </div>
                 {advancedView && (
                     <>
@@ -376,16 +400,16 @@ function ShowTxDescription({
                     </>
                 )}
                 {advancedView && (
-                    <div id="tab-selector">
+                    <div id="tab-selector" className="mt-1 z-10 -mb-1">
                         {Object.keys(availableTabs).map((key) => {
                             const isSelected = key === tab;
                             const selectedTabClass = isSelected
-                                ? "rounded-t-md bg-(--color-card) text-(--color-card-foreground) border-x-1 border-t-3 border-(--color-border)/50"
-                                : " rounded-t-md bg-(--color-secondary)/70 text-(--color-secondary-foreground)";
+                                ? "mt-0 pt-0 pb-1 rounded-t-md bg-card border-x-1 border-t-3 border-border/80"
+                                : "-mt-1 pt-1 pb-0 border-1 rounded-t-md bg-secondary/20 border-border/40";
                             return (
                                 <button
                                     key={key}
-                                    className={`${selectedTabClass} ml-1 px-2 py-1 text-sm`}
+                                    className={`${selectedTabClass} ml-1 px-2 text-sm text-card-foreground border-b-0 rounded-b-none`}
                                     onClick={() =>
                                         setTab(
                                             key as keyof typeof availableTabs
@@ -402,7 +426,7 @@ function ShowTxDescription({
 
                 {/* Tab content */}
                 {advancedView && (
-                    <div className="-mt-2 border-t border-white/10 pt-1">
+                    <div className="z-9 bg-card border-t border-white/20 pt-1">
                         {/* Transcript tab */}
                         {tab === "transcript" && (
                             <>
@@ -439,20 +463,20 @@ function ShowTxDescription({
                                     <code>
                                         <pre className="mt-4 max-h-[90vh] overflow-auto bg-neutral-200 text-xs text-black">
                                             {tcx.logger.formattedHistory?.map(
-                                                (line1) =>
+                                                (line1, lineIndex) =>
                                                     line1
                                                         ?.split("\n")
-                                                        .map((line2) => {
+                                                        .map((line2, lineIndex2) => {
                                                             let prefix:
-                                                                    | React.ReactNode
-                                                                    | string = (
+                                                                | React.ReactNode
+                                                                | string = (
                                                                     <></>
                                                                 ),
                                                                 rest:
                                                                     | React.ReactNode
                                                                     | string = (
-                                                                    <></>
-                                                                );
+                                                                        <></>
+                                                                    );
                                                             /*.replaceAll("", "<span className=font-formal")*/
                                                             [prefix, rest] =
                                                                 line2.split(
@@ -475,11 +499,11 @@ function ShowTxDescription({
                                                                         "…"
                                                                     );
                                                                     size =
-                                                                        "text-[1.35em] -ml-2";
+                                                                        "text-[1.35em] -ml-2 -mt-2";
                                                                 }
                                                                 rest = (
                                                                     <span
-                                                                        className={`text-[1.6em] font-formal -ml-5 font-bold`}
+                                                                        className={`text-[1.6em] font-formal -ml-5 font-bold -mt-2`}
                                                                     >
                                                                         ❗
                                                                         <span
@@ -493,17 +517,17 @@ function ShowTxDescription({
                                                                 );
                                                             } else {
                                                                 prefix = (
-                                                                    <span className="text-gray-600">
+                                                                    <span className="text-gray-400">
                                                                         {prefix}
                                                                     </span>
                                                                 );
                                                             }
                                                             return (
-                                                                <>
-                                                                    {prefix}{" "}
+                                                                <React.Fragment key={`${lineIndex}-${lineIndex2}`}>
+                                                                    {" "}{prefix}{" "}
                                                                     {rest}
-                                                                    <br />{" "}
-                                                                </>
+                                                                    <br />
+                                                                </React.Fragment>
                                                             );
                                                         })
                                             )}

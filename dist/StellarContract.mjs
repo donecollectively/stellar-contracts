@@ -5,6 +5,7 @@ import '@helios-lang/contract-utils';
 import '@helios-lang/codec-utils';
 import '@helios-lang/crypto';
 import '@helios-lang/tx-utils';
+import './nanoid.mjs';
 import 'nanoid';
 import '@helios-lang/uplc';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';

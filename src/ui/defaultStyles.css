@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@300;400;600&display=swap');
+
+.font-formal.font-light {
+    font-family: "Cormorant SC", serif;
+    font-weight: 300;
+    font-style: normal;
+  }
+  
+  .font-formal {
+    font-family: "Cormorant SC", serif;
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+  .font-formal.font-bold {
+    font-family: "Cormorant SC", serif;
+    font-weight: 600;
+    font-style: normal;
+  }
+  

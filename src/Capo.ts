@@ -1767,7 +1767,7 @@ export abstract class Capo<
                 // strategyName,
                 delegate,
             } = cachedRole;
-            // console.log(`  ✅ 💁 ${roleLabel} - from cache `);
+            console.log(`  ✅ 💁 ${role} - from cache `);
             return delegate as DT;
         }
         console.log(`   🔎delegate 💁 ${role}`);

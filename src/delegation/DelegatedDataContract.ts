@@ -279,6 +279,21 @@ export abstract class DelegatedDataContract<
     }
 
     /**
+     * Validates a record of this type
+     * @remarks
+     * The default validation returns true, indicating that the record is valid.
+     * 
+     * dApp developers should override this method to provide validation logic in support of the application's business rules.
+     * 
+     * The FormManager will use this method to validate the record when fields are changed, providing interactive feedback to the user.
+     * 
+     * @returns true if the record is valid, or a record of paths to error messages for each invalid path.
+     */
+    validate(record: TLike, context: "create" | "update" = "update") : Record<string, string> | true {
+        return true;
+    }
+
+    /**
      * builds a txn creating a record of this type in the data store
      * @remarks
      * The \{activity\} option can be a {@link SeedActivity} object provided by

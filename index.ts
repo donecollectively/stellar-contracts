@@ -31,6 +31,8 @@ export {
     colors
 } from "./src/utils.js";
 
+export { debugBox } from "./src/util/consoleHelper.js";
+
 export {
     displayTokenName,
     stringToPrintableString,
@@ -206,6 +208,9 @@ export type {
     ISNEVER,
     NEVERIF,
     OR,
+    ISSOME,
+    TypeError,
+    EachUnionElement
  } from "./src/helios/typeUtils.js";
  
 export {

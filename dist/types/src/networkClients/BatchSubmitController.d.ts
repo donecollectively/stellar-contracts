@@ -135,7 +135,7 @@ export declare class BatchSubmitController {
     $addTxns(txd: TxDescription<any, any>): any;
     $addTxns(txds: TxDescription<any, any>[]): any;
     $txInfo(id: string): TxSubmissionTracker;
-    submitToTestnet(txd: TxDescription<any, "built">, tracker: TxSubmissionTracker): void;
+    submitIfIsTestnet(txd: TxDescription<any, "built">, tracker: TxSubmissionTracker): void;
     addTxDescr(txd: TxDescription<any, any>): void;
     get $allTxns(): TxSubmissionTracker[];
     txError(txd: TxDescriptionWithError): Promise<void>;
@@ -175,28 +175,9 @@ export declare class BatchSubmitController {
      * @public
      */
     updateAggregateState(): void;
-    reqts(): {
-        "allows multiple underlying submitters": {
-            purpose: string;
-            mech: string[];
-        };
-        "uses the basic hasUtxo() function to check for transaction inclusion": {
-            purpose: string;
-            mech: string[];
-        };
-        "accepts multiple txns for persistent async submission": {
-            purpose: string;
-            mech: string[];
-        };
-        "is resistant to slot battles and rollbacks": {
-            purpose: string;
-            mech: string[];
-        };
-        "has an organized structure for the state of submitting each txn": {
-            purpose: string;
-            mech: string[];
-        };
-    };
+    reqts(): import("../Requirements.js").ReqtsMap<"manages the submission of transactions to the network" | "processes each submitted transaction through its own tracking pipeline" | "maintains the tree of transactions for visualizing nested txns" | "accepts multiple txns for persistent async submission" | "allows multiple underlying submitters" | "has an organized structure for the state of submitting each individual txn" | "processes updated states of any transaction by id" | "uses each submitter's basic hasUtxo() function to check for tx confirmations" | "is resistant to slot/block battles and rollbacks" | "supports tcx callback transactions" | "processes nested transactions (facades and child txns)" | "maintains aggregate state of all transactions", {
+        inheriting: "‹empty/base class›";
+    }>;
 }
 export {};
 //# sourceMappingURL=BatchSubmitController.d.ts.map

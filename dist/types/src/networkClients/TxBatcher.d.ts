@@ -30,7 +30,8 @@ export declare class TxBatcher {
     constructor(options: TxBatcherOptions);
     get current(): BatchSubmitController;
     canRotate(): boolean;
-    rotate(chainBuilder?: TxChainBuilder): void;
+    rotate(newChainBuilder?: TxChainBuilder): void;
+    cancel(): void;
 }
 export {};
 //# sourceMappingURL=TxBatcher.d.ts.map

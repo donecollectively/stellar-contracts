@@ -242,6 +242,7 @@ export declare class CapoDAppProvider<CapoType extends Capo<any>, UserActions ex
      * This method is called by the default renderRoleInfo() method to display a single role tag.
      */
     renderRoleTag(role: string): React.JSX.Element;
+    copyWalletAddress: () => void;
     /**
      * renders a lightweight wallet connection button.
      * @remarks

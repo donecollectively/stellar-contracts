@@ -2,7 +2,7 @@ import { makeValue, makeAssets, makeNetworkParamsHelper, makeAddress, makeTxOutp
 import { decodeUtf8, isValidUtf8, encodeUtf8, bytesToHex, equalsBytes } from '@helios-lang/codec-utils';
 import { encodeBech32 } from '@helios-lang/crypto';
 import { makeTxBuilder, makeTxChainBuilder, makeWalletHelper, selectLargestFirst } from '@helios-lang/tx-utils';
-import { customAlphabet } from 'nanoid';
+import { n as nanoid } from './nanoid.mjs';
 import { makeByteArrayData } from '@helios-lang/uplc';
 import { placeholderSetupDetails } from './HeliosBundle.mjs';
 import { makeCast } from '@helios-lang/contract-utils';
@@ -1125,8 +1125,6 @@ class UplcConsoleLogger {
   }
 }
 
-const nanoid = customAlphabet("0123456789abcdefghjkmnpqrstvwxyz", 12);
-
 //!!! if we could access the inputs and outputs in a building Tx,
 const emptyUuts = Object.freeze({});
 class StellarTxnContext {
@@ -1984,8 +1982,13 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     if (!id) {
       id = addlTxInfo.id = this.id;
     }
+    const existing = this.currentBatch.$txInfo(id);
+    const existingInfo = existing?.txd || {};
     const addlTxInfo2 = {
-      ...addlTxInfo
+      ...addlTxInfo,
+      ...existingInfo,
+      // tx,
+      tcx: this
     };
     const txStats = {
       costs,
@@ -2692,9 +2695,6 @@ class UtxoHelper {
     const utxos = [];
     for (const addr of addrs.flat(1)) {
       if (!addr) continue;
-      if (options.findCached) {
-        console.log(`  Temporary: calling through to network instead of using cache`);
-      }
       const addrUtxos = await this.network.getUtxos(addr);
       utxos.push(...addrUtxos);
     }
@@ -2768,16 +2768,12 @@ class UtxoHelper {
    */
   async findActorUtxo(name, predicate, options = {}, mode = "single") {
     const wallet = options.wallet ?? this.wallet;
-    const { searchOthers = false, findCached = true } = options;
+    const { searchOthers = false } = options;
     const addrs = await wallet?.usedAddresses ?? [];
     const utxos = [];
     for (const addr of addrs.flat(1)) {
       if (!addr) continue;
-      if (findCached) {
-        console.log(`  Temporary: calling through to network instead of using cache`);
-      }
       const addrUtxos = await this.network.getUtxos(addr);
-      utxos.push(...addrUtxos);
       utxos.push(...addrUtxos);
     }
     return this.hasUtxo(
@@ -2933,16 +2929,12 @@ class UtxoHelper {
       extraErrorHint = "",
       wallet,
       address,
-      exceptInTcx,
-      findCached = true
+      exceptInTcx
     } = options;
     const addrs = await wallet?.usedAddresses ?? [address];
     const utxos = [];
     for (const addr of addrs.flat(1)) {
       if (!addr) continue;
-      if (findCached) {
-        console.log(`  Temporary: calling through to network instead of using cache`);
-      }
       const addrUtxos = await this.network.getUtxos(addr);
       utxos.push(...addrUtxos);
     }
@@ -4198,25 +4190,24 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
    * @public
    **/
   async mustFindMyUtxo(semanticName, options) {
-    const { predicate, exceptInTcx, extraErrorHint, utxos, findCached } = options;
+    const { predicate, exceptInTcx, extraErrorHint, utxos } = options;
     const { address } = this;
     return this.utxoHelper.mustFindUtxo(semanticName, {
       predicate,
       address,
       exceptInTcx,
       extraErrorHint,
-      utxos,
-      findCached
+      utxos
     });
   }
   mkTcx(tcxOrName, name) {
+    const effectiveName = tcxOrName && isLibraryMatchedTcx(tcxOrName) ? name : tcxOrName || "\u2039unnamed context\u203A";
     const tcx = (
       //@ts-expect-error on this type probe
       tcxOrName?.kind === "StellarTxnContext" ? tcxOrName : new StellarTxnContext(this.setup).withName(
-        name || "\u2039no-name\u203A"
+        name || tcxOrName || "\u2039no-name\u203A"
       )
     );
-    const effectiveName = tcxOrName && isLibraryMatchedTcx(tcxOrName) ? name : tcxOrName || "\u2039unnamed context\u203A";
     if (effectiveName && !tcx?.txnName)
       return tcx.withName(effectiveName);
     return tcx;

@@ -3,6 +3,7 @@ import { S as StellarContract, b as dumpAny, _ as mkTv, A as Activity, d as datu
 import { decodeUtf8 } from '@helios-lang/codec-utils';
 import '@helios-lang/crypto';
 import '@helios-lang/tx-utils';
+import './nanoid.mjs';
 import { placeholderSetupDetails } from './HeliosBundle.mjs';
 
 const TODO = Symbol("needs to be implemented");
@@ -372,10 +373,10 @@ We'll generate an additional .typeInfo.d.ts, based on the types in your Helios s
    * Adds a mint-delegate-specific authority token to the txn output
    * @remarks
    *
-   * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
+   * Implements {@link StellarDelegate#txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
    *
-   * Uses {@link ContractBasedDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
-   * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
+   * Uses {@link ContractBasedDelegate#mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
+   * @see {@link StellarDelegate#txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
    * @public
    **/
   async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {
@@ -466,14 +467,12 @@ We'll generate an additional .typeInfo.d.ts, based on the types in your Helios s
   /**
    * @see {@link StellarDelegate.DelegateMustFindAuthorityToken|DelegateMustFindAuthorityToken()}
    **/
-  async DelegateMustFindAuthorityToken(tcx, label, options = {}) {
-    const { findCached } = options;
+  async DelegateMustFindAuthorityToken(tcx, label) {
     return this.mustFindMyUtxo(
       `${label}: ${decodeUtf8(this.configIn.tn)}`,
       {
         predicate: this.uh.mkTokenPredicate(this.tvAuthorityToken()),
-        extraErrorHint: "this delegate strategy might need to override txnMustFindAuthorityToken()",
-        findCached
+        extraErrorHint: "this delegate strategy might need to override txnMustFindAuthorityToken()"
       }
     );
   }

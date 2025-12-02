@@ -10,7 +10,6 @@ import '@helios-lang/contract-utils';
 import '@helios-lang/ledger';
 import './environment.mjs';
 import './DefaultCapo.mjs';
-import './BasicDelegate.mjs';
 
 class DelegatedDataBundle extends CapoDelegateBundle {
   scriptParamsSource = "config";

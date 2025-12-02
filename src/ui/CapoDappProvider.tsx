@@ -38,6 +38,7 @@ import {
 } from "@cardano-ogmios/client";
 
 import { CapoDappProviderContext } from "./CapoDappProviderContext.js";
+import { debugBox } from "../util/consoleHelper.js";
 
 import type {
     Capo,
@@ -70,6 +71,7 @@ import { ClientSideOnly } from "./ClientSideOnly.js";
 import { TxBatchUI } from "./TxBatchUI.js";
 import { environment } from "../environment.js";
 import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
+import { nanoid } from "../util/nanoid.js";
 
 /**
  * @public
@@ -138,12 +140,12 @@ export type propsType<CapoType extends Capo<any>> = {
      * will be logged to the console.
      */
     uiPortals?:
-        | "headless"
-        | {
-              capoStatus: string;
-              capoUserDetails: string;
-              txBatchUI: string;
-          };
+    | "headless"
+    | {
+        capoStatus: string;
+        capoUserDetails: string;
+        txBatchUI: string;
+    };
 
     /**
      * Sets initial-page-layout rendering time (in milliseconds) before
@@ -167,6 +169,7 @@ export type propsType<CapoType extends Capo<any>> = {
     // ??current-transaction display/state-change hook
 };
 
+let singleton = undefined as CapoDAppProvider<any> | undefined;
 /**
  * @remarks
  * @public
@@ -243,6 +246,15 @@ export class CapoDAppProvider<
     }
     constructor(props: propsType<CapoType>) {
         super(props);
+
+        if (singleton) {
+            console.warn(`CapoDAppProvider - not a singleton : /\n`+
+                `Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
+            )
+            // throw new Error("CapoDAppProvider - not a singleton : /");
+        }
+        singleton = this;
+
         this.capoClass = props.capoClass;
         this.i = mountCount += 1;
         this.bootstrapCapo = this.bootstrapCapo.bind(this);
@@ -426,15 +438,15 @@ export class CapoDAppProvider<
                     <div className="z-40 opacity-60">
                         {showProgressBar
                             ? this.renderProgressBar(
-                                  progressLabel,
-                                  progressPercent
-                              )
+                                progressLabel,
+                                progressPercent
+                            )
                             : ""}
                         {isError
                             ? this.renderErrorStatus()
                             : keepOnscreen
-                            ? this.renderPersistentMessage()
-                            : this.renderNotification()}
+                                ? this.renderPersistentMessage()
+                                : this.renderNotification()}
                     </div>
                 </InPortal>
             )) ||
@@ -517,9 +529,8 @@ export class CapoDAppProvider<
             "bg-blue-300 border-blue-500 text-black font-bold dark:bg-blue-900 dark:text-blue-300";
         return (
             <div
-                className={`flex ${
-                    isError ? "isError" : ""
-                } flex-row w-full status`}
+                className={`flex ${isError ? "isError" : ""
+                    } flex-row w-full status`}
                 key="persistentMessage"
                 role="banner"
             >
@@ -706,6 +717,20 @@ export class CapoDAppProvider<
     //     thisAction.call(this);
     // }
 
+    copyWalletAddress = () => {
+        const {
+            userInfo: {
+                walletAddress,
+            },
+        } = this.state;
+        if (!walletAddress) return;
+        navigator.clipboard.writeText(walletAddress);
+        this.updateStatus("✅ address copied to clipboard", {
+            developerGuidance: "simple user notification",
+            clearAfter: 2500,
+        }, "// Wallet address copied to clipboard");
+    }
+
     /**
      * renders a lightweight wallet connection button.
      * @remarks
@@ -744,9 +769,12 @@ export class CapoDAppProvider<
                             // make it small by default, but allow it to grow on hover
                             // also, make it right-aligned and chop the overflow
                             // color the text black
-                            className="mb-0 text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500 px-2 py-0 text-sm shadow-none outline-none hover:cursor-text"
+                            className="mb-0 pl-0 pr-2 py-0 overflow-visible text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500  text-sm shadow-none outline-none hover:cursor-text"
                         >
-                            {walletAddress} {selectedWallet}
+                            <span key="icon" aria-hidden="true" className="-ml-2 mr-1">👜</span>
+                            <span id="clickToCopy" aria-label="click to copy" key="address" className="hover:cursor-grabbing" onClick={this.copyWalletAddress}>
+                                {this.state.status?.message?.match(/copied/i) ? this.state.status?.message : walletAddress}
+                            </span>&nbsp;{selectedWallet}
                             <a
                                 href="#"
                                 onClick={() => this.newWalletSelected("")}
@@ -842,6 +870,9 @@ export class CapoDAppProvider<
     async doInitialize() {
         const networkParams: NetworkParams = await this.bf.parameters;
 
+        const id = nanoid(4);
+        const location = new Error("um?").stack!.split("\n").slice(2).join("\n");
+        debugBox(`${id}: doInitialize ${location}`);
         if ("undefined" != typeof window) {
             const autoWallet = window.localStorage.getItem(
                 "capoAutoConnectWalletName"
@@ -852,38 +883,38 @@ export class CapoDAppProvider<
         }
 
         // await this.updateState('connecting to wallet', {
-        await this.updateStatus(
-            "initializing on-chain contracts",
-            {
-                developerGuidance: "status message for the user",
-            },
-            "//component did mount",
-            {
-                networkParams,
-            }
-        );
-        if (this.props.onNetwork) this.props.onNetwork(this.bf);
-        if (this.props.onStatusChange)
-            this.props.onStatusChange(this.state.status);
-        if (this.props.onUserInfo) this.props.onUserInfo(this.state.userInfo);
+        if (!this.capo) {
+            await this.updateStatus(
+                "initializing on-chain contracts",
+                {
+                    developerGuidance: "status message for the user",
+                },
+                `//${id}: doInitialize: component did mount`,
+                {
+                    networkParams,
+                }
+            );
+            if (this.props.onNetwork) this.props.onNetwork(this.bf);
+            if (this.props.onStatusChange)
+                this.props.onStatusChange(this.state.status);
+            if (this.props.onUserInfo) this.props.onUserInfo(this.state.userInfo);
 
-        if (this.props.onContextChange) this.props.onContextChange(this);
-        // if (this.props.onWalletChange) this.props.onWalletChange(undefined);
+            if (this.props.onContextChange) this.props.onContextChange(this);
+            // if (this.props.onWalletChange) this.props.onWalletChange(undefined);
 
+            this.connectCapo();
+        }
+    }
+    submitters: namedSubmitters = {};
+
+    async setupSubmitters() {
         await this.updateStatus(
             "setting up tx submitters",
             {
                 developerGuidance: "just show the message to the user",
             },
-            "//setupSubmitters"
+            `// setupSubmitters`
         );
-        await this.setupSubmitters();
-
-        this.connectCapo();
-    }
-    submitters: namedSubmitters = {};
-
-    async setupSubmitters() {
         this.submitters = {
             blockfrost: this.bf,
             ...(this.props.otherSubmitters || {}),
@@ -1088,18 +1119,18 @@ export class CapoDAppProvider<
             const useHydra = !!this.props.hydra;
             const hydraOptions: HydraClientOptions | undefined = useHydra
                 ? ({
-                      ...(this.props.hydra === true ? {} : this.props.hydra),
-                      isForMainnet: isMainnet,
-                  } as any)
+                    ...(this.props.hydra === true ? {} : this.props.hydra),
+                    isForMainnet: isMainnet,
+                } as any)
                 : undefined;
             let networkClient = useHydra
                 ? makeHydraClient(WebSocket, {
-                      onReceive(message) {
-                          console.log("onReceive", message);
-                      },
-                      isForMainnet: isMainnet,
-                      ...hydraOptions,
-                  })
+                    onReceive(message) {
+                        console.log("onReceive", message);
+                    },
+                    isForMainnet: isMainnet,
+                    ...hydraOptions,
+                })
                 : this.bf;
             simpleWallet = makeSimpleWallet(privKey, networkClient);
             if (this.capo) {
@@ -1163,7 +1194,7 @@ export class CapoDAppProvider<
 
         let wallet: Wallet | undefined = simpleWallet;
         let addrString: string | undefined;
-        console.warn("CIP-30 Wallet Handle", walletHandle);
+        debugBox("CIP-30 Wallet Handle", walletHandle);
 
         let foundNetworkName: string | undefined;
         if (walletHandle) {
@@ -1212,7 +1243,7 @@ export class CapoDAppProvider<
                 );
                 return;
             }
-            
+
             wallet = makeCip30Wallet(walletHandle);
         } else {
             if (!simpleWallet) {
@@ -1319,6 +1350,22 @@ export class CapoDAppProvider<
             return this.connectCapo(autoNext);
         }
     }
+    //     if (
+    //         this.state.capo && !(await this.state.capo.isConfigured)
+    //     ) {
+    //         // Capo exists but not configured - reconnect
+    //         return this.connectCapo(autoNext);
+    //     } else if (this.state.networkParams && autoNext && !this.state.capo) {
+    //         // No capo yet, autoNext=true - create capo
+    //         await this.updateStatus(
+    //             `reconnecting to ${this.dAppName} with connected wallet`,
+    //             { developerGuidance: "status message for the user" },
+    //             "//reinit after wallet"
+    //         );
+    //         return this.connectCapo(autoNext);
+    //     }
+    //     // When autoNext=false and no capo, let doInitialize() call connectCapo(true) next
+    // }
 
     async checkWalletTokens() {
         const { capo } = this.state;
@@ -1359,7 +1406,7 @@ export class CapoDAppProvider<
 
         const message = roles.includes("member")
             ? // || roles.includes("admin")
-              ""
+            ""
             : this.getStartedMessage();
 
         this.updateStatus(
@@ -1389,6 +1436,7 @@ export class CapoDAppProvider<
     async connectCapo(autoNext = true, reset?: "reset") {
         if (this._unmounted) return;
 
+
         // const priorVH = "b30c39d09103f5ed3588adc9179cb957137ffa79568e6a5dfda4e317"
         // const addr = helios.Address.fromHashes(new helios.ValidatorHash(priorVH))
         // window.alert(addr.toBech32())
@@ -1404,6 +1452,9 @@ export class CapoDAppProvider<
 
             userInfo: { wallet },
         } = this.state;
+
+        const id = nanoid(4);
+        debugBox(`${id}: connectCapo\n${new Error().stack!.split("\n").slice(2).join("\n")}`);
 
         let localConfig = null; // window.localStorage.getItem("capoConfig");
         if (localConfig)
@@ -1440,23 +1491,26 @@ export class CapoDAppProvider<
         let config =
             !reset && localConfig
                 ? { config: parseCapoJSONConfig(localConfig) }
-                : { }
-                // : { partialConfig: {} };
+                : {}
+        // : { partialConfig: {} };
 
-        if (!wallet) console.warn("connecting to capo with no wallet");
+        if (!wallet) console.warn(`${id}: connecting to capo with no wallet`);
         if (!networkParams) {
-            console.warn("no network params");
+            console.warn(`${id}: no network params`);
             return;
         }
         type t = ConfigFor<CapoType>;
         let { txBatcher } = this.state;
         if (!txBatcher) {
+            if (!this.submitters || Object.keys(this.submitters).length === 0) {
+                await this.setupSubmitters();
+            }
             const batcherOptions: TxBatcherOptions = {
                 submitters: this.submitters,
                 ...(wallet
                     ? {
-                          signingStrategy: new GenericSigner(wallet),
-                      }
+                        signingStrategy: new GenericSigner(wallet),
+                    }
                     : {}),
             };
 
@@ -1488,7 +1542,7 @@ export class CapoDAppProvider<
             ...config,
         };
         try {
-            console.log("init with cfg", cfg);
+            console.log(`${id}: init with cfg`, cfg);
             await this.updateStatus(
                 `connecting: ${this.dAppName}`,
                 {
@@ -1496,7 +1550,7 @@ export class CapoDAppProvider<
                     developerGuidance:
                         "wait for connection; possibly show a spinner",
                 },
-                "//init",
+                `//${id}: init`,
                 {
                     txBatcher,
                 }
@@ -1507,7 +1561,6 @@ export class CapoDAppProvider<
                 cfg
             );
             const capoBundle = await capo.getBundle();
-            debugger
             const configured = capoBundle.configuredParams;
             const { isChartered } = capo;
 
@@ -1517,10 +1570,10 @@ export class CapoDAppProvider<
                         ? "impossible"
                         : "is preconfigured and ready to be chartered!"
                     : isChartered
-                    ? "impossible"
-                    : "needs to be configured and chartered.   Add a configuration if you have it, or create the Capo charter now.";
+                        ? "impossible"
+                        : "needs to be configured and chartered.   Add a configuration if you have it, or create the Capo charter now.";
 
-                const message = autoNext ? `The Capo contract ${problem} ` : "";
+                const message = autoNext ? `${id}: The Capo contract ${problem} ` : "";
 
                 await this.updateStatus(
                     message,
@@ -1529,7 +1582,7 @@ export class CapoDAppProvider<
                         developerGuidance:
                             "likely administrative moment for dev-time creation of the capo",
                     },
-                    "//bootstrap needed",
+                    `//${id}: bootstrap needed`,
                     {
                         capo,
                     }
@@ -1542,19 +1595,26 @@ export class CapoDAppProvider<
             if (capo._bundle?.configuredScriptDetails) {
                 await capo.connectMintingScript(config);
             } else {
-                console.warn("no config yet for this capo (dbpa)")
+                console.warn(`${id}: no config yet for this capo (dbpa)`)
                 debugger
             }
-            if (!autoNext)
-                return this.updateStatus(
+
+            if (!autoNext) {
+                await this.updateStatus(
                     "",
                     {
                         developerGuidance:
-                            "capture this capo object for use in transaction-building.  See also the dataDelegates...",
+                            "capture this capo object for use in transaction-building...",
                     },
-                    "// Capo is connected to wallet, ready to do an on-chain activity",
+                    `//${id}: Capo is connected to wallet, ready to do an on-chain activity`,
                     { capo }
                 );
+                // Still check wallet tokens if wallet is connected
+                if (wallet) {
+                    this.checkWalletTokens();
+                }
+                return;
+            }
 
             await this.updateStatus(
                 "... searching ...",
@@ -1563,7 +1623,7 @@ export class CapoDAppProvider<
                     developerGuidance:
                         "display a spinner or other indicator that the dApp is doing something",
                 },
-                "//searching (or freshening search after wallet connection)",
+                `//${id}: searching (or freshening search after wallet connection)`,
                 {
                     capo: capo,
                 }
@@ -1571,12 +1631,13 @@ export class CapoDAppProvider<
             this.checkWalletTokens();
             // this.fetchBookEntries();
         } catch (error: any) {
+            console.error(`${id}: error checking ${this.dAppName} configuration`, error);
             this.reportError(error, `checking ${this.dAppName} configuration`, {
                 nextAction: "initializeCapo",
                 moreInstructions:
                     "Developer error: Some error has occurred during initialization of on-chain Capo." +
                         "development" ==
-                    process.env.NODE_ENV
+                        process.env.NODE_ENV
                         ? "You can try again, or check the console for more information."
                         : `You might need to contact ${this.dAppName}'s support channels for assistance.`,
                 developerGuidance:
@@ -1866,31 +1927,31 @@ export class CapoDAppProvider<
         if (!clearAfter) {
             otherStatusProps.keepOnscreen = true;
         }
-        console.log(`instance ${this.i}`, { status: message });
+        debugBox(`instance ${this.i}`, { status: message });
         const status: CapoDappStatus<UserActions> =
             "undefined" === typeof message
                 ? {
-                      message: undefined,
-                      developerGuidance:
-                          "the current state was cleared, indicating no pending actions.  You MAY clear the most recent message.",
-                  }
+                    message: undefined,
+                    developerGuidance:
+                        "the current state was cleared, indicating no pending actions.  You MAY clear the most recent message.",
+                }
                 : {
-                      ...otherStatusProps,
-                      message,
-                      isError,
-                      ready,
-                      clearAfter,
-                      ...(nextAction
-                          ? {
-                                nextAction: {
-                                    key: nextAction,
-                                    label: this.userActions[nextAction]?.label,
-                                    trigger:
-                                        this.userActions[nextAction]?.trigger,
-                                },
-                            }
-                          : {}),
-                  };
+                    ...otherStatusProps,
+                    message,
+                    isError,
+                    ready,
+                    clearAfter,
+                    ...(nextAction
+                        ? {
+                            nextAction: {
+                                key: nextAction,
+                                label: this.userActions[nextAction]?.label,
+                                trigger:
+                                    this.userActions[nextAction]?.trigger,
+                            },
+                        }
+                        : {}),
+                };
         const newState: CapoDappProviderState<CapoType> = {
             ...this.state,
             status: status,

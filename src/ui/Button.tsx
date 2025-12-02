@@ -25,7 +25,7 @@ const styles = {
     },
     "secondary-sm": {
         className:
-            "not-prose rounded-md bg-blue-900 px-4 text-sm " +
+            "not-prose rounded-md bg-blue-900 py-1 px-3 text-xs " +
             "border border-solid border-blue-500/75 " +
             "text-neutral-200 hover:bg-slate-700 " +
             "disabled:bg-slate-700 disabled:border-blue-900 " +

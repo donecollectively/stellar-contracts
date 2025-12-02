@@ -36,7 +36,7 @@ import {
  * @public
  */
 export function CharterStatus() {
-    const { capo, provider, isMounted } = useCapoDappProvider();
+    const { capo, provider, isMounted } = useCapoDappProvider() || {};
     const blockfrost = provider?.bf;
 
     const [charterData, setCharterData] = React.useState<CharterData>();
