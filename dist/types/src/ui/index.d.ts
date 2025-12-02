@@ -11,4 +11,6 @@ export * from "./TxBatchViewer.jsx";
 export * from "./Button.jsx";
 export * from "./CapoDappProviderContext.js";
 export * from "./FormManager.js";
+export * from "./ThemedBackgroundDecorations.js";
+import "./defaultStyles.css";
 //# sourceMappingURL=index.d.ts.map

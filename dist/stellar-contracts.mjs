@@ -27726,7 +27726,6 @@ class BatchSubmitController {
       if (!tcx.isFacade && !!tcx.state) {
         const tx = tcx._builtTx ? await tcx._builtTx : void 0;
         const id = tcx?.id ?? nanoid(5);
-        debugger;
         this.addTxDescr({
           description: tcx.txnName || "\u2039unnamed txn\u203A",
           id,
@@ -27812,8 +27811,6 @@ class BatchSubmitController {
         const pDepth = parent.txd.depth;
         return { ...txd, depth: 1 + pDepth };
       })();
-      debugger;
-      console.log("making new tracker here");
       tracker = new TxSubmissionTracker({
         txd: patchedTxd,
         submitters: this.submitters,
@@ -27823,17 +27820,13 @@ class BatchSubmitController {
         "changed",
         this.updateAggregateState.bind(this)
       );
-      console.log("made new tracker, listening for changes");
       if (txd.tx) {
-        console.log("adding tx to txStates");
         this.$txStates[id] = tracker;
-        console.log("submitting tx if it's testnet");
         this.submitIfIsTestnet(
           txd,
           tracker
         );
       } else {
-        console.log("adding tx to registeredTxs");
         const [others, sameParentId] = Object.entries(
           this.$registeredTxs
         ).reduce(
@@ -27853,13 +27846,10 @@ class BatchSubmitController {
           ...others
         };
       }
-      console.log("updated tracker");
-      debugger;
       tracker.update(patchedTxd);
       this.$txChanges.emit("txAdded", tracker);
       this.$txChanges.emit("txListUpdated", this);
     }
-    console.log("emitting txListUpdated");
     this.$txChanges.emit("txListUpdated", this);
   }
   get $allTxns() {

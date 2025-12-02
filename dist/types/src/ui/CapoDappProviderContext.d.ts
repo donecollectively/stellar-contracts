@@ -18,5 +18,5 @@ export declare function useCapoDappProvider<C extends Capo<any, any> = Capo<any,
     capo: C | undefined;
     provider: CapoDAppProvider<C, import("./CapoDappProvider.js").BaseUserActionMap>;
     isMounted: boolean;
-};
+} | null;
 //# sourceMappingURL=CapoDappProviderContext.d.ts.map

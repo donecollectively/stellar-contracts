@@ -105,6 +105,9 @@ importers:
       rollup-plugin-esbuild:
         specifier: ^6.1.0
         version: 6.1.1(esbuild@0.25.0)(rollup@4.52.4)
+      rollup-plugin-import-css:
+        specifier: ^4.1.2
+        version: 4.1.2(rollup@4.52.4)
       rollup-plugin-node-externals:
         specifier: ^6.1.1
         version: 6.1.2(rollup@4.52.4)
@@ -962,6 +965,15 @@ packages:
 
   '@rollup/pluginutils@5.1.0':
     resolution: {integrity: sha512-XTIWOPPcpvyKI6L1NHo0lFlCyznUEyPmPY1mc3KpPVDYulHSTvyeLNVW00QTLIAFNhR3kYnJTQHeGqU4M3n09g==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+
+  '@rollup/pluginutils@5.3.0':
+    resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
@@ -1839,6 +1851,12 @@ packages:
     peerDependencies:
       esbuild: ^0.25.0
       rollup: ^1.20.0 || ^2.0.0 || ^3.0.0 || ^4.0.0
+
+  rollup-plugin-import-css@4.1.2:
+    resolution: {integrity: sha512-bIdDaQnED3P/Z++hoH9+iyLgmTc7h6F7XL/j51sdJA38IPJAubx3HhHNruI+C644iB74UFFXo85cr588H1LnCw==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      rollup: ^2.x.x || ^3.x.x || ^4.x.x
 
   rollup-plugin-node-externals@6.1.2:
     resolution: {integrity: sha512-2TWan0u0/zHcgPrKpIPgKSY8OMqwDAYD380I0hxx7iUQw8mrN34DWwG9sQUMEo5Yy4xd6/5QEAySYgiKN9fdBQ==}
@@ -3123,6 +3141,14 @@ snapshots:
     optionalDependencies:
       rollup: 4.52.4
 
+  '@rollup/pluginutils@5.3.0(rollup@4.52.4)':
+    dependencies:
+      '@types/estree': 1.0.8
+      estree-walker: 2.0.2
+      picomatch: 4.0.3
+    optionalDependencies:
+      rollup: 4.52.4
+
   '@rollup/rollup-android-arm-eabi@4.52.4':
     optional: true
 
@@ -3943,6 +3969,11 @@ snapshots:
       rollup: 4.52.4
     transitivePeerDependencies:
       - supports-color
+
+  rollup-plugin-import-css@4.1.2(rollup@4.52.4):
+    dependencies:
+      '@rollup/pluginutils': 5.3.0(rollup@4.52.4)
+      rollup: 4.52.4
 
   rollup-plugin-node-externals@6.1.2(rollup@4.52.4):
     dependencies:

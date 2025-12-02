@@ -4201,13 +4201,13 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
     });
   }
   mkTcx(tcxOrName, name) {
+    const effectiveName = tcxOrName && isLibraryMatchedTcx(tcxOrName) ? name : tcxOrName || "\u2039unnamed context\u203A";
     const tcx = (
       //@ts-expect-error on this type probe
       tcxOrName?.kind === "StellarTxnContext" ? tcxOrName : new StellarTxnContext(this.setup).withName(
-        name || "\u2039no-name\u203A"
+        name || tcxOrName || "\u2039no-name\u203A"
       )
     );
-    const effectiveName = tcxOrName && isLibraryMatchedTcx(tcxOrName) ? name : tcxOrName || "\u2039unnamed context\u203A";
     if (effectiveName && !tcx?.txnName)
       return tcx.withName(effectiveName);
     return tcx;

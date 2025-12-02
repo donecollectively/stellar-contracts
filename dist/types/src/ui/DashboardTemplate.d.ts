@@ -108,7 +108,7 @@ export declare function Column(props: {
     children: React.ReactNode;
 }): React.JSX.Element;
 /**
- * shows its content in the theme color of the accent foreground
+ * shows its content in the "accent" theme color
  * @remarks
  * Allows for any as=‹htmlTag› to be used instead of the default <p> tag.
  *

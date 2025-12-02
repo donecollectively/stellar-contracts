@@ -1930,8 +1930,13 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     if (!id) {
       id = addlTxInfo.id = this.id;
     }
+    const existing = this.currentBatch.$txInfo(id);
+    const existingInfo = existing?.txd || {};
     const addlTxInfo2 = {
-      ...addlTxInfo
+      ...addlTxInfo,
+      ...existingInfo,
+      // tx,
+      tcx: this
     };
     const txStats = {
       costs,
