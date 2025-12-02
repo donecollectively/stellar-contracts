@@ -68,12 +68,13 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
    - MUST ensure only the most recent UTXO for each UUT is recognized as current
 
 4. **Delegate UUT Indexing**:
-   - MUST index mint delegate UUT using `capo.getMintDelegate()` and `DelegateMustFindAuthorityToken()`
-   - MUST index spend delegate UUT using `capo.getSpendDelegate()` and `DelegateMustFindAuthorityToken()`
-   - MUST index gov authority UUT using `capo.findGovDelegate()` and `DelegateMustFindAuthorityToken()`
-   - MUST index other named delegates using `capo.getOtherNamedDelegate()` for each entry in `charterData.otherNamedDelegates`
-   - MUST index dgData controller UUTs for each DgDataPolicy entry in the charter manifest
+   - MUST index mint delegate UUT using `capo.getMintDelegate()` and `DelegateMustFindAuthorityToken()` with `findCached: false`
+   - MUST index spend delegate UUT using `capo.getSpendDelegate()` and `DelegateMustFindAuthorityToken()` with `findCached: false`
+   - MUST index gov authority UUT using `capo.findGovDelegate()` and `DelegateMustFindAuthorityToken()` with `findCached: false`
+   - MUST index other named delegates using `capo.getOtherNamedDelegate()` for each entry in `charterData.otherNamedDelegates`, then calling `DelegateMustFindAuthorityToken()` with `findCached: false`
+   - MUST index dgData controller UUTs for each DgDataPolicy entry in the charter manifest using `capo.getDgDataController()` and `DelegateMustFindAuthorityToken()` with `findCached: false`
    - MUST handle missing delegates gracefully (log warnings, continue processing)
+   - MUST use UNCACHED hint (`findCached: false`) to ensure fresh network fetches rather than cached values
 
 5. **Block Management**:
    - MUST fetch and store latest block details using `blocks/latest` endpoint
@@ -105,18 +106,21 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
 3. **Logging System**:
    - MUST provide structured logging with unique log IDs, process IDs, timestamps, and call stack locations
-   - MUST support querying logs by process ID and time range
-   - MUST log all significant operations (initialization, fetches, errors, state changes)
+   - MUST support querying logs by process ID and time range using Dexie compound index `[pid,time]`
+   - MUST log all significant operations (initialization, fetches, errors, state changes, delegate resolution)
+   - MUST generate unique process IDs (pid) for each indexer session, incrementing from the maximum existing pid
+   - MUST be queryable from UI for debugging and monitoring purposes
 
 ### 3. Blockfrost API Integration
 
 #### Functional Requirements:
 
 1. **API Client**:
-   - MUST use Blockfrost REST API for all blockchain queries
-   - MUST include Blockfrost project ID in request headers
+   - MUST use Blockfrost REST API for all blockchain queries via `/api/v0/` endpoint
+   - MUST include Blockfrost project ID in request headers as `project_id`
    - MUST handle API errors gracefully with descriptive error messages
-   - MUST log all API requests and responses for debugging
+   - MUST log all API requests, successful responses (with full JSON), and errors for debugging
+   - MUST determine base URL from API key prefix: "mainnet" → mainnet.blockfrost.io, "preprod" → preprod.blockfrost.io, "preview" → preview.blockfrost.io
 
 2. **Data Validation**:
    - MUST validate all API responses using ArkType factories before storage
@@ -180,9 +184,9 @@ REQT-1.04: COMPLETED: **UTXO Processing** - Must implement `processTransactionFo
 
 REQT-1.05: COMPLETED: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to convert Helios `TxOutput` to `UtxoDetailsType`, extract datum information, fetch block hash from height, and store in database.
 
-REQT-1.06: COMPLETED: **Delegate UUT Indexing** - Must implement `indexDelegateUuts()` to resolve and index all delegate UUTs from charter data, including mint delegate, spend delegate, gov authority, other named delegates, and dgData controllers.
+REQT-1.06: COMPLETED: **Delegate UUT Indexing** - Must implement `indexDelegateUuts()` to resolve and index all delegate UUTs from charter data. Must traverse charter-discovered links including: mint delegate (via `capo.getMintDelegate()`), spend delegate (via `capo.getSpendDelegate()`), gov authority (via `capo.findGovDelegate()`), other named delegates (via `capo.getOtherNamedDelegate()` for each entry in `charterData.otherNamedDelegates`), and dgData controllers (via `capo.getDgDataController()` for each DgDataPolicy in the manifest). Must handle missing delegates gracefully with try-catch blocks and warning logs.
 
-REQT-1.07: COMPLETED: **Delegate UUT Fetching** - Must implement `fetchAndIndexDelegateUut()` using delegate's `DelegateMustFindAuthorityToken()` method with `findCached: false` to ensure network fetch.
+REQT-1.07: COMPLETED: **Delegate UUT Fetching** - Must implement `fetchAndIndexDelegateUut()` using delegate's `DelegateMustFindAuthorityToken()` method with `findCached: false` (UNCACHED hint) to ensure network fetch. This uses the same helper functions that normally use cache, but explicitly bypasses cache for indexer use.
 
 REQT-1.08: COMPLETED: **UTXO from TxInput** - Must implement `indexUtxoFromTxInput()` to fetch full UTXO details from Blockfrost when given a `TxInput` from delegate resolution.
 
@@ -190,7 +194,7 @@ REQT-1.09: COMPLETED: **Block Management** - Must implement `fetchAndStoreLatest
 
 REQT-1.10: COMPLETED: **Transaction Fetching** - Must implement `findOrFetchTxDetails()` to check store cache before fetching from Blockfrost. Must decode CBOR using Helios `decodeTx()`.
 
-REQT-1.11: COMPLETED: **Blockfrost Client** - Must implement `fetchFromBlockfrost()` to make HTTP requests with proper headers, handle errors, and log requests/responses.
+REQT-1.11: COMPLETED: **Blockfrost Client** - Must implement `fetchFromBlockfrost()` to make HTTP requests with proper headers (project_id), handle errors, and log both successful fetches and errors with context (URL and error message). Must log successful responses with full JSON for debugging.
 
 REQT-1.12: COMPLETED: **Value Conversion** - Must implement `convertValueToBlockfrostAmount()` to convert Helios `Value` objects to Blockfrost amount format (array of {unit, quantity}).
 
@@ -228,7 +232,7 @@ REQT-3.02: COMPLETED: **Entity Mapping** - Must map `blocks` table to `dexieBloc
 
 REQT-3.03: COMPLETED: **Process ID Management** - Must implement `init()` to find maximum pid in logs table and assign next pid. Must handle concurrent initialization attempts.
 
-REQT-3.04: COMPLETED: **Logging Implementation** - Must implement `log()` to create log entries with pid, timestamp, call stack location, and message. Must use logId as primary key.
+REQT-3.04: COMPLETED: **Logging Implementation** - Must implement `log()` to create log entries with pid, timestamp, call stack location (extracted from Error stack), and message. Must use logId as primary key. Must support UI inspection of logs via Dexie queries.
 
 REQT-3.05: COMPLETED: **Block Storage** - Must implement `findBlockByBlockId()` using Dexie query on hash index. Must implement `saveBlock()` using Dexie put operation.
 
@@ -284,7 +288,7 @@ REQT-5.03: COMPLETED: **indexerLogs Class** - Must extend Dexie Entity and imple
 UTXO IDs are constructed as `${txHash}#${outputIndex}` to uniquely identify each UTXO. This format matches the Helios `TxInput.id` format and is used consistently throughout the indexer.
 
 ### Delegate Resolution Strategy
-The indexer uses the Capo's delegate resolution methods (`getMintDelegate()`, `getSpendDelegate()`, etc.) to obtain delegate instances, then calls `DelegateMustFindAuthorityToken()` with `findCached: false` to ensure fresh network fetches. This ensures the index always reflects the current on-chain state.
+The indexer uses the Capo's delegate resolution methods (`getMintDelegate()`, `getSpendDelegate()`, `findGovDelegate()`, `getOtherNamedDelegate()`, `getDgDataController()`) to obtain delegate instances, then calls `DelegateMustFindAuthorityToken()` with `findCached: false` to ensure fresh network fetches. The `findCached: false` option (also known as UNCACHED hint) bypasses any existing cache and forces a network fetch, ensuring the index always reflects the current on-chain state. This sets the stage for future optimization where the indexer can use cached values for fast lookups while still supporting explicit network fetches when needed.
 
 ### Block Height Tracking
 The indexer maintains `lastBlockHeight` and `lastBlockId` to track the most recent block seen. This is used to determine the starting point for transaction monitoring. When fetching block details, the indexer first checks the local cache before making API calls.
@@ -293,7 +297,7 @@ The indexer maintains `lastBlockHeight` and `lastBlockId` to track the most rece
 The indexer handles missing delegates gracefully by catching errors and logging warnings, allowing processing to continue. API errors are logged with context and re-thrown with descriptive messages. Validation errors from ArkType factories are caught and logged before re-throwing.
 
 ### Pagination Strategy
-The `fetchUtxosFromAddress()` method (currently unused) implements a pagination strategy with a growth factor of 1.6 for page sizes (20, 32, 51, 81, 100). This is designed to efficiently fetch large numbers of UTXOs while respecting API rate limits.
+The `fetchUtxosFromAddress()` method (currently unused, throws "unused?" error) implements a pagination strategy with a growth factor of 1.6 for page sizes (20, 32, 51, 81, 100). This is designed to efficiently fetch large numbers of UTXOs while respecting API rate limits. The method is not currently called by the indexer, which instead uses `capo.findCapoUtxos()` for initial sync and `monitorForNewTransactions()` for incremental updates.
 
 ## Implementation Log
 
@@ -323,6 +327,18 @@ The `fetchUtxosFromAddress()` method (currently unused) implements a pagination 
 * Implemented `convertValueToBlockfrostAmount()` to convert Helios Value to Blockfrost format
 * Implemented `getBlockHashFromHeight()` to resolve block hashes
 * Added comprehensive logging for all API operations
+
+### Phase 5: Delegate Resolution & Charter Traversal (Completed)
+* Refactored to use delegates' normal `DelegateMustFindAuthorityToken()` methods instead of custom resolution
+* Added support for UNCACHED hint (`findCached: false`) in utxo-finding code paths, allowing explicit network fetches while using standard helper functions
+* Enhanced `indexDelegateUuts()` to traverse all charter-discovered delegate links including gov authority, other named delegates, and dgData controllers
+* Improved error handling with graceful degradation when delegates are missing
+
+### Phase 6: Logging Enhancements (Completed)
+* Enhanced logging system to support UI inspection of indexer logs
+* Added structured logging with unique log IDs, process IDs, timestamps, and call stack locations
+* Implemented process ID management to track separate indexer sessions
+* Added logging throughout all major operations (initialization, fetches, delegate resolution, errors)
 
 #### Next Recommendations
 
