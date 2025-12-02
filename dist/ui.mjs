@@ -1,5 +1,5 @@
 import * as React from 'react';
-import React__default, { useState, useMemo, useEffect, Component, Fragment, useCallback } from 'react';
+import React__default, { useState, useMemo, useEffect, useCallback, Component, Fragment } from 'react';
 import clsx from 'clsx';
 import { makeBlockfrostV0Client, makeRandomRootPrivateKey, makeRootPrivateKey, makeHydraClient, makeSimpleWallet, makeCip30Wallet, makeWalletHelper } from '@helios-lang/tx-utils';
 import '@cardano-ogmios/client';
@@ -746,34 +746,75 @@ function TxBatchUI() {
     void 0
   );
   const [advancedView, setAdvancedView] = React__default.useState(false);
-  const batchSize = currentBatch?.$allTxns.length;
   const allTxns = currentBatch?.$allTxns || [];
   const hasError = allTxns.some((t) => t.$state === "failed");
   const allFinished = allTxns.length > 0 && allTxns.every(
     (t) => t.$state === "confirmed" || t.$state === "not needed"
   );
   const canClose = hasError || allFinished;
-  const viewSwitcher = /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row justify-between p-2" }, /* @__PURE__ */ React__default.createElement("div", null, /* @__PURE__ */ React__default.createElement("h3", { className: "bg-transparent mt-0 mb-2" }, "Pending Txns"), batchSize && batchSize > 1 && /* @__PURE__ */ React__default.createElement(React__default.Fragment, null, batchSize, " txns in batch")), /* @__PURE__ */ React__default.createElement("div", null, canClose ? /* @__PURE__ */ React__default.createElement(
-    Button,
-    {
-      variant: "secondary-sm",
-      className: "ml-3 bg-emerald-900 border-emerald-500/50 text-emerald-100 hover:bg-emerald-800",
-      onClick: () => {
-        capo?.setup?.txBatcher?.rotate();
-      }
-    },
-    "Close Batch"
-  ) : /* @__PURE__ */ React__default.createElement(
-    Button,
-    {
-      variant: "secondary-sm",
-      className: "ml-3 bg-red-900 border-red-500/50 text-yellow-400 hover:bg-red-800",
-      onClick: () => {
-        capo?.setup?.txBatcher?.cancel();
-      }
-    },
-    "Cancel"
-  ), /* @__PURE__ */ React__default.createElement(
+  const status = currentBatch?.$stateShortSummary;
+  const label = status === "confirmed" ? "Confirmed" : status === "failed" ? "Failed" : "Pending";
+  const pendingStates = [
+    "registered",
+    "building",
+    "nested batch",
+    "built",
+    "failed"
+  ];
+  const noOpStates = ["not needed", "nested batch"];
+  const unsubmittedTxns = allTxns.filter((t) => {
+    console.log("unsubmittedTxn? ", t.$state, pendingStates.includes(t.$state));
+    debugger;
+    return pendingStates.includes(t.$state);
+  }).length;
+  const committingTxns = allTxns.filter((t) => {
+    if (noOpStates.includes(t.$state)) return false;
+    if (pendingStates.includes(t.$state)) return false;
+    return true;
+  }).length;
+  const submittingStates = [
+    "submitting",
+    "confirming"
+  ];
+  const confirmedStates = [
+    "confirmed",
+    "mostly confirmed"
+  ];
+  const submittingTxns = allTxns.filter((t) => {
+    return submittingStates.includes(t.$state);
+  }).length;
+  const confirmedTxns = allTxns.filter((t) => {
+    return confirmedStates.includes(t.$state);
+  }).length;
+  const actualTxCount = unsubmittedTxns + committingTxns;
+  const hasMultipleTxns = actualTxCount && actualTxCount > 1;
+  const hasInFlightTxns = submittingTxns > 0 || confirmedTxns > 0;
+  const submittingLabel = submittingTxns > 0 ? `${submittingTxns} submitting` : "";
+  const confirmedLabel = confirmedTxns > 0 ? `${confirmedTxns} confirmed` : "";
+  const inFlightLabel = [submittingLabel, confirmedLabel].filter(Boolean).join(", ");
+  const cantCancelLabel = `${submittingTxns + confirmedTxns} in-flight txns will not be cancelled`;
+  const [needsCancelConfirmation, setNeedsCancelConfirmation] = React__default.useState(false);
+  const [confirmPartialCancel, setConfirmPartialCancel] = React__default.useState(false);
+  useEffect(() => {
+    setNeedsCancelConfirmation(!!submittingTxns);
+  }, [submittingTxns > 0]);
+  const cancelWIthPossibleConfirmation = useCallback(() => {
+    if (needsCancelConfirmation && !confirmPartialCancel) {
+      return setConfirmPartialCancel(true);
+    }
+    capo?.setup?.txBatcher?.cancel();
+    const nonCancelledTxns = hasInFlightTxns ? `; ${unsubmittedTxns + submittingTxns} in-flight txn${unsubmittedTxns + submittingTxns == 1 ? "" : "s"} not cancelled` : "";
+    provider?.provider.updateStatus(`cancelled ${unsubmittedTxns} unsubmitted txn${submittingTxns == 1 ? "" : "s"}${nonCancelledTxns}`, {
+      developerGuidance: "show status message to user"
+    }, "// confirm cancel / partial-cancel");
+  }, [provider, provider?.capo, currentBatch, unsubmittedTxns, submittingTxns, hasInFlightTxns, needsCancelConfirmation, confirmPartialCancel]);
+  const closeWIthPossibleConfirmation = useCallback(() => {
+    if (needsCancelConfirmation && !confirmPartialCancel) {
+      return setConfirmPartialCancel(true);
+    }
+    return capo?.setup?.txBatcher?.rotate();
+  }, [provider, provider?.capo, needsCancelConfirmation, confirmPartialCancel]);
+  const viewSwitcher = /* @__PURE__ */ React__default.createElement(React__default.Fragment, null, needsCancelConfirmation && /* @__PURE__ */ React__default.createElement("div", { className: "p-2 text-center text-sm border border-accent/20 bg-primary text-accent" }, cantCancelLabel), /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row justify-between items-end p-2" }, /* @__PURE__ */ React__default.createElement("div", { className: "flex-grow" }, /* @__PURE__ */ React__default.createElement("h4", { className: "bg-transparent mt-0 mb-0 font-bold" }, hasMultipleTxns ? `${actualTxCount} Txns` : `${label} Txn`, hasInFlightTxns && /* @__PURE__ */ React__default.createElement("h6", { className: "text-xs text-gray-500" }, inFlightLabel))), /* @__PURE__ */ React__default.createElement("div", { className: "flex-shrink-0" }, /* @__PURE__ */ React__default.createElement(
     Button,
     {
       variant: "secondary-sm",
@@ -784,7 +825,32 @@ function TxBatchUI() {
       "aria-label": "toggle detail view of transaction batch"
     },
     advancedView ? "Hide details" : "Show details"
-  )));
+  )), /* @__PURE__ */ React__default.createElement("div", { className: "flex-shrink-0" }, canClose ? /* @__PURE__ */ React__default.createElement(
+    Button,
+    {
+      variant: "secondary-sm",
+      className: "ml-3 text-emerald-100 hover:bg-red-900",
+      onClick: closeWIthPossibleConfirmation
+    },
+    "\u274C"
+  ) : /* @__PURE__ */ React__default.createElement("div", { className: "group flex flex-col items-end text-amber-400 overflow-visible" }, /* @__PURE__ */ React__default.createElement("div", { className: "hidden group-hover:block w-0 h-7 relative" }, /* @__PURE__ */ React__default.createElement(
+    "span",
+    {
+      "data-label": "cancel-help-text",
+      className: "absolute right-0 top-0 text-xs whitespace-nowrap",
+      "aria-hidden": "true"
+    },
+    needsCancelConfirmation ? "ONLY " : "",
+    /* @__PURE__ */ React__default.createElement("span", { className: "font-bold italic" }, unsubmittedTxns, " ", needsCancelConfirmation ? "UNSUBMITTED" : "", " txn", submittingTxns > 1 ? "s" : "", " will be cancelled")
+  )), /* @__PURE__ */ React__default.createElement(
+    "button",
+    {
+      "aria-label": `Cancel ${unsubmittedTxns} unsubmitted txns`,
+      className: "ml-3 p-1 aspect-square group-hover:bg-red-900 border-1 rounded-none border-gray-500",
+      onClick: cancelWIthPossibleConfirmation
+    },
+    "\u274C"
+  )))));
   React__default.useEffect(
     function monitorTxBatcher() {
       if (!capo) return;
@@ -804,7 +870,7 @@ function TxBatchUI() {
         setTxBatch(batch);
       });
     },
-    [capo, capo?.setup.txBatcher]
+    [provider, provider?.capo, capo?.setup.txBatcher]
   );
   const hasBatch = !!currentBatch && !!currentBatch?.$allTxns.length;
   const width = advancedView ? "w-[80vw]" : "w-[3in]";

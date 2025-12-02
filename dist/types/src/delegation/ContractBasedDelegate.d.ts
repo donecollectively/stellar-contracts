@@ -10,7 +10,6 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
 import type { isActivity } from "../ActivityTypes.js";
 import { type HeliosScriptBundle } from "../helios/index.js";
-import type { UtxoSearchScope } from "../UtxoHelper.js";
 /**
  * Base class for delegates controlled by a smart contract, as opposed
  * to a simple delegate backed by an issued token, whose presence
@@ -70,10 +69,10 @@ export declare class ContractBasedDelegate extends StellarDelegate {
      * Adds a mint-delegate-specific authority token to the txn output
      * @remarks
      *
-     * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
+     * Implements {@link StellarDelegate#txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
      *
-     * Uses {@link ContractBasedDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
-     * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
+     * Uses {@link ContractBasedDelegate#mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
+     * @see {@link StellarDelegate#txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
      * @public
      **/
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
@@ -145,7 +144,7 @@ export declare class ContractBasedDelegate extends StellarDelegate {
     /**
      * @see {@link StellarDelegate.DelegateMustFindAuthorityToken|DelegateMustFindAuthorityToken()}
      **/
-    DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string, options?: UtxoSearchScope): Promise<TxInput>;
+    DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string): Promise<TxInput>;
     /**
      * Adds the delegate's authority token to a transaction
      * @public

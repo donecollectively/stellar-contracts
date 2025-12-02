@@ -10,6 +10,7 @@ export type { tagOnly, EnumTypeMeta, singleEnumVariantMeta, } from "./src/helios
 import UnspecializedDelegateScript from "./src/delegation/UnspecializedDelegate.hl";
 export { UnspecializedDelegateScript };
 export { mkValuesEntry, mkUutValuesEntries, realDiv, debugMath, realMul, toFixedReal, AlreadyPendingError, TxNotNeededError, colors } from "./src/utils.js";
+export { debugBox } from "./src/util/consoleHelper.js";
 export { displayTokenName, stringToPrintableString, assetsAsString, txAsString, utxoAsString, valueAsString, utxosAsString, policyIdAsString, txOutputAsString, txInputAsString, lovelaceToAda, errorMapAsString, addrAsString, byteArrayAsString, txidAsString, txOutputIdAsString, byteArrayListAsString, datumSummary, hexToPrintableString, dumpAny, betterJsonSerializer, } from "./src/diagnostics.js";
 export { uplcDataSerializer, abbrevAddress, abbreviatedDetail, abbreviatedDetailBytes, } from "./src/delegation/jsonSerializers.js";
 export { UutName } from "./src/delegation/UutName.js";
@@ -40,7 +41,7 @@ export { WrappedDgDataContract, type WrappedDgDataType, type someDataWrapper, } 
 export * from "./src/helios/dataBridge/BridgeTypes.js";
 export { CapoHeliosBundle } from "./src/helios/scriptBundling/CapoHeliosBundle.js";
 export { ContractDataBridge, DataBridge, DataBridgeReaderClass, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, type DataBridgeOptions, type callWith, } from "./src/helios/dataBridge/DataBridge.js";
-export type { IntersectedEnum, AbstractNew, Expand, IF, IFISNEVER, IF_ISANY, ISNEVER, NEVERIF, OR, } from "./src/helios/typeUtils.js";
+export type { IntersectedEnum, AbstractNew, Expand, IF, IFISNEVER, IF_ISANY, ISNEVER, NEVERIF, OR, ISSOME, TypeError, EachUnionElement } from "./src/helios/typeUtils.js";
 export { EnumBridge, JustAnEnum, Nested, NotNested, isDatum } from "./src/helios/dataBridge/EnumBridge.js";
 export { CapoMinter, type BasicMinterParams, } from "./src/minting/CapoMinter.js";
 /**

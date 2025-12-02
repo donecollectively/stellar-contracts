@@ -3,7 +3,7 @@ import type { SetupInfo } from "../StellarContract.js";
 import type { TxDescription } from "../StellarTxnContext.js";
 import type { namedSubmitters } from "./BatchSubmitController.js";
 import { TxSubmitMgr } from "./TxSubmitMgr.js";
-type SubmissionsStates = "registered" | "building" | "nested batch" | "not needed" | "built" | "signingSingle" | "submitting" | "confirming" | "confirmed" | "failed" | "mostly confirmed";
+export type SubmissionsStates = "registered" | "building" | "nested batch" | "not needed" | "built" | "signingSingle" | "submitting" | "confirming" | "confirmed" | "failed" | "mostly confirmed";
 type SubmissionsTransitions = Exclude<SubmissionsStates, "not needed" | "nested batch"> | "reconfirm" | "alreadyDone" | "isFacade";
 /**
  * Tracks the submission of a single tx via one or more submitter clients
@@ -73,6 +73,9 @@ export declare class TxSubmissionTracker extends StateMachine<SubmissionsStates,
      * @internal
      */
     _emulatorConfirmed(): void;
+    reqts(): import("../Requirements.js").ReqtsMap<"tracks the submission of a single tx via one or more submitter clients", {
+        inheriting: "‹empty/base class›";
+    }>;
 }
 export {};
 //# sourceMappingURL=TxSubmissionTracker.d.ts.map
