@@ -763,25 +763,40 @@ export class CapoDAppProvider<
         if (wallet) {
             return (
                 <div className="flex flex-row">
-                    {walletAddress && (
+                    {walletAddress && (<>
+                        <div key="icon" aria-hidden="true" className="inline-block z-10 text-xl/5 -mr-[0.75em]">
+                            👜
+                        </div>
                         <span
                             key="chip-walletAddr"
                             // make it small by default, but allow it to grow on hover
                             // also, make it right-aligned and chop the overflow
                             // color the text black
-                            className="mb-0 pl-0 pr-2 py-0 overflow-visible text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500  text-sm shadow-none outline-none hover:cursor-text"
+                            className="mb-0  pl-4 pr-2 py-0 text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500  text-sm shadow-none outline-none hover:cursor-text"
                         >
-                            <span key="icon" aria-hidden="true" className="-ml-2 mr-1">👜</span>
-                            <span id="clickToCopy" aria-label="click to copy" key="address" className="hover:cursor-grabbing" onClick={this.copyWalletAddress}>
+                            <span id="wallet-addr-clickToCopy" 
+                                aria-role="button" 
+                                aria-label="click to copy wallet address" 
+                                title="click to copy wallet address"
+                                key="address" 
+                                className="hover:cursor-grabbing" 
+                                onClick={this.copyWalletAddress}
+                            >
                                 {this.state.status?.message?.match(/copied/i) ? this.state.status?.message : walletAddress}
-                            </span>&nbsp;{selectedWallet}
-                            <a
+                            </span>&nbsp;{
+                                selectedWallet
+                            }<a
+                                id="wallet-addr-disconnect"
                                 href="#"
+                                aria-role="button"
+                                aria-label="disconnect wallet"
+                                title={`disconnect ${selectedWallet}`}
                                 onClick={() => this.newWalletSelected("")}
                             >
                                 ✖️
                             </a>
                         </span>
+                        </>
                     )}
                     &nbsp;
                     <span
