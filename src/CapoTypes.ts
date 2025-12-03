@@ -222,6 +222,7 @@ export type FoundDatumUtxo<
     WRAPPED_DatumType extends any = any
 > = {
     utxo: TxInput;
+    id: string;
     datum: InlineDatum;
     data?: DelegatedDatumType;
     dataWrapped?: WRAPPED_DatumType;
