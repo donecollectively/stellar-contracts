@@ -7,7 +7,7 @@ import type { ContractBasedDelegate } from "./ContractBasedDelegate.js";
  */
 export type AnyDataTemplate<TYPENAME extends string, others extends anyDatumProps> = {
     [ key in string & ( "id" | "type" | keyof Omit<others, "id"> ) ]: 
-        key extends "id" ? string :  // same as the UUT-name on the data
+        key extends "id" ? number[] :  // same as the UUT-name on the data
         key extends "type" ? TYPENAME : // for a type-indicator on the data 
             others[key]
 } // & anyDatumProps 
