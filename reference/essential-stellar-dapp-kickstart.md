@@ -21,6 +21,9 @@ Use this as a map; the detailed, step-by-step off-chain flow now lives in `refer
 ### Add more data policies
 - import delegate controllers from Stellar Contracts or Stellar Tokenomics, or build your own.  Implement `delegateRoles()` and feature flags to make the policies active.  See essential-stellar-data-policy.md
 - Use CharterStatus page to deploy new policies
+- When writing a data-policy delegate, implement `additionalDelegateValidation(priorIsDelegationDatum, capoCtx)`; it runs once per nested activity (including inside `MultipleDelegateActivities`). Handle your policy’s spending/minting/burning variants here, rejecting anything unexpected and using `capoCtx` helpers (e.g., `creatingDgData`, `updatingDgData`) to read CIP-68 payloads and enforce business rules.  
+ - You only need to process Minting/Spending/Burning activities here; Other activities are rarely needed and some of those activities will never be invoked or triggered in your additionalDelegateValidation() function.  You can use a `_ => true` default case in the switch, to ignore activities you don't need to process.
+ - See essential-stellar-onchain.md for more details.
 
 ### Define Requirements
 - Clearly define the requirements for your application. This helps everyone agree on what it needs to do, and gives you a point of reference for testing and development.

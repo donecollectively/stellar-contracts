@@ -41,6 +41,7 @@
 - For hashing forms, use `StakingHash::Validator` when a staking script controls rewards; `StakingHash::PubKey` for key-controlled staking.
 
 ## Cross-links
-- Helios language basics: see `essential-helios.md`.
-- Helios builtins quickstart (address/staking types and APIs): see `essential-helios-builtins.md`.
+- Helios API essentials: see `essential-helios-api.md` when you need to be an expert on the off-chain Helios API.
+- Helios language basics: see `essential-helios-lang.md` when you need any amount of knowledge about the on-chain Helios language.  NEVER make assumptions that you understand the language until you have read the language specification in its entirety.
+- Helios builtins (address/staking types and APIs): see `essential-helios-builtins.md`.
 

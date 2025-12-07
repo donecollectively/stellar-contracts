@@ -31,7 +31,11 @@ All activities and datums are defined in Helios code, either in a library file o
   - Gov authority policy (token-gated admin).  The Capo lifecycle methods are gated on this governance policy token.  Its on-chain logic is upgradable, and can be used to perform any admin/super-user activities.
   - Mint delegate (`ContractBasedDelegate` subclasses) validates minting and data-creation creation use-cases.  Re-delegates to data policies for different types of onchain data when they are created.  Typically provided by the same policy script as the spend delegate.
   - Spend delegate (delegated-data enforcement) validates spending of Capo UTxOs, and is upgradable.  Usually delegates its enforcement to data policies.
-  - Data-policy delegates (`DelegatedDataContract` subclasses) per record type; optional named delegates.  These are the most common software objects that dApps can interact with.  Offchain, they make transactions for creating and updating on-chain records.  Onchain, they enforce "business logic", access control policies and validation rules for the records.  They may also manage funds, using their on-chain data details to express policies and workflow for funds and data-management. 
+  - Data-policy delegates (`DelegatedDataContract` subclasses) per record type.  These are the most common software objects that dApps can interact with.  Offchain, they make transactions for creating and updating on-chain records.  Onchain, they enforce "business logic", access control policies and validation rules for the records.  They may also manage funds, using their on-chain data details to express policies and workflow for funds and data-management.  
+    - Each policy implements `DelegateActivity::additionalDelegateValidation(self, priorIsDelegationDatum, capoCtx)`, called once per activity (and once per nested item in `MultipleDelegateActivities`). Use it to handle your policy’s Spending/Minting/Burning/Other variants; DelegateLifecycle and CapoLifecycle can usually return `true` unless you need extra constraints.
+        - Not invoked for `CreatingDelegatedData` / `UpdatingDelegatedData` / `DeletingDelegatedData`; those are validated by mint/spend delegates when delegating to data policies.  `MultipleDelegateActivities` also aren't invoked here (only its nested items).
+        - Safe default: switch on variants, return `true` for those you don’t need, and enforce only the ones your policy defines.
+    - use `capoCtx` helpers (`creatingDgData`, `updatingDgData`, `referencingDgDatum`, etc.) to read data payloads and token/value, and enforce before/after / sub-activity rules.  See `essential-stellar-onchain.md` for more details.
 
 ## Data Storage and Data Flow
 The CharterData is the root datum at the Capo address, holding delegate links + manifest.
@@ -102,6 +106,5 @@ Application-specific Capo can import/reuse data-policies from other packages.  D
 ## Cross-links
 - On-chain details: `reference/essential-stellar-onchain.md`
 - Off-chain flows: `reference/essential-stellar-offchain.md`
-- Capo helper structs: `reference/essential-capo-helpers.md`
 - Kickstart steps: `reference/essential-stellar-dapp-kickstart.md`
 

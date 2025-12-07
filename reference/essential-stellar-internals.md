@@ -17,6 +17,9 @@ Also includes descriptions of how the mint/spend delegates perform their duties,
 - Admin helpers: `updatingManifest()`, `requiresValidOutput()`, `delegateUnchanged()` to enforce delegate token return/continuation invariants.
 
 ### MultipleDelegateActivities collaboration
+
+The basic delegate processes MultipleDelegateActivities when requested for a data-policy delegate.  As a result, data-policy delegates can simply look for specific (non-multiple) spending/minting activities and enforce the correct logic; the additionalDelegateValidation() function in the data-policy delegate is called once for each nested activity.
+
 - Any delegate type may emit `MultipleDelegateActivities`; mint/spend delegates and data-policy delegates interpret the nested list with one-level depth.
 - Mint delegate: `withUniqueSeededMintingActivity(seed)` scans the nested activities for exactly one `MintingActivities` tagged to that seed; rejects non-mint items, duplicates, or missing entries.
 - Spend delegate + data-policy: `withUniqueDDSpendingActivity(recId)` scans for exactly one `SpendingActivities` whose recId matches; rejects `Creating/Updating/DeletingDelegatedData` in this context, errors on zero/multiple matches, ensures delegate datum unchanged.

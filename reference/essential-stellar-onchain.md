@@ -1,6 +1,12 @@
 # Stellar on-chain essentials
 
-Readers should understand essential architecture (essential-stellar-dapp-architecture.md) before reading this section.
+Readers should understand essential architecture and transaction patterns (essential-stellar-dapp-architecture.md) before reading this section.  They should also understand cardano essentials in `essential-cardano.md`, and the lifecycle duties in `reference/essential-capo-lifecycle.md`.
+
+You might also need to look at internals in `reference/essential-stellar-internals.md` for context on what the onchain Capo and related libraries do to be good collaborators with your onchain data-policy delegates.  
+
+You will also need `reference/essential-helios-lang.md` and `reference/essential-helios-builtins.md` to become competent with the Helios language and builtins.  IT IS ESSENTIAL THAT YOU UNDERSTAND THESE BEFORE WRITING ONCHAIN HELIOS CODE or answering questions about it.
+
+You may sometimes need to inspect the onchain library code in stellar-contracts `src/**/*.hl` files to understand the implementation details of the onchain Capo and related libraries.
 
 All activities and datums are defined in Helios code, either in a library file or in an application-specific file.  Those are `.hl` files, not Typescript/javascript.
 
@@ -9,7 +15,7 @@ All activities and datums are defined in Helios code, either in a library file o
 - Purpose: treasury/data hub locked by Capo script; owns charter token; coordinates delegates.
 - Parameters: `mph` (minting policy hash), seed txn/id, feature flags (off-chain), optional precompiled bundle.
 - Core datum `CapoDatum`:
-  - `CharterData` with links: `govAuthorityLink`, `mintDelegateLink`, `spendDelegateLink`, optional invariants, `otherNamedDelegates` (string→delegate link), `manifest` (see below), `pendingChanges`.
+  - `CharterData` with links: `govAuthorityLink`, `mintDelegateLink`, `spendDelegateLink`, optional invariants, `otherNamedDelegates` (string→delegate link), `manifest` (see Manifest section), `pendingChanges`.
   - `ScriptReference` marker for ref-script UTxOs stored at Capo address.
 - Authority token: charter token (policy = Capo mph, tn "charter"); always returned to Capo. Used as reference or spent depending on activity.
 - Activities (redeemers): `updatingCharter`, `usingAuthority`, `spendingDelegatedDatum`, plus lifecycle helpers for mint/spend/named delegates.
@@ -183,7 +189,7 @@ See essential-capo-lifecycle.md for more details about the charter lifecycle and
 - Governance delegate (authority policy) validates admin actions (updates, delegate installs).
 - Mint delegate validates mint/burn (except force paths for invariants/forced replacement).
 - Spend delegate validates spending of delegated data and manifest changes; may chain to data-policy delegates.
-- Data policy delegates (DelegatedDataContract on-chain) validate creation/update of specific record types; identified by manifest entry and UUT idPrefix.
+- Data-policy delegates (DelegatedDataContract on-chain) validate creation/update of specific record types; identified by manifest entry and UUT idPrefix. Implement policy-specific activity handling in `additionalDelegateValidation`; see `reference/essential-stellar-internals.md` for the full helper patterns and `reference/essential-stellar-dapp-architecture.md` for high-level guidance.
 
 ## Common on-chain checks (CapoHelpers / delegates)
 - Charter token presence/return.
@@ -193,7 +199,6 @@ See essential-capo-lifecycle.md for more details about the charter lifecycle and
 - Manifest-driven lookup for settings/current records (e.g., `currentSettings` entry → settings controller).
 
 ## Cross-links
-- Capo helpers and delegate helpers: `reference/essential-capo-helpers.md`
 - Off-chain building: `reference/essential-stellar-offchain.md`
 - Architecture overview: `reference/essential-stellar-dapp-architecture.md`
 - Kickstart steps: `reference/essential-stellar-dapp-kickstart.md`

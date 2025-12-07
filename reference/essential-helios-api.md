@@ -4,7 +4,7 @@
 - Scope: summaries for the Helios JS/TS off-chain SDK docs mirrored under `reference/helios-lang/sdk`; use this as a jumpstart, then open the matching `.html` file for exact signatures.
 - Versions present: ledger v0.7.15 (`ledger/index.html`), tx-utils v0.6.21 (`tx-utils/index.html`).
 - Doc naming mirrors Docusaurus IDs (e.g., `Address.html`, `makeTx.html`); search those filenames to jump to details.
-- Pairs with on-chain language notes in `essential-helios.md` and builtins in `essential-helios-builtins.md`; this file stays focused on off-chain helpers.
+- Pairs with on-chain language notes in `essential-helios-lang.md` and builtins in `essential-helios-builtins.md`; this file stays focused on off-chain helpers.
 - Orientation: ledger module gives typed ledger objects + conversions; tx-utils adds clients, wallets, coin selection, and tx builders.
 
 ## ledger v0.7.15 (ledger/index.html — https://helios-lang.io/docs/sdk/ledger/)

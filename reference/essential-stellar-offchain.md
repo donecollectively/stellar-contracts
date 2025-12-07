@@ -1,5 +1,9 @@
 # Stellar off-chain essentials
 
+Before reading this, you should understand cardano essentials in `essential-cardano.md`, and the overall architecture and transaction patterns in `reference/essential-stellar-dapp-architecture.md`, and the lifecycle duties in `reference/essential-capo-lifecycle.md`.
+
+Use this as a map; you should also understand `reference/essential-stellar-offchain.md`, and lifecycle duties in `reference/essential-capo-lifecycle.md`.  You may sometimes need `reference/essential-helios-api.md` for more details on the Helios API, but you're more likely to need context from kickstart guide `reference/essential-stellar-dapp-kickstart.md`, or stellar-contracts `docs/` contents, or to reference the source code in StellarTxnContext.ts, DelegatedDataContract.ts, or its parent classes.
+
 ## Core classes
 - `Capo` (extends StellarContract): orchestrates charter mint/update, delegates, manifest, delegated data, ref scripts.  `src/Capo.ts`.
 - `CapoMinter`: fixed minting policy script; mints charter token + UUTs; defers policy to mint delegate except forced admin paths.  `src/minting/CapoMinter.ts`.
@@ -147,7 +151,6 @@ Note that the UI-provided form manager does this sequence itself, so application
 
 ## Cross-links
 - On-chain basics: `reference/essential-stellar-onchain.md`
-- Capo helper details: `reference/essential-capo-helpers.md`
 - Architecture view: `reference/essential-stellar-dapp-architecture.md`
 - Kickstart guide: `reference/essential-stellar-dapp-kickstart.md`
 

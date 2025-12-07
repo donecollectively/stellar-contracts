@@ -1,7 +1,7 @@
 
 # Helios builtins quickstart
 
-Automatic methods (all types): `serialize()`, `show()`, `from_data()`, `is_valid_data()`, `copy(...)` are provided by the language—see `essential-helios.md` for details. Per-type sections below omit these.
+Automatic methods (all types): `serialize()`, `show()`, `from_data()`, `is_valid_data()`, `copy(...)` are provided by the language—see `essential-helios-lang.md` for details. Per-type sections below omit these.
 
 ## Address — https://helios-lang.io/docs/lang/builtins/address
 - Cardano address consisting of a payment `Credential` plus optional `StakingCredential`.
@@ -13,7 +13,7 @@ Automatic methods (all types): `serialize()`, `show()`, `from_data()`, `is_valid
 ## Any — https://helios-lang.io/docs/lang/builtins/any
 - Typeclass constraint that accepts any data or function type; use when generics must permit functions (e.g., `list.fold`, `map.fold`).
 - Default unconstrained typeclass (empty constraint) only permits data; switch to `Any` when higher-order values are required.
-- Pair with generics notes in `essential-helios.md`; Cardano context lives in `essential-cardano.md`.
+- Pair with generics notes in `essential-helios-lang.md`; Cardano context lives in `essential-cardano.md`.
 
 ## AssetClass — https://helios-lang.io/docs/lang/builtins/assetclass
 - Identifies a specific asset: `MintingPolicyHash` + token name `ByteArray`; ADA is `AssetClass::ADA` (both empty).
