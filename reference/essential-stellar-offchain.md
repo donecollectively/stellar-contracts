@@ -133,6 +133,18 @@ Note that the UI-provided form manager does this sequence itself, so application
 - The `CharterStatus` component provides a dashboard-style screen showing the current status of the Capo, including the current network, the current address, and the current balance.  It also shows the current charter data, including the current charter token, the current charter links, and the current charter manifest.  When loaded, it checks for any on-chain policies needing upgrades, and displays a button to trigger the upgrade transactions.
 - There is also a headless `FormManager` component, with related helper classes and UI components for displaying and managing forms for creating and updating delegated data records.  
 
+## Kickstart/Overview (actionable steps)
+- Prereqs: read on-chain/off-chain/architecture/internals; have Node/PNPM + Helios; wallet + seed UTxO recorded; build bundles/bridges.
+- Instantiate: implement Capo subclass with `delegateRoles()`/feature flags; create Capo instance with seed config; keep `StellarTxnContext`.
+- Mint charter: `mkTxnMintCharterToken` (seed → charter + delegate UUTs + CharterData); include ref-script txns for minter/capo/mint delegate; submit batch.
+- Install policies: `mkTxnInstallingPolicyDelegate` (or queue+commit) and attach ref scripts; commit pending changes.
+- Settings (optional): create settings record; register manifest key `currentSettings`; commit pending if needed.
+- Create records: if idPrefix UUT needed, select seed; controller `txnCreatingRecord` with charter ref, delegate authorities, ref scripts; submit.
+- Update records: fetch via controller; build tx with spend delegate activity + controller update; preserve record-id token; return to Capo.
+- Upgrade delegates: `mkTxnUpdatingMintDelegate`/`mkTxnUpdatingSpendDelegate`; data-policy via queue/commit; refresh ref scripts.
+- Ref scripts: add via `txnMkAddlRefScriptTxn`; later attach with `txnAttachScriptOrRefScript`.
+- Validate & submit: charter token returned; delegate UUTs present/returned; manifest keys resolve; ref scripts attached; redeemers match activities; submit primary + addl txns.
+
 ## Cross-links
 - On-chain basics: `reference/essential-stellar-onchain.md`
 - Capo helper details: `reference/essential-capo-helpers.md`

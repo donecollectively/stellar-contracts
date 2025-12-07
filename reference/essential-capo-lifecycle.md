@@ -17,6 +17,12 @@ See essential-stellar-dapp-architecture.md for more details about the overall ar
 - Spend delegate: commitPendingChanges (manifest application); future manifest updates; other lifecycle actions when dgtRolesForLifecycleActivity says spend.
 - Capo only: forced mint/spend delegate swaps (abnormal/emergency escape hatches), ref-script retire, base delegated-data id/token consistency; governance gating for lifecycle/admin.
 
+### Bootstrap / lifecycle flow pointers
+- Charter bootstrap: Capo + minter mint charter token and delegate UUTs; writes CharterData; stores ref scripts (mint delegate involved).
+- Delegate install/replace: queue pending change (mint delegate validates add/replace), commit pending change (spend delegate applies manifest change; mint delegate checks burns), force replacements handled by Capo only.
+- Settings/data records: spend delegate validates delegated-data spends; mint delegate validates delegated-data creates/deletes; data-policy delegates enforce record-specific rules.
+- Ref scripts: Capo gov-gated retiring/replacing; add via companion txns when policies are installed/upgraded.
+
 ### Activity enums (per delegate type)
 - BasicDelegate (mint/spend): DelegateLifecycleActivity (create/replace/retire/validate settings); CapoLifecycleActivity passthrough (must match Capo redeemer; role-gated by dgtRolesForLifecycleActivity); CreatingDelegatedData / UpdatingDelegatedData / DeletingDelegatedData hook delegated-data create/update/delete; MultipleDelegateActivities (one-level nesting) and OtherActivities (extension hook).
 - DelegatedDataContract (data-policy): shares DelegateLifecycleActivity, plus policy-specific SpendingActivities / MintingActivities / BurningActivities; uses MultipleDelegateActivities / OtherActivities for nesting/extension; create/update/delete activities are handled by mint/spend delegates, not the data-policy itself.
