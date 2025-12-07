@@ -2,7 +2,7 @@
 
 Readers should understand essential architecture (essential-stellar-dapp-architecture.md) before reading this section.
 
-All activities and datums are defined in Helios code, either in a library file or in an application-specific file.
+All activities and datums are defined in Helios code, either in a library file or in an application-specific file.  Those are `.hl` files, not Typescript/javascript.
 
 ## Capo validator (leader)
 - Sources: `src/Capo.ts`, `src/CapoHelpers.hl`, `src/delegation/CapoDelegateHelpers.hl`, `src/minting/CapoMinter.ts`.
@@ -149,7 +149,7 @@ StellarHeliosHelpers.hl defines functions and struct definitions for various pur
       - `mkTv()`, `mkAc()` to create Values and AssetClasses using the capo's mph and String or ByteArray inputs
       - `getCharterRedeemer()` fetches the CapoActivity redeemer for the charter input (uses `mustFindInputRedeemer`)
       - `requiresGovAuthority()` to enforce governance approval, 
-      - `DgDataDetails` for `updatingDgData()` ,` creatingDgData()`, and `referencingDgDatum()`
+      - In data-policy delegates, use `updatingDgData(recId/recIdBytes)` ,` creatingDgData(recId/recIdBytes)`, and `referencingDgDatum(recId/recIdBytes)` to get `DgDataDetails` for specific record activities.
       - `requiresDgDataPolicyInput()`, `requiresMintDelegateInput()`,`requiresSpendDelegateInput()` return `DelegateInput` structs 
       - `getManifestedData(manifestKey)` to dereference data (as found in refInput or which: (another UtxoSource)) from a semantic name with manifest lookup; returns `DgDataDetails` struct
       - `findManifestTokenName(key, required?)` and `getSettingsId(required?)` resolve named tokens from the manifest without dereferencing them.
@@ -158,12 +158,11 @@ StellarHeliosHelpers.hl defines functions and struct definitions for various pur
     - `abstractInput()` and `abstractOutput()` to get the data from the input and output, respectively. 
     - `inputData()` and `outputData()` to get cast-read Data from the input and output, respectively (use ‹TargetType›`::from_data()` to extract & validate).  
     - `spendingActivity()` and `burningActivity()` to assert and return the abstract activity (Data) redeemer from the input.
+    - Used by data-policy delegates: on update, read `input()` (TxInput)/`output()` (TxOutput) or their datums via `abstractInput/abstractOutput` (for AnyData; mainly for infrastructure) or `inputData/outputData` (use ‹appDataType›::from_data() to extract) for policy enforcement; on record mint, use `creatingDgData` -> `outputData` -> `‹appDataType›::from_data(...)` to inspect the newly created datum.
 - struct `DelegateInput` (link, role, idPrefix, input, mph) wraps a possible delegate UUT input; helpers:
     - `genericDelegateActivityAsData()` and `genericDelegateActivity()` to read the delegate redeemer (via mustFindInputRedeemer), letting callers trigger/inspect the delegate’s activity when its token is included.  Good for cross-script validation of the activities being performed by another delegate.
     - `withSpendingActivity()` and `withMintingActivity()` - chained methods asserting that the delegate is performing a spending or minting activity, respectively
-    -  `updatingManifest()`, `withUniqueSeededMintingActivity()`, `withUniqueDDSpendingActivity()`, `requiresValidOutput()`, `delegateUnchanged()` - chained methods used in mint/spend and data-policy delegates to validate nested activities:
-       - `withUniqueSeededMintingActivity(seed)`: accepts `MultipleDelegateActivities`, filters to a single `MintingActivities` for the given seed, errors on zero/multiple or wrong types, then asserts delegate unchanged.
-       - `withUniqueDDSpendingActivity(recId)`: accepts `MultipleDelegateActivities`, rejects non-spend variants, filters to a single `SpendingActivities` for that recId, errors on zero/multiple matches, then asserts delegate unchanged; used by spend delegates to validate spending of a delegated data record.
+    -  `updatingManifest()`, `withUniqueSeededMintingActivity()`, `withUniqueDDSpendingActivity()`, `requiresValidOutput()`, `delegateUnchanged()` - chained methods used in mint/spend and data-policy delegates to validate nested activities (details in `reference/essential-stellar-internals.md`).
 
 - Locate current settings: manifest named entry (e.g., `currentSettings`) via Capo off-chain helpers; on-chain, inspect `CapoDatum::CharterData.manifest`.
 - Reference charter: include charter token (input or ref) and read `CharterData` to discover links/manifest; use `ScriptReference` UTxOs for ref scripts.

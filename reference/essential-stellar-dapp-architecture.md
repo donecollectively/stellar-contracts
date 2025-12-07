@@ -59,6 +59,7 @@ Because most UTxOs are stored in the Capo, data-policies can be trivially upgrad
     - It is aligned to the CIP-68 structure with a 3-field ConstrData (allowing any variant tag), with the first field having an abstract `Map[String]Data` field for the record's data.  This map is EXPECTED to contain "@id" and "tpe" entries to byte-array/string values (@id is the record-id/uut-name; tpe is the record-type matching the data-policy's manifest entry).  Other fields are allowed and expected to be interpreted by the delegate.
     - Every delegated-data record is stored in the Capo, and the mint/spend delegate is responsible for validating the activities and policies of the records.
     - Every specific Datum structure definition for delegated-data policies must conform to the abstract structure, with its own Map entries appropriate for its needs.
+  - Data-policy delegates enforce transitions by reading the CIP-68 payload: on updates they read both input and output datums; on mints they inspect the newly created datum. Low-level accessors (`DgDataDetails`) are documented in `essential-stellar-onchain.md` and the internals guide.
 
 ## Software Development Lifecycle / On-Chain Policy evolution
 - Bootstrap: choose seed UTxO → minter mints charter + delegate UUTs → writes CharterData → stores ref scripts.
