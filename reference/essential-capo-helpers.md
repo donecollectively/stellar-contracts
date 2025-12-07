@@ -48,6 +48,12 @@ information below must be refined and/or deduplicated with details found in esse
 - `DelegateRole` enumerates gov/mint/spend/invariants, data-policy (named), other named delegates.
 - `CapoLifecycleActivity` connects Capo lifecycle redeemers (delegate creation, pending-change queue/commit, forced replacements, manifest updates).
 
+## StellarHeliosHelpers.hl — shared utility
+- Redeemer helper: `mustFindInputRedeemer(txInput)`.
+- Value/data helpers: `mkTv`, `tvCharter`, for token-Value creation.  `returnsValueToScript`, `outputAndDatum`, `fromCip68Wrapper`, `getOutputWithValue`, `getOutputForInput`.
+- Logging/REQT: `REQT`, `bREQT`, `REQTgroup*`, `logGroup*`, `TRACE`, `TODO`.
+- Unwrap CIP-68 map payload: `fromCip68Wrapper(dataValue)`,
+- Time helper: `getTimeRange(granularity)` returns the transaction time, with constraint on the validity window (e.g. Duration::Hour)
 
 ## Capo Delegate Helpers (CapoDelegateHelpers.hl)
 

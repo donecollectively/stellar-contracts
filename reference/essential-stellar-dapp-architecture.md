@@ -9,6 +9,8 @@ Stellar Contracts enables on-chain smart contracts to be upgraded in place, subj
 
 It supports applications that manage many different kinds of data, and can run on Cardano mainnet or private side-chains.
 
+All activities and datums are defined in Helios code, either in a library file or in an application-specific file. See essential-stellar-onchain.md for more details.  The rollup build process syncs typescript types and generated bridging code to match with the onchain types.
+
 ## Design Goals
 - Modularity/upgradability: delegates (mint/spend/data) are swappable with queued/committed changes.
 - Data extensibility: delegated-data layer accepts new types via manifest-linked policies.
@@ -45,7 +47,10 @@ Because most UTxOs are stored in the Capo, data-policies can be trivially upgrad
 
 ## Data/UTxO model
 - Capo address holds: charter UTxO (inline `CharterData`), delegated-data UTxOs, ref-script UTxOs, settings UTxO, manifest-driven UTxOs.
-- Authority tokens (UUTs) prove delegate control of policy to the on-chain Capo script; manifest entries map data-type/role to tokenName (and optional mph).
+- Authority tokens (UUTs) prove delegate control of policy to the on-chain Capo script; manifest entries map data-type/role to tokenName (and optional mph). These tokens are held at the delegate's own script address with the DelegateDatum::IsDelegation datum variant (from CapoDelegateHelpers). This IsDelegation datum is the standard delegation datum used for all delegate authority tokens (mint/spend/data-policy/named), and it’s what binds the UUT to the policy script.
+     - its IsDelegation details connect that delegate back to the Capo address, its mph, and its token name.  
+     - If a policy script is used in multiple dApps, it will have multiple utxo's, with each having a separate UUT (from each dApp) and datum linking back to the Capo address.  
+     - See essential-stellar-onchain.md for more details.
 - Delegated data: records stored at Capo with per-type controller; IDs derive from idPrefix + UUT naming.
   - AbstractDelegateActivitiesEnum types the delegated-data activities, allowing the mint/spend delegate to generically support any registered data-type, enforcing that right delegate is used but not needing to deal with specifics of their activities.  
     - The generic SpendingActivities, MintingActivities, BurningActivities are defined as abstract Data.
@@ -68,11 +73,18 @@ Because most UTxOs are stored in the Capo, data-policies can be trivially upgrad
 
 ## Flows (high level)
 - Mint charter: CapoMinter `mintingCharter` + delegate UUTs; Capo keeps charter, sets links, stores refs.
-- Mint/burn tokens: go through mint delegate (`mintWithDelegateAuthorizing`); invariants/force paths bypass mint delegate with Capo authority.
-- Create delegated record: data controller mint activity, spend delegate allows creation, manifest ties idPrefix/tokenName.
-- Update delegated record: spend delegate activity + controller update activity; ensures correct id/token and policies.
-- Delete delegated data record: mint policy defers to mint delegate, which defers to data-policy delegate, which validates the deletion (spending the utxo, burning the record's UUT)
-- Install/replace data policy: queue pending change (new controller link, idPrefix); commit to manifest; optional burn old token.
+- Mint/burn tokens: via mint delegate (`mintWithDelegateAuthorizing`); invariants/force paths bypass mint delegate with Capo authority.
+- Create delegated record: data controller mint activity; spend delegate allows creation; manifest ties idPrefix/tokenName.
+- Update delegated record: spend delegate activity + controller update activity; ensures correct id/token/policies.
+- Delete delegated data record: mint delegate + data-policy delegate validate burn/spend of record UTxO/UUT.
+- Install/replace data policy: queue pending change (new controller link, idPrefix); commit to manifest; optional burn old token; add ref script for new policy.
+
+### Responsibility snapshot:
+- Mint delegate: CreatingDelegate; queuePendingChange checks; its share of commitPendingChanges (burns).
+- Spend delegate: commitPendingChanges (manifest application); future manifest updates; other lifecycle actions when dgtRolesForLifecycleActivity says spend.
+- Capo only: forced delegate swaps, ref-script retire, base delegated-data id/token consistency; governance gating for lifecycle/admin.
+
+See essential-capo-lifecycle.md for more details.
 
 ## Key Conventions
 
@@ -83,6 +95,8 @@ Application-specific Capo needs to define its `get delegateRoles()`.  It can pro
 Offchain data controller classes must define a little bit of basic boilerplate, including `get recordTypeName()`,  `get idPrefix()`, `get delegateName()`, `async scriptBundleClass()`, `exampleData()`.  `scriptBundleClass()` is used by the dAppProvider to load the off-chain code for the data controller.  `exampleData()` is used by the dAppProvider to display a default data example in the UI and (for now) to provide default data for new records.
 
 dApps define a simple React component extending the CapoDappProvider, rendering that component in their app layout.  
+
+Application-specific Capo can import/reuse data-policies from other packages.  Doesn't normally need to customize the mint/spend delegates.  Can include/enable reused delegated-data policies, and define their own; enable them with feature flags, and use them in the application.  Developers use the CharterStatus page to deploy new or updated data-policies.
 
 ## Cross-links
 - On-chain details: `reference/essential-stellar-onchain.md`
