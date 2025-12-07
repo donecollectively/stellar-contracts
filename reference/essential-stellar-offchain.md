@@ -1,11 +1,12 @@
 # Stellar off-chain essentials
 
 ## Core classes
-- `Capo` (extends StellarContract): orchestrates charter mint/update, delegates, manifest, delegated data, ref scripts.
-- `CapoMinter`: fixed minting policy script; mints charter token + UUTs; defers policy to mint delegate except forced admin paths.
-- `ContractBasedDelegate`: base for script-backed delegates (mint/spend/data/named). Provides bundle wiring, activity/datum accessors, authority token helpers.
-- `DelegatedDataContract<T>`: base for data-policy controllers; wraps create/update flows for records stored at Capo; exposes `recordTypeName`, `idPrefix`, `exampleData`, activities for create/update.
-- `StellarTxnContext`: tx builder + typed state (seedUtxo, uuts, charterRef, settingsRef, addlTxns). Provides a facade for the underlying Helios TxBuilder, and a typed state container for the transaction context.
+- `Capo` (extends StellarContract): orchestrates charter mint/update, delegates, manifest, delegated data, ref scripts.  `src/Capo.ts`.
+- `CapoMinter`: fixed minting policy script; mints charter token + UUTs; defers policy to mint delegate except forced admin paths.  `src/minting/CapoMinter.ts`.
+- `ContractBasedDelegate`: base for script-backed delegate controllers (mint/spend/data/named). Provides bundle wiring, activity/datum accessors, authority token helpers.  `src/delegation/ContractBasedDelegate.ts`.
+- `DelegatedDataContract<T>`: base for data-policy controllers; wraps create/update flows for records stored at Capo; exposes `recordTypeName`, `idPrefix`, `exampleData`, activities for create/update.  `src/delegation/DelegatedDataContract.ts`.
+- `StellarTxnContext`: tx builder + typed state (seedUtxo, uuts, charterRef, settingsRef, addlTxns). Provides a facade for the underlying Helios TxBuilder, and a typed state container for the transaction context.  `src/StellarTxnContext.ts`.
+
 
 ## Token + authority model
 - Policy: Capo mph (from minter). Charter token (`charter`) proves contract identity; various UUTs prove authority per role (gov/mint/spend/named/data-policy).
@@ -14,16 +15,47 @@
     - Internally, DelegateMustFindAuthorityToken and DelegateAddsAuthorityToken and txnReceiveAuthorityToken handle the UTxO discovery and inclusion,  forming the protocol for authority token handling.
     - The authority token is always returned to the Capo address.
 
-## Key flows
-- Charter bootstrap: `mkTxnMintCharterToken` builds seed→charter mint tx + ref scripts (Capo, minter, mint delegate); sets CharterData with delegate links and manifest (one-time setup per Capo deployment).
-- Charter update: `txnUpdateCharterUtxo`/`mkTxnUpdateCharter` spend charter with `updatingCharter` activity, keep charter token, update links/manifest/pendingChanges.  Typically used internally by more common use cases such as installing/updating data policies or settings data.
+## Key transaction flows (day-to-day operations)
+- Capo:
+ - 
+  - `get mph`: Returns the minting policy hash for the Capo.  This is used by the CapoProvider to display the minting policy hash in the UI.
+  - `delegateRoles`: Defines the delegate roles for the dApp.  Every dApp should define its own delegate roles, and typically will use the basicDelegateRoles() helper to access the default mint/spend/gov delegates.
+  - `findDelegatedDataUtxos`: Capo's helper method for finding delegated data UTxOs via manifest/id.  It can be used by the controller classes to locate the UTxOs for their records.
+  - `findScriptReferences`: Capo's helper method for finding ref scripts via validator hash.  It is used by the controller classes to locate the ref scripts for their records.
+  - `findCapoUtxos`: Capo's helper method for finding all UTxOs at the Capo address, including the charter and other utxos.
+   - `getDgDataController`: Capo's helper method for finding the delegated data controller for a given typeName.  It is used by the controller classes, other infrastructure components, and application code to locate the controller for their records.
+   - `getMintDelegate`: Capo's helper method for finding the mint delegate.  Uncommonly needed by application code.
+   - `txnAddGovAuthority`: Adds the gov authority token to a transaction, using the gov delegate activity to authorize the addition.  SHOULD be used when performing any admin/super-user activities.
+   - `findSettingsInfo`: Finds the current settings info for the Capo, including the current settings record and the underlying `data` and possible application-layer `dataWrapped` object.  Not every dApp has to have settings, but an dApp can, with its own data structure for the settings.
+
+
+- Delegated data controllers:
+  - `mkTxnCreateRecord`: Creates a new record at the Capo, using the spend delegate activity to authorize the creation.  Implemented by the base class DelegatedDataContract.  
+     - Specific subclasses may define more specific mkTxn* methods for creating their records for specific use-cases.
+     - The basic mkTxnCreateRecord() and mkTxnUpdateRecord() methods can also be fed with specific activity objects when their basic `DgDataCreationOptions<TLike>` are good for the use-case at hand.
+  - `mkTxnUpdateRecord`: Updates an existing record at the Capo, using the spend delegate activity to authorize the update.  Implemented by the base class DelegatedDataContract.  
+     - Specific subclasses may define more specific mkTxn* methods for updating their records for specific use-cases.
+     - The basic mkTxnUpdateRecord() method can also be fed with specific activity objects when its basic `DgDataUpdateOptions<TLike>` are good for the use-case at hand.
+
+  - Controllers provide basic mkTxnCreateRecord() and mkTxnUpdateRecord() methods that SHOULD be used by application-specific transaction-building functions that provide developer-friendly interfaces closely fit to application use-cases.
+
+## Key flows (uncommon lifecycle activities)
+- Charter bootstrap: `mkTxnMintCharterToken` builds seed→charter mint tx + ref scripts (Capo, minter, mint delegate); sets CharterData with delegate links/manifest (one-time per Capo).  The CapoProvider provides UI with a button to trigger this flow.  dApps need to capture the deployment details, store them in their code repository, and build their dAPI package to get pre-compiled minter, Capo and mint/spend delegates.  This package is then used by their UI to create and validate transaction before submitting them onchain.
+    - `mkAdditionalTxnsForCharter`: Capo's hook for adding dApp-specific additional transactions to the charter creation process.  It is called during the creation of the charter transaction.  The provided transaction context has state.charterData in case it's needed.  This method should use {@link StellarTxnContext.includeAddlTxn} to add transactions to the context.  No-op by default.
+- Charter update: `txnUpdateCharterUtxo`/`mkTxnUpdateCharter` spends charter with `updatingCharter`, returns charter token to Capo address, updates links/manifest/pendingChanges (used by admin flows like delegate install/settings/policy changes).  `mkTxnUpgradeIfNeeded` is used by the CharterStatus component to check for needed upgrades and trigger the upgrade transactions.
+
 - Delegate install/replace:
   - Mint/spend delegate: `mkTxnUpdatingMintDelegate` / `mkTxnUpdatingSpendDelegate` (normal or forced), burns old UUT unless forced, updates CharterData link.
+  - `mkTxnAddingMintInvariant` and `mkTxnAddingSpendInvariant` are not yet well supported, but are planned for future releases.
   - Data policy/named delegate: `mkTxnAddingNamedDelegate`, `mkTxnQueuingDelegateChange` + `mkTxnCommittingPendingChanges` (queue/commit pattern for manifest DgDataPolicy entries).  DEPRECATED; use DelegatedDataContract subclasses instead. 
+  - DelegatedDataContract: 
+      - `setupCapoPolicy` - triggered automatically by the upgrade sequence, it 
+     -Capo's `mkTxnInstallingPolicyDelegate`, `mkTxnAddManifestEntry`, `mkTxnQueuingDelegateChange`, `mkTxnCommittingPendingChanges` are used to install/update/queue/commit data-policy delegates.  
+
+  - commitPendingChangesIfNeeded
 - Delegated data:
-  - Controller (DelegatedDataContract) provides `txnCreatingRecord` / `txnUpdatingRecord` wrappers using delegate activities; Capo helpers locate UTxOs via manifest/id.  These methods are typically called by the controller's own activities, but can also be called directly by the application layer for more complex use cases.
-  - Settings: treated the same as any delegated data-type, plus the manifest `currentSettings` pointing to settings controller.
-- Ref scripts: `mkTxnMkAddlRefScriptTxn` stores ref scripts at Capo; `txnAttachScriptOrRefScript` prefers ref, falls back to inline script.
+  - Settings: delegated-data type referenced by manifest `currentSettings`.
+- Ref scripts: `mkTxnMkAddlRefScriptTxn` stores ref scripts at Capo; `txnAttachScriptOrRefScript` prefers ref, falls back to using inline (but this will usually fail due to transaction size limits).
 
 ## Helpers & patterns
 - `txcWithSeedUtxo` / `txnMustGetSeedUtxo`: select seed input for UUT minting.
@@ -38,6 +70,8 @@
 - Capo exposes `activity` (via bridge) for `usingAuthority`, `updatingCharter`, delegate lifecycle helpers.  Use of these activities are typically taken care of by other methods in the Capo calss.
 - Minter exposes `activityMintingCharter`, `mintWithDelegateAuthorizing`, `addingMintInvariant`, `addingSpendInvariant`, force replacements.
 - DelegatedDataContract exposes `activityCreatingRecord`/`UpdatingRecord` per controller (e.g., ReqtsController), and each controller class may have other activities for creating or updating its records for specific use-cases.  `mkTxn*` methods in the controller class commonly are used for triggering these activities, while providing purpose-specific interface ("dAPI") that applications can trigger in the equivalent user-facing scenarios.  The basic mkTxnCreateRecord() and mkTxnUpdateRecord() methods can also be fed with specific activity objects when their basic `DgDataCreationOptions<TLike>` are good for the use-case at hand.
+
+## Data Management Lifecycle
 
 ## Basic tx building patterns
 ### Typical tx build (general pattern)

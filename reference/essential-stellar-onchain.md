@@ -1,6 +1,7 @@
 # Stellar on-chain essentials
 
 ## Capo validator (leader)
+- Sources: `src/Capo.ts`, `src/CapoHelpers.hl`, `src/delegation/CapoDelegateHelpers.hl`, `src/minting/CapoMinter.ts`.
 - Purpose: treasury/data hub locked by Capo script; owns charter token; coordinates delegates.
 - Parameters: `mph` (minting policy hash), seed txn/id, feature flags (off-chain), optional precompiled bundle.
 - Core datum `CapoDatum`:
@@ -18,15 +19,16 @@
   - optional invariants (mint/spend)
   - named delegates and data policies (manifest entries)
 - Minting charter seeds the `capoGov`, `mintDgt`, `spendDgt` UUTs (and others as needed) and installs links in CharterData.
-- Delegate links: `RelativeDelegateLink{ uutName, delegateValidatorHash?, config bytes }`; on-chain matches UUT + optional ref script.
-- Manifest entries (in CharterData) point to delegate/data-policy tokens.  Those UUTs are stored in each delegate-script's address with its `isDelegation` Datum variant.
+- Delegate links: `RelativeDelegateLink{ uutName, delegateValidatorHash?, config bytes }`; on-chain matches UUT + optional ref script; see `src/delegation/CapoDelegateHelpers.hl`.
+- Manifest entries (in CharterData) point to delegate/data-policy tokens. Those UUTs live at each delegate-script address with its `IsDelegation` datum variant (`CapoDelegateHelpers`).
 
 ## Manifest (CapoHelpers)
-- `CapoManifestEntry{ entryType, tokenName, mph? }`
+- `CapoManifestEntry{ entryType, tokenName, mph? }` (`src/CapoHelpers.hl`)
 - `ManifestEntryType`:
   - `NamedTokenRef` (generic)
   - `DgDataPolicy{policyLink,idPrefix,refCount}` for delegated data controllers
   - `DelegateThreads{role,refCount}` thread tokens
+  - `MerkleMembership` / `MerkleStateRoot` (placeholders)
 - Used to locate settings/data refs and delegate thread tokens; defaults mph=Capo mph.
 
 ## Charter lifecycle
@@ -48,8 +50,8 @@
 - Manifest-driven lookup for settings/current records (e.g., `currentSettings` entry → settings controller).
 
 ## Cross-links
-- Off-chain API & txn building: `reference/essential-stellar-offchain.md`
-- Capo helpers details: `reference/essential-capo-helpers.md`
+- Capo helpers and delegate helpers: `reference/essential-capo-helpers.md`
+- Off-chain building: `reference/essential-stellar-offchain.md`
 - Architecture overview: `reference/essential-stellar-dapp-architecture.md`
 - Kickstart steps: `reference/essential-stellar-dapp-kickstart.md`
 
