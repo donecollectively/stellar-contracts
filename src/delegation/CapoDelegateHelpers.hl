@@ -485,7 +485,7 @@ enum BASE_DELEGATE_Datum {
         dd: DelegationDetail
     }
     // same variant-index and structure as Capo's DelegatedData
-    capoStoredData {
+    2: capoStoredData {
         data: AnyData
         version: Int
         otherDetails: Data 
@@ -599,7 +599,7 @@ enum SomeDelegateDatum[T] {
         dd: DelegationDetail
     }
     // same variant-index as Capo's DelegatedData
-    capoStoredData {
+    2: capoStoredData {
         data: T
         version: Int
         otherDetails: Data 

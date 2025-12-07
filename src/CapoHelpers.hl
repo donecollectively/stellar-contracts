@@ -223,7 +223,7 @@ enum CapoDatum {
     // }
 
     // same variant-index as delegate's capoStoredData:
-    DelegatedData {  // the Capo redirects control of these to the spend delegate
+    2: DelegatedData {  // the Capo redirects control of these to the spend delegate
         data: Map[String]Data // matches pattern of AnyData + other fields // the spend delegate may redirect control further, depending on what it sees in there
         version: Int // for CIP-68 compatibility
         otherDetails: Data // abstract additional info
@@ -1463,7 +1463,7 @@ struct CapoCtx {
         if (required || result.input.switch {Some => true, None => false}) {
             logGroupEnd("✅ dgData policy found: "+typeName)
         } else {
-            logGroupEnd("✅ dgData policy found: "+typeName)
+            logGroupEnd("  <- false: policy not found: "+typeName)
         }
         result
     }

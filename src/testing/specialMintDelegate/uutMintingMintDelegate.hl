@@ -105,7 +105,7 @@ enum DelegateDatum {
     }
     TagOnlyDatum
     // same variant-index as Capo's DelegatedData
-    capoStoredData {
+    2: capoStoredData {
         data: AnyData
         version: Int
         otherDetails: Data 
