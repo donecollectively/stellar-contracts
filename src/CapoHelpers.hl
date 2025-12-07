@@ -4,7 +4,6 @@ import {
     mkTv,
     tvCharter,
     mustFindInputRedeemer,
-    outputAndDatum,
     fromCip68Wrapper,
     AnyData,
     REQT,
@@ -1432,13 +1431,13 @@ struct CapoCtx {
     ) -> DelegateInput {
         if (required) {
             if (message.encode_utf8().length > 0) {
-                REQTgroupStart(reqt:message, collapsed: true);
+                REQTgroupStart(reqt:message + " (requiresDgDataPolicyInput)", collapsed: true);
             } else {
                 REQTgroupStart(reqt: "MUST find the policy for record-type "+typeName, collapsed: true);
             }
         } else {
             if (message.encode_utf8().length > 0) {
-                logGroupStart(group: message, collapsed: false);
+                logGroupStart(group: message + " (requiresDgDataPolicyInput/optional)", collapsed: false);
             } else {
                 logGroupStart(group: "trying to find the policy for record-type "+typeName, collapsed: false);
             }

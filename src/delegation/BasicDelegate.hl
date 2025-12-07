@@ -46,7 +46,6 @@ import {
 
 import {
     fromCip68Wrapper,
-    outputAndDatum,
     returnsValueToScript,
     TODO,
     REQT,

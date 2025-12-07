@@ -232,32 +232,6 @@ struct outputAndDatum[T] {
     rawData: Data
 }
 
-func getSingleAssetValue(input: TxInput) -> Value{
-    inputMap : Map[MintingPolicyHash]Map[ByteArray]Int = input.value.get_assets().to_map();
-    assert( inputMap.length == 1, 
-        "multiple assets"
-        // "getSingleAssetValue needs single-asset input"
-    );
-
-    inputTokens : Map[ByteArray]Int = inputMap.head_value;
-    assert(inputTokens.length == 1, 
-        "multiple tokens"
-        // "getSingleAssetValue needs single-token input"
-    );
-
-    input.value.get_assets()
-}
-
-// func outputDatum[T](newTxo : TxOutput) -> T {
-//     T::from_data(newTxo.datum.inline)
-// }
-
-func getOutputForInput(input: TxInput) -> TxOutput {
-    inputValue : Value = getSingleAssetValue(input);
-
-    getOutputWithValue(inputValue)
-}
-
 //! retrieves the redeemer for a specific input
 func mustFindInputRedeemer(
     txInput: TxInput    
