@@ -398,14 +398,14 @@ enum CapoActivity {
     }
     usingAuthority // variant 1
     retiringRefScript // variant 2
-    addingSpendInvariant // variant 3
+    addingSpendInvariant // deprecated variant 3, replaced by capoLifecycleActivity
     spendingDelegatedDatum // variant 4
 
     // // possibly move this into CapoLifecycleActivity:
     // updatingManifest { // variant 5 always delegated to spendDgt
     //     activity: ManifestActivity
     // }
-    updatingCharter // deprecated variant 5
+    updatingCharter // deprecated variant 5, replaced by capoLifecycleActivity
 }
 
 func getRefCharterUtxo(mph : MintingPolicyHash) -> TxInput {
