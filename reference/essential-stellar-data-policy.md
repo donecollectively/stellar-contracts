@@ -13,6 +13,7 @@ Use this as a focused guide for authoring data-policy delegates (Helios scripts)
 - Implement `additionalDelegateValidation(priorIsDelegationDatum, capoCtx)`:
   - Called once per activity (and per nested item inside MultipleDelegateActivities).
   - Not called for Creating/Updating/DeletingDelegatedData (handled by mint/spend delegates).
+  - The basic delegate already rejects changes to the CIP-68 `@id` and `tpe` fields (see `mustOutputDelegatedData` in `CapoCtx`), so you should not re-validate or attempt to mutate them; tests should focus on your domain fields and value/authority checks instead.
   - Use capoCtx + DgDataDetails to read input/output data, enforce token/value shapes, and apply your business rules.
 
 ## Step-by-step: creating a data-policy script

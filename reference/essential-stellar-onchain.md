@@ -189,7 +189,7 @@ See essential-capo-lifecycle.md for more details about the charter lifecycle and
 - Governance delegate (authority policy) validates admin actions (updates, delegate installs).
 - Mint delegate validates mint/burn (except force paths for invariants/forced replacement).
 - Spend delegate validates spending of delegated data and manifest changes; may chain to data-policy delegates.
-- Data-policy delegates (DelegatedDataContract on-chain) validate creation/update of specific record types; identified by manifest entry and UUT idPrefix. Implement policy-specific activity handling in `additionalDelegateValidation`; see `reference/essential-stellar-internals.md` for the full helper patterns and `reference/essential-stellar-dapp-architecture.md` for high-level guidance.
+- Data-policy delegates (DelegatedDataContract on-chain) validate creation/update of specific record types; identified by manifest entry and UUT idPrefix. Implement policy-specific activity handling in `additionalDelegateValidation`; see `reference/essential-stellar-internals.md` for the full helper patterns and `reference/essential-stellar-dapp-architecture.md` for high-level guidance. The basic delegate already enforces CIP-68 invariants for `@id` and `tpe` (e.g., `CapoCtx.mustOutputDelegatedData`), so policies and tests should not waste effort re-checking or mutating those fields—focus on your domain fields and value/authority rules instead.
 
 ## Common on-chain checks (CapoHelpers / delegates)
 - Charter token presence/return.
