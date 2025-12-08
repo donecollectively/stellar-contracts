@@ -16,6 +16,25 @@ For dApp teams who already write basic Typescript, this guide shows how to test 
   - `YourCapoTestHelper` (app-specific on-chain flows): add scenario shortcuts like “propose first record”, “adopt first record”, “find first adopted record.”
 - Use `vi.spyOn` to intercept delegate/controller methods for negative-path tests (see examples in boilerplate/).
 
+## Helper conventions you should mirror (from production helpers)
+- **Snapshot decorator pattern:** annotate snapshot entrypoints with `@CapoTestHelper.hasNamedSnapshot("snapName", "actorName")`. The decorated method should be a thin wrapper that immediately delegates to the underlying builder (and often throws if called directly); snapshot reuse is handled via helper state.
+- **Snapshot naming:** `snapToX` for entrypoints that may be reused; corresponding builders are imperative verbs like `proposeX`, `adoptX`, `changingX`, etc. Chain snapshots in order of dependency (e.g., `snapToFirstOrderPending` calls `snapToFirstRegisteredCustomer`).
+- **Snapshot builder method naming**: the builder method MUST ALWAYS be based on the snapToFoo method name, without `snapTo` prefix.  For example, the builder method for `snapToFirstOrderPending` MUST be `proposeFirstOrder()` or it WILL NOT WORK.  
+ - **Snapshot method body**: The body of the snapToFoo method will never be called.  Always implement it with a helpful error message and an unreachable call to the method that actually gets called automatically by the decorator.      
+    ```typescript
+    async snapToFoo() {
+        throw new Error("never called; see foo()");
+        return this.firstMember();
+    }
+    ```
+
+- **Helper state:** keep `helperState.snapshots` and `helperState.namedRecords` (string ids captured from tx contexts). Use predictable record keys like `"firstRegisteredCustomer"`, `"firstPendingOrder"`, etc.
+- **Capture ids:** centralize id capture in a helper such as `captureRecordId({recordName, submit?, expectError?, uutName?}, tcxPromise)` which reads `tcx.state.uuts[uutName]`, stores it in `helperState.namedRecords[recordName]`, and optionally submits via `submitTxnWithBlock`.
+- **Controller calls:** use controller methods that build transactions (`mkTxnPropose...`, `mkTxnAdopting...`, `mkTxnUpdate...`) and feed them through `captureRecordId` to bind names to record ids. Use controller sample data helpers (e.g., `sampleProposed...`) to populate txns.
+- **Submit helpers:** prefer a single submitter (e.g., `submitTxnWithBlock(tcx, { expectError })`) instead of ad-hoc `submitTx`. Pass `expectError` for negative paths.
+- **Actor handoff:** snapshots ALWAYS set the actor explicitly (`setActor("marissa")`) because snapshots are bound to the actors that initiate their transaction sequences.  The sequence MAY then swap to a different actor as part of the snapshot setup. This ensures test scenarios are deterministic even when when skipping to the result of a snapshot.
+- **Naming for chained flows:** use sequence names that mirror the workflow / state-machine names (e.g. "initialize" → "activate" → "retire" or "ordered", "out for delivery", "delivered", "paymentConfirmed") sequences with consistent recordName keys and snapshot names, so tests can hop into any stage deterministically.
+
 ## Testing off-chain classes
 Use DefaultCapoTestHelper and build transactions with the same code paths your UI would call.
 1) Arrange: set up context in `beforeEach` with `addTestContext(context, DefaultCapoTestHelper)`.
@@ -48,6 +67,15 @@ Key example patterns to mirror in your app:
 ## Boilerplate you can copy
 - `boilerplate/testing/basic-offchain.test.ts`: starter Vitest file wired to `DefaultCapoTestHelper` with one passing check; remove `describe.skip` when ready.
 - `boilerplate/testing/policy-flow.test.ts`: skeleton for a delegated-data/policy-flow test showing how to stub controller validation and assert failures before enabling the happy path.
+
+## Critical practices
+- Use `await h.reusableBootstrap()` to bootstrap the chain and leave it in a ready state for the test.  This is much faster than `await h.bootstrap()` and can be used in every test that includes any onchain functionality.
+    ```typescript
+    const { h } = context;
+    await h.reusableBootstrap();
+    ```
+    If you need a different snapshot, you can then call its `snapToFoo()` method on the helper. For example, if you need to test the "activate" state, you can call `await h.snapToActivate()` after the bootstrap.
+- Define and use snapshot methods in the test helper to prepare a predefined state that directly connects the bootstrap state to specific test scenarios.  The test helpers will re-use the snapshots via the `snapTo‹SnapshotName›()` method.  See `reference/boilerplate/testing/basic-offchain.test.ts` and `reference/boilerplate/testing/policy-flow.test.ts`  and `reference/boilerplate/testHelper.ts` for examples.
 
 ## Tips and pitfalls
 - Prefer `await h.bootstrap()` when you need to test onchain functionality.  `initialize()` is faster and good for testing off-chain-only code, but it can't check any onchain policies.
