@@ -1,6 +1,6 @@
 # Stellar testing essentials
 
-For dApp teams who already write basic Typescript, this guide shows how to test both off-chain classes and on-chain policy scripts in stellar-contracts (and sibling dApps like s3gov). It assumes you have pnpm, Node 20+, and can run Vitest.
+For dApp teams who already write basic Typescript, this guide shows how to test both off-chain classes and on-chain policy scripts in stellar-contracts (and sibling dApps). It assumes you have pnpm, Node 20+, and can run Vitest.
 
 ## Quick setup
 - Install deps: `pnpm install`
@@ -13,8 +13,8 @@ For dApp teams who already write basic Typescript, this guide shows how to test 
 - Helpers expose wallets (`context.h.actors`), a Capo instance, `network`, `mkTcx()` for transaction contexts, and scenario helpers (e.g., `initialize`, `bootstrap`, `setActor`, `submitTx`, `network.tick`).
 - Common helpers:
   - `DefaultCapoTestHelper` (stellar-contracts): fast local net with tina/tom/tracy wallets, Capo bootstrap, UUT utilities.
-  - `S3CapoTestHelper` (s3gov onchain): adds flows like `snapToProposeFirstDriver`, `adoptFirstDriver`, `findFirstAdoptedDomain`.
-- Use `vi.spyOn` to intercept delegate/controller methods for negative-path tests (see s3gov examples).
+  - `YourCapoTestHelper` (app-specific on-chain flows): add scenario shortcuts like “propose first record”, “adopt first record”, “find first adopted record.”
+- Use `vi.spyOn` to intercept delegate/controller methods for negative-path tests (see examples in boilerplate/).
 
 ## Testing off-chain classes
 Use DefaultCapoTestHelper and build transactions with the same code paths your UI would call.
@@ -24,30 +24,32 @@ Use DefaultCapoTestHelper and build transactions with the same code paths your U
 4) Assert: check balances/utxos (`await wallet.utxos`), mph/token names, or rejected promises (`await expect(fn).rejects.toThrow(/pattern/)`).
 
 
-## Testing on-chain policy scripts (s3gov)
-These are integration-style tests that drive the same off-chain controllers but assert on policy outcomes and delegated data. Use S3CapoTestHelper.
-1) Context: `beforeEach` uses `addTestContext(context, S3CapoTestHelper, undefined, helperState)`.
-2) Scenario helpers set chain state fast: `snapToProposeFirstDriver`, `snapToAdoptFirstDomainAgreement`, `mockMemberToken`, `participantSelfRegisters`.
-3) Build & submit via helper methods: `h.adoptFirstDriver()`, `h.adoptDriverUpdate(...)`, `h.proposeFirstDomainAgreement({...})`.
-4) Assert: locate records via helpers (`findFirstAdoptedDriver`, `findFirstProposedAgreement`), inspect datums (`details.ChangePendingV1`), and expect failures when missing authority tokens or approvals.
-5) Negative-paths: spy on controller/delegate methods to simulate tampering (`vi.spyOn(controller, "mkTxnUpdateRecord")`) and assert thrown errors.
+## Testing on-chain policy scripts
+These are integration-style tests that drive the same off-chain controllers but assert on policy outcomes and delegated data. Use your app-specific helper (e.g., `YourCapoTestHelper`).
+1) Context: `beforeEach` uses `addTestContext(context, YourCapoTestHelper, undefined, helperState)`.
+2) Scenario helpers set chain state fast: include flows like “propose first record,” “adopt first record,” “mock member token,” or “participant self-registers.”
+3) Build & submit via helper methods (e.g., `h.adoptFirstRecord()`, `h.adoptRecordUpdate(...)`, `h.proposeFirstDomain({...})`).
+4) Assert: locate records via helpers, inspect datums (e.g., `details.ChangePendingV1`), and expect failures when missing authority tokens or approvals.
+5) Negative-paths: spy on controller/delegate methods to simulate problem cases by bypassing the normal setup (`vi.spyOn(controller, "mkTxnUpdateRecord")`) and assert thrown errors - usually, in the on-chain transactions that don't comply with the policy's rules.
 
-Key examples:
-- Driver lifecycle: `onchain/src/Driver/Driver.test.ts` (approval required, member-only, data matching).
-- Agreement/domain lifecycle: `onchain/src/Agreement/Agreement.test.ts` (consent checks, data integrity, authority requirements).
-- OtherData end-to-end: `onchain/src/S3OtherData/OtherData.test.ts` (propose/adopt driver, update driver, propose domain, authority enforcement).
+Key example patterns to mirror in your app:
+- Use state machines (in an on-chain enum) to control workflow and lifecycle of a policy-controlled record (e.g. Pending → Active → Retired).
+- Update flow that requires consent/authority plus data integrity checks.
+- Full-lifecycle testing: exercise each state and constraint with negative tests.
+- Negative tests should be present to verify each constraint, demonstrating the transaction failure with clear error messages.
+- Not typically necessary to do granular testing of separate field changes in a positive test; a single test that changes all fields at once is usually sufficient.
 
 ## Create your own test helper
 - Derive from `DefaultCapoTestHelper` to embed your Capo subclass and any app-specific controllers.
-- Provide scenario shortcuts that leave the chain in a ready state (e.g., “bootstrap + propose first record”), so tests stay short and expressive.  See `reference/boilerplate/testing/basic-offchain.test.ts` and `reference/boilerplate/testing/policy-flow.test.ts` for examples.
-- Expose fixtures such as `exampleData()` from your controllers to compare against adopted datums.
+- Provide scenario shortcuts that leave the chain in a ready state (e.g., “bootstrap + propose first record”), so tests stay short and expressive. 
+- Reuse fixtures such as `exampleData()` from your controllers to compare against adopted datums.  If you need to check other scenarios, you can use YourPolicyDataLike type (same type as exampleData() returns) to define other policy-specific fixtures, or you can patch exampleData() to return the desired data for the test.
 
 ## Boilerplate you can copy
 - `boilerplate/testing/basic-offchain.test.ts`: starter Vitest file wired to `DefaultCapoTestHelper` with one passing check; remove `describe.skip` when ready.
 - `boilerplate/testing/policy-flow.test.ts`: skeleton for a delegated-data/policy-flow test showing how to stub controller validation and assert failures before enabling the happy path.
 
 ## Tips and pitfalls
-- Prefer `await h.bootstrap()` when you need to test onchain functionality.  `initialize()` is faster and good for testing off-chain-only code, but it can't check any onchain policies
+- Prefer `await h.bootstrap()` when you need to test onchain functionality.  `initialize()` is faster and good for testing off-chain-only code, but it can't check any onchain policies.
 - Use `h.setActor("<name>")` to impersonate wallets; `findSufficientActorUtxos` and `mustFindActorUtxo` handle tcx exclusions for you.
 - For rejection cases, assert on the specific regex the policy emits; many helpers throw descriptive errors (e.g., “missing required…capoGov-”).
 - When debugging, `dumpAny` is available; `h.network.tick(n)` advances slots when the timing of transactions is important for your smart-contract policies.
