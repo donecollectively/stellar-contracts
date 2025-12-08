@@ -1,9 +1,9 @@
 # Stellar testing essentials
 
-For dApp teams who already write basic Typescript, this guide shows how to test both off-chain classes and on-chain policy scripts in stellar-contracts (and sibling dApps). It assumes you have pnpm, Node 20+, and can run Vitest.
+For dApp teams who already write basic Typescript, this guide shows how to test both off-chain classes and on-chain policy scripts in their own stellar-based dApps. It assumes you have pnpm, Node 20+, and can run Vitest.
 
 ## Quick setup
-- Install deps: `pnpm install`
+- Install deps: `pnpm add -D vitest`
 - Run all tests: `pnpm test` (or `pnpm testing` for watch). Smoke subset: `SMOKE=1 pnpm test`
 - Node flags: Vitest already configured; no extra ts-node flags needed.
 
@@ -38,6 +38,7 @@ Key example patterns to mirror in your app:
 - Full-lifecycle testing: exercise each state and constraint with negative tests.
 - Negative tests should be present to verify each constraint, demonstrating the transaction failure with clear error messages.
 - Not typically necessary to do granular testing of separate field changes in a positive test; a single test that changes all fields at once is usually sufficient.
+- Make tests for your data-controller/policy right next to its code, making them easily found and portable when refactoring.
 
 ## Create your own test helper
 - Derive from `DefaultCapoTestHelper` to embed your Capo subclass and any app-specific controllers.
