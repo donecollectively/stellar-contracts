@@ -76,11 +76,11 @@ export class TxSubmissionTracker extends StateMachine<
         this.txSubmitters = {};
 
         if (!txd.tx) {
-            this.log("📥 registered txn still being built");
-            if (!txd.tcx) {
-                throw new Error(`a tx stil being built should have a tcx callback or object in its txd.tcx`);
+            this.log("📥 registered txn still being built", txd);
+            if (!txd.tcx && !txd.mkTcx) {
+                throw new Error(`a tx stil being built should have a mkTcx callback or tcx object in its txd`);
             }
-            if (txd.tcx._builtTx) {
+            if (txd.tcx?._builtTx) {
                 throw new Error(`this tx description has a tcx already built; its \`tx\` attribute should reflect it`);
             }
         } else if (txd.tx) {            
