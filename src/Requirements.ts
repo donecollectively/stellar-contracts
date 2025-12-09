@@ -5,6 +5,7 @@ const notInherited = {
 };
 export type noInheritedReqts = typeof notInherited;
 
+type versionString = string
 /**
  * Documents one specific requirement
  * @remarks
@@ -29,6 +30,7 @@ export type RequirementEntry<
     purpose: string;
     details: string[];
     mech: string[];
+    deltas?: Record<versionString, string[]>;
     impl?: string; // todo: constrained to method names of the object meeting the requirements
 
     // excludes the requirement from being referenced as its own dependendcy
