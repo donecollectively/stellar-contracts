@@ -1092,16 +1092,6 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
         return makeInlineTxOutputDatum(uplc);
     }
 
-/**
- * (property getter): InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.TagOnlyDatum"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
- */
-    get TagOnlyDatum() {
-        const uplc = this.mkUplcData({ TagOnlyDatum: {} }, 
-            "uutMintingDelegate::DelegateDatum.TagOnlyDatum");
-        return makeInlineTxOutputDatum(uplc);
-    } /* tagOnly variant accessor */
-
     /**
      * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.capoStoredData"***
      * @remarks - ***DelegateDatum$capoStoredDataLike*** is the same as the expanded field-types.
@@ -1116,6 +1106,16 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
         }, "uutMintingDelegate::DelegateDatum.capoStoredData");
         return makeInlineTxOutputDatum(uplc);
     } /*multiFieldVariant enum accessor*/
+
+/**
+ * (property getter): InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.TagOnlyDatum"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
+ */
+    get TagOnlyDatum() {
+        const uplc = this.mkUplcData({ TagOnlyDatum: {} }, 
+            "uutMintingDelegate::DelegateDatum.TagOnlyDatum");
+        return makeInlineTxOutputDatum(uplc);
+    } /* tagOnly variant accessor */
 
     /**
      * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.SingleDataElement"***
@@ -3813,13 +3813,6 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 2,
-            "id": "__module__uutMintingDelegate__DelegateDatum[]__TagOnlyDatum",
-            "name": "TagOnlyDatum",
-            "fieldTypes": []
-        },
-        {
-            "kind": "variant",
-            "tag": 3,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__capoStoredData",
             "name": "capoStoredData",
             "fieldTypes": [
@@ -3865,6 +3858,13 @@ export const DelegateDatumSchema : EnumTypeSchema = {
                     }
                 }
             ]
+        },
+        {
+            "kind": "variant",
+            "tag": 3,
+            "id": "__module__uutMintingDelegate__DelegateDatum[]__TagOnlyDatum",
+            "name": "TagOnlyDatum",
+            "fieldTypes": []
         },
         {
             "kind": "variant",

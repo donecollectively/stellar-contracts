@@ -527,12 +527,12 @@ export interface DelegateDatum$MultiFieldNestedThingsLike {
             "Constr#1", "singletonField", /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetail   , "noSpecialFlags"
         >,
-        TagOnlyDatum: singleEnumVariantMeta<DelegateDatumMeta, "TagOnlyDatum",
-            "Constr#2", "tagOnly", tagOnly, "noSpecialFlags"
-        >,
         capoStoredData: singleEnumVariantMeta<DelegateDatumMeta, "capoStoredData",
-            "Constr#3", 
+            "Constr#2", 
             "fields", DelegateDatum$capoStoredData, "noSpecialFlags"
+        >,
+        TagOnlyDatum: singleEnumVariantMeta<DelegateDatumMeta, "TagOnlyDatum",
+            "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         SingleDataElement: singleEnumVariantMeta<DelegateDatumMeta, "SingleDataElement",
             "Constr#4", "singletonField", /* implied wrapper { aString: ... } for singleVariantField */ 
@@ -572,8 +572,8 @@ export type DelegateDatum =
         | { Cip68RefToken: DelegateDatum$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetail    /*minEnumVariant*/ }
-        | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { capoStoredData: DelegateDatum$capoStoredData /*minEnumVariant*/ }
+        | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
         | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
@@ -594,8 +594,8 @@ export type ErgoDelegateDatum = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Ergo$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			ErgoDelegationDetail    /*minEnumVariant*/ }
-        | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { capoStoredData: DelegateDatum$Ergo$capoStoredData /*minEnumVariant*/ }
+        | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
         | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
@@ -624,8 +624,8 @@ export type DelegateDatumLike = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Cip68RefTokenLike /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetailLike    /*minEnumVariant*/ }
-        | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { capoStoredData: DelegateDatum$capoStoredDataLike /*minEnumVariant*/ }
+        | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
         | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
