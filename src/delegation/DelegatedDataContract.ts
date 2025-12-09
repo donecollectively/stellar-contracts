@@ -82,6 +82,23 @@ export type DelegatedDatumIdPrefix<
 > = TN;
 
 /**
+ * Context object passed to {@link DelegatedDataContract.beforeCreate | beforeCreate()} callback
+ * @public
+ */
+export type createContext<TLike> = {
+    activity: isActivity;
+};
+
+/**
+ * Context object passed to {@link DelegatedDataContract.beforeUpdate | beforeUpdate()} callback
+ * @public
+ */
+export type updateContext<T> = {
+    original: T;
+    activity: isActivity;
+};
+
+/**
  * DelegatedDataContract provides a base class for utility functions
  * to simplify implementation of delegate controllers.  They are used
  * to manage the creation and updating of records in a delegated data store,
@@ -367,7 +384,46 @@ export abstract class DelegatedDataContract<
         return {};
     }
 
-    beforeCreate(record: TLike): TLike {
+    /**
+     * Hook method called before creating a record, allowing the delegate to augment or normalize the record data.
+     * 
+     * @param record - The record being created (TLike - off-chain type)
+     * @param context - Context object containing the activity being triggered
+     * @returns The augmented/normalized record to be saved (TLike - off-chain type)
+     * 
+     * @remarks
+     * The delegate MAY provide a {@link beforeCreate | beforeCreate()} method to augment the record before it is created.
+     * This is called after merging defaults, id, and type, but before saving.
+     * 
+     * Typically these fixups are required to conform the submitted record to the on-chain
+     * policy's enforced requirements.
+     * 
+
+     * Implementers MUST return a patched record containing any modifications needed
+     */
+    beforeCreate(
+        record: TLike, context: createContext<TLike>): TLike {
+        return record;
+    }
+
+    /**
+     * Hook method called before updating a record, allowing the delegate to augment or normalize the record data.
+     * 
+     * @param existingRecord - The original record before updates (T - on-chain type)
+     * @param record - The merged record containing existing data plus updates (TLike - off-chain type)
+     * @param context - Context object containing the original record and the activity being triggered
+     * @returns The augmented/normalized record to be saved (TLike - off-chain type)
+     * 
+     * @remarks
+     * The delegate MAY provide a {@link beforeUpdate | beforeUpdate()} method to augment the record before it is updated.
+     * This is called after merging the existing record with the updated fields, but before saving.
+     * 
+     * Typically these fixups are required to conform the submitted record to the on-chain
+     * policy's enforced requirements.
+     * 
+     * Implementers MUST return a patched record containing any modifications needed
+     */
+    beforeUpdate(record: TLike, context: updateContext<T>): TLike {
         return record;
     }
 
@@ -424,13 +480,16 @@ export abstract class DelegatedDataContract<
         let newRecord: DgDataTypeLike<this> = typedData as any;
 
         const defaults = this.creationDefaultDetails() || {};
-        const fullRecord = this.beforeCreate({
-            // the type-name itself is sometimes const and fully type-safe, but sometimes is just stringy - but it's there
-            id: textToBytes(uut.toString()),
-            type: newType,
-            ...defaults,
-            ...newRecord,
-        } as DgDataTypeLike<this>);
+        const fullRecord = this.beforeCreate(
+            {
+                // the type-name itself is sometimes const and fully type-safe, but sometimes is just stringy - but it's there
+                id: textToBytes(uut.toString()),
+                type: newType,
+                ...defaults,
+                ...newRecord,
+            } as DgDataTypeLike<this>,
+            { activity }
+        );
 
         const newDatum = this.mkDatum.capoStoredData({
             // data: new Map(Object.entries(beforeSave(fullRecord) as any)),
@@ -478,6 +537,8 @@ export abstract class DelegatedDataContract<
      *   **or TODO support a multi-activity**
      *
      * The updatedRecord only needs to contain the fields that are being updated.
+     * 
+     * The delegate MAY provide a {@link beforeUpdate | beforeUpdate()} method to augment the record before it is updated.
      */
     async mkTxnUpdateRecord<TCX extends StellarTxnContext>(
         this: DelegatedDataContract<any, any>,
@@ -571,10 +632,18 @@ export abstract class DelegatedDataContract<
             updatedFields: updatedRecord,
         } = options;
 
-        const fullUpdatedRecord: TLike = {
-            ...(item.data as TLike),
-            ...updatedRecord,
-        };
+        const existingRecord = item.data as T;
+        const updatedRecordLike = {
+            ... item.data as TLike, 
+            ...updatedRecord
+        } 
+        const fullUpdatedRecord: TLike = this.beforeUpdate(
+            updatedRecordLike,
+            {
+                original: existingRecord,
+                activity,
+            }
+        );
 
         console.log(
             `🏒 updating ${recType} ->`,

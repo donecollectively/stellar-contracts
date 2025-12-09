@@ -178,6 +178,8 @@ export {
     type DgDataCreationOptions,
     type DgDataUpdateOptions,    
     DelegatedDataContract,
+    type createContext,
+    type updateContext,
 } from "./src/delegation/DelegatedDataContract.js";
 
 export {
