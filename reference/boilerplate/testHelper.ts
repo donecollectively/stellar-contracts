@@ -24,57 +24,70 @@ type OrderUuts = { recordId: string };
 
 export class PizzaTestHelper extends DefaultCapoTestHelper {
     // Snapshot decorators must wrap a thin wrapper (never called directly)
-    @CapoTestHelper.hasNamedSnapshot("firstRegisteredCustomer", "tina")
+    @CapoTestHelper.hasNamedSnapshot("firstRegisteredCustomer", "wally")
     async snapToFirstRegisteredCustomer() {
-        // never called; see firstRegisteredCustomer()
-        throw new Error("decorated snapshot wrapper; call registerFirstCustomer()");
+        throw new Error("never called; see registerFirstCustomer()");
+        return this.registerFirstCustomer();
     }
 
-    @CapoTestHelper.hasNamedSnapshot("firstOrderPending", "tina")
-    async snapToFirstOrderPending() {
-        throw new Error("decorated snapshot wrapper; call proposeFirstOrder()");
-    }
-
-    @CapoTestHelper.hasNamedSnapshot("firstOrderBaked", "tom")
-    async snapToFirstOrderBaked() {
-        throw new Error("decorated snapshot wrapper; call bakeFirstOrder()");
-    }
-
-    /**
+        /**
      * Register the first customer; stores record id via captureRecordId.
      */
-    async registerFirstCustomer(options: { submit?: boolean; expectError?: true } = {}) {
+    async firstRegisteredCustomer(options: { submit?: boolean; expectError?: true } = {}) {
+        // ^ note that the snapshot builder name MUST match with the
+        //   name of the snapshot-invocation method snapToFirstRegisteredCustomer!
+        //   (this note doesn't need to be used in your helpers)
         const { submit = true, expectError } = options;
         await this.bootstrap();
-        await this.setActor("tina"); // chef/owner
-        const tcx = this.mkCustomerTxn("tina");
+        await this.setActor("wally"); // a worker at the pizza store
+        const tcx = this.mkTxnCreateCustomer("carla");
+        this.helperState.snapshots["firstRegisteredCustomer"] = true;
         return this.captureRecordId({ recordName: "firstRegisteredCustomer", submit, expectError }, tcx);
     }
 
-    /**
-     * Propose first order; depends on registered customer snapshot.
-     */
-    async proposeFirstOrder(options: { submit?: boolean; expectError?: true } = {}) {
+
+    @CapoTestHelper.hasNamedSnapshot("firstOrderPending", "tina")
+    async snapToFirstPendingOrder() {
+        throw new Error("never called; see proposeFirstOrder()");
+        return this.proposeFirstOrder();
+    }
+
+    firstPendingOrder(options: { submit?: boolean; expectError?: true } = {}) {
         const { submit = true, expectError } = options;
+        await this.setActor("wally"); // a worker at the pizza store
         await this.snapToFirstRegisteredCustomer();
-        await this.setActor("tina"); // same actor to place order
-        const tcx = this.mkOrderTxn({ pie: "margherita", drink: "sparkling" });
-        return this.captureRecordId({ recordName: "firstPendingOrder", submit, expectError }, tcx);
+        await this.setActor("carla"); // the customer
+        const tcx = this.mkTxnCreateOrder({ pie: "margherita", drink: "sparkling" });
+        this.helperState.snapshots["firstOrderPending"] = true;
+        return this.captureRecordId({ 
+            recordName: "firstPendingOrder", submit, expectError }, 
+            tcx
+        );
+    }
+
+    @CapoTestHelper.hasNamedSnapshot("firstOrderBaked", "baker")
+    async snapToFirstOrderBaked() {
+        throw new Error("never called; see firstOrderBaked()");
+        return this.bakeFirstOrder();
     }
 
     /**
      * Bake/approve first order; chains from pending; switches actor.
      */
-    async bakeFirstOrder(options: { submit?: boolean; expectError?: true } = {}) {
+    async firstOrderBaked(options: { submit?: boolean; expectError?: true } = {}) {
         const { submit = true, expectError } = options;
-        await this.snapToFirstOrderPending();
-        await this.setActor("tom"); // baker/approver
+        await this.setActor("carla"); // a worker at the pizza store
+        await this.snapToFirstPendingOrder();
+        await this.setActor("bobby"); // baker
         const tcx = this.mkOrderUpdateTxn("firstPendingOrder", { status: "Baked" });
-        return this.captureRecordId({ recordName: "firstBakedOrder", submit, expectError }, tcx);
+
+        return this.captureRecordId({ 
+            recordName: "firstBakedOrder", submit, expectError 
+        }, tcx);
     }
 
     /**
-     * Centralized id capture, matching production helpers.
+     * Centralized id capture, matching production helpers (todo: build this into the basic capo test helper)
      */
     async captureRecordId<
         T extends StellarTxnContext<any> & { state: { uuts: OrderUuts } },
@@ -98,21 +111,22 @@ export class PizzaTestHelper extends DefaultCapoTestHelper {
     }
 
     // --- sample txn factories (replace with real controller calls) ---
-    mkCustomerTxn(name: string) {
+    mkTxnCreateCustomer(name: string) {
+        // txn-creating functions always start with mkTxn...
         const tcx = this.mkTcx();
         tcx.state.uuts = { recordId: `cust-${name}` };
         tcx.state.customer = { name };
         return tcx;
     }
 
-    mkOrderTxn(order: { pie: string; drink: string }) {
+    mkTxnCreateOrder(order: { pie: string; drink: string }) {
         const tcx = this.mkTcx();
         tcx.state.uuts = { recordId: `order-${order.pie}` };
         tcx.state.order = order;
         return tcx;
     }
 
-    mkOrderUpdateTxn(existingName: string, updated: Record<string, string>) {
+    mkTxnUpdateOrder(existingName: string, updated: Record<string, string>) {
         const tcx = this.mkTcx();
         const id = this.helperState.namedRecords[existingName];
         if (!id) throw new Error(`no named record ${existingName}`);

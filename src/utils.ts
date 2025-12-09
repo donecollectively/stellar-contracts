@@ -138,7 +138,7 @@ export function realDiv(a: number, b: number) {
  * @public
  */
 export function toFixedReal(n: number) {
-    return parseFloat((Math.floor(n * 1_000_000 + 0.1) / 1_000_000).toFixed(6));
+    return parseFloat((Math.floor(n * 1_000_000 + 0.49) / 1_000_000).toFixed(6));
 }
 /**
  * Temporarily enable debugRealMath for the duration of the callback
