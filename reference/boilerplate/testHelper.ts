@@ -15,14 +15,36 @@ import {
 
 import type { StellarTxnContext } from "@donecollectively/stellar-contracts";
 
-export const helperState: TestHelperState = {
+type addlState = {
+    namedRecords: Record<string, string>;
+};
+
+export const helperState: TestHelperState<PizzaCapo, addlState> = {
     snapshots: {},
     namedRecords: {},
-};
+} as any;
 
 type OrderUuts = { recordId: string };
 
-export class PizzaTestHelper extends DefaultCapoTestHelper {
+export type PizzaCapo_TC = StellarTestContext<PizzaCapoTestHelper> & {
+    helperState: typeof helperState;
+    snapshot(this: PizzaCapo_TC, snapName: string): void;
+    loadSnapshot(this: PizzaCapo_TC, snapName: string): void;
+    reusableBootstrap(this: PizzaCapo_TC): Promise<PizzaCapo>;
+};
+
+
+
+
+export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(
+    PizzaCapo,
+    {} as any as addlState,
+) {
+
+    getOrderController() {
+        return this.capo.getDgDataController("Order");
+    }
+
     // Snapshot decorators must wrap a thin wrapper (never called directly)
     @CapoTestHelper.hasNamedSnapshot("firstRegisteredCustomer", "wally")
     async snapToFirstRegisteredCustomer() {
