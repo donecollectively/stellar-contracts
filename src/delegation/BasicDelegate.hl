@@ -639,18 +639,18 @@ func checkOneActivity(
                             );
                             (
                                 seed: TxOutputId, 
-                                purpose: String,
-                                pendingActionIdPrefix: String
+                                purpose: String
+                                // pendingActionIdPrefix: String
                                 // uutName: String, 
                                 // dvh : Option[ValidatorHash], 
                                 // config : ByteArray
                             ) = action.switch { 
                                 Remove => error("unreachable"), 
-                                Add{seed, purpose, idPrefix} => {
-                                    (seed, purpose, idPrefix) 
+                                Add{seed, purpose, _idPrefix} => {
+                                    (seed, purpose)//, idPrefix) 
                                 },
-                                Replace{seed, purpose, idPrefix, _replacesDgt } => { 
-                                    (seed, purpose, idPrefix ) 
+                                Replace{seed, purpose, _idPrefix, _replacesDgt } => { 
+                                    (seed, purpose)//, idPrefix ) 
                                 }
                             };
 
@@ -717,7 +717,7 @@ func checkOneActivity(
                                         ));
 
                                         possibleExtraReplacementCheck = action.switch {
-                                            Replace => {
+                                            Replace{_seed, _purpose, idPrefixPending, _replacesDgt} => {
                                                 REQT("Replace: the queued change must match the idPrefix of the current delegate ");
                                                 TODO("VALIDATE this through a unit-test ^");
                                                 charterData.manifest.get_safe(newDgtRoleName).switch {
@@ -726,10 +726,10 @@ func checkOneActivity(
                                                         entryType.switch {
                                                             DgDataPolicy{_polLink, idPrefix, _refCount} => {
                                                                 REQT("expects the queued idPrefix to match the existing policy's idPrefix");
-                                                                print("   -- expected: " + idPrefix);
-                                                                print("   --   actual: "+pendingActionIdPrefix);
+                                                                // print("   -- expected: " + idPrefix);
+                                                                // print("   --   actual: "+pendingActionIdPrefix);
                                                                 assert(
-                                                                    idPrefix == pendingActionIdPrefix,
+                                                                    idPrefix == idPrefixPending,
                                                                     "idPrefix mismatch"
                                                                 )
                                                             },
