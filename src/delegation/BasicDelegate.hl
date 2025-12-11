@@ -289,6 +289,20 @@ func checkOneActivity(
                         callback: () -> Bool { activities.all( (rawActivity: Data) -> Bool {
                             a : DelegateActivity = DelegateActivity::from_data(rawActivity);
                             print("  -- spendDgt checking multi-activity");
+                            optimizedSwitch : Bool = if(true) { rawActivity.switch {
+                                ConstrData{index, _fields} => {
+                                    if (index == 6) {
+                                        assert(isSpendDelegate && cctx.nowActingAsSpendDgt(),
+                                            "UpdatingDelegatedData only ok at level-1 spendDgt"
+                                            // " ... a delegated-data-controller will use one of its SpendingActivities to govern capoStoredData's spend"
+                                        );
+                                        checkOneActivity(dgtionDatum, a, dd, cctx, "biz-logic for one record update")
+                                    } else {
+                                        error("invalid variant for nested multi-activity")
+                                    }
+                                }, 
+                                _ => error("impossible: not a ConstrData")                                
+                            } } else {
                             a.switch {
                                 // in the Mint and Spend delegates, these nested activities are expected re-delegate to delegated-data controllers,
                                 // which will use Mint/Spend/Burn activities on the data-controller tokens.
@@ -314,7 +328,8 @@ func checkOneActivity(
                                 CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
                                 MultipleDelegateActivities => error("multi:multi: nesting not ok"),
                                 _ => error("multi: non-spending activities are invalid for spendDgt")
-                            }
+                            } }
+                            optimizedSwitch
                         }
                     )});
                 
@@ -327,6 +342,18 @@ func checkOneActivity(
                         callback: () -> Bool { activities.all( (rawActivity: Data) -> Bool {
                             a : DelegateActivity = DelegateActivity::from_data(rawActivity);
 
+                            // optimization: unrolls the switch statement below:
+                            optimizedSwitch : Bool = if(true) { rawActivity.switch {
+                                ConstrData{index, _fields} => {
+                                    if (index == 6 || index == 5 /** || index == 7 */) {
+                                        checkOneActivity(dgtionDatum, a, dd, cctx, "biz-logic for one record create/update")
+                                    } else {
+                                        // abstract version of the more detailed messages below
+                                        error("invalid variant for nested multi-activity")
+                                    }
+                                }, 
+                                _ => error("impossible: not a ConstrData")                                
+                            } } else {
                             // WHEN this code is supporting a DgDataPolicy (with its own specializedDelegate module),
                             //   the multi-activity expects Minting/Spending/Burning activities, not *DelegatedData activities.
                             a.switch {
@@ -355,7 +382,8 @@ func checkOneActivity(
                                 CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
                                 MultipleDelegateActivities => error("multi:multi: nesting not ok")
                                 // _ => error("multi: invalid other activity for non-mint/spend delegate")
-                            }
+                            } }
+                            optimizedSwitch
                         })
                     })
                     };
