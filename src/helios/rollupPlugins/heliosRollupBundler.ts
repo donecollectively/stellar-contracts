@@ -1147,10 +1147,21 @@ export function heliosRollupBundler(
         if (!SomeBundleClass) return null;
 
         const resolvedDeployConfig = await this.resolve(deployDetailsFile, id);
+        const pathToDeployDetailsFile = path
+            .relative(
+                projectRoot,
+                path.join(
+                    path.dirname(id),
+                    deployDetailsFile.replace(/^\.\//, "")
+                )
+            )
+            .replace(/^\.\//, "");
 
         if (!resolvedDeployConfig) {
             this.warn(
-                `no ${networkId} setup for Capo bundle: ${deployDetailsFile}`
+                `WARNING: no ${networkId} setup for Capo bundle: ${id}\n` +
+                `  ... use this version to deploy a seeded configuration, \n`+
+                `  ... then copy the JSON config to ${pathToDeployDetailsFile} and rebuild ${projectRoot}`
             );
             if (SomeBundleClass.name == state.project.capoBundleName) {
                 state.project.configuredCapo.resolve(undefined);
