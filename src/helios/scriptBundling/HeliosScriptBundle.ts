@@ -1023,9 +1023,10 @@ export abstract class HeliosScriptBundle {
                 this.alreadyCompiledScript = uplcProgram;
                 const scriptHash = bytesToHex(uplcProgram.hash());
                 console.log(
-                    program.compileTime ||
-                        `compiled: ${new Date().getTime() - t}ms`,
-                    `-> ${scriptHash}`
+                    "timing (ms):",
+                        (program.compileTime ||
+                            `compiled: ${new Date().getTime() - t}ms`),
+                        `-> ${scriptHash}`
                 );
                 // if (globalThis.document) {
                 //     console.log({
