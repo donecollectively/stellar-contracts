@@ -392,9 +392,11 @@ func checkOneActivity(
                 },
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
-                DelegateLifecycleActivities{innerActivity} => innerActivity.switch {
+                DelegateLifecycleActivities{someDelegateLifecycleActivity} => {
+                    print(" 👁️  checking DelegateLifecycleActivities");
+                    someDelegateLifecycleActivity.switch {
                     // reassigning the authority token to a new minting delegate
-                    ReplacingMe{seed, purpose} => {
+                    ReplacingMe{seed, purpose} => if (isMintDelegate || isSpendDelegate) {
                         // should burn the old UUT, mint the new UUT, and update the Charter
                         // with the new mint authority
 
@@ -429,7 +431,8 @@ func checkOneActivity(
                         );
 
                         isMintingOk && isUpdatingCharter
-
+                    } else {
+                        error("ReplacingMe only ok on mint/spend delegate")
                     },
 
                     // the token is being burned, retiring the authority token for this minting delegate
@@ -479,8 +482,8 @@ func checkOneActivity(
                         );
                         false
                     }
-                },
-                CapoLifecycleActivities{dCLA} => {
+                } },
+                CapoLifecycleActivities{dCLA} => if (isMintDelegate || isSpendDelegate) {
                     REQT("... with any CapoLifecycle activity: ");
                     cctx = mkCapoCtx(dd.mph).
                         withCharterInput().
@@ -509,7 +512,7 @@ func checkOneActivity(
                             }
                         },
                         _ => error("this activity must match the capo's own CharterData activity")
-                    };
+                    }
 
                     // wantsRole : DelegateRole = CLA.switch {
                     //     forcingNewSpendDelegate => error("the forcingNewSpendDelegate escape-hatch activity is always handled directly by the Capo"),
@@ -572,7 +575,7 @@ func checkOneActivity(
                         // FOR APPLICATION-SPECIFIC PURPOSES. This can affect the structure of the Capo
                         // it defers to the specialized minting delegate, if any; the unspecialized mint delegate
                         // rejects all delegate-creation.
-                        CreatingDelegate{seed, purpose} => {
+                        CreatingDelegate{seed, purpose} => if (isMintDelegate) {
                             // print("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this\n");
                             // assert(false, "obsolete CLA::CreatingDelegate?");
                             TODO("XXX it should output the new delegate token to the Capo as a PendingDelegate datum");
@@ -613,7 +616,7 @@ func checkOneActivity(
                                 },
                                 _ => error("unreachable wrong role for CreatingDelegate")
                             }
-                        },
+                        } else { error("CreatingDelegate only ok on mint delegate") },
 
                         queuePendingChange => {
                             REQT("... for the addingPendingDgt activity:");
@@ -1207,6 +1210,8 @@ func checkOneActivity(
                         print("BasicDelegate harness deferring to specialization for CapoLifecycleActivities\n");
                         true
                     } else { false }
+                } else {
+                    error("CapoLifecycleActivities only ok on mint/spend delegate")
                 },
 
                 // NOTE: this is a mint delegate activity on the mintDgt-* token,
