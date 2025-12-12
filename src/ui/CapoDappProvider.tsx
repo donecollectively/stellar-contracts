@@ -893,7 +893,7 @@ export class CapoDAppProvider<
                 "capoAutoConnectWalletName"
             );
             if (autoWallet) {
-                await this.newWalletSelected(autoWallet, false);
+                await this.newWalletSelected(autoWallet, true);
             }
         }
 
