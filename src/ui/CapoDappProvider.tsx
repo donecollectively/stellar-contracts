@@ -1349,6 +1349,17 @@ export class CapoDAppProvider<
                     walletUtxos,
                 }
             );
+        }, async (e: any) => {
+            await this.updateStatus(
+                "error finding wallet utxos.  If this is a new wallet, you may need to send some funds",
+                {
+                    isError: true,
+                    developerGuidance: "status message for the user",
+                    keepOnscreen: true,
+                },
+                "//error finding wallet utxos"
+            );
+            throw e;
         });
 
         if (
