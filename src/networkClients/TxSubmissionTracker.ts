@@ -327,6 +327,7 @@ export class TxSubmissionTracker extends StateMachine<
             ...noTransitionsExcept,
             confirming: { to: "confirming" },
             failed: { to: "failed" },
+            submitting: { to: "submitting" },
         },
         [`confirming`]: {
             ...noTransitionsExcept,
