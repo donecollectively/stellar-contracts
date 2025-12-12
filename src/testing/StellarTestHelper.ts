@@ -285,7 +285,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         const origMaxTxSize = preProdParams.maxTxSize;
         //@ts-expect-error on our synthetic property
         preProdParams.origMaxTxSize = origMaxTxSize;
-        const maxTxSize = Math.floor(origMaxTxSize * 5);
+//        const maxTxSize = Math.floor(origMaxTxSize * 6.5);
+        const maxTxSize = Math.floor(origMaxTxSize * 5.0);
         console.log(
             "test env: 🔧🔧🔧 fixup max tx size",
             origMaxTxSize,
