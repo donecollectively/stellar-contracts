@@ -255,8 +255,8 @@ export abstract class HeliosScriptBundle {
             if (params) {
                 this.configuredParams = {
                     ...params,
-                    ...this.params
-                }
+                    ...this.params,
+                };
             } else {
                 if (!specialOriginatorLabel) {
                     debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
@@ -995,13 +995,12 @@ export abstract class HeliosScriptBundle {
                 )
             )
         );
-        console.log(
-            new Error(
-                `(special originator ${
-                    this.setupDetails.specialOriginatorLabel || "‹unknown›"
-                } where?)`
-            ).stack
-        );
+        if (!this.setupDetails.specialOriginatorLabel) {
+            console.log(
+                `(special originator ‹unknown› - where?)` +
+                    (new Error("").stack?.split("\n").slice(1).join("\n") || "")
+            );
+        }
 
         return program
             .compileWithCache({
