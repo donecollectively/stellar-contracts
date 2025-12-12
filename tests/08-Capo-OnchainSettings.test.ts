@@ -165,9 +165,9 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
             })) as BadSettingsController;
 
             const update = await settingsController.mkTxnUpdateRecord(
-                "updates settings",
                 settingsInfo,
                 {
+                    txnName: "updates settings",
                     activity:
                         settingsController.activity.SpendingActivities.UpdatingRecord(
                             settingsInfo.data.id
@@ -205,9 +205,9 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
                 (await capo.getSettingsController()) as BadSettingsController;
 
             const update = await settingsController.mkTxnUpdateRecord(
-                "updates settings",
                 settingsInfo,
                 {
+                    txnName: "updates settings",
                     activity:
                         settingsController.activity.SpendingActivities.UpdatingRecord(
                             settingsInfo.data.id
@@ -245,9 +245,9 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
                 capoUtxos,
             });
             const update = await settingsController.mkTxnUpdateRecord(
-                "updates settings with bad setting for spend-delegate",
                 settingsInfo,
                 {
+                    txnName: "updates settings with bad setting for spend-delegate",
                     activity:
                         settingsController.activity.SpendingActivities.UpdatingRecord(
                             settingsInfo.data.id
@@ -274,9 +274,9 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
             );
 
             const update2 = await settingsController.mkTxnUpdateRecord(
-                "update with missing spendDgt",
                 settingsInfo,
                 {
+                    txnName: "update with missing spendDgt",
                     activity:
                         settingsController.activity.SpendingActivities.UpdatingRecord(
                             settingsInfo.data.id
