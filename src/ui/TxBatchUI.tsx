@@ -11,6 +11,18 @@ export function TxBatchUI() {
     const capo = provider?.capo;
 
     const [currentBatch, setTxBatch] = React.useState<BatchSubmitController>();
+    const [gen, setGen] = React.useState(0);
+    const renderNow = React.useMemo(() => () => setGen((g) => g + 1), []);
+
+    React.useEffect(() => {
+        currentBatch?.$txChanges.on("txAdded", renderNow);
+        currentBatch?.$txChanges.on("statusUpdate", renderNow);
+        return () => {
+            currentBatch?.$txChanges.off("txAdded", renderNow);
+            currentBatch?.$txChanges.off("statusUpdate", renderNow);
+        };
+    }, [currentBatch]);
+
     const [initialId, setInitialId] = React.useState<string | undefined>(
         undefined
     );
@@ -19,20 +31,21 @@ export function TxBatchUI() {
 
     const allTxns = currentBatch?.$allTxns || [];
     const hasError = allTxns.some((t) => t.$state === "failed");
+    const noOpStates: SubmissionsStates[] = ["not needed", "nested batch"];
+    const confirmedStates: SubmissionsStates[] = ["confirmed", "mostly confirmed"];
+    const actionableTxns = allTxns.filter((t) => !noOpStates.includes(t.$state));
     const allFinished =
-        allTxns.length > 0 &&
-        allTxns.every(
-            (t) => t.$state === "confirmed" || t.$state === "not needed"
-        );
+        actionableTxns.length === 0
+            ? allTxns.length > 0
+            : actionableTxns.every((t) => confirmedStates.includes(t.$state));
     const canClose = hasError || allFinished;
 
     const status = currentBatch?.$stateShortSummary;
     const label = (status === "confirmed" ? "Confirmed" : status === "failed" ? "Failed" : "Pending");
 
     const pendingStates: SubmissionsStates[] = [
-        "registered", "building", "nested batch", "built", "failed"
+        "registered", "building", "built", "failed"
     ];
-    const noOpStates: SubmissionsStates[] = ["not needed", "nested batch"]
     const unsubmittedTxns = allTxns.filter((t) => {
         console.log("unsubmittedTxn? ", t.$state, pendingStates.includes(t.$state));
         debugger
@@ -46,9 +59,6 @@ export function TxBatchUI() {
     }).length;
     const submittingStates: SubmissionsStates[] = [
         "submitting", "confirming"
-    ];
-    const confirmedStates: SubmissionsStates[] = [
-        "confirmed", "mostly confirmed"
     ];
     const submittingTxns = allTxns.filter((t) => {
         return submittingStates.includes(t.$state);
@@ -66,34 +76,51 @@ export function TxBatchUI() {
     const cantCancelLabel = `${submittingTxns + confirmedTxns} in-flight txns will not be cancelled`;
 
     const [needsCancelConfirmation, setNeedsCancelConfirmation] = React.useState(false);
-    const [confirmPartialCancel, setConfirmPartialCancel] = React.useState(false);
+    const [confirmingPartialCancel, setConfirmPartialCancel] = React.useState(false);
     useEffect(() => {
         setNeedsCancelConfirmation(!!submittingTxns);
-    }, [submittingTxns > 0]);
+    }, [submittingTxns > 0, gen]);
 
     const cancelWIthPossibleConfirmation = useCallback(() => {
-        if (needsCancelConfirmation && !confirmPartialCancel) {
+        if (needsCancelConfirmation && !confirmingPartialCancel) {
             // sets the "did-confirm" state
             return setConfirmPartialCancel(true);
         }
         capo?.setup?.txBatcher?.cancel();
-        const nonCancelledTxns = hasInFlightTxns ? `; ${unsubmittedTxns + submittingTxns} in-flight txn${unsubmittedTxns + submittingTxns == 1 ? "" : "s"} not cancelled`: "";
+        const nonCancelledTxns = hasInFlightTxns ? `; ${unsubmittedTxns + submittingTxns} in-flight txn${unsubmittedTxns + submittingTxns == 1 ? "" : "s"} not cancelled` : "";
         provider?.provider.updateStatus(`cancelled ${unsubmittedTxns} unsubmitted txn${submittingTxns == 1 ? "" : "s"}${nonCancelledTxns}`, {
             developerGuidance: "show status message to user",
         }, "// confirm cancel / partial-cancel")
-    }, [provider, provider?.capo, currentBatch, unsubmittedTxns, submittingTxns, hasInFlightTxns, needsCancelConfirmation, confirmPartialCancel]);
+    }, [gen, provider, provider?.capo, currentBatch, unsubmittedTxns, submittingTxns, hasInFlightTxns, needsCancelConfirmation, confirmingPartialCancel]);
 
     const closeWIthPossibleConfirmation = useCallback(() => {
-        if (needsCancelConfirmation && !confirmPartialCancel) {
-            // sets the "did-confirm" state
-            return setConfirmPartialCancel(true);
-        }
+        // if (needsCancelConfirmation && !confirmingPartialCancel) {
+        //     // sets the "did-confirm" state
+        //     return setConfirmPartialCancel(true);
+        // }
         return capo?.setup?.txBatcher?.rotate();
-    }, [provider, provider?.capo, needsCancelConfirmation, confirmPartialCancel]);
+    }, [gen, provider, provider?.capo, needsCancelConfirmation, confirmingPartialCancel]);
 
+    const debug = false;
     const viewSwitcher = (<>
-        {needsCancelConfirmation && <div className="p-2 text-center text-sm border border-accent/20 bg-primary text-accent">{cantCancelLabel}</div>}
+        {confirmingPartialCancel && <div className="p-2 text-center text-sm border border-accent/20 bg-primary text-accent">{cantCancelLabel}</div>}
 
+        {debug &&<code className="text-xs">
+            {JSON.stringify({
+                needsCancelConfirmation,
+                confirmPartialCancel: confirmingPartialCancel,
+                hasInFlightTxns,
+                unsubmittedTxns,
+                submittingTxns,
+                confirmedTxns,
+                actualTxCount,
+                hasMultipleTxns,
+                canClose,
+                status,
+                label,
+                committingTxns,
+            }, null, 2)}
+        </code>}
         <div className="flex flex-row justify-between items-end p-2">
             <div className="flex-grow">
                 <h4 className="bg-transparent mt-0 mb-0 font-bold">{hasMultipleTxns ? `${actualTxCount} Txns` : `${label} Txn`}
@@ -111,28 +138,32 @@ export function TxBatchUI() {
                 >
                     {advancedView ? "Hide details" : "Show details"}
                 </Button>
-                </div>
-                <div className="flex-shrink-0">
+            </div>
+            <div className="flex-shrink-0">
                 {canClose ? (
                     <Button
-                        variant="secondary-sm"
-                        className="ml-3 text-emerald-100 hover:bg-red-900"
+                        className="ml-3 p-1 cursor-pointer aspect-square rounded-sm"
+                        title="Close successful batch"
                         onClick={closeWIthPossibleConfirmation}
-                    >❌</Button>
+                    >✖️</Button>
                 ) : (
                     <div className="group flex flex-col items-end text-amber-400 overflow-visible">
-                        <div className="hidden group-hover:block w-0 h-7 relative">
-                            <span
-                                data-label="cancel-help-text"
-                                className="absolute right-0 top-0 text-xs whitespace-nowrap"
-                                aria-hidden="true">
-                                {needsCancelConfirmation ? "ONLY ": ""}<span className="font-bold italic">
-                                    {unsubmittedTxns} {needsCancelConfirmation ? "UNSUBMITTED" : ""} txn{submittingTxns > 1 ? "s" : ""} will be cancelled
-                                </span> 
-                            </span>
-                        </div>
+                        {false && <div className="hidden group-hover:block p-2 border-card relative" data-label="cancel-help-text"
+                            aria-hidden="true"
+                        >
+                            {(!needsCancelConfirmation || (needsCancelConfirmation && !confirmingPartialCancel)) && <span
+                                className="text-xs whitespace-nowrap font-bold italic"
+                            >
+                                {
+                                    needsCancelConfirmation ? "ONLY " : ""
+                                } {
+                                    unsubmittedTxns
+                                } unsubmitted txn{submittingTxns > 1 ? "s" : ""} will be cancelled
+                            </span>}
+                        </div>}
                         <button
                             aria-label={`Cancel ${unsubmittedTxns} unsubmitted txns`}
+                            title={`Cancel ${unsubmittedTxns} unsubmitted txns`}
                             className="ml-3 p-1 aspect-square group-hover:bg-red-900 border-1 rounded-none border-gray-500"
                             onClick={cancelWIthPossibleConfirmation}
                         >❌</button>
@@ -161,6 +192,10 @@ export function TxBatchUI() {
                     });
                 }
                 setTxBatch(batch);
+
+                setNeedsCancelConfirmation(false);
+                setConfirmPartialCancel(false);
+                renderNow();
             });
         },
         [provider, provider?.capo, capo?.setup.txBatcher]
@@ -168,7 +203,7 @@ export function TxBatchUI() {
 
     const hasBatch = !!currentBatch && !!currentBatch?.$allTxns.length;
 
-    const width = advancedView ? "w-[80vw]" : "w-[3in]";
+    const width = advancedView ? "w-[80vw]" : "w-[4in]";
     if (!hasBatch) return null;
     return (
         <div
