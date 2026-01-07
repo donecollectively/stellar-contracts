@@ -45,10 +45,7 @@ import {
     SimpleWallet_stellar,
     StellarNetworkEmulator,
 } from "./StellarNetworkEmulator.js";
-import {
-    makeRootPrivateKey,
-    type Wallet,
-} from "@helios-lang/tx-utils";
+import { makeRootPrivateKey, type Wallet } from "@helios-lang/tx-utils";
 
 /**
  * @public
@@ -72,7 +69,10 @@ export type TestHelperSubmitOptions = SubmitOptions & {
  * Use this class for specific unit-testing needs not sufficiently served by integration-testing on a Capo.
  * @public
  **/
-export abstract class StellarTestHelper<SC extends StellarContract<any>, SpecialState extends Record<string, any> = {}> {
+export abstract class StellarTestHelper<
+    SC extends StellarContract<any>,
+    SpecialState extends Record<string, any> = {},
+> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC>;
     config?: ConfigFor<SC> & canHaveRandomSeed;
@@ -127,15 +127,15 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         if (!thisActor)
             throw new Error(
                 `setCurrentActor: network #${this.network.id}: invalid actor name '${actorName}'\n   ... try one of: \n  - ` +
-                    Object.keys(this.actors).join(",\n  - ")
+                    Object.keys(this.actors).join(",\n  - "),
             );
         if (this._actorName) {
             if (actorName == this._actorName) {
                 if (this.actorContext.wallet !== thisActor) {
                     throw new Error(
                         `actor / wallet mismatch: ${this._actorName} ${dumpAny(
-                            this.actorContext.wallet?.address
-                        )} vs ${actorName} ${dumpAny(thisActor.address)}`
+                            this.actorContext.wallet?.address,
+                        )} vs ${actorName} ${dumpAny(thisActor.address)}`,
                     );
                 }
                 // quiet idempotent call.
@@ -144,13 +144,13 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             console.log(
                 `\n🎭 -> 🎭 changing actor from 🎭 ${
                     this._actorName
-                } to  🎭 ${actorName} ${dumpAny(thisActor.address)}`
+                } to  🎭 ${actorName} ${dumpAny(thisActor.address)}`,
             );
         } else {
             console.log(
                 `\n🎭🎭 initial actor ${actorName} ${dumpAny(
-                    thisActor.address
-                )}`
+                    thisActor.address,
+                )}`,
             );
         }
         this._actorName = actorName;
@@ -171,7 +171,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
      */
     async setupActors() {
         console.warn(
-            `using 'hiro' as default actor because ${this.constructor.name} doesn't define setupActors()`
+            `using 'hiro' as default actor because ${this.constructor.name} doesn't define setupActors()`,
         );
         this.addActor("hiro", 1863n * ADA);
     }
@@ -185,7 +185,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
     helperState?: TestHelperState<SC, SpecialState>;
     constructor(
         config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup,
-        helperState?: TestHelperState<SC, SpecialState>
+        helperState?: TestHelperState<SC, SpecialState>,
     ) {
         this.state = {};
         if (!helperState) {
@@ -222,10 +222,10 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             undefined,
             helperState
         )
-    }                
+    }
 
     // in your tests:
-    
+
     describe("your thing", async () => {
         it("your test", async (context: localTC) => {
             // prettier-ignore
@@ -234,7 +234,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
 
             await h.snapTo‹yourSnapshot›()
         });
-        it("your other test", async (context: localTC) => { 
+        it("your other test", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
             // this one will use the snapshot generated earlier
@@ -242,7 +242,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         });
     })
 
-... happy (and snappy) testing!`
+... happy (and snappy) testing!`,
             );
         }
         this.helperState = helperState;
@@ -250,7 +250,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         if (Object.keys(cfg).length) {
             console.log(
                 "XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config",
-                config
+                config,
             );
 
             this.config = config;
@@ -291,7 +291,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             "test env: 🔧🔧🔧 fixup max tx size",
             origMaxTxSize,
             " -> 🔧",
-            maxTxSize
+            maxTxSize,
         );
         preProdParams.maxTxSize = maxTxSize;
 
@@ -304,7 +304,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             "test env: 🔧🔧🔧 fixup max memory",
             origMaxMem,
             " -> 🔧",
-            maxMem
+            maxMem,
         );
         preProdParams.maxTxExMem = maxMem;
 
@@ -317,7 +317,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             "test env: 🔧🔧🔧 fixup max cpu",
             origMaxCpu,
             " -> 🔧",
-            maxCpu
+            maxCpu,
         );
         preProdParams.maxTxExCpu = maxCpu;
 
@@ -333,7 +333,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
      */
     async submitTxnWithBlock<TCX extends StellarTxnContext>(
         tcx: TCX | Promise<TCX>,
-        options: TestHelperSubmitOptions = {}
+        options: TestHelperSubmitOptions = {},
     ): Promise<TCX> {
         const t = await tcx;
         await this.advanceNetworkTimeForTx(t, options.futureDate);
@@ -350,15 +350,16 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
     async advanceNetworkTimeForTx(tcx: StellarTxnContext, futureDate?: Date) {
         // determines the validity range of the transaction
 
-        let txBody: TxBody | undefined = undefined
-        let validFrom=0, validTo=0;
+        let txBody: TxBody | undefined = undefined;
+        let validFrom = 0,
+            validTo = 0;
         let targetTime: number = futureDate?.getTime() || Date.now();
         let targetSlot = this.netPHelper.timeToSlot(BigInt(targetTime));
         const nph = this.netPHelper;
 
         if (tcx.isFacade && !futureDate) {
-            console.log("not advancing network time for facade tx")
-            return
+            console.log("not advancing network time for facade tx");
+            return;
         } else if (!tcx.isFacade) {
             //XX@ts-expect-error on internal prop
             // if (!tcx.txb.validTo) {
@@ -369,19 +370,19 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             //     debugger
             // }
 
-            validFrom = ( () => {
+            validFrom = (() => {
                 //@ts-expect-error on internal prop
-                const {slot, timestamp} = tcx.txb.validFrom?.left || {}
-                if (slot) return slot
-                if (!timestamp) return undefined
-                return nph.timeToSlot(BigInt(timestamp))
+                const { slot, timestamp } = tcx.txb.validFrom?.left || {};
+                if (slot) return slot;
+                if (!timestamp) return undefined;
+                return nph.timeToSlot(BigInt(timestamp));
             })();
-            validTo = ( () => {
+            validTo = (() => {
                 //@ts-expect-error on internal prop
-                const {slot, timestamp} = tcx.txb.validFrom?.left || {}
-                if (slot) return slot
-                if (!timestamp) return undefined
-                return nph.timeToSlot(BigInt(timestamp))
+                const { slot, timestamp } = tcx.txb.validFrom?.left || {};
+                if (slot) return slot;
+                if (!timestamp) return undefined;
+                return nph.timeToSlot(BigInt(timestamp));
             })();
         }
 
@@ -394,7 +395,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         tcx.logger.logPrint(
             `\n    ---- ⚗️ 🐞🐞 advanceNetworkTimeForTx: tx valid ${
                 validFrom || "anytime"
-            } -> ${validTo || "anytime"}`
+            } -> ${validTo || "anytime"}`,
         );
         function withPositiveSign(x: number | bigint) {
             return x < 0 ? `${x}` : `+${x}`;
@@ -405,7 +406,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         function showEffectiveNetworkSlotTIme() {
             tcx.logger.logPrint(
                 `\n    ⚗️ 🐞ℹ️  with now=network slot ${effectiveNetworkSlot}: ${nph.slotToTime(
-                    effectiveNetworkSlot
+                    effectiveNetworkSlot,
                 )}\n` +
                     `           tx valid ${
                         validFrom
@@ -415,24 +416,24 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
                         validTo
                             ? withPositiveSign(effectiveNetworkSlot - validTo)
                             : "anytime"
-                    } from now`
+                    } from now`,
             );
         }
-    
+
         if (validInPast || validInFuture) {
             tcx.logger.logPrint(
-                "\n  ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: " + (tcx.txnName || "")
+                "\n  ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: " + (tcx.txnName || ""),
             );
             if (futureDate) {
                 debugger;
                 tcx.logger.logPrint(
-                    `\n    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`
+                    `\n    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`,
                 );
             }
-    
+
             tcx.logger.logPrint(
                 `\n    ---- ⚗️ 🐞🐞 current slot ${currentSlot} ${currentToNowDiff} = now slot ${nowSlot} \n` +
-                    `                    current ${currentToTargetDiff} = targetSlot ${targetSlot}`
+                    `                    current ${currentToTargetDiff} = targetSlot ${targetSlot}`,
             );
             if (futureDate) {
                 // ":info:ℹ️"
@@ -444,11 +445,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
                         validInPast
                             ? "already in the past"
                             : validInFuture
-                            ? "not yet valid"
-                            : "‹??incontheevable??›"
+                              ? "not yet valid"
+                              : "‹??incontheevable??›"
                     }; advancing to explicit futureDate @now + ${
                         targetSlot - nowSlot
-                    }s`
+                    }s`,
                 );
             } else {
                 // test an old txn by constructing it with a date less than Date.now()
@@ -457,9 +458,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
                         validInPast
                             ? "already in the past"
                             : validInFuture
-                            ? "not yet valid"
-                            : "‹??incontheevable??›"
-                    }; no futureDate specified; not interfering with network time`
+                              ? "not yet valid"
+                              : "‹??incontheevable??›"
+                    }; no futureDate specified; not interfering with network time`,
                 );
                 effectiveNetworkSlot = nowSlot;
                 showEffectiveNetworkSlotTIme();
@@ -474,16 +475,16 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             showEffectiveNetworkSlotTIme();
             if (futureDate) {
                 tcx.logger.logPrint(
-                    `\n    ------ ⚗️ 🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`
+                    `\n    ------ ⚗️ 🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`,
                 );
                 throw new Error(
-                    `explicit futureDate ${futureDate} is in the past; can't go back ${slotDiff}s`
+                    `explicit futureDate ${futureDate} is in the past; can't go back ${slotDiff}s`,
                 );
             }
             tcx.logger.logPrint(
                 `\n   -- ⚗️ 🐞🐞🐞🐞⚗️  NOT ADVANCING: the network is already ahead of the current time by ${
                     0 - slotDiff
-                }s ⚗️ 🐞🐞🐞🐞⚗️`
+                }s ⚗️ 🐞🐞🐞🐞⚗️`,
             );
             tcx.logger.flush();
             return;
@@ -492,8 +493,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             effectiveNetworkSlot = targetSlot;
             tcx.logger.logPrint(
                 `\n    ⚗️ 🐞ℹ️  advanceNetworkTimeForTx ${withPositiveSign(
-                    slotDiff
-                )} slots`
+                    slotDiff,
+                )} slots`,
             );
             showEffectiveNetworkSlotTIme();
             this.network.tick(slotDiff);
@@ -515,20 +516,20 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
 
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(
-                "       ----- skipped duplicate initialize() in test helper"
+                "       ----- skipped duplicate initialize() in test helper",
             );
             return this.strella;
         }
         if (this.strella) {
             console.warn(
-                ".... warning: new test helper setup with new seed...."
+                ".... warning: new test helper setup with new seed....",
             );
             this.rand = undefined;
             this.randomSeed = randomSeed;
             this.actors = {};
         } else {
             console.log(
-                "???????????????????????? Test helper initializing without this.strella"
+                "???????????????????????? Test helper initializing without this.strella",
             );
         }
         console.log("STINIT2");
@@ -567,50 +568,58 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
     //     }
     // }
 
-    setup!: SetupInfo
+    setup!: SetupInfo;
     initSetup(setup: SetupInfo = undefined as any) {
-        setup = setup || {
-            actorContext: this.actorContext,
-            networkParams: this.networkParams,
-            uh: undefined as any,
-            isTest: true,
-            isMainnet: false,
-            optimize: process.env.OPTIMIZE ? true : this.optimize,
-        } as any
+        setup =
+            setup ||
+            ({
+                actorContext: this.actorContext,
+                networkParams: this.networkParams,
+                uh: undefined as any,
+                isTest: true,
+                isMainnet: false,
+                optimize: process.env.OPTIMIZE ? true : this.optimize,
+            } as any);
 
-        const getNetwork = () => { return this.network };
-        const getActor = () => { return this.actorContext.wallet! };
+        const getNetwork = () => {
+            return this.network;
+        };
+        const getActor = () => {
+            return this.actorContext.wallet!;
+        };
 
         Object.defineProperty(setup, "network", {
             get: getNetwork,
-            configurable: true
+            configurable: true,
         });
-        setup.txBatcher = new TxBatcher({              
+        ((setup.txBatcher = new TxBatcher({
             setup,
-            submitters:  {
-               get emulator() { return getNetwork() } 
+            submitters: {
+                get emulator() {
+                    return getNetwork();
+                },
             },
-            get signingStrategy() { return new GenericSigner( getActor()) }                
-        }),
-
-        setup.txBatcher.setup = setup;
+            get signingStrategy() {
+                return new GenericSigner(getActor());
+            },
+        })),
+            (setup.txBatcher.setup = setup));
         setup.uh = new UtxoHelper(setup);
 
-        return this.setup = setup
+        return (this.setup = setup);
     }
-
 
     /**
      * @public
      */
     async initStrella(
         TargetClass: stellarSubclass<SC>,
-        config?: ConfigFor<SC>
+        config?: ConfigFor<SC>,
     ) {
-        const envOptimize = process.env.OPTIMIZE
+        const envOptimize = process.env.OPTIMIZE;
         // console.warn(`using env OPTIMIZE=${envOptimize}`)
 
-        const setup = this.initSetup()
+        const setup = this.initSetup();
 
         let cfg: StellarSetupDetails<ConfigFor<SC>> = {
             setup,
@@ -625,7 +634,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         if (setup.actorContext.wallet) {
             console.log(
                 "+strella init with actor addr",
-                (setup.actorContext.wallet as any).address.toBech32()
+                (setup.actorContext.wallet as any).address.toBech32(),
             );
         } else {
             debugger;
@@ -654,7 +663,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
     createWallet(lovelace = 0n, assets = makeAssets([])): SimpleWallet_stellar {
         const wallet = SimpleWallet_stellar.fromRootPrivateKey(
             makeRootPrivateKey(generateBytes(this.network.mulberry32, 32)),
-            this.networkCtx
+            this.networkCtx,
         );
 
         this.network.createUtxo(wallet, lovelace, assets);
@@ -681,14 +690,14 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         // }
         if (isAlreadyInitialized && !force) {
             throw new Error(
-                `helper is already initialized; use the submitTx from the testing-context's 'strella' object instead`
+                `helper is already initialized; use the submitTx from the testing-context's 'strella' object instead`,
             );
         }
 
         console.log(
             `Test helper ${force || ""} submitting tx${
                 (force && "") || " prior to instantiateWithParams()"
-            }:\n` + txAsString(tx, this.networkParams)
+            }:\n` + txAsString(tx, this.networkParams),
             // new Error(`at stack`).stack
         );
 
@@ -696,7 +705,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             const txId = await this.network.submitTx(tx);
             console.log(
                 "test helper submitted direct txn:" +
-                    txAsString(tx, this.networkParams)
+                    txAsString(tx, this.networkParams),
             );
             this.network.tick(1);
             // await this.delay(1000)
@@ -705,7 +714,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
             return txId;
         } catch (e: any) {
             console.error(
-                `submit failed: ${e.message}\n  ... in tx ${txAsString(tx)}`
+                `submit failed: ${e.message}\n  ... in tx ${txAsString(tx)}`,
             );
             throw e;
         }
@@ -717,7 +726,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
     mkRandomBytes(length: number): number[] {
         if (!this.randomSeed)
             throw new Error(
-                `test must set context.randomSeed for deterministic randomness in tests`
+                `test must set context.randomSeed for deterministic randomness in tests`,
             );
         if (!this.rand) this.rand = mulberry32(this.randomSeed);
 
@@ -771,12 +780,12 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
         const addr = a.address.toString();
         console.log(
             `+🎭 Actor: ${roleName}: ${addr.slice(0, 12)}…${addr.slice(
-                -4
+                -4,
             )} ${lovelaceToAda(walletBalance)} (🔑#${(
                 a.address as ShelleyAddress
             ).spendingCredential
                 ?.toHex()
-                .substring(0, 8)}…)`
+                .substring(0, 8)}…)`,
         );
 
         this.actorContext.others[roleName] = a;
@@ -814,7 +823,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, Special
      * @public
      */
     mkNetwork(
-        params: NetworkParams
+        params: NetworkParams,
     ): [StellarNetworkEmulator, NetworkParamsHelper] {
         const theNetwork = new StellarNetworkEmulator(undefined, { params });
         const emuParams = theNetwork.initHelper();
