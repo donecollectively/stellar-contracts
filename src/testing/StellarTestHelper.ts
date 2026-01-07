@@ -340,6 +340,11 @@ export abstract class StellarTestHelper<
 
         return t.buildAndQueueAll(options).then(() => {
             this.network.tick(1);
+            if (options.expectError) {
+                throw new Error(
+                    "txn ^^^ should have failed but it succeeded instead",
+                );
+            }
             return tcx;
         });
     }
