@@ -95,15 +95,15 @@ export class dataBridgeGenerator
 
         return {
             castCode: `
-                 /*unused?*/ ${castMemberName}: Cast<${structName}Like, ${structName}> 
+                 /*unused?*/ ${castMemberName}: Cast<${structName}Like, ${structName}>
                     = makeCast<${structName}Like, ${structName}>(
-                        this.schema.${structName}, 
+                        this.schema.${structName},
                         { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
                     );
             `,
             accessorCode: `${structName}(fields: ${structName}Like}) {
                 throw new Error("hey, this isn't actually unused!");
-                
+
                 return this.${castMemberName}.toUplcData(fields);
             }`,
             helperClassName,
@@ -131,7 +131,7 @@ export class dataBridgeGenerator
             `
 import { makeCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
-import type { 
+import type {
     IntLike,
  } from "@helios-lang/codec-utils";
 import type {
@@ -159,13 +159,13 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 `; // ---------------------/imports------------------------------
         let scImports = /*--------------stellar-contracts-imports --------------*/ `import {
     ContractDataBridge,
-    DataBridge, 
+    DataBridge,
     DataBridgeReaderClass ,
     EnumBridge,
     impliedSeedActivityMaker,
-    type tagOnly, 
-    type hasSeed, 
-    type isActivity, 
+    type tagOnly,
+    type hasSeed,
+    type isActivity,
     type funcWithImpliedSeed,
     type SeedAttrs,
     type JustAnEnum,
@@ -174,35 +174,35 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 } from "@donecollectively/stellar-contracts"\n`;
         if (this._isSC) {
             scImports =
-                `import { 
-    DataBridge, 
-    ContractDataBridge, 
+                `import {
+    DataBridge,
+    ContractDataBridge,
     DataBridgeReaderClass,
     type callWith,
 } from "${this.mkRelativeImport(
                     inputFile,
-                    "src/helios/dataBridge/DataBridge.js"
+                    "src/helios/dataBridge/DataBridge.js",
                 )}"\n` +
-                `import { 
+                `import {
     EnumBridge,
     type JustAnEnum,
 } from "${this.mkRelativeImport(
                     inputFile,
-                    "src/helios/dataBridge/EnumBridge.js"
+                    "src/helios/dataBridge/EnumBridge.js",
                 )}"\n` +
                 `import type { tagOnly } from "${this.mkRelativeImport(
                     inputFile,
-                    "src/helios/HeliosMetaTypes.js"
+                    "src/helios/HeliosMetaTypes.js",
                 )}"\n` +
                 `import type { IntersectedEnum } from "${this.mkRelativeImport(
                     inputFile,
-                    "src/helios/typeUtils.js"
+                    "src/helios/typeUtils.js",
                 )}"\n` +
                 `import { \n` +
                 `    impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, \n` +
                 `    type funcWithImpliedSeed, type SeedAttrs\n} from "${this.mkRelativeImport(
                     inputFile,
-                    "src/ActivityTypes.js"
+                    "src/ActivityTypes.js",
                 )}"\n`;
             //---------------------/sc-imports-----------------------;
         }
@@ -229,8 +229,8 @@ ${this.includeScriptNamedTypes(inputFile)}
      this.bundle.program.name
  }** script (defined in class ***${this.bundle.constructor.name}***)
  * main: **${this.bundle.main.name}**, project: **${
-            this.bundle.main.project || "‹local proj›"
-        }**
+     this.bundle.main.project || "‹local proj›"
+ }**
  * @remarks
 * This class doesn't need to be used directly.  Its methods are available through the ***contract's methods***:
 *  - \`get mkDatum\` - returns the datum-building bridge for the contract's datum type
@@ -238,9 +238,9 @@ ${this.includeScriptNamedTypes(inputFile)}
 *  - \`get reader\` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types
 *  - \`get onchain\` - (advanced) returns a data-encoding bridge for types defined in the contract's script
 * The advanced methods are not typically needed - mkDatum and activity should normally provide all the
-* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's \`findDelegatedDataUtxos()\` 
+* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's \`findDelegatedDataUtxos()\`
 * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
-* 
+*
 * ##### customizing the bridge class name
 * Note that you may override \`get bridgeClassName() { return "..." }\` to customize the name of this bridge class
 * @public
@@ -306,21 +306,21 @@ ${this.includeStructReaders()}
         * reads UplcData *known to fit the **${typeName}*** enum type,
         * for the ${this.bundle.program.name} script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    ${typeName}(d : UplcData) { 
+    ${typeName}(d : UplcData) {
         const typeHelper = this.bridge.types.${typeName};
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as Ergo${typeName};        
+        return cast.fromUplcData(d) as Ergo${typeName};
     } /* enumReader helper */\n`;
                 //---------------/enum-reader-func--------------------
                 if (isDatum) {
@@ -346,21 +346,22 @@ ${this.includeStructReaders()}
                 const isDatum = this.datumTypeName === typeName;
                 const func = /*-------------struct-reader-func--------------*/ `    /**
         * reads UplcData *known to fit the **${typeName}*** struct type,
-        * for the ${this.bundle.program.name} script.
+        * for the ${this.bundle.program.name} script.  You may choose to recast this data to
+        * ${typeName} or ${typeName}Like
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     ${typeName}(d: UplcData) {
         const cast = this.bridge.${castMemberName};
-        return cast.fromUplcData(d) //??? as Ergo${typeName};
+        return cast.fromUplcData(d) as Ergo${typeName};
     } /* structReader helper */\n`;
                 // ----------------struct-reader-func----------------
                 if (isDatum) {
@@ -487,7 +488,7 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
                     ]
                         .filter((x) => !!x)
                         .join(", ")}`;
-                }
+                },
             )
             .join(",\n")}
 } from "${relativeTypeFile}";
@@ -501,7 +502,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const activityDetails = this.activityTypeDetails;
         if (!activityDetails) {
             throw new Error(
-                `${this.bundle.constructor.name}: missing required activity type`
+                `${this.bundle.constructor.name}: missing required activity type`,
             );
         }
 
@@ -532,10 +533,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const castDef = `
     /**
      * @internal
-    */        
+    */
     ᱺᱺactivityCast = makeCast<
         ${canonicalType}, ${permissiveType}
-    >(${schemaName}, { 
+    >(${schemaName}, {
         isMainnet: this.isMainnet,
         unwrapSingleFieldEnumVariants: true
     }); // activityAccessorCast`;
@@ -569,12 +570,12 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             const helperClassTypeCast = "as any";
             const helperClass = this.mkOtherDataHelperClass(
                 helperClassName,
-                activityDetails as unknown as fullTypeDetails
+                activityDetails as unknown as fullTypeDetails,
             );
             this.helperClasses[helperClassName] = helperClass;
 
             const moreTypeGuidance = /*------------*/ `
-     * 
+     *
      * This accessor object is callable with the indicated argument-type
      * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \\*\\/)\\n`;
             // ---------------------------------
@@ -638,7 +639,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             } = d;
             if (!hCN)
                 throw new Error(
-                    `missing helperClassName for enum ${d.enumName}`
+                    `missing helperClassName for enum ${d.enumName}`,
                 );
             helperClassName = hCN;
             helperClassType = hCN;
@@ -656,14 +657,14 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             } = d;
             if (!hCN)
                 throw new Error(
-                    `missing helperClassName for struct ${d.typeName}`
+                    `missing helperClassName for struct ${d.typeName}`,
                 );
             helperClassName = hCN;
             const permissiveTypeInfo = `${d.permissiveTypeName} | ${d.permissiveType}`;
             helperClassType = `callWith<${permissiveTypeInfo}, ${hCN}>`;
             helperClassTypeCast = "as any";
             moreTypeGuidance = `
-     * 
+     *
      * This accessor object is callable with the indicated argument-type
      * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \\*\\/)
     *
@@ -687,10 +688,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             helperClassTypeCast = "as any";
             this.helperClasses[helperClassName] = this.mkOtherDataHelperClass(
                 helperClassName,
-                datumDetails as unknown as fullTypeDetails
+                datumDetails as unknown as fullTypeDetails,
             );
             moreTypeGuidance = `
-     * 
+     *
      * This accessor object is callable with the indicated argument-type
      * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \\*\\/)\\n`;
             // ----
@@ -728,7 +729,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             (typeName || permissiveTypeName)
         ) {
             throw new Error(
-                `type name (${typeName}) and permissive type name (${permissiveTypeName}) are NOT expected for an other-data-type accessor (schema kind=${details.typeSchema.kind})`
+                `type name (${typeName}) and permissive type name (${permissiveTypeName}) are NOT expected for an other-data-type accessor (schema kind=${details.typeSchema.kind})`,
             );
         }
         const { canonicalType, permissiveType, typeSchema } = details;
@@ -739,14 +740,14 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `    ᱺᱺcast = makeCast<
         ${canonicalType}, ${permissiveType}
     >(
-        ${JSON.stringify(typeSchema)}, 
+        ${JSON.stringify(typeSchema)},
         { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     ); // datumAccessorCast\n`;
 
         return `export class ${helperClassName} extends DataBridge {
     isCallable = true
     ${castDef}
-    
+
     } // mkOtherDatumHelperClass
     `;
 
@@ -793,13 +794,13 @@ import type * as types from "${relativeTypeFile}";\n\n`;
     gatherHelperClasses() {
         const classSources = [] as string[];
         for (const [name, typeDetails] of Object.entries(
-            this.typeBundle.namedTypes
+            this.typeBundle.namedTypes,
         )) {
             if (typeDetails.typeSchema.kind === "enum") {
                 const enumDetails =
                     typeDetails as unknown as fullEnumTypeDetails;
                 this.helperClasses[name] = this.mkEnumHelperClass({
-                    typeDetails: enumDetails
+                    typeDetails: enumDetails,
                 });
             } else if (typeDetails.typeSchema.kind === "struct") {
                 const structDetails = typeDetails as unknown as fullTypeDetails;
@@ -822,12 +823,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         typeDetails: fullEnumTypeDetails;
         isActivity: boolean;
     }) {
-        const {
-            typeDetails,
-            isActivity,
-        } = options;
-        let helperClassName =
-            typeDetails.moreInfo.helperClassName;
+        const { typeDetails, isActivity } = options;
+        let helperClassName = typeDetails.moreInfo.helperClassName;
 
         //  - matches "Activities" or "Activity":
         if (isActivity && !helperClassName?.match(/Activit/)) {
@@ -967,7 +964,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             if (this.helperClasses[nestedHelperClassName] != nestedHelper) {
                 debugger;
                 throw new Error(
-                    `nestedHelperClassName already exists: ${nestedHelperClassName}\n${this.helperClasses[nestedHelperClassName]}\n----------------------------------------------------\n${nestedHelper}\n`
+                    `nestedHelperClassName already exists: ${nestedHelperClassName}\n${this.helperClasses[nestedHelperClassName]}\n----------------------------------------------------\n${nestedHelper}\n`,
                 );
             } else {
                 // throw new Error(
@@ -992,11 +989,11 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `        const nestedAccessor = new ${nestedHelperClassName}({
             isMainnet: this.isMainnet, isNested: true, isActivity: ${
                 isActivity ? "true" : "false"
-            } 
+            }
         });\n` +
             `        nestedAccessor.mkDataVia(\n` +
             `            (${nestedFieldName}: ${nestedEnumName}Like) => {\n` +
-            `                return  this.mkUplcData({ ${variantName}: ${nestedFieldName} }, 
+            `                return  this.mkUplcData({ ${variantName}: ${nestedFieldName} },
             ${enumPathExpr});\n` +
             `        });\n` +
             `        return nestedAccessor;\n` +
@@ -1025,12 +1022,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         isActivity: boolean;
         isNested?: "isNested";
     }) {
-        const {
-            enumDetails,
-            isDatum,
-            isActivity,
-            isNested,
-        } = options;
+        const { enumDetails, isDatum, isActivity, isNested } = options;
         const accessors = Object.keys(enumDetails.variants)
             .map((variantName) => {
                 const variantDetails = enumDetails.variants[variantName];
@@ -1113,14 +1105,14 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const returnType = isActivity
             ? "isActivity"
             : isDatum
-            ? `InlineTxOutputDatum`
-            : "UplcData";
+              ? `InlineTxOutputDatum`
+              : "UplcData";
         if ("seed" == Object.keys(variantDetails.fields)[0] && !isDatum) {
             // && isSeededActivity
             function filteredFields(
                 indent = 2,
                 callback = mkFieldType,
-                joiner = ",\n"
+                joiner = ",\n",
             ) {
                 return Object.keys(variantDetails.fields)
                     .filter((fieldName) => fieldName !== "seed")
@@ -1149,7 +1141,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                     : "") +
                 `     */\n` +
                 `    ${variantName}(value: hasSeed, fields: { \n${filteredFields(
-                    2
+                    2,
                 )} \n` +
                 `    } ) : ${returnType}\n` +
                 `    /**\n` +
@@ -1159,7 +1151,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `     * with raw seed details included in fields.\n` +
                 `     */\n` +
                 `    ${variantName}(fields: ${permissiveTypeName} | {\n${unfilteredFields(
-                    3
+                    3,
                 )}\n    } ): ${returnType}\n` +
                 `    ${variantName}(\n` +
                 `        seedOrUf: hasSeed | ${permissiveTypeName}, \n` +
@@ -1184,7 +1176,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `     * @param fields - \\{ ` +
                 filteredFields(0, undefined, ", ").replace(
                     /([<{}>])/g,
-                    "\\$1"
+                    "\\$1",
                 ) +
                 ` \\}\n` +
                 `     * @remarks\n` +
@@ -1210,7 +1202,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `     */\n` +
                 `    $seeded$${variantName} = impliedSeedActivityMaker(this, \n` +
                 `        this.${variantName} as (value: hasSeed, fields: { \n${filteredFields(
-                    3
+                    3,
                 )} \n` +
                 `        } ) => ${returnType}\n` +
                 `    )\n` +
@@ -1271,8 +1263,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const returnType = isActivity
             ? "isActivity"
             : isDatum
-            ? "InlineTxOutputDatum"
-            : "UplcData";
+              ? "InlineTxOutputDatum"
+              : "UplcData";
 
         if ("enum" == oneField.typeSchema.kind) {
             return this.mkNestedEnumAccessor({
@@ -1392,7 +1384,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 return `export const ${name}Schema : ${type} = ${JSON.stringify(
                     schema,
                     null,
-                    4
+                    4,
                 )};`;
             })
             .join("\n\n");
