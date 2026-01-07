@@ -1,4 +1,4 @@
-import { bytesToText } from "../HeliosPromotedTypes.js";
+import { bytesToText, textToBytes } from "../HeliosPromotedTypes.js";
 
 export const maxUutName = 32;
 
@@ -21,7 +21,7 @@ export class UutName {
         }
         if (fullUutName.length > maxUutName) {
             throw new Error(
-                `uut name '${fullUutName}' exceeds max length of ${maxUutName}`
+                `uut name '${fullUutName}' exceeds max length of ${maxUutName}`,
             );
         }
         this._uutName = fullUutName;
@@ -35,6 +35,12 @@ export class UutName {
      **/
     get name() {
         return this._uutName;
+    }
+    /**
+     * the full uniquified name of the UUT, in byte-array (number[]) form
+     */
+    get bytes() {
+        return textToBytes(this._uutName);
     }
     toString() {
         return this._uutName;
