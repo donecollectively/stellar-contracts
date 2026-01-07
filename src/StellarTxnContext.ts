@@ -1659,7 +1659,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         logger.flush();
 
         // hands off wallet signing & tx-completion to the batcher.
-        console.timeStamp?.(`tx: add to current-tx-batch`);
+        console.timeStamp?.(`tx: add to current-tx-batch`); // perf tracing
+        console.log("add to current batch", { whenBuilt });
         currentBatch.$addTxns(txDescr);
         this.setup.chainBuilder?.with(txDescr.tx);
         await whenBuilt?.(txDescr);
