@@ -1,7 +1,15 @@
 
 # Helios builtins quickstart
 
-Automatic methods (all types): `serialize()`, `show()`, `from_data()`, `is_valid_data()`, `copy(...)` are provided by the language—see `essential-helios-lang.md` for details. Per-type sections below omit these.
+## MUST READ: Context
+
+WARNING: Helios on-chain builtins are often closely aligned to the OFFCHAIN Typescript SDK, but THEY ARE DIFFERENT.
+
+These built-in types are available for on-chain use.  You should be familiar with ./essential-helios.lang.md and ./essential-cardano.md to use these built-ins.
+
+## Automatic  methods (all types)'
+
+`serialize()`, `show()`, `from_data()`, `is_valid_data()`, `copy(...)` are provided by the language—see `essential-helios-lang.md` for details. Per-type sections below omit these.
 
 ## Address — https://helios-lang.io/docs/lang/builtins/address
 - Cardano address consisting of a payment `Credential` plus optional `StakingCredential`.

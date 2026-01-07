@@ -1,8 +1,19 @@
 # Stellar off-chain essentials
 
-Before reading this, you should understand cardano essentials in `essential-cardano.md`, and the overall architecture and transaction patterns in `reference/essential-stellar-dapp-architecture.md`, and the lifecycle duties in `reference/essential-capo-lifecycle.md`.
+## MUST READ: Context and Dependencies
 
-Use this as a map; you should also understand `reference/essential-stellar-offchain.md`, and lifecycle duties in `reference/essential-capo-lifecycle.md`.  You may sometimes need `reference/essential-helios-api.md` for more details on the Helios API, but you're more likely to need context from kickstart guide `reference/essential-stellar-dapp-kickstart.md`, or stellar-contracts `docs/` contents, or to reference the source code in StellarTxnContext.ts, DelegatedDataContract.ts, or its parent classes.
+Before studying this document, you should understand cardano essentials in `essential-cardano.md`, and the overall architecture and transaction patterns in `reference/essential-stellar-dapp-architecture.md`, and the lifecycle duties in `reference/essential-capo-lifecycle.md`.
+
+Use this as a map; you should also understand lifecycle duties in `reference/essential-capo-lifecycle.md`.  You may sometimes need `reference/essential-helios-api.md` for more details on the Helios API, but you're more likely to need context from kickstart guide `reference/essential-stellar-dapp-kickstart.md`, or stellar-contracts `docs/` contents, or to reference the source code in StellarTxnContext.ts, DelegatedDataContract.ts, or its parent classes.
+
+If you need to do test automation, you should also read `reference/essential-stellar-testing.md`.
+
+## On-chain vs. Off-chain Roles
+
+-   **On-chain (Validator):** On-chain policies only **validate** submitted transactions against a set of rules. They are the source of truth and security. They cannot construct or modify transactions.
+-   **Off-chain (Constructor):** The off-chain code detailed here **constructs** transactions. It is responsible for building a transaction that satisfies the on-chain policy.
+
+**Summary for Agent:** Your role is off-chain. You will use the classes and methods in this document to build transactions. The on-chain code will then validate your work. Success depends on building a valid transaction.
 
 ## Core classes
 - `Capo` (extends StellarContract): orchestrates charter mint/update, delegates, manifest, delegated data, ref scripts.  `src/Capo.ts`.
@@ -20,8 +31,7 @@ Use this as a map; you should also understand `reference/essential-stellar-offch
     - The authority token is always returned to the Capo address.
 
 ## Key transaction flows (day-to-day operations)
-- Capo:
- - 
+### Capo:
   - `get mph`: Returns the minting policy hash for the Capo.  This is used by the CapoProvider to display the minting policy hash in the UI.
   - `delegateRoles`: Defines the delegate roles for the dApp.  Every dApp should define its own delegate roles, and typically will use the basicDelegateRoles() helper to access the default mint/spend/gov delegates.
   - `findDelegatedDataUtxos`: Capo's helper method for finding delegated data UTxOs via manifest/id.  It can be used by the controller classes to locate the UTxOs for their records.
@@ -33,7 +43,7 @@ Use this as a map; you should also understand `reference/essential-stellar-offch
    - `findSettingsInfo`: Finds the current settings info for the Capo, including the current settings record and the underlying `data` and possible application-layer `dataWrapped` object.  Not every dApp has to have settings, but an dApp can, with its own data structure for the settings.
 
 
-- Delegated data controllers:
+### MUST READ: Delegated data controllers:
   - `mkTxnCreateRecord`: Creates a new record at the Capo, using the spend delegate activity to authorize the creation.  Implemented by the base class DelegatedDataContract.  
      - Specific subclasses may define more specific mkTxn* methods for creating their records for specific use-cases.
      - The basic mkTxnCreateRecord() and mkTxnUpdateRecord() methods can also be fed with specific activity objects when their basic `DgDataCreationOptions<TLike>` are good for the use-case at hand.
@@ -42,13 +52,58 @@ Use this as a map; you should also understand `reference/essential-stellar-offch
      - The basic mkTxnUpdateRecord() method can also be fed with specific activity objects when its basic `DgDataUpdateOptions<TLike>` are good for the use-case at hand.
 
   - Controllers provide basic mkTxnCreateRecord() and mkTxnUpdateRecord() methods that SHOULD be used by application-specific transaction-building functions that provide developer-friendly interfaces closely fit to application use-cases.
+  - Controllers MAY additionally provide use-case-specific mkTxn* methods that are more efficient or interface-optimized for the specific use-case.
+  - All `mkTxn*` methods return a `StellarTxnContext` object, and it MUST be submitted, otherwise it's just a possible transaction, not an executed transaction.  
+
+#### MUST READ: Data/Activity type Bridge
+
+Each delegated data controller comes with a .typeInfo.d.ts and a .bridge.ts, which are generated by the Stellar Contracts rollup plugin.  They are used implicitly (and sometimes explicitly) for transforming on-chain data into well-typed data for off-chain use, and for encoding off-chain data (permissive or strict variants) into a canonical on-chain form for submission in transaction data.
+
+Of special interest to dApps are:
+ - Activity bridge for accessing the ‹controller›.activities.`MintingActivities`.* type and similarly, its `SpendingActivities` and `BurningActivities` for each different policy.
+ - The functionality of the data bridge (see below)
+ - Conventions for representing certain onchain types as typescript types.
+
+##### MUST READ: Conventions for off-chain representation of onchain types
+
+The readable data-types always use their "Ergo" forms for enums and structs (with primitive data using strict representation), and their "TLike" or permissive forms for write.
+
+ - onchain Option[T] is `undefined | ‹Ergo-T›` for read, or `undefined | ‹TLike›` for write.  the key is required and `undefined` is required (null not allowed) for None.
+ - onchain Int is `bigint` for read or `number | bigint` for write.
+ - onchain String is `string` off-chain (read/write).
+ - onchain ByteArray is `number[]` for read, and `number[] | string` for write (but note that a string value has to be hex-encoded binary data, so its utility is constrained)
+ - onchain List[T] is `List<T>` for primitives and List<‹ErgoT›> for enums/structs for reading, and List<TLike> for primitives, enums and structs for writing.
+ - onchain Map[K,V] is unknown. If you need to know about this, please STOP processing and instigate a separate research thread to fix this TODO:ce2esg3cmf
+ - onchain Boolean is `boolean`.
+ - onchain Real is `number`.
+ - onchain Timestamp is `Date` for read, and unknown for write.  If you need to know about this, please STOP processing so we can fix TODO:k5t0x9an76.
+ - onchain Value uses the offchain Value class (create with the helios off-chain  `makeValue()` function)
+ - onchain enum (e.g. SomeEnum) are mapped to ErgoSomeEnum for read and SomeEnumLike for writing.  The Ergo types for these are a single flat type allowing any of the enum variants and not requiring any of them.  However, in practice there will ALWAYS be exactly one of the variant keys in the ErgoSomeEnum.  `keyof ErgoSomeEnum` gives the allowable variants, and `knownVariant = Object.keys(someEnumValue)[0]; someEnumValue[knownVariant]!` will always be defined.
+   - nested fields, when present in an enum variant, are always encoded in one of two ways.  When there is a single nested field of type T, `someEnumValue[knownVariant]` will be type T (TLike, for write).  When there are multiple nested fields of various types, `someEnumValue[knownVariant]` will have type `{[k:string]: ... nested type}` including each field (T and TLike, respectively).
+ - onchain struct (e.g. SomeStruct) types are mapped to object types with `[k:string]: ...nested type` including each field's type, with type names `ErgoSomeStruct` and `SomeStructLike` for reading and writing respectively.
+
+##### Low-level bridge details
+ 
+For instance, a DriverPolicy will generate a DriverPolicyDataBridge, which comes with this snippet of documentation:
+ ``` 
+ * This class doesn't need to be used directly.  Its methods are available through the ***controllers's methods***:
+ *  - `get mkDatum` - returns the datum-building bridge for the contract's datum type
+ *  - `get activity` - returns an activity-building bridge for the contract's activity type
+ *  - `get reader` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types
+ *  - `get onchain` - (advanced) returns a data-encoding bridge for types defined in the contract's script
+ * The advanced methods are not typically needed - mkDatum and activity should normally provide all the
+ * type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's `findDelegatedDataUtxos()` 
+ * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
+```
+
+Note that the `mkDatum()` method is not typically needed when the mkTxn() helpers accept DataLike objects directly for writing on-chain data into transactions.
 
 ## Key flows (uncommon lifecycle activities)
 - Charter bootstrap: `mkTxnMintCharterToken` builds seed→charter mint tx + ref scripts (Capo, minter, mint delegate); sets CharterData with delegate links/manifest (one-time per Capo).  The CapoProvider provides UI with a button to trigger this flow.  dApps need to capture the deployment details, store them in their code repository, and build their dAPI package to get pre-compiled minter, Capo and mint/spend delegates.  This package is then used by their UI to create and validate transaction before submitting them onchain.
     - `mkAdditionalTxnsForCharter`: Capo's hook for adding dApp-specific additional transactions to the charter creation process.  It is called during the creation of the charter transaction.  The provided transaction context has state.charterData in case it's needed.  This method should use {@link StellarTxnContext.includeAddlTxn} to add transactions to the context.  No-op by default.
 - Charter update: `txnUpdateCharterUtxo`/`mkTxnUpdateCharter` spends charter with `updatingCharter`, returns charter token to Capo address, updates links/manifest/pendingChanges (used by admin flows like delegate install/settings/policy changes).  `mkTxnUpgradeIfNeeded` is used by the CharterStatus component to check for needed upgrades and trigger the upgrade transactions.
 
-- Delegate install/replace:
+### Capo: Installing/Replacing a Delegate policy
   - Mint/spend delegate: `mkTxnUpdatingMintDelegate` / `mkTxnUpdatingSpendDelegate` (normal or forced), burns old UUT unless forced, updates CharterData link.
   - `mkTxnAddingMintInvariant` and `mkTxnAddingSpendInvariant` are not yet well supported, but are planned for future releases.
   - Data policy/named delegate: `mkTxnAddingNamedDelegate`, `mkTxnQueuingDelegateChange` + `mkTxnCommittingPendingChanges` (queue/commit pattern for manifest DgDataPolicy entries).  DEPRECATED; use DelegatedDataContract subclasses instead. 
@@ -153,4 +208,3 @@ Note that the UI-provided form manager does this sequence itself, so application
 - On-chain basics: `reference/essential-stellar-onchain.md`
 - Architecture view: `reference/essential-stellar-dapp-architecture.md`
 - Kickstart guide: `reference/essential-stellar-dapp-kickstart.md`
-

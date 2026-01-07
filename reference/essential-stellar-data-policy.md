@@ -1,11 +1,18 @@
 # Stellar data-policy essentials
+
+## MUST READ: Context and Dependencies
+
 Use this as a focused guide for authoring data-policy delegates (Helios scripts) that validate creation/update/delete of CIP-68 records stored at the Capo.
+
+See also ./essential-stellar-onchain.md.
+
+Every data-policy delegate is wrapped by a Typescript subclass of DelegatedDataController (see `reference/essential-stellar-offchain.md` for more on that).
 
 ## What a data-policy delegate is
 - A Helios policy script (DelegatedDataContract specialization) that owns a UUT (idPrefix-based) and enforces business rules for one record type.
 - On-chain datum: stores an on-chain data record together with some value.  
 
-- Redeemer/activity: your policy-specific Spending/Minting/BurningActivities; the mint/spend delegates call you via `CreatingDelegatedData` / `UpdatingDelegatedData` / `DeletingDelegatedData` and then your nested activities.
+- Redeemer/activity: your policy-specific Spending/Minting/BurningActivities; the mint/spend delegates call you via additionalDelegateValidation, using abstract activities `CreatingDelegatedData` / `UpdatingDelegatedData` / `DeletingDelegatedData`, with your nested activities being more specific cases of those.
 
 ## Expectations for specialized delegates
 - Keep the DelegateActivity top-level variants exactly as in the base: CapoLifecycle, DelegateLifecycle, SpendingActivities, MintingActivities, BurningActivities, Creating/Updating/DeletingDelegatedData, MultipleDelegateActivities, OtherActivities.
@@ -42,4 +49,3 @@ Use this as a focused guide for authoring data-policy delegates (Helios scripts)
 - On-chain architecture and manifest/idPrefix rules: `reference/essential-stellar-dapp-architecture.md`
 - Delegate lifecycle responsibilities: `reference/essential-capo-lifecycle.md`
 - On-chain helper APIs (CapoCtx, DgDataDetails, DelegateInput): `reference/essential-stellar-onchain.md`
-

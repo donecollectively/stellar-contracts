@@ -1,10 +1,12 @@
 # Helios essentials (agent quick-start)
+
+## MUST READ: Context and Dependencies
 - Purely functional, expression-oriented, readability-first language for on-chain Cardano. It is NOT JavaScript or any other language; syntax is Helios-specific (only loosely inspired by Go/Rust). Do not guess—follow the definitions here.
 - See elsewhere for the off-chain APIs: `essential-helios-api.md`
 - See elsewhere for builtins available on-chain: `essential-helios-builtins.md`
 - See elsewhere for Cardano essentials: `essential-cardano.md`
 
-## About the language:
+## About the language: NOT JAVASCRIPT-like!  MUST READ DETAILS.
 
 - Everything is immutable; no loops—use recursion. Comments are C-style (`//`, `/* */`).
 - No side effects; declared `const` and imported modules are the only "global" variables ; no mutation.
@@ -18,7 +20,7 @@
 - No mutation—use `copy` to create a new instance with modified fields.
 
 ## Core building blocks
-- Variables: assignments inside functions; `const` at top-level 
+- Variables: arbitrary names assigned inside functions (no `let` or `const`; `foo = bar() or foo = if (...) { expr } else { expr }`); `const` at top-level can be recompiled with different `const` values.
 - Script Parameters: `const` may omit a RHS if typed—value must be supplied off-chain before compile.
 - Primitives: `Int` (unbounded, numeric literals incl. 0b/0o/0x, underscores), `Real` (fixed 6 dp), `Bool`, `String`, `ByteArray` (`#`hex or `b"..."`).
 - Containers: `[]T` lists (linked list, access via `.get(i)`), `Map[K]V` (list of pairs, keys not guaranteed unique), `Option[T]` (Some/None), tuples (up to 5 entries, getters first..fifth).
@@ -28,8 +30,14 @@
 - Comments and semicolons: semicolons auto-inserted after assignments; comments don’t affect parsing.
 
 ## User types
-- Structs: `struct S { field: Type }`; instantiate `S{...}`; field access via dot. Methods place `func` inside block with `self` (implicit type) as first arg. Associated funcs/consts use `Type::name`. Encoding: 1-field structs encode as that field; others as data lists; any tagged field (UTF-8 string tag) forces CIP-68-style data map.
-- Enums: sum types with variants. Methods allowed; `self` typed as base. Builtin `Data` enum variants: `IntData`, `ByteArrayData`, `ListData`, `MapData`, `ConstrData`.
+- Structs: `struct S { field: Type \n field2: Type2 }`; instantiate `S{...}`; no semicolons between field defs.  Field access via dot. 
+  - Encoding: 1-field structs encode as a bare field; others as data UplcList(...fields)
+  - any tagged field (UTF-8 string tag following a field def `field3: Int "f3"`) forces CIP-68-style data map using the tag for encoding; use the full field name in all onchain code
+  - struct methods: place `func foo(self [, arg1: Type]) -> returnType { ... }` inside struct block; `self` has implicit type; called with thing.foo(arg1). 
+  - "static"/associated function inside the struct block `func bar() -> returnType { ... }` is called with `Type::bar()`. 
+- Enums: sum types with variants 
+  - methods and static/associated functions allowed as with structs.  `self` typed as base (use `self.switch {...}`).
+- Builtin `Data` enum variants: `IntData`, `ByteArrayData`, `ListData`, `MapData`, `ConstrData`.
 - Destructuring: positional, not pattern matching. Works in assignments and switch cases; can nest, optional type annotations; destructuring into a variant performs runtime type assertion. `_` discards.
 
 ## Automatic methods (all user + builtin types except functions)
@@ -39,7 +47,7 @@
 
 ## Operators
 - Standard precedence table for binary operators
-- Special operator`|` is pipe: `x | f` applies `f`, and `x + 2 | * 3` treats `* 3` as partial application.
+- Special operator `|` is pipe: `x | f` applies `f`, and `x + 2 | * 3` treats `* 3` as partial application.
 - Automatic semicolon insertion after assignments; be careful with trailing binary ops.  Recommended to use semicolons to separate statements.
 
 ## Token name ordering
@@ -50,7 +58,7 @@
 - No user-defined typeclasses (yet)
 
 ## Validators and scripts
-- Script purposes: `spending`, `minting`, `staking`, `testing`, `mixed`, `module`. Header syntax: `<purpose> name { ... }`; the name is global in the source. Mixed = single validator whose `main` branches at runtime on `ScriptContext.purpose` (type `ScriptPurpose`).
+- Script purposes: `spending`, `minting`, `staking`, `testing`, `mixed`, `module`. Header syntax: `<purpose> <name>\n\n ... }`; the name is global in the source. `mixed <name>` = single validator whose `main` branches at runtime on `ScriptContext.purpose` (type `ScriptPurpose`).
 - Staking reward withdrawals use `ScriptPurpose::Rewarding`; the on-chain tx sets the purpose when withdrawing rewards. Common pattern: the “withdraw-zero” trick—withdraw 0 lovelace from a staking credential to prove control of the reward account without moving funds.
 - Mixed validator structure (single `main`, runtime purpose switch with enum `.switch`):
 - Script module example (`go` only here to help Markdown formatting.  It's actually Helios code.).

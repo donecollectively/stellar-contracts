@@ -1,5 +1,12 @@
 # Cardano essentials
 
+## On-chain vs. Off-chain Roles
+
+-   **On-chain (Validator):** On-chain scripts (validators) only **validate** transactions. They run on the blockchain and act as the final arbiter, checking the transaction context against protocol rules. They cannot build or alter transactions. A transaction fails if validation fails.
+-   **Off-chain (Constructor):** Off-chain code **constructs** transactions. It must know the on-chain validator's rules to build a transaction that will be accepted.
+
+
+
 ## UTxO Blockchain
 
 ### UTxO basics
@@ -44,4 +51,3 @@
 - Helios API essentials: see `essential-helios-api.md` when you need to be an expert on the off-chain Helios API.
 - Helios language basics: see `essential-helios-lang.md` when you need any amount of knowledge about the on-chain Helios language.  NEVER make assumptions that you understand the language until you have read the language specification in its entirety.
 - Helios builtins (address/staking types and APIs): see `essential-helios-builtins.md`.
-

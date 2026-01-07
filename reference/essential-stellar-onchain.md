@@ -1,10 +1,12 @@
 # Stellar on-chain essentials
 
+## MUST READ: Context and Dependencies
+
 Readers should understand essential architecture and transaction patterns (essential-stellar-dapp-architecture.md) before reading this section.  They should also understand cardano essentials in `essential-cardano.md`, and the lifecycle duties in `reference/essential-capo-lifecycle.md`.
 
 You might also need to look at internals in `reference/essential-stellar-internals.md` for context on what the onchain Capo and related libraries do to be good collaborators with your onchain data-policy delegates.  
 
-You will also need `reference/essential-helios-lang.md` and `reference/essential-helios-builtins.md` to become competent with the Helios language and builtins.  IT IS ESSENTIAL THAT YOU UNDERSTAND THESE BEFORE WRITING ONCHAIN HELIOS CODE or answering questions about it.
+You MUST study and be expert at `reference/essential-stellar-data-policy.md` as well as `reference/essential-stellar-dapp-kickstart.md`.  IT IS ESSENTIAL THAT YOU UNDERSTAND THESE BEFORE WRITING ONCHAIN HELIOS CODE or answering questions about it.  You will also need `reference/essential-helios-lang.md` and `reference/essential-helios-builtins.md` to become competent with the Helios language and builtins.  
 
 You may sometimes need to inspect the onchain library code in stellar-contracts `src/**/*.hl` files to understand the implementation details of the onchain Capo and related libraries.
 
@@ -55,6 +57,7 @@ All activities and datums are defined in Helios code, either in a library file o
 - `logGroupStart` / `logGroupEnd` mark logging groups; `logGroup` / `logGroupUnit` wrap callbacks with grouped output; `TRACE`, `TODO` emit diagnostics.
 - `REQT` asserts requirements; `bREQT` returns Bool after asserting.
 - `REQTgroupStart` opens a requirement-labelled group; `assertREQTgroup` / `bREQTgroup` execute callbacks with grouped assertions; generic `REQTgroup[T]` wraps any callback and returns its result; `REQTgroupUnit` is the unit-return variant.
+- See `reference/essential-stellar-onchain-diagnostics.md` for more details about using the logging and REQT utilities.
 
 ### Roles, links, and safety helpers
 - `RelativeDelegateLink` authority helpers: `hasDelegateInput`, `hasValidOutput`, `validatesUpdatedSettings`, `tvAuthorityToken`, `acAuthorityToken`.
@@ -202,4 +205,3 @@ See essential-capo-lifecycle.md for more details about the charter lifecycle and
 - Off-chain building: `reference/essential-stellar-offchain.md`
 - Architecture overview: `reference/essential-stellar-dapp-architecture.md`
 - Kickstart steps: `reference/essential-stellar-dapp-kickstart.md`
-

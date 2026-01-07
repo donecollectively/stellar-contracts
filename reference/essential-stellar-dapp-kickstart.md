@@ -2,8 +2,8 @@
 
 Use this as a map; the detailed, step-by-step off-chain flow now lives in `reference/essential-stellar-offchain.md`, and lifecycle duties in `reference/essential-capo-lifecycle.md`.
 
-## What you need before coding
-- Read: on-chain, off-chain, architecture, internals.
+## MUST READ: What you need before coding
+- Read: `reference/essential-stellar-onchain.md`, `reference/essential-stellar-offchain.md`, `reference/essential-stellar-dapp-architecture.md`
 - Tools: Node/PNPM, Helios toolchain; wallet + network client.
 - Seed UTxO: one UTxO with enough ADA for charter + ref scripts; capture `{seedTxn, seedIndex}`.
 - Build bundles/bridges: run rollup/build so Capo/delegates/controllers have compiled bundles.
@@ -42,4 +42,3 @@ Tests run a simulated blockchain environment to verify policy code without deplo
 - Use DataManager and FormManager to find, display, and show onscreen forms for record creation/updating.  
  - And/or write your own UI components to gather user intentions, and construct transactions using a data-controller fetched via `getDgDataController()` from the Capo instance (found in the CapoDappProvider context).  See essential-stellar-offchain.md
  - See essential-stellar-ui.md for more details.
-

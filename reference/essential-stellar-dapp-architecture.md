@@ -1,5 +1,6 @@
 # Stellar dApp architecture essentials
 
+## MUST READ: Context and Dependencies
 
 The Stellar Contracts library provides application developers with a multi-tier architecture for building applications that leverage Cardano's decentralized blockchain.  
 
@@ -10,6 +11,8 @@ Stellar Contracts enables on-chain smart contracts to be upgraded in place, subj
 It supports applications that manage many different kinds of data, and can run on Cardano mainnet or private side-chains.
 
 All activities and datums are defined in Helios code, either in a library file or in an application-specific file. See essential-stellar-onchain.md for more details.  The rollup build process syncs typescript types and generated bridging code to match with the onchain types.
+
+You'll need to be familiar with `reference/essential-cardano.md` and `reference/essential-helios.md`.
 
 ## Design Goals
 - Modularity/upgradability: delegates (mint/spend/data) are swappable with queued/committed changes.
@@ -84,12 +87,12 @@ Because most UTxOs are stored in the Capo, data-policies can be trivially upgrad
 - Delete delegated data record: mint delegate + data-policy delegate validate burn/spend of record UTxO/UUT.
 - Install/replace data policy: queue pending change (new controller link, idPrefix); commit to manifest; optional burn old token; add ref script for new policy.
 
-### Responsibility snapshot:
+### Responsibilities:
 - Mint delegate: CreatingDelegate; queuePendingChange checks; its share of commitPendingChanges (burns).
 - Spend delegate: commitPendingChanges (manifest application); future manifest updates; other lifecycle actions when dgtRolesForLifecycleActivity says spend.
 - Capo only: forced delegate swaps, ref-script retire, base delegated-data id/token consistency; governance gating for lifecycle/admin.
 
-See essential-capo-lifecycle.md for more details.
+See `reference/essential-capo-lifecycle.md` for more details.
 
 ## Key Conventions
 
@@ -107,4 +110,3 @@ Application-specific Capo can import/reuse data-policies from other packages.  D
 - On-chain details: `reference/essential-stellar-onchain.md`
 - Off-chain flows: `reference/essential-stellar-offchain.md`
 - Kickstart steps: `reference/essential-stellar-dapp-kickstart.md`
-
