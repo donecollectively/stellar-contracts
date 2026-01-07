@@ -450,6 +450,77 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
+    /**
+     * Returns the id of a named record previously stored in the helperState.namedRecords.
+     * @remarks
+     * Throws an error if the named record is not found.
+     */
+    getNamedRecordId(recordName: string) {
+        const found = this.helperState!.namedRecords[recordName];
+        if (!found) throw new Error(`named record: '${recordName}' not found`);
+        return found;
+    }
+
+    /**
+     * Waits for a tx to be built, and captures the record id indicated in the transaction context
+     * @remarks
+     * The captured id is stored in the helperState, using the indicated recordName.
+     *
+     * Returns the transaction-context object resolved from arg2.
+     *
+     * Without a uutName option, the "recordId" UUT name is expected in the txn context.
+     * If you receive a type error on the tcxPromise argument, use the uutName option to
+     * set the expectation for a UUT name actually found in the transaction context.
+     *
+     * Optionally submits the txn. In this case, if the expectError option is set, an error will be
+     * thrown if the txn ***succeeds***.  This combines well with `await expect(promise).rejects.toThrow()`.
+     *
+     * Resolves after all the above are done.
+     */
+    async captureRecordId<
+        T extends StellarTxnContext<anyState> & hasUutContext<U>,
+        const U extends string & keyof T["state"]["uuts"] = "recordId", //as string & keyof T["state"]["uuts"],
+    >(
+        options: {
+            recordName: string;
+            submit?: boolean;
+            uutName?: U;
+            expectError?: true;
+        },
+        tcxPromise: Promise<T>,
+        //   uutName: U  = "recordId" as U// keyof T["state"]["uuts"] = "recordId"
+    ) {
+        const {
+            recordName: name,
+            submit = true,
+            uutName = "recordId" as U,
+            expectError,
+        } = options;
+        const stack = new Error().stack!.split("\n").slice(2, 3);
+        const tcx = await tcxPromise.catch((e: Error) => {
+            const lines = (e.stack || "").split("\n");
+            const index = lines.findIndex((line: string) =>
+                line.match(/captureRecordId/),
+            );
+            lines.splice(index === -1 ? 0 : index + 1, 0, ...stack);
+            e.stack = lines.join("\n");
+            throw e;
+        });
+        const id = tcx.state.uuts[uutName];
+        if (!id) {
+            console.log("UUTs in tcx:", tcx.state.uuts);
+            throw new Error(
+                `captureRecordId: no ${uutName.toString()} found in txn context for ${name}`,
+            );
+        }
+        this.helperState!.namedRecords[name] = id.toString();
+        if (submit)
+            return this.submitTxnWithBlock(tcx, {
+                expectError,
+            });
+        return tcx;
+    }
+
     async extraBootstrapping(
         args?: Partial<MinimalCharterDataArgs>,
         submitOptions: SubmitOptions = {},
