@@ -33,14 +33,10 @@ export type PizzaCapo_TC = StellarTestContext<PizzaCapoTestHelper> & {
     reusableBootstrap(this: PizzaCapo_TC): Promise<PizzaCapo>;
 };
 
-
-
-
 export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(
     PizzaCapo,
     {} as any as addlState,
 ) {
-
     getOrderController() {
         return this.capo.getDgDataController("Order");
     }
@@ -52,10 +48,12 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(
         return this.registerFirstCustomer();
     }
 
-        /**
+    /**
      * Register the first customer; stores record id via captureRecordId.
      */
-    async firstRegisteredCustomer(options: { submit?: boolean; expectError?: true } = {}) {
+    async firstRegisteredCustomer(
+        options: { submit?: boolean; expectError?: true } = {},
+    ) {
         // ^ note that the snapshot builder name MUST match with the
         //   name of the snapshot-invocation method snapToFirstRegisteredCustomer!
         //   (this note doesn't need to be used in your helpers)
@@ -64,9 +62,11 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(
         await this.setActor("wally"); // a worker at the pizza store
         const tcx = this.mkTxnCreateCustomer("carla");
         this.helperState.snapshots["firstRegisteredCustomer"] = true;
-        return this.captureRecordId({ recordName: "firstRegisteredCustomer", submit, expectError }, tcx);
+        return this.captureRecordId(
+            { recordName: "firstRegisteredCustomer", submit, expectError },
+            tcx,
+        );
     }
-
 
     @CapoTestHelper.hasNamedSnapshot("firstOrderPending", "tina")
     async snapToFirstPendingOrder() {
@@ -79,11 +79,18 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(
         await this.setActor("wally"); // a worker at the pizza store
         await this.snapToFirstRegisteredCustomer();
         await this.setActor("carla"); // the customer
-        const tcx = this.mkTxnCreateOrder({ pie: "margherita", drink: "sparkling" });
+        const tcx = this.mkTxnCreateOrder({
+            pie: "margherita",
+            drink: "sparkling",
+        });
         this.helperState.snapshots["firstOrderPending"] = true;
-        return this.captureRecordId({ 
-            recordName: "firstPendingOrder", submit, expectError }, 
-            tcx
+        return this.captureRecordId(
+            {
+                recordName: "firstPendingOrder",
+                submit,
+                expectError,
+            },
+            tcx,
         );
     }
 
@@ -96,40 +103,25 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(
     /**
      * Bake/approve first order; chains from pending; switches actor.
      */
-    async firstOrderBaked(options: { submit?: boolean; expectError?: true } = {}) {
+    async firstOrderBaked(
+        options: { submit?: boolean; expectError?: true } = {},
+    ) {
         const { submit = true, expectError } = options;
         await this.setActor("carla"); // a worker at the pizza store
         await this.snapToFirstPendingOrder();
         await this.setActor("bobby"); // baker
-        const tcx = this.mkOrderUpdateTxn("firstPendingOrder", { status: "Baked" });
+        const tcx = this.mkOrderUpdateTxn("firstPendingOrder", {
+            status: "Baked",
+        });
 
-        return this.captureRecordId({ 
-            recordName: "firstBakedOrder", submit, expectError 
-        }, tcx);
-    }
-
-    /**
-     * Centralized id capture, matching production helpers (todo: build this into the basic capo test helper)
-     */
-    async captureRecordId<
-        T extends StellarTxnContext<any> & { state: { uuts: OrderUuts } },
-        const U extends string & keyof T["state"]["uuts"] = "recordId",
-    >(
-        options: {
-            recordName: string;
-            submit?: boolean;
-            uutName?: U;
-            expectError?: true;
-        },
-        tcx: Promise<T> | T,
-    ) {
-        const { recordName, submit = true, uutName = "recordId" as U, expectError } = options;
-        const built = await tcx;
-        const id = built.state.uuts[uutName];
-        if (!id) throw new Error(`captureRecordId: no ${String(uutName)} found for ${recordName}`);
-        this.helperState.namedRecords[recordName] = id.toString();
-        if (submit) return this.submitTxnWithBlock(built, { expectError });
-        return built;
+        return this.captureRecordId(
+            {
+                recordName: "firstBakedOrder",
+                submit,
+                expectError,
+            },
+            tcx,
+        );
     }
 
     // --- sample txn factories (replace with real controller calls) ---
@@ -157,4 +149,3 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(
         return tcx;
     }
 }
-
