@@ -57,7 +57,7 @@ export declare abstract class WrappedDgDataContract<T extends AnyDataTemplate<an
      * Use `this.activity.SpendingActivities.*` to access the available
      * types of update offered by the contract.
      */
-    mkTxnUpdateRecord<TCX extends StellarTxnContext>(txnName: string, item: FoundDatumUtxo<T, WRAPPER>, options: DgDataUpdateOptions<TLike> & {
+    mkTxnUpdateRecord<TCX extends StellarTxnContext>(item: FoundDatumUtxo<T, WRAPPER>, options: DgDataUpdateOptions<TLike> & {
         updatedWrapped?: WRAPPER;
     }, tcx?: TCX): Promise<TCX>;
 }

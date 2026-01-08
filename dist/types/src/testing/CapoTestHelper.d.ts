@@ -36,6 +36,34 @@ export declare abstract class CapoTestHelper<SC extends Capo<any>, SpecialState 
     findOrCreateSnapshot(snapshotName: string, actorName: string, contentBuilder: () => Promise<StellarTxnContext<any>>): Promise<SC>;
     restoreFrom(snapshotName: string): Promise<SC>;
     bootstrap(args?: Partial<MinimalCharterDataArgs>, submitOptions?: SubmitOptions): Promise<SC>;
+    /**
+     * Returns the id of a named record previously stored in the helperState.namedRecords.
+     * @remarks
+     * Throws an error if the named record is not found.
+     */
+    getNamedRecordId(recordName: string): any;
+    /**
+     * Waits for a tx to be built, and captures the record id indicated in the transaction context
+     * @remarks
+     * The captured id is stored in the helperState, using the indicated recordName.
+     *
+     * Returns the transaction-context object resolved from arg2.
+     *
+     * Without a uutName option, the "recordId" UUT name is expected in the txn context.
+     * If you receive a type error on the tcxPromise argument, use the uutName option to
+     * set the expectation for a UUT name actually found in the transaction context.
+     *
+     * Optionally submits the txn. In this case, if the expectError option is set, an error will be
+     * thrown if the txn ***succeeds***.  This combines well with `await expect(promise).rejects.toThrow()`.
+     *
+     * Resolves after all the above are done.
+     */
+    captureRecordId<T extends StellarTxnContext<anyState> & hasUutContext<U>, const U extends string & keyof T["state"]["uuts"] = "recordId">(options: {
+        recordName: string;
+        submit?: boolean;
+        uutName?: U;
+        expectError?: true;
+    }, tcxPromise: Promise<T>): Promise<T>;
     extraBootstrapping(args?: Partial<MinimalCharterDataArgs>, submitOptions?: SubmitOptions): Promise<SC>;
     abstract mkDefaultCharterArgs(): Partial<MinimalCharterDataArgs>;
     abstract mintCharterToken(args?: Partial<MinimalCharterDataArgs>, submitOptions?: SubmitOptions): Promise<hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedCapoConfig & hasAddlTxns<any>>;

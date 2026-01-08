@@ -288,16 +288,16 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
     _txnEndTime?: Date;
     get txnEndTime(): Date;
     /**
-      * Sets an on-chain validity period for the transaction, in miilliseconds
-      *
-      * @remarks if futureDate() has been set on the transaction, that
-      * date will be used as the starting point for the validity period.
-      *
-      * Returns the transaction context for chaining.
-      *
-      * @param durationMs - the total validity duration for the transaction.  On-chain
-      *  checks using CapoCtx `now(granularity)` can enforce this duration
-      */
+     * Sets an on-chain validity period for the transaction, in miilliseconds
+     *
+     * @remarks if futureDate() has been set on the transaction, that
+     * date will be used as the starting point for the validity period.
+     *
+     * Returns the transaction context for chaining.
+     *
+     * @param durationMs - the total validity duration for the transaction.  On-chain
+     *  checks using CapoCtx `now(granularity)` can enforce this duration
+     */
     validFor<TCX extends StellarTxnContext<S>>(this: TCX, durationMs: number): TCX;
     _validityPeriodSet: boolean;
     txRefInputs: TxInput[];

@@ -93,6 +93,7 @@
         "@helios-lang/type-utils": "^0.3.0",
         "@helios-lang/uplc": "^0.7.20",
         "@microsoft/api-extractor": "^7.47.11",
+        "@modelcontextprotocol/sdk": "^1.24.3",
         "@rollup/plugin-image": "^3.0.3",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",

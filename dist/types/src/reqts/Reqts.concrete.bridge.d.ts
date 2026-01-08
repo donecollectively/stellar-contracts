@@ -12,7 +12,7 @@ import { SeedActivity, type hasSeed, type isActivity } from "../ActivityTypes.js
  * @public
  */
 export type TimeLike = IntLike;
-import type { AnyData, AnyDataLike, DelegateDatum$Ergo$Cip68RefToken, DelegateDatum$Cip68RefTokenLike, DelegationDetail, ErgoDelegationDetail, DelegationDetailLike, ReqtData, ReqtDataLike, DelegateDatum$Ergo$capoStoredData, DelegateDatum$capoStoredDataLike, DelegateDatum, ErgoDelegateDatum, CapoLifecycleActivity$CreatingDelegateLike, DelegateRole, ErgoDelegateRole, DelegateRoleLike, CapoLifecycleActivity$forcingNewSpendDelegateLike, CapoLifecycleActivity$forcingNewMintDelegateLike, ManifestActivity$updatingEntryLike, ManifestActivity$addingEntryLike, ManifestActivity$forkingThreadTokenLike, ManifestActivity$burningThreadTokenLike, ManifestActivity, ErgoManifestActivity, ManifestActivityLike, CapoLifecycleActivity, ErgoCapoLifecycleActivity, CapoLifecycleActivityLike, DelegateLifecycleActivity$ReplacingMeLike, DelegateLifecycleActivity, ErgoDelegateLifecycleActivity, DelegateLifecycleActivityLike, ErgoSpendingActivity, SpendingActivityLike, ErgoMintingActivity, MintingActivityLike, ErgoBurningActivity, BurningActivityLike, DelegateActivity$CreatingDelegatedDataLike, DelegateActivity$UpdatingDelegatedDataLike, DelegateActivity$DeletingDelegatedDataLike, DelegateActivity, ErgoDelegateActivity, PendingDelegateAction$AddLike, PendingDelegateAction$ReplaceLike, PendingDelegateAction, ErgoPendingDelegateAction, PendingDelegateActionLike, RelativeDelegateLink, RelativeDelegateLinkLike, PendingDelegateChange, PendingDelegateChangeLike, ManifestEntryType$DgDataPolicyLike, ManifestEntryType$DelegateThreadsLike, ManifestEntryType, ErgoManifestEntryType, ManifestEntryTypeLike, CapoManifestEntry, CapoManifestEntryLike, PendingCharterChange$otherManifestChangeLike, PendingCharterChange, ErgoPendingCharterChange, CapoDatum$CharterDataLike, cctx_CharterInputType$RefInputLike, cctx_CharterInputType$InputLike, cctx_CharterInputType, Ergocctx_CharterInputType, cctx_CharterInputTypeLike, CapoCtx, CapoCtxLike } from "./Reqts.concrete.typeInfo.js";
+import type { AnyData, ErgoAnyData, AnyDataLike, DelegateDatum$Ergo$Cip68RefToken, DelegateDatum$Cip68RefTokenLike, DelegationDetail, ErgoDelegationDetail, DelegationDetailLike, ReqtData, ErgoReqtData, ReqtDataLike, DelegateDatum$Ergo$capoStoredData, DelegateDatum$capoStoredDataLike, DelegateDatum, ErgoDelegateDatum, CapoLifecycleActivity$CreatingDelegateLike, DelegateRole, ErgoDelegateRole, DelegateRoleLike, CapoLifecycleActivity$forcingNewSpendDelegateLike, CapoLifecycleActivity$forcingNewMintDelegateLike, ManifestActivity$updatingEntryLike, ManifestActivity$addingEntryLike, ManifestActivity$forkingThreadTokenLike, ManifestActivity$burningThreadTokenLike, ManifestActivity, ErgoManifestActivity, ManifestActivityLike, CapoLifecycleActivity, ErgoCapoLifecycleActivity, CapoLifecycleActivityLike, DelegateLifecycleActivity$ReplacingMeLike, DelegateLifecycleActivity, ErgoDelegateLifecycleActivity, DelegateLifecycleActivityLike, ErgoSpendingActivity, SpendingActivityLike, ErgoMintingActivity, MintingActivityLike, ErgoBurningActivity, BurningActivityLike, DelegateActivity$CreatingDelegatedDataLike, DelegateActivity$UpdatingDelegatedDataLike, DelegateActivity$DeletingDelegatedDataLike, DelegateActivity, ErgoDelegateActivity, PendingDelegateAction$AddLike, PendingDelegateAction$ReplaceLike, PendingDelegateAction, ErgoPendingDelegateAction, PendingDelegateActionLike, RelativeDelegateLink, ErgoRelativeDelegateLink, RelativeDelegateLinkLike, PendingDelegateChange, ErgoPendingDelegateChange, PendingDelegateChangeLike, ManifestEntryType$DgDataPolicyLike, ManifestEntryType$DelegateThreadsLike, ManifestEntryType, ErgoManifestEntryType, ManifestEntryTypeLike, CapoManifestEntry, ErgoCapoManifestEntry, CapoManifestEntryLike, PendingCharterChange$otherManifestChangeLike, PendingCharterChange, ErgoPendingCharterChange, CapoDatum$CharterDataLike, cctx_CharterInputType$RefInputLike, cctx_CharterInputType$InputLike, cctx_CharterInputType, Ergocctx_CharterInputType, cctx_CharterInputTypeLike, CapoCtx, ErgoCapoCtx, CapoCtxLike } from "./Reqts.concrete.typeInfo.js";
 export type * as types from "./Reqts.concrete.typeInfo.js";
 /**
  * GENERATED data bridge for **BasicDelegate** script (defined in class ***ReqtsConcreteBundle***)
@@ -403,7 +403,8 @@ export declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
     cctx_CharterInputType(d: UplcData): Ergocctx_CharterInputType;
     /**
         * reads UplcData *known to fit the **AnyData*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * AnyData or AnyDataLike
         * #### Standard WARNING
         *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
@@ -415,10 +416,11 @@ export declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    AnyData(d: UplcData): AnyData;
+    AnyData(d: UplcData): ErgoAnyData;
     /**
         * reads UplcData *known to fit the **DelegationDetail*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * DelegationDetail or DelegationDetailLike
         * #### Standard WARNING
         *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
@@ -430,10 +432,11 @@ export declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    DelegationDetail(d: UplcData): DelegationDetail;
+    DelegationDetail(d: UplcData): ErgoDelegationDetail;
     /**
         * reads UplcData *known to fit the **ReqtData*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * ReqtData or ReqtDataLike
         * #### Standard WARNING
         *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
@@ -445,10 +448,11 @@ export declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    ReqtData(d: UplcData): ReqtData;
+    ReqtData(d: UplcData): ErgoReqtData;
     /**
         * reads UplcData *known to fit the **RelativeDelegateLink*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * RelativeDelegateLink or RelativeDelegateLinkLike
         * #### Standard WARNING
         *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
@@ -460,10 +464,11 @@ export declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    RelativeDelegateLink(d: UplcData): RelativeDelegateLink;
+    RelativeDelegateLink(d: UplcData): ErgoRelativeDelegateLink;
     /**
         * reads UplcData *known to fit the **PendingDelegateChange*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * PendingDelegateChange or PendingDelegateChangeLike
         * #### Standard WARNING
         *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
@@ -475,10 +480,11 @@ export declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    PendingDelegateChange(d: UplcData): PendingDelegateChange;
+    PendingDelegateChange(d: UplcData): ErgoPendingDelegateChange;
     /**
         * reads UplcData *known to fit the **CapoManifestEntry*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * CapoManifestEntry or CapoManifestEntryLike
         * #### Standard WARNING
         *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
@@ -490,10 +496,11 @@ export declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    CapoManifestEntry(d: UplcData): CapoManifestEntry;
+    CapoManifestEntry(d: UplcData): ErgoCapoManifestEntry;
     /**
         * reads UplcData *known to fit the **CapoCtx*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * CapoCtx or CapoCtxLike
         * #### Standard WARNING
         *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
@@ -505,7 +512,7 @@ export declare class ReqtsPolicyDataBridgeReader extends DataBridgeReaderClass {
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    CapoCtx(d: UplcData): CapoCtx;
+    CapoCtx(d: UplcData): ErgoCapoCtx;
 }
 /**
  * Helper class for generating UplcData for the struct ***AnyData*** type.

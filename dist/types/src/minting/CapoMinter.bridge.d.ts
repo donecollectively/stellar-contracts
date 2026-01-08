@@ -11,7 +11,7 @@ import { SeedActivity, type hasSeed, type isActivity } from "../ActivityTypes.js
  * @public
  */
 export type TimeLike = IntLike;
-import type { MinterActivity$CreatingNewSpendDelegateLike, MinterActivity, ErgoMinterActivity, RelativeDelegateLink, RelativeDelegateLinkLike } from "./CapoMinter.typeInfo.js";
+import type { MinterActivity$CreatingNewSpendDelegateLike, MinterActivity, ErgoMinterActivity, RelativeDelegateLink, ErgoRelativeDelegateLink, RelativeDelegateLinkLike } from "./CapoMinter.typeInfo.js";
 export type * as types from "./CapoMinter.typeInfo.js";
 /**
  * GENERATED data bridge for **CapoMinter** script (defined in class ***CapoMinterBundle***)
@@ -86,7 +86,8 @@ export declare class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
     MinterActivity(d: UplcData): ErgoMinterActivity;
     /**
         * reads UplcData *known to fit the **RelativeDelegateLink*** struct type,
-        * for the CapoMinter script.
+        * for the CapoMinter script.  You may choose to recast this data to
+        * RelativeDelegateLink or RelativeDelegateLinkLike
         * #### Standard WARNING
         *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
@@ -98,7 +99,7 @@ export declare class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    RelativeDelegateLink(d: UplcData): RelativeDelegateLink;
+    RelativeDelegateLink(d: UplcData): ErgoRelativeDelegateLink;
 }
 /**
  * Helper class for generating UplcData for variants of the ***MinterActivity*** enum type.
