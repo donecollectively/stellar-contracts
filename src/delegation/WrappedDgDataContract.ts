@@ -110,13 +110,12 @@ export abstract class WrappedDgDataContract<
     async mkTxnUpdateRecord<
         TCX extends StellarTxnContext
     >(
-        txnName: string,
         item: FoundDatumUtxo<T, WRAPPER>,
         options: DgDataUpdateOptions<TLike> & { updatedWrapped?: WRAPPER },
         tcx?: TCX
     ): Promise<TCX> {
         const updatedFields  = options.updatedFields
-        return super.mkTxnUpdateRecord(txnName, item, {
+        return super.mkTxnUpdateRecord(item, {
             ...options,
             updatedFields: {
                 ...(options.updatedWrapped?.unwrapData() || {}),

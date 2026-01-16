@@ -33,6 +33,21 @@ export type DgDataCreationAttrs<T extends DelegatedDataContract<any, any>> = Omi
 export type DelegatedDatumTypeName<T extends DelegatedDataContract<any, any>, TN extends string = T["recordTypeName"]> = TN;
 export type DelegatedDatumIdPrefix<T extends DelegatedDataContract<any, any>, TN extends string = T["idPrefix"]> = TN;
 /**
+ * Context object passed to {@link DelegatedDataContract.beforeCreate | beforeCreate()} callback
+ * @public
+ */
+export type createContext<TLike> = {
+    activity: isActivity;
+};
+/**
+ * Context object passed to {@link DelegatedDataContract.beforeUpdate | beforeUpdate()} callback
+ * @public
+ */
+export type updateContext<T> = {
+    original: T;
+    activity: isActivity;
+};
+/**
  * DelegatedDataContract provides a base class for utility functions
  * to simplify implementation of delegate controllers.  They are used
  * to manage the creation and updating of records in a delegated data store,
@@ -115,10 +130,48 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
      * The \{activity\} option can be a {@link SeedActivity} object provided by
      * `this.activity.MintingActivities.$seeded$‹activityName›` accessors/methods,
      * which creates a record id based on the (unique) spend of a seed value.
+     *
+     * If `tcx` and `options.txnName` aren't provided, the transaction name
+     * `create ${recordId}` is used by default.
      */
     mkTxnCreateRecord<THIS extends DelegatedDataContract<any, any>, TCX extends StellarTxnContext>(this: THIS, options: DgDataCreationOptions<TLike>, tcx?: TCX): Promise<hasUutContext<THIS["idPrefix"] | "recordId"> & TCX & hasCharterRef & hasSeedUtxo & hasUutContext<"recordId" | (string extends THIS["idPrefix"] ? "‹idPrefix (hint: declare with 'idPrefix = \"...\" as const')›" : THIS["idPrefix"])>>;
     creationDefaultDetails(): Partial<TLike>;
-    beforeCreate(record: TLike): TLike;
+    /**
+     * Hook method called before creating a record, allowing the delegate to augment or normalize the record data.
+     *
+     * @param record - The record being created (TLike - off-chain type)
+     * @param context - Context object containing the activity being triggered
+     * @returns The augmented/normalized record to be saved (TLike - off-chain type)
+     *
+     * @remarks
+     * The delegate MAY provide a {@link beforeCreate | beforeCreate()} method to augment the record before it is created.
+     * This is called after merging defaults, id, and type, but before saving.
+     *
+     * Typically these fixups are required to conform the submitted record to the on-chain
+     * policy's enforced requirements.
+     *
+
+     * Implementers MUST return a patched record containing any modifications needed
+     */
+    beforeCreate(record: TLike, context: createContext<TLike>): TLike;
+    /**
+     * Hook method called before updating a record, allowing the delegate to augment or normalize the record data.
+     *
+     * @param existingRecord - The original record before updates (T - on-chain type)
+     * @param record - The merged record containing existing data plus updates (TLike - off-chain type)
+     * @param context - Context object containing the original record and the activity being triggered
+     * @returns The augmented/normalized record to be saved (TLike - off-chain type)
+     *
+     * @remarks
+     * The delegate MAY provide a {@link beforeUpdate | beforeUpdate()} method to augment the record before it is updated.
+     * This is called after merging the existing record with the updated fields, but before saving.
+     *
+     * Typically these fixups are required to conform the submitted record to the on-chain
+     * policy's enforced requirements.
+     *
+     * Implementers MUST return a patched record containing any modifications needed
+     */
+    beforeUpdate(record: TLike, context: updateContext<T>): TLike;
     /**
      * core transaction-building method creating a record of this delegate's type in the on-chain data store
      * @remarks
@@ -146,14 +199,20 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
      * Creates a transaction for updating a record in the delegated data store
      *
      * @remarks
-     * Provide a transaction name, an existing item, and a controller activity to trigger.
-     * The activity MUST either be an activity triggering one of the controller's SpendingActivity variants,
-     * or the result of calling {@link DelegatedDataContract.usesUpdateActivity | usesUpdateActivity()}.
-     *   **or TODO support a multi-activity**
+     * Provide an existing item, and options including a controller activity to trigger.
+     *
+     * If provided, the `activity` option MUST be an activity triggering one of the
+     * controller's SpendingActivity variants or **TODO document & support a multi-activity**.
+     *
+     * If the `tcx` and `options.txnName` aren't provided, the transaction name
+     * `update ${item.id}` is used by default.
      *
      * The updatedRecord only needs to contain the fields that are being updated.
+     *
+     * The delegate MAY provide a {@link beforeUpdate | beforeUpdate()} method
+     * that will be called implicitly, to augment or fixup the record before it is updated.
      */
-    mkTxnUpdateRecord<TCX extends StellarTxnContext>(this: DelegatedDataContract<any, any>, txnName: string, item: FoundDatumUtxo<T, any>, options: DgDataUpdateOptions<TLike>, tcx?: TCX): Promise<TCX>;
+    mkTxnUpdateRecord<TCX extends StellarTxnContext>(this: DelegatedDataContract<any, any>, item: FoundDatumUtxo<T, any>, options: DgDataUpdateOptions<TLike>, tcx?: TCX): Promise<TCX>;
     txnUpdatingRecord<TCX extends StellarTxnContext & hasCharterRef>(tcx: TCX, id: hasRecId, item: FoundDatumUtxo<T, any>, options: CoreDgDataUpdateOptions<TLike>): Promise<TCX>;
     getReturnAddress(): import("@helios-lang/ledger").Address;
     returnUpdatedRecord<TCX extends StellarTxnContext & hasCharterRef>(tcx: TCX, returnedValue: Value, updatedRecord: TLike): TCX;
@@ -203,6 +262,7 @@ export type DgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> = {
     data: minimalData<TLike>;
     activity?: isActivity | SeedActivity<any>;
     addedUtxoValue?: Value;
+    txnName?: string;
 };
 export type CoreDgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> = {
     activity: isActivity;
@@ -214,6 +274,7 @@ export type CoreDgDataCreationOptions<TLike extends AnyDataTemplate<any, any>> =
  */
 export type DgDataUpdateOptions<TLike extends AnyDataTemplate<any, any>> = {
     activity: isActivity | UpdateActivity<any>;
+    txnName?: string;
     updatedFields: Partial<minimalData<TLike>>;
     addedUtxoValue?: Value;
 };

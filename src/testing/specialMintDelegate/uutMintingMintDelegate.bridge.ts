@@ -7,7 +7,7 @@
 
 import { makeCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
-import type { 
+import type {
     IntLike,
  } from "@helios-lang/codec-utils";
 import type {
@@ -35,13 +35,13 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 import {
     ContractDataBridge,
-    DataBridge, 
+    DataBridge,
     DataBridgeReaderClass ,
     EnumBridge,
     impliedSeedActivityMaker,
-    type tagOnly, 
-    type hasSeed, 
-    type isActivity, 
+    type tagOnly,
+    type hasSeed,
+    type isActivity,
     type funcWithImpliedSeed,
     type SeedAttrs,
     type JustAnEnum,
@@ -121,9 +121,9 @@ import type * as types from "./uutMintingMintDelegate.typeInfo.js";
 *  - `get reader` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types
 *  - `get onchain` - (advanced) returns a data-encoding bridge for types defined in the contract's script
 * The advanced methods are not typically needed - mkDatum and activity should normally provide all the
-* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's `findDelegatedDataUtxos()` 
+* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's `findDelegatedDataUtxos()`
 * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
-* 
+*
 * ##### customizing the bridge class name
 * Note that you may override `get bridgeClassName() { return "..." }` to customize the name of this bridge class
 * @public
@@ -353,21 +353,21 @@ export class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         * reads UplcData *known to fit the **SomeEnum*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    SomeEnum(d : UplcData) { 
+    SomeEnum(d : UplcData) {
         const typeHelper = this.bridge.types.SomeEnum;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoSomeEnum;        
+        return cast.fromUplcData(d) as ErgoSomeEnum;
     } /* enumReader helper */
 
 datum = (d: UplcData) => { return this.DelegateDatum(d) }
@@ -375,406 +375,413 @@ datum = (d: UplcData) => { return this.DelegateDatum(d) }
         * reads UplcData *known to fit the **DelegateDatum*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    DelegateDatum(d : UplcData) { 
+    DelegateDatum(d : UplcData) {
         const typeHelper = this.bridge.types.DelegateDatum;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoDelegateDatum;        
+        return cast.fromUplcData(d) as ErgoDelegateDatum;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **DelegateRole*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    DelegateRole(d : UplcData) { 
+    DelegateRole(d : UplcData) {
         const typeHelper = this.bridge.types.DelegateRole;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoDelegateRole;        
+        return cast.fromUplcData(d) as ErgoDelegateRole;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **ManifestActivity*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    ManifestActivity(d : UplcData) { 
+    ManifestActivity(d : UplcData) {
         const typeHelper = this.bridge.types.ManifestActivity;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoManifestActivity;        
+        return cast.fromUplcData(d) as ErgoManifestActivity;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **CapoLifecycleActivity*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    CapoLifecycleActivity(d : UplcData) { 
+    CapoLifecycleActivity(d : UplcData) {
         const typeHelper = this.bridge.types.CapoLifecycleActivity;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoCapoLifecycleActivity;        
+        return cast.fromUplcData(d) as ErgoCapoLifecycleActivity;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **DelegateLifecycleActivity*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    DelegateLifecycleActivity(d : UplcData) { 
+    DelegateLifecycleActivity(d : UplcData) {
         const typeHelper = this.bridge.types.DelegateLifecycleActivity;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoDelegateLifecycleActivity;        
+        return cast.fromUplcData(d) as ErgoDelegateLifecycleActivity;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **SpendingActivity*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    SpendingActivity(d : UplcData) { 
+    SpendingActivity(d : UplcData) {
         const typeHelper = this.bridge.types.SpendingActivity;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoSpendingActivity;        
+        return cast.fromUplcData(d) as ErgoSpendingActivity;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **MintingActivity*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    MintingActivity(d : UplcData) { 
+    MintingActivity(d : UplcData) {
         const typeHelper = this.bridge.types.MintingActivity;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoMintingActivity;        
+        return cast.fromUplcData(d) as ErgoMintingActivity;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **BurningActivity*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    BurningActivity(d : UplcData) { 
+    BurningActivity(d : UplcData) {
         const typeHelper = this.bridge.types.BurningActivity;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoBurningActivity;        
+        return cast.fromUplcData(d) as ErgoBurningActivity;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **DelegateActivity*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    DelegateActivity(d : UplcData) { 
+    DelegateActivity(d : UplcData) {
         const typeHelper = this.bridge.types.DelegateActivity;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoDelegateActivity;        
+        return cast.fromUplcData(d) as ErgoDelegateActivity;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **PendingDelegateAction*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    PendingDelegateAction(d : UplcData) { 
+    PendingDelegateAction(d : UplcData) {
         const typeHelper = this.bridge.types.PendingDelegateAction;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoPendingDelegateAction;        
+        return cast.fromUplcData(d) as ErgoPendingDelegateAction;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **ManifestEntryType*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    ManifestEntryType(d : UplcData) { 
+    ManifestEntryType(d : UplcData) {
         const typeHelper = this.bridge.types.ManifestEntryType;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoManifestEntryType;        
+        return cast.fromUplcData(d) as ErgoManifestEntryType;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **PendingCharterChange*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    PendingCharterChange(d : UplcData) { 
+    PendingCharterChange(d : UplcData) {
         const typeHelper = this.bridge.types.PendingCharterChange;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoPendingCharterChange;        
+        return cast.fromUplcData(d) as ErgoPendingCharterChange;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **cctx_CharterInputType*** enum type,
         * for the BasicDelegate script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    cctx_CharterInputType(d : UplcData) { 
+    cctx_CharterInputType(d : UplcData) {
         const typeHelper = this.bridge.types.cctx_CharterInputType;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as Ergocctx_CharterInputType;        
+        return cast.fromUplcData(d) as Ergocctx_CharterInputType;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **AnyData*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * AnyData or AnyDataLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     AnyData(d: UplcData) {
         const cast = this.bridge.ᱺᱺAnyDataCast;
-        return cast.fromUplcData(d) //??? as ErgoAnyData;
+        return cast.fromUplcData(d) as ErgoAnyData;
     } /* structReader helper */
 
     /**
         * reads UplcData *known to fit the **DelegationDetail*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * DelegationDetail or DelegationDetailLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     DelegationDetail(d: UplcData) {
         const cast = this.bridge.ᱺᱺDelegationDetailCast;
-        return cast.fromUplcData(d) //??? as ErgoDelegationDetail;
+        return cast.fromUplcData(d) as ErgoDelegationDetail;
     } /* structReader helper */
 
     /**
         * reads UplcData *known to fit the **SampleStruct*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * SampleStruct or SampleStructLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     SampleStruct(d: UplcData) {
         const cast = this.bridge.ᱺᱺSampleStructCast;
-        return cast.fromUplcData(d) //??? as ErgoSampleStruct;
+        return cast.fromUplcData(d) as ErgoSampleStruct;
     } /* structReader helper */
 
     /**
         * reads UplcData *known to fit the **RelativeDelegateLink*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * RelativeDelegateLink or RelativeDelegateLinkLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     RelativeDelegateLink(d: UplcData) {
         const cast = this.bridge.ᱺᱺRelativeDelegateLinkCast;
-        return cast.fromUplcData(d) //??? as ErgoRelativeDelegateLink;
+        return cast.fromUplcData(d) as ErgoRelativeDelegateLink;
     } /* structReader helper */
 
     /**
         * reads UplcData *known to fit the **PendingDelegateChange*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * PendingDelegateChange or PendingDelegateChangeLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     PendingDelegateChange(d: UplcData) {
         const cast = this.bridge.ᱺᱺPendingDelegateChangeCast;
-        return cast.fromUplcData(d) //??? as ErgoPendingDelegateChange;
+        return cast.fromUplcData(d) as ErgoPendingDelegateChange;
     } /* structReader helper */
 
     /**
         * reads UplcData *known to fit the **CapoManifestEntry*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * CapoManifestEntry or CapoManifestEntryLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     CapoManifestEntry(d: UplcData) {
         const cast = this.bridge.ᱺᱺCapoManifestEntryCast;
-        return cast.fromUplcData(d) //??? as ErgoCapoManifestEntry;
+        return cast.fromUplcData(d) as ErgoCapoManifestEntry;
     } /* structReader helper */
 
     /**
         * reads UplcData *known to fit the **CapoCtx*** struct type,
-        * for the BasicDelegate script.
+        * for the BasicDelegate script.  You may choose to recast this data to
+        * CapoCtx or CapoCtxLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     CapoCtx(d: UplcData) {
         const cast = this.bridge.ᱺᱺCapoCtxCast;
-        return cast.fromUplcData(d) //??? as ErgoCapoCtx;
+        return cast.fromUplcData(d) as ErgoCapoCtx;
     } /* structReader helper */
 
 }
@@ -1092,16 +1099,6 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
         return makeInlineTxOutputDatum(uplc);
     }
 
-/**
- * (property getter): InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.TagOnlyDatum"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
- */
-    get TagOnlyDatum() {
-        const uplc = this.mkUplcData({ TagOnlyDatum: {} }, 
-            "uutMintingDelegate::DelegateDatum.TagOnlyDatum");
-        return makeInlineTxOutputDatum(uplc);
-    } /* tagOnly variant accessor */
-
     /**
      * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.capoStoredData"***
      * @remarks - ***DelegateDatum$capoStoredDataLike*** is the same as the expanded field-types.
@@ -1116,6 +1113,16 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
         }, "uutMintingDelegate::DelegateDatum.capoStoredData");
         return makeInlineTxOutputDatum(uplc);
     } /*multiFieldVariant enum accessor*/
+
+/**
+ * (property getter): InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.TagOnlyDatum"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
+ */
+    get TagOnlyDatum() {
+        const uplc = this.mkUplcData({ TagOnlyDatum: {} }, 
+            "uutMintingDelegate::DelegateDatum.TagOnlyDatum");
+        return makeInlineTxOutputDatum(uplc);
+    } /* tagOnly variant accessor */
 
     /**
      * generates  InlineTxOutputDatum for ***"uutMintingDelegate::DelegateDatum.SingleDataElement"***
@@ -1152,11 +1159,11 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
      */
     get HasNestedEnum() {
         const nestedAccessor = new SomeEnumHelperNested({
-            isMainnet: this.isMainnet, isNested: true, isActivity: false 
+            isMainnet: this.isMainnet, isNested: true, isActivity: false
         });
         nestedAccessor.mkDataVia(
             (nested: SomeEnumLike) => {
-                return  this.mkUplcData({ HasNestedEnum: nested }, 
+                return  this.mkUplcData({ HasNestedEnum: nested },
             "uutMintingDelegate::DelegateDatum.HasNestedEnum");
         });
         return nestedAccessor;
@@ -2192,11 +2199,11 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      */
     get removePendingChange() {
         const nestedAccessor = new ActivityDelegateRoleHelperNested({
-            isMainnet: this.isMainnet, isNested: true, isActivity: true 
+            isMainnet: this.isMainnet, isNested: true, isActivity: true
         });
         nestedAccessor.mkDataVia(
             (role: DelegateRoleLike) => {
-                return  this.mkUplcData({ removePendingChange: role }, 
+                return  this.mkUplcData({ removePendingChange: role },
             "CapoDelegateHelpers::CapoLifecycleActivity.removePendingChange");
         });
         return nestedAccessor;
@@ -2361,11 +2368,11 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      */
     get updatingManifest() {
         const nestedAccessor = new ManifestActivityHelperNested({
-            isMainnet: this.isMainnet, isNested: true, isActivity: true 
+            isMainnet: this.isMainnet, isNested: true, isActivity: true
         });
         nestedAccessor.mkDataVia(
             (activity: ManifestActivityLike) => {
-                return  this.mkUplcData({ updatingManifest: activity }, 
+                return  this.mkUplcData({ updatingManifest: activity },
             "CapoDelegateHelpers::CapoLifecycleActivity.updatingManifest");
         });
         return nestedAccessor;
@@ -2728,11 +2735,11 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
      */
     get mockOtherActivity() {
         const nestedAccessor = new ActivitySomeEnumHelperNested({
-            isMainnet: this.isMainnet, isNested: true, isActivity: true 
+            isMainnet: this.isMainnet, isNested: true, isActivity: true
         });
         nestedAccessor.mkDataVia(
             (QQ: SomeEnumLike) => {
-                return  this.mkUplcData({ mockOtherActivity: QQ }, 
+                return  this.mkUplcData({ mockOtherActivity: QQ },
             "uutMintingDelegate::MintingActivity.mockOtherActivity");
         });
         return nestedAccessor;
@@ -2794,11 +2801,11 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      */
     get CapoLifecycleActivities() {
         const nestedAccessor = new CapoLifecycleActivityHelperNested({
-            isMainnet: this.isMainnet, isNested: true, isActivity: true 
+            isMainnet: this.isMainnet, isNested: true, isActivity: true
         });
         nestedAccessor.mkDataVia(
             (activity: CapoLifecycleActivityLike) => {
-                return  this.mkUplcData({ CapoLifecycleActivities: activity }, 
+                return  this.mkUplcData({ CapoLifecycleActivities: activity },
             "uutMintingDelegate::DelegateActivity.CapoLifecycleActivities");
         });
         return nestedAccessor;
@@ -2809,11 +2816,11 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      */
     get DelegateLifecycleActivities() {
         const nestedAccessor = new DelegateLifecycleActivityHelperNested({
-            isMainnet: this.isMainnet, isNested: true, isActivity: true 
+            isMainnet: this.isMainnet, isNested: true, isActivity: true
         });
         nestedAccessor.mkDataVia(
             (activity: DelegateLifecycleActivityLike) => {
-                return  this.mkUplcData({ DelegateLifecycleActivities: activity }, 
+                return  this.mkUplcData({ DelegateLifecycleActivities: activity },
             "uutMintingDelegate::DelegateActivity.DelegateLifecycleActivities");
         });
         return nestedAccessor;
@@ -2824,11 +2831,11 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      */
     get SpendingActivities() {
         const nestedAccessor = new SpendingActivityHelperNested({
-            isMainnet: this.isMainnet, isNested: true, isActivity: true 
+            isMainnet: this.isMainnet, isNested: true, isActivity: true
         });
         nestedAccessor.mkDataVia(
             (activity: SpendingActivityLike) => {
-                return  this.mkUplcData({ SpendingActivities: activity }, 
+                return  this.mkUplcData({ SpendingActivities: activity },
             "uutMintingDelegate::DelegateActivity.SpendingActivities");
         });
         return nestedAccessor;
@@ -2839,11 +2846,11 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      */
     get MintingActivities() {
         const nestedAccessor = new MintingActivityHelperNested({
-            isMainnet: this.isMainnet, isNested: true, isActivity: true 
+            isMainnet: this.isMainnet, isNested: true, isActivity: true
         });
         nestedAccessor.mkDataVia(
             (activity: MintingActivityLike) => {
-                return  this.mkUplcData({ MintingActivities: activity }, 
+                return  this.mkUplcData({ MintingActivities: activity },
             "uutMintingDelegate::DelegateActivity.MintingActivities");
         });
         return nestedAccessor;
@@ -2854,11 +2861,11 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      */
     get BurningActivities() {
         const nestedAccessor = new BurningActivityHelperNested({
-            isMainnet: this.isMainnet, isNested: true, isActivity: true 
+            isMainnet: this.isMainnet, isNested: true, isActivity: true
         });
         nestedAccessor.mkDataVia(
             (activity: BurningActivityLike) => {
-                return  this.mkUplcData({ BurningActivities: activity }, 
+                return  this.mkUplcData({ BurningActivities: activity },
             "uutMintingDelegate::DelegateActivity.BurningActivities");
         });
         return nestedAccessor;
@@ -3813,13 +3820,6 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 2,
-            "id": "__module__uutMintingDelegate__DelegateDatum[]__TagOnlyDatum",
-            "name": "TagOnlyDatum",
-            "fieldTypes": []
-        },
-        {
-            "kind": "variant",
-            "tag": 3,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__capoStoredData",
             "name": "capoStoredData",
             "fieldTypes": [
@@ -3865,6 +3865,13 @@ export const DelegateDatumSchema : EnumTypeSchema = {
                     }
                 }
             ]
+        },
+        {
+            "kind": "variant",
+            "tag": 3,
+            "id": "__module__uutMintingDelegate__DelegateDatum[]__TagOnlyDatum",
+            "name": "TagOnlyDatum",
+            "fieldTypes": []
         },
         {
             "kind": "variant",

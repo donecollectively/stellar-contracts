@@ -77,7 +77,7 @@ export type TxDescription<
         | "signed"
         | "submitted",
     TCX extends StellarTxnContext = IF_ISANY<T, StellarTxnContext<anyState>, T>,
-    otherProps extends Record<string, unknown> = {}
+    otherProps extends Record<string, unknown> = {},
 > = {
     description: string;
     id: string;
@@ -98,14 +98,14 @@ export type TxDescription<
               tcx: TCX & { alreadyPresent: TxNotNeededError };
           }
         : PROGRESS extends resolvedOrBetter
-        ? {
-              mkTcx?: (() => TCX) | (() => Promise<TCX>) | undefined;
-              tcx: TCX;
-          }
-        : {
-              mkTcx: (() => TCX) | (() => Promise<TCX>);
-              tcx?: undefined;
-          }) &
+          ? {
+                mkTcx?: (() => TCX) | (() => Promise<TCX>) | undefined;
+                tcx: TCX;
+            }
+          : {
+                mkTcx: (() => TCX) | (() => Promise<TCX>);
+                tcx?: undefined;
+            }) &
     (PROGRESS extends txBuiltOrSubmitted
         ? {
               tx: Tx;
@@ -132,7 +132,7 @@ export type MultiTxnCallback<
     TXINFO extends TxDescription<any, resolvedOrBetter, any> = TxDescription<
         any,
         "resolved"
-    >
+    >,
 > =
     | ((txd: TXINFO) => void)
     | ((txd: TXINFO) => Promise<void>)
@@ -154,7 +154,7 @@ export type MultiTxnCallback<
  **/
 export type hasAddlTxns<
     TCX extends StellarTxnContext<anyState>,
-    existingStateType extends anyState = TCX["state"]
+    existingStateType extends anyState = TCX["state"],
 > = StellarTxnContext<
     existingStateType & {
         addlTxns: Record<string, TxDescription<any, "buildLater!">>;
@@ -249,7 +249,7 @@ type MintUnsafeParams = Parameters<TxBuilder["mintPolicyTokensUnsafe"]>;
 type MintTokensParams = [
     MintUnsafeParams[0],
     MintUnsafeParams[1],
-    { redeemer: MintUnsafeParams[2] }
+    { redeemer: MintUnsafeParams[2] },
 ];
 /**
  * Provides notifications for various stages of transaction submission
@@ -377,12 +377,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
     constructor(
         setup: SetupInfo,
         state: Partial<S> = {},
-        parentTcx?: StellarTxnContext<any>
+        parentTcx?: StellarTxnContext<any>,
     ) {
         if (parentTcx) {
             console.warn(
                 "Deprecated use of 'parentTcx' - use includeAddlTxn() instead" +
-                    "\n  ... setup.txBatcher.current holds an in-progress utxo set for all 'parent' transactions"
+                    "\n  ... setup.txBatcher.current holds an in-progress utxo set for all 'parent' transactions",
             );
             throw new Error(`parentTcx used where? `);
         }
@@ -400,7 +400,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         if ("undefined" == typeof isMainnet) {
             throw new Error(
-                "StellarTxnContext: setup.isMainnet must be defined"
+                "StellarTxnContext: setup.isMainnet must be defined",
             );
         }
         this.txb = makeTxBuilder({
@@ -426,7 +426,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 this.setup.chainBuilder = currentBatch.chainBuilder;
             } else {
                 this.setup.chainBuilder = makeTxChainBuilder(
-                    this.setup.network
+                    this.setup.network,
                 );
             }
         }
@@ -455,7 +455,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             throw new Error(
                 `${situation}: ${
                     this.txnName || "this tcx"
-                } is a facade for nested multi-tx`
+                } is a facade for nested multi-tx`,
             );
         this.isFacade = false;
     }
@@ -486,7 +486,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         TCX extends StellarTxnContext<anyState>,
         RETURNS extends hasAddlTxns<TCX> = TCX extends hasAddlTxns<any>
             ? TCX
-            : hasAddlTxns<TCX>
+            : hasAddlTxns<TCX>,
     >(
         this: TCX,
         txnName: string,
@@ -495,7 +495,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             "id" | "depth" | "parentId"
         > & {
             id?: string;
-        }
+        },
     ): RETURNS {
         const txInfo: TxDescription<any, "buildLater!"> = {
             ...(txInfoIn as any),
@@ -514,7 +514,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if ("undefined" == typeof this.isFacade) {
             throw new Error(
                 `to include additional txns on a tcx with no txn details, call facade() first.\n` +
-                    `   ... otherwise, add txn details first or set isFacade to false`
+                    `   ... otherwise, add txn details first or set isFacade to false`,
             );
         }
         // if (thisWithMoreType.state.addlTxns?.[txnName]) {
@@ -599,7 +599,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     addState<TCX extends StellarTxnContext, K extends string, V>(
         this: TCX,
         key: K,
-        value: V
+        value: V,
     ): StellarTxnContext<{ [keyName in K]: V } & anyState> & TCX {
         this.noFacade("addState");
         //@ts-expect-error
@@ -610,11 +610,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     addCollateral(collateral: TxInput) {
         this.noFacade("addCollateral");
-        console.warn("explicit addCollateral() should be unnecessary unless a babel payer is covering it")
-        
+        console.warn(
+            "explicit addCollateral() should be unnecessary unless a babel payer is covering it",
+        );
+
         if (!collateral.value.assets.isZero()) {
             throw new Error(
-                `invalid attempt to add non-pure-ADA utxo as collateral`
+                `invalid attempt to add non-pure-ADA utxo as collateral`,
             );
         }
         this.collateral = collateral;
@@ -654,12 +656,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this.noFacade("futureDate");
         if (this._txnTime) {
             throw new Error(
-                "txnTime already set; cannot set futureDate() after txnTime"
+                "txnTime already set; cannot set futureDate() after txnTime",
             );
         }
 
         const d = new Date(
-            Number(this.slotToTime(this.timeToSlot(BigInt(date.getTime()))))
+            Number(this.slotToTime(this.timeToSlot(BigInt(date.getTime())))),
         );
         // time emoji: ⏰
         console.log("  ⏰⏰ setting txnTime to ", d.toString());
@@ -683,7 +685,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     slotToTime(slot: bigint): bigint {
         let secondsPerSlot = this.assertNumber(
-            this.networkParams.secondsPerSlot
+            this.networkParams.secondsPerSlot,
         );
 
         let lastSlot = BigInt(this.assertNumber(this.networkParams.refTipSlot));
@@ -700,7 +702,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     timeToSlot(time: bigint): bigint {
         let secondsPerSlot = this.assertNumber(
-            this.networkParams.secondsPerSlot
+            this.networkParams.secondsPerSlot,
         );
 
         let lastSlot = BigInt(this.assertNumber(this.networkParams.refTipSlot));
@@ -725,7 +727,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const now = Date.now();
         const recent = now - 180_000;
         const d = new Date(
-            Number(this.slotToTime(this.timeToSlot(BigInt(recent))))
+            Number(this.slotToTime(this.timeToSlot(BigInt(recent)))),
         );
         // time emoji: ⏰
         console.log("⏰⏰setting txnTime to ", d.toString());
@@ -735,10 +737,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
     _txnEndTime?: Date;
     get txnEndTime() {
         if (this._txnEndTime) return this._txnEndTime;
-        throw new Error("call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime")
+        throw new Error(
+            "call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime",
+        );
     }
-        
-   /**
+
+    /**
      * Sets an on-chain validity period for the transaction, in miilliseconds
      *
      * @remarks if futureDate() has been set on the transaction, that
@@ -751,7 +755,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     validFor<TCX extends StellarTxnContext<S>>(
         this: TCX,
-        durationMs: number
+        durationMs: number,
     ): TCX {
         this.noFacade("validFor");
         const startMoment = this.txnTime.getTime();
@@ -780,7 +784,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     addRefInput<TCX extends StellarTxnContext<S>>(
         this: TCX,
         input: TxInput<any>,
-        refScript?: UplcProgramV2
+        refScript?: UplcProgramV2,
     ) {
         this.noFacade("addRefInput");
         if (!input) throw new Error(`missing required input for addRefInput()`);
@@ -791,7 +795,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         if (this.inputs.find((v) => v.id.isEqual(input.id))) {
             console.warn(
-                "suppressing add of refInput that is already an input"
+                "suppressing add of refInput that is already an input",
             );
             return this;
         }
@@ -830,13 +834,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
     addInput<TCX extends StellarTxnContext<S>>(
         this: TCX,
         input: TxInput,
-        r?: isActivity
+        r?: isActivity,
     ): TCX {
         this.noFacade("addInput");
         if (r && !r.redeemer) {
             console.log("activity without redeemer tag: ", r);
             throw new Error(
-                `addInput() redeemer must match the isActivity type {redeemer: ‹activity›}\n`
+                `addInput() redeemer must match the isActivity type {redeemer: ‹activity›}\n`,
                 // JSON.stringify(r, delegateLinkSerializer)
             );
         }
@@ -856,7 +860,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             throw new Error(
                 `addInput: ${e.message}` +
                     "\n   ...TODO: dump partial txn from txb above.  Failed TxInput:\n" +
-                    dumpAny(input)
+                    dumpAny(input),
             );
         }
 
@@ -865,7 +869,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     addOutput<TCX extends StellarTxnContext<S>>(
         this: TCX,
-        output: TxOutput
+        output: TxOutput,
     ): TCX {
         this.noFacade("addOutput");
         try {
@@ -883,7 +887,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     "\n... in context of partial tx above: failed adding output: \n  |  ",
                 dumpAny(output),
                 "\n" + e.message,
-                "\n   (see thrown stack trace below)"
+                "\n   (see thrown stack trace below)",
             );
             e.message =
                 `addOutput: ${e.message}` + "\n   ...see logged details above";
@@ -896,7 +900,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     attachScript(...args: Parameters<TxBuilder["attachUplcProgram"]>) {
         throw new Error(
             `use addScriptProgram(), increasing the txn size, if you don't have a referenceScript.\n` +
-                `Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.`
+                `Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.`,
         );
     }
 
@@ -940,7 +944,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     hasAuthorityToken(authorityValue: Value) {
-        return this.inputs.some(i => i.value.isGreaterOrEqual(authorityValue))
+        return this.inputs.some((i) =>
+            i.value.isGreaterOrEqual(authorityValue),
+        );
     }
 
     async findAnySpareUtxos(): Promise<TxInput[] | never> {
@@ -960,12 +966,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     wallet: this.wallet,
                     dumpDetail: "onFail",
                 },
-                "multiple"
+                "multiple",
             )
             .then(async (utxos) => {
                 if (!utxos) {
                     throw new Error(
-                        `no utxos found for spares for tx balancing.  We can ask the user to send a series of 10, 11, 12, ... ADA to themselves or do it automatically`
+                        `no utxos found for spares for tx balancing.  We can ask the user to send a series of 10, 11, 12, ... ADA to themselves or do it automatically`,
                     );
                 }
 
@@ -991,14 +997,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const wallet = this.actorContext.wallet;
         if (!wallet) {
             throw new Error(
-                `⚠️  ${this.constructor.name}: no this.actorContext.wallet; can't get required change address!`
+                `⚠️  ${this.constructor.name}: no this.actorContext.wallet; can't get required change address!`,
             );
         }
         let unused = (await wallet.unusedAddresses).at(0);
         if (!unused) unused = (await wallet.usedAddresses).at(-1);
         if (!unused)
             throw new Error(
-                `⚠️  ${this.constructor.name}: can't find a good change address!`
+                `⚠️  ${this.constructor.name}: can't find a good change address!`,
             );
         return unused;
     }
@@ -1007,13 +1013,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * Adds required signers to the transaction context
      * @remarks
      * Before a transaction can be submitted, signatures from each of its signers must be included.
-     * 
+     *
      * Any inputs from the wallet are automatically added as signers, so addSigners() is not needed
      * for those.
      */
     async addSigners(...signers: PubKeyHash[]) {
         this.noFacade("addSigners");
-        
+
         this.allNeededWitnesses.push(...signers);
     }
 
@@ -1033,7 +1039,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             beforeValidate?: (tx: Tx) => Promise<any> | any;
             paramsOverride?: Partial<NetworkParams>;
             expectError?: boolean;
-        } = {}
+        } = {},
     ): Promise<BuiltTcx> {
         this.noFacade("build");
         console.timeStamp?.(`submit() txn ${this.txnName}`);
@@ -1068,7 +1074,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         return addrOrPkh;
                     } else if (addrOrPkh.kind == "Address") {
                         if (addrOrPkh.era == "Shelley") {
-                            return addrOrPkh.spendingCredential.kind == "PubKeyHash"
+                            return addrOrPkh.spendingCredential.kind ==
+                                "PubKeyHash"
                                 ? addrOrPkh.spendingCredential
                                 : undefined;
                         } else {
@@ -1121,7 +1128,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 }
             } else {
                 console.warn(
-                    "txn build: no wallet/helper available for txn signining (debugging breakpoint available)"
+                    "txn build: no wallet/helper available for txn signining (debugging breakpoint available)",
                 );
                 debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
             }
@@ -1145,7 +1152,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 .subtract(outputValues);
             if (!netTxAssets.isZero()) {
                 console.log(
-                    "tx imbalance=" + dumpAny(netTxAssets, this.networkParams)
+                    "tx imbalance=" + dumpAny(netTxAssets, this.networkParams),
                 );
             }
             try {
@@ -1231,7 +1238,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 if (tx!) logger.logPrint(dumpAny(tx!) as string);
 
                 logger.logError(
-                    `  (it shouldn't be possible for buildUnsafe to be throwing errors!)`
+                    `  (it shouldn't be possible for buildUnsafe to be throwing errors!)`,
                 );
                 logger.flushError();
 
@@ -1256,11 +1263,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         line = line
                             .replace(
                                 /<helios>@at /,
-                                "   ... in helios function "
+                                "   ... in helios function ",
                             )
                             .replace(
                                 /, \[(.*)\],/,
-                                (_, bracketed) => ``
+                                (_, bracketed) => ``,
                                 // ` with scope [\n        ${
                                 //     bracketed.replace(/, /g, ",\n        ")
                                 // }\n      ]`
@@ -1275,7 +1282,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     `tx validation failure: \n  ❌ ${
                         //@ts-expect-error
                         tx.hasValidationError.message || tx.hasValidationError
-                    }\n` + (heliosStack?.join("\n") || "")
+                    }\n` + (heliosStack?.join("\n") || ""),
                 );
                 logger.flush();
                 // TODO: notify the currentBatch and let it reveal the script-context
@@ -1293,7 +1300,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         "------------------- failed tx as cbor-hex -------------------\n" +
                             bytesToHex(tx.toCbor()),
                         "\n------------------^ failed tx details ^------------------\n" +
-                            "(debugging breakpoint available)"
+                            "(debugging breakpoint available)",
                     );
                 }
             }
@@ -1404,7 +1411,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     withAddlTxns<TCX extends StellarTxnContext<anyState>>(
         this: TCX,
-        addlTxns: Record<string, TxDescription<any, "buildLater!">> = {}
+        addlTxns: Record<string, TxDescription<any, "buildLater!">> = {},
     ): hasAddlTxns<TCX> {
         //@ts-expect-error
         this.state.addlTxns = this.state.addlTxns || {};
@@ -1417,13 +1424,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     async buildAndQueueAll(
         this: StellarTxnContext<any>,
-        options: SubmitOptions = {}
+        options: SubmitOptions = {},
     ) {
         const {
             addlTxInfo = {
-                description: this.txnName
-                    ? this.txnName
-                    : "‹unnamed tx›",
+                description: this.txnName ? this.txnName : "‹unnamed tx›",
                 id: this.id,
                 tcx: this,
             },
@@ -1439,7 +1444,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     "the cardano-node's script-budgeting mini-protocol.\n\n" +
                     "This will cause problems for regular transactions (such as requiring very large collateral)" +
                     "Be sure to remove any params override if you're not dealing with \n" +
-                    "one of those very special situations. \n"
+                    "one of those very special situations. \n",
             );
             debugger;
         }
@@ -1452,7 +1457,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 if (this.state.addlTxns) {
                     // this gives early registration of nested txns from top-level txns
                     console.log(
-                        `🎄⛄🎁 ${this.id}   -- B&QA - registering addl txns`
+                        `🎄⛄🎁 ${this.id}   -- B&QA - registering addl txns`,
                     );
                     return this.queueAddlTxns(options).then(() => {
                         return this.currentBatch;
@@ -1464,7 +1469,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     //     // return x;
                     // });
                 }
-                return this.currentBatch
+                return this.currentBatch;
             });
         } else if (this.state.addlTxns) {
             if (this.isFacade) {
@@ -1473,7 +1478,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
             // this gives early registration of nested txns from top-level txns
             console.log(
-                `🎄⛄🎁 ${this.id}   -- B&QA - registering txns in facade`
+                `🎄⛄🎁 ${this.id}   -- B&QA - registering txns in facade`,
             );
             return this.queueAddlTxns(generalSubmitOptions).then(() => {
                 return this.currentBatch;
@@ -1481,7 +1486,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         console.warn(`⚠️  submitAll(): no txns to queue/submit`, this);
         throw new Error(
-            `unreachable? -- nothing to do for submitting this tcx`
+            `unreachable? -- nothing to do for submitting this tcx`,
         );
     }
 
@@ -1496,7 +1501,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     async buildAndQueue(
         this: StellarTxnContext<any>,
-        submitOptions: SubmitOptions = {}
+        submitOptions: SubmitOptions = {},
     ) {
         let {
             signers = [],
@@ -1556,7 +1561,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             ...existingInfo,
             // tx,
             tcx: this,
-        }// as any;
+        }; // as any;
 
         const txStats = {
             costs: costs,
@@ -1575,7 +1580,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
             //     debugger;
             // }
 
-            logger.logPrint(`⚠️  txn validation failed: ${description}\n${errMsg}\n`);
+            logger.logPrint(
+                `⚠️  txn validation failed: ${description}\n${errMsg}\n`,
+            );
             logger.logPrint(this.dump(tx));
             this.emitCostDetails(tx, costs);
             logger.flush();
@@ -1583,7 +1590,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             logger.logPrint(errMsg);
             if (expectError) {
                 logger.logPrint(
-                    `\n\n💣🎉 💣🎉 🎉 🎉 transaction failed (as expected)`
+                    `\n\n💣🎉 💣🎉 🎉 🎉 transaction failed (as expected)`,
                 );
             }
 
@@ -1605,11 +1612,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
             logger.flushError();
             if (
                 errMsg.match(
-                    /multi:Minting: only dgData activities ok in mintDgt/
+                    /multi:Minting: only dgData activities ok in mintDgt/,
                 )
             ) {
                 console.log(
-                    `⚠️  mint delegate for multiple activities should be given delegated-data activities, not the activities of the delegate`
+                    `⚠️  mint delegate for multiple activities should be given delegated-data activities, not the activities of the delegate`,
                 );
             }
             if (!errorHandled) {
@@ -1629,7 +1636,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             if (!pkh) continue;
             if (tx.body.signers.find((s) => pkh.isEqual(s))) continue;
             throw new Error(
-                `incontheeivable! all signers should have been added to the builder above`
+                `incontheeivable! all signers should have been added to the builder above`,
             );
         }
 
@@ -1652,7 +1659,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         logger.flush();
 
         // hands off wallet signing & tx-completion to the batcher.
-        console.timeStamp?.(`tx: add to current-tx-batch`);
+        console.timeStamp?.(`tx: add to current-tx-batch`); // perf tracing
+        console.log("add to current batch", { whenBuilt });
         currentBatch.$addTxns(txDescr);
         this.setup.chainBuilder?.with(txDescr.tx);
         await whenBuilt?.(txDescr);
@@ -1710,19 +1718,19 @@ export class StellarTxnContext<S extends anyState = anyState> {
             const topOfThisTier = (1 + tier) * tierSize;
             const consumedThisTier = Math.min(
                 tierSize,
-                refScriptSize - alreadyConsumed
+                refScriptSize - alreadyConsumed,
             );
             alreadyConsumed += consumedThisTier;
             const feeThisTier = Math.round(
-                consumedThisTier * multiplier * refScriptsFeePerByte
+                consumedThisTier * multiplier * refScriptsFeePerByte,
             );
             refScriptsFee += BigInt(feeThisTier);
             refScriptCostDetails.push(
                 `\n      -- refScript tier${
                     1 + tier
                 } (${consumedThisTier} × ${multiplier}) ×${refScriptsFeePerByte} = ${lovelaceToAda(
-                    feeThisTier
-                )}`
+                    feeThisTier,
+                )}`,
             );
         }
 
@@ -1751,19 +1759,19 @@ export class StellarTxnContext<S extends anyState = anyState> {
                         (100 * nCpu) /
                         oMaxCpu
                     ).toFixed(1)}% of ${intWithGrouping(
-                        oMaxCpu
+                        oMaxCpu,
                     )} (patched to ${intWithGrouping(maxTxExCpu)})\n` +
                     `  -- mem ${nMem} = ${((100 * nMem) / oMaxMem).toFixed(
-                        1
+                        1,
                     )}% of ${intWithGrouping(
-                        oMaxMem
+                        oMaxMem,
                     )} (patched to ${intWithGrouping(maxTxExMem)})\n` +
                     `  -- tx size ${intWithGrouping(txSize)} = ${(
                         (100 * txSize) /
                         oMaxSize
                     ).toFixed(1)}% of ${intWithGrouping(
-                        oMaxSize
-                    )} (patched to ${intWithGrouping(maxTxSize)})\n`
+                        oMaxSize,
+                    )} (patched to ${intWithGrouping(maxTxSize)})\n`,
             );
         }
         const scriptBreakdown =
@@ -1773,16 +1781,16 @@ export class StellarTxnContext<S extends anyState = anyState> {
                       .map(
                           ([key, { cpu, mem }]) =>
                               `\n      -- ${key}: cpu ${lovelaceToAda(
-                                  Number(cpu) * exCpuFeePerUnit
+                                  Number(cpu) * exCpuFeePerUnit,
                               )} = ${(
                                   (Number(cpu) / Number(total.cpu)) *
                                   100
                               ).toFixed(1)}%, mem ${lovelaceToAda(
-                                  Number(mem) * exMemFeePerUnit
+                                  Number(mem) * exMemFeePerUnit,
                               )} = ${(
                                   (Number(mem) / Number(total.mem)) *
                                   100
-                              ).toFixed(1)}%`
+                              ).toFixed(1)}%`,
                       )
                       .join("")
                 : "";
@@ -1809,8 +1817,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 ).toFixed(1)}% of mem limit/tx)` +
                 scriptBreakdown +
                 `\n  -- remainder ${lovelaceToAda(
-                    remainderUnaccounted
-                )} unaccounted-for`
+                    remainderUnaccounted,
+                )} unaccounted-for`,
         );
     }
 
@@ -1828,7 +1836,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      **/
     async queueAddlTxns(
         this: hasAddlTxns<any>,
-        pipelineOptions?: TxPipelineOptions
+        pipelineOptions?: TxPipelineOptions,
     ) {
         const { addlTxns } = this.state;
         if (!addlTxns) return;
@@ -1850,7 +1858,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     async resolveMultipleTxns(
         txns: TxDescription<any, "buildLater!">[],
-        pipelineOptions?: TxPipelineOptions
+        pipelineOptions?: TxPipelineOptions,
     ) {
         //         as [
         //         string,
@@ -1886,7 +1894,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 "function" == typeof addlTxInfo.mkTcx
                     ? await (async () => {
                           console.log(
-                              "  creating TCX just in time for: " + description
+                              "  creating TCX just in time for: " + description,
                           );
 
                           const tcx = await addlTxInfo.mkTcx();
@@ -1898,7 +1906,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                           } else {
                               addlTxInfo.id = tcx.id;
                               console.warn(
-                                  `expected id to be set on addlTxInfo; falling back to JIT-generated id in new tcx`
+                                  `expected id to be set on addlTxInfo; falling back to JIT-generated id in new tcx`,
                               );
                           }
                           return tcx;
@@ -1906,9 +1914,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                           if (e instanceof TxNotNeededError) {
                               alreadyPresent = e;
                               const tcx = new StellarTxnContext(
-                                  this.setup
+                                  this.setup,
                               ).withName(
-                                  `addlTxInfo already present: ${description}`
+                                  `addlTxInfo already present: ${description}`,
                               );
                               tcx.alreadyPresent = alreadyPresent;
                               return tcx;
@@ -1917,7 +1925,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                       })
                     : (() => {
                           console.log(
-                              "  ---------------- warning!!!! addlTxInfo is already built!"
+                              "  ---------------- warning!!!! addlTxInfo is already built!",
                           );
                           debugger;
                           throw new Error(" unreachable - right?");
@@ -1926,14 +1934,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
             ) as StellarTxnContext;
             if ("undefined" == typeof tcx) {
                 throw new Error(
-                    `no txn provided for addlTx ${txName || description}`
+                    `no txn provided for addlTx ${txName || description}`,
                 );
             }
             txInfoResolved.tcx = tcx;
             if (tcx.alreadyPresent) {
                 console.log(
                     "  -- tx effects are already present; skipping: " +
-                        txName || description
+                        txName || description,
                 );
                 this.currentBatch.$addTxns(txInfoResolved);
                 continue;
@@ -1942,7 +1950,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             const replacementTcx =
                 (pipelineOptions?.fixupBeforeSubmit &&
                     ((await pipelineOptions.fixupBeforeSubmit(
-                        txInfoResolved
+                        txInfoResolved,
                     )) as typeof replacementTcx | boolean)) ||
                 tcx;
             if (false === replacementTcx) {
@@ -1952,7 +1960,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             if (replacementTcx !== true && replacementTcx !== tcx) {
                 console.log(
                     `callback replaced txn ${txName} with a different txn: `,
-                    dumpAny(replacementTcx)
+                    dumpAny(replacementTcx),
                 );
             }
 
@@ -2009,7 +2017,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             //@ts-expect-error because the type of this context doesn't
             //   guarantee the presence of addlTxns.  But it might be there!
             txns: this.state.addlTxns || [],
-        }
+        },
     ) {
         //@ts-expect-error on probing for a maybe-undefined entry:
         const addlTxns = this.state.addlTxns;
@@ -2039,7 +2047,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     nested.parentId = parentId;
                 }
                 console.log(
-                    `🎄⛄🎁 ${parentId}   -- registering nested txns ASAP`
+                    `🎄⛄🎁 ${parentId}   -- registering nested txns ASAP`,
                 );
                 this.currentBatch.$addTxns(moreTxns);
 
@@ -2070,12 +2078,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         isolatedTcx.id = this.id;
         console.log(
             "at d=0: submitting addl txns: \n" +
-                newTxns.map((t) => `  🟩 ${t.description}\n`).join("")
+                newTxns.map((t) => `  🟩 ${t.description}\n`).join(""),
         );
 
         const t = isolatedTcx.resolveMultipleTxns(
             newTxns,
-            txChainSubmitOptions
+            txChainSubmitOptions,
         );
 
         const allPromises = [] as Promise<any>[];
@@ -2103,10 +2111,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 // }
             }
             console.log(
-                ` 🐞🐞🐞🐞 submitting ${chainedTxns.length} transactions at depth ${chainDepth}`
+                ` 🐞🐞🐞🐞 submitting ${chainedTxns.length} transactions at depth ${chainDepth}`,
             );
             console.log(
-                chainedTxns.map((t) => `  🟩 ${t.description}\n`).join("")
+                chainedTxns.map((t) => `  🟩 ${t.description}\n`).join(""),
             );
             const thisBatch = chainedTxns;
             chainedTxns = [];
@@ -2116,13 +2124,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
             const t = isolatedTcx.resolveMultipleTxns(
                 thisBatch,
-                txChainSubmitOptions
+                txChainSubmitOptions,
             );
             allPromises.push(t);
             await t;
             console.log(
                 "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSubmitted transactions at depth " +
-                    chainDepth
+                    chainDepth,
             );
             chainedTxns = nextChain;
         }

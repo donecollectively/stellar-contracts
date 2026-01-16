@@ -1322,17 +1322,18 @@ ${this.modules.map(moduleDetails).join("\n")}`
         )
       )
     );
-    console.log(
-      new Error(
-        `(special originator ${this.setupDetails.specialOriginatorLabel || "\u2039unknown\u203A"} where?)`
-      ).stack
-    );
+    if (!this.setupDetails.specialOriginatorLabel) {
+      console.log(
+        `(special originator \u2039unknown\u203A - where?)` + (new Error("").stack?.split("\n").slice(1).join("\n") || "")
+      );
+    }
     return program.compileWithCache({
       optimize: this.optimize
     }).then((uplcProgram) => {
       this.alreadyCompiledScript = uplcProgram;
       const scriptHash = bytesToHex(uplcProgram.hash());
       console.log(
+        "timing (ms):",
         program.compileTime || `compiled: ${(/* @__PURE__ */ new Date()).getTime() - t}ms`,
         `-> ${scriptHash}`
       );

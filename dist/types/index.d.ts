@@ -36,7 +36,7 @@ export { type SeedAttrs, type isActivity, type hasSeed, type seedActivityFunc, t
 export type { stellarSubclass, anyDatumProps, configBaseWithRev as configBase, // as paramsBase,
 StellarSetupDetails as StellarFactoryArgs, StellarSetupDetails, ActorContext, NetworkContext, SetupInfo, ConfigFor, HeliosOptimizeOptions, } from "./src/StellarContract.js";
 export { type AnyDataTemplate, type hasAnyDataTemplate, type minimalData, } from "./src/delegation/DelegatedData.js";
-export { type DgDataCreationAttrs, type DelegatedDatumTypeName, type updateActivityFunc, type DgDataType, type DgDataTypeLike, type minimalDgDataTypeLike, type DgDataCreationOptions, type DgDataUpdateOptions, DelegatedDataContract, } from "./src/delegation/DelegatedDataContract.js";
+export { type DgDataCreationAttrs, type DelegatedDatumTypeName, type updateActivityFunc, type DgDataType, type DgDataTypeLike, type minimalDgDataTypeLike, type DgDataCreationOptions, type DgDataUpdateOptions, DelegatedDataContract, type createContext, type updateContext, } from "./src/delegation/DelegatedDataContract.js";
 export { WrappedDgDataContract, type WrappedDgDataType, type someDataWrapper, } from "./src/delegation/WrappedDgDataContract.js";
 export * from "./src/helios/dataBridge/BridgeTypes.js";
 export { CapoHeliosBundle } from "./src/helios/scriptBundling/CapoHeliosBundle.js";

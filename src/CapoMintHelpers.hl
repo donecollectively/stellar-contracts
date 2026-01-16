@@ -374,8 +374,9 @@ func validateUutMinting(
     extraMintDelegateRedeemerCheck: Bool = true,
     checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported
 ) -> Bool {
+joinedPurposes : String = purposes.join(", "); /** todo: inline once it won't deoptimize */
 bREQTgroup(reqt: "checks that the UUTs are minted correctly", collapsed: true, callback: () -> Bool {
-    print("-- uut purposes: " + purposes.join(", "));
+    print("-- uut purposes: " + joinedPurposes);
     isBootstrapping : Bool = !( bootstrapCharter.is_zero() );
 
     delegateApproval : Bool = if ( isBootstrapping ) {
@@ -539,7 +540,7 @@ bREQTgroup(reqt: "checks that the UUTs are minted correctly", collapsed: true, c
         );
         if (purposes.length > 1) {
             print("✅ ok: minted uuts: {" 
-                + purposes.join(", ") 
+                + joinedPurposes 
                 + "}" + 
                 mkTokenName("")
             );

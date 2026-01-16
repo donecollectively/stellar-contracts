@@ -1,5 +1,5 @@
 import { makeValue, makeAssets, makeNetworkParamsHelper, makeAddress, makeTxOutput, makeAssetClass, makeDummyAddress, makeTxOutputId, makeValidatorHash, makeMintingPolicyHash, makeInlineTxOutputDatum } from '@helios-lang/ledger';
-import { decodeUtf8, isValidUtf8, encodeUtf8, bytesToHex, equalsBytes } from '@helios-lang/codec-utils';
+import { decodeUtf8, encodeUtf8, isValidUtf8, bytesToHex, equalsBytes } from '@helios-lang/codec-utils';
 import { encodeBech32 } from '@helios-lang/crypto';
 import { makeTxBuilder, makeTxChainBuilder, makeWalletHelper, selectLargestFirst } from '@helios-lang/tx-utils';
 import { n as nanoid } from './nanoid.mjs';
@@ -32,6 +32,12 @@ class UutName {
    **/
   get name() {
     return this._uutName;
+  }
+  /**
+   * the full uniquified name of the UUT, in byte-array (number[]) form
+   */
+  get bytes() {
+    return encodeUtf8(this._uutName);
   }
   toString() {
     return this._uutName;
@@ -158,7 +164,7 @@ function realDiv(a, b) {
   return result2;
 }
 function toFixedReal(n) {
-  return parseFloat((Math.floor(n * 1e6 + 0.1) / 1e6).toFixed(6));
+  return parseFloat((Math.floor(n * 1e6 + 0.49) / 1e6).toFixed(6));
 }
 function debugMath(callback) {
   const old = debugRealMath;
@@ -1341,7 +1347,9 @@ class StellarTxnContext {
   }
   addCollateral(collateral) {
     this.noFacade("addCollateral");
-    console.warn("explicit addCollateral() should be unnecessary unless a babel payer is covering it");
+    console.warn(
+      "explicit addCollateral() should be unnecessary unless a babel payer is covering it"
+    );
     if (!collateral.value.assets.isZero()) {
       throw new Error(
         `invalid attempt to add non-pure-ADA utxo as collateral`
@@ -1446,19 +1454,21 @@ class StellarTxnContext {
   _txnEndTime;
   get txnEndTime() {
     if (this._txnEndTime) return this._txnEndTime;
-    throw new Error("call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime");
+    throw new Error(
+      "call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime"
+    );
   }
   /**
-    * Sets an on-chain validity period for the transaction, in miilliseconds
-    *
-    * @remarks if futureDate() has been set on the transaction, that
-    * date will be used as the starting point for the validity period.
-    *
-    * Returns the transaction context for chaining.
-    *
-    * @param durationMs - the total validity duration for the transaction.  On-chain
-    *  checks using CapoCtx `now(granularity)` can enforce this duration
-    */
+   * Sets an on-chain validity period for the transaction, in miilliseconds
+   *
+   * @remarks if futureDate() has been set on the transaction, that
+   * date will be used as the starting point for the validity period.
+   *
+   * Returns the transaction context for chaining.
+   *
+   * @param durationMs - the total validity duration for the transaction.  On-chain
+   *  checks using CapoCtx `now(granularity)` can enforce this duration
+   */
   validFor(durationMs) {
     this.noFacade("validFor");
     const startMoment = this.txnTime.getTime();
@@ -1589,7 +1599,9 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     builtTx.addSignature(sig[0]);
   }
   hasAuthorityToken(authorityValue) {
-    return this.inputs.some((i) => i.value.isGreaterOrEqual(authorityValue));
+    return this.inputs.some(
+      (i) => i.value.isGreaterOrEqual(authorityValue)
+    );
   }
   async findAnySpareUtxos() {
     this.noFacade("findAnySpareUtxos");
@@ -1638,7 +1650,7 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
    * Adds required signers to the transaction context
    * @remarks
    * Before a transaction can be submitted, signatures from each of its signers must be included.
-   * 
+   *
    * Any inputs from the wallet are automatically added as signers, so addSigners() is not needed
    * for those.
    */
@@ -1999,9 +2011,11 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     };
     const errMsg = tx.hasValidationError && tx.hasValidationError.toString();
     if (errMsg) {
-      logger.logPrint(`\u26A0\uFE0F  txn validation failed: ${description}
+      logger.logPrint(
+        `\u26A0\uFE0F  txn validation failed: ${description}
 ${errMsg}
-`);
+`
+      );
       logger.logPrint(this.dump(tx));
       this.emitCostDetails(tx, costs);
       logger.flush();
@@ -2066,6 +2080,7 @@ ${errMsg}
     logger.logPrint(`end: ${description}`);
     logger.flush();
     console.timeStamp?.(`tx: add to current-tx-batch`);
+    console.log("add to current batch", { whenBuilt });
     currentBatch.$addTxns(txDescr);
     this.setup.chainBuilder?.with(txDescr.tx);
     await whenBuilt?.(txDescr);
@@ -2695,6 +2710,9 @@ class UtxoHelper {
     const utxos = [];
     for (const addr of addrs.flat(1)) {
       if (!addr) continue;
+      if (options.findCached) {
+        console.log(`  Temporary: calling through to network instead of using cache`);
+      }
       const addrUtxos = await this.network.getUtxos(addr);
       utxos.push(...addrUtxos);
     }
@@ -2768,12 +2786,16 @@ class UtxoHelper {
    */
   async findActorUtxo(name, predicate, options = {}, mode = "single") {
     const wallet = options.wallet ?? this.wallet;
-    const { searchOthers = false } = options;
+    const { searchOthers = false, findCached = true } = options;
     const addrs = await wallet?.usedAddresses ?? [];
     const utxos = [];
     for (const addr of addrs.flat(1)) {
       if (!addr) continue;
+      if (findCached) {
+        console.log(`  Temporary: calling through to network instead of using cache`);
+      }
       const addrUtxos = await this.network.getUtxos(addr);
+      utxos.push(...addrUtxos);
       utxos.push(...addrUtxos);
     }
     return this.hasUtxo(
@@ -2929,12 +2951,16 @@ class UtxoHelper {
       extraErrorHint = "",
       wallet,
       address,
-      exceptInTcx
+      exceptInTcx,
+      findCached = true
     } = options;
     const addrs = await wallet?.usedAddresses ?? [address];
     const utxos = [];
     for (const addr of addrs.flat(1)) {
       if (!addr) continue;
+      if (findCached) {
+        console.log(`  Temporary: calling through to network instead of using cache`);
+      }
       const addrUtxos = await this.network.getUtxos(addr);
       utxos.push(...addrUtxos);
     }
@@ -4190,14 +4216,15 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
    * @public
    **/
   async mustFindMyUtxo(semanticName, options) {
-    const { predicate, exceptInTcx, extraErrorHint, utxos } = options;
+    const { predicate, exceptInTcx, extraErrorHint, utxos, findCached } = options;
     const { address } = this;
     return this.utxoHelper.mustFindUtxo(semanticName, {
       predicate,
       address,
       exceptInTcx,
       extraErrorHint,
-      utxos
+      utxos,
+      findCached
     });
   }
   mkTcx(tcxOrName, name) {

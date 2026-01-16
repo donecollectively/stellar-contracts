@@ -7,7 +7,7 @@
 
 import { makeCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
-import type { 
+import type {
     IntLike,
  } from "@helios-lang/codec-utils";
 import type {
@@ -33,13 +33,13 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { 
-    DataBridge, 
-    ContractDataBridge, 
+import {
+    DataBridge,
+    ContractDataBridge,
     DataBridgeReaderClass,
     type callWith,
 } from "../helios/dataBridge/DataBridge.js"
-import { 
+import {
     EnumBridge,
     type JustAnEnum,
 } from "../helios/dataBridge/EnumBridge.js"
@@ -78,9 +78,9 @@ import type * as types from "./CapoMinter.typeInfo.js";
 *  - `get reader` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types
 *  - `get onchain` - (advanced) returns a data-encoding bridge for types defined in the contract's script
 * The advanced methods are not typically needed - mkDatum and activity should normally provide all the
-* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's `findDelegatedDataUtxos()` 
+* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's `findDelegatedDataUtxos()`
 * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
-* 
+*
 * ##### customizing the bridge class name
 * Note that you may override `get bridgeClassName() { return "..." }` to customize the name of this bridge class
 * @public
@@ -143,40 +143,41 @@ export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
         * reads UplcData *known to fit the **MinterActivity*** enum type,
         * for the CapoMinter script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    MinterActivity(d : UplcData) { 
+    MinterActivity(d : UplcData) {
         const typeHelper = this.bridge.types.MinterActivity;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoMinterActivity;        
+        return cast.fromUplcData(d) as ErgoMinterActivity;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **RelativeDelegateLink*** struct type,
-        * for the CapoMinter script.
+        * for the CapoMinter script.  You may choose to recast this data to
+        * RelativeDelegateLink or RelativeDelegateLinkLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     RelativeDelegateLink(d: UplcData) {
         const cast = this.bridge.ᱺᱺRelativeDelegateLinkCast;
-        return cast.fromUplcData(d) //??? as ErgoRelativeDelegateLink;
+        return cast.fromUplcData(d) as ErgoRelativeDelegateLink;
     } /* structReader helper */
 
 }

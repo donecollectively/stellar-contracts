@@ -1283,7 +1283,9 @@ var StellarTxnContext2 = class _StellarTxnContext {
   }
   addCollateral(collateral) {
     this.noFacade("addCollateral");
-    console.warn("explicit addCollateral() should be unnecessary unless a babel payer is covering it");
+    console.warn(
+      "explicit addCollateral() should be unnecessary unless a babel payer is covering it"
+    );
     if (!collateral.value.assets.isZero()) {
       throw new Error(
         `invalid attempt to add non-pure-ADA utxo as collateral`
@@ -1388,19 +1390,21 @@ var StellarTxnContext2 = class _StellarTxnContext {
   _txnEndTime;
   get txnEndTime() {
     if (this._txnEndTime) return this._txnEndTime;
-    throw new Error("call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime");
+    throw new Error(
+      "call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime"
+    );
   }
   /**
-    * Sets an on-chain validity period for the transaction, in miilliseconds
-    *
-    * @remarks if futureDate() has been set on the transaction, that
-    * date will be used as the starting point for the validity period.
-    *
-    * Returns the transaction context for chaining.
-    *
-    * @param durationMs - the total validity duration for the transaction.  On-chain
-    *  checks using CapoCtx `now(granularity)` can enforce this duration
-    */
+   * Sets an on-chain validity period for the transaction, in miilliseconds
+   *
+   * @remarks if futureDate() has been set on the transaction, that
+   * date will be used as the starting point for the validity period.
+   *
+   * Returns the transaction context for chaining.
+   *
+   * @param durationMs - the total validity duration for the transaction.  On-chain
+   *  checks using CapoCtx `now(granularity)` can enforce this duration
+   */
   validFor(durationMs) {
     this.noFacade("validFor");
     const startMoment = this.txnTime.getTime();
@@ -1534,7 +1538,9 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     builtTx.addSignature(sig[0]);
   }
   hasAuthorityToken(authorityValue) {
-    return this.inputs.some((i) => i.value.isGreaterOrEqual(authorityValue));
+    return this.inputs.some(
+      (i) => i.value.isGreaterOrEqual(authorityValue)
+    );
   }
   async findAnySpareUtxos() {
     this.noFacade("findAnySpareUtxos");
@@ -1583,7 +1589,7 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
    * Adds required signers to the transaction context
    * @remarks
    * Before a transaction can be submitted, signatures from each of its signers must be included.
-   * 
+   *
    * Any inputs from the wallet are automatically added as signers, so addSigners() is not needed
    * for those.
    */
@@ -1947,9 +1953,11 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     };
     const errMsg = tx.hasValidationError && tx.hasValidationError.toString();
     if (errMsg) {
-      logger.logPrint(`\u26A0\uFE0F  txn validation failed: ${description}
+      logger.logPrint(
+        `\u26A0\uFE0F  txn validation failed: ${description}
 ${errMsg}
-`);
+`
+      );
       logger.logPrint(this.dump(tx));
       this.emitCostDetails(tx, costs);
       logger.flush();
@@ -2014,6 +2022,7 @@ ${errMsg}
     logger.logPrint(`end: ${description}`);
     logger.flush();
     console.timeStamp?.(`tx: add to current-tx-batch`);
+    console.log("add to current batch", { whenBuilt });
     currentBatch.$addTxns(txDescr);
     this.setup.chainBuilder?.with(txDescr.tx);
     await whenBuilt?.(txDescr);
@@ -3242,15 +3251,15 @@ var dataBridgeGenerator = class extends BundleBasedGenerator {
     this.namedSchemas[structName] = typeDetails.typeSchema;
     return {
       castCode: `
-                 /*unused?*/ ${castMemberName}: Cast<${structName}Like, ${structName}> 
+                 /*unused?*/ ${castMemberName}: Cast<${structName}Like, ${structName}>
                     = makeCast<${structName}Like, ${structName}>(
-                        this.schema.${structName}, 
+                        this.schema.${structName},
                         { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
                     );
             `,
       accessorCode: `${structName}(fields: ${structName}Like}) {
                 throw new Error("hey, this isn't actually unused!");
-                
+
                 return this.${castMemberName}.toUplcData(fields);
             }`,
       helperClassName
@@ -3275,7 +3284,7 @@ var dataBridgeGenerator = class extends BundleBasedGenerator {
       `
 import { makeCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
-import type { 
+import type {
     IntLike,
  } from "@helios-lang/codec-utils";
 import type {
@@ -3306,13 +3315,13 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
       /*--------------stellar-contracts-imports --------------*/
       `import {
     ContractDataBridge,
-    DataBridge, 
+    DataBridge,
     DataBridgeReaderClass ,
     EnumBridge,
     impliedSeedActivityMaker,
-    type tagOnly, 
-    type hasSeed, 
-    type isActivity, 
+    type tagOnly,
+    type hasSeed,
+    type isActivity,
     type funcWithImpliedSeed,
     type SeedAttrs,
     type JustAnEnum,
@@ -3322,16 +3331,16 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 `
     );
     if (this._isSC) {
-      scImports = `import { 
-    DataBridge, 
-    ContractDataBridge, 
+      scImports = `import {
+    DataBridge,
+    ContractDataBridge,
     DataBridgeReaderClass,
     type callWith,
 } from "${this.mkRelativeImport(
         inputFile,
         "src/helios/dataBridge/DataBridge.js"
       )}"
-import { 
+import {
     EnumBridge,
     type JustAnEnum,
 } from "${this.mkRelativeImport(
@@ -3383,9 +3392,9 @@ ${this.includeScriptNamedTypes(inputFile)}
 *  - \`get reader\` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types
 *  - \`get onchain\` - (advanced) returns a data-encoding bridge for types defined in the contract's script
 * The advanced methods are not typically needed - mkDatum and activity should normally provide all the
-* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's \`findDelegatedDataUtxos()\` 
+* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's \`findDelegatedDataUtxos()\`
 * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
-* 
+*
 * ##### customizing the bridge class name
 * Note that you may override \`get bridgeClassName() { return "..." }\` to customize the name of this bridge class
 * @public
@@ -3443,21 +3452,21 @@ ${this.includeStructReaders()}
         * reads UplcData *known to fit the **${typeName}*** enum type,
         * for the ${this.bundle.program.name} script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    ${typeName}(d : UplcData) { 
+    ${typeName}(d : UplcData) {
         const typeHelper = this.bridge.types.${typeName};
-        const cast = typeHelper.\u1C7A\u1C7Acast;  
+        const cast = typeHelper.\u1C7A\u1C7Acast;
 
-        return cast.fromUplcData(d) as Ergo${typeName};        
+        return cast.fromUplcData(d) as Ergo${typeName};
     } /* enumReader helper */
 `
       );
@@ -3480,21 +3489,22 @@ ${this.includeStructReaders()}
         /*-------------struct-reader-func--------------*/
         `    /**
         * reads UplcData *known to fit the **${typeName}*** struct type,
-        * for the ${this.bundle.program.name} script.
+        * for the ${this.bundle.program.name} script.  You may choose to recast this data to
+        * ${typeName} or ${typeName}Like
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     ${typeName}(d: UplcData) {
         const cast = this.bridge.${castMemberName};
-        return cast.fromUplcData(d) //??? as Ergo${typeName};
+        return cast.fromUplcData(d) as Ergo${typeName};
     } /* structReader helper */
 `
       );
@@ -3628,10 +3638,10 @@ import type * as types from "${relativeTypeFile}";
     const castDef = `
     /**
      * @internal
-    */        
+    */
     \u1C7A\u1C7AactivityCast = makeCast<
         ${canonicalType}, ${permissiveType}
-    >(${schemaName}, { 
+    >(${schemaName}, {
         isMainnet: this.isMainnet,
         unwrapSingleFieldEnumVariants: true
     }); // activityAccessorCast`;
@@ -3669,7 +3679,7 @@ import type * as types from "${relativeTypeFile}";
       const moreTypeGuidance = (
         /*------------*/
         `
-     * 
+     *
      * This accessor object is callable with the indicated argument-type
      * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \\*\\/)\\n`
       );
@@ -3734,7 +3744,7 @@ import type * as types from "${relativeTypeFile}";
       helperClassType = `callWith<${permissiveTypeInfo}, ${hCN}>`;
       helperClassTypeCast = "as any";
       moreTypeGuidance = `
-     * 
+     *
      * This accessor object is callable with the indicated argument-type
      * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \\*\\/)
     *
@@ -3759,7 +3769,7 @@ import type * as types from "${relativeTypeFile}";
         datumDetails
       );
       moreTypeGuidance = `
-     * 
+     *
      * This accessor object is callable with the indicated argument-type
      * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \\*\\/)\\n`;
       datumAccessorVarietyAnnotation = ` // datumAccessor/other
@@ -3792,14 +3802,14 @@ import type * as types from "${relativeTypeFile}";
     \u1C7A\u1C7Acast = makeCast<
         ${canonicalType}, ${permissiveType}
     >(
-        ${JSON.stringify(typeSchema)}, 
+        ${JSON.stringify(typeSchema)},
         { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     ); // datumAccessorCast
 `;
     return `export class ${helperClassName} extends DataBridge {
     isCallable = true
     ${castDef}
-    
+
     } // mkOtherDatumHelperClass
     `;
   }
@@ -3829,10 +3839,7 @@ import type * as types from "${relativeTypeFile}";
     return this.activityTypeDetails.dataType.name;
   }
   nestedHelperClassName(options) {
-    const {
-      typeDetails,
-      isActivity
-    } = options;
+    const { typeDetails, isActivity } = options;
     let helperClassName = typeDetails.moreInfo.helperClassName;
     if (isActivity && !helperClassName?.match(/Activit/)) {
       helperClassName = `Activity${helperClassName}`;
@@ -3957,11 +3964,11 @@ ${nestedHelper}
      */
     get ${variantName}() {
         const nestedAccessor = new ${nestedHelperClassName}({
-            isMainnet: this.isMainnet, isNested: true, isActivity: ${isActivity ? "true" : "false"} 
+            isMainnet: this.isMainnet, isNested: true, isActivity: ${isActivity ? "true" : "false"}
         });
         nestedAccessor.mkDataVia(
             (${nestedFieldName}: ${nestedEnumName}Like) => {
-                return  this.mkUplcData({ ${variantName}: ${nestedFieldName} }, 
+                return  this.mkUplcData({ ${variantName}: ${nestedFieldName} },
             ${enumPathExpr});
         });
         return nestedAccessor;
@@ -3977,12 +3984,7 @@ ${nestedHelper}
     return JSON.stringify(this.getEnumPath(variantDetails));
   }
   mkEnumVariantAccessors(options) {
-    const {
-      enumDetails,
-      isDatum,
-      isActivity,
-      isNested
-    } = options;
+    const { enumDetails, isDatum, isActivity, isNested } = options;
     const accessors = Object.keys(enumDetails.variants).map((variantName) => {
       const variantDetails = enumDetails.variants[variantName];
       const fieldCount = variantDetails.fieldCount;
@@ -6085,9 +6087,18 @@ This will use deployment details from ${deployDetailsFile}
     }
     if (!SomeBundleClass) return null;
     const resolvedDeployConfig = await this.resolve(deployDetailsFile, id);
+    const pathToDeployDetailsFile = path6.relative(
+      projectRoot2,
+      path6.join(
+        path6.dirname(id),
+        deployDetailsFile.replace(/^\.\//, "")
+      )
+    ).replace(/^\.\//, "");
     if (!resolvedDeployConfig) {
       this.warn(
-        `no ${networkId} setup for Capo bundle: ${deployDetailsFile}`
+        `WARNING: no ${networkId} setup for Capo bundle: ${id}
+  ... use this version to deploy a seeded configuration, 
+  ... then copy the JSON config to ${pathToDeployDetailsFile} and rebuild ${projectRoot2}`
       );
       if (SomeBundleClass.name == state.project.capoBundleName) {
         state.project.configuredCapo.resolve(void 0);

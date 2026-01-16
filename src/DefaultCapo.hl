@@ -27,7 +27,6 @@ import {
     REQT,
     bREQT,
     mustFindInputRedeemer,
-    outputAndDatum,
     AnyData,
     tvCharter,
     mkTv,

@@ -742,26 +742,35 @@ function TxBatchUI() {
   const provider = useCapoDappProvider();
   const capo = provider?.capo;
   const [currentBatch, setTxBatch] = React__default.useState();
+  const [gen, setGen] = React__default.useState(0);
+  const renderNow = React__default.useMemo(() => () => setGen((g) => g + 1), []);
+  React__default.useEffect(() => {
+    currentBatch?.$txChanges.on("txAdded", renderNow);
+    currentBatch?.$txChanges.on("statusUpdate", renderNow);
+    return () => {
+      currentBatch?.$txChanges.off("txAdded", renderNow);
+      currentBatch?.$txChanges.off("statusUpdate", renderNow);
+    };
+  }, [currentBatch]);
   const [initialId, setInitialId] = React__default.useState(
     void 0
   );
   const [advancedView, setAdvancedView] = React__default.useState(false);
   const allTxns = currentBatch?.$allTxns || [];
   const hasError = allTxns.some((t) => t.$state === "failed");
-  const allFinished = allTxns.length > 0 && allTxns.every(
-    (t) => t.$state === "confirmed" || t.$state === "not needed"
-  );
+  const noOpStates = ["not needed", "nested batch"];
+  const confirmedStates = ["confirmed", "mostly confirmed"];
+  const actionableTxns = allTxns.filter((t) => !noOpStates.includes(t.$state));
+  const allFinished = actionableTxns.length === 0 ? allTxns.length > 0 : actionableTxns.every((t) => confirmedStates.includes(t.$state));
   const canClose = hasError || allFinished;
   const status = currentBatch?.$stateShortSummary;
   const label = status === "confirmed" ? "Confirmed" : status === "failed" ? "Failed" : "Pending";
   const pendingStates = [
     "registered",
     "building",
-    "nested batch",
     "built",
     "failed"
   ];
-  const noOpStates = ["not needed", "nested batch"];
   const unsubmittedTxns = allTxns.filter((t) => {
     console.log("unsubmittedTxn? ", t.$state, pendingStates.includes(t.$state));
     debugger;
@@ -775,10 +784,6 @@ function TxBatchUI() {
   const submittingStates = [
     "submitting",
     "confirming"
-  ];
-  const confirmedStates = [
-    "confirmed",
-    "mostly confirmed"
   ];
   const submittingTxns = allTxns.filter((t) => {
     return submittingStates.includes(t.$state);
@@ -794,12 +799,12 @@ function TxBatchUI() {
   const inFlightLabel = [submittingLabel, confirmedLabel].filter(Boolean).join(", ");
   const cantCancelLabel = `${submittingTxns + confirmedTxns} in-flight txns will not be cancelled`;
   const [needsCancelConfirmation, setNeedsCancelConfirmation] = React__default.useState(false);
-  const [confirmPartialCancel, setConfirmPartialCancel] = React__default.useState(false);
+  const [confirmingPartialCancel, setConfirmPartialCancel] = React__default.useState(false);
   useEffect(() => {
     setNeedsCancelConfirmation(!!submittingTxns);
-  }, [submittingTxns > 0]);
+  }, [submittingTxns > 0, gen]);
   const cancelWIthPossibleConfirmation = useCallback(() => {
-    if (needsCancelConfirmation && !confirmPartialCancel) {
+    if (needsCancelConfirmation && !confirmingPartialCancel) {
       return setConfirmPartialCancel(true);
     }
     capo?.setup?.txBatcher?.cancel();
@@ -807,14 +812,12 @@ function TxBatchUI() {
     provider?.provider.updateStatus(`cancelled ${unsubmittedTxns} unsubmitted txn${submittingTxns == 1 ? "" : "s"}${nonCancelledTxns}`, {
       developerGuidance: "show status message to user"
     }, "// confirm cancel / partial-cancel");
-  }, [provider, provider?.capo, currentBatch, unsubmittedTxns, submittingTxns, hasInFlightTxns, needsCancelConfirmation, confirmPartialCancel]);
+  }, [gen, provider, provider?.capo, currentBatch, unsubmittedTxns, submittingTxns, hasInFlightTxns, needsCancelConfirmation, confirmingPartialCancel]);
   const closeWIthPossibleConfirmation = useCallback(() => {
-    if (needsCancelConfirmation && !confirmPartialCancel) {
-      return setConfirmPartialCancel(true);
-    }
     return capo?.setup?.txBatcher?.rotate();
-  }, [provider, provider?.capo, needsCancelConfirmation, confirmPartialCancel]);
-  const viewSwitcher = /* @__PURE__ */ React__default.createElement(React__default.Fragment, null, needsCancelConfirmation && /* @__PURE__ */ React__default.createElement("div", { className: "p-2 text-center text-sm border border-accent/20 bg-primary text-accent" }, cantCancelLabel), /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row justify-between items-end p-2" }, /* @__PURE__ */ React__default.createElement("div", { className: "flex-grow" }, /* @__PURE__ */ React__default.createElement("h4", { className: "bg-transparent mt-0 mb-0 font-bold" }, hasMultipleTxns ? `${actualTxCount} Txns` : `${label} Txn`, hasInFlightTxns && /* @__PURE__ */ React__default.createElement("h6", { className: "text-xs text-gray-500" }, inFlightLabel))), /* @__PURE__ */ React__default.createElement("div", { className: "flex-shrink-0" }, /* @__PURE__ */ React__default.createElement(
+  }, [gen, provider, provider?.capo, needsCancelConfirmation, confirmingPartialCancel]);
+  const debug = false;
+  const viewSwitcher = /* @__PURE__ */ React__default.createElement(React__default.Fragment, null, confirmingPartialCancel && /* @__PURE__ */ React__default.createElement("div", { className: "p-2 text-center text-sm border border-accent/20 bg-primary text-accent" }, cantCancelLabel), debug, /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row justify-between items-end p-2" }, /* @__PURE__ */ React__default.createElement("div", { className: "flex-grow" }, /* @__PURE__ */ React__default.createElement("h4", { className: "bg-transparent mt-0 mb-0 font-bold" }, hasMultipleTxns ? `${actualTxCount} Txns` : `${label} Txn`, hasInFlightTxns && /* @__PURE__ */ React__default.createElement("h6", { className: "text-xs text-gray-500" }, inFlightLabel))), /* @__PURE__ */ React__default.createElement("div", { className: "flex-shrink-0" }, /* @__PURE__ */ React__default.createElement(
     Button,
     {
       variant: "secondary-sm",
@@ -828,24 +831,16 @@ function TxBatchUI() {
   )), /* @__PURE__ */ React__default.createElement("div", { className: "flex-shrink-0" }, canClose ? /* @__PURE__ */ React__default.createElement(
     Button,
     {
-      variant: "secondary-sm",
-      className: "ml-3 text-emerald-100 hover:bg-red-900",
+      className: "ml-3 p-1 cursor-pointer aspect-square rounded-sm",
+      title: "Close successful batch",
       onClick: closeWIthPossibleConfirmation
     },
-    "\u274C"
-  ) : /* @__PURE__ */ React__default.createElement("div", { className: "group flex flex-col items-end text-amber-400 overflow-visible" }, /* @__PURE__ */ React__default.createElement("div", { className: "hidden group-hover:block w-0 h-7 relative" }, /* @__PURE__ */ React__default.createElement(
-    "span",
-    {
-      "data-label": "cancel-help-text",
-      className: "absolute right-0 top-0 text-xs whitespace-nowrap",
-      "aria-hidden": "true"
-    },
-    needsCancelConfirmation ? "ONLY " : "",
-    /* @__PURE__ */ React__default.createElement("span", { className: "font-bold italic" }, unsubmittedTxns, " ", needsCancelConfirmation ? "UNSUBMITTED" : "", " txn", submittingTxns > 1 ? "s" : "", " will be cancelled")
-  )), /* @__PURE__ */ React__default.createElement(
+    "\u2716\uFE0F"
+  ) : /* @__PURE__ */ React__default.createElement("div", { className: "group flex flex-col items-end text-amber-400 overflow-visible" }, false, /* @__PURE__ */ React__default.createElement(
     "button",
     {
       "aria-label": `Cancel ${unsubmittedTxns} unsubmitted txns`,
+      title: `Cancel ${unsubmittedTxns} unsubmitted txns`,
       className: "ml-3 p-1 aspect-square group-hover:bg-red-900 border-1 rounded-none border-gray-500",
       onClick: cancelWIthPossibleConfirmation
     },
@@ -868,12 +863,15 @@ function TxBatchUI() {
           });
         }
         setTxBatch(batch);
+        setNeedsCancelConfirmation(false);
+        setConfirmPartialCancel(false);
+        renderNow();
       });
     },
     [provider, provider?.capo, capo?.setup.txBatcher]
   );
   const hasBatch = !!currentBatch && !!currentBatch?.$allTxns.length;
-  const width = advancedView ? "w-[80vw]" : "w-[3in]";
+  const width = advancedView ? "w-[80vw]" : "w-[4in]";
   if (!hasBatch) return null;
   return /* @__PURE__ */ React__default.createElement(
     "div",
@@ -1283,25 +1281,40 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
       autoWallet = window.localStorage.getItem("capoAutoConnectWalletName") || "";
     }
     if (wallet) {
-      return /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row" }, walletAddress && /* @__PURE__ */ React__default.createElement(
+      return /* @__PURE__ */ React__default.createElement("div", { className: "flex flex-row" }, walletAddress && /* @__PURE__ */ React__default.createElement(React__default.Fragment, null, /* @__PURE__ */ React__default.createElement("div", { key: "icon", "aria-hidden": "true", className: "inline-block z-10 text-xl/5 -mr-[0.75em]" }, "\u{1F45C}"), /* @__PURE__ */ React__default.createElement(
         "span",
         {
           key: "chip-walletAddr",
-          className: "mb-0 pl-0 pr-2 py-0 overflow-visible text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500  text-sm shadow-none outline-none hover:cursor-text"
+          className: "mb-0  pl-4 pr-2 py-0 text-black text-nowrap overflow-hidden max-w-24 hover:max-w-full inline-block rounded border border-slate-500 bg-blue-500  text-sm shadow-none outline-none hover:cursor-text"
         },
-        /* @__PURE__ */ React__default.createElement("span", { key: "icon", "aria-hidden": "true", className: "-ml-2 mr-1" }, "\u{1F45C}"),
-        /* @__PURE__ */ React__default.createElement("span", { id: "clickToCopy", "aria-label": "click to copy", key: "address", className: "hover:cursor-grabbing", onClick: this.copyWalletAddress }, this.state.status?.message?.match(/copied/i) ? this.state.status?.message : walletAddress),
+        /* @__PURE__ */ React__default.createElement(
+          "span",
+          {
+            id: "wallet-addr-clickToCopy",
+            "aria-role": "button",
+            "aria-label": "click to copy wallet address",
+            title: "click to copy wallet address",
+            key: "address",
+            className: "hover:cursor-grabbing",
+            onClick: this.copyWalletAddress
+          },
+          this.state.status?.message?.match(/copied/i) ? this.state.status?.message : walletAddress
+        ),
         "\xA0",
         selectedWallet,
         /* @__PURE__ */ React__default.createElement(
           "a",
           {
+            id: "wallet-addr-disconnect",
             href: "#",
+            "aria-role": "button",
+            "aria-label": "disconnect wallet",
+            title: `disconnect ${selectedWallet}`,
             onClick: () => this.newWalletSelected("")
           },
           "\u2716\uFE0F"
         )
-      ), "\xA0", /* @__PURE__ */ React__default.createElement(
+      )), "\xA0", /* @__PURE__ */ React__default.createElement(
         "span",
         {
           key: "chip-networkName",
@@ -1371,7 +1384,7 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
         "capoAutoConnectWalletName"
       );
       if (autoWallet) {
-        await this.newWalletSelected(autoWallet, false);
+        await this.newWalletSelected(autoWallet, true);
       }
     }
     if (!this.capo) {
@@ -1760,6 +1773,17 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
           walletUtxos
         }
       );
+    }, async (e) => {
+      await this.updateStatus(
+        "error finding wallet utxos.  If this is a new wallet, you may need to send some funds",
+        {
+          isError: true,
+          developerGuidance: "status message for the user",
+          keepOnscreen: true
+        },
+        "//error finding wallet utxos"
+      );
+      throw e;
     });
     if (this.state.networkParams && autoNext && !this.state.capo || !await this.state.capo?.isConfigured) {
       await this.updateStatus(

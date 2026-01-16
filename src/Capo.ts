@@ -3541,6 +3541,7 @@ export abstract class Capo<
             return {
                 utxo,
                 datum,
+                id: bytesToText(data.id),
                 data,
                 dataWrapped,
                 toJSON() {

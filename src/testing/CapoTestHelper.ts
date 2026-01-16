@@ -29,7 +29,7 @@ export const SNAP_BOOTSTRAP = "bootstrapped";
  **/
 export abstract class CapoTestHelper<
     SC extends Capo<any>,
-    SpecialState extends Record<string, any> = {[key: string]: never}
+    SpecialState extends Record<string, any> = { [key: string]: never },
 > extends StellarTestHelper<SC, SpecialState> {
     declare config?: canHaveRandomSeed & SC extends Capo<any, infer FF>
         ? ConfigFor<SC> & CapoConfig<FF>
@@ -42,7 +42,7 @@ export abstract class CapoTestHelper<
         config?: SC extends Capo<any, infer FF>
             ? ConfigFor<SC> & CapoConfig<FF>
             : ConfigFor<SC>,
-        helperState?: TestHelperState<SC, SpecialState>
+        helperState?: TestHelperState<SC, SpecialState>,
     ) {
         if (!config) {
             super(config, helperState);
@@ -60,14 +60,14 @@ export abstract class CapoTestHelper<
     }
     async initialize(
         { randomSeed = 42 }: { randomSeed?: number } = {},
-        args?: Partial<MinimalCharterDataArgs>
+        args?: Partial<MinimalCharterDataArgs>,
     ): Promise<SC> {
         // Note: This method diverges from the base class impl, due to type difficulties.
         // Patches welcome.
 
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(
-                "       ----- skipped duplicate initialize() in test helper"
+                "       ----- skipped duplicate initialize() in test helper",
             );
 
             return this.strella;
@@ -83,9 +83,9 @@ export abstract class CapoTestHelper<
                         .filter(
                             (line) =>
                                 !line.match(/node_modules/) &&
-                                !line.match(/node:internal/)
+                                !line.match(/node:internal/),
                         )
-                        .join("\n")
+                        .join("\n"),
             );
 
             //@ts-expect-error
@@ -115,11 +115,13 @@ export abstract class CapoTestHelper<
         if (!this.config) {
             console.log("  -- Capo not yet bootstrapped");
             const ts1 = Date.now();
-            const {featureFlags} = this;
+            const { featureFlags } = this;
             if (featureFlags) {
-                this.strella = await this.initStrella(this.stellarClass, {featureFlags} as any);
+                this.strella = await this.initStrella(this.stellarClass, {
+                    featureFlags,
+                } as any);
                 //@ts-ignore
-                this.strella.featureFlags = this.featureFlags
+                this.strella.featureFlags = this.featureFlags;
             } else {
                 this.strella = await this.initStrella(this.stellarClass);
             }
@@ -127,7 +129,7 @@ export abstract class CapoTestHelper<
             const ts2 = Date.now();
             console.log(
                 // stopwatch emoji: ⏱️
-                `  -- ⏱️ initialized Capo: ${ts2 - ts1}ms`
+                `  -- ⏱️ initialized Capo: ${ts2 - ts1}ms`,
             );
             console.log("checking delegate scripts...");
             return this.checkDelegateScripts(args).then(() => {
@@ -149,17 +151,17 @@ export abstract class CapoTestHelper<
             name,
             address.toString().substring(0, 18) + "…",
             "vHash 📜 " + strella.validatorHash.toHex().substring(0, 12) + "…",
-            "mph 🏦 " + mph?.toHex().substring(0, 12) + "…"
+            "mph 🏦 " + mph?.toHex().substring(0, 12) + "…",
         );
         console.log("<- CAPO initialized()");
         return strella;
     }
 
     async checkDelegateScripts(
-        args: Partial<MinimalCharterDataArgs> = {}
+        args: Partial<MinimalCharterDataArgs> = {},
     ): Promise<void> {
         throw new Error(
-            `doesn't fail, because it's implemented by DefaultCapoTestHelper`
+            `doesn't fail, because it's implemented by DefaultCapoTestHelper`,
         );
     }
 
@@ -175,7 +177,7 @@ export abstract class CapoTestHelper<
      * @public
      **/
     mkTcx<T extends anyState = anyState>(
-        txnName?: string
+        txnName?: string,
     ): StellarTxnContext<T> {
         const tcx = new StellarTxnContext(this.strella.setup);
         if (txnName) return tcx.withName(txnName) as any;
@@ -190,7 +192,7 @@ export abstract class CapoTestHelper<
     }
 
     async reusableBootstrap(
-        snap = SNAP_BOOTSTRAP
+        snap = SNAP_BOOTSTRAP,
         // override = false
     ) {
         let capo;
@@ -201,7 +203,7 @@ export abstract class CapoTestHelper<
             if (!helperState.previousHelper) {
                 debugger;
                 throw new Error(
-                    `already bootstrapped, but no previousHelper : ( `
+                    `already bootstrapped, but no previousHelper : ( `,
                 );
             }
             capo = await this.restoreFrom(snap);
@@ -214,7 +216,7 @@ export abstract class CapoTestHelper<
             this.snapshot(SNAP_BOOTSTRAP);
         } else {
             console.log(
-                `changing helper from network ${previousHelper.network.id} to ${this.network.id}`
+                `changing helper from network ${previousHelper.network.id} to ${this.network.id}`,
             );
         }
         helperState.bootstrapped = true;
@@ -228,7 +230,7 @@ export abstract class CapoTestHelper<
         return function (
             target: any,
             propertyKey: string,
-            descriptor: PropertyDescriptor
+            descriptor: PropertyDescriptor,
         ) {
             const originalMethod = descriptor.value;
             descriptor.value = SnapWrap;
@@ -237,7 +239,7 @@ export abstract class CapoTestHelper<
                 propertyKey.match(/^snapTo(.*)/) || [];
             if (!WithCapMethodName) {
                 throw new Error(
-                    `hasNamedSnapshot(): ${propertyKey}(): expected method name to start with 'snapTo'`
+                    `hasNamedSnapshot(): ${propertyKey}(): expected method name to start with 'snapTo'`,
                 );
             }
             const methodName =
@@ -245,7 +247,7 @@ export abstract class CapoTestHelper<
             const generateSnapshotFunc = target[methodName];
             if (!generateSnapshotFunc) {
                 throw new Error(
-                    `hasNamedSnapshot(): ${propertyKey}: expected method ${methodName} to exist`
+                    `hasNamedSnapshot(): ${propertyKey}: expected method ${methodName} to exist`,
                 );
             }
 
@@ -253,7 +255,7 @@ export abstract class CapoTestHelper<
                 "hasNamedSnapshot(): ",
                 propertyKey,
                 " -> ",
-                methodName
+                methodName,
             );
 
             async function SnapWrap(this: CapoTestHelper<any>, ...args: any[]) {
@@ -268,13 +270,13 @@ export abstract class CapoTestHelper<
                             .then((result) => {
                                 if (this.actorName !== actorName) {
                                     throw new Error(
-                                        `snapshot ${snapshotName}: expected actor '${actorName}', but current actor is '${this.actorName}'`
+                                        `snapshot ${snapshotName}: expected actor '${actorName}', but current actor is '${this.actorName}'`,
                                     );
                                 }
                                 this.network.tick(1);
                                 return result;
                             });
-                    }
+                    },
                 );
             }
             return descriptor;
@@ -299,7 +301,7 @@ export abstract class CapoTestHelper<
     async findOrCreateSnapshot(
         snapshotName: string,
         actorName: string,
-        contentBuilder: () => Promise<StellarTxnContext<any>>
+        contentBuilder: () => Promise<StellarTxnContext<any>>,
     ): Promise<SC> {
         if (this.helperState!.snapshots[snapshotName]) {
             const capo = await this.restoreFrom(snapshotName);
@@ -333,11 +335,11 @@ export abstract class CapoTestHelper<
         } = this;
         if (!helperState)
             throw new Error(
-                `can't restore from a previous helper without a helperState`
+                `can't restore from a previous helper without a helperState`,
             );
         if (!bootstrappedStrella)
             throw new Error(
-                `can't restore from a previous helper without a bootstrappedStrella`
+                `can't restore from a previous helper without a bootstrappedStrella`,
             );
 
         if (!snapshots || !snapshots[snapshotName]) {
@@ -364,14 +366,14 @@ export abstract class CapoTestHelper<
         if (otherNet) {
             if (otherNet !== newNet.id) {
                 throw new Error(
-                    `actors already moved to network #${otherNet}; can't move to #${newNet.id} now.`
+                    `actors already moved to network #${otherNet}; can't move to #${newNet.id} now.`,
                 );
             }
             console.log("  -- actors are already here");
         } else {
             if (this === previousHelper) {
                 console.log(
-                    "  -- helper already transferred; loading incremental snapshot"
+                    "  -- helper already transferred; loading incremental snapshot",
                 );
             } else {
                 Object.assign(this.actors, previousHelper.actors);
@@ -399,7 +401,7 @@ export abstract class CapoTestHelper<
                 console.log(
                     `   -- moving ${
                         Object.keys(this.actors).length
-                    } actors from network ${previousNetwork.id} to ${newNet.id}`
+                    } actors from network ${previousNetwork.id} to ${newNet.id}`,
                 );
             }
             newNet.loadSnapshot(snapshots[snapshotName]);
@@ -416,17 +418,17 @@ export abstract class CapoTestHelper<
 
     async bootstrap(
         args?: Partial<MinimalCharterDataArgs>,
-        submitOptions: SubmitOptions = {}
+        submitOptions: SubmitOptions = {},
     ) {
         let strella = this.strella || (await this.initialize(undefined, args));
         if (this.bootstrap != CapoTestHelper.prototype.bootstrap) {
             throw new Error(
-                `Don't override the test-helper bootstrap().  Instead, provide an implementation of extraBootstrapping()`
+                `Don't override the test-helper bootstrap().  Instead, provide an implementation of extraBootstrapping()`,
             );
         }
         if (this.ready) {
             console.log(
-                "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap already OK"
+                "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap already OK",
             );
 
             return strella;
@@ -440,7 +442,7 @@ export abstract class CapoTestHelper<
         };
         await this.mintCharterToken(args, options);
         console.log(
-            "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter"
+            "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter",
         );
 
         this.network.tick(1);
@@ -448,9 +450,80 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
+    /**
+     * Returns the id of a named record previously stored in the helperState.namedRecords.
+     * @remarks
+     * Throws an error if the named record is not found.
+     */
+    getNamedRecordId(recordName: string) {
+        const found = this.helperState!.namedRecords[recordName];
+        if (!found) throw new Error(`named record: '${recordName}' not found`);
+        return found;
+    }
+
+    /**
+     * Waits for a tx to be built, and captures the record id indicated in the transaction context
+     * @remarks
+     * The captured id is stored in the helperState, using the indicated recordName.
+     *
+     * Returns the transaction-context object resolved from arg2.
+     *
+     * Without a uutName option, the "recordId" UUT name is expected in the txn context.
+     * If you receive a type error on the tcxPromise argument, use the uutName option to
+     * set the expectation for a UUT name actually found in the transaction context.
+     *
+     * Optionally submits the txn. In this case, if the expectError option is set, an error will be
+     * thrown if the txn ***succeeds***.  This combines well with `await expect(promise).rejects.toThrow()`.
+     *
+     * Resolves after all the above are done.
+     */
+    async captureRecordId<
+        T extends StellarTxnContext<anyState> & hasUutContext<U>,
+        const U extends string & keyof T["state"]["uuts"] = "recordId", //as string & keyof T["state"]["uuts"],
+    >(
+        options: {
+            recordName: string;
+            submit?: boolean;
+            uutName?: U;
+            expectError?: true;
+        },
+        tcxPromise: Promise<T>,
+        //   uutName: U  = "recordId" as U// keyof T["state"]["uuts"] = "recordId"
+    ) {
+        const {
+            recordName: name,
+            submit = true,
+            uutName = "recordId" as U,
+            expectError,
+        } = options;
+        const stack = new Error().stack!.split("\n").slice(2, 3);
+        const tcx = await tcxPromise.catch((e: Error) => {
+            const lines = (e.stack || "").split("\n");
+            const index = lines.findIndex((line: string) =>
+                line.match(/captureRecordId/),
+            );
+            lines.splice(index === -1 ? 0 : index + 1, 0, ...stack);
+            e.stack = lines.join("\n");
+            throw e;
+        });
+        const id = tcx.state.uuts[uutName];
+        if (!id) {
+            console.log("UUTs in tcx:", tcx.state.uuts);
+            throw new Error(
+                `captureRecordId: no ${uutName.toString()} found in txn context for ${name}`,
+            );
+        }
+        this.helperState!.namedRecords[name] = id.toString();
+        if (submit)
+            return this.submitTxnWithBlock(tcx, {
+                expectError,
+            });
+        return tcx;
+    }
+
     async extraBootstrapping(
         args?: Partial<MinimalCharterDataArgs>,
-        submitOptions: SubmitOptions = {}
+        submitOptions: SubmitOptions = {},
     ) {
         const tcx = this.mkTcx("extra bootstrapping").facade();
         const capoUtxos = await this.capo.findCapoUtxos();
@@ -472,7 +545,7 @@ export abstract class CapoTestHelper<
     abstract mkDefaultCharterArgs(): Partial<MinimalCharterDataArgs>;
     abstract mintCharterToken(
         args?: Partial<MinimalCharterDataArgs>,
-        submitOptions?: SubmitOptions
+        submitOptions?: SubmitOptions,
     ): Promise<
         hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> &
             hasBootstrappedCapoConfig &

@@ -4,7 +4,6 @@ import {
     mkTv,
     tvCharter,
     mustFindInputRedeemer,
-    outputAndDatum,
     fromCip68Wrapper,
     AnyData,
     REQT,
@@ -224,7 +223,7 @@ enum CapoDatum {
     // }
 
     // same variant-index as delegate's capoStoredData:
-    DelegatedData {  // the Capo redirects control of these to the spend delegate
+    2: DelegatedData {  // the Capo redirects control of these to the spend delegate
         data: Map[String]Data // matches pattern of AnyData + other fields // the spend delegate may redirect control further, depending on what it sees in there
         version: Int // for CIP-68 compatibility
         otherDetails: Data // abstract additional info
@@ -399,14 +398,14 @@ enum CapoActivity {
     }
     usingAuthority // variant 1
     retiringRefScript // variant 2
-    addingSpendInvariant // variant 3
+    addingSpendInvariant // deprecated variant 3, replaced by capoLifecycleActivity
     spendingDelegatedDatum // variant 4
 
     // // possibly move this into CapoLifecycleActivity:
     // updatingManifest { // variant 5 always delegated to spendDgt
     //     activity: ManifestActivity
     // }
-    updatingCharter // deprecated variant 5
+    updatingCharter // deprecated variant 5, replaced by capoLifecycleActivity
 }
 
 func getRefCharterUtxo(mph : MintingPolicyHash) -> TxInput {
@@ -1432,13 +1431,13 @@ struct CapoCtx {
     ) -> DelegateInput {
         if (required) {
             if (message.encode_utf8().length > 0) {
-                REQTgroupStart(reqt:message, collapsed: true);
+                REQTgroupStart(reqt:message + " (requiresDgDataPolicyInput)", collapsed: true);
             } else {
                 REQTgroupStart(reqt: "MUST find the policy for record-type "+typeName, collapsed: true);
             }
         } else {
             if (message.encode_utf8().length > 0) {
-                logGroupStart(group: message, collapsed: false);
+                logGroupStart(group: message + " (requiresDgDataPolicyInput/optional)", collapsed: false);
             } else {
                 logGroupStart(group: "trying to find the policy for record-type "+typeName, collapsed: false);
             }
@@ -1464,7 +1463,7 @@ struct CapoCtx {
         if (required || result.input.switch {Some => true, None => false}) {
             logGroupEnd("✅ dgData policy found: "+typeName)
         } else {
-            logGroupEnd("✅ dgData policy found: "+typeName)
+            logGroupEnd("  <- false: policy not found: "+typeName)
         }
         result
     }

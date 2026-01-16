@@ -3,7 +3,7 @@ import type { anyDatumProps } from "../StellarContract.js";
  * @public
  */
 export type AnyDataTemplate<TYPENAME extends string, others extends anyDatumProps> = {
-    [key in string & ("id" | "type" | keyof Omit<others, "id">)]: key extends "id" ? string : key extends "type" ? TYPENAME : others[key];
+    [key in string & ("id" | "type" | keyof Omit<others, "id">)]: key extends "id" ? number[] : key extends "type" ? TYPENAME : others[key];
 };
 /**
  * for a delegated-data record type, omits the id and type fields to indicate

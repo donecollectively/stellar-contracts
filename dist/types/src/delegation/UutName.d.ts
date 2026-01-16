@@ -20,6 +20,10 @@ export declare class UutName {
      * @public
      **/
     get name(): string;
+    /**
+     * the full uniquified name of the UUT, in byte-array (number[]) form
+     */
+    get bytes(): number[];
     toString(): string;
 }
 //# sourceMappingURL=UutName.d.ts.map

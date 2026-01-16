@@ -7,7 +7,7 @@
 
 import { makeCast, type Cast } from "@helios-lang/contract-utils"
 import type { UplcData, ConstrData } from "@helios-lang/uplc";
-import type { 
+import type {
     IntLike,
  } from "@helios-lang/codec-utils";
 import type {
@@ -35,13 +35,13 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 import {
     ContractDataBridge,
-    DataBridge, 
+    DataBridge,
     DataBridgeReaderClass ,
     EnumBridge,
     impliedSeedActivityMaker,
-    type tagOnly, 
-    type hasSeed, 
-    type isActivity, 
+    type tagOnly,
+    type hasSeed,
+    type isActivity,
     type funcWithImpliedSeed,
     type SeedAttrs,
     type JustAnEnum,
@@ -78,9 +78,9 @@ import type * as types from "./StructDatumTester.typeInfo.js";
 *  - `get reader` - (advanced) returns a data-reader bridge for parsing CBOR/UPLC-encoded data of specific types
 *  - `get onchain` - (advanced) returns a data-encoding bridge for types defined in the contract's script
 * The advanced methods are not typically needed - mkDatum and activity should normally provide all the
-* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's `findDelegatedDataUtxos()` 
+* type-safe data-encoding needed for the contract.  For reading on-chain data, the Capo's `findDelegatedDataUtxos()`
 * method is the normal way to locate and decode on-chain data without needing to explicitly use the data-bridge helper classes.
-* 
+*
 * ##### customizing the bridge class name
 * Note that you may override `get bridgeClassName() { return "..." }` to customize the name of this bridge class
 * @public
@@ -91,7 +91,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     /**
      * Helper class for generating TxOutputDatum for the ***datum type (DatumStruct)***
      * for this contract script. 
-     * 
+     *
      * This accessor object is callable with the indicated argument-type
      * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \*\/)
     *
@@ -127,7 +127,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     /**
      * Helper class for generating TxOutputDatum for the ***activity type ***
      * ("redeemer" type) for this `StructDatumTester` contract script. 
-     * 
+     *
      * This accessor object is callable with the indicated argument-type
      * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \*\/)\n
      */
@@ -209,11 +209,11 @@ export class OtherActivityTypeHelper extends DataBridge {
     ᱺᱺcast = makeCast<
         bigint, IntLike
     >(
-        {"kind":"internal","name":"Int"}, 
+        {"kind":"internal","name":"Int"},
         { isMainnet: this.isMainnet, unwrapSingleFieldEnumVariants: true }
     ); // datumAccessorCast
 
-    
+
     } // mkOtherDatumHelperClass
     
 /**
@@ -227,79 +227,82 @@ export class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * reads UplcData *known to fit the **SomeKindaEnum*** enum type,
         * for the StructDatumTester script.
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the enum type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
-    SomeKindaEnum(d : UplcData) { 
+    SomeKindaEnum(d : UplcData) {
         const typeHelper = this.bridge.types.SomeKindaEnum;
-        const cast = typeHelper.ᱺᱺcast;  
+        const cast = typeHelper.ᱺᱺcast;
 
-        return cast.fromUplcData(d) as ErgoSomeKindaEnum;        
+        return cast.fromUplcData(d) as ErgoSomeKindaEnum;
     } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **struct3*** struct type,
-        * for the StructDatumTester script.
+        * for the StructDatumTester script.  You may choose to recast this data to
+        * struct3 or struct3Like
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     struct3(d: UplcData) {
         const cast = this.bridge.ᱺᱺstruct3Cast;
-        return cast.fromUplcData(d) //??? as Ergostruct3;
+        return cast.fromUplcData(d) as Ergostruct3;
     } /* structReader helper */
 
     /**
         * reads UplcData *known to fit the **OtherStruct*** struct type,
-        * for the StructDatumTester script.
+        * for the StructDatumTester script.  You may choose to recast this data to
+        * OtherStruct or OtherStructLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     OtherStruct(d: UplcData) {
         const cast = this.bridge.ᱺᱺOtherStructCast;
-        return cast.fromUplcData(d) //??? as ErgoOtherStruct;
+        return cast.fromUplcData(d) as ErgoOtherStruct;
     } /* structReader helper */
 
 datum = (d: UplcData) => { return this.DatumStruct(d) }
     /**
         * reads UplcData *known to fit the **DatumStruct*** struct type,
-        * for the StructDatumTester script.
+        * for the StructDatumTester script.  You may choose to recast this data to
+        * DatumStruct or DatumStructLike
         * #### Standard WARNING
-        * 
+        *
         * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
+        *
         * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
+        *
+        * On the other hand, reading non-matching data will not give you a valid result.
         * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     DatumStruct(d: UplcData) {
         const cast = this.bridge.ᱺᱺDatumStructCast;
-        return cast.fromUplcData(d) //??? as ErgoDatumStruct;
+        return cast.fromUplcData(d) as ErgoDatumStruct;
     } /* structReader helper */
 
 }

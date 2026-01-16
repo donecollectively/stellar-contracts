@@ -41,6 +41,7 @@ export type UtxoSearchScope = {
      * suppresses searching in other actor-wallets found in the setup / actorContext:
      */
     searchOthers?: boolean;
+    findCached?: false;
     /**
      * extra hint to add to the error message if no utxos are found
      */

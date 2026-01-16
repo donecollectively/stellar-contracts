@@ -3,6 +3,7 @@ declare const notInherited: {
     inheriting: "‹empty/base class›";
 };
 export type noInheritedReqts = typeof notInherited;
+type versionString = string;
 /**
  * Documents one specific requirement
  * @remarks
@@ -25,6 +26,7 @@ export type RequirementEntry<reqtName extends string, reqts extends string, inhe
     purpose: string;
     details: string[];
     mech: string[];
+    deltas?: Record<versionString, string[]>;
     impl?: string;
     requires?: inheritedNames extends noInheritedReqts ? Exclude<reqts, reqtName>[] : reqtName extends keyof inheritedNames["inheriting"] ? Exclude<inheritedNames["inheriting"], reqtName>[] : (Exclude<reqts, reqtName | inheritedNames["inheriting"]>)[];
     requiresInherited?: inheritedNames["inheriting"][];

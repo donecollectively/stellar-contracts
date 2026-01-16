@@ -1153,7 +1153,9 @@ class StellarTxnContext {
   }
   addCollateral(collateral) {
     this.noFacade("addCollateral");
-    console.warn("explicit addCollateral() should be unnecessary unless a babel payer is covering it");
+    console.warn(
+      "explicit addCollateral() should be unnecessary unless a babel payer is covering it"
+    );
     if (!collateral.value.assets.isZero()) {
       throw new Error(
         `invalid attempt to add non-pure-ADA utxo as collateral`
@@ -1258,19 +1260,21 @@ class StellarTxnContext {
   _txnEndTime;
   get txnEndTime() {
     if (this._txnEndTime) return this._txnEndTime;
-    throw new Error("call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime");
+    throw new Error(
+      "call [optional: futureDate() and] validFor(durationMs) before fetching the txnEndTime"
+    );
   }
   /**
-    * Sets an on-chain validity period for the transaction, in miilliseconds
-    *
-    * @remarks if futureDate() has been set on the transaction, that
-    * date will be used as the starting point for the validity period.
-    *
-    * Returns the transaction context for chaining.
-    *
-    * @param durationMs - the total validity duration for the transaction.  On-chain
-    *  checks using CapoCtx `now(granularity)` can enforce this duration
-    */
+   * Sets an on-chain validity period for the transaction, in miilliseconds
+   *
+   * @remarks if futureDate() has been set on the transaction, that
+   * date will be used as the starting point for the validity period.
+   *
+   * Returns the transaction context for chaining.
+   *
+   * @param durationMs - the total validity duration for the transaction.  On-chain
+   *  checks using CapoCtx `now(granularity)` can enforce this duration
+   */
   validFor(durationMs) {
     this.noFacade("validFor");
     const startMoment = this.txnTime.getTime();
@@ -1401,7 +1405,9 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     builtTx.addSignature(sig[0]);
   }
   hasAuthorityToken(authorityValue) {
-    return this.inputs.some((i) => i.value.isGreaterOrEqual(authorityValue));
+    return this.inputs.some(
+      (i) => i.value.isGreaterOrEqual(authorityValue)
+    );
   }
   async findAnySpareUtxos() {
     this.noFacade("findAnySpareUtxos");
@@ -1450,7 +1456,7 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
    * Adds required signers to the transaction context
    * @remarks
    * Before a transaction can be submitted, signatures from each of its signers must be included.
-   * 
+   *
    * Any inputs from the wallet are automatically added as signers, so addSigners() is not needed
    * for those.
    */
@@ -1811,9 +1817,11 @@ Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.
     };
     const errMsg = tx.hasValidationError && tx.hasValidationError.toString();
     if (errMsg) {
-      logger.logPrint(`\u26A0\uFE0F  txn validation failed: ${description}
+      logger.logPrint(
+        `\u26A0\uFE0F  txn validation failed: ${description}
 ${errMsg}
-`);
+`
+      );
       logger.logPrint(this.dump(tx));
       this.emitCostDetails(tx, costs);
       logger.flush();
@@ -1878,6 +1886,7 @@ ${errMsg}
     logger.logPrint(`end: ${description}`);
     logger.flush();
     console.timeStamp?.(`tx: add to current-tx-batch`);
+    console.log("add to current batch", { whenBuilt });
     currentBatch.$addTxns(txDescr);
     this.setup.chainBuilder?.with(txDescr.tx);
     await whenBuilt?.(txDescr);
@@ -2914,10 +2923,10 @@ class StellarTestHelper {
             undefined,
             helperState
         )
-    }                
+    }
 
     // in your tests:
-    
+
     describe("your thing", async () => {
         it("your test", async (context: localTC) => {
             // prettier-ignore
@@ -2926,7 +2935,7 @@ class StellarTestHelper {
 
             await h.snapTo\u2039yourSnapshot\u203A()
         });
-        it("your other test", async (context: localTC) => { 
+        it("your other test", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
             // this one will use the snapshot generated earlier
@@ -2966,7 +2975,7 @@ class StellarTestHelper {
     if (preProdParams.isFixedUp) return preProdParams;
     const origMaxTxSize = preProdParams.maxTxSize;
     preProdParams.origMaxTxSize = origMaxTxSize;
-    const maxTxSize = Math.floor(origMaxTxSize * 5);
+    const maxTxSize = Math.floor(origMaxTxSize * 6.5);
     console.log(
       "test env: \u{1F527}\u{1F527}\u{1F527} fixup max tx size",
       origMaxTxSize,
@@ -2986,7 +2995,7 @@ class StellarTestHelper {
     preProdParams.maxTxExMem = maxMem;
     const origMaxCpu = preProdParams.maxTxExCpu;
     preProdParams.origMaxTxExCpu = origMaxCpu;
-    const maxCpu = Math.floor(origMaxCpu * 3.1);
+    const maxCpu = Math.floor(origMaxCpu * 3.4);
     console.log(
       "test env: \u{1F527}\u{1F527}\u{1F527} fixup max cpu",
       origMaxCpu,
@@ -3007,6 +3016,11 @@ class StellarTestHelper {
     await this.advanceNetworkTimeForTx(t, options.futureDate);
     return t.buildAndQueueAll(options).then(() => {
       this.network.tick(1);
+      if (options.expectError) {
+        throw new Error(
+          "txn ^^^ should have failed but it succeeded instead"
+        );
+      }
       return tcx;
     });
   }
@@ -3469,7 +3483,9 @@ class CapoTestHelper extends StellarTestHelper {
       const ts1 = Date.now();
       const { featureFlags } = this;
       if (featureFlags) {
-        this.strella = await this.initStrella(this.stellarClass, { featureFlags });
+        this.strella = await this.initStrella(this.stellarClass, {
+          featureFlags
+        });
         this.strella.featureFlags = this.featureFlags;
       } else {
         this.strella = await this.initStrella(this.stellarClass);
@@ -3725,6 +3741,63 @@ class CapoTestHelper extends StellarTestHelper {
     this.network.tick(1);
     await this.extraBootstrapping(args, options);
     return strella;
+  }
+  /**
+   * Returns the id of a named record previously stored in the helperState.namedRecords.
+   * @remarks
+   * Throws an error if the named record is not found.
+   */
+  getNamedRecordId(recordName) {
+    const found = this.helperState.namedRecords[recordName];
+    if (!found) throw new Error(`named record: '${recordName}' not found`);
+    return found;
+  }
+  /**
+   * Waits for a tx to be built, and captures the record id indicated in the transaction context
+   * @remarks
+   * The captured id is stored in the helperState, using the indicated recordName.
+   *
+   * Returns the transaction-context object resolved from arg2.
+   *
+   * Without a uutName option, the "recordId" UUT name is expected in the txn context.
+   * If you receive a type error on the tcxPromise argument, use the uutName option to
+   * set the expectation for a UUT name actually found in the transaction context.
+   *
+   * Optionally submits the txn. In this case, if the expectError option is set, an error will be
+   * thrown if the txn ***succeeds***.  This combines well with `await expect(promise).rejects.toThrow()`.
+   *
+   * Resolves after all the above are done.
+   */
+  async captureRecordId(options, tcxPromise) {
+    const {
+      recordName: name,
+      submit = true,
+      uutName = "recordId",
+      expectError
+    } = options;
+    const stack = new Error().stack.split("\n").slice(2, 3);
+    const tcx = await tcxPromise.catch((e) => {
+      const lines = (e.stack || "").split("\n");
+      const index = lines.findIndex(
+        (line) => line.match(/captureRecordId/)
+      );
+      lines.splice(index === -1 ? 0 : index + 1, 0, ...stack);
+      e.stack = lines.join("\n");
+      throw e;
+    });
+    const id = tcx.state.uuts[uutName];
+    if (!id) {
+      console.log("UUTs in tcx:", tcx.state.uuts);
+      throw new Error(
+        `captureRecordId: no ${uutName.toString()} found in txn context for ${name}`
+      );
+    }
+    this.helperState.namedRecords[name] = id.toString();
+    if (submit)
+      return this.submitTxnWithBlock(tcx, {
+        expectError
+      });
+    return tcx;
   }
   async extraBootstrapping(args, submitOptions = {}) {
     this.mkTcx("extra bootstrapping").facade();

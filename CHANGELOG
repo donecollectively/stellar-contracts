@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.9.4-beta.1] - 2026-01-07
+
+### UI
+- **UI / FormManager:** Switched to callback refs for reliable mounting; added off-chain `validate()` support
+- **TxBatchViewer:**
+  - Improved nested transaction visualization, added "Close Batch" button, and refined cancel button logic/warnings
+  - fixed missing Sign/Submit buttons in specific batch states
+- **CapoProvider:**
+  - Improved hot-reloading support (context separation)
+  - fixed token scanning lifecycle, and added "click to copy" for wallet addresses
+  - fixed error propagation to UI in special cases of no-utxos-found
+
+### Off-chain
+- **Delegated Data:** Added `beforeCreate` (with activity) and `beforeUpdate` (with original/activity) hooks for controllers
+- **Math:** Fixed rounding logic for fixed-precision math to handle small floating-point errors
+- **Refactoring:** Moved `txnName` to options in `dgData` controller; standardized `recordTypeName` constants
+- **FoundDatumUtxo** now has id: string at its root
+
+### Other
+*   **On-chain:** Optimized script sizes by pruning unused syntax trees in non-mint/spend delegates and enabling empirical size optimizations
+*   **Testing:** Added `captureRecordId` and `getNamedRecordId` helpers; avoid expensive deep-copies on "expected error, got built-transaction-context"
+*   **Test Helper:** Fixed `expectError` to correctly throw exceptions when operations succeed
+*   **Docs:** Extensive updates to agent reference material, testing guides, and quickstart info
+*   **Dependencies:** Updated Helios dependencies
+
 ## [0.9.3-beta.7] - 2025-11-02
  - repairing .d.ts definitions in dist/
  - enhanced hasReqts() protocol and related types
@@ -150,7 +175,7 @@
 
 ---
 
-## 0.9.0-beta.1 - beta.3 
+## 0.9.0-beta.1 - beta.3
 - not released
 
 ---
@@ -335,5 +360,5 @@
 
 
 
-** Note** : this changelog was created with help from AI, so there 
+** Note** : this changelog was created with help from AI, so there
 might be some errors or omissions.  See the git commit history for the full details.
