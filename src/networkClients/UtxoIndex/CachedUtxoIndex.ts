@@ -25,6 +25,7 @@ import {
     type Address,
     type AssetClass,
     type Tx,
+    type TxId,
     type TxInput,
     type TxOutput,
     type TxOutputId,
@@ -954,6 +955,42 @@ export class CachedUtxoIndex {
 
         // Fall back to network if no cached data
         return this.network.getUtxos(address);
+    }
+
+    /**
+     * Retrieves UTXOs at an address containing a specific asset class.
+     * Implements ReadonlyCardanoClient.getUtxosWithAssetClass
+     *
+     * REQT/gv5wz1x4mr (getUtxosWithAssetClass Method)
+     *
+     * @throws Error if address is not the Capo address or a delegate-policy address
+     */
+    async getUtxosWithAssetClass(
+        address: Address,
+        assetClass: AssetClass
+    ): Promise<TxInput[]> {
+        const addrStr = address.toBech32();
+        const policyId = assetClass.mph.toHex();
+        const tokenName = assetClass.tokenName.toString();
+
+        // Try cache first - find UTXOs matching both address and asset
+        const entries = await this.store.findUtxosByAsset(policyId, tokenName);
+        const filtered = entries.filter((e) => e.address === addrStr);
+
+        if (filtered.length > 0) {
+            return filtered.map((e) => this.indexEntryToTxInput(e));
+        }
+
+        // Fall through to network on cache miss
+        if (this.network.getUtxosWithAssetClass) {
+            return this.network.getUtxosWithAssetClass(address, assetClass);
+        }
+
+        // If network doesn't support this method, filter from getUtxos
+        const allUtxos = await this.network.getUtxos(address);
+        return allUtxos.filter((u) =>
+            u.value.assets.has(assetClass.mph, assetClass.tokenName)
+        );
     }
 
     /**

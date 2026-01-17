@@ -292,11 +292,11 @@ interface ReadonlyCardanoClient {
 | `getTx(id)` | NEXT | REQT/gx7y3z6ot |
 | `getUtxo(id)` | COMPLETED | REQT/gt3ux9v2kp |
 | `getUtxos(address)` | COMPLETED | REQT/gu4vy0w3lq |
-| `getUtxosWithAssetClass(address, asset)` | NEXT | REQT/gv5wz1x4mr |
+| `getUtxosWithAssetClass(address, asset)` | COMPLETED | REQT/gv5wz1x4mr |
 | `now` | NEXT | REQT/gz9a5b8qv |
 | `parameters` | NEXT | REQT/ha0b6c9rw |
 
-**Address Validation**: `getUtxosWithAssetClass()` MUST throw an error if the requested address is not the Capo address or a delegate-policy address. The indexer only tracks UTXOs at these addresses; requests for other addresses should fail explicitly rather than return empty results.
+**Cache Strategy**: All `getUtxo*` methods check the cache first for matching indexed UTXOs. On cache miss, they fall through to the underlying network client. This allows the indexer to act as a transparent cache layer.
 
 **Query API Methods** (REQT/50zkk5xgrx):
 - `findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined>`
