@@ -25,10 +25,10 @@ If you need to do test automation, you should also read `reference/essential-ste
 
 ## Token + authority model
 - Policy: Capo mph (from minter). Charter token (`charter`) proves contract identity; various UUTs prove authority per role (gov/mint/spend/named/data-policy).
-- UUT naming: `<purpose>-<seedHash6>` derived from seed UTxO; managed via `txnWillMintUuts`/`txnMintingUuts`.
+- UUT naming: `<purpose>-<12-char-hex>` derived from seed UTxO; managed via `txnWillMintUuts`/`txnMintingUuts`.
 - Manifest entries (in CharterData) point to delegate/data-policy tokens.  Each delegate class (DelegatedDataContract/ ContractBasedDelegate/StellarDelegate subclass or even AnyAddressAuthorityPolicy) can locate and include these UUTs in its txn as needed via txnGrantAuthority().  
     - Internally, DelegateMustFindAuthorityToken and DelegateAddsAuthorityToken and txnReceiveAuthorityToken handle the UTxO discovery and inclusion,  forming the protocol for authority token handling.
-    - The authority token is always returned to the Capo address.
+    - The authority token is always returned to its policy address.
 
 ## Key transaction flows (day-to-day operations)
 ### Capo:
