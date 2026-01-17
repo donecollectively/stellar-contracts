@@ -284,7 +284,7 @@ Documents planned features and performance improvements not yet implemented. App
 Ensures the CachedUtxoIndex can be used as a drop-in replacement for Helios network clients, enabling cached UTXO lookups during transaction building. Applied when implementing or modifying the public API to match Helios interface contracts.
 
  - **REQT-1.6.1**/gt3ux9v2kp: COMPLETED: **getUtxo Method** - Must implement `getUtxo(id: TxOutputId): Promise<TxInput>` to retrieve a single UTXO by its output ID. Must return Helios `TxInput` type. Must check local cache first, then fall back to network if not found.
- - **REQT-1.6.2**/gu4vy0w3lq: NEXT: **getUtxos Method** - Must implement `getUtxos(address: Address): Promise<TxInput[]>` to retrieve all UTXOs at an address. Must return array of Helios `TxInput` types. Must use cached data when available.
+ - **REQT-1.6.2**/gu4vy0w3lq: COMPLETED: **getUtxos Method** - Must implement `getUtxos(address: Address): Promise<TxInput[]>` to retrieve all UTXOs at an address. Must return array of Helios `TxInput` types. Must use cached data when available.
  - **REQT-1.6.3**/gv5wz1x4mr: NEXT: **getUtxosWithAssetClass Method** - Must implement `getUtxosWithAssetClass(address: Address, assetClass: AssetClass): Promise<TxInput[]>` to retrieve UTXOs containing a specific asset. Must filter by both address and asset class. MUST throw an error if the address is not the Capo address or one of the delegate-policy addresses (indexed addresses only).
  - **REQT-1.6.4**/gw6x2y5ns: COMPLETED: **hasUtxo Method** - Must implement `hasUtxo(utxoId: TxOutputId): Promise<boolean>` to check if a UTXO exists. Must return true if found in cache or on network.
  - **REQT-1.6.5**/gx7y3z6ot: NEXT: **getTx Method** - Must implement `getTx(id: TxId): Promise<Tx>` to retrieve a transaction by ID. Must use cached transaction CBOR when available, falling back to network fetch.
@@ -440,7 +440,7 @@ All UUT storage infrastructure is now in place:
 * DONE: `isMainnet()` (REQT/gy8z4a7pu)
 * DONE: `hasUtxo(utxoId)` (REQT/gw6x2y5ns)
 * DONE: `getUtxo(id)` returning Helios `TxInput` (REQT/gt3ux9v2kp)
-* Implement `getUtxos(address)` returning `TxInput[]` (REQT/gu4vy0w3lq)
+* DONE: `getUtxos(address)` returning `TxInput[]` (REQT/gu4vy0w3lq)
 * Implement `getUtxosWithAssetClass(address, assetClass)` (REQT/gv5wz1x4mr)
 * Implement `getTx(id)` (REQT/gx7y3z6ot)
 * Implement `now` property (REQT/gz9a5b8qv)

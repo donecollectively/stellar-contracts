@@ -939,6 +939,24 @@ export class CachedUtxoIndex {
     }
 
     /**
+     * Retrieves all UTXOs at an address.
+     * Implements ReadonlyCardanoClient.getUtxos
+     *
+     * REQT/gu4vy0w3lq (getUtxos Method)
+     */
+    async getUtxos(address: Address): Promise<TxInput[]> {
+        const addrStr = address.toBech32();
+        const entries = await this.store.findUtxosByAddress(addrStr);
+
+        if (entries.length > 0) {
+            return entries.map((e) => this.indexEntryToTxInput(e));
+        }
+
+        // Fall back to network if no cached data
+        return this.network.getUtxos(address);
+    }
+
+    /**
      * Finds a UTXO containing a specific UUT by its name.
      *
      * REQT/50zkk5xgrx (Query API Methods)
