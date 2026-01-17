@@ -218,33 +218,33 @@ Establishes the foundational data structures and initialization sequence for the
  - **REQT-1.1.1**/xxkzfx9gf4: COMPLETED: **Constructor & Initialization** - Must accept `capo`, `blockfrostKey`, and optional `storeIn` strategy. Must determine Blockfrost base URL from API key prefix (mainnet/preprod/preview). Must initialize storage backend based on strategy. `static async createAndSync()` must trigger `async syncNow()` after construction and initialization.
  - **REQT-1.1.2**/9a0nx1gr4b: NEXT: **Core State** - Must maintain: `capoAddress` (bech32 string), `capoMph` (hex-encoded minting policy hash for filtering), `lastBlockHeight` (last block height processed), `lastBlockId`.
 
-### REQT-1.2/y034z487y5: NEXT: **UUT Cataloging & Charter Tracking**
+### REQT-1.2/y034z487y5: P1: **UUT Cataloging & Charter Tracking**
 
 #### Purpose
 Governs delegate UUT discovery, cataloging, and updates based on charter changes. Applied when implementing charter traversal logic, UUT cataloging, or charter change detection mechanisms.
 
- - **REQT-1.2.1**/k0mnv27tz4: NEXT: **UUT Catalog from Charter** - Must implement `catalogDelegateUuts(charterData)` to discover and catalog all delegate UUTs. Must iterate through delegate types in charter (mint delegate, spend delegate, gov authority, other named delegates, dgData controllers). For each delegate, must query Blockfrost for the UUT using `capoMph + uutName` to find its current UTXO. Must store UUT identifiers in the UTXO's `uutIds` array.
- - **REQT-1.2.2**/xrdj6qpgnj: NEXT: **Charter Change Detection** - Must detect charter UTXO state changes during routine transaction monitoring. When processing transaction outputs, must check for presence of `mph.charter` token. Upon detecting charter token, must call `capo.findCharterData()` to fetch updated charter and invoke `catalogDelegateUuts()` to refresh UUT catalog.
- - **REQT-1.2.3**/m29vd4vr3q: NEXT: **UUT Movement Detection** - During transaction processing, must detect when delegate UUTs are moved to new UTXOs. Must store the new UTXO with the UUT identifier in its `uutIds` array.
+ - **REQT-1.2.1**/k0mnv27tz4: P1: **UUT Catalog from Charter** - Must implement `catalogDelegateUuts(charterData)` to discover and catalog all delegate UUTs. Must iterate through delegate types in charter (mint delegate, spend delegate, gov authority, other named delegates, dgData controllers). For each delegate, must query Blockfrost for the UUT using `capoMph + uutName` to find its current UTXO. Must store UUT identifiers in the UTXO's `uutIds` array.
+ - **REQT-1.2.2**/xrdj6qpgnj: P1: **Charter Change Detection** - Must detect charter UTXO state changes during routine transaction monitoring. When processing transaction outputs, must check for presence of `mph.charter` token. Upon detecting charter token, must call `capo.findCharterData()` to fetch updated charter and invoke `catalogDelegateUuts()` to refresh UUT catalog.
+ - **REQT-1.2.3**/m29vd4vr3q: P1: **UUT Movement Detection** - During transaction processing, must detect when delegate UUTs are moved to new UTXOs. Must store the new UTXO with the UUT identifier in its `uutIds` array.
 
-### REQT-1.3/3zx9pcggch: NEXT: **Synchronization & Monitoring**
+### REQT-1.3/3zx9pcggch: P1: **Synchronization & Monitoring**
 
 #### Purpose
 Defines how the indexer performs initial synchronization and ongoing transaction monitoring of the Capo address. Applied when implementing sync logic, periodic monitoring, or transaction processing.
 
- - **REQT-1.3.1**/vk2bywdycn: NEXT: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via underlying provider (`capo.findCapoUtxos( {findCached: false} )`. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
- - **REQT-1.3.2**/fh56sce22g: NEXT: **Transaction Monitoring** - Must implement `checkForNewTxns()` to check for new transactions at `capoAddress`. Must query Blockfrost `addresses/{capoAddress}/transactions` endpoint with `order=desc`, `count=100`, and `from` parameter set to last synced block. Must process each new transaction via `processTransactionForNewUtxos()`. Must update last synced block details on success.
- - **REQT-1.3.3**/0vrkpk6a6h: NEXT: **Transaction Processing** - Must implement `processTransactionForNewUtxos()` to extract and index relevant UTXOs from transactions. Must fetch full transaction CBOR and decode using Helios `decodeTx()`. Must examine each transaction output. Must check if UTXO already exists in store via `store.findUtxoId()`. Must index new UTXOs via `indexUtxoFromOutput()`. Must update UUT catalog if delegate UUTs moved.
-    - **REQT-1.3.4**/mvjrak021s: NEXT: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to store UTXO id and any mph-matching token values for later search. Must extract inline datum as binary data or datum hash. Must save to store via `store.saveUtxo()`.
+ - **REQT-1.3.1**/vk2bywdycn: P1: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via underlying provider (`capo.findCapoUtxos( {findCached: false} )`. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
+ - **REQT-1.3.2**/fh56sce22g: P1: **Transaction Monitoring** - Must implement `checkForNewTxns()` to check for new transactions at `capoAddress`. Must query Blockfrost `addresses/{capoAddress}/transactions` endpoint with `order=desc`, `count=100`, and `from` parameter set to last synced block. Must process each new transaction via `processTransactionForNewUtxos()`. Must update last synced block details on success.
+ - **REQT-1.3.3**/0vrkpk6a6h: P1: **Transaction Processing** - Must implement `processTransactionForNewUtxos()` to extract and index relevant UTXOs from transactions. Must fetch full transaction CBOR and decode using Helios `decodeTx()`. Must examine each transaction output. Must check if UTXO already exists in store via `store.findUtxoId()`. Must index new UTXOs via `indexUtxoFromOutput()`. Must update UUT catalog if delegate UUTs moved.
+    - **REQT-1.3.4**/mvjrak021s: P1: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to store UTXO id and any mph-matching token values for later search. Must extract inline datum as binary data or datum hash. Must save to store via `store.saveUtxo()`.
 
 ### REQT-1.4/k3xfpg6jkb: COMPLETED: **External Data Services & Utilities**
 
 #### Purpose
 Governs interactions with Blockfrost API, block/transaction management, and data format conversions. Applied when implementing or modifying API client logic, caching strategies, or data transformation utilities.
 
- - **REQT-1.4.1**/nw8d0yew8j: NEXT: **Block Management** - Must implement `fetchAndStoreLatestBlock()` to query Blockfrost `blocks/latest` endpoint, store in database via `store.saveBlock()`, and update indexer's `lastBlockHeight`. Must implement `findOrFetchBlockHeight()` to resolve block height from hash, checking store cache via `store.findBlockId()` before querying Blockfrost `blocks/{hash}` endpoint.
- - **REQT-1.4.2**/sy05qvrfd0: NEXT: **Transaction Fetching with Caching** - Must implement `findOrFetchTxDetails()` to retrieve transaction CBOR with cache-first strategy. Must check store via `store.findTxId()`. On cache miss, must query Blockfrost `txs/{txId}/cbor` endpoint, save CBOR to store via `store.saveTx()`, and decode using Helios `decodeTx()`. Must return decoded `Tx` object.
- - **REQT-1.4.3**/cdhjy5k8at: NEXT: **Blockfrost HTTP Client** - Must implement `fetchFromBlockfrost()` generic HTTP client for Blockfrost API. Must construct full URL from `blockfrostBaseUrl` and relative path parameter. Must include `project_id` header with `blockfrostKey` value. Must parse JSON responses. On HTTP errors, must log error and throw descriptive error.
+ - **REQT-1.4.1**/nw8d0yew8j: COMPLETED: **Block Management** - Must implement `fetchAndStoreLatestBlock()` to query Blockfrost `blocks/latest` endpoint, store in database via `store.saveBlock()`, and update indexer's `lastBlockHeight`. Must implement `findOrFetchBlockHeight()` to resolve block height from hash, checking store cache via `store.findBlockId()` before querying Blockfrost `blocks/{hash}` endpoint.
+ - **REQT-1.4.2**/sy05qvrfd0: COMPLETED: **Transaction Fetching with Caching** - Must implement `findOrFetchTxDetails()` to retrieve transaction CBOR with cache-first strategy. Must check store via `store.findTxId()`. On cache miss, must query Blockfrost `txs/{txId}/cbor` endpoint, save CBOR to store via `store.saveTx()`, and decode using Helios `decodeTx()`. Must return decoded `Tx` object.
+ - **REQT-1.4.3**/cdhjy5k8at: COMPLETED: **Blockfrost HTTP Client** - Must implement `fetchFromBlockfrost()` generic HTTP client for Blockfrost API. Must construct full URL from `blockfrostBaseUrl` and relative path parameter. Must include `project_id` header with `blockfrostKey` value. Must parse JSON responses. On HTTP errors, must log error and throw descriptive error.
 
 ### REQT-1.5/8x3f5pv2kd: BACKLOG: **Future Enhancements & Optimizations**
 
@@ -267,7 +267,7 @@ Defines the contract for storage backends, allowing the indexer to work with dif
 Establishes the abstraction layer for storage backends. Applied when implementing new storage strategies, modifying storage operations, or understanding the data persistence contract.
 
  - **REQT-2.1.1**/nhbqmacrwn: NEXT: **Interface Methods** - Must define `UtxoStoreGeneric` interface with methods: `log()`, `findBlockId()`, `saveBlock()`, `findUtxoId()`, `saveUtxo()`, `findTxId()`, `saveTx()`, `findUtxoByUUT()`
- - **REQT-2.1.2**/bq0ammh636: NEXT: **Type Definitions** - Must define `txCBOR` type with `txid` and `cbor` fields.
+ - **REQT-2.1.2**/bq0ammh636: COMPLETED: **Type Definitions** - Must define `txCBOR` type with `txid` and `cbor` fields.
 
 ### Component: DexieUtxoStore Class
 
@@ -280,25 +280,25 @@ Dexie-based implementation of `UtxoStoreGeneric` providing persistent browser st
 Defines the IndexedDB schema and entity mappings for the Dexie storage backend. Applied when modifying database structure, adding tables, or changing indexes.
 
  - **REQT-3.1.1**/6h4f158gvs: NEXT: **Database Definition** - Must extend Dexie with database name "StellarDappIndex-v0.1". Must define schema with tables and indexed fields: `blocks` (hash, height), `utxos` (utxoId, *uutIds, blockHeight), `txs` (txid), `logs` (logId, [pid,time]).
- - **REQT-3.1.2**/exv4s020a0: NEXT: **Entity Mapping** - Must map tables to appropriate Dexie Entity classes for type-safe storage.
+ - **REQT-3.1.2**/exv4s020a0: COMPLETED: **Entity Mapping** - Must map tables to appropriate Dexie Entity classes for type-safe storage.
 
-### REQT-3.2/754gq4cbqk: NEXT: **Logging & Process Management**
+### REQT-3.2/754gq4cbqk: COMPLETED: **Logging & Process Management**
 
 #### Purpose
 Governs the structured logging system for debugging and UI inspection. Applied when implementing or debugging indexer operations, or building monitoring dashboards.
 
- - **REQT-3.2.1**/cm9ez5thxz: NEXT: **Process ID Management** - Must implement `init()` to find maximum pid in logs table and assign next pid. Must handle concurrent initialization attempts.
- - **REQT-3.2.2**/p7ryk4ztes: NEXT: **Logging Implementation** - Must implement `log()` to create log entries with pid, timestamp, and message. Must use logId as primary key.
+ - **REQT-3.2.1**/cm9ez5thxz: COMPLETED: **Process ID Management** - Must implement `init()` to find maximum pid in logs table and assign next pid. Must handle concurrent initialization attempts.
+ - **REQT-3.2.2**/p7ryk4ztes: COMPLETED: **Logging Implementation** - Must implement `log()` to create log entries with pid, timestamp, and message. Must use logId as primary key.
 
 ### REQT-3.3/pdctymd7yj: NEXT: **Data Storage Operations**
 
 #### Purpose
 Implements CRUD operations for blocks, UTXOs, transactions, and UUT catalog. Applied when reading or modifying storage access patterns or adding new query methods.
 
- - **REQT-3.3.1**/76e18y06kp: NEXT: **Block Storage** - Must implement `findBlockId()` and `saveBlock()` using Dexie operations.
- - **REQT-3.3.2**/1gw45sp198: NEXT: **UTXO Storage** - Must implement `findUtxoId()` and `saveUtxo()` using Dexie operations.
- - **REQT-3.3.3**/nm2ed7m80y: NEXT: **Transaction Storage** - Must implement `findTxId()` and `saveTx()` using Dexie operations.
- - **REQT-3.3.4**/cchf3wgnk3: NEXT: **UUT Catalog Storage** - Must implement `extractUutIds(utxoTokens, capoMph)` helper to identify delegate UUTs from UTXO token values (matching capoMph and UUT naming pattern `/{purpose:[a-z]+}-{hash:crockford base32{12}}/`), returning an array. Must implement `findUtxoByUUT(uutId)` to query utxos table by uutIds multiEntry index. UUT indexing occurs within `saveUtxo()` using the extracted uutIds array.
+ - **REQT-3.3.1**/76e18y06kp: COMPLETED: **Block Storage** - Must implement `findBlockId()` and `saveBlock()` using Dexie operations.
+ - **REQT-3.3.2**/1gw45sp198: COMPLETED: **UTXO Storage** - Must implement `findUtxoId()` and `saveUtxo()` using Dexie operations.
+ - **REQT-3.3.3**/nm2ed7m80y: COMPLETED: **Transaction Storage** - Must implement `findTxId()` and `saveTx()` using Dexie operations.
+ - **REQT-3.3.4**/cchf3wgnk3: NEXT: **UUT Catalog Storage** - Must implement `extractUutIds(utxoTokens, capoMph)` helper to identify delegate UUTs from UTXO token values (matching capoMph and UUT naming pattern `/{purpose:[a-z]+}-{hash:[0-9a-f]{12}}/`), returning an array. Must implement `findUtxoByUUT(uutId)` to query utxos table by uutIds multiEntry index. UUT indexing occurs within `saveUtxo()` using the extracted uutIds array.
 
 ### REQT-3.4/z7ykwww22z: BACKLOG: **Alternative Storage Backends**
 
@@ -313,13 +313,13 @@ Documents planned alternative storage implementations. Applied when evaluating s
 #### Overview
 Type definitions and validation factories for Blockfrost API responses, ensuring type safety and runtime validation.
 
-### REQT-4.1/dee8dgbdxg: NEXT: **API Response Type Validation**
+### REQT-4.1/dee8dgbdxg: COMPLETED: **API Response Type Validation**
 
 #### Purpose
 Ensures type safety for Blockfrost API responses. Applied when adding new API endpoints or modifying response handling.
 
- - **REQT-4.1.1**/7t6c1zwp0p: NEXT: **BlockDetails Type** - Must define type for Blockfrost block response schema (time, height, hash, slot, etc.).
- - **REQT-4.1.2**/74vphrcgps: NEXT: **AddressTransactionSummaries Type** - Must define type for Blockfrost transaction summary schema (tx_hash, block_height, block_time).
+ - **REQT-4.1.1**/7t6c1zwp0p: COMPLETED: **BlockDetails Type** - Must define type for Blockfrost block response schema (time, height, hash, slot, etc.).
+ - **REQT-4.1.2**/74vphrcgps: COMPLETED: **AddressTransactionSummaries Type** - Must define type for Blockfrost transaction summary schema (tx_hash, block_height, block_time).
 
 ### Component: Dexie Record Types
 
@@ -331,9 +331,9 @@ Dexie Entity classes for type-safe storage of indexed data.
 #### Purpose
 Defines Dexie Entity classes for type-safe storage. Applied when modifying database entity structure.
 
- - **REQT-5.1.1**/dzx5harnk4: NEXT: **Block Entity** - Must store block details with hash as primary key and height indexed.
+ - **REQT-5.1.1**/dzx5harnk4: COMPLETED: **Block Entity** - Must store block details with hash as primary key and height indexed.
  - **REQT-5.1.2**/gbzxxv71m8: NEXT: **UTXO Entity** - Must store UTXO details with utxoId as primary key. Must include mph-matching token values and inline datum/datumHash. Must include `uutIds` field as an array (possibly empty) with secondary index for UUT lookups.
- - **REQT-5.1.3**/cj6nm0mpm1: NEXT: **Log Entity** - Must store log entries with logId, pid, time, and message.
+ - **REQT-5.1.3**/cj6nm0mpm1: COMPLETED: **Log Entity** - Must store log entries with logId, pid, time, and message.
  - **REQT-5.1.4**/nt1pqd3m3z: NEXT: **UUT Catalog Entity** - Must store UUT catalog entries by augmenting the UTXO entity with the uutIds array as a multiEntry secondary index
 
 ## Files
@@ -363,17 +363,34 @@ The indexer maintains `lastBlockHeight` to track the most recent block processed
 
 Meta-requirements: maintainers MUST NOT modify past details in the implementation log. Future changes should be appended to show progression.
 
-### Phase 1: Requirements & Architecture (Current)
+### Phase 1: Requirements & Architecture
 * Defined single-address monitoring architecture
 * Established UUT cataloging approach for delegate tokens at external addresses
 * Defined storage interface with simplified operations
 * Documented Blockfrost API integration requirements
 
-#### Next Recommendations
-1. Implement core `CachedUtxoIndex` class with `syncNow()` and `checkForNewTxns()`
-2. Implement `DexieUtxoStore` with all storage operations
-3. Implement UUT catalog functionality
-4. Add charter change detection
+### Phase 2: Core Implementation (Current)
+* Implemented `CachedUtxoIndex` constructor with Blockfrost URL detection and storage initialization
+* Implemented `syncNow()` with capo UTxO fetching, charter data resolution, and delegate UUT indexing
+* Implemented `monitorForNewTransactions()` and `processTransactionForNewUtxos()`
+* Implemented all Blockfrost API integration (`fetchFromBlockfrost`, `fetchAndStoreLatestBlock`, `findOrFetchTxDetails`, `findOrFetchBlockHeight`)
+* Implemented `DexieUtxoStore` with block, UTXO, transaction, and log storage
+* Implemented structured logging with process ID management
+* Implemented all ArkType validation factories (BlockDetails, UtxoDetails, AddressTransactionSummaries)
+* Implemented Dexie entity classes for blocks and logs
+
+#### NEXT: UUT Storage Foundation
+The key missing piece is storing `uutIds` on UTXOs for fast lookups. Required changes:
+1. Add `uutIds: string[]` field to `dexieUtxoDetails` entity (REQT-5.1.2)
+2. Update Dexie schema to add `*uutIds` multiEntry index (REQT-3.1.1)
+3. Add `findUtxoByUUT(uutId)` to `UtxoStoreGeneric` interface (REQT-2.1.1)
+4. Implement `extractUutIds()` helper and `findUtxoByUUT()` in DexieUtxoStore (REQT-3.3.4)
+
+#### P1: Complete Sync Flow (after NEXT)
+* Update `syncNow()` to store capo UTXOs with extracted uutIds (REQT-1.3.1)
+* Update `indexUtxoFromOutput()` to extract and store uutIds (REQT-1.3.4)
+* Add charter change detection in transaction processing (REQT-1.2.2)
+* UUT movement detection during monitoring (REQT-1.2.3)
 
 ## Release Management Plan
 

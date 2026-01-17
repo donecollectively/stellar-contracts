@@ -11,8 +11,11 @@ export interface UtxoStoreGeneric {
     findBlockByBlockId(blockId: string): Promise<BlockDetailsType | undefined>;
     saveBlock(block: BlockDetailsType): Promise<void>;
     findUtxoByUtxoId(utxoId: string): Promise<UtxoDetailsType | undefined>;
-    saveUtxo(utxo: UtxoDetailsType): Promise<void>;
+    // REQT/nhbqmacrwn (Interface Methods) - saveUtxo accepts optional capoMph for UUT extraction
+    saveUtxo(utxo: UtxoDetailsType, capoMph?: string): Promise<void>;
     findTxById(txId: string): Promise<txCBOR | undefined>;
     saveTx(tx: txCBOR): Promise<void>;
+    // REQT/nhbqmacrwn (Interface Methods) - query UTXOs by UUT identifier
+    findUtxoByUUT(uutId: string): Promise<UtxoDetailsType | undefined>;
 }
 

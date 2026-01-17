@@ -106,6 +106,16 @@ export class CachedUtxoIndex {
 
     network: CardanoClient;
 
+    // REQT/9a0nx1gr4b (Core State) - expose capoAddress for external access
+    get capoAddress(): string {
+        return this.capo.address.toBech32();
+    }
+
+    // REQT/9a0nx1gr4b (Core State) - expose capoMph for external access
+    get capoMph(): string {
+        return this.capo.mph.toHex();
+    }
+
     constructor({
         capo,
         blockfrostKey,

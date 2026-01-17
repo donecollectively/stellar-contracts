@@ -9,7 +9,7 @@ export class dexieUtxoDetails
     implements UtxoDetailsType
 {
     utxoId!: string;
-    
+
     address!: UtxoDetailsType["address"];
     tx_hash!: UtxoDetailsType["tx_hash"];
     tx_index!: UtxoDetailsType["tx_index"];
@@ -19,4 +19,6 @@ export class dexieUtxoDetails
     data_hash!: UtxoDetailsType["data_hash"];
     inline_datum!: UtxoDetailsType["inline_datum"];
     reference_script_hash!: UtxoDetailsType["reference_script_hash"];
+    // REQT/gbzxxv71m8 (UTXO Entity) - UUT identifiers for fast lookups
+    uutIds!: UtxoDetailsType["uutIds"];
 }

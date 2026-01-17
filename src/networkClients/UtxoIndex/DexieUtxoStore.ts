@@ -9,6 +9,30 @@ import {dexieUtxoDetails} from "./dexieRecords/UtxoDetails.js";
 
 const pid = nanoid()
 
+/**
+ * Extracts UUT identifiers from UTXO token values.
+ * UUT names match pattern: {purpose}-{hash} where purpose is [a-z]+ and hash is 12 hex chars.
+ * REQT/cchf3wgnk3 (UUT Catalog Storage)
+ */
+export function extractUutIds(
+    amounts: Array<{unit: string; quantity: number}>,
+    capoMph: string
+): string[] {
+    // UUT pattern: lowercase purpose + hyphen + 12 hex characters
+    const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
+    return amounts
+        .filter(a => a.unit !== "lovelace" && a.unit.startsWith(capoMph))
+        .map(a => a.unit.slice(capoMph.length)) // extract token name (hex-encoded)
+        .map(hexName => {
+            try {
+                return Buffer.from(hexName, 'hex').toString('utf8');
+            } catch {
+                return '';
+            }
+        })
+        .filter(name => uutPattern.test(name));
+}
+
 export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     blocks!: EntityTable<dexieBlockDetails, "hash">;
     utxos!: EntityTable<dexieUtxoDetails, "utxoId">;
@@ -21,6 +45,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         this.version(1).stores({
             blocks: "hash, height",
             utxos: "utxoId, blockId, blockHeight",
+            txs: "txid",
+            logs: "logId,[pid,time]",
+        });
+        // REQT/6h4f158gvs (Database Definition), REQT/nt1pqd3m3z (UUT Catalog Entity)
+        // Schema v2: adds *uutIds multiEntry index for fast UUT lookups
+        this.version(2).stores({
+            blocks: "hash, height",
+            utxos: "utxoId, blockId, blockHeight, *uutIds",
             txs: "txid",
             logs: "logId,[pid,time]",
         });
@@ -74,8 +106,17 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         return await this.utxos.where("utxoId").equals(utxoId).first();
     }
 
-    async saveUtxo(utxo: UtxoDetailsType): Promise<void> {
+    // REQT/cchf3wgnk3 (UUT Catalog Storage) - saveUtxo with optional UUT extraction
+    async saveUtxo(utxo: UtxoDetailsType, capoMph?: string): Promise<void> {
+        if (capoMph && !utxo.uutIds) {
+            utxo.uutIds = extractUutIds(utxo.amount, capoMph);
+        }
         await this.utxos.put(utxo);
+    }
+
+    // REQT/cchf3wgnk3 (UUT Catalog Storage) - query UTXOs by UUT identifier
+    async findUtxoByUUT(uutId: string): Promise<UtxoDetailsType | undefined> {
+        return await this.utxos.where('uutIds').equals(uutId).first();
     }
 
     async findTxById(txId: string): Promise<txCBOR | undefined> {
