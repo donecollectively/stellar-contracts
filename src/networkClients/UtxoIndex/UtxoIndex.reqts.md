@@ -216,7 +216,7 @@ The core class that orchestrates UTXO indexing, transaction monitoring, and bloc
 Establishes the foundational data structures and initialization sequence for the indexer. Applied when implementing or modifying constructor logic, core data types, or initial setup procedures.
 
  - **REQT-1.1.1**/xxkzfx9gf4: COMPLETED: **Constructor & Initialization** - Must accept `capo`, `blockfrostKey`, and optional `storeIn` strategy. Must determine Blockfrost base URL from API key prefix (mainnet/preprod/preview). Must initialize storage backend based on strategy. `static async createAndSync()` must trigger `async syncNow()` after construction and initialization.
- - **REQT-1.1.2**/9a0nx1gr4b: NEXT: **Core State** - Must maintain: `capoAddress` (bech32 string), `capoMph` (hex-encoded minting policy hash for filtering), `lastBlockHeight` (last block height processed), `lastBlockId`.
+ - **REQT-1.1.2**/9a0nx1gr4b: COMPLETED: **Core State** - Must maintain: `capoAddress` (bech32 string), `capoMph` (hex-encoded minting policy hash for filtering), `lastBlockHeight` (last block height processed), `lastBlockId`.
 
 ### REQT-1.2/y034z487y5: P1: **UUT Cataloging & Charter Tracking**
 
@@ -261,12 +261,12 @@ Documents planned features and performance improvements not yet implemented. App
 #### Overview
 Defines the contract for storage backends, allowing the indexer to work with different storage strategies (Dexie, memory, future: Dred).
 
-### REQT-2.1/pg6g84g7kg: NEXT: **Storage Interface Contract**
+### REQT-2.1/pg6g84g7kg: COMPLETED: **Storage Interface Contract**
 
 #### Purpose
 Establishes the abstraction layer for storage backends. Applied when implementing new storage strategies, modifying storage operations, or understanding the data persistence contract.
 
- - **REQT-2.1.1**/nhbqmacrwn: NEXT: **Interface Methods** - Must define `UtxoStoreGeneric` interface with methods: `log()`, `findBlockId()`, `saveBlock()`, `findUtxoId()`, `saveUtxo()`, `findTxId()`, `saveTx()`, `findUtxoByUUT()`
+ - **REQT-2.1.1**/nhbqmacrwn: COMPLETED: **Interface Methods** - Must define `UtxoStoreGeneric` interface with methods: `log()`, `findBlockId()`, `saveBlock()`, `findUtxoId()`, `saveUtxo()`, `findTxId()`, `saveTx()`, `findUtxoByUUT()`
  - **REQT-2.1.2**/bq0ammh636: COMPLETED: **Type Definitions** - Must define `txCBOR` type with `txid` and `cbor` fields.
 
 ### Component: DexieUtxoStore Class
@@ -274,12 +274,12 @@ Establishes the abstraction layer for storage backends. Applied when implementin
 #### Overview
 Dexie-based implementation of `UtxoStoreGeneric` providing persistent browser storage using IndexedDB.
 
-### REQT-3.1/dbwnqvqwa1: NEXT: **Dexie Database Schema & Initialization**
+### REQT-3.1/dbwnqvqwa1: COMPLETED: **Dexie Database Schema & Initialization**
 
 #### Purpose
 Defines the IndexedDB schema and entity mappings for the Dexie storage backend. Applied when modifying database structure, adding tables, or changing indexes.
 
- - **REQT-3.1.1**/6h4f158gvs: NEXT: **Database Definition** - Must extend Dexie with database name "StellarDappIndex-v0.1". Must define schema with tables and indexed fields: `blocks` (hash, height), `utxos` (utxoId, *uutIds, blockHeight), `txs` (txid), `logs` (logId, [pid,time]).
+ - **REQT-3.1.1**/6h4f158gvs: COMPLETED: **Database Definition** - Must extend Dexie with database name "StellarDappIndex-v0.1". Must define schema with tables and indexed fields: `blocks` (hash, height), `utxos` (utxoId, *uutIds, blockHeight), `txs` (txid), `logs` (logId, [pid,time]).
  - **REQT-3.1.2**/exv4s020a0: COMPLETED: **Entity Mapping** - Must map tables to appropriate Dexie Entity classes for type-safe storage.
 
 ### REQT-3.2/754gq4cbqk: COMPLETED: **Logging & Process Management**
@@ -290,7 +290,7 @@ Governs the structured logging system for debugging and UI inspection. Applied w
  - **REQT-3.2.1**/cm9ez5thxz: COMPLETED: **Process ID Management** - Must implement `init()` to find maximum pid in logs table and assign next pid. Must handle concurrent initialization attempts.
  - **REQT-3.2.2**/p7ryk4ztes: COMPLETED: **Logging Implementation** - Must implement `log()` to create log entries with pid, timestamp, and message. Must use logId as primary key.
 
-### REQT-3.3/pdctymd7yj: NEXT: **Data Storage Operations**
+### REQT-3.3/pdctymd7yj: COMPLETED: **Data Storage Operations**
 
 #### Purpose
 Implements CRUD operations for blocks, UTXOs, transactions, and UUT catalog. Applied when reading or modifying storage access patterns or adding new query methods.
@@ -298,7 +298,7 @@ Implements CRUD operations for blocks, UTXOs, transactions, and UUT catalog. App
  - **REQT-3.3.1**/76e18y06kp: COMPLETED: **Block Storage** - Must implement `findBlockId()` and `saveBlock()` using Dexie operations.
  - **REQT-3.3.2**/1gw45sp198: COMPLETED: **UTXO Storage** - Must implement `findUtxoId()` and `saveUtxo()` using Dexie operations.
  - **REQT-3.3.3**/nm2ed7m80y: COMPLETED: **Transaction Storage** - Must implement `findTxId()` and `saveTx()` using Dexie operations.
- - **REQT-3.3.4**/cchf3wgnk3: NEXT: **UUT Catalog Storage** - Must implement `extractUutIds(utxoTokens, capoMph)` helper to identify delegate UUTs from UTXO token values (matching capoMph and UUT naming pattern `/{purpose:[a-z]+}-{hash:[0-9a-f]{12}}/`), returning an array. Must implement `findUtxoByUUT(uutId)` to query utxos table by uutIds multiEntry index. UUT indexing occurs within `saveUtxo()` using the extracted uutIds array.
+ - **REQT-3.3.4**/cchf3wgnk3: COMPLETED: **UUT Catalog Storage** - Must implement `extractUutIds(utxoTokens, capoMph)` helper to identify delegate UUTs from UTXO token values (matching capoMph and UUT naming pattern `/{purpose:[a-z]+}-{hash:[0-9a-f]{12}}/`), returning an array. Must implement `findUtxoByUUT(uutId)` to query utxos table by uutIds multiEntry index. UUT indexing occurs within `saveUtxo()` using the extracted uutIds array.
 
 ### REQT-3.4/z7ykwww22z: BACKLOG: **Alternative Storage Backends**
 
@@ -326,15 +326,15 @@ Ensures type safety for Blockfrost API responses. Applied when adding new API en
 #### Overview
 Dexie Entity classes for type-safe storage of indexed data.
 
-### REQT-5.1/nra8tvh4zt: NEXT: **Dexie Entity Classes**
+### REQT-5.1/nra8tvh4zt: COMPLETED: **Dexie Entity Classes**
 
 #### Purpose
 Defines Dexie Entity classes for type-safe storage. Applied when modifying database entity structure.
 
  - **REQT-5.1.1**/dzx5harnk4: COMPLETED: **Block Entity** - Must store block details with hash as primary key and height indexed.
- - **REQT-5.1.2**/gbzxxv71m8: NEXT: **UTXO Entity** - Must store UTXO details with utxoId as primary key. Must include mph-matching token values and inline datum/datumHash. Must include `uutIds` field as an array (possibly empty) with secondary index for UUT lookups.
+ - **REQT-5.1.2**/gbzxxv71m8: COMPLETED: **UTXO Entity** - Must store UTXO details with utxoId as primary key. Must include mph-matching token values and inline datum/datumHash. Must include `uutIds` field as an array (possibly empty) with secondary index for UUT lookups.
  - **REQT-5.1.3**/cj6nm0mpm1: COMPLETED: **Log Entity** - Must store log entries with logId, pid, time, and message.
- - **REQT-5.1.4**/nt1pqd3m3z: NEXT: **UUT Catalog Entity** - Must store UUT catalog entries by augmenting the UTXO entity with the uutIds array as a multiEntry secondary index
+ - **REQT-5.1.4**/nt1pqd3m3z: COMPLETED: **UUT Catalog Entity** - Must store UUT catalog entries by augmenting the UTXO entity with the uutIds array as a multiEntry secondary index
 
 ## Files
 
