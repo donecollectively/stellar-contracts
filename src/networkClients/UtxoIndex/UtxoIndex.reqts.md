@@ -267,7 +267,7 @@ Defines the contract for storage backends, allowing the indexer to work with dif
 Establishes the abstraction layer for storage backends. Applied when implementing new storage strategies, modifying storage operations, or understanding the data persistence contract.
 
  - **REQT-2.1.1**/nhbqmacrwn: COMPLETED: **Interface Methods** - Must define `UtxoStoreGeneric` interface with methods: `log()`, `findBlockId()`, `saveBlock()`, `findUtxoId()`, `saveUtxo()`, `findTxId()`, `saveTx()`, `findUtxoByUUT()`
- - **REQT-2.1.2**/bq0ammh636: COMPLETED: **Type Definitions** - Must define `txCBOR` type with `txid` and `cbor` fields.
+ - **REQT-2.1.2**/bq0ammh636: COMPLETED: **Type Definitions** - Must define `TxIndexEntry` type with `txid` and `cbor` fields.
 
 ### Component: DexieUtxoStore Class
 
@@ -298,7 +298,7 @@ Implements CRUD operations for blocks, UTXOs, transactions, and UUT catalog. App
  - **REQT-3.3.1**/76e18y06kp: COMPLETED: **Block Storage** - Must implement `findBlockId()` and `saveBlock()` using Dexie operations.
  - **REQT-3.3.2**/1gw45sp198: COMPLETED: **UTXO Storage** - Must implement `findUtxoId()` and `saveUtxo()` using Dexie operations.
  - **REQT-3.3.3**/nm2ed7m80y: COMPLETED: **Transaction Storage** - Must implement `findTxId()` and `saveTx()` using Dexie operations.
- - **REQT-3.3.4**/cchf3wgnk3: COMPLETED: **UUT Catalog Storage** - Must implement `extractUutIds(utxoTokens, capoMph)` helper to identify delegate UUTs from UTXO token values (matching capoMph and UUT naming pattern `/{purpose:[a-z]+}-{hash:[0-9a-f]{12}}/`), returning an array. Must implement `findUtxoByUUT(uutId)` to query utxos table by uutIds multiEntry index. UUT indexing occurs within `saveUtxo()` using the extracted uutIds array.
+ - **REQT-3.3.4**/cchf3wgnk3: COMPLETED: **UUT Catalog Storage** - Must implement `findUtxoByUUT(uutId)` to query utxos table by uutIds multiEntry index. Must store the `uutIds` array provided in the `UtxoIndexEntry` passed to `saveUtxo()`.
 
 ### REQT-3.4/z7ykwww22z: BACKLOG: **Alternative Storage Backends**
 
@@ -341,12 +341,13 @@ Defines Dexie Entity classes for type-safe storage. Applied when modifying datab
 1. `src/networkClients/UtxoIndex/CachedUtxoIndex.ts`
 2. `src/networkClients/UtxoIndex/DexieUtxoStore.ts`
 3. `src/networkClients/UtxoIndex/UtxoStoreGeneric.ts`
-4. `src/networkClients/UtxoIndex/blockfrostTypes/BlockDetails.ts`
-5. `src/networkClients/UtxoIndex/blockfrostTypes/UtxoDetails.ts`
-6. `src/networkClients/UtxoIndex/blockfrostTypes/AddressTransactionSummaries.ts`
-7. `src/networkClients/UtxoIndex/dexieRecords/BlockDetails.ts`
-8. `src/networkClients/UtxoIndex/dexieRecords/UtxoDetails.ts`
-9. `src/networkClients/UtxoIndex/dexieRecords/Logs.ts`
+4. `src/networkClients/UtxoIndex/types/UtxoIndexEntry.ts`
+5. `src/networkClients/UtxoIndex/blockfrostTypes/BlockDetails.ts`
+6. `src/networkClients/UtxoIndex/blockfrostTypes/UtxoDetails.ts`
+7. `src/networkClients/UtxoIndex/blockfrostTypes/AddressTransactionSummaries.ts`
+8. `src/networkClients/UtxoIndex/dexieRecords/BlockDetails.ts`
+9. `src/networkClients/UtxoIndex/dexieRecords/UtxoDetails.ts`
+10. `src/networkClients/UtxoIndex/dexieRecords/Logs.ts`
 
 ## Implementation Notes
 
@@ -372,7 +373,7 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
 ### Phase 2: Core Implementation (Current)
 * Implemented `CachedUtxoIndex` constructor with Blockfrost URL detection and storage initialization
 * Implemented `syncNow()` with capo UTxO fetching, charter data resolution, and delegate UUT indexing
-* Implemented `monitorForNewTransactions()` and `processTransactionForNewUtxos()`
+* Implemented `checkForNewTxns()` and `processTransactionForNewUtxos()`
 * Implemented all Blockfrost API integration (`fetchFromBlockfrost`, `fetchAndStoreLatestBlock`, `findOrFetchTxDetails`, `findOrFetchBlockHeight`)
 * Implemented `DexieUtxoStore` with block, UTXO, transaction, and log storage
 * Implemented structured logging with process ID management
@@ -384,7 +385,7 @@ All UUT storage infrastructure is now in place:
 1. Added `uutIds: string[]` field to `dexieUtxoDetails` entity (REQT-5.1.2)
 2. Updated Dexie schema with `*uutIds` multiEntry index (REQT-3.1.1)
 3. Added `findUtxoByUUT(uutId)` to `UtxoStoreGeneric` interface (REQT-2.1.1)
-4. Implemented `extractUutIds()` helper and `findUtxoByUUT()` in DexieUtxoStore (REQT-3.3.4)
+4. Implemented `findUtxoByUUT()` in DexieUtxoStore (REQT-3.3.4)
 
 #### NEXT: Complete Sync Flow
 * Update `syncNow()` to store capo UTXOs with extracted uutIds (REQT-1.3.1)
