@@ -298,6 +298,8 @@ interface ReadonlyCardanoClient {
 
 **Cache Strategy**: All `getUtxo*` methods check the cache first for matching indexed UTXOs. On cache miss, they fall through to the underlying network client. This allows the indexer to act as a transparent cache layer.
 
+**Initialization**: On startup, `syncNow()` initializes `lastSlot`, `lastBlockId`, and `lastBlockHeight` from the cached latest block (via `store.getLatestBlock()`). This ensures the `now` property reflects previously discovered block data.
+
 **Query API Methods** (REQT/50zkk5xgrx):
 - `findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined>`
 - `findUtxosByAsset(policyId, tokenName?, options?): Promise<UtxoIndexEntry[]>`

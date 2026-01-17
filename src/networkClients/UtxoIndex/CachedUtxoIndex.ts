@@ -166,6 +166,18 @@ export class CachedUtxoIndex {
     }
 
     async syncNow() {
+        // REQT/gz9a5b8qv: Initialize from cached block data if available
+        const cachedBlock = await this.store.getLatestBlock();
+        if (cachedBlock) {
+            this.lastBlockId = cachedBlock.hash;
+            this.lastBlockHeight = cachedBlock.height;
+            this.lastSlot = cachedBlock.slot;
+            await this.store.log(
+                "c8init",
+                `Initialized from cache: block #${cachedBlock.height}, slot ${cachedBlock.slot}`,
+            );
+        }
+
         // Fetch all UTXOs from the capo address using the Capo's findCapoUtxos() method
         const capoUtxos = await this.capo.findCapoUtxos();
 

@@ -110,6 +110,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         await this.blocks.put(block as dexieBlockDetails);
     }
 
+    async getLatestBlock(): Promise<BlockIndexEntry | undefined> {
+        return await this.blocks
+            .orderBy("height")
+            .reverse()
+            .limit(1)
+            .first();
+    }
+
     // REQT/1gw45sp198 (UTXO Storage)
     async findUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined> {
         return await this.utxos.where("utxoId").equals(utxoId).first();

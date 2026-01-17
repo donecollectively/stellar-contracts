@@ -289,7 +289,7 @@ Ensures the CachedUtxoIndex can be used as a drop-in replacement for Helios netw
  - **REQT-1.6.4**/gw6x2y5ns: COMPLETED: **hasUtxo Method** - Must implement `hasUtxo(utxoId: TxOutputId): Promise<boolean>` to check if a UTXO exists. Must return true if found in cache or on network.
  - **REQT-1.6.5**/gx7y3z6ot: COMPLETED: **getTx Method** - Must implement `getTx(id: TxId): Promise<Tx>` to retrieve a transaction by ID. Must use cached transaction CBOR when available, falling back to network fetch.
  - **REQT-1.6.6**/gy8z4a7pu: COMPLETED: **isMainnet Method** - Must implement `isMainnet(): boolean` to indicate network type. Must return value based on Capo's network configuration.
- - **REQT-1.6.7**/gz9a5b8qv: COMPLETED: **now Property** - Must implement `now: number` property returning current slot number. Must be kept in sync with latest block information.
+ - **REQT-1.6.7**/gz9a5b8qv: COMPLETED: **now Property** - Must implement `now: number` property returning current slot number. Must be initialized from cached block data at startup and kept in sync with latest block information.
  - **REQT-1.6.8**/ha0b6c9rw: COMPLETED: **parameters Property** - Must implement `parameters: Promise<NetworkParams>` to provide network parameters. Must fetch from underlying network client or cache.
 
 ### Component: UtxoStoreGeneric Interface
@@ -443,8 +443,9 @@ All UUT storage infrastructure is now in place:
 * DONE: `getUtxos(address)` returning `TxInput[]` (REQT/gu4vy0w3lq)
 * DONE: `getUtxosWithAssetClass(address, assetClass)` with cache-first lookup (REQT/gv5wz1x4mr)
 * DONE: `getTx(id)` (REQT/gx7y3z6ot)
-* DONE: `now` property returning current slot from lastSlot field (REQT/gz9a5b8qv)
+* DONE: `now` property returning current slot from lastSlot field, initialized from cache at startup (REQT/gz9a5b8qv)
 * DONE: `parameters` property delegating to underlying network client (REQT/ha0b6c9rw)
+* DONE: `getLatestBlock()` method added to UtxoStoreGeneric for cache initialization
 
 ## Release Management Plan
 

@@ -18,6 +18,7 @@ export interface UtxoStoreGeneric {
     // Block operations
     findBlockId(blockId: string): Promise<BlockIndexEntry | undefined>;
     saveBlock(block: BlockIndexEntry): Promise<void>;
+    getLatestBlock(): Promise<BlockIndexEntry | undefined>;
 
     // UTXO operations - uses storage-agnostic UtxoIndexEntry
     findUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined>;
