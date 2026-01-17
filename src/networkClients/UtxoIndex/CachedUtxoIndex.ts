@@ -994,6 +994,16 @@ export class CachedUtxoIndex {
     }
 
     /**
+     * Retrieves a transaction by ID.
+     * Implements ReadonlyCardanoClient.getTx
+     *
+     * REQT/gx7y3z6ot (getTx Method)
+     */
+    async getTx(id: TxId): Promise<Tx> {
+        return this.findOrFetchTxDetails(id.toHex());
+    }
+
+    /**
      * Finds a UTXO containing a specific UUT by its name.
      *
      * REQT/50zkk5xgrx (Query API Methods)

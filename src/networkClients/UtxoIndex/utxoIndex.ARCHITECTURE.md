@@ -289,7 +289,7 @@ interface ReadonlyCardanoClient {
 |--------|--------|------|
 | `isMainnet()` | COMPLETED | REQT/gy8z4a7pu |
 | `hasUtxo(id)` | COMPLETED | REQT/gw6x2y5ns |
-| `getTx(id)` | NEXT | REQT/gx7y3z6ot |
+| `getTx(id)` | COMPLETED | REQT/gx7y3z6ot |
 | `getUtxo(id)` | COMPLETED | REQT/gt3ux9v2kp |
 | `getUtxos(address)` | COMPLETED | REQT/gu4vy0w3lq |
 | `getUtxosWithAssetClass(address, asset)` | COMPLETED | REQT/gv5wz1x4mr |
