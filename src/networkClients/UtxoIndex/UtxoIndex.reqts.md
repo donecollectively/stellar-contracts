@@ -220,7 +220,7 @@ The core class that orchestrates UTXO indexing via address-based monitoring, tra
 Establishes the foundational data structures and initialization sequence for the indexer. Applied when implementing or modifying constructor logic, core data types, or initial setup procedures.
 
  - **REQT-1.1.1**/xxkzfx9gf4: COMPLETED: **Constructor & Initialization** - Must accept `capo`, `blockfrostKey`, and optional `storeIn` strategy. Must determine Blockfrost base URL from API key prefix (mainnet/preprod/preview). Must initialize storage backend based on strategy. Must trigger `syncNow()` after initialization.
- - **REQT-1.1.2**/9a0nx1gr4b: COMPLETED: **MonitoredAddress Data Structure** - Must define `MonitoredAddress` type with fields: `address` (bech32 string, primary key), `mph` (hex-encoded minting policy hash filter, optional), `policyId` (alias for mph for Blockfrost API compatibility), `addedAt` (timestamp when address was first added), `lastSyncedBlock` (last block height processed for this address, optional), `lastError` (object with timestamp, message, and optional txHash for health tracking), `lastSuccessfulSync` (timestamp of most recent successful sync), `active` (boolean indicating if address is currently monitored).
+ - **REQT-1.1.2**/9a0nx1gr4b: COMPLETED: **MonitoredAddress Data Structure** - Must define `MonitoredAddress` type with fields: `address` (bech32 string, primary key), `capoMph` (hex-encoded minting policy hash), `addedAt` (timestamp when address was first added), `lastSyncedBlock` (last block height processed for this address, missing in case of initial sync), `lastError` (object for sync health tracking, with timestamp, message, and optional txHash), `lastSuccessfulSync` (timestamp of most recent successful sync), `active` (boolean allowing an address to be disabled).
 
 ### REQT-1.2/y034z487y5: COMPLETED: **Address Management & Charter Tracking**
 
@@ -275,62 +275,80 @@ Documents the original delegate-specific indexing approach that has been superse
 #### Overview
 Defines the contract for storage backends, allowing the indexer to work with different storage strategies (Dexie, memory, future: Dred).
 
-#### Requirements
+### REQT-2.1/pg6g84g7kg: COMPLETED: **Storage Interface Contract**
 
-REQT-2.01: COMPLETED: **Interface Definition** - Must define `UtxoStoreGeneric` interface with methods: `log()`, `findBlockByBlockId()`, `saveBlock()`, `findUtxoByUtxoId()`, `saveUtxo()`, `findTxById()`, `saveTx()`.
+#### Purpose
+Establishes the abstraction layer for storage backends. Applied when implementing new storage strategies, modifying storage operations, or understanding the data persistence contract.
 
-REQT-2.02: COMPLETED: **Type Definitions** - Must define `txCBOR` type with `txid` and `cbor` fields. Must use `BlockDetailsType` and `UtxoDetailsType` from blockfrostTypes.
+ - **REQT-2.1.1**/nhbqmacrwn: COMPLETED: **Interface Methods** - Must define `UtxoStoreGeneric` interface with methods: `log()`, `findBlockByBlockId()`, `saveBlock()`, `findUtxoByUtxoId()`, `saveUtxo()`, `findTxById()`, `saveTx()`
+ - **REQT-2.1.2**/bq0ammh636: COMPLETED: **Type Definitions** - Must define `txCBOR` type with `txid` and `cbor` fields. Must use `BlockDetailsType` and `UtxoDetailsType` from blockfrostTypes.
 
 ### Component: DexieUtxoStore Class
 
 #### Overview
 Dexie-based implementation of `UtxoStoreGeneric` providing persistent browser storage using IndexedDB.
 
-#### Requirements
+### REQT-3.1/dbwnqvqwa1: COMPLETED: **Dexie Database Schema & Initialization**
 
-REQT-3.01: COMPLETED: **Dexie Database** - Must extend Dexie with database name "StellarDappIndex-v0.1". Must define version 1 schema with tables: `blocks` (hash, height), `utxos` (utxoId, blockId, blockHeight), `txs` (txid), `logs` (logId, [pid,time]).
+#### Purpose
+Defines the IndexedDB schema and entity mappings for the Dexie storage backend. Applied when modifying database structure, adding tables, or changing indexes.
 
-REQT-3.02: COMPLETED: **Entity Mapping** - Must map `blocks` table to `dexieBlockDetails` class, `utxos` table to `dexieUtxoDetails` class, `logs` table to `indexerLogs` class.
+ - **REQT-3.1.1**/6h4f158gvs: COMPLETED: **Database Definition** - Must extend Dexie with database name "StellarDappIndex-v0.1". Must define version 2 schema with tables: `blocks` (hash, height), `utxos` (utxoId, blockId, blockHeight), `txs` (txid), `logs` (logId, [pid,time]), `monitoredAddresses` (address, active, lastSyncedBlock).
+ - **REQT-3.1.2**/exv4s020a0: COMPLETED: **Entity Mapping** - Must map `blocks` table to `dexieBlockDetails` class, `utxos` table to `dexieUtxoDetails` class, `logs` table to `indexerLogs` class.
 
-REQT-3.03: COMPLETED: **Process ID Management** - Must implement `init()` to find maximum pid in logs table and assign next pid. Must handle concurrent initialization attempts.
+### REQT-3.2/754gq4cbqk: COMPLETED: **Logging & Process Management**
 
-REQT-3.04: COMPLETED: **Logging Implementation** - Must implement `log()` to create log entries with pid, timestamp, call stack location (extracted from Error stack), and message. Must use logId as primary key. Must support UI inspection of logs via Dexie queries.
+#### Purpose
+Governs the structured logging system for debugging and UI inspection. Applied when implementing or debugging indexer operations, or building monitoring dashboards.
 
-REQT-3.05: COMPLETED: **Block Storage** - Must implement `findBlockByBlockId()` using Dexie query on hash index. Must implement `saveBlock()` using Dexie put operation.
+ - **REQT-3.2.1**/cm9ez5thxz: COMPLETED: **Process ID Management** - Must implement `init()` to find maximum pid in logs table and assign next pid. Must handle concurrent initialization attempts.
+ - **REQT-3.2.2**/p7ryk4ztes: COMPLETED: **Logging Implementation** - Must implement `log()` to create log entries with pid, timestamp, call stack location (extracted from Error stack), and message. Must use logId as primary key. Must support UI inspection of logs via Dexie queries.
 
-REQT-3.06: COMPLETED: **UTXO Storage** - Must implement `findUtxoByUtxoId()` using Dexie query on utxoId index. Must implement `saveUtxo()` using Dexie put operation.
+### REQT-3.3/pdctymd7yj: COMPLETED: **Data Storage Operations**
 
-REQT-3.07: COMPLETED: **Transaction Storage** - Must implement `findTxById()` using Dexie query on txid index. Must implement `saveTx()` using Dexie put operation.
+#### Purpose
+Implements CRUD operations for blocks, UTXOs, and transactions. Applied when reading or modifying storage access patterns or adding new query methods.
 
-REQT-3.08: BACKLOG: **Memory Store Implementation** - Must implement `MemoryUtxoStore` class for in-memory storage (currently throws "Memory strategy not implemented").
+ - **REQT-3.3.1**/76e18y06kp: COMPLETED: **Block Storage** - Must implement `findBlockByBlockId()` using Dexie query on hash index. Must implement `saveBlock()` using Dexie put operation.
+ - **REQT-3.3.2**/1gw45sp198: COMPLETED: **UTXO Storage** - Must implement `findUtxoByUtxoId()` using Dexie query on utxoId index. Must implement `saveUtxo()` using Dexie put operation.
+ - **REQT-3.3.3**/nm2ed7m80y: COMPLETED: **Transaction Storage** - Must implement `findTxById()` using Dexie query on txid index. Must implement `saveTx()` using Dexie put operation.
+ - **REQT-3.3.4**/cchf3wgnk3: COMPLETED: **Address Storage** - Must implement `findAddressByAddress()`, `saveAddress()`, and `getActiveAddresses()` using Dexie queries on address and active indexes.
 
-REQT-3.09: BACKLOG: **Dred Store Implementation** - Must implement `DredUtxoStore` class for Dred-based storage (currently throws "Dred strategy not implemented").
+### REQT-3.4/z7ykwww22z: BACKLOG: **Alternative Storage Backends**
+
+#### Purpose
+Documents planned alternative storage implementations. Applied when evaluating storage strategies or implementing non-Dexie backends.
+
+ - **REQT-3.4.1**/pd0vdphpmp: BACKLOG: **Memory Store Implementation** - Must implement `MemoryUtxoStore` class for in-memory storage (currently throws "Memory strategy not implemented").
+ - **REQT-3.4.2**/7h35vgvw4a: BACKLOG: **Dred Store Implementation** - Must implement `DredUtxoStore` class for Dred-based storage (currently throws "Dred strategy not implemented").
 
 ### Component: Blockfrost Type Definitions
 
 #### Overview
 Type definitions and validation factories for Blockfrost API responses, ensuring type safety and runtime validation.
 
-#### Requirements
+### REQT-4.1/dee8dgbdxg: COMPLETED: **API Response Type Validation**
 
-REQT-4.01: COMPLETED: **BlockDetails Type** - Must define `BlockDetailsType` and `BlockDetailsFactory` using ArkType. Must match Blockfrost block response schema with all required fields.
+#### Purpose
+Ensures type safety for all Blockfrost API responses through ArkType validation factories. Applied when adding new API endpoints, debugging validation errors, or modifying response handling.
 
-REQT-4.02: COMPLETED: **UtxoDetails Type** - Must define `UtxoDetailsType` and `UtxoDetailsFactory` using ArkType scope. Must parse quantity strings as numbers. Must match Blockfrost UTXO response schema.
-
-REQT-4.03: COMPLETED: **AddressTransactionSummaries Type** - Must define `AddressTransactionSummariesType` and `AddressTransactionSummariesFactory` using ArkType. Must match Blockfrost transaction summary schema.
+ - **REQT-4.1.1**/7t6c1zwp0p: COMPLETED: **BlockDetails Type** - Must define `BlockDetailsType` and `BlockDetailsFactory` using ArkType. Must match Blockfrost block response schema with all required fields (time, height, hash, slot, epoch, epoch_slot, slot_leader, size, tx_count, output, fees, block_vrf, op_cert, op_cert_counter, previous_block, next_block, confirmations).
+ - **REQT-4.1.2**/74vphrcgps: COMPLETED: **UtxoDetails Type** - Must define `UtxoDetailsType` and `UtxoDetailsFactory` using ArkType scope. Must parse quantity strings as numbers. Must match Blockfrost UTXO response schema (address, tx_hash, tx_index, output_index, amount[], block, data_hash, inline_datum, reference_script_hash).
+ - **REQT-4.1.3**/733a8vgnxd: COMPLETED: **AddressTransactionSummaries Type** - Must define `AddressTransactionSummariesType` and `AddressTransactionSummariesFactory` using ArkType. Must match Blockfrost transaction summary schema (tx_hash, tx_index, block_height, block_time).
 
 ### Component: Dexie Record Types
 
 #### Overview
 Dexie Entity classes that implement the Blockfrost types with additional Dexie-specific fields and computed properties.
 
-#### Requirements
+### REQT-5.1/nra8tvh4zt: COMPLETED: **Dexie Entity Classes**
 
-REQT-5.01: COMPLETED: **dexieBlockDetails Class** - Must extend Dexie Entity and implement `BlockDetailsType`. Must provide computed properties `blockId` (returns hash) and `blockHeight` (returns height).
+#### Purpose
+Defines Dexie Entity classes for type-safe storage with computed properties. Applied when modifying database entity structure or adding new computed fields.
 
-REQT-5.02: COMPLETED: **dexieUtxoDetails Class** - Must extend Dexie Entity and implement `UtxoDetailsType`. Must include `utxoId` field as primary key.
-
-REQT-5.03: COMPLETED: **indexerLogs Class** - Must extend Dexie Entity and implement `LogType` with fields: logId, pid, time, location, message.
+ - **REQT-5.1.1**/dzx5harnk4: COMPLETED: **dexieBlockDetails Class** - Must extend Dexie Entity and implement `BlockDetailsType`. Must provide computed properties `blockId` (returns hash) and `blockHeight` (returns height).
+ - **REQT-5.1.2**/gbzxxv71m8: COMPLETED: **dexieUtxoDetails Class** - Must extend Dexie Entity and implement `UtxoDetailsType`. Must include `utxoId` field as primary key.
+ - **REQT-5.1.3**/cj6nm0mpm1: COMPLETED: **indexerLogs Class** - Must extend Dexie Entity and implement `LogType` with fields: logId, pid, time, location, message.
 
 ## Files
 
@@ -414,3 +432,37 @@ The UtxoIndex is now functional for initial synchronization and basic monitoring
 6. **Alternative Storage**: Implement memory and Dred storage strategies
 7. **Error Recovery**: Add retry logic and better error recovery for network failures
 
+### Phase 7: Address-Based Architecture (Completed)
+* Refactored from delegate-aware indexer to generic address-based monitoring
+* Implemented `MonitoredAddress` data structure with health tracking
+* Added `updateMonitoredAddresses()` to extract addresses from charter
+* Implemented charter change detection via `mph.charter` token monitoring
+* Added per-address sync state tracking (`lastSyncedBlock`, `lastSuccessfulSync`, `lastError`)
+* Updated Dexie schema to v2 with `monitoredAddresses` table
+
+## Release Management Plan
+
+### v1 (Current)
+ - **Goal**: Functional Address-Based UTXO Indexer
+ - **Criteria**:
+    - Core indexer architecture with address-based monitoring (REQT/vxdc27201y)
+    - Address management and charter tracking (REQT/y034z487y5)
+    - Synchronization and monitoring loops (REQT/3zx9pcggch)
+    - Blockfrost API integration (REQT/k3xfpg6jkb)
+    - Dexie storage backend (REQT/dbwnqvqwa1, REQT/pdctymd7yj)
+    - Type validation for API responses (REQT/dee8dgbdxg)
+
+### v2 (Planned)
+ - **Goal**: Production-Ready with Query API
+ - **Criteria**:
+    - Automated periodic refresh (REQT/zzsg63b2fb)
+    - Public query API methods (REQT/50zkk5xgrx)
+    - Pagination for high-volume addresses (REQT/0aewmbbfct)
+    - Invariant support (REQT/jz6zf4py6n)
+
+### v3 (Future)
+ - **Goal**: Multi-Backend Storage Support
+ - **Criteria**:
+    - Memory store implementation (REQT/pd0vdphpmp)
+    - Dred store implementation (REQT/7h35vgvw4a)
+    - UUT change history tracking (REQT/znrywk1gdf)
