@@ -1,3 +1,19 @@
+# UtxoIndex
+
+## MAINTAINERS MUST READ
+
+> **🛑 COMPLIANCE TRIGGER: READ THIS FIRST**
+>
+> This document is strictly managed. Before interpreting or implementing these requirements, you **MUST** read and apply the **Requirements Consumer Skill** at:
+>
+> `skillz/reqm/reqt-consumer.SKILL.md`
+>
+> **CRITICAL**: You are **FORBIDDEN** from modifying this file or proceeding with implementation until you have ingested and studied the "Read-Only" constraints and "Escalation Protocol" defined in that skill.
+
+> **hash.notice.reqt-consumer**: ef6a1fc351265553
+
+> **NOTE**: See [reqm.SKILL.md](../../../skillz/reqm/reqm.SKILL.md). When managing requirements, you MUST follow the guidelines and conventions in that document, including expression of purpose/intended function as well as the detailed, formal requirements.
+
 ## About the UtxoIndex
 
 The UtxoIndex provides a persistent, efficient cache of UTXOs (Unspent Transaction Outputs) needed for interacting with a specific Capo instance. This includes the charter token, delegate UUTs (Unique Utility Tokens) referenced in the charter, and all delegated-data records stored at the capo address. The indexer monitors the blockchain for new transactions and maintains an up-to-date view of relevant UTXOs, reducing the need for repeated network queries and enabling fast lookups for application logic.
