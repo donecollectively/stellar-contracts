@@ -115,6 +115,12 @@ export class CachedUtxoIndex {
 
         await this.store.log("yz58q", `Found ${capoUtxos.length} capo UTXOs`);
 
+        // REQT-1.3.1: Store all capo UTXOs in the index
+        for (const utxo of capoUtxos) {
+            const entry = this.txInputToIndexEntry(utxo);
+            await this.store.saveUtxo(entry);
+        }
+
         // Extract unique transaction IDs from the UTXOs and fetch/store transaction details
         const uniqueTxIds = new Set(
             capoUtxos.map((utxo) => {
@@ -144,24 +150,26 @@ export class CachedUtxoIndex {
             capoUtxos: capoUtxos,
         });
 
-        // Resolve and index delegate UUTs
-        await this.indexDelegateUuts(charterData);
+        // Resolve and catalog delegate UUTs
+        await this.catalogDelegateUuts(charterData);
 
         // Fetch and store the latest block details
         await this.fetchAndStoreLatestBlock();
     }
 
     /**
-     * Monitors the capo address for new transactions and indexes new UTXOs.
+     * Checks for new transactions at the capo address and indexes new UTXOs.
+     *
+     * REQT-1.3.2 (checkForNewTxns)
      */
-    async monitorForNewTransactions(fromBlockHeight?: number): Promise<void> {
+    async checkForNewTxns(fromBlockHeight?: number): Promise<void> {
         const startHeight =
             fromBlockHeight ??
             (this.lastBlockHeight > 0 ? this.lastBlockHeight + 1 : 0);
 
         if (startHeight == 0) {
             throw new Error(
-                "Cannot start monitoring for new transactions at block height 0"
+                "Cannot start checking for new transactions at block height 0"
             );
         }
         const capoAddress = this.capo.address.toString();
@@ -195,12 +203,16 @@ export class CachedUtxoIndex {
 
     /**
      * Processes a transaction to identify and index new UTXOs.
+     *
+     * REQT-1.3.3 (processTransactionForNewUtxos)
      */
     private async processTransactionForNewUtxos(
         txHash: string,
         summary: AddressTransactionSummariesType
     ): Promise<void> {
         const tx = await this.findOrFetchTxDetails(txHash);
+        const mph = this.capo.mph;
+        let charterChanged = false;
 
         for (
             let outputIndex = 0;
@@ -215,13 +227,33 @@ export class CachedUtxoIndex {
                 continue;
             }
 
-            const mph = this.capo.mph;
-            const tokenNames = output.value.assets.getPolicyTokenNames(mph);
-            const hasUut = tokenNames.length > 0;
+            // REQT-1.3.3: Index ALL outputs, not just UUT-containing ones
+            await this.indexUtxoFromOutput(txHash, outputIndex, output);
 
-            if (hasUut) {
-                await this.indexUtxoFromOutput(txHash, outputIndex, output);
+            // REQT-1.2.2: Check if charter token is present (indicates charter change)
+            const tokenNames = output.value.assets.getPolicyTokenNames(mph);
+            for (const tokenNameBytes of tokenNames) {
+                try {
+                    const tokenName = new TextDecoder().decode(
+                        new Uint8Array(tokenNameBytes)
+                    );
+                    if (tokenName === "charter") {
+                        charterChanged = true;
+                    }
+                } catch {
+                    // Skip invalid token names
+                }
             }
+        }
+
+        // REQT-1.2.2: Re-catalog delegates if charter changed
+        if (charterChanged) {
+            await this.store.log(
+                "ch4rt",
+                `Charter token detected in tx ${txHash}, re-cataloging delegates`
+            );
+            const charterData = await this.capo.findCharterData();
+            await this.catalogDelegateUuts(charterData);
         }
     }
 
@@ -441,10 +473,12 @@ export class CachedUtxoIndex {
     }
 
     /**
-     * Indexes delegate UUTs mentioned in the charter.
+     * Catalogs delegate UUTs mentioned in the charter.
+     *
+     * REQT-1.2.1 (catalogDelegateUuts)
      */
-    private async indexDelegateUuts(charterData: CharterData): Promise<void> {
-        await this.store.log("z5h89", `Indexing delegate UUTs`);
+    private async catalogDelegateUuts(charterData: CharterData): Promise<void> {
+        await this.store.log("z5h89", `Cataloging delegate UUTs`);
 
         // Get mint delegate UUT
         try {
