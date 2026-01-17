@@ -30,6 +30,7 @@ import {
     type TxOutput,
     type TxOutputId,
     type MintingPolicyHash,
+    type NetworkParams,
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import type { CardanoClient } from "@helios-lang/tx-utils";
@@ -104,6 +105,15 @@ export class CachedUtxoIndex {
      */
     get now(): number {
         return this.lastSlot;
+    }
+
+    /**
+     * Returns network parameters from the underlying network client.
+     *
+     * REQT/ha0b6c9rw (parameters Property)
+     */
+    get parameters(): Promise<NetworkParams> {
+        return this.network.parameters;
     }
 
     /**
