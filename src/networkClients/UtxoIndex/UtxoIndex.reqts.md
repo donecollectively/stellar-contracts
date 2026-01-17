@@ -218,24 +218,24 @@ Establishes the foundational data structures and initialization sequence for the
  - **REQT-1.1.1**/xxkzfx9gf4: COMPLETED: **Constructor & Initialization** - Must accept `capo`, `blockfrostKey`, and optional `storeIn` strategy. Must determine Blockfrost base URL from API key prefix (mainnet/preprod/preview). Must initialize storage backend based on strategy. `static async createAndSync()` must trigger `async syncNow()` after construction and initialization.
  - **REQT-1.1.2**/9a0nx1gr4b: COMPLETED: **Core State** - Must maintain: `capoAddress` (bech32 string), `capoMph` (hex-encoded minting policy hash for filtering), `lastBlockHeight` (last block height processed), `lastBlockId`.
 
-### REQT-1.2/y034z487y5: P1: **UUT Cataloging & Charter Tracking**
+### REQT-1.2/y034z487y5: NEXT: **UUT Cataloging & Charter Tracking**
 
 #### Purpose
 Governs delegate UUT discovery, cataloging, and updates based on charter changes. Applied when implementing charter traversal logic, UUT cataloging, or charter change detection mechanisms.
 
- - **REQT-1.2.1**/k0mnv27tz4: P1: **UUT Catalog from Charter** - Must implement `catalogDelegateUuts(charterData)` to discover and catalog all delegate UUTs. Must iterate through delegate types in charter (mint delegate, spend delegate, gov authority, other named delegates, dgData controllers). For each delegate, must query Blockfrost for the UUT using `capoMph + uutName` to find its current UTXO. Must store UUT identifiers in the UTXO's `uutIds` array.
- - **REQT-1.2.2**/xrdj6qpgnj: P1: **Charter Change Detection** - Must detect charter UTXO state changes during routine transaction monitoring. When processing transaction outputs, must check for presence of `mph.charter` token. Upon detecting charter token, must call `capo.findCharterData()` to fetch updated charter and invoke `catalogDelegateUuts()` to refresh UUT catalog.
- - **REQT-1.2.3**/m29vd4vr3q: P1: **UUT Movement Detection** - During transaction processing, must detect when delegate UUTs are moved to new UTXOs. Must store the new UTXO with the UUT identifier in its `uutIds` array.
+ - **REQT-1.2.1**/k0mnv27tz4: NEXT: **UUT Catalog from Charter** - Must implement `catalogDelegateUuts(charterData)` to discover and catalog all delegate UUTs. Must iterate through delegate types in charter (mint delegate, spend delegate, gov authority, other named delegates, dgData controllers). For each delegate, must query Blockfrost for the UUT using `capoMph + uutName` to find its current UTXO. Must store UUT identifiers in the UTXO's `uutIds` array.
+ - **REQT-1.2.2**/xrdj6qpgnj: NEXT: **Charter Change Detection** - Must detect charter UTXO state changes during routine transaction monitoring. When processing transaction outputs, must check for presence of `mph.charter` token. Upon detecting charter token, must call `capo.findCharterData()` to fetch updated charter and invoke `catalogDelegateUuts()` to refresh UUT catalog.
+ - **REQT-1.2.3**/m29vd4vr3q: NEXT: **UUT Movement Detection** - During transaction processing, must detect when delegate UUTs are moved to new UTXOs. Must store the new UTXO with the UUT identifier in its `uutIds` array.
 
-### REQT-1.3/3zx9pcggch: P1: **Synchronization & Monitoring**
+### REQT-1.3/3zx9pcggch: NEXT: **Synchronization & Monitoring**
 
 #### Purpose
 Defines how the indexer performs initial synchronization and ongoing transaction monitoring of the Capo address. Applied when implementing sync logic, periodic monitoring, or transaction processing.
 
- - **REQT-1.3.1**/vk2bywdycn: P1: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via underlying provider (`capo.findCapoUtxos( {findCached: false} )`. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
- - **REQT-1.3.2**/fh56sce22g: P1: **Transaction Monitoring** - Must implement `checkForNewTxns()` to check for new transactions at `capoAddress`. Must query Blockfrost `addresses/{capoAddress}/transactions` endpoint with `order=desc`, `count=100`, and `from` parameter set to last synced block. Must process each new transaction via `processTransactionForNewUtxos()`. Must update last synced block details on success.
- - **REQT-1.3.3**/0vrkpk6a6h: P1: **Transaction Processing** - Must implement `processTransactionForNewUtxos()` to extract and index relevant UTXOs from transactions. Must fetch full transaction CBOR and decode using Helios `decodeTx()`. Must examine each transaction output. Must check if UTXO already exists in store via `store.findUtxoId()`. Must index new UTXOs via `indexUtxoFromOutput()`. Must update UUT catalog if delegate UUTs moved.
-    - **REQT-1.3.4**/mvjrak021s: P1: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to store UTXO id and any mph-matching token values for later search. Must extract inline datum as binary data or datum hash. Must save to store via `store.saveUtxo()`.
+ - **REQT-1.3.1**/vk2bywdycn: NEXT: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via underlying provider (`capo.findCapoUtxos( {findCached: false} )`. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
+ - **REQT-1.3.2**/fh56sce22g: NEXT: **Transaction Monitoring** - Must implement `checkForNewTxns()` to check for new transactions at `capoAddress`. Must query Blockfrost `addresses/{capoAddress}/transactions` endpoint with `order=desc`, `count=100`, and `from` parameter set to last synced block. Must process each new transaction via `processTransactionForNewUtxos()`. Must update last synced block details on success.
+ - **REQT-1.3.3**/0vrkpk6a6h: NEXT: **Transaction Processing** - Must implement `processTransactionForNewUtxos()` to extract and index relevant UTXOs from transactions. Must fetch full transaction CBOR and decode using Helios `decodeTx()`. Must examine each transaction output. Must check if UTXO already exists in store via `store.findUtxoId()`. Must index new UTXOs via `indexUtxoFromOutput()`. Must update UUT catalog if delegate UUTs moved.
+    - **REQT-1.3.4**/mvjrak021s: NEXT: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to store UTXO id and any mph-matching token values for later search. Must extract inline datum as binary data or datum hash. Must save to store via `store.saveUtxo()`.
 
 ### REQT-1.4/k3xfpg6jkb: COMPLETED: **External Data Services & Utilities**
 
