@@ -4,9 +4,7 @@
 
 The UtxoIndex is a **multi-address blockchain UTXO monitor and cache** for Cardano smart contracts built with Stellar Contracts. It provides persistent, browser-based storage of UTXOs needed for interacting with Capo contract instances, enabling fast local lookups and reducing redundant network queries.
 
-**Architectural Trigger**: Charter change detection in the Capo system. When delegate references in the charter are updated, the UtxoIndex automatically discovers new addresses to monitor.
-
-**Key Architectural Decision (2026-01)**: Refactored from delegate-aware indexer to generic address-based monitor. The indexer no longer understands delegate types or charter structure—it simply monitors a configured set of addresses. Charter interpretation and address discovery is delegated to the Capo layer.
+**Address Discovery and Monitoring**: Includes charter change detection in the Capo system. When delegate references in the charter are updated, the UtxoIndex automatically discovers new addresses to monitor.  The configuration for monitoring each address can vary to suit the type of utxo content that is stored in each address.
 
 ---
 
@@ -38,15 +36,10 @@ The UtxoIndex is a **multi-address blockchain UTXO monitor and cache** for Carda
 - Coordinate storage operations via `UtxoStoreGeneric` interface
 
 **Key State**:
-- `addresses: Set<MonitoredAddress>` - Active addresses being monitored
+- `addresses: Set<MonitoredAddress>` - Active addresses being monitored, with config details for each
 - `lastBlockId: string` - Most recent block hash seen
 - `lastBlockHeight: number` - Most recent block height seen
 - `store: UtxoStoreGeneric` - Storage backend instance
-
-**Does NOT**:
-- Understand delegate types or roles (that's Capo's job)
-- Interpret charter structure
-- Make decisions about which addresses to monitor (receives address list from external source)
 
 #### DexieUtxoStore
 **Purpose**: Dexie/IndexedDB implementation of storage backend
@@ -69,7 +62,7 @@ monitoredAddresses: address (PK), active, lastSyncedBlock
 #### UtxoStoreGeneric
 **Purpose**: Storage abstraction interface
 
-**Why abstraction exists**: Enables alternative storage backends (in-memory for testing, future: Dred for MCP-based persistence) without changing indexer logic
+**Why abstraction exists**: Enables alternative storage backends (in-memory for testing, future: Dred for high-performance state sharing, low latency and multi-user coordination) without changing essential indexer logic
 
 **Operations**:
 - `log(id, message)` - Structured logging
@@ -204,7 +197,7 @@ type MonitoredAddress = {
          ▼
 ┌────────────────────┐
 │ syncNow()          │
-│ 1. Fetch charter   │──────► capo.findCharterData()
+│ 1. Fetch charter   │──────► capo.findCharterData()/uncached
 │ 2. Update addresses│
 │ 3. Fetch all UTXOs │
 │ 4. Store in DB     │
@@ -215,10 +208,10 @@ type MonitoredAddress = {
 │ updateMonitoredAddresses()│
 │ Traverse charter:         │
 │ - Add capo.address        │──────► DexieUtxoStore.saveAddress()
-│ - For each delegate:      │
-│   - Resolve delegate      │──────► capo.getMintDelegate()
-│   - Extract address       │        capo.getSpendDelegate()
-│   - Add with mph filter   │        capo.getDgDataController()
+│ - For each delegate in charter:      │ mint, spend, dgDataControllers
+│   - Extract policyId, uut      │ 
+│   - Extract address       │        
+│   - Add with mph filter   │    
 └──────────┬────────────────┘        etc.
            │
            ▼
@@ -303,7 +296,6 @@ type MonitoredAddress = {
 
 **Capo** (External):
 - `capo.findCharterData()` - Get current charter to discover delegates
-- `capo.getMintDelegate()`, `getSpendDelegate()`, etc. - Resolve delegate instances
 - `capo.address` - Primary address to monitor
 - `capo.mph` - Minting policy hash for filtering tokens
 - `delegate.address` - Extract addresses from delegate instances
@@ -340,6 +332,8 @@ const indexer = new CachedUtxoIndex({
 const utxos = await indexer.queryUtxosByAddress(address);
 ```
 
+This usage SHOULD match with other helios network-clients and be used via the same interface.
+
 ---
 
 ## Design Decisions
@@ -354,18 +348,14 @@ const utxos = await indexer.queryUtxosByAddress(address);
 - **Simplicity**: ~150 lines of delegate traversal logic simplified to address collection
 - **Maintainability**: Charter schema changes don't require indexer updates
 
-**Trade-offs**:
-- Slightly more work during address discovery (Capo must traverse charter)
-- Indexer stores more metadata about addresses (role, name, etc.)
-
 ### Storage Abstraction
 
 **Decision**: Define `UtxoStoreGeneric` interface with multiple implementations
 
 **Rationale**:
 - **Testing**: In-memory store for unit tests
-- **Future-proofing**: Potential Dred/MCP-based remote storage
 - **Isolation**: Indexer logic independent of storage mechanism
+- **Establish evolutionary path** to other storage mechanisms
 
 **Current implementations**:
 - `DexieUtxoStore` (production, browser-based)
@@ -374,25 +364,14 @@ const utxos = await indexer.queryUtxosByAddress(address);
 
 ### Charter Change Detection via UUT
 
-**Decision**: Monitor for transactions containing `mph.charter` token
+**Decision**: Monitor for transactions containing `‹capoMph›.charter` token
 
 **Rationale**:
 - **Efficient**: Detected during normal monitoring loop
-- **Accurate**: Charter UTXO spending is definitive signal
+- **Accurate**: Charter UTXO spending is definitive signal of other addresses
 - **No polling**: Avoids redundant `findCharterData()` calls
 
 **Implementation**: When processing transaction outputs, check for charter UUT. If found, trigger `updateMonitoredAddresses()`.
-
-### MPH Filtering Strategy
-
-**Decision**: Fetch all UTXOs, filter in-memory by mph
-
-**Alternative considered**: Use Blockfrost `/utxos/{asset}` endpoint per token
-
-**Rationale**:
-- **Fewer API calls**: Single request per address vs N requests per asset
-- **Simpler logic**: No need to enumerate all tokens in mph
-- **Performance**: In-memory filtering is fast enough for typical UTXO counts
 
 ### Per-Address Block Height Tracking
 
@@ -405,55 +384,28 @@ const utxos = await indexer.queryUtxosByAddress(address);
 
 ---
 
-## Open Questions and Future Work
+## Key Expectations
 
-### Periodic Refresh (BACKLOG)
-- Implement automatic monitoring intervals (currently 60s defined but manual trigger)
-- Separate charter refresh interval (currently 1 hour defined)
+### Periodic Refresh:
+- Implement automatic monitoring intervals (currently 60s defined, plus manual trigger)
+- Incremental sync optimization (get deltas since lastSyncedBlock)
 
-### Query API (BACKLOG)
-- Expose public methods for UTXO queries by address, asset, delegate role
-- Support complex predicates (e.g., "all UTXOs at dgData controller addresses with mph filter")
-
-### Performance Optimization
-- Parallel address monitoring with rate limiting
-- Batch Blockfrost requests where possible
-- Incremental sync optimization (resume from lastSyncedBlock)
+## Future work
 
 ### Alternative Storage Backends
 - Memory store implementation for testing
-- Dred/MCP store for remote persistence
+- Dred store for realtime state-sharing and multi-user coordination
 
-### Charter Subscription Pattern
-- Event-based address updates instead of periodic polling
-- Capo publishes address changes, UtxoIndex subscribes
-
-### Health Monitoring UI
-- Dashboard showing address sync status
+### Expose details for Health Monitoring UI
+- Support Dashboard showing address sync status
 - Error history and retry logic
 - Performance metrics (API calls, sync latency, etc.)
+
+### Realtime Updates via DRED
 
 ---
 
 ## Architectural Evolution
-
-### Pre-2026 (Initial Design)
-- UtxoIndex directly traversed charter structure
-- Resolved each delegate type explicitly
-- Fetched specific UUTs via `DelegateMustFindAuthorityToken()`
-- Tightly coupled to Capo charter schema
-
-### 2026-01 (Current Architecture)
-- Address-based monitoring with metadata
-- Charter interpretation delegated to Capo layer
-- Generic UTXO indexing by address + mph filter
-- Dexie schema v2 with `monitoredAddresses` table
-
-### Future Considerations
-- MCP server integration for cross-session persistence
-- Real-time updates via WebSocket or SSE (eliminating polling)
-- Multi-network support (preview, preprod, mainnet simultaneously)
-- Shared indexer instance across multiple Capo contracts
 
 ---
 
