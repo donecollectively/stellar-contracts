@@ -10,15 +10,16 @@ The UtxoIndex is a **dedicated UTXO monitor and cache** for Cardano smart contra
 
 ### Component Inventory
 
-| Component | Location | Type | Owner |
-|-----------|----------|------|-------|
-| `CachedUtxoIndex` | Local (browser) | Class | UtxoIndex |
-| `DexieUtxoStore` | Local (browser) | Class | UtxoIndex |
-| `UtxoStoreGeneric` | Local (browser) | Interface | UtxoIndex |
-| Blockfrost Type Validators | Local (browser) | Type definitions + ArkType factories | UtxoIndex |
-| Dexie Record Classes | Local (browser) | Entity classes | UtxoIndex |
-| Blockfrost API | Remote | REST API | External (Blockfrost) |
-| IndexedDB | Local (browser) | Database | External (Browser) |
+| Component | Location | Type | Owner | Helios Coupling |
+|-----------|----------|------|-------|-----------------|
+| `CachedUtxoIndex` | Local (browser) | Class | UtxoIndex | **YES** - converts Helios → storage types |
+| `UtxoIndexEntry` | Local (browser) | Type | UtxoIndex | **NO** - storage-agnostic |
+| `UtxoStoreGeneric` | Local (browser) | Interface | UtxoIndex | **NO** - uses UtxoIndexEntry |
+| `DexieUtxoStore` | Local (browser) | Class | UtxoIndex | **NO** - uses UtxoIndexEntry |
+| Blockfrost Type Validators | Local (browser) | Type definitions + ArkType factories | UtxoIndex | **NO** - Blockfrost schemas only |
+| Dexie Record Classes | Local (browser) | Entity classes | UtxoIndex | **NO** - storage entities |
+| Blockfrost API | Remote | REST API | External (Blockfrost) | N/A |
+| IndexedDB | Local (browser) | Database | External (Browser) | N/A |
 
 ### Component Descriptions
 
@@ -28,17 +29,64 @@ The UtxoIndex is a **dedicated UTXO monitor and cache** for Cardano smart contra
 **Responsibilities**:
 - Monitor the Capo address for new transactions (all delegate activity touches this address)
 - Fetch and cache all UTXOs at the Capo address
-- Catalog delegated-data policy UUTs at their delegate script addresses (these trigger correct policy enforcement for different record types)
+- Catalog delegated-data policy UUTs at their delegate script addresses
 - Detect charter UTXO changes during routine monitoring
 - Manage communication with Blockfrost API
+- **Convert Helios types to storage-agnostic types** via `indexUtxoFromOutput()`
 - Coordinate storage operations via `UtxoStoreGeneric` interface
 
 **Key State**:
-- `capoAddress: string` - The primary address to monitor
-- `capoMph: string` - Minting policy hash for filtering relevant tokens
+- `capoAddress: string` - The primary address to monitor (getter)
+- `capoMph: string` - Minting policy hash for filtering relevant tokens (getter)
 - `lastBlockId: string` - Most recent block hash seen
 - `lastBlockHeight: number` - Most recent block height seen
 - `store: UtxoStoreGeneric` - Storage backend instance
+
+**Type Boundary**: CachedUtxoIndex is the **only component** that works with Helios types (`TxOutput`, `Tx`, `MintingPolicyHash`, etc.). It converts these to `UtxoIndexEntry` before passing to the store.
+
+**Key Method - `indexUtxoFromOutput()`**:
+- Takes: `txHash: string`, `outputIndex: number`, `output: TxOutput` (Helios type)
+- Extracts UUT IDs using `capo.mph`
+- Converts to `UtxoIndexEntry` (storage-agnostic)
+- Calls `store.saveUtxo(entry)`
+
+#### UtxoIndexEntry (Type)
+**Purpose**: Storage-agnostic UTXO representation
+
+**Location**: `types/UtxoIndexEntry.ts`
+
+**Why it exists**: Decouples storage layer from Helios and Blockfrost types. Neither the interface nor implementations should import from `@helios-lang/*` or know about Blockfrost response schemas.
+
+**Fields**:
+```typescript
+type UtxoIndexEntry = {
+    utxoId: string;              // "txHash#outputIndex"
+    address: string;             // bech32
+    lovelace: bigint;
+    tokens: Array<{
+        policyId: string;        // hex
+        tokenName: string;       // hex-encoded
+        quantity: bigint;
+    }>;
+    datumHash: string | null;
+    inlineDatum: string | null;  // CBOR hex
+    uutIds: string[];            // extracted UUT identifiers
+}
+```
+
+#### UtxoStoreGeneric
+**Purpose**: Storage abstraction interface
+
+**Why abstraction exists**: Enables alternative storage backends (in-memory for testing, future: Dred for high-performance state sharing) without changing indexer logic
+
+**Type Boundary**: Interface uses **only** `UtxoIndexEntry` and simple types. **No Helios imports.**
+
+**Operations**:
+- `log(id, message)` - Structured logging
+- `findBlockByBlockId(id)` / `saveBlock(block)`
+- `findUtxoByUtxoId(id)` / `saveUtxo(entry: UtxoIndexEntry)`
+- `findTxById(id)` / `saveTx(tx)`
+- `findUtxoByUUT(uutId)` - Query via multiEntry index on `uutIds`
 
 #### DexieUtxoStore
 **Purpose**: Dexie/IndexedDB implementation of storage backend
@@ -49,6 +97,8 @@ The UtxoIndex is a **dedicated UTXO monitor and cache** for Cardano smart contra
 - Generate unique process IDs for logging sessions
 - Track structured logs with stack traces for debugging
 
+**Type Boundary**: Works **only** with `UtxoIndexEntry` and Dexie types. **No Helios imports, no Blockfrost types.**
+
 **Schema** (v2):
 ```
 blocks: hash (PK), height
@@ -56,18 +106,6 @@ utxos: utxoId (PK), *uutIds (multiEntry), blockHeight
 txs: txid (PK)
 logs: logId (PK), [pid+time] (compound index)
 ```
-
-#### UtxoStoreGeneric
-**Purpose**: Storage abstraction interface
-
-**Why abstraction exists**: Enables alternative storage backends (in-memory for testing, future: Dred for high-performance state sharing, low latency and multi-user coordination) without changing essential indexer logic
-
-**Operations**:
-- `log(id, message)` - Structured logging
-- `findBlockId(id)` / `saveBlock(block)`
-- `findUtxoId(id)` / `saveUtxo(utxo)` - UTXOs include `uutIds` array for UUT lookups
-- `findTxId(id)` / `saveTx(tx)`
-- `findUtxoByUUT(id)` - Query via multiEntry index on `uutIds`
 
 #### Blockfrost Integration
 **Purpose**: External blockchain data provider
@@ -92,10 +130,11 @@ logs: logId (PK), [pid+time] (compound index)
 | Directory/File | Owner | Purpose |
 |----------------|-------|---------|
 | `src/networkClients/UtxoIndex/` | UtxoIndex | Root directory |
-| `CachedUtxoIndex.ts` | UtxoIndex | Main orchestrator |
-| `DexieUtxoStore.ts` | UtxoIndex | Dexie implementation |
-| `UtxoStoreGeneric.ts` | UtxoIndex | Storage interface |
-| `blockfrostTypes/*.ts` | UtxoIndex | API type definitions |
+| `CachedUtxoIndex.ts` | UtxoIndex | Main orchestrator (Helios coupling boundary) |
+| `types/UtxoIndexEntry.ts` | UtxoIndex | Storage-agnostic UTXO type |
+| `UtxoStoreGeneric.ts` | UtxoIndex | Storage interface (no Helios) |
+| `DexieUtxoStore.ts` | UtxoIndex | Dexie implementation (no Helios) |
+| `blockfrostTypes/*.ts` | UtxoIndex | Blockfrost API response schemas |
 | `dexieRecords/*.ts` | UtxoIndex | Database entity classes |
 | `UtxoIndex.reqts.md` | UtxoIndex | Requirements document |
 | `utxoIndex.ARCHITECTURE.md` | UtxoIndex | This document |
@@ -126,38 +165,42 @@ new CachedUtxoIndex({
 - `catalogDelegateUuts(charterData: CharterData): Promise<void>` - Catalog delegate UUTs from charter
 
 **Future Query API** (BACKLOG):
-- `queryUtxosByAddress(address: string): Promise<UtxoDetailsType[]>`
-- `queryUtxosByAsset(mph: string, tokenName?: string): Promise<UtxoDetailsType[]>`
-- `queryUtxosByDelegate(delegateRole: string): Promise<UtxoDetailsType[]>`
+- `queryUtxosByAddress(address: string): Promise<UtxoIndexEntry[]>`
+- `queryUtxosByAsset(mph: string, tokenName?: string): Promise<UtxoIndexEntry[]>`
+- `queryUtxosByDelegate(delegateRole: string): Promise<UtxoIndexEntry[]>`
 
 ### Storage Interface (UtxoStoreGeneric)
+
+**NOTE**: This interface has **no Helios imports**. It uses only `UtxoIndexEntry` and simple types.
 
 ```typescript
 interface UtxoStoreGeneric {
     log(id: string, message: string): Promise<void>
 
     // Block operations
-    findBlockId(id: string): Promise<BlockDetailsType | undefined>
-    saveBlock(block: BlockDetailsType): Promise<void>
+    findBlockByBlockId(id: string): Promise<BlockIndexEntry | undefined>
+    saveBlock(block: BlockIndexEntry): Promise<void>
 
-    // UTXO operations (UTXOs include uutIds array for UUT catalog)
-    findUtxoId(id: string): Promise<UtxoDetailsType | undefined>
-    saveUtxo(utxo: UtxoDetailsType): Promise<void>
+    // UTXO operations
+    findUtxoByUtxoId(id: string): Promise<UtxoIndexEntry | undefined>
+    saveUtxo(entry: UtxoIndexEntry): Promise<void>
 
     // Transaction operations
-    findTxId(id: string): Promise<txCBOR | undefined>
-    saveTx(tx: txCBOR): Promise<void>
+    findTxById(id: string): Promise<TxIndexEntry | undefined>
+    saveTx(tx: TxIndexEntry): Promise<void>
 
     // UUT lookup via multiEntry index on uutIds
-    findUtxoByUUT(id: string): Promise<UtxoDetailsType | undefined>
+    findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined>
 }
 ```
 
 ### Data Types
 
-**BlockDetailsType**: Blockfrost block response schema (hash, height, time, slot, epoch, tx_count, etc.)
+**UtxoIndexEntry**: Storage-agnostic UTXO representation (see Component Description above). Includes `uutIds: string[]` for UUT catalog lookups.
 
-**UtxoDetailsType**: Blockfrost UTXO response schema (address, tx_hash, output_index, amount[], block, inline_datum, etc.) plus `uutIds: string[]` for UUT catalog lookups via multiEntry index.
+**BlockIndexEntry**: Block metadata for tracking sync state (hash, height, time, slot).
+
+**TxIndexEntry**: Transaction CBOR storage `{ txid: string; cbor: string }`.
 
 ---
 
@@ -210,9 +253,25 @@ interface UtxoStoreGeneric {
 ┌──────────────────────────────┐
 │ processTransactionForNewUtxos│
 │ 1. Fetch full tx CBOR        │──────► GET txs/{txHash}/cbor
-│ 2. Decode transaction        │──────► Helios.decodeTx()
-│ 3. Index new UTXOs           │──────► store.saveUtxo() (includes uutIds)
-│ 4. Update lastSyncedBlock    │
+│ 2. Decode transaction        │──────► Helios.decodeTx() → Tx (Helios type)
+│ 3. For each output:          │
+│    indexUtxoFromOutput()     │
+└────────┬─────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│ indexUtxoFromOutput(txHash, index, output: TxOutput) │
+│ ════════════════ TYPE BOUNDARY ═══════════════════   │
+│ 1. Extract UUT IDs from output.value                 │
+│ 2. Convert TxOutput → UtxoIndexEntry                 │
+│ 3. Call store.saveUtxo(entry)                        │
+└──────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────┐
+│ DexieUtxoStore.saveUtxo()    │
+│ (receives UtxoIndexEntry,    │
+│  no Helios types)            │
 └──────────────────────────────┘
 ```
 
@@ -346,10 +405,5 @@ This usage SHOULD match with other helios network-clients and be used via the sa
 
 ---
 
-## Architectural Evolution
-
----
-
-**Document Version**: 1.0
-**Last Updated**: 2026-01-16
-**Architectural Session**: Architect skill facilitation of UtxoIndex discovery
+**Document Version**: 1.1
+**Last Updated**: 2026-01-17

@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable, type Table } from "dexie";
+import type { MintingPolicyHash, TxInput } from "@helios-lang/ledger";
 
 import { nanoid } from "../../util/nanoid.js";
 import type { txCBOR, UtxoStoreGeneric } from "./UtxoStoreGeneric";
@@ -6,32 +7,9 @@ import type { UtxoDetailsType } from "./blockfrostTypes/UtxoDetails";
 import {dexieBlockDetails} from "./dexieRecords/BlockDetails.js";
 import { indexerLogs } from "./dexieRecords/Logs";
 import {dexieUtxoDetails} from "./dexieRecords/UtxoDetails.js";
+import { txInputToUtxoDetails } from "./txInputUtils.js";
 
 const pid = nanoid()
-
-/**
- * Extracts UUT identifiers from UTXO token values.
- * UUT names match pattern: {purpose}-{hash} where purpose is [a-z]+ and hash is 12 hex chars.
- * REQT/cchf3wgnk3 (UUT Catalog Storage)
- */
-export function extractUutIds(
-    amounts: Array<{unit: string; quantity: number}>,
-    capoMph: string
-): string[] {
-    // UUT pattern: lowercase purpose + hyphen + 12 hex characters
-    const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
-    return amounts
-        .filter(a => a.unit !== "lovelace" && a.unit.startsWith(capoMph))
-        .map(a => a.unit.slice(capoMph.length)) // extract token name (hex-encoded)
-        .map(hexName => {
-            try {
-                return Buffer.from(hexName, 'hex').toString('utf8');
-            } catch {
-                return '';
-            }
-        })
-        .filter(name => uutPattern.test(name));
-}
 
 export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     blocks!: EntityTable<dexieBlockDetails, "hash">;
@@ -106,12 +84,58 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         return await this.utxos.where("utxoId").equals(utxoId).first();
     }
 
-    // REQT/cchf3wgnk3 (UUT Catalog Storage) - saveUtxo with optional UUT extraction
-    async saveUtxo(utxo: UtxoDetailsType, capoMph?: string): Promise<void> {
-        if (capoMph && !utxo.uutIds) {
-            utxo.uutIds = extractUutIds(utxo.amount, capoMph);
+    // REQT/cchf3wgnk3 (UUT Catalog Storage) - saveUtxo takes Helios TxInput
+    async saveUtxo(utxo: TxInput, capoMph: MintingPolicyHash): Promise<void> {
+        // Convert TxInput to storage format
+        const [txHash, outputIndexStr] = utxo.id.toString().split('#');
+        const outputIndex = parseInt(outputIndexStr, 10);
+
+        // Convert Value to amount array format
+        const amount: Array<{unit: string; quantity: number}> = [
+            { unit: "lovelace", quantity: Number(utxo.value.lovelace) }
+        ];
+
+        // Add all tokens
+        for (const [mph, tokens] of utxo.value.assets.mintingPolicies) {
+            const mphHex = mph.toHex();
+            for (const [tokenName, qty] of tokens) {
+                const tokenNameHex = bytesToHex(tokenName);
+                amount.push({
+                    unit: mphHex + tokenNameHex,
+                    quantity: Number(qty)
+                });
+            }
         }
-        await this.utxos.put(utxo);
+
+        // Extract datum info
+        let data_hash: string | null = null;
+        let inline_datum: string | null = null;
+        if (utxo.datum) {
+            if (utxo.datum.kind === "HashedTxOutputDatum") {
+                data_hash = utxo.datum.hash.toHex();
+            } else if (utxo.datum.kind === "InlineTxOutputDatum") {
+                inline_datum = bytesToHex(utxo.datum.toCbor());
+            }
+        }
+
+        // Extract UUT IDs
+        const uutIds = extractUutIds(utxo, capoMph);
+
+        const record: UtxoDetailsType = {
+            utxoId: utxo.id.toString(),
+            address: utxo.address.toBech32(),
+            tx_hash: txHash,
+            tx_index: outputIndex,
+            output_index: outputIndex,
+            amount,
+            block: "", // Block hash not available from TxInput directly
+            data_hash,
+            inline_datum,
+            reference_script_hash: null, // Not typically needed for indexing
+            uutIds,
+        };
+
+        await this.utxos.put(record);
     }
 
     // REQT/cchf3wgnk3 (UUT Catalog Storage) - query UTXOs by UUT identifier
