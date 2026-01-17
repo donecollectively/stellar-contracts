@@ -293,7 +293,7 @@ interface ReadonlyCardanoClient {
 | `getUtxo(id)` | COMPLETED | REQT/gt3ux9v2kp |
 | `getUtxos(address)` | COMPLETED | REQT/gu4vy0w3lq |
 | `getUtxosWithAssetClass(address, asset)` | COMPLETED | REQT/gv5wz1x4mr |
-| `now` | NEXT | REQT/gz9a5b8qv |
+| `now` | COMPLETED | REQT/gz9a5b8qv |
 | `parameters` | NEXT | REQT/ha0b6c9rw |
 
 **Cache Strategy**: All `getUtxo*` methods check the cache first for matching indexed UTXOs. On cache miss, they fall through to the underlying network client. This allows the indexer to act as a transparent cache layer.

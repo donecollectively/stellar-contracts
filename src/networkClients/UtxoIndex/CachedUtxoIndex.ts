@@ -63,9 +63,10 @@ const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
 export class CachedUtxoIndex {
     blockfrostKey: string;
     blockfrostBaseUrl: string = "https://cardano-mainnet.blockfrost.io";
-    // remembers the last block-id and height seen in any capo utxo
+    // remembers the last block-id, height, and slot seen in any capo utxo
     lastBlockId: string;
     lastBlockHeight: number;
+    lastSlot: number;
     store: UtxoStoreGeneric;
     capo: Capo<any, any>;
     network: CardanoClient;
@@ -94,6 +95,15 @@ export class CachedUtxoIndex {
      */
     isMainnet(): boolean {
         return this.capo.setup.isMainnet;
+    }
+
+    /**
+     * Returns current slot number from the latest synced block.
+     *
+     * REQT/gz9a5b8qv (now Property)
+     */
+    get now(): number {
+        return this.lastSlot;
     }
 
     /**
@@ -128,6 +138,7 @@ export class CachedUtxoIndex {
         }
         this.lastBlockId = "";
         this.lastBlockHeight = 0;
+        this.lastSlot = 0;
         if (strategy === "dexie") {
             this.store = new DexieUtxoStore();
         } else if (strategy === "memory") {
@@ -139,7 +150,7 @@ export class CachedUtxoIndex {
         }
         this.store.log(
             "agsbb",
-            `CachedUtxoIndex created for capo: ${this.capo.address.toString()}`
+            `CachedUtxoIndex created for capo: ${this.capo.address.toString()}`,
         );
         this.syncNow();
     }
@@ -161,17 +172,17 @@ export class CachedUtxoIndex {
             capoUtxos.map((utxo) => {
                 const id = utxo.id.toString();
                 return id.split("#")[0];
-            })
+            }),
         );
 
         await this.store.log(
             "yuyqy",
-            `Found ${uniqueTxIds.size} unique transaction IDs`
+            `Found ${uniqueTxIds.size} unique transaction IDs`,
         );
         for (const txId of uniqueTxIds) {
             await this.store.log(
                 "48nyb",
-                `Fetching transaction details for ${txId}`
+                `Fetching transaction details for ${txId}`,
             );
             await this.findOrFetchTxDetails(txId);
         }
@@ -204,7 +215,7 @@ export class CachedUtxoIndex {
 
         if (startHeight == 0) {
             throw new Error(
-                "Cannot start checking for new transactions at block height 0"
+                "Cannot start checking for new transactions at block height 0",
             );
         }
         const capoAddress = this.capo.address.toString();
@@ -227,7 +238,7 @@ export class CachedUtxoIndex {
                 validationResult.throw();
             }
             transactionSummaries.push(
-                validationResult as AddressTransactionSummariesType
+                validationResult as AddressTransactionSummariesType,
             );
         }
 
@@ -247,7 +258,7 @@ export class CachedUtxoIndex {
         }
         this.store.log(
             "pr5t1",
-            `Starting periodic refresh every ${refreshInterval / 1000} seconds`
+            `Starting periodic refresh every ${refreshInterval / 1000} seconds`,
         );
         this.refreshTimerId = setInterval(async () => {
             try {
@@ -288,7 +299,7 @@ export class CachedUtxoIndex {
      */
     private async processTransactionForNewUtxos(
         txHash: string,
-        summary: AddressTransactionSummariesType
+        summary: AddressTransactionSummariesType,
     ): Promise<void> {
         const tx = await this.findOrFetchTxDetails(txHash);
         const mph = this.capo.mph;
@@ -315,7 +326,7 @@ export class CachedUtxoIndex {
             for (const tokenNameBytes of tokenNames) {
                 try {
                     const tokenName = new TextDecoder().decode(
-                        new Uint8Array(tokenNameBytes)
+                        new Uint8Array(tokenNameBytes),
                     );
                     if (tokenName === "charter") {
                         charterChanged = true;
@@ -330,7 +341,7 @@ export class CachedUtxoIndex {
         if (charterChanged) {
             await this.store.log(
                 "ch4rt",
-                `Charter token detected in tx ${txHash}, re-cataloging delegates`
+                `Charter token detected in tx ${txHash}, re-cataloging delegates`,
             );
             const charterData = await this.capo.findCharterData();
             await this.catalogDelegateUuts(charterData);
@@ -345,7 +356,9 @@ export class CachedUtxoIndex {
      */
     private extractUutIds(output: TxOutput): string[] {
         const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
-        const tokenNames = output.value.assets.getPolicyTokenNames(this.capo.mph);
+        const tokenNames = output.value.assets.getPolicyTokenNames(
+            this.capo.mph,
+        );
 
         return tokenNames
             .map((bytes) => {
@@ -363,7 +376,9 @@ export class CachedUtxoIndex {
      */
     private extractUutIdsFromTxInput(txInput: TxInput): string[] {
         const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
-        const tokenNames = txInput.value.assets.getPolicyTokenNames(this.capo.mph);
+        const tokenNames = txInput.value.assets.getPolicyTokenNames(
+            this.capo.mph,
+        );
 
         return tokenNames
             .map((bytes) => {
@@ -384,7 +399,7 @@ export class CachedUtxoIndex {
     private txOutputToIndexEntry(
         txHash: string,
         outputIndex: number,
-        output: TxOutput
+        output: TxOutput,
     ): UtxoIndexEntry {
         const utxoId = this.formatUtxoId(txHash, outputIndex);
 
@@ -432,7 +447,8 @@ export class CachedUtxoIndex {
 
         // Extract tokens
         const tokens: UtxoIndexEntry["tokens"] = [];
-        for (const [mph, policyTokens] of txInput.value.assets.mintingPolicies) {
+        for (const [mph, policyTokens] of txInput.value.assets
+            .mintingPolicies) {
             for (const [tokenName, qty] of policyTokens) {
                 tokens.push({
                     policyId: mph.toHex(),
@@ -471,7 +487,7 @@ export class CachedUtxoIndex {
      */
     private blockfrostUtxoToIndexEntry(
         bfUtxo: UtxoDetailsType,
-        utxoId: string
+        utxoId: string,
     ): UtxoIndexEntry {
         // Find lovelace amount
         const lovelaceAmount = bfUtxo.amount.find((a) => a.unit === "lovelace");
@@ -501,7 +517,9 @@ export class CachedUtxoIndex {
                 try {
                     // Convert hex token name to string
                     const bytes = new Uint8Array(
-                        token.tokenName.match(/.{2}/g)?.map((b) => parseInt(b, 16)) || []
+                        token.tokenName
+                            .match(/.{2}/g)
+                            ?.map((b) => parseInt(b, 16)) || [],
                     );
                     const name = new TextDecoder().decode(bytes);
                     if (uutPattern.test(name)) {
@@ -529,7 +547,9 @@ export class CachedUtxoIndex {
      *
      * TYPE BOUNDARY: This method converts Blockfrost types to storage types.
      */
-    private blockfrostBlockToIndexEntry(bfBlock: BlockDetailsType): BlockIndexEntry {
+    private blockfrostBlockToIndexEntry(
+        bfBlock: BlockDetailsType,
+    ): BlockIndexEntry {
         return {
             hash: bfBlock.hash,
             height: bfBlock.height,
@@ -546,7 +566,7 @@ export class CachedUtxoIndex {
     private async indexUtxoFromOutput(
         txHash: string,
         outputIndex: number,
-        output: TxOutput
+        output: TxOutput,
     ): Promise<void> {
         const entry = this.txOutputToIndexEntry(txHash, outputIndex, output);
         await this.store.saveUtxo(entry);
@@ -566,7 +586,7 @@ export class CachedUtxoIndex {
             if (mintDelegateLink?.uutName) {
                 await this.store.log(
                     "ht8mg",
-                    `Fetching mint delegate UUT: ${mintDelegateLink.uutName}`
+                    `Fetching mint delegate UUT: ${mintDelegateLink.uutName}`,
                 );
                 const delegate = await this.capo.getMintDelegate(charterData);
                 await this.fetchAndIndexDelegateUut(delegate, "mintDelegate");
@@ -581,7 +601,7 @@ export class CachedUtxoIndex {
             if (spendDelegateLink?.uutName) {
                 await this.store.log(
                     "fgmtv",
-                    `Fetching spend delegate UUT: ${spendDelegateLink.uutName}`
+                    `Fetching spend delegate UUT: ${spendDelegateLink.uutName}`,
                 );
                 const delegate = await this.capo.getSpendDelegate(charterData);
                 await this.fetchAndIndexDelegateUut(delegate, "spendDelegate");
@@ -596,7 +616,7 @@ export class CachedUtxoIndex {
             if (govAuthorityLink?.uutName) {
                 await this.store.log(
                     "g8xpk",
-                    `Fetching gov authority UUT: ${govAuthorityLink.uutName}`
+                    `Fetching gov authority UUT: ${govAuthorityLink.uutName}`,
                 );
                 const delegate = await this.capo.findGovDelegate(charterData);
                 await this.fetchAndIndexDelegateUut(delegate, "govAuthority");
@@ -636,21 +656,21 @@ export class CachedUtxoIndex {
                     ) {
                         const delegate = await this.capo.getOtherNamedDelegate(
                             delegateName,
-                            charterData
+                            charterData,
                         );
                         await this.store.log(
                             "nd8uu",
-                            `Fetching named delegate '${delegateName}' UUT`
+                            `Fetching named delegate '${delegateName}' UUT`,
                         );
                         await this.fetchAndIndexDelegateUut(
                             delegate,
-                            `namedDelegate:${delegateName}`
+                            `namedDelegate:${delegateName}`,
                         );
                     }
                 } catch (e) {
                     console.warn(
                         `Could not resolve named delegate '${delegateName}' UUT:`,
-                        e
+                        e,
                     );
                 }
             }
@@ -663,7 +683,7 @@ export class CachedUtxoIndex {
                 const actualType = Object.keys(entryInfo.entryType)[0];
                 this.store.log(
                     "pm5rq",
-                    `${entryName} is a ${actualType}, not a DgDataPolicy; skipping`
+                    `${entryName} is a ${actualType}, not a DgDataPolicy; skipping`,
                 );
                 continue;
             }
@@ -673,25 +693,25 @@ export class CachedUtxoIndex {
                     {
                         charterData,
                         optional: true,
-                    }
+                    },
                 );
                 const { policyLink } = DgDataPolicy;
                 const uutName = policyLink.uutName;
 
                 await this.store.log(
                     "c6awj",
-                    `Fetching dgData controller UUT: ${uutName}`
+                    `Fetching dgData controller UUT: ${uutName}`,
                 );
                 if (controller) {
                     await this.fetchAndIndexDelegateUut(
                         controller,
-                        `dgDataController:${entryName}`
+                        `dgDataController:${entryName}`,
                     );
                 }
             } catch (e) {
                 console.warn(
                     `Could not resolve dgData controller ${entryName}:`,
-                    e
+                    e,
                 );
             }
         }
@@ -702,13 +722,13 @@ export class CachedUtxoIndex {
      */
     private async fetchAndIndexDelegateUut(
         delegate: StellarDelegate,
-        label: string
+        label: string,
     ): Promise<void> {
         try {
             const utxo = await delegate.DelegateMustFindAuthorityToken(
                 this.capo.mkTcx(),
                 label,
-                { findCached: false }
+                { findCached: false },
             );
 
             const entry = this.txInputToIndexEntry(utxo);
@@ -724,7 +744,7 @@ export class CachedUtxoIndex {
      */
     private async fetchAndIndexDelegateLinkUut(
         delegateLink: RelativeDelegateLink,
-        label: string
+        label: string,
     ): Promise<void> {
         const mph = this.capo.mph;
         const assetClass = makeAssetClass(mph, delegateLink.uutName);
@@ -732,13 +752,13 @@ export class CachedUtxoIndex {
         const address = delegateLink.delegateValidatorHash
             ? makeAddress(
                   this.capo.setup.isMainnet,
-                  makeValidatorHash(delegateLink.delegateValidatorHash)
+                  makeValidatorHash(delegateLink.delegateValidatorHash),
               )
             : this.capo.address;
 
         await this.store.log(
             "dx8pq",
-            `Fetching UUT for ${label} at address ${address.toString()}`
+            `Fetching UUT for ${label} at address ${address.toString()}`,
         );
 
         const policyId = assetClass.mph.toHex();
@@ -751,14 +771,17 @@ export class CachedUtxoIndex {
         if (!Array.isArray(untyped) || untyped.length === 0) {
             await this.store.log(
                 "no8uu",
-                `No UTXO found for ${label} with asset ${asset}`
+                `No UTXO found for ${label} with asset ${asset}`,
             );
             return;
         }
 
         const validationResult = UtxoDetailsFactory(untyped[0]);
         if (validationResult instanceof ArkErrors) {
-            console.error(`Error validating UTXO for ${label}:`, validationResult);
+            console.error(
+                `Error validating UTXO for ${label}:`,
+                validationResult,
+            );
             throw new Error("Validation error fetching delegate UTXO");
         }
 
@@ -786,13 +809,13 @@ export class CachedUtxoIndex {
             if (!res.ok) {
                 await this.store.log(
                     "3ecxh",
-                    `Error fetching from blockfrost: ${url} ${result.message}`
+                    `Error fetching from blockfrost: ${url} ${result.message}`,
                 );
                 throw new Error(result.message);
             }
             await this.store.log(
                 "rm7g8",
-                `Successfully fetched from blockfrost: ${url} ${JSON.stringify(result)}`
+                `Successfully fetched from blockfrost: ${url} ${JSON.stringify(result)}`,
             );
             return result as T;
         });
@@ -814,7 +837,7 @@ export class CachedUtxoIndex {
     async fetchBlockDetails(blockId: string): Promise<BlockDetailsType> {
         await this.store.log(
             "78q9n",
-            `Fetching block details for ${blockId} from blockfrost`
+            `Fetching block details for ${blockId} from blockfrost`,
         );
         const untyped = await this.fetchFromBlockfrost(`blocks/${blockId}`);
         const typed = BlockDetailsFactory(untyped);
@@ -833,7 +856,7 @@ export class CachedUtxoIndex {
         }
         await this.store.log(
             "8y2yn",
-            `latest block from blockfrost: #${typed.height} ${typed.hash}`
+            `latest block from blockfrost: #${typed.height} ${typed.hash}`,
         );
 
         const entry = this.blockfrostBlockToIndexEntry(typed);
@@ -842,13 +865,24 @@ export class CachedUtxoIndex {
         if (typed.height > this.lastBlockHeight) {
             await this.store.log(
                 "2k3uq",
-                `new latest block: #${typed.height} ${typed.hash}`
+                `new latest block: #${typed.height} ${typed.hash}`,
             );
             this.lastBlockHeight = typed.height;
             this.lastBlockId = typed.hash;
+            this.lastSlot = entry.slot;
         }
 
         return entry;
+    }
+
+    /**
+     * Retrieves a transaction by ID.
+     * Implements ReadonlyCardanoClient.getTx
+     *
+     * REQT/gx7y3z6ot (getTx Method)
+     */
+    async getTx(id: TxId): Promise<Tx> {
+        return this.findOrFetchTxDetails(id.toHex());
     }
 
     async findOrFetchTxDetails(txId: string): Promise<Tx> {
@@ -859,7 +893,7 @@ export class CachedUtxoIndex {
         }
         await this.store.log(
             "qwmrh",
-            `Fetching tx details for ${txId} from blockfrost`
+            `Fetching tx details for ${txId} from blockfrost`,
         );
         const { cbor: cborHex } = await this.fetchFromBlockfrost<{
             cbor: string;
@@ -967,7 +1001,7 @@ export class CachedUtxoIndex {
      */
     async getUtxosWithAssetClass(
         address: Address,
-        assetClass: AssetClass
+        assetClass: AssetClass,
     ): Promise<TxInput[]> {
         const addrStr = address.toBech32();
         const policyId = assetClass.mph.toHex();
@@ -989,18 +1023,8 @@ export class CachedUtxoIndex {
         // If network doesn't support this method, filter from getUtxos
         const allUtxos = await this.network.getUtxos(address);
         return allUtxos.filter((u) =>
-            u.value.assets.has(assetClass.mph, assetClass.tokenName)
+            u.value.assets.has(assetClass.mph, assetClass.tokenName),
         );
-    }
-
-    /**
-     * Retrieves a transaction by ID.
-     * Implements ReadonlyCardanoClient.getTx
-     *
-     * REQT/gx7y3z6ot (getTx Method)
-     */
-    async getTx(id: TxId): Promise<Tx> {
-        return this.findOrFetchTxDetails(id.toHex());
     }
 
     /**
@@ -1020,7 +1044,7 @@ export class CachedUtxoIndex {
     async findUtxosByAsset(
         policyId: string,
         tokenName?: string,
-        options?: { limit?: number; offset?: number }
+        options?: { limit?: number; offset?: number },
     ): Promise<UtxoIndexEntry[]> {
         return this.store.findUtxosByAsset(policyId, tokenName, options);
     }
@@ -1032,7 +1056,7 @@ export class CachedUtxoIndex {
      */
     async findUtxosByAddress(
         address: string,
-        options?: { limit?: number; offset?: number }
+        options?: { limit?: number; offset?: number },
     ): Promise<UtxoIndexEntry[]> {
         return this.store.findUtxosByAddress(address, options);
     }
