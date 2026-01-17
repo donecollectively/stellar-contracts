@@ -1,24 +1,19 @@
 import { Entity } from "dexie";
 import type { DexieUtxoStore } from "../DexieUtxoStore.js";
-import { type } from "arktype";
-import { jsonSchemaToType } from "@ark/json-schema";
-import type { BlockDetailsType } from "../blockfrostTypes/BlockDetails.js";
+import type { LogEntry } from "../types/LogEntry.js";
 
-export type LogType = {
-    logId: string;
-    pid: number;
-    time: number;
-    location: string;
-    message: string;    
-}
-
+/**
+ * Dexie entity class for log storage.
+ *
+ * REQT/cj6nm0mpm1 (Log Entity)
+ */
 export class indexerLogs
     extends Entity<DexieUtxoStore>
-    implements LogType
+    implements LogEntry
 {
-    logId!: LogType["logId"];
-    pid!: LogType["pid"];
-    time!: LogType["time"];
-    location!: LogType["location"];
-    message!: LogType["message"];
+    logId!: string;
+    pid!: number;
+    time!: number;
+    location!: string;
+    message!: string;
 }

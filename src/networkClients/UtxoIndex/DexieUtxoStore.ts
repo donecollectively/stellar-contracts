@@ -1,153 +1,127 @@
-import Dexie, { type EntityTable, type Table } from "dexie";
-import type { MintingPolicyHash, TxInput } from "@helios-lang/ledger";
+import Dexie, { type EntityTable } from "dexie";
 
 import { nanoid } from "../../util/nanoid.js";
-import type { txCBOR, UtxoStoreGeneric } from "./UtxoStoreGeneric";
-import type { UtxoDetailsType } from "./blockfrostTypes/UtxoDetails";
-import {dexieBlockDetails} from "./dexieRecords/BlockDetails.js";
-import { indexerLogs } from "./dexieRecords/Logs";
-import {dexieUtxoDetails} from "./dexieRecords/UtxoDetails.js";
-import { txInputToUtxoDetails } from "./txInputUtils.js";
+import type { UtxoStoreGeneric } from "./types/UtxoStoreGeneric.js";
+import type { UtxoIndexEntry } from "./types/UtxoIndexEntry.js";
+import type { BlockIndexEntry } from "./types/BlockIndexEntry.js";
+import type { TxIndexEntry } from "./types/TxIndexEntry.js";
+import { dexieBlockDetails } from "./dexieRecords/BlockDetails.js";
+import { indexerLogs } from "./dexieRecords/Logs.js";
+import { dexieUtxoDetails } from "./dexieRecords/UtxoDetails.js";
 
-const pid = nanoid()
-
+/**
+ * Dexie/IndexedDB implementation of UtxoStoreGeneric.
+ *
+ * CONSTRAINT: This class has NO imports from @helios-lang/* or blockfrostTypes/*.
+ * It works only with storage-agnostic types from ./types/.
+ *
+ * REQT/6h4f158gvs (Database Definition)
+ */
 export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     blocks!: EntityTable<dexieBlockDetails, "hash">;
     utxos!: EntityTable<dexieUtxoDetails, "utxoId">;
-    txs!: EntityTable<txCBOR, "txid">;
+    txs!: EntityTable<TxIndexEntry, "txid">;
     logs!: EntityTable<indexerLogs, "logId">;
-    
+
     pid: number = 0;
+
     constructor() {
         super("StellarDappIndex-v0.1");
+
+        // Schema v1: initial schema
         this.version(1).stores({
             blocks: "hash, height",
-            utxos: "utxoId, blockId, blockHeight",
+            utxos: "utxoId, blockHeight",
             txs: "txid",
             logs: "logId,[pid,time]",
         });
-        // REQT/6h4f158gvs (Database Definition), REQT/nt1pqd3m3z (UUT Catalog Entity)
+
         // Schema v2: adds *uutIds multiEntry index for fast UUT lookups
+        // REQT/nt1pqd3m3z (UUT Catalog Entity)
         this.version(2).stores({
             blocks: "hash, height",
-            utxos: "utxoId, blockId, blockHeight, *uutIds",
+            utxos: "utxoId, *uutIds",
             txs: "txid",
             logs: "logId,[pid,time]",
         });
+
         this.blocks.mapToClass(dexieBlockDetails);
         this.utxos.mapToClass(dexieUtxoDetails);
         this.logs.mapToClass(indexerLogs);
-        // finds max pid in logs:
-        // this.txs.mapToClass(txCBOR);
-        this.initializing = this.init()
+
+        this.initializing = this.init();
         this.initializing.then((pid) => {
             console.log(`DexieUtxoStore initialized with pid: ${pid}`);
         });
     }
-    initializing : Promise<number> | undefined;
-    async init() {
+
+    initializing: Promise<number> | undefined;
+
+    // REQT/cm9ez5thxz (Process ID Management)
+    async init(): Promise<number> {
         if (this.initializing) {
             return this.initializing;
         }
-        const maxPid = await this.logs.orderBy("pid").reverse().limit(1).first();
+        const maxPid = await this.logs
+            .orderBy("pid")
+            .reverse()
+            .limit(1)
+            .first();
         if (!maxPid) {
             this.pid = 1;
             return 1;
         }
-        this.pid = 1+maxPid.pid;
+        this.pid = 1 + maxPid.pid;
         this.initializing = undefined;
-        return this.pid
+        return this.pid;
     }
 
-    async log(id, message: string): Promise<any> {
+    // REQT/p7ryk4ztes (Logging Implementation)
+    async log(id: string, message: string): Promise<void> {
         const location = new Error().stack!.split("\n")[2]!.trim();
         const pid = this.initializing ? await this.initializing : this.pid;
 
         console.log(`${id}: ${message}`);
-        return this.logs.add({
-            pid, 
-            time: Date.now(), 
-            location,
-            message 
-        }, id);
+        await this.logs.add(
+            {
+                logId: id,
+                pid,
+                time: Date.now(),
+                location,
+                message,
+            },
+        );
     }
 
-    async findBlockByBlockId(blockId: string): Promise<dexieBlockDetails | undefined> {
+    // REQT/76e18y06kp (Block Storage)
+    async findBlockByBlockId(blockId: string): Promise<BlockIndexEntry | undefined> {
         return await this.blocks.where("hash").equals(blockId).first();
     }
 
-    async saveBlock(block: dexieBlockDetails): Promise<void> {
-        await this.blocks.put(block);
+    async saveBlock(block: BlockIndexEntry): Promise<void> {
+        await this.blocks.put(block as dexieBlockDetails);
     }
 
-    async findUtxoByUtxoId(utxoId: string): Promise<UtxoDetailsType | undefined> {
+    // REQT/1gw45sp198 (UTXO Storage)
+    async findUtxoByUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined> {
         return await this.utxos.where("utxoId").equals(utxoId).first();
     }
 
-    // REQT/cchf3wgnk3 (UUT Catalog Storage) - saveUtxo takes Helios TxInput
-    async saveUtxo(utxo: TxInput, capoMph: MintingPolicyHash): Promise<void> {
-        // Convert TxInput to storage format
-        const [txHash, outputIndexStr] = utxo.id.toString().split('#');
-        const outputIndex = parseInt(outputIndexStr, 10);
-
-        // Convert Value to amount array format
-        const amount: Array<{unit: string; quantity: number}> = [
-            { unit: "lovelace", quantity: Number(utxo.value.lovelace) }
-        ];
-
-        // Add all tokens
-        for (const [mph, tokens] of utxo.value.assets.mintingPolicies) {
-            const mphHex = mph.toHex();
-            for (const [tokenName, qty] of tokens) {
-                const tokenNameHex = bytesToHex(tokenName);
-                amount.push({
-                    unit: mphHex + tokenNameHex,
-                    quantity: Number(qty)
-                });
-            }
-        }
-
-        // Extract datum info
-        let data_hash: string | null = null;
-        let inline_datum: string | null = null;
-        if (utxo.datum) {
-            if (utxo.datum.kind === "HashedTxOutputDatum") {
-                data_hash = utxo.datum.hash.toHex();
-            } else if (utxo.datum.kind === "InlineTxOutputDatum") {
-                inline_datum = bytesToHex(utxo.datum.toCbor());
-            }
-        }
-
-        // Extract UUT IDs
-        const uutIds = extractUutIds(utxo, capoMph);
-
-        const record: UtxoDetailsType = {
-            utxoId: utxo.id.toString(),
-            address: utxo.address.toBech32(),
-            tx_hash: txHash,
-            tx_index: outputIndex,
-            output_index: outputIndex,
-            amount,
-            block: "", // Block hash not available from TxInput directly
-            data_hash,
-            inline_datum,
-            reference_script_hash: null, // Not typically needed for indexing
-            uutIds,
-        };
-
-        await this.utxos.put(record);
+    async saveUtxo(entry: UtxoIndexEntry): Promise<void> {
+        await this.utxos.put(entry as dexieUtxoDetails);
     }
 
     // REQT/cchf3wgnk3 (UUT Catalog Storage) - query UTXOs by UUT identifier
-    async findUtxoByUUT(uutId: string): Promise<UtxoDetailsType | undefined> {
-        return await this.utxos.where('uutIds').equals(uutId).first();
+    async findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined> {
+        return await this.utxos.where("uutIds").equals(uutId).first();
     }
 
-    async findTxById(txId: string): Promise<txCBOR | undefined> {
+    // REQT/nm2ed7m80y (Transaction Storage)
+    async findTxById(txId: string): Promise<TxIndexEntry | undefined> {
         return await this.txs.where("txid").equals(txId).first();
     }
 
-    async saveTx(tx: txCBOR): Promise<void> {
+    async saveTx(tx: TxIndexEntry): Promise<void> {
         await this.txs.put(tx);
     }
 }

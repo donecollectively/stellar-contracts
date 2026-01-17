@@ -1,24 +1,26 @@
 import { Entity } from "dexie";
 import type { DexieUtxoStore } from "../DexieUtxoStore.js";
-import { scope } from "arktype";
-import { jsonSchemaToType } from "@ark/json-schema";
-import type { UtxoDetailsType } from "../blockfrostTypes/UtxoDetails.js";
+import type { UtxoIndexEntry } from "../types/UtxoIndexEntry.js";
 
+/**
+ * Dexie entity class for UTXO storage.
+ * Implements the storage-agnostic UtxoIndexEntry interface.
+ *
+ * REQT/gbzxxv71m8 (UTXO Entity)
+ */
 export class dexieUtxoDetails
     extends Entity<DexieUtxoStore>
-    implements UtxoDetailsType
+    implements UtxoIndexEntry
 {
     utxoId!: string;
-
-    address!: UtxoDetailsType["address"];
-    tx_hash!: UtxoDetailsType["tx_hash"];
-    tx_index!: UtxoDetailsType["tx_index"];
-    output_index!: UtxoDetailsType["output_index"];
-    amount!: UtxoDetailsType["amount"];
-    block!: UtxoDetailsType["block"];
-    data_hash!: UtxoDetailsType["data_hash"];
-    inline_datum!: UtxoDetailsType["inline_datum"];
-    reference_script_hash!: UtxoDetailsType["reference_script_hash"];
-    // REQT/gbzxxv71m8 (UTXO Entity) - UUT identifiers for fast lookups
-    uutIds!: UtxoDetailsType["uutIds"];
+    address!: string;
+    lovelace!: bigint;
+    tokens!: Array<{
+        policyId: string;
+        tokenName: string;
+        quantity: bigint;
+    }>;
+    datumHash!: string | null;
+    inlineDatum!: string | null;
+    uutIds!: string[];
 }

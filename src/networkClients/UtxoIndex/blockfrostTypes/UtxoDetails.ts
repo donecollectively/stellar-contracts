@@ -21,9 +21,6 @@ export const UtxoDetailsFactory = scope({
     data_hash: "string | null",
     inline_datum: "string | null",
     reference_script_hash: "string | null",
-    // uutIds is computed locally, not provided by Blockfrost
-    // REQT/gbzxxv71m8 (UTXO Entity)
-    "uutIds?": "string[]",
  }}).export().UtxoDetails;
  export type UtxoDetailsType = typeof UtxoDetailsFactory.infer
 
