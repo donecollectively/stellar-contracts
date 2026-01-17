@@ -20,7 +20,7 @@ The UtxoIndex provides a persistent, efficient cache of UTXOs (Unspent Transacti
 
 The indexer operates as a **dedicated Capo monitor** with a simplified architecture:
 
- - **Single-Address Monitoring**: Because the charter token resides at the Capo address and every transaction affecting delegate-UUTs or delegated-data records must touch the Capo address (for charter reference), only the Capo address needs monitoring
+ - **Single-Address Monitoring**: Because the charter token resides at the Capo address and every transaction affecting delegate-UUTs or delegated-data records must touch the Capo address (for charter reference or the records themselves), only the Capo address needs monitoring
  - **UUT Cataloging**: Delegate UUTs at external script addresses are discovered from the charter and cataloged via Blockfrost queries for fast lookups
  - **Delegate UUT Detection**: When delegate UUTs are moved to new UTXOs due to transaction activity, the catalog is updated to reflect the current UTXO location
  - **Charter Change Detection**: When the charter UTXO (mph.charter token) appears in a transaction, the indexer re-catalogs delegate UUTs
@@ -110,7 +110,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 4. **Delegate UUT Cataloging**:
    - MUST discover delegate UUTs from charter data (mint delegate, spend delegate, gov authority, other named delegates, dgData controllers)
    - MUST query Blockfrost for each UUT using `capoMph + uutName` to find current UTXO location
-   - MUST store UUT→UTXO mapping via `store.saveUUT()`
+   - MUST store UUT identifiers in the UTXO's `uutIds` array field
    - MUST handle missing delegates gracefully (log warnings, continue processing)
    - MUST use UNCACHED hint (`findCached: false`) to ensure fresh network fetches rather than cached values
 
@@ -132,12 +132,12 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
 1. **Interface Definition**:
    - MUST define `UtxoStoreGeneric` interface specifying all storage operations
-   - MUST support operations: `log()`, `findBlockId()`, `saveBlock()`, `findUtxoId()`, `saveUtxo()`, `findTxId()`, `saveTx()`, `saveUUT()`, `findUtxoByUUT()`
+   - MUST support operations: `log()`, `findBlockId()`, `saveBlock()`, `findUtxoId()`, `saveUtxo()`, `findTxId()`, `saveTx()`, `findUtxoByUUT()`
 
 2. **Dexie Implementation**:
    - MUST implement `DexieUtxoStore` extending Dexie and implementing `UtxoStoreGeneric`
-   - MUST define database schema with tables: `blocks`, `utxos`, `txs`, `logs`, `delegateUuts`
-   - MUST support indexed queries: blocks by hash/height, utxos by utxoId, delegateUuts by uutId
+   - MUST define database schema with tables: `blocks`, `utxos`, `txs`, `logs`
+   - MUST support indexed queries: blocks by hash/height, utxos by utxoId and by uutIds (multiEntry)
    - MUST generate unique process IDs (pid) for logging sessions
 
 3. **Logging System**:
@@ -215,25 +215,25 @@ The core class that orchestrates UTXO indexing, transaction monitoring, and bloc
 #### Purpose
 Establishes the foundational data structures and initialization sequence for the indexer. Applied when implementing or modifying constructor logic, core data types, or initial setup procedures.
 
- - **REQT-1.1.1**/xxkzfx9gf4: COMPLETED: **Constructor & Initialization** - Must accept `capo`, `blockfrostKey`, and optional `storeIn` strategy. Must determine Blockfrost base URL from API key prefix (mainnet/preprod/preview). Must initialize storage backend based on strategy. Must trigger `syncNow()` after initialization.
- - **REQT-1.1.2**/9a0nx1gr4b: NEXT: **Core State** - Must maintain: `capoAddress` (bech32 string), `capoMph` (hex-encoded minting policy hash for filtering), `lastSyncedBlock` (last block height processed).
+ - **REQT-1.1.1**/xxkzfx9gf4: COMPLETED: **Constructor & Initialization** - Must accept `capo`, `blockfrostKey`, and optional `storeIn` strategy. Must determine Blockfrost base URL from API key prefix (mainnet/preprod/preview). Must initialize storage backend based on strategy. `static async createAndSync()` must trigger `async syncNow()` after construction and initialization.
+ - **REQT-1.1.2**/9a0nx1gr4b: NEXT: **Core State** - Must maintain: `capoAddress` (bech32 string), `capoMph` (hex-encoded minting policy hash for filtering), `lastBlockHeight` (last block height processed), `lastBlockId`.
 
 ### REQT-1.2/y034z487y5: NEXT: **UUT Cataloging & Charter Tracking**
 
 #### Purpose
 Governs delegate UUT discovery, cataloging, and updates based on charter changes. Applied when implementing charter traversal logic, UUT cataloging, or charter change detection mechanisms.
 
- - **REQT-1.2.1**/k0mnv27tz4: NEXT: **UUT Catalog from Charter** - Must implement `catalogDelegateUuts(charterData)` to discover and catalog all delegate UUTs. Must iterate through delegate types in charter (mint delegate, spend delegate, gov authority, other named delegates, dgData controllers). For each delegate, must query Blockfrost for the UUT using `capoMph + uutName`. Must store UUT→UTXO mapping via `store.saveUUT(uutId, utxoId)`.
+ - **REQT-1.2.1**/k0mnv27tz4: NEXT: **UUT Catalog from Charter** - Must implement `catalogDelegateUuts(charterData)` to discover and catalog all delegate UUTs. Must iterate through delegate types in charter (mint delegate, spend delegate, gov authority, other named delegates, dgData controllers). For each delegate, must query Blockfrost for the UUT using `capoMph + uutName` to find its current UTXO. Must store UUT identifiers in the UTXO's `uutIds` array.
  - **REQT-1.2.2**/xrdj6qpgnj: NEXT: **Charter Change Detection** - Must detect charter UTXO state changes during routine transaction monitoring. When processing transaction outputs, must check for presence of `mph.charter` token. Upon detecting charter token, must call `capo.findCharterData()` to fetch updated charter and invoke `catalogDelegateUuts()` to refresh UUT catalog.
- - **REQT-1.2.3**/m29vd4vr3q: NEXT: **UUT Movement Detection** - During transaction processing, must detect when delegate UUTs are moved to new UTXOs. Must update the UUT catalog via `store.saveUUT()` to reflect the new UTXO location.
+ - **REQT-1.2.3**/m29vd4vr3q: NEXT: **UUT Movement Detection** - During transaction processing, must detect when delegate UUTs are moved to new UTXOs. Must store the new UTXO with the UUT identifier in its `uutIds` array.
 
 ### REQT-1.3/3zx9pcggch: NEXT: **Synchronization & Monitoring**
 
 #### Purpose
 Defines how the indexer performs initial synchronization and ongoing transaction monitoring of the Capo address. Applied when implementing sync logic, periodic monitoring, or transaction processing.
 
- - **REQT-1.3.1**/vk2bywdycn: NEXT: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via Blockfrost. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
- - **REQT-1.3.2**/fh56sce22g: NEXT: **Transaction Monitoring** - Must implement `checkForNewTxns()` to check for new transactions at `capoAddress`. Must query Blockfrost `addresses/{capoAddress}/transactions` endpoint with `order=desc`, `count=100`, and `from` parameter set to `lastSyncedBlock`. Must process each new transaction via `processTransactionForNewUtxos()`. Must update `lastSyncedBlock` on success.
+ - **REQT-1.3.1**/vk2bywdycn: NEXT: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via underlying provider (`capo.findCapoUtxos( {findCached: false} )`. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
+ - **REQT-1.3.2**/fh56sce22g: NEXT: **Transaction Monitoring** - Must implement `checkForNewTxns()` to check for new transactions at `capoAddress`. Must query Blockfrost `addresses/{capoAddress}/transactions` endpoint with `order=desc`, `count=100`, and `from` parameter set to last synced block. Must process each new transaction via `processTransactionForNewUtxos()`. Must update last synced block details on success.
  - **REQT-1.3.3**/0vrkpk6a6h: NEXT: **Transaction Processing** - Must implement `processTransactionForNewUtxos()` to extract and index relevant UTXOs from transactions. Must fetch full transaction CBOR and decode using Helios `decodeTx()`. Must examine each transaction output. Must check if UTXO already exists in store via `store.findUtxoId()`. Must index new UTXOs via `indexUtxoFromOutput()`. Must update UUT catalog if delegate UUTs moved.
     - **REQT-1.3.4**/mvjrak021s: NEXT: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to store UTXO id and any mph-matching token values for later search. Must extract inline datum as binary data or datum hash. Must save to store via `store.saveUtxo()`.
 
@@ -266,7 +266,7 @@ Defines the contract for storage backends, allowing the indexer to work with dif
 #### Purpose
 Establishes the abstraction layer for storage backends. Applied when implementing new storage strategies, modifying storage operations, or understanding the data persistence contract.
 
- - **REQT-2.1.1**/nhbqmacrwn: NEXT: **Interface Methods** - Must define `UtxoStoreGeneric` interface with methods: `log()`, `findBlockId()`, `saveBlock()`, `findUtxoId()`, `saveUtxo()`, `findTxId()`, `saveTx()`, `saveUUT()`, `findUtxoByUUT()`
+ - **REQT-2.1.1**/nhbqmacrwn: NEXT: **Interface Methods** - Must define `UtxoStoreGeneric` interface with methods: `log()`, `findBlockId()`, `saveBlock()`, `findUtxoId()`, `saveUtxo()`, `findTxId()`, `saveTx()`, `findUtxoByUUT()`
  - **REQT-2.1.2**/bq0ammh636: NEXT: **Type Definitions** - Must define `txCBOR` type with `txid` and `cbor` fields.
 
 ### Component: DexieUtxoStore Class
@@ -279,7 +279,7 @@ Dexie-based implementation of `UtxoStoreGeneric` providing persistent browser st
 #### Purpose
 Defines the IndexedDB schema and entity mappings for the Dexie storage backend. Applied when modifying database structure, adding tables, or changing indexes.
 
- - **REQT-3.1.1**/6h4f158gvs: NEXT: **Database Definition** - Must extend Dexie with database name "StellarDappIndex-v0.1". Must define schema with tables: `blocks` (hash, height), `utxos` (utxoId, blockId, blockHeight), `txs` (txid), `logs` (logId, [pid,time]), `delegateUuts` (uutId, delegateRole, address).
+ - **REQT-3.1.1**/6h4f158gvs: NEXT: **Database Definition** - Must extend Dexie with database name "StellarDappIndex-v0.1". Must define schema with tables and indexed fields: `blocks` (hash, height), `utxos` (utxoId, *uutIds, blockHeight), `txs` (txid), `logs` (logId, [pid,time]).
  - **REQT-3.1.2**/exv4s020a0: NEXT: **Entity Mapping** - Must map tables to appropriate Dexie Entity classes for type-safe storage.
 
 ### REQT-3.2/754gq4cbqk: NEXT: **Logging & Process Management**
@@ -298,7 +298,7 @@ Implements CRUD operations for blocks, UTXOs, transactions, and UUT catalog. App
  - **REQT-3.3.1**/76e18y06kp: NEXT: **Block Storage** - Must implement `findBlockId()` and `saveBlock()` using Dexie operations.
  - **REQT-3.3.2**/1gw45sp198: NEXT: **UTXO Storage** - Must implement `findUtxoId()` and `saveUtxo()` using Dexie operations.
  - **REQT-3.3.3**/nm2ed7m80y: NEXT: **Transaction Storage** - Must implement `findTxId()` and `saveTx()` using Dexie operations.
- - **REQT-3.3.4**/cchf3wgnk3: NEXT: **UUT Catalog Storage** - Must implement `saveUUT(uutId, utxoId)` and `findUtxoByUUT(uutId)` using Dexie operations on delegateUuts table.
+ - **REQT-3.3.4**/cchf3wgnk3: NEXT: **UUT Catalog Storage** - Must implement `extractUutIds(utxoTokens, capoMph)` helper to identify delegate UUTs from UTXO token values (matching capoMph and UUT naming pattern `/{purpose:[a-z]+}-{hash:crockford base32{12}}/`), returning an array. Must implement `findUtxoByUUT(uutId)` to query utxos table by uutIds multiEntry index. UUT indexing occurs within `saveUtxo()` using the extracted uutIds array.
 
 ### REQT-3.4/z7ykwww22z: BACKLOG: **Alternative Storage Backends**
 
@@ -332,9 +332,9 @@ Dexie Entity classes for type-safe storage of indexed data.
 Defines Dexie Entity classes for type-safe storage. Applied when modifying database entity structure.
 
  - **REQT-5.1.1**/dzx5harnk4: NEXT: **Block Entity** - Must store block details with hash as primary key and height indexed.
- - **REQT-5.1.2**/gbzxxv71m8: NEXT: **UTXO Entity** - Must store UTXO details with utxoId as primary key. Must include mph-matching token values and inline datum/datumHash.
+ - **REQT-5.1.2**/gbzxxv71m8: NEXT: **UTXO Entity** - Must store UTXO details with utxoId as primary key. Must include mph-matching token values and inline datum/datumHash. Must include `uutIds` field as an array (possibly empty) with secondary index for UUT lookups.
  - **REQT-5.1.3**/cj6nm0mpm1: NEXT: **Log Entity** - Must store log entries with logId, pid, time, and message.
- - **REQT-5.1.4**/nt1pqd3m3z: NEXT: **UUT Catalog Entity** - Must store UUT catalog entries with uutId as primary key, mapping to utxoId, delegateRole, and address.
+ - **REQT-5.1.4**/nt1pqd3m3z: NEXT: **UUT Catalog Entity** - Must store UUT catalog entries by augmenting the UTXO entity with the uutIds array as a multiEntry secondary index
 
 ## Files
 
@@ -354,7 +354,7 @@ Defines Dexie Entity classes for type-safe storage. Applied when modifying datab
 UTXO IDs are constructed as `${txHash}#${outputIndex}` to uniquely identify each UTXO. This format matches the Helios `TxInput.id` format.
 
 ### UUT Cataloging Strategy
-Delegate UUTs at external script addresses are cataloged by querying Blockfrost for specific `capoMph + uutName` tokens after discovering them from the charter. The UUT→UTXO mapping enables fast lookups without monitoring multiple addresses.
+Delegate UUTs at external script addresses are cataloged by querying Blockfrost for specific `capoMph + uutName` tokens after discovering them from the charter. Each UTXO containing UUTs stores them in its `uutIds` array field, indexed via Dexie multiEntry for fast lookups.
 
 ### Block Height Tracking
 The indexer maintains `lastBlockHeight` to track the most recent block processed. This determines the starting point for transaction monitoring.

@@ -52,10 +52,9 @@ The UtxoIndex is a **dedicated UTXO monitor and cache** for Cardano smart contra
 **Schema** (v2):
 ```
 blocks: hash (PK), height
-utxos: utxoId (PK), blockId, blockHeight
+utxos: utxoId (PK), *uutIds (multiEntry), blockHeight
 txs: txid (PK)
 logs: logId (PK), [pid+time] (compound index)
-delegateUuts: uutId (PK), delegateRole, address
 ```
 
 #### UtxoStoreGeneric
@@ -66,9 +65,9 @@ delegateUuts: uutId (PK), delegateRole, address
 **Operations**:
 - `log(id, message)` - Structured logging
 - `findBlockId(id)` / `saveBlock(block)`
-- `findUtxoId(id)` / `saveUtxo(utxo)`
+- `findUtxoId(id)` / `saveUtxo(utxo)` - UTXOs include `uutIds` array for UUT lookups
 - `findTxId(id)` / `saveTx(tx)`
-- `saveUUT(id, utxoId)` / `findUtxoByUUT(id)`
+- `findUtxoByUUT(id)` - Query via multiEntry index on `uutIds`
 
 #### Blockfrost Integration
 **Purpose**: External blockchain data provider
@@ -141,7 +140,7 @@ interface UtxoStoreGeneric {
     findBlockId(id: string): Promise<BlockDetailsType | undefined>
     saveBlock(block: BlockDetailsType): Promise<void>
 
-    // UTXO operations
+    // UTXO operations (UTXOs include uutIds array for UUT catalog)
     findUtxoId(id: string): Promise<UtxoDetailsType | undefined>
     saveUtxo(utxo: UtxoDetailsType): Promise<void>
 
@@ -149,27 +148,16 @@ interface UtxoStoreGeneric {
     findTxId(id: string): Promise<txCBOR | undefined>
     saveTx(tx: txCBOR): Promise<void>
 
-    // UUT catalog operations
-    saveUUT(id: string, utxoId: string): Promise<void>
+    // UUT lookup via multiEntry index on uutIds
     findUtxoByUUT(id: string): Promise<UtxoDetailsType | undefined>
 }
 ```
 
 ### Data Types
 
-**CatalogEntry** (for delegate UUTs):
-```typescript
-type CatalogEntry = {
-    uutId: string      // UUT token name (unique identifier)
-    utxoId: string     // Current UTXO ID where this UUT resides
-    delegateRole: string  // Role name (e.g., "mintDelegate", "spendDelegate", dgDataPolicy name)
-    address: string    // Script address where the UUT is held
-}
-```
-
 **BlockDetailsType**: Blockfrost block response schema (hash, height, time, slot, epoch, tx_count, etc.)
 
-**UtxoDetailsType**: Blockfrost UTXO response schema (address, tx_hash, output_index, amount[], block, inline_datum, etc.)
+**UtxoDetailsType**: Blockfrost UTXO response schema (address, tx_hash, output_index, amount[], block, inline_datum, etc.) plus `uutIds: string[]` for UUT catalog lookups via multiEntry index.
 
 ---
 
@@ -198,7 +186,7 @@ type CatalogEntry = {
 │ catalogDelegateUuts()            │
 │ For each delegate in charter:    │
 │ - Find authority token UTXO      │──────► blockfrost query(capoMph+UUTname)
-│ - Store UUT → UTXO mapping       │──────► store.saveUUT(uutId, utxoId)
+│ - Store UTXO with uutIds array   │──────► store.saveUtxo(utxo)
 └──────────────────────────────────┘
 ```
 
@@ -223,9 +211,8 @@ type CatalogEntry = {
 │ processTransactionForNewUtxos│
 │ 1. Fetch full tx CBOR        │──────► GET txs/{txHash}/cbor
 │ 2. Decode transaction        │──────► Helios.decodeTx()
-│ 3. Index new UTXOs           │──────► store.saveUtxo()
-│ 4. Update UUT catalog        │──────► store.saveUUT() (if delegate UUT moved to new UTXO)
-│ 5. Update lastSyncedBlock    │
+│ 3. Index new UTXOs           │──────► store.saveUtxo() (includes uutIds)
+│ 4. Update lastSyncedBlock    │
 └──────────────────────────────┘
 ```
 
@@ -309,7 +296,7 @@ This usage SHOULD match with other helios network-clients and be used via the sa
 - **Simplicity**: No address discovery, tracking, or per-address sync state needed
 - **Efficiency**: One address to poll instead of many; no complex address lifecycle management
 
-**UUT Cataloging**: Delegate UUTs at external script addresses are cataloged by discovering them in the Capo charter, finding them in blockfrost via `capoMph + uutName`, then storing the UUT→UTXO mapping for fast lookups.
+**UUT Cataloging**: Delegate UUTs at external script addresses are cataloged by discovering them in the Capo charter, finding them via Blockfrost using `capoMph + uutName`, then storing the UTXO with its `uutIds` array for fast lookups via multiEntry index.
 
 ### Storage Abstraction
 
