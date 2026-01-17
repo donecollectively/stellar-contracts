@@ -246,15 +246,15 @@ Governs interactions with Blockfrost API, block/transaction management, and data
  - **REQT-1.4.2**/sy05qvrfd0: COMPLETED: **Transaction Fetching with Caching** - Must implement `findOrFetchTxDetails()` to retrieve transaction CBOR with cache-first strategy. Must check store via `store.findTxId()`. On cache miss, must query Blockfrost `txs/{txId}/cbor` endpoint, save CBOR to store via `store.saveTx()`, and decode using Helios `decodeTx()`. Must return decoded `Tx` object.
  - **REQT-1.4.3**/cdhjy5k8at: COMPLETED: **Blockfrost HTTP Client** - Must implement `fetchFromBlockfrost()` generic HTTP client for Blockfrost API. Must construct full URL from `blockfrostBaseUrl` and relative path parameter. Must include `project_id` header with `blockfrostKey` value. Must parse JSON responses. On HTTP errors, must log error and throw descriptive error.
 
-### REQT-1.5/8x3f5pv2kd: BACKLOG: **Future Enhancements & Optimizations**
+### REQT-1.5/8x3f5pv2kd: NEXT: **Future Enhancements & Optimizations**
 
 #### Purpose
 Documents planned features and performance improvements not yet implemented. Applied when planning future development cycles, evaluating architectural extensions, or prioritizing feature roadmap.
 
  - **REQT-1.5.1**/jz6zf4py6n: BACKLOG: **Invariant Support** - Must extend UUT cataloging logic to index spend invariants and mint invariants from charter data.
- - **REQT-1.5.2**/zzsg63b2fb: BACKLOG: **Automated Periodic Refresh** - Must implement timer-based refresh using defined intervals (`refreshInterval` 60 seconds for transaction monitoring). Must trigger `checkForNewTxns()` on refresh interval.
+ - **REQT-1.5.2**/zzsg63b2fb: NEXT: **Automated Periodic Refresh** - Must implement timer-based refresh using defined intervals (`refreshInterval` 60 seconds for transaction monitoring). Must trigger `checkForNewTxns()` on refresh interval.
  - **REQT-1.5.3**/0aewmbbfct: BACKLOG: **Pagination for High-Volume Activity** - Must handle cases where `addresses/{address}/transactions` endpoint returns 100+ results in single monitoring cycle. Must implement pagination strategy to fetch additional pages when response count equals limit.
- - **REQT-1.5.4**/50zkk5xgrx: BACKLOG: **Query API Methods** - Must provide public query interface for indexed UTXOs. Must implement `findUtxoId(id)`, `findUtxoByUUT(uutId)`, and queries by asset (mph, tokenName). Must support filtering and pagination options.
+ - **REQT-1.5.4**/50zkk5xgrx: NEXT: **Query API Methods** - Must provide public query interface for indexed UTXOs. Must implement `findUtxoId(id)`, `findUtxoByUUT(uutId)`, and queries by asset (mph, tokenName). Must support filtering and pagination options.
 
 ### Component: UtxoStoreGeneric Interface
 
@@ -395,6 +395,10 @@ All UUT storage infrastructure is now in place:
 * Renamed `indexDelegateUuts()` to `catalogDelegateUuts()` per requirements (REQT-1.2.1)
 * Renamed `monitorForNewTransactions()` to `checkForNewTxns()` per requirements (REQT-1.3.2)
 * Updated `processTransactionForNewUtxos()` to index ALL outputs, not just UUT-containing ones (REQT-1.3.3)
+
+#### NEXT: v2 Features
+* Implement automated periodic refresh with timer-based `checkForNewTxns()` (REQT-1.5.2)
+* Implement public query API methods: `findUtxoId()`, `findUtxoByUUT()`, asset queries (REQT-1.5.4)
 
 ## Release Management Plan
 
