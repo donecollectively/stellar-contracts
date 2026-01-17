@@ -44,6 +44,8 @@ The UtxoIndex is a **dedicated UTXO monitor and cache** for Cardano smart contra
 
 **Type Boundary**: CachedUtxoIndex is the **only component** that works with Helios types (`TxOutput`, `Tx`, `MintingPolicyHash`, etc.). It converts these to `UtxoIndexEntry` before passing to the store.
 
+**ReadonlyCardanoClient Conformance**: CachedUtxoIndex implements the Helios `ReadonlyCardanoClient` interface (REQT/rc7km2x8hp) to enable seamless integration with Helios transaction building. This allows the indexer to be used as a drop-in replacement for network clients, providing cached UTXO lookups during transaction construction.
+
 **Key Method - `indexUtxoFromOutput()`**:
 - Takes: `txHash: string`, `outputIndex: number`, `output: TxOutput` (Helios type)
 - Extracts UUT IDs using `capo.mph`
@@ -260,15 +262,47 @@ new CachedUtxoIndex({
 })
 ```
 
-**Core Methods** (currently internal, may be exposed):
+**Core Methods**:
 - `syncNow(): Promise<void>` - Full synchronization of Capo address and UUT catalog
 - `checkForNewTxns(): Promise<void>` - Check for new transactions at Capo address
 - `catalogDelegateUuts(charterData: CharterData): Promise<void>` - Catalog delegate UUTs from charter
+- `startPeriodicRefresh(): void` - Start automatic 60-second monitoring interval
+- `stopPeriodicRefresh(): void` - Stop automatic monitoring
 
-**Future Query API** (BACKLOG):
-- `queryUtxosByAddress(address: string): Promise<UtxoIndexEntry[]>`
-- `queryUtxosByAsset(mph: string, tokenName?: string): Promise<UtxoIndexEntry[]>`
-- `queryUtxosByDelegate(delegateRole: string): Promise<UtxoIndexEntry[]>`
+**ReadonlyCardanoClient Interface** (REQT/rc7km2x8hp):
+The indexer implements the Helios `ReadonlyCardanoClient` interface for transaction building integration:
+
+```typescript
+interface ReadonlyCardanoClient {
+  getTx?: (id: TxId) => Promise<Tx>
+  getUtxo(id: TxOutputId): Promise<TxInput>
+  getUtxos(address: Address): Promise<TxInput[]>
+  getUtxosWithAssetClass?: (address: Address, assetClass: AssetClass) => Promise<TxInput[]>
+  hasUtxo(utxoId: TxOutputId): Promise<boolean>
+  isMainnet(): boolean
+  now: number
+  parameters: Promise<NetworkParams>
+}
+```
+
+| Method | Status | REQT |
+|--------|--------|------|
+| `isMainnet()` | COMPLETED | REQT/gy8z4a7pu |
+| `hasUtxo(id)` | COMPLETED | REQT/gw6x2y5ns |
+| `getTx(id)` | NEXT | REQT/gx7y3z6ot |
+| `getUtxo(id)` | COMPLETED | REQT/gt3ux9v2kp |
+| `getUtxos(address)` | NEXT | REQT/gu4vy0w3lq |
+| `getUtxosWithAssetClass(address, asset)` | NEXT | REQT/gv5wz1x4mr |
+| `now` | NEXT | REQT/gz9a5b8qv |
+| `parameters` | NEXT | REQT/ha0b6c9rw |
+
+**Address Validation**: `getUtxosWithAssetClass()` MUST throw an error if the requested address is not the Capo address or a delegate-policy address. The indexer only tracks UTXOs at these addresses; requests for other addresses should fail explicitly rather than return empty results.
+
+**Query API Methods** (REQT/50zkk5xgrx):
+- `findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined>`
+- `findUtxosByAsset(policyId, tokenName?, options?): Promise<UtxoIndexEntry[]>`
+- `findUtxosByAddress(address, options?): Promise<UtxoIndexEntry[]>`
+- `getAllUtxos(options?): Promise<UtxoIndexEntry[]>`
 
 ### Storage Interface (UtxoStoreGeneric)
 
@@ -483,6 +517,22 @@ This usage SHOULD match with other helios network-clients and be used via the sa
 
 **Implementation**: When processing transaction outputs, check for charter UUT. If found, re-catalog delegate UUTs to capture any new or changed delegates.
 
+### ReadonlyCardanoClient Conformance
+
+**Decision**: Implement Helios `ReadonlyCardanoClient` interface (REQT/rc7km2x8hp)
+
+**Rationale**:
+- **Integration**: Enables direct use with Helios transaction building APIs
+- **Drop-in replacement**: Can substitute for network clients during transaction construction
+- **Performance**: Provides cached UTXO lookups instead of network calls
+- **Consistency**: Standard interface familiar to Helios ecosystem users
+
+**Implementation**: CachedUtxoIndex exposes the full ReadonlyCardanoClient interface:
+- `getUtxo()`, `getUtxos()`, `getUtxosWithAssetClass()` for UTXO queries
+- `hasUtxo()` for existence checks
+- `getTx()` for transaction retrieval
+- `isMainnet()`, `now`, `parameters` for network state
+
 ---
 
 ## Key Expectations
@@ -506,5 +556,5 @@ This usage SHOULD match with other helios network-clients and be used via the sa
 
 ---
 
-**Document Version**: 1.2
-**Last Updated**: 2026-01-17
+**Document Version**: 1.3
+**Last Updated**: 2026-01-17 - Added ReadonlyCardanoClient conformance (REQT/rc7km2x8hp)

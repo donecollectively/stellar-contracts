@@ -18,9 +18,16 @@ import {
     makeAddress,
     makeAssetClass,
     makeValidatorHash,
+    makeTxInput,
+    makeTxOutput,
+    makeTxOutputId,
+    makeValue,
+    type Address,
+    type AssetClass,
     type Tx,
     type TxInput,
     type TxOutput,
+    type TxOutputId,
     type MintingPolicyHash,
 } from "@helios-lang/ledger";
 import { bytesToHex } from "@helios-lang/codec-utils";
@@ -73,6 +80,30 @@ export class CachedUtxoIndex {
     // REQT/9a0nx1gr4b (Core State) - expose capoMph for external access
     get capoMph(): string {
         return this.capo.mph.toHex();
+    }
+
+    // =========================================================================
+    // REQT/rc7km2x8hp: ReadonlyCardanoClient Interface Conformance
+    // =========================================================================
+
+    /**
+     * Returns whether the network is mainnet.
+     *
+     * REQT/gy8z4a7pu (isMainnet Method)
+     */
+    isMainnet(): boolean {
+        return this.capo.setup.isMainnet;
+    }
+
+    /**
+     * Checks if a UTXO exists in the cache.
+     *
+     * REQT/gw6x2y5ns (hasUtxo Method)
+     */
+    async hasUtxo(utxoId: TxOutputId): Promise<boolean> {
+        const id = utxoId.toString();
+        const entry = await this.store.findUtxoId(id);
+        return entry !== undefined;
     }
 
     constructor({
@@ -858,12 +889,53 @@ export class CachedUtxoIndex {
     // =========================================================================
 
     /**
-     * Finds a UTXO by its ID (txHash#outputIndex).
-     *
-     * REQT/50zkk5xgrx (Query API Methods)
+     * Converts a UtxoIndexEntry back to a Helios TxInput.
+     * This is the inverse of txOutputToIndexEntry.
      */
-    async findUtxoById(utxoId: string): Promise<UtxoIndexEntry | undefined> {
-        return this.store.findUtxoId(utxoId);
+    private indexEntryToTxInput(entry: UtxoIndexEntry): TxInput {
+        // Parse utxoId to get txHash and outputIndex
+        const [txHash, indexStr] = entry.utxoId.split("#");
+        const outputIndex = parseInt(indexStr, 10);
+
+        // Create TxOutputId
+        const txOutputId = makeTxOutputId(txHash, outputIndex);
+
+        // Create Value from lovelace and tokens
+        const assets: [AssetClass, bigint][] = entry.tokens.map((t) => [
+            makeAssetClass(`${t.policyId}.${t.tokenName}`),
+            t.quantity,
+        ]);
+        const value = makeValue(entry.lovelace, assets);
+
+        // Create TxOutput
+        const address = makeAddress(entry.address);
+        const datum = entry.inlineDatum
+            ? { inline: entry.inlineDatum }
+            : entry.datumHash
+              ? { hash: entry.datumHash }
+              : undefined;
+
+        const txOutput = makeTxOutput(address, value, datum);
+
+        return makeTxInput(txOutputId, txOutput);
+    }
+
+    /**
+     * Retrieves a UTXO by its output ID.
+     * Implements ReadonlyCardanoClient.getUtxo
+     *
+     * REQT/gt3ux9v2kp (getUtxo Method)
+     */
+    async getUtxo(id: TxOutputId): Promise<TxInput> {
+        const utxoId = id.toString();
+        const entry = await this.store.findUtxoId(utxoId);
+
+        if (entry) {
+            return this.indexEntryToTxInput(entry);
+        }
+
+        // Fall back to network if not in cache
+        return this.network.getUtxo(id);
     }
 
     /**

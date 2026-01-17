@@ -29,6 +29,28 @@ The indexer operates as a **dedicated Capo monitor** with a simplified architect
 
 **Related technologies**: Capo (provides charter data and delegate discovery), browser IndexedDB (underlying storage).
 
+### Helios ReadonlyCardanoClient Conformance
+
+The CachedUtxoIndex MUST implement the Helios `ReadonlyCardanoClient` interface to enable seamless integration with Helios transaction building and validation:
+
+```typescript
+interface ReadonlyCardanoClient {
+  getTx?: (id: TxId) => Promise<Tx>
+  getUtxo(id: TxOutputId): Promise<TxInput>
+  getUtxos(address: Address): Promise<TxInput[]>
+  getUtxosWithAssetClass?: (
+    address: Address,
+    assetClass: AssetClass
+  ) => Promise<TxInput[]>
+  hasUtxo(utxoId: TxOutputId): Promise<boolean>
+  isMainnet(): boolean
+  now: number
+  parameters: Promise<NetworkParams>
+}
+```
+
+This conformance enables the indexer to be used directly as a network client for transaction building, replacing or augmenting the underlying Blockfrost/network client with cached data for faster operations.
+
 ### Must Read: Special Skills and Know-how
 
 This section provides directives for proactive-research triggers. People and agents should use these to recognize the triggers for specialized material to be considered highly relevant.
@@ -256,6 +278,20 @@ Documents planned features and performance improvements not yet implemented. App
  - **REQT-1.5.3**/0aewmbbfct: BACKLOG: **Pagination for High-Volume Activity** - Must handle cases where `addresses/{address}/transactions` endpoint returns 100+ results in single monitoring cycle. Must implement pagination strategy to fetch additional pages when response count equals limit.
  - **REQT-1.5.4**/50zkk5xgrx: COMPLETED: **Query API Methods** - Must provide public query interface for indexed UTXOs. Must implement `findUtxoId(id)`, `findUtxoByUUT(uutId)`, and queries by asset (mph, tokenName). Must support filtering and pagination options.
 
+### REQT-1.6/rc7km2x8hp: NEXT: **ReadonlyCardanoClient Interface Conformance**
+
+#### Purpose
+Ensures the CachedUtxoIndex can be used as a drop-in replacement for Helios network clients, enabling cached UTXO lookups during transaction building. Applied when implementing or modifying the public API to match Helios interface contracts.
+
+ - **REQT-1.6.1**/gt3ux9v2kp: COMPLETED: **getUtxo Method** - Must implement `getUtxo(id: TxOutputId): Promise<TxInput>` to retrieve a single UTXO by its output ID. Must return Helios `TxInput` type. Must check local cache first, then fall back to network if not found.
+ - **REQT-1.6.2**/gu4vy0w3lq: NEXT: **getUtxos Method** - Must implement `getUtxos(address: Address): Promise<TxInput[]>` to retrieve all UTXOs at an address. Must return array of Helios `TxInput` types. Must use cached data when available.
+ - **REQT-1.6.3**/gv5wz1x4mr: NEXT: **getUtxosWithAssetClass Method** - Must implement `getUtxosWithAssetClass(address: Address, assetClass: AssetClass): Promise<TxInput[]>` to retrieve UTXOs containing a specific asset. Must filter by both address and asset class. MUST throw an error if the address is not the Capo address or one of the delegate-policy addresses (indexed addresses only).
+ - **REQT-1.6.4**/gw6x2y5ns: COMPLETED: **hasUtxo Method** - Must implement `hasUtxo(utxoId: TxOutputId): Promise<boolean>` to check if a UTXO exists. Must return true if found in cache or on network.
+ - **REQT-1.6.5**/gx7y3z6ot: NEXT: **getTx Method** - Must implement `getTx(id: TxId): Promise<Tx>` to retrieve a transaction by ID. Must use cached transaction CBOR when available, falling back to network fetch.
+ - **REQT-1.6.6**/gy8z4a7pu: COMPLETED: **isMainnet Method** - Must implement `isMainnet(): boolean` to indicate network type. Must return value based on Capo's network configuration.
+ - **REQT-1.6.7**/gz9a5b8qv: NEXT: **now Property** - Must implement `now: number` property returning current slot number. Must be kept in sync with latest block information.
+ - **REQT-1.6.8**/ha0b6c9rw: NEXT: **parameters Property** - Must implement `parameters: Promise<NetworkParams>` to provide network parameters. Must fetch from underlying network client or cache.
+
 ### Component: UtxoStoreGeneric Interface
 
 #### Overview
@@ -398,7 +434,17 @@ All UUT storage infrastructure is now in place:
 
 #### COMPLETED: v2 Features
 * Implemented automated periodic refresh with timer-based `checkForNewTxns()` (REQT/zzsg63b2fb)
-* Implemented public query API methods: `findUtxoById()`, `findUtxoByUUT()`, `findUtxosByAsset()`, `findUtxosByAddress()`, `getAllUtxos()` (REQT/50zkk5xgrx)
+* Implemented public query API methods: `findUtxoByUUT()`, `findUtxosByAsset()`, `findUtxosByAddress()`, `getAllUtxos()` (REQT/50zkk5xgrx)
+
+#### IN-PROGRESS: ReadonlyCardanoClient Conformance (REQT/rc7km2x8hp)
+* DONE: `isMainnet()` (REQT/gy8z4a7pu)
+* DONE: `hasUtxo(utxoId)` (REQT/gw6x2y5ns)
+* DONE: `getUtxo(id)` returning Helios `TxInput` (REQT/gt3ux9v2kp)
+* Implement `getUtxos(address)` returning `TxInput[]` (REQT/gu4vy0w3lq)
+* Implement `getUtxosWithAssetClass(address, assetClass)` (REQT/gv5wz1x4mr)
+* Implement `getTx(id)` (REQT/gx7y3z6ot)
+* Implement `now` property (REQT/gz9a5b8qv)
+* Implement `parameters` property (REQT/ha0b6c9rw)
 
 ## Release Management Plan
 
