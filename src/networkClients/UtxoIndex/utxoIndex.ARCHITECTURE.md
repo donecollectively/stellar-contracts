@@ -110,7 +110,7 @@ logs: logId (PK), [pid+time] (compound index)
 #### Blockfrost Integration
 **Purpose**: External blockchain data provider
 
-**Mechanism**: REST API accessed via `fetchFromBlockfrost()` method
+**Mechanism**: REST API accessed via `fetchFromBlockfrost()` method in CachedUtxoIndex
 
 **Endpoints Used**:
 - `blocks/latest` - Current blockchain tip
@@ -121,7 +121,108 @@ logs: logId (PK), [pid+time] (compound index)
 
 **Authentication**: Project ID in request headers
 
-**Validation**: All responses validated with ArkType before storage
+**Validation**: All responses validated with ArkType factories in `blockfrostTypes/*.ts`
+
+#### blockfrostTypes (Validation Only)
+**Purpose**: ArkType schemas for validating Blockfrost API responses
+
+**Location**: `blockfrostTypes/*.ts`
+
+**IMPORTANT**: These types are **ONLY** for validating data received from Blockfrost. They must **NOT** be used for storage. After validation, data is converted to storage-agnostic types (`UtxoIndexEntry`, `BlockIndexEntry`, etc.) before being passed to the store.
+
+**Files**:
+- `BlockDetails.ts` - Block response validation
+- `AddressTransactionSummaries.ts` - Transaction list validation
+- `UtxoDetails.ts` - UTXO response validation (for API responses only)
+
+---
+
+## Responsibility Allocation
+
+This section defines where each specific area of functionality belongs.
+
+### External API Communication
+**Owner**: `CachedUtxoIndex`
+
+| Responsibility | Method/Location |
+|----------------|-----------------|
+| Fetch transaction CBOR from Blockfrost | `fetchFromBlockfrost()`, `findOrFetchTxDetails()` |
+| Fetch block details from Blockfrost | `fetchFromBlockfrost()`, `fetchAndStoreLatestBlock()` |
+| Fetch address transactions from Blockfrost | `fetchFromBlockfrost()`, `checkForNewTxns()` |
+| Fetch UTXOs by asset from Blockfrost | `fetchFromBlockfrost()` |
+| Determine Blockfrost URL from API key | Constructor |
+
+### Blockfrost Response Validation
+**Owner**: `blockfrostTypes/*.ts` (used by `CachedUtxoIndex`)
+
+| Responsibility | Location |
+|----------------|----------|
+| Validate block responses | `BlockDetailsFactory` |
+| Validate transaction summaries | `AddressTransactionSummariesFactory` |
+| Validate UTXO responses | `UtxoDetailsFactory` |
+
+**CONSTRAINT**: These validators produce transient objects. Data must be converted to storage types before persisting.
+
+### Helios Type Processing (Coupling Boundary)
+**Owner**: `CachedUtxoIndex`
+
+| Responsibility | Method |
+|----------------|--------|
+| Decode CBOR to Helios Tx | Uses `decodeTx()` from `@helios-lang/ledger` |
+| Extract UUT IDs from TxOutput.value | `extractUutIds()` (private helper) |
+| Convert TxOutput → UtxoIndexEntry | `indexUtxoFromOutput()` |
+| Access capo.mph for UUT pattern matching | Via `this.capo.mph` |
+
+**CONSTRAINT**: No other component may import from `@helios-lang/*`.
+
+### Storage Type Definitions
+**Owner**: `types/UtxoIndexEntry.ts`
+
+| Type | Purpose |
+|------|---------|
+| `UtxoIndexEntry` | Storage-agnostic UTXO with uutIds |
+| `BlockIndexEntry` | Block metadata for sync tracking |
+| `TxIndexEntry` | Transaction CBOR storage |
+
+**CONSTRAINT**: No imports from `@helios-lang/*` or `blockfrostTypes/*`.
+
+### Storage Interface Contract
+**Owner**: `UtxoStoreGeneric.ts`
+
+| Responsibility | Method |
+|----------------|--------|
+| Save UTXO entry | `saveUtxo(entry: UtxoIndexEntry)` |
+| Find UTXO by ID | `findUtxoByUtxoId(id: string)` |
+| Find UTXO by UUT | `findUtxoByUUT(uutId: string)` |
+| Save block entry | `saveBlock(block: BlockIndexEntry)` |
+| Find block by ID | `findBlockByBlockId(id: string)` |
+| Save transaction | `saveTx(tx: TxIndexEntry)` |
+| Find transaction | `findTxById(id: string)` |
+| Structured logging | `log(id, message)` |
+
+**CONSTRAINT**: Interface uses only types from `types/UtxoIndexEntry.ts`. No Helios, no Blockfrost types.
+
+### Sync Orchestration
+**Owner**: `CachedUtxoIndex`
+
+| Responsibility | Method |
+|----------------|--------|
+| Initial full sync | `syncNow()` |
+| Periodic transaction monitoring | `checkForNewTxns()` |
+| Process transaction outputs | `processTransactionForNewUtxos()` |
+| Index individual UTXO | `indexUtxoFromOutput()` |
+| Catalog delegate UUTs from charter | `catalogDelegateUuts()` |
+| Detect charter changes | Within `processTransactionForNewUtxos()` |
+
+### State Management
+**Owner**: `CachedUtxoIndex`
+
+| State | Access |
+|-------|--------|
+| Capo address (bech32) | `get capoAddress()` |
+| Capo minting policy hash | `get capoMph()` |
+| Last synced block ID | `lastBlockId` property |
+| Last synced block height | `lastBlockHeight` property |
 
 ---
 
@@ -405,5 +506,5 @@ This usage SHOULD match with other helios network-clients and be used via the sa
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Last Updated**: 2026-01-17
