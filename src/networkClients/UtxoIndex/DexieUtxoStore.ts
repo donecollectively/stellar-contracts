@@ -45,6 +45,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             logs: "logId,[pid,time]",
         });
 
+        // Schema v3: adds address index for REQT/50zkk5xgrx query API
+        this.version(3).stores({
+            blocks: "hash, height",
+            utxos: "utxoId, *uutIds, address",
+            txs: "txid",
+            logs: "logId,[pid,time]",
+        });
+
         this.blocks.mapToClass(dexieBlockDetails);
         this.utxos.mapToClass(dexieUtxoDetails);
         this.logs.mapToClass(indexerLogs);
@@ -123,5 +131,53 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
 
     async saveTx(tx: TxIndexEntry): Promise<void> {
         await this.txs.put(tx);
+    }
+
+    // REQT/50zkk5xgrx: Query API Methods
+
+    async findUtxosByAsset(
+        policyId: string,
+        tokenName?: string,
+        options?: { limit?: number; offset?: number }
+    ): Promise<UtxoIndexEntry[]> {
+        const { limit = 100, offset = 0 } = options ?? {};
+
+        // Get all UTXOs and filter by asset - Dexie doesn't have a native
+        // way to query nested array fields, so we filter in memory
+        const allUtxos = await this.utxos.toArray();
+
+        const filtered = allUtxos.filter((utxo) => {
+            return utxo.tokens.some((token) => {
+                if (token.policyId !== policyId) return false;
+                if (tokenName !== undefined && token.tokenName !== tokenName)
+                    return false;
+                return true;
+            });
+        });
+
+        return filtered.slice(offset, offset + limit);
+    }
+
+    async findUtxosByAddress(
+        address: string,
+        options?: { limit?: number; offset?: number }
+    ): Promise<UtxoIndexEntry[]> {
+        const { limit = 100, offset = 0 } = options ?? {};
+
+        return await this.utxos
+            .where("address")
+            .equals(address)
+            .offset(offset)
+            .limit(limit)
+            .toArray();
+    }
+
+    async getAllUtxos(options?: {
+        limit?: number;
+        offset?: number;
+    }): Promise<UtxoIndexEntry[]> {
+        const { limit = 100, offset = 0 } = options ?? {};
+
+        return await this.utxos.offset(offset).limit(limit).toArray();
     }
 }

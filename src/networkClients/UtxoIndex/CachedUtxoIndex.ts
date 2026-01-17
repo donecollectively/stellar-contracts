@@ -62,6 +62,9 @@ export class CachedUtxoIndex {
     capo: Capo<any, any>;
     network: CardanoClient;
 
+    // REQT/zzsg63b2fb: Timer for periodic refresh
+    private refreshTimerId: ReturnType<typeof setInterval> | null = null;
+
     // REQT/9a0nx1gr4b (Core State) - expose capoAddress for external access
     get capoAddress(): string {
         return this.capo.address.toBech32();
@@ -199,6 +202,51 @@ export class CachedUtxoIndex {
         for (const summary of transactionSummaries) {
             await this.processTransactionForNewUtxos(summary.tx_hash, summary);
         }
+    }
+
+    /**
+     * Starts periodic refresh timer to automatically check for new transactions.
+     *
+     * REQT/zzsg63b2fb (Automated Periodic Refresh)
+     */
+    startPeriodicRefresh(): void {
+        if (this.refreshTimerId) {
+            return; // Already running
+        }
+        this.store.log(
+            "pr5t1",
+            `Starting periodic refresh every ${refreshInterval / 1000} seconds`
+        );
+        this.refreshTimerId = setInterval(async () => {
+            try {
+                await this.checkForNewTxns();
+            } catch (e) {
+                console.warn("Periodic refresh failed:", e);
+                this.store.log("pr5er", `Periodic refresh error: ${e}`);
+            }
+        }, refreshInterval);
+    }
+
+    /**
+     * Stops the periodic refresh timer.
+     *
+     * REQT/zzsg63b2fb (Automated Periodic Refresh)
+     */
+    stopPeriodicRefresh(): void {
+        if (this.refreshTimerId) {
+            this.store.log("pr5t0", "Stopping periodic refresh");
+            clearInterval(this.refreshTimerId);
+            this.refreshTimerId = null;
+        }
+    }
+
+    /**
+     * Returns whether periodic refresh is currently active.
+     *
+     * REQT/zzsg63b2fb (Automated Periodic Refresh)
+     */
+    get isPeriodicRefreshActive(): boolean {
+        return this.refreshTimerId !== null;
     }
 
     /**
@@ -803,5 +851,64 @@ export class CachedUtxoIndex {
      */
     private formatUtxoId(txHash: string, outputIndex: number): string {
         return `${txHash}#${outputIndex}`;
+    }
+
+    // =========================================================================
+    // REQT/50zkk5xgrx: Public Query API Methods
+    // =========================================================================
+
+    /**
+     * Finds a UTXO by its ID (txHash#outputIndex).
+     *
+     * REQT/50zkk5xgrx (Query API Methods)
+     */
+    async findUtxoById(utxoId: string): Promise<UtxoIndexEntry | undefined> {
+        return this.store.findUtxoId(utxoId);
+    }
+
+    /**
+     * Finds a UTXO containing a specific UUT by its name.
+     *
+     * REQT/50zkk5xgrx (Query API Methods)
+     */
+    async findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined> {
+        return this.store.findUtxoByUUT(uutId);
+    }
+
+    /**
+     * Finds all UTXOs containing a specific asset (by policy ID and optional token name).
+     *
+     * REQT/50zkk5xgrx (Query API Methods)
+     */
+    async findUtxosByAsset(
+        policyId: string,
+        tokenName?: string,
+        options?: { limit?: number; offset?: number }
+    ): Promise<UtxoIndexEntry[]> {
+        return this.store.findUtxosByAsset(policyId, tokenName, options);
+    }
+
+    /**
+     * Finds all UTXOs at a specific address.
+     *
+     * REQT/50zkk5xgrx (Query API Methods)
+     */
+    async findUtxosByAddress(
+        address: string,
+        options?: { limit?: number; offset?: number }
+    ): Promise<UtxoIndexEntry[]> {
+        return this.store.findUtxosByAddress(address, options);
+    }
+
+    /**
+     * Returns all indexed UTXOs with optional pagination.
+     *
+     * REQT/50zkk5xgrx (Query API Methods)
+     */
+    async getAllUtxos(options?: {
+        limit?: number;
+        offset?: number;
+    }): Promise<UtxoIndexEntry[]> {
+        return this.store.getAllUtxos(options);
     }
 }

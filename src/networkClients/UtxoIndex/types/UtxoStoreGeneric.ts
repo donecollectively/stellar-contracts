@@ -30,4 +30,21 @@ export interface UtxoStoreGeneric {
     // UUT lookup via multiEntry index on uutIds
     // REQT/cchf3wgnk3 (UUT Catalog Storage)
     findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined>;
+
+    // REQT/50zkk5xgrx: Query API Methods with pagination support
+    findUtxosByAsset(
+        policyId: string,
+        tokenName?: string,
+        options?: { limit?: number; offset?: number }
+    ): Promise<UtxoIndexEntry[]>;
+
+    findUtxosByAddress(
+        address: string,
+        options?: { limit?: number; offset?: number }
+    ): Promise<UtxoIndexEntry[]>;
+
+    getAllUtxos(options?: {
+        limit?: number;
+        offset?: number;
+    }): Promise<UtxoIndexEntry[]>;
 }
