@@ -2,9 +2,7 @@
 
 ## System Overview
 
-The UtxoIndex is a **multi-address blockchain UTXO monitor and cache** for Cardano smart contracts built with Stellar Contracts. It provides persistent, browser-based storage of UTXOs needed for interacting with Capo contract instances, enabling fast local lookups and reducing redundant network queries.
-
-**Address Discovery and Monitoring**: Includes charter change detection in the Capo system. When delegate references in the charter are updated, the UtxoIndex automatically discovers new addresses to monitor.  The configuration for monitoring each address can vary to suit the type of utxo content that is stored in each address.
+The UtxoIndex is a **dedicated UTXO monitor and cache** for Cardano smart contracts built with Stellar Contracts. It provides persistent, browser-based storage of UTXOs needed for interacting with Capo contract instances, enabling fast local lookups and reducing redundant network queries. The charter token resides at the Capo address and every transaction affecting any delegate-UUT or delegated-data record must also touch the Capo address (for charter reference), the indexer monitors transactions affecting the single Capo address, and incidentally also tracks UUTs at other addresses referenced by the Capo Charter.
 
 ---
 
@@ -28,15 +26,16 @@ The UtxoIndex is a **multi-address blockchain UTXO monitor and cache** for Carda
 **Purpose**: Main orchestrator for UTXO indexing, transaction monitoring, and block tracking
 
 **Responsibilities**:
-- Maintain set of monitored addresses with metadata (address, mph filter, health status)
-- Fetch all UTXOs from monitored addresses
-- Monitor addresses for new transactions on periodic interval
-- Detect charter UTXO changes and trigger address list refresh
+- Monitor the Capo address for new transactions (all delegate activity touches this address)
+- Fetch and cache all UTXOs at the Capo address
+- Catalog delegated-data policy UUTs at their delegate script addresses (these trigger correct policy enforcement for different record types)
+- Detect charter UTXO changes during routine monitoring
 - Manage communication with Blockfrost API
 - Coordinate storage operations via `UtxoStoreGeneric` interface
 
 **Key State**:
-- `addresses: Set<MonitoredAddress>` - Active addresses being monitored, with config details for each
+- `capoAddress: string` - The primary address to monitor
+- `capoMph: string` - Minting policy hash for filtering relevant tokens
 - `lastBlockId: string` - Most recent block hash seen
 - `lastBlockHeight: number` - Most recent block height seen
 - `store: UtxoStoreGeneric` - Storage backend instance
@@ -56,7 +55,7 @@ blocks: hash (PK), height
 utxos: utxoId (PK), blockId, blockHeight
 txs: txid (PK)
 logs: logId (PK), [pid+time] (compound index)
-monitoredAddresses: address (PK), active, lastSyncedBlock
+delegateUuts: uutId (PK), delegateRole, address
 ```
 
 #### UtxoStoreGeneric
@@ -66,10 +65,10 @@ monitoredAddresses: address (PK), active, lastSyncedBlock
 
 **Operations**:
 - `log(id, message)` - Structured logging
-- `findBlockByBlockId(blockId)` / `saveBlock(block)`
-- `findUtxoByUtxoId(utxoId)` / `saveUtxo(utxo)`
-- `findTxById(txId)` / `saveTx(tx)`
-- `findAddressByAddress(address)` / `saveAddress(address)` / `getActiveAddresses()`
+- `findBlockId(id)` / `saveBlock(block)`
+- `findUtxoId(id)` / `saveUtxo(utxo)`
+- `findTxId(id)` / `saveTx(tx)`
+- `saveUUT(id, utxoId)` / `findUtxoByUUT(id)`
 
 #### Blockfrost Integration
 **Purpose**: External blockchain data provider
@@ -123,9 +122,9 @@ new CachedUtxoIndex({
 ```
 
 **Core Methods** (currently internal, may be exposed):
-- `syncNow(): Promise<void>` - Full synchronization of all monitored addresses
-- `monitorForNewTransactions(): Promise<void>` - Check for new transactions at all addresses
-- `updateMonitoredAddresses(charterData: CharterData): Promise<void>` - Refresh address list from charter
+- `syncNow(): Promise<void>` - Full synchronization of Capo address and UUT catalog
+- `checkForNewTxns(): Promise<void>` - Check for new transactions at Capo address
+- `catalogDelegateUuts(charterData: CharterData): Promise<void>` - Catalog delegate UUTs from charter
 
 **Future Query API** (BACKLOG):
 - `queryUtxosByAddress(address: string): Promise<UtxoDetailsType[]>`
@@ -139,41 +138,32 @@ interface UtxoStoreGeneric {
     log(id: string, message: string): Promise<void>
 
     // Block operations
-    findBlockByBlockId(blockId: string): Promise<BlockDetailsType | undefined>
+    findBlockId(id: string): Promise<BlockDetailsType | undefined>
     saveBlock(block: BlockDetailsType): Promise<void>
 
     // UTXO operations
-    findUtxoByUtxoId(utxoId: string): Promise<UtxoDetailsType | undefined>
+    findUtxoId(id: string): Promise<UtxoDetailsType | undefined>
     saveUtxo(utxo: UtxoDetailsType): Promise<void>
 
     // Transaction operations
-    findTxById(txId: string): Promise<txCBOR | undefined>
+    findTxId(id: string): Promise<txCBOR | undefined>
     saveTx(tx: txCBOR): Promise<void>
 
-    // Address operations (v2)
-    findAddressByAddress(address: string): Promise<MonitoredAddress | undefined>
-    saveAddress(address: MonitoredAddress): Promise<void>
-    getActiveAddresses(): Promise<MonitoredAddress[]>
+    // UUT catalog operations
+    saveUUT(id: string, utxoId: string): Promise<void>
+    findUtxoByUUT(id: string): Promise<UtxoDetailsType | undefined>
 }
 ```
 
 ### Data Types
 
-**MonitoredAddress**:
+**CatalogEntry** (for delegate UUTs):
 ```typescript
-type MonitoredAddress = {
-    address: string           // bech32-encoded Cardano address (PK)
-    mph?: string             // hex-encoded minting policy hash filter
-    policyId?: string        // same as mph (for blockfrost compatibility)
-    addedAt: number          // timestamp when address was added
-    lastSyncedBlock?: number // last block height processed for this address
-    lastError?: {            // most recent error for health tracking
-        timestamp: number
-        message: string
-        txHash?: string
-    }
-    lastSuccessfulSync?: number  // timestamp of last successful sync
-    active: boolean          // false when delegate removed from charter
+type CatalogEntry = {
+    uutId: string      // UUT token name (unique identifier)
+    utxoId: string     // Current UTXO ID where this UUT resides
+    delegateRole: string  // Role name (e.g., "mintDelegate", "spendDelegate", dgDataPolicy name)
+    address: string    // Script address where the UUT is held
 }
 ```
 
@@ -195,36 +185,21 @@ type MonitoredAddress = {
 └────────┬────────┘
          │
          ▼
-┌────────────────────┐
-│ syncNow()          │
-│ 1. Fetch charter   │──────► capo.findCharterData()/uncached
-│ 2. Update addresses│
-│ 3. Fetch all UTXOs │
-│ 4. Store in DB     │
-└────────┬───────────┘
+┌────────────────────────────────┐
+│ syncNow()                      │
+│ 1. Fetch charter data          │──────► capo.findCharterData()
+│ 2. Fetch all Capo UTXOs        │──────► GET addresses/{capo}/utxos
+│ 3. Store UTXOs in DB           │──────► store.saveUtxo()
+│ 4. Catalog delegate UUTs       │
+└────────┬───────────────────────┘
          │
          ▼
-┌──────────────────────────┐
-│ updateMonitoredAddresses()│
-│ Traverse charter:         │
-│ - Add capo.address        │──────► DexieUtxoStore.saveAddress()
-│ - For each delegate in charter:      │ mint, spend, dgDataControllers
-│   - Extract policyId, uut      │ 
-│   - Extract address       │        
-│   - Add with mph filter   │    
-└──────────┬────────────────┘        etc.
-           │
-           ▼
-┌──────────────────────────┐
-│ For each address:         │
-│ fetchUtxosFromAddress()   │
-│ 1. Call Blockfrost API    │──────► GET addresses/{addr}/utxos
-│ 2. Validate responses     │──────► UtxoDetailsFactory.validate()
-│ 3. Filter by mph          │
-│ 4. Store UTXOs            │──────► DexieUtxoStore.saveUtxo()
-│ 5. Fetch transactions     │──────► GET txs/{txId}/cbor
-│ 6. Update block info      │──────► GET blocks/{height}
-└───────────────────────────┘
+┌──────────────────────────────────┐
+│ catalogDelegateUuts()            │
+│ For each delegate in charter:    │
+│ - Find authority token UTXO      │──────► blockfrost query(capoMph+UUTname)
+│ - Store UUT → UTXO mapping       │──────► store.saveUUT(uutId, utxoId)
+└──────────────────────────────────┘
 ```
 
 ### Workflow 2: Transaction Monitoring (Every 60 seconds)
@@ -232,15 +207,14 @@ type MonitoredAddress = {
 ```
 ┌────────────────────────┐
 │ setInterval(60s)       │
-│ monitorForNewTxns()    │
+│ checkForNewTxns()      │
 └────────┬───────────────┘
          │
          ▼
 ┌──────────────────────────────┐
-│ For each active address:     │
-│ monitorAddressForNewTxns()   │
-│ 1. Get lastSyncedBlock       │──────► DexieUtxoStore.findAddress()
-│ 2. Fetch new transactions    │──────► GET addresses/{addr}/txs?from={block}
+│ Monitor Capo address:        │
+│ 1. Get lastSyncedBlock       │
+│ 2. Fetch new transactions    │──────► GET addresses/{capo}/txs?from={block}
 │ 3. Validate summaries        │──────► AddressTxSummariesFactory.validate()
 └────────┬─────────────────────┘
          │
@@ -249,16 +223,9 @@ type MonitoredAddress = {
 │ processTransactionForNewUtxos│
 │ 1. Fetch full tx CBOR        │──────► GET txs/{txHash}/cbor
 │ 2. Decode transaction        │──────► Helios.decodeTx()
-│ 3. Check each output         │
-│ 4. Filter by mph (if set)    │
-│ 5. Index new UTXOs           │──────► DexieUtxoStore.saveUtxo()
-│ 6. Update lastSyncedBlock    │──────► DexieUtxoStore.saveAddress()
-└────────┬─────────────────────┘
-         │
-         ▼ (on error)
-┌──────────────────────────────┐
-│ recordAddressError()         │
-│ Update address.lastError     │──────► DexieUtxoStore.saveAddress()
+│ 3. Index new UTXOs           │──────► store.saveUtxo()
+│ 4. Update UUT catalog        │──────► store.saveUUT() (if delegate UUT moved to new UTXO)
+│ 5. Update lastSyncedBlock    │
 └──────────────────────────────┘
 ```
 
@@ -278,13 +245,9 @@ type MonitoredAddress = {
          │ YES
          ▼
 ┌──────────────────────────────┐
-│ Charter changed detected     │
+│ Charter change detected:     │
 │ 1. Fetch new charter data    │──────► capo.findCharterData()
-│ 2. Update address list       │──────► updateMonitoredAddresses()
-│ 3. Mark removed addrs        │        (sets active=false)
-│    inactive                  │
-│ 4. Add new addresses         │
-│ 5. Continue monitoring       │
+│ 2. Re-catalog delegate UUTs  │──────► catalogDelegateUuts()
 └──────────────────────────────┘
 ```
 
@@ -296,9 +259,8 @@ type MonitoredAddress = {
 
 **Capo** (External):
 - `capo.findCharterData()` - Get current charter to discover delegates
-- `capo.address` - Primary address to monitor
-- `capo.mph` - Minting policy hash for filtering tokens
-- `delegate.address` - Extract addresses from delegate instances
+- `capo.address` - The address to monitor
+- `capo.mph` - Minting policy hash for filtering tokens and identifying UUTs
 
 **Blockfrost API** (External):
 - REST endpoints for blockchain queries
@@ -338,15 +300,16 @@ This usage SHOULD match with other helios network-clients and be used via the sa
 
 ## Design Decisions
 
-### Address-Based vs Delegate-Aware Architecture
+### Single-Address Monitoring
 
-**Decision**: Use generic address monitoring rather than delegate-specific indexing
+**Decision**: Monitor only the Capo address, not individual delegate addresses
 
 **Rationale**:
-- **Separation of concerns**: UtxoIndex doesn't need to understand charter structure or delegate types
-- **Reusability**: Can monitor any Cardano address, not just Capo delegates
-- **Simplicity**: ~150 lines of delegate traversal logic simplified to address collection
-- **Maintainability**: Charter schema changes don't require indexer updates
+- **Architectural insight**: Every transaction affecting delegate-UUTs or delegated-data records must touch the Capo address (for charter reference), so all relevant activity is visible at a single address
+- **Simplicity**: No address discovery, tracking, or per-address sync state needed
+- **Efficiency**: One address to poll instead of many; no complex address lifecycle management
+
+**UUT Cataloging**: Delegate UUTs at external script addresses are cataloged by discovering them in the Capo charter, finding them in blockfrost via `capoMph + uutName`, then storing the UUT→UTXO mapping for fast lookups.
 
 ### Storage Abstraction
 
@@ -368,19 +331,10 @@ This usage SHOULD match with other helios network-clients and be used via the sa
 
 **Rationale**:
 - **Efficient**: Detected during normal monitoring loop
-- **Accurate**: Charter UTXO spending is definitive signal of other addresses
+- **Accurate**: Charter UTXO being spent signals potential delegate changes
 - **No polling**: Avoids redundant `findCharterData()` calls
 
-**Implementation**: When processing transaction outputs, check for charter UUT. If found, trigger `updateMonitoredAddresses()`.
-
-### Per-Address Block Height Tracking
-
-**Decision**: Track `lastSyncedBlock` per address (v2)
-
-**Rationale**:
-- **Efficiency**: New addresses don't need to scan entire history
-- **Accuracy**: Each address has independent sync state
-- **Recovery**: Address-specific error handling and retry
+**Implementation**: When processing transaction outputs, check for charter UUT. If found, re-catalog delegate UUTs to capture any new or changed delegates.
 
 ---
 
