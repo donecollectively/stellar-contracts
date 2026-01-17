@@ -16,15 +16,15 @@ export interface UtxoStoreGeneric {
     log(id: string, message: string): Promise<void>;
 
     // Block operations
-    findBlockByBlockId(blockId: string): Promise<BlockIndexEntry | undefined>;
+    findBlockId(blockId: string): Promise<BlockIndexEntry | undefined>;
     saveBlock(block: BlockIndexEntry): Promise<void>;
 
     // UTXO operations - uses storage-agnostic UtxoIndexEntry
-    findUtxoByUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined>;
+    findUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined>;
     saveUtxo(entry: UtxoIndexEntry): Promise<void>;
 
     // Transaction operations
-    findTxById(txId: string): Promise<TxIndexEntry | undefined>;
+    findTxId(txId: string): Promise<TxIndexEntry | undefined>;
     saveTx(tx: TxIndexEntry): Promise<void>;
 
     // UUT lookup via multiEntry index on uutIds

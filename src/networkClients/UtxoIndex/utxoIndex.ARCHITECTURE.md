@@ -83,9 +83,9 @@ type UtxoIndexEntry = {
 
 **Operations**:
 - `log(id, message)` - Structured logging
-- `findBlockByBlockId(id)` / `saveBlock(block)`
-- `findUtxoByUtxoId(id)` / `saveUtxo(entry: UtxoIndexEntry)`
-- `findTxById(id)` / `saveTx(tx)`
+- `findBlockId(id)` / `saveBlock(block)`
+- `findUtxoId(id)` / `saveUtxo(entry: UtxoIndexEntry)`
+- `findTxId(id)` / `saveTx(tx)`
 - `findUtxoByUUT(uutId)` - Query via multiEntry index on `uutIds`
 
 #### DexieUtxoStore
@@ -192,12 +192,12 @@ This section defines where each specific area of functionality belongs.
 | Responsibility | Method |
 |----------------|--------|
 | Save UTXO entry | `saveUtxo(entry: UtxoIndexEntry)` |
-| Find UTXO by ID | `findUtxoByUtxoId(id: string)` |
+| Find UTXO by ID | `findUtxoId(id: string)` |
 | Find UTXO by UUT | `findUtxoByUUT(uutId: string)` |
 | Save block entry | `saveBlock(block: BlockIndexEntry)` |
-| Find block by ID | `findBlockByBlockId(id: string)` |
+| Find block by ID | `findBlockId(id: string)` |
 | Save transaction | `saveTx(tx: TxIndexEntry)` |
-| Find transaction | `findTxById(id: string)` |
+| Find transaction | `findTxId(id: string)` |
 | Structured logging | `log(id, message)` |
 
 **CONSTRAINT**: Interface uses only types from `types/UtxoIndexEntry.ts`. No Helios, no Blockfrost types.
@@ -279,15 +279,15 @@ interface UtxoStoreGeneric {
     log(id: string, message: string): Promise<void>
 
     // Block operations
-    findBlockByBlockId(id: string): Promise<BlockIndexEntry | undefined>
+    findBlockId(id: string): Promise<BlockIndexEntry | undefined>
     saveBlock(block: BlockIndexEntry): Promise<void>
 
     // UTXO operations
-    findUtxoByUtxoId(id: string): Promise<UtxoIndexEntry | undefined>
+    findUtxoId(id: string): Promise<UtxoIndexEntry | undefined>
     saveUtxo(entry: UtxoIndexEntry): Promise<void>
 
     // Transaction operations
-    findTxById(id: string): Promise<TxIndexEntry | undefined>
+    findTxId(id: string): Promise<TxIndexEntry | undefined>
     saveTx(tx: TxIndexEntry): Promise<void>
 
     // UUT lookup via multiEntry index on uutIds

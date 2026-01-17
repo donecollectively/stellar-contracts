@@ -379,18 +379,19 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
 * Implemented all ArkType validation factories (BlockDetails, UtxoDetails, AddressTransactionSummaries)
 * Implemented Dexie entity classes for blocks and logs
 
-#### NEXT: UUT Storage Foundation
-The key missing piece is storing `uutIds` on UTXOs for fast lookups. Required changes:
-1. Add `uutIds: string[]` field to `dexieUtxoDetails` entity (REQT-5.1.2)
-2. Update Dexie schema to add `*uutIds` multiEntry index (REQT-3.1.1)
-3. Add `findUtxoByUUT(uutId)` to `UtxoStoreGeneric` interface (REQT-2.1.1)
-4. Implement `extractUutIds()` helper and `findUtxoByUUT()` in DexieUtxoStore (REQT-3.3.4)
+#### COMPLETED: UUT Storage Foundation
+All UUT storage infrastructure is now in place:
+1. Added `uutIds: string[]` field to `dexieUtxoDetails` entity (REQT-5.1.2)
+2. Updated Dexie schema with `*uutIds` multiEntry index (REQT-3.1.1)
+3. Added `findUtxoByUUT(uutId)` to `UtxoStoreGeneric` interface (REQT-2.1.1)
+4. Implemented `extractUutIds()` helper and `findUtxoByUUT()` in DexieUtxoStore (REQT-3.3.4)
 
-#### P1: Complete Sync Flow (after NEXT)
+#### NEXT: Complete Sync Flow
 * Update `syncNow()` to store capo UTXOs with extracted uutIds (REQT-1.3.1)
 * Update `indexUtxoFromOutput()` to extract and store uutIds (REQT-1.3.4)
 * Add charter change detection in transaction processing (REQT-1.2.2)
 * UUT movement detection during monitoring (REQT-1.2.3)
+* Implement `catalogDelegateUuts(charterData)` to catalog all delegate UUTs (REQT-1.2.1)
 
 ## Release Management Plan
 

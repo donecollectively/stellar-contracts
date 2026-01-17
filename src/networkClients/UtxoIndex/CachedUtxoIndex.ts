@@ -210,7 +210,7 @@ export class CachedUtxoIndex {
             const output = tx.body.outputs[outputIndex];
             const utxoId = this.formatUtxoId(txHash, outputIndex);
 
-            const existingUtxo = await this.store.findUtxoByUtxoId(utxoId);
+            const existingUtxo = await this.store.findUtxoId(utxoId);
             if (existingUtxo) {
                 continue;
             }
@@ -685,7 +685,7 @@ export class CachedUtxoIndex {
     }
 
     async findOrFetchBlockHeight(blockId: string): Promise<number> {
-        const block = await this.store.findBlockByBlockId(blockId);
+        const block = await this.store.findBlockId(blockId);
         if (block) {
             return block.height;
         }
@@ -738,7 +738,7 @@ export class CachedUtxoIndex {
     }
 
     async findOrFetchTxDetails(txId: string): Promise<Tx> {
-        const txCbor = await this.store.findTxById(txId);
+        const txCbor = await this.store.findTxId(txId);
 
         if (txCbor) {
             return decodeTx(txCbor.cbor);

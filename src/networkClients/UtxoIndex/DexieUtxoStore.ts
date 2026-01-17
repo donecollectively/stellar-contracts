@@ -94,7 +94,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // REQT/76e18y06kp (Block Storage)
-    async findBlockByBlockId(blockId: string): Promise<BlockIndexEntry | undefined> {
+    async findBlockId(blockId: string): Promise<BlockIndexEntry | undefined> {
         return await this.blocks.where("hash").equals(blockId).first();
     }
 
@@ -103,7 +103,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // REQT/1gw45sp198 (UTXO Storage)
-    async findUtxoByUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined> {
+    async findUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined> {
         return await this.utxos.where("utxoId").equals(utxoId).first();
     }
 
@@ -117,7 +117,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // REQT/nm2ed7m80y (Transaction Storage)
-    async findTxById(txId: string): Promise<TxIndexEntry | undefined> {
+    async findTxId(txId: string): Promise<TxIndexEntry | undefined> {
         return await this.txs.where("txid").equals(txId).first();
     }
 
