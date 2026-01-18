@@ -39,7 +39,11 @@ import {
     type NetworkParams,
 } from "@helios-lang/ledger";
 import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
-import { decodeUplcData, decodeUplcProgramV2FromCbor, type UplcProgramV2 } from "@helios-lang/uplc";
+import {
+    decodeUplcData,
+    decodeUplcProgramV2FromCbor,
+    type UplcProgramV2,
+} from "@helios-lang/uplc";
 import type { CardanoClient } from "@helios-lang/tx-utils";
 import type { CapoDataBridge } from "../../helios/scriptBundling/CapoHeliosBundle.bridge.js";
 
@@ -110,7 +114,9 @@ export class CachedUtxoIndex {
      */
     private addressToBech32(address: Address): string {
         if (address.era === "Byron") {
-            throw new Error("Byron addresses are not supported by CachedUtxoIndex");
+            throw new Error(
+                "Byron addresses are not supported by CachedUtxoIndex",
+            );
         }
         return address.toBech32();
     }
@@ -183,7 +189,8 @@ export class CachedUtxoIndex {
         maxSyncPages?: number;
     }) {
         // Convert string inputs to proper types if needed
-        this._address = typeof address === "string" ? makeAddress(address) : address;
+        this._address =
+            typeof address === "string" ? makeAddress(address) : address;
         this._mph = typeof mph === "string" ? makeMintingPolicyHash(mph) : mph;
         this._isMainnet = isMainnet;
         this.network = network;
@@ -323,9 +330,13 @@ export class CachedUtxoIndex {
 
             const transactionSummaries: AddressTransactionSummariesType[] = [];
             for (const item of untyped) {
-                const validationResult = AddressTransactionSummariesFactory(item);
+                const validationResult =
+                    AddressTransactionSummariesFactory(item);
                 if (validationResult instanceof ArkErrors) {
-                    console.error(`Error validating transaction summary:`, item);
+                    console.error(
+                        `Error validating transaction summary:`,
+                        item,
+                    );
                     validationResult.throw();
                 }
                 transactionSummaries.push(
@@ -335,7 +346,10 @@ export class CachedUtxoIndex {
 
             // Process transactions from this page
             for (const summary of transactionSummaries) {
-                await this.processTransactionForNewUtxos(summary.tx_hash, summary);
+                await this.processTransactionForNewUtxos(
+                    summary.tx_hash,
+                    summary,
+                );
             }
 
             // Check if there might be more pages
@@ -343,7 +357,8 @@ export class CachedUtxoIndex {
                 hasMorePages = false;
             } else {
                 // Use the last transaction's tx_index for pagination
-                const lastSummary = transactionSummaries[transactionSummaries.length - 1];
+                const lastSummary =
+                    transactionSummaries[transactionSummaries.length - 1];
                 lastTxIndex = lastSummary.tx_index;
                 currentPage++;
             }
@@ -375,7 +390,10 @@ export class CachedUtxoIndex {
                 await this.checkForNewTxns();
             } catch (e) {
                 console.warn("Periodic refresh failed:", e);
-                this.store.log("pr5er", `Periodic refresh error: ${e}`);
+                this.store.log(
+                    "pr5er",
+                    `Periodic refresh error: ${e.message || e}`,
+                );
             }
         }, refreshInterval);
     }
@@ -441,7 +459,12 @@ export class CachedUtxoIndex {
                     if (tokenName === "charter") {
                         charterChanged = true;
                     }
-                } catch {
+                } catch (e: any) {
+                    console.error(
+                        `ignoring non-UTF8 token name:`,
+                        tokenNameBytes,
+                        e.message || e,
+                    );
                     // Skip invalid token names
                 }
             }
@@ -471,15 +494,18 @@ export class CachedUtxoIndex {
      */
     private extractUutIds(output: TxOutput): string[] {
         const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
-        const tokenNames = output.value.assets.getPolicyTokenNames(
-            this._mph,
-        );
+        const tokenNames = output.value.assets.getPolicyTokenNames(this._mph);
 
         return tokenNames
             .map((bytes) => {
                 try {
                     return new TextDecoder().decode(new Uint8Array(bytes));
-                } catch {
+                } catch (e: any) {
+                    console.error(
+                        `ignoring non-UTF8 token name:`,
+                        bytes,
+                        e.message || e,
+                    );
                     return "";
                 }
             })
@@ -491,15 +517,18 @@ export class CachedUtxoIndex {
      */
     private extractUutIdsFromTxInput(txInput: TxInput): string[] {
         const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
-        const tokenNames = txInput.value.assets.getPolicyTokenNames(
-            this._mph,
-        );
+        const tokenNames = txInput.value.assets.getPolicyTokenNames(this._mph);
 
         return tokenNames
             .map((bytes) => {
                 try {
                     return new TextDecoder().decode(new Uint8Array(bytes));
-                } catch {
+                } catch (e: any) {
+                    console.error(
+                        `ignoring non-UTF8 token name:`,
+                        bytes,
+                        e.message || e,
+                    );
                     return "";
                 }
             })
@@ -521,7 +550,9 @@ export class CachedUtxoIndex {
         // Extract tokens using getPolicies() and getPolicyTokens()
         const tokens: UtxoIndexEntry["tokens"] = [];
         for (const mph of output.value.assets.getPolicies()) {
-            for (const [tokenName, qty] of output.value.assets.getPolicyTokens(mph)) {
+            for (const [tokenName, qty] of output.value.assets.getPolicyTokens(
+                mph,
+            )) {
                 tokens.push({
                     policyId: mph.toHex(),
                     tokenName: bytesToHex(tokenName),
@@ -543,7 +574,9 @@ export class CachedUtxoIndex {
         }
 
         // Extract reference script hash if present
-        const referenceScriptHash = output.refScript ? bytesToHex(output.refScript.hash()) : null;
+        const referenceScriptHash = output.refScript
+            ? bytesToHex(output.refScript.hash())
+            : null;
 
         return {
             utxoId,
@@ -568,7 +601,9 @@ export class CachedUtxoIndex {
         // Extract tokens using getPolicies() and getPolicyTokens()
         const tokens: UtxoIndexEntry["tokens"] = [];
         for (const mph of txInput.value.assets.getPolicies()) {
-            for (const [tokenName, qty] of txInput.value.assets.getPolicyTokens(mph)) {
+            for (const [tokenName, qty] of txInput.value.assets.getPolicyTokens(
+                mph,
+            )) {
                 tokens.push({
                     policyId: mph.toHex(),
                     tokenName: bytesToHex(tokenName),
@@ -590,7 +625,9 @@ export class CachedUtxoIndex {
         }
 
         // Extract reference script hash if present
-        const referenceScriptHash = txInput.output?.refScript ? bytesToHex(txInput.output.refScript.hash()) : null;
+        const referenceScriptHash = txInput.output?.refScript
+            ? bytesToHex(txInput.output.refScript.hash())
+            : null;
 
         return {
             utxoId,
@@ -638,18 +675,23 @@ export class CachedUtxoIndex {
         const uutIds: string[] = [];
         for (const token of tokens) {
             if (token.policyId === capoMphHex) {
+                // Convert hex token name to string
+                const bytes = new Uint8Array(
+                    token.tokenName
+                        .match(/.{2}/g)
+                        ?.map((b) => parseInt(b, 16)) || [],
+                );
                 try {
-                    // Convert hex token name to string
-                    const bytes = new Uint8Array(
-                        token.tokenName
-                            .match(/.{2}/g)
-                            ?.map((b) => parseInt(b, 16)) || [],
-                    );
                     const name = new TextDecoder().decode(bytes);
                     if (uutPattern.test(name)) {
                         uutIds.push(name);
                     }
-                } catch {
+                } catch (e: any) {
+                    console.error(
+                        `ignoring non-UTF8 token name:`,
+                        bytes,
+                        e.message || e,
+                    );
                     // Skip invalid token names
                 }
             }
@@ -688,7 +730,9 @@ export class CachedUtxoIndex {
      * The charter UTXO contains the "charter" token from the capo's minting policy.
      */
     private findCharterUtxo(utxos: TxInput[]): TxInput | undefined {
-        const charterTokenName = bytesToHex([...new TextEncoder().encode("charter")]);
+        const charterTokenName = bytesToHex([
+            ...new TextEncoder().encode("charter"),
+        ]);
         for (const utxo of utxos) {
             const tokens = utxo.value.assets.getPolicyTokens(this._mph);
             for (const [tokenName, _qty] of tokens) {
@@ -746,10 +790,15 @@ export class CachedUtxoIndex {
                     "ht8mg",
                     `Fetching mint delegate UUT: ${mintDelegateLink.uutName}`,
                 );
-                await this.fetchAndIndexDelegateLinkUut(mintDelegateLink, "mintDelegate");
+                await this.fetchAndIndexDelegateLinkUut(
+                    mintDelegateLink,
+                    "mintDelegate",
+                );
             }
-        } catch (e) {
-            console.warn("Could not resolve mint delegate UUT:", e);
+        } catch (e: any) {
+            throw new Error(
+                `Could not resolve mint delegate UUT: ${e.message || e}`,
+            );
         }
 
         // Get spend delegate UUT
@@ -760,10 +809,15 @@ export class CachedUtxoIndex {
                     "fgmtv",
                     `Fetching spend delegate UUT: ${spendDelegateLink.uutName}`,
                 );
-                await this.fetchAndIndexDelegateLinkUut(spendDelegateLink, "spendDelegate");
+                await this.fetchAndIndexDelegateLinkUut(
+                    spendDelegateLink,
+                    "spendDelegate",
+                );
             }
-        } catch (e) {
-            console.warn("Could not resolve spend delegate UUT:", e);
+        } catch (e: any) {
+            throw new Error(
+                `Could not resolve spend delegate UUT: ${e.message || e}`,
+            );
         }
 
         // Get gov authority UUT
@@ -774,10 +828,15 @@ export class CachedUtxoIndex {
                     "g8xpk",
                     `Fetching gov authority UUT: ${govAuthorityLink.uutName}`,
                 );
-                await this.fetchAndIndexDelegateLinkUut(govAuthorityLink, "govAuthority");
+                await this.fetchAndIndexDelegateLinkUut(
+                    govAuthorityLink,
+                    "govAuthority",
+                );
             }
-        } catch (e) {
-            console.warn("Could not resolve gov authority UUT:", e);
+        } catch (e: any) {
+            throw new Error(
+                `Could not resolve gov authority UUT: ${e.message || e}`,
+            );
         }
 
         // Get spend invariant UUTs
@@ -818,10 +877,9 @@ export class CachedUtxoIndex {
                             `namedDelegate:${delegateName}`,
                         );
                     }
-                } catch (e) {
-                    console.warn(
-                        `Could not resolve named delegate '${delegateName}' UUT:`,
-                        e,
+                } catch (e: any) {
+                    throw new Error(
+                        `Could not resolve named delegate '${delegateName}' UUT: ${e.message || e}`,
                     );
                 }
             }
@@ -850,10 +908,9 @@ export class CachedUtxoIndex {
                         `dgDataController:${entryName}`,
                     );
                 }
-            } catch (e) {
-                console.warn(
-                    `Could not resolve dgData controller ${entryName}:`,
-                    e,
+            } catch (e: any) {
+                throw new Error(
+                    `Could not resolve dgData controller ${entryName}: ${e.message || e}`,
                 );
             }
         }
@@ -992,7 +1049,9 @@ export class CachedUtxoIndex {
      * REQT/tqrhbphgyx (Reference Script Fetching)
      * REQT/k2wvnd3f1e (Script Storage)
      */
-    async fetchAndCacheScript(scriptHash: string): Promise<UplcProgramV2 | undefined> {
+    async fetchAndCacheScript(
+        scriptHash: string,
+    ): Promise<UplcProgramV2 | undefined> {
         // Check cache first
         const cached = await this.store.findScript(scriptHash);
         if (cached) {
@@ -1001,9 +1060,9 @@ export class CachedUtxoIndex {
 
         // Fetch from Blockfrost
         try {
-            const response = await this.fetchFromBlockfrost<{ cbor: string | null }>(
-                `scripts/${scriptHash}/cbor`
-            );
+            const response = await this.fetchFromBlockfrost<{
+                cbor: string | null;
+            }>(`scripts/${scriptHash}/cbor`);
 
             if (!response.cbor) {
                 await this.store.log(
@@ -1017,9 +1076,10 @@ export class CachedUtxoIndex {
             await this.store.saveScript({ scriptHash, cbor: response.cbor });
 
             return decodeUplcProgramV2FromCbor(response.cbor);
-        } catch (e) {
-            console.warn(`Failed to fetch script ${scriptHash}:`, e);
-            return undefined;
+        } catch (e: any) {
+            throw new Error(
+                `Failed to fetch script ${scriptHash}: ${e.message || e}`,
+            );
         }
     }
 
@@ -1096,10 +1156,11 @@ export class CachedUtxoIndex {
                 try {
                     const restored = await this.network.getUtxo(input.id);
                     restoredInputs.push(restored);
-                } catch (e) {
+                } catch (e: any) {
                     // If we can't restore, keep the original (incomplete) input
-                    console.warn(`Could not restore input ${utxoId}:`, e);
-                    restoredInputs.push(input);
+                    throw new Error(
+                        `Could not restore input ${utxoId}: ${e.message || e}`,
+                    );
                 }
             }
         }
@@ -1146,7 +1207,9 @@ export class CachedUtxoIndex {
         // Fetch reference script if present (REQT/tqrhbphgyx)
         let refScript: UplcProgramV2 | undefined = undefined;
         if (entry.referenceScriptHash) {
-            refScript = await this.fetchAndCacheScript(entry.referenceScriptHash);
+            refScript = await this.fetchAndCacheScript(
+                entry.referenceScriptHash,
+            );
         }
 
         // Create TxOutput with optional reference script
@@ -1213,7 +1276,9 @@ export class CachedUtxoIndex {
         const filtered = entries.filter((e) => e.address === addrStr);
 
         if (filtered.length > 0) {
-            return Promise.all(filtered.map((e) => this.indexEntryToTxInput(e)));
+            return Promise.all(
+                filtered.map((e) => this.indexEntryToTxInput(e)),
+            );
         }
 
         // Fall through to network on cache miss
@@ -1223,7 +1288,11 @@ export class CachedUtxoIndex {
 
         // If network doesn't support this method, filter from getUtxos
         const allUtxos = await this.network.getUtxos(address);
-        const minAssetValue = makeValue(assetClass.mph, assetClass.tokenName, 1n);
+        const minAssetValue = makeValue(
+            assetClass.mph,
+            assetClass.tokenName,
+            1n,
+        );
         return allUtxos.filter((u) => u.value.isGreaterOrEqual(minAssetValue));
     }
 
