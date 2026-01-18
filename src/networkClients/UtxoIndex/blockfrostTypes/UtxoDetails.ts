@@ -4,25 +4,46 @@
 // also used for responses from https://docs.blockfrost.io/#tag/cardano--addresses/get/addresses/{address}/utxos
 
 import { jsonSchemaToType } from "@ark/json-schema";
-import { scope, type } from "arktype";
+import { type } from "arktype";
 
-export const UtxoDetailsFactory = scope({
-    Value: {
-        unit: "string",
-        quantity: "string.numeric.parse",
-    },
-    UtxoDetails: {
+// Manually defined type to avoid arktype type portability issues
+export interface UtxoDetailsType {
+    address: string;
+    tx_hash: string;
+    tx_index: number;
+    output_index: number;
+    amount: Array<{ unit: string; quantity: number }>;
+    block: string;
+    data_hash: string | null;
+    inline_datum: string | null;
+    reference_script_hash: string | null;
+}
+
+// Arktype validator - kept internal
+const ValueType = type({
+    unit: "string",
+    quantity: "string.numeric.parse",
+});
+
+const UtxoDetailsValidator = type({
     address: "string",
     tx_hash: "string",
     tx_index: "number",
     output_index: "number",
-    amount: "Value[]",
+    amount: ValueType.array(),
     block: "string",
     data_hash: "string | null",
     inline_datum: "string | null",
     reference_script_hash: "string | null",
- }}).export().UtxoDetails;
- export type UtxoDetailsType = typeof UtxoDetailsFactory.infer
+});
+
+export function validateUtxoDetails(data: unknown): UtxoDetailsType {
+    const result = UtxoDetailsValidator(data);
+    if (result instanceof type.errors) {
+        throw new Error(`Invalid UtxoDetails: ${result.summary}`);
+    }
+    return result as UtxoDetailsType;
+}
 
  // ^ manually defined above; can convert to json-schema if/when it gives us TYPES,
  // and not only validation functions:

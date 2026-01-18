@@ -17,7 +17,11 @@ import {
     decodeTx,
     makeAddress,
     makeAssetClass,
+    makeDatumHash,
+    makeHashedTxOutputDatum,
+    makeInlineTxOutputDatum,
     makeValidatorHash,
+    makeTxId,
     makeTxInput,
     makeTxOutput,
     makeTxOutputId,
@@ -29,10 +33,12 @@ import {
     type TxInput,
     type TxOutput,
     type TxOutputId,
+    type TxOutputDatum,
     type MintingPolicyHash,
     type NetworkParams,
 } from "@helios-lang/ledger";
-import { bytesToHex } from "@helios-lang/codec-utils";
+import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
+import { decodeUplcData } from "@helios-lang/uplc";
 import type { CardanoClient } from "@helios-lang/tx-utils";
 import type { Capo } from "../../Capo.js";
 
@@ -46,7 +52,7 @@ import {
     type BlockDetailsType,
 } from "./blockfrostTypes/BlockDetails.js";
 import {
-    UtxoDetailsFactory,
+    validateUtxoDetails,
     type UtxoDetailsType,
 } from "./blockfrostTypes/UtxoDetails.js";
 import {
@@ -77,12 +83,23 @@ export class CachedUtxoIndex {
 
     // REQT/9a0nx1gr4b (Core State) - expose capoAddress for external access
     get capoAddress(): string {
-        return this.capo.address.toBech32();
+        return this.addressToBech32(this.capo.address);
     }
 
     // REQT/9a0nx1gr4b (Core State) - expose capoMph for external access
     get capoMph(): string {
         return this.capo.mph.toHex();
+    }
+
+    /**
+     * Converts an Address to bech32 string, throwing for Byron addresses.
+     * Byron addresses use base58 encoding and are not supported by this indexer.
+     */
+    private addressToBech32(address: Address): string {
+        if (address.era === "Byron") {
+            throw new Error("Byron addresses are not supported by CachedUtxoIndex");
+        }
+        return address.toBech32();
     }
 
     // =========================================================================
@@ -425,10 +442,10 @@ export class CachedUtxoIndex {
     ): UtxoIndexEntry {
         const utxoId = this.formatUtxoId(txHash, outputIndex);
 
-        // Extract tokens
+        // Extract tokens using getPolicies() and getPolicyTokens()
         const tokens: UtxoIndexEntry["tokens"] = [];
-        for (const [mph, policyTokens] of output.value.assets.mintingPolicies) {
-            for (const [tokenName, qty] of policyTokens) {
+        for (const mph of output.value.assets.getPolicies()) {
+            for (const [tokenName, qty] of output.value.assets.getPolicyTokens(mph)) {
                 tokens.push({
                     policyId: mph.toHex(),
                     tokenName: bytesToHex(tokenName),
@@ -450,7 +467,7 @@ export class CachedUtxoIndex {
 
         return {
             utxoId,
-            address: output.address.toBech32(),
+            address: this.addressToBech32(output.address),
             lovelace: output.value.lovelace,
             tokens,
             datumHash,
@@ -467,11 +484,10 @@ export class CachedUtxoIndex {
     private txInputToIndexEntry(txInput: TxInput): UtxoIndexEntry {
         const utxoId = txInput.id.toString();
 
-        // Extract tokens
+        // Extract tokens using getPolicies() and getPolicyTokens()
         const tokens: UtxoIndexEntry["tokens"] = [];
-        for (const [mph, policyTokens] of txInput.value.assets
-            .mintingPolicies) {
-            for (const [tokenName, qty] of policyTokens) {
+        for (const mph of txInput.value.assets.getPolicies()) {
+            for (const [tokenName, qty] of txInput.value.assets.getPolicyTokens(mph)) {
                 tokens.push({
                     policyId: mph.toHex(),
                     tokenName: bytesToHex(tokenName),
@@ -493,7 +509,7 @@ export class CachedUtxoIndex {
 
         return {
             utxoId,
-            address: txInput.address.toBech32(),
+            address: this.addressToBech32(txInput.address),
             lovelace: txInput.value.lovelace,
             tokens,
             datumHash,
@@ -798,16 +814,7 @@ export class CachedUtxoIndex {
             return;
         }
 
-        const validationResult = UtxoDetailsFactory(untyped[0]);
-        if (validationResult instanceof ArkErrors) {
-            console.error(
-                `Error validating UTXO for ${label}:`,
-                validationResult,
-            );
-            throw new Error("Validation error fetching delegate UTXO");
-        }
-
-        const typed = validationResult as UtxoDetailsType;
+        const typed = validateUtxoDetails(untyped[0]);
         const utxoId = this.formatUtxoId(typed.tx_hash, typed.output_index);
         const entry = this.blockfrostUtxoToIndexEntry(typed, utxoId);
         await this.store.saveUtxo(entry);
@@ -954,8 +961,9 @@ export class CachedUtxoIndex {
         const [txHash, indexStr] = entry.utxoId.split("#");
         const outputIndex = parseInt(indexStr, 10);
 
-        // Create TxOutputId
-        const txOutputId = makeTxOutputId(txHash, outputIndex);
+        // Create TxOutputId - makeTxOutputId expects TxId, not string
+        const txId = makeTxId(txHash);
+        const txOutputId = makeTxOutputId(txId, outputIndex);
 
         // Create Value from lovelace and tokens
         const assets: [AssetClass, bigint][] = entry.tokens.map((t) => [
@@ -964,14 +972,18 @@ export class CachedUtxoIndex {
         ]);
         const value = makeValue(entry.lovelace, assets);
 
+        // Reconstruct datum from stored CBOR hex or hash
+        let datum: TxOutputDatum | undefined = undefined;
+        if (entry.inlineDatum) {
+            const uplcData = decodeUplcData(hexToBytes(entry.inlineDatum));
+            datum = makeInlineTxOutputDatum(uplcData);
+        } else if (entry.datumHash) {
+            const datumHash = makeDatumHash(entry.datumHash);
+            datum = makeHashedTxOutputDatum(datumHash);
+        }
+
         // Create TxOutput
         const address = makeAddress(entry.address);
-        const datum = entry.inlineDatum
-            ? { inline: entry.inlineDatum }
-            : entry.datumHash
-              ? { hash: entry.datumHash }
-              : undefined;
-
         const txOutput = makeTxOutput(address, value, datum);
 
         return makeTxInput(txOutputId, txOutput);
@@ -1002,7 +1014,7 @@ export class CachedUtxoIndex {
      * REQT/gu4vy0w3lq (getUtxos Method)
      */
     async getUtxos(address: Address): Promise<TxInput[]> {
-        const addrStr = address.toBech32();
+        const addrStr = this.addressToBech32(address);
         const entries = await this.store.findUtxosByAddress(addrStr);
 
         if (entries.length > 0) {
@@ -1025,7 +1037,7 @@ export class CachedUtxoIndex {
         address: Address,
         assetClass: AssetClass,
     ): Promise<TxInput[]> {
-        const addrStr = address.toBech32();
+        const addrStr = this.addressToBech32(address);
         const policyId = assetClass.mph.toHex();
         const tokenName = assetClass.tokenName.toString();
 
@@ -1044,9 +1056,8 @@ export class CachedUtxoIndex {
 
         // If network doesn't support this method, filter from getUtxos
         const allUtxos = await this.network.getUtxos(address);
-        return allUtxos.filter((u) =>
-            u.value.assets.has(assetClass.mph, assetClass.tokenName),
-        );
+        const minAssetValue = makeValue(assetClass.mph, assetClass.tokenName, 1n);
+        return allUtxos.filter((u) => u.value.isGreaterOrEqual(minAssetValue));
     }
 
     /**
