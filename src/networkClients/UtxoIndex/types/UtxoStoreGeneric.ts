@@ -10,6 +10,7 @@
 import type { UtxoIndexEntry } from "./UtxoIndexEntry.js";
 import type { BlockIndexEntry } from "./BlockIndexEntry.js";
 import type { TxIndexEntry } from "./TxIndexEntry.js";
+import type { ScriptIndexEntry } from "./ScriptIndexEntry.js";
 
 export interface UtxoStoreGeneric {
     // Logging
@@ -27,6 +28,10 @@ export interface UtxoStoreGeneric {
     // Transaction operations
     findTxId(txId: string): Promise<TxIndexEntry | undefined>;
     saveTx(tx: TxIndexEntry): Promise<void>;
+
+    // Script operations - REQT/k2wvnd3f1e (Script Storage)
+    findScript(scriptHash: string): Promise<ScriptIndexEntry | undefined>;
+    saveScript(script: ScriptIndexEntry): Promise<void>;
 
     // UUT lookup via multiEntry index on uutIds
     // REQT/cchf3wgnk3 (UUT Catalog Storage)

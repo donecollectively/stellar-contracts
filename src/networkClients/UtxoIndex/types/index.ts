@@ -8,4 +8,5 @@
 export type { UtxoIndexEntry } from "./UtxoIndexEntry.js";
 export type { BlockIndexEntry } from "./BlockIndexEntry.js";
 export type { TxIndexEntry } from "./TxIndexEntry.js";
+export type { ScriptIndexEntry } from "./ScriptIndexEntry.js";
 export type { LogEntry } from "./LogEntry.js";

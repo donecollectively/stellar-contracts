@@ -5,6 +5,7 @@ import type { UtxoStoreGeneric } from "./types/UtxoStoreGeneric.js";
 import type { UtxoIndexEntry } from "./types/UtxoIndexEntry.js";
 import type { BlockIndexEntry } from "./types/BlockIndexEntry.js";
 import type { TxIndexEntry } from "./types/TxIndexEntry.js";
+import type { ScriptIndexEntry } from "./types/ScriptIndexEntry.js";
 import { dexieBlockDetails } from "./dexieRecords/BlockDetails.js";
 import { indexerLogs } from "./dexieRecords/Logs.js";
 import { dexieUtxoDetails } from "./dexieRecords/UtxoDetails.js";
@@ -21,6 +22,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     blocks!: EntityTable<dexieBlockDetails, "hash">;
     utxos!: EntityTable<dexieUtxoDetails, "utxoId">;
     txs!: EntityTable<TxIndexEntry, "txid">;
+    scripts!: EntityTable<ScriptIndexEntry, "scriptHash">;
     logs!: EntityTable<indexerLogs, "logId">;
 
     pid: number = 0;
@@ -50,6 +52,15 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             blocks: "hash, height",
             utxos: "utxoId, *uutIds, address",
             txs: "txid",
+            logs: "logId,[pid,time]",
+        });
+
+        // Schema v4: adds scripts table for REQT/k2wvnd3f1e (Script Storage)
+        this.version(4).stores({
+            blocks: "hash, height",
+            utxos: "utxoId, *uutIds, address",
+            txs: "txid",
+            scripts: "scriptHash",
             logs: "logId,[pid,time]",
         });
 
@@ -139,6 +150,15 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
 
     async saveTx(tx: TxIndexEntry): Promise<void> {
         await this.txs.put(tx);
+    }
+
+    // REQT/k2wvnd3f1e (Script Storage)
+    async findScript(scriptHash: string): Promise<ScriptIndexEntry | undefined> {
+        return await this.scripts.where("scriptHash").equals(scriptHash).first();
+    }
+
+    async saveScript(script: ScriptIndexEntry): Promise<void> {
+        await this.scripts.put(script);
     }
 
     // REQT/50zkk5xgrx: Query API Methods

@@ -22,5 +22,6 @@ export class dexieUtxoDetails
     }>;
     datumHash!: string | null;
     inlineDatum!: string | null;
+    referenceScriptHash!: string | null;  // REQT/tqrhbphgyx
     uutIds!: string[];
 }

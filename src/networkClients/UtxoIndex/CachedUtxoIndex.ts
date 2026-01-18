@@ -39,7 +39,7 @@ import {
     type NetworkParams,
 } from "@helios-lang/ledger";
 import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
-import { decodeUplcData } from "@helios-lang/uplc";
+import { decodeUplcData, decodeUplcProgramV2FromCbor, type UplcProgramV2 } from "@helios-lang/uplc";
 import type { CardanoClient } from "@helios-lang/tx-utils";
 import type { CapoDataBridge } from "../../helios/scriptBundling/CapoHeliosBundle.bridge.js";
 
@@ -486,6 +486,9 @@ export class CachedUtxoIndex {
             }
         }
 
+        // Extract reference script hash if present
+        const referenceScriptHash = output.refScript ? bytesToHex(output.refScript.hash()) : null;
+
         return {
             utxoId,
             address: this.addressToBech32(output.address),
@@ -493,6 +496,7 @@ export class CachedUtxoIndex {
             tokens,
             datumHash,
             inlineDatum,
+            referenceScriptHash,
             uutIds: this.extractUutIds(output),
         };
     }
@@ -528,6 +532,9 @@ export class CachedUtxoIndex {
             }
         }
 
+        // Extract reference script hash if present
+        const referenceScriptHash = txInput.output?.refScript ? bytesToHex(txInput.output.refScript.hash()) : null;
+
         return {
             utxoId,
             address: this.addressToBech32(txInput.address),
@@ -535,6 +542,7 @@ export class CachedUtxoIndex {
             tokens,
             datumHash,
             inlineDatum,
+            referenceScriptHash,
             uutIds: this.extractUutIdsFromTxInput(txInput),
         };
     }
@@ -597,6 +605,7 @@ export class CachedUtxoIndex {
             tokens,
             datumHash: bfUtxo.data_hash,
             inlineDatum: bfUtxo.inline_datum,
+            referenceScriptHash: bfUtxo.reference_script_hash,
             uutIds,
         };
     }
@@ -920,6 +929,44 @@ export class CachedUtxoIndex {
     }
 
     /**
+     * Fetches and caches a reference script by its hash.
+     * Returns the decoded UplcProgramV2 or undefined if not found.
+     *
+     * REQT/tqrhbphgyx (Reference Script Fetching)
+     * REQT/k2wvnd3f1e (Script Storage)
+     */
+    async fetchAndCacheScript(scriptHash: string): Promise<UplcProgramV2 | undefined> {
+        // Check cache first
+        const cached = await this.store.findScript(scriptHash);
+        if (cached) {
+            return decodeUplcProgramV2FromCbor(cached.cbor);
+        }
+
+        // Fetch from Blockfrost
+        try {
+            const response = await this.fetchFromBlockfrost<{ cbor: string | null }>(
+                `scripts/${scriptHash}/cbor`
+            );
+
+            if (!response.cbor) {
+                await this.store.log(
+                    "scr0",
+                    `Script ${scriptHash} has no CBOR (may be native script)`,
+                );
+                return undefined;
+            }
+
+            // Cache the script CBOR
+            await this.store.saveScript({ scriptHash, cbor: response.cbor });
+
+            return decodeUplcProgramV2FromCbor(response.cbor);
+        } catch (e) {
+            console.warn(`Failed to fetch script ${scriptHash}:`, e);
+            return undefined;
+        }
+    }
+
+    /**
      * Retrieves a transaction by ID.
      * Implements ReadonlyCardanoClient.getTx
      *
@@ -963,6 +1010,46 @@ export class CachedUtxoIndex {
         return `${txHash}#${outputIndex}`;
     }
 
+    /**
+     * Restores full TxInput data for all inputs in a transaction.
+     *
+     * When a Tx is decoded from CBOR, its inputs only contain TxOutputId references.
+     * This method looks up each input's corresponding UTXO from the cache and
+     * returns fully restored TxInputs with complete output data (address, value,
+     * datum, reference script).
+     *
+     * REQT/qc7qgsqphv (getTx with restored inputs)
+     *
+     * @param tx - The decoded transaction
+     * @returns Array of fully restored TxInputs with output data
+     */
+    async restoreTxInputs(tx: Tx): Promise<TxInput[]> {
+        const restoredInputs: TxInput[] = [];
+
+        for (const input of tx.body.inputs) {
+            const utxoId = input.id.toString();
+            const entry = await this.store.findUtxoId(utxoId);
+
+            if (entry) {
+                // Found in cache - restore from indexed entry
+                restoredInputs.push(await this.indexEntryToTxInput(entry));
+            } else {
+                // Not in cache - fetch from network via getUtxo
+                // Note: This may fail if the UTXO has been spent
+                try {
+                    const restored = await this.network.getUtxo(input.id);
+                    restoredInputs.push(restored);
+                } catch (e) {
+                    // If we can't restore, keep the original (incomplete) input
+                    console.warn(`Could not restore input ${utxoId}:`, e);
+                    restoredInputs.push(input);
+                }
+            }
+        }
+
+        return restoredInputs;
+    }
+
     // =========================================================================
     // REQT/50zkk5xgrx: Public Query API Methods
     // =========================================================================
@@ -970,8 +1057,10 @@ export class CachedUtxoIndex {
     /**
      * Converts a UtxoIndexEntry back to a Helios TxInput.
      * This is the inverse of txOutputToIndexEntry.
+     *
+     * REQT/nqemw2gvm2 (restoreTxInput Method) - async to support script fetching
      */
-    private indexEntryToTxInput(entry: UtxoIndexEntry): TxInput {
+    private async indexEntryToTxInput(entry: UtxoIndexEntry): Promise<TxInput> {
         // Parse utxoId to get txHash and outputIndex
         const [txHash, indexStr] = entry.utxoId.split("#");
         const outputIndex = parseInt(indexStr, 10);
@@ -997,9 +1086,15 @@ export class CachedUtxoIndex {
             datum = makeHashedTxOutputDatum(datumHash);
         }
 
-        // Create TxOutput
+        // Fetch reference script if present (REQT/tqrhbphgyx)
+        let refScript: UplcProgramV2 | undefined = undefined;
+        if (entry.referenceScriptHash) {
+            refScript = await this.fetchAndCacheScript(entry.referenceScriptHash);
+        }
+
+        // Create TxOutput with optional reference script
         const address = makeAddress(entry.address);
-        const txOutput = makeTxOutput(address, value, datum);
+        const txOutput = makeTxOutput(address, value, datum, refScript);
 
         return makeTxInput(txOutputId, txOutput);
     }
@@ -1015,7 +1110,7 @@ export class CachedUtxoIndex {
         const entry = await this.store.findUtxoId(utxoId);
 
         if (entry) {
-            return this.indexEntryToTxInput(entry);
+            return await this.indexEntryToTxInput(entry);
         }
 
         // Fall back to network if not in cache
@@ -1033,7 +1128,7 @@ export class CachedUtxoIndex {
         const entries = await this.store.findUtxosByAddress(addrStr);
 
         if (entries.length > 0) {
-            return entries.map((e) => this.indexEntryToTxInput(e));
+            return Promise.all(entries.map((e) => this.indexEntryToTxInput(e)));
         }
 
         // Fall back to network if no cached data
@@ -1061,7 +1156,7 @@ export class CachedUtxoIndex {
         const filtered = entries.filter((e) => e.address === addrStr);
 
         if (filtered.length > 0) {
-            return filtered.map((e) => this.indexEntryToTxInput(e));
+            return Promise.all(filtered.map((e) => this.indexEntryToTxInput(e)));
         }
 
         // Fall through to network on cache miss

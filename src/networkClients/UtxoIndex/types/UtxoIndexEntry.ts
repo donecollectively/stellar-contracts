@@ -18,5 +18,6 @@ export interface UtxoIndexEntry {
     }>;
     datumHash: string | null;
     inlineDatum: string | null;  // CBOR hex
+    referenceScriptHash: string | null;  // script hash hex (REQT/tqrhbphgyx)
     uutIds: string[];            // extracted UUT identifiers
 }
