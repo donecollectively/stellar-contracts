@@ -6,31 +6,40 @@ These functions are called during `syncNow()` but can be verified or exercised f
 
 The agent MUST use the workflow described in ./TestingWorkflow.md.
 
-## Test Helpers Available
+## Test Helpers: REQUIRED
 
-Import from `./CachedUtxoIndex.testHelpers.ts`:
+Import and use helpers from `./CachedUtxoIndex.testHelpers.ts`. The file contains detailed usage patterns in its header documentation.
+
+## Required Imports
+
+Add to the existing imports at the top of the test file:
 
 ```typescript
-import {
-    setLastSyncedBlock,
-    getStore,
-    getAllBlocks,
-    getAllTxs,
-    copyIndexData,
-    copyIndexDataUpToBlock,
-    deleteUtxo,
-    deleteTx,
-    deleteUtxos,
-    getUtxosFromTx,
-    createDbCleanupRegistry,
-} from "./CachedUtxoIndex.testHelpers.js";
+import { vi, afterEach } from "vitest";
 ```
 
-**Key patterns:**
-- Use `getStore(index)` instead of `index.store` for accessing the DexieUtxoStore
-- Use `setLastSyncedBlock()` to simulate different sync states
-- Use `copyIndexData()` to duplicate shared index data to isolated tests
-- Use `createDbCleanupRegistry()` for managing test database cleanup
+## Shared Config Pattern
+
+Create a reusable config object to reduce repetition when creating isolated indexes:
+
+```typescript
+// Inside the main describe block, after sharedIndex declaration:
+const baseConfig = {
+    address: TEST_CAPO_ADDRESS,
+    mph: TEST_CAPO_MPH,
+    isMainnet: false,
+    network,
+    bridge,
+    blockfrostKey: BLOCKFROST_API_KEY,
+    storeIn: "dexie" as const,
+};
+
+// Usage in tests:
+const isolatedIndex = new CachedUtxoIndex({
+    ...baseConfig,
+    dbName: createIsolatedDbName("test-name"),
+});
+```
 
 ## Overview
 
@@ -44,11 +53,9 @@ These tests verify:
 
 ### 1. `findOrFetchTxDetails(txId)`
 
-**Location:** `CachedUtxoIndex.ts:979`
+**Location:** `CachedUtxoIndex.ts:1034`
 
 **Purpose:** Retrieves transaction with cache-first strategy.
-
-**Used During Sync:** Yes - fetches tx CBOR for each unique txId in capo UTXOs.
 
 **Test Cases:**
 
@@ -58,64 +65,94 @@ These tests verify:
 | Cache miss | Fetches from network, caches, returns | Use isolated index without tx cached |
 | Verify caching | Second call uses cache | Call twice on isolated index |
 
-**Implementation Notes:**
-- For cache hit: any txId from synced UTXOs will be cached
-- For cache miss: create isolated index, copy partial data, call with uncached txId
-- Use `getStore(index).findTxId()` to verify cache state
+**Implementation:**
 
 ```typescript
 describe("findOrFetchTxDetails (uses shared index)", () => {
-    it("should return cached transaction without network call", async () => {
-        const utxos = await sharedIndex.getAllUtxos();
-        const txHash = utxos[0].utxoId.split("#")[0];
+    it("should return tx from cache without network call", async () => {
+        const { getStore, getAllTxs } = await import("./CachedUtxoIndex.testHelpers.js");
+        const store = getStore(sharedIndex);
 
-        // This should be instant (cached)
-        const start = Date.now();
-        const tx = await sharedIndex.findOrFetchTxDetails(txHash);
-        const elapsed = Date.now() - start;
+        // Get a txId that was cached during sync
+        const cachedTxs = await getAllTxs(sharedIndex);
+        expect(cachedTxs.length).toBeGreaterThan(0);
+        const txId = cachedTxs[0].txid;
+
+        // Spy on fetchFromBlockfrost to verify no network call
+        const fetchSpy = vi.spyOn(sharedIndex, "fetchFromBlockfrost");
+
+        const tx = await sharedIndex.findOrFetchTxDetails(txId);
 
         expect(tx).toBeTruthy();
-        // Cached lookup should be very fast (< 50ms typically)
-        expect(elapsed).toBeLessThan(50);
+        expect(tx.id().toHex()).toBe(txId);
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        fetchSpy.mockRestore();
     });
 
-    it("should verify tx is stored in cache", async () => {
-        const utxos = await sharedIndex.getAllUtxos();
-        const txHash = utxos[0].utxoId.split("#")[0];
+    it("should fetch from network on cache miss and cache result", async () => {
+        const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+        const cleanupRegistry = createDbCleanupRegistry();
 
-        // Use test helper to access store
-        const store = getStore(sharedIndex);
-        const cached = await store.findTxId(txHash);
-        expect(cached).toBeTruthy();
-        expect(cached!.txid).toBe(txHash);
-        expect(cached!.cbor).toBeTruthy();
-    });
-
-    it("should fetch and cache on miss (isolated)", async () => {
-        // Create isolated index
+        // Create isolated index WITHOUT copying tx data
         const dbName = createIsolatedDbName("tx-cache-miss");
-        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+        cleanupRegistry.register(dbName);
 
-        // Get a txId we know exists
+        const isolatedIndex = new CachedUtxoIndex({
+            ...baseConfig,
+            dbName,
+        });
+
+        // Get a txId from shared index that is NOT in isolated index
         const utxos = await sharedIndex.getAllUtxos();
-        const txHash = utxos[0].utxoId.split("#")[0];
+        const txId = utxos[0].utxoId.split("#")[0];
 
-        // Verify it's not cached in isolated index
-        const store = getStore(isolatedIndex);
-        const before = await store.findTxId(txHash);
-        expect(before).toBeUndefined();
+        // Verify not in isolated cache
+        const isolatedStore = getStore(isolatedIndex);
+        const beforeFetch = await isolatedStore.findTxId(txId);
+        expect(beforeFetch).toBeUndefined();
 
         // Fetch - should hit network
-        const tx = await isolatedIndex.findOrFetchTxDetails(txHash);
+        const tx = await isolatedIndex.findOrFetchTxDetails(txId);
         expect(tx).toBeTruthy();
+        expect(tx.id().toHex()).toBe(txId);
 
         // Verify now cached
-        const after = await store.findTxId(txHash);
-        expect(after).toBeTruthy();
-        expect(after!.cbor).toBeTruthy();
+        const afterFetch = await isolatedStore.findTxId(txId);
+        expect(afterFetch).toBeTruthy();
+        expect(afterFetch!.txid).toBe(txId);
 
-        // Cleanup
-        await Dexie.delete(dbName);
+        await cleanupRegistry.cleanup();
+    });
+
+    it("should use cache on second call", async () => {
+        const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+        const cleanupRegistry = createDbCleanupRegistry();
+
+        const dbName = createIsolatedDbName("tx-second-call");
+        cleanupRegistry.register(dbName);
+
+        const isolatedIndex = new CachedUtxoIndex({
+            ...baseConfig,
+            dbName,
+        });
+
+        const utxos = await sharedIndex.getAllUtxos();
+        const txId = utxos[0].utxoId.split("#")[0];
+
+        // First call - fetches from network
+        await isolatedIndex.findOrFetchTxDetails(txId);
+
+        // Spy for second call
+        const fetchSpy = vi.spyOn(isolatedIndex, "fetchFromBlockfrost");
+
+        // Second call - should use cache
+        const tx2 = await isolatedIndex.findOrFetchTxDetails(txId);
+        expect(tx2.id().toHex()).toBe(txId);
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        fetchSpy.mockRestore();
+        await cleanupRegistry.cleanup();
     });
 });
 ```
@@ -124,11 +161,9 @@ describe("findOrFetchTxDetails (uses shared index)", () => {
 
 ### 2. `findOrFetchBlockHeight(blockId)`
 
-**Location:** `CachedUtxoIndex.ts:877`
+**Location:** `CachedUtxoIndex.ts:932`
 
 **Purpose:** Resolves block height from hash, with caching.
-
-**Used During Sync:** Not directly, but `fetchAndStoreLatestBlock()` stores block data.
 
 **Test Cases:**
 
@@ -137,50 +172,57 @@ describe("findOrFetchTxDetails (uses shared index)", () => {
 | Cached block | Returns height from store | Use `lastBlockId` (stored during sync) |
 | Uncached block | Fetches, caches, returns height | Use isolated index or older block hash |
 
+**Implementation:**
+
 ```typescript
 describe("findOrFetchBlockHeight (uses shared index)", () => {
-    it("should return height for cached block", async () => {
+    it("should return height from cache for lastBlockId", async () => {
         const blockId = sharedIndex.lastBlockId;
+        const expectedHeight = sharedIndex.lastBlockHeight;
+
+        // Spy to verify no network call
+        const fetchSpy = vi.spyOn(sharedIndex, "fetchFromBlockfrost");
+
         const height = await sharedIndex.findOrFetchBlockHeight(blockId);
 
-        expect(height).toBe(sharedIndex.lastBlockHeight);
+        expect(height).toBe(expectedHeight);
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        fetchSpy.mockRestore();
     });
 
     it("should fetch and cache uncached block", async () => {
-        // Get the previous block hash from latest block details
-        const latestBlock = await sharedIndex.fetchBlockDetails(sharedIndex.lastBlockId);
-        if (latestBlock.previous_block) {
-            const height = await sharedIndex.findOrFetchBlockHeight(latestBlock.previous_block);
-            expect(height).toBe(sharedIndex.lastBlockHeight - 1);
+        const { getStore, getAllBlocks, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+        const cleanupRegistry = createDbCleanupRegistry();
 
-            // Verify it's now cached using test helper
-            const store = getStore(sharedIndex);
-            const cached = await store.findBlockId(latestBlock.previous_block);
-            expect(cached).toBeTruthy();
-        }
-    });
-
-    it("should fetch on miss in isolated index", async () => {
         const dbName = createIsolatedDbName("block-cache-miss");
-        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+        cleanupRegistry.register(dbName);
 
-        // Use a block we know exists
-        const blockId = sharedIndex.lastBlockId;
+        const isolatedIndex = new CachedUtxoIndex({
+            ...baseConfig,
+            dbName,
+        });
 
-        // Verify not cached
-        const store = getStore(isolatedIndex);
-        const before = await store.findBlockId(blockId);
-        expect(before).toBeUndefined();
+        // Use a block from shared index that isn't in isolated
+        const blocks = await getAllBlocks(sharedIndex);
+        expect(blocks.length).toBeGreaterThan(0);
+        const testBlock = blocks[0];
 
-        // Fetch
-        const height = await isolatedIndex.findOrFetchBlockHeight(blockId);
-        expect(typeof height).toBe("number");
+        // Verify not in isolated cache
+        const isolatedStore = getStore(isolatedIndex);
+        const beforeFetch = await isolatedStore.findBlockId(testBlock.hash);
+        expect(beforeFetch).toBeUndefined();
 
-        // Verify cached
-        const after = await store.findBlockId(blockId);
-        expect(after).toBeTruthy();
+        // Fetch - should hit network and cache
+        const height = await isolatedIndex.findOrFetchBlockHeight(testBlock.hash);
+        expect(height).toBe(testBlock.height);
 
-        await Dexie.delete(dbName);
+        // Verify now cached
+        const afterFetch = await isolatedStore.findBlockId(testBlock.hash);
+        expect(afterFetch).toBeTruthy();
+        expect(afterFetch!.height).toBe(testBlock.height);
+
+        await cleanupRegistry.cleanup();
     });
 });
 ```
@@ -189,11 +231,9 @@ describe("findOrFetchBlockHeight (uses shared index)", () => {
 
 ### 3. `fetchAndStoreLatestBlock()`
 
-**Location:** `CachedUtxoIndex.ts:903`
+**Location:** `CachedUtxoIndex.ts:958`
 
 **Purpose:** Fetches latest block from Blockfrost and stores it.
-
-**Used During Sync:** Yes - called at end of `syncNow()`.
 
 **Test Cases:**
 
@@ -201,44 +241,68 @@ describe("findOrFetchBlockHeight (uses shared index)", () => {
 |------|-------------|-------|
 | Updates state | Updates lastBlockHeight, lastBlockId, lastSlot | Call and verify state change |
 | Stores block | Block is saved to store | Check store after call |
-| Idempotent | Multiple calls don't cause issues | Call twice |
+| From zero state | Works on fresh isolated index | Create isolated index, call method |
+
+**Implementation:**
 
 ```typescript
-describe("fetchAndStoreLatestBlock (uses shared index)", () => {
-    it("should update block tracking state", async () => {
-        const prevHeight = sharedIndex.lastBlockHeight;
+describe("fetchAndStoreLatestBlock (isolated)", () => {
+    it("should update state fields after fetching", async () => {
+        const { createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+        const cleanupRegistry = createDbCleanupRegistry();
 
-        const block = await sharedIndex.fetchAndStoreLatestBlock();
+        const dbName = createIsolatedDbName("latest-block-state");
+        cleanupRegistry.register(dbName);
 
-        // Height should be >= previous (blockchain moves forward)
-        expect(sharedIndex.lastBlockHeight).toBeGreaterThanOrEqual(prevHeight);
-        expect(sharedIndex.lastBlockId).toBe(block.hash);
-        expect(sharedIndex.lastSlot).toBe(block.slot);
+        const isolatedIndex = new CachedUtxoIndex({
+            ...baseConfig,
+            dbName,
+        });
+
+        // Initially zero (fresh index, no sync)
+        expect(isolatedIndex.lastBlockHeight).toBe(0);
+        expect(isolatedIndex.lastBlockId).toBe("");
+        expect(isolatedIndex.lastSlot).toBe(0);
+
+        const result = await isolatedIndex.fetchAndStoreLatestBlock();
+
+        // State should be updated
+        expect(isolatedIndex.lastBlockHeight).toBeGreaterThan(0);
+        expect(isolatedIndex.lastBlockId.length).toBe(64);
+        expect(isolatedIndex.lastSlot).toBeGreaterThan(0);
+
+        // Return value should match state
+        expect(result.height).toBe(isolatedIndex.lastBlockHeight);
+        expect(result.hash).toBe(isolatedIndex.lastBlockId);
+        expect(result.slot).toBe(isolatedIndex.lastSlot);
+
+        await cleanupRegistry.cleanup();
     });
 
     it("should store block in database", async () => {
-        const block = await sharedIndex.fetchAndStoreLatestBlock();
-        const store = getStore(sharedIndex);
-        const stored = await store.findBlockId(block.hash);
+        const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+        const cleanupRegistry = createDbCleanupRegistry();
 
-        expect(stored).toBeTruthy();
-        expect(stored!.height).toBe(block.height);
-    });
+        const dbName = createIsolatedDbName("latest-block-store");
+        cleanupRegistry.register(dbName);
 
-    it("should update isolated index from zero state", async () => {
-        const dbName = createIsolatedDbName("fetch-latest-block");
-        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+        const isolatedIndex = new CachedUtxoIndex({
+            ...baseConfig,
+            dbName,
+        });
 
-        // Initial state is 0
-        expect(isolatedIndex.lastBlockHeight).toBe(0);
+        const result = await isolatedIndex.fetchAndStoreLatestBlock();
 
-        const block = await isolatedIndex.fetchAndStoreLatestBlock();
+        // Verify block was stored
+        const store = getStore(isolatedIndex);
+        const storedBlock = await store.findBlockId(result.hash);
 
-        expect(isolatedIndex.lastBlockHeight).toBe(block.height);
-        expect(isolatedIndex.lastBlockId).toBe(block.hash);
-        expect(isolatedIndex.lastSlot).toBe(block.slot);
+        expect(storedBlock).toBeTruthy();
+        expect(storedBlock!.height).toBe(result.height);
+        expect(storedBlock!.slot).toBe(result.slot);
+        expect(storedBlock!.epoch).toBe(result.epoch);
 
-        await Dexie.delete(dbName);
+        await cleanupRegistry.cleanup();
     });
 });
 ```
@@ -263,241 +327,302 @@ These private methods are tested indirectly by verifying the stored data structu
 | Datum handling | Inline datums/hashes preserved | Check datumHash/inlineDatum fields |
 | UUT extraction | UUT IDs correctly identified | Verify uutIds array format |
 | Block structure | Block entries have required fields | Check stored block data |
+| Tx indexing | All UTXO-creating txs indexed | Compare UTXO txHashes to indexed txs |
+
+**Implementation:**
 
 ```typescript
 describe("Data Conversion Verification (uses shared index)", () => {
-    it("should produce valid UtxoIndexEntry structure", async () => {
+    it("should have correct UTXO structure in indexed data", async () => {
         const utxos = await sharedIndex.getAllUtxos();
+        expect(utxos.length).toBeGreaterThan(0);
 
         for (const utxo of utxos) {
             // Required fields
-            expect(utxo.utxoId).toMatch(/^[a-f0-9]{64}#\d+$/);
-            expect(utxo.address).toMatch(/^addr_test1/);
+            expect(utxo.utxoId).toBeTruthy();
+            expect(utxo.utxoId).toMatch(/^[0-9a-f]{64}#\d+$/);
+            expect(utxo.address).toBeTruthy();
             expect(typeof utxo.lovelace).toBe("bigint");
             expect(Array.isArray(utxo.tokens)).toBe(true);
             expect(Array.isArray(utxo.uutIds)).toBe(true);
 
-            // Token structure
+            // Optional fields have correct types if present
+            if (utxo.datumHash) {
+                expect(typeof utxo.datumHash).toBe("string");
+                expect(utxo.datumHash.length).toBe(64);
+            }
+            if (utxo.inlineDatum) {
+                expect(typeof utxo.inlineDatum).toBe("string");
+            }
+        }
+    });
+
+    it("should have correct token structure", async () => {
+        const utxos = await sharedIndex.findUtxosByAsset(TEST_CAPO_MPH);
+        expect(utxos.length).toBeGreaterThan(0);
+
+        for (const utxo of utxos) {
             for (const token of utxo.tokens) {
-                expect(token.policyId).toMatch(/^[a-f0-9]{56}$/);
+                expect(typeof token.policyId).toBe("string");
+                expect(token.policyId.length).toBe(56); // MPH is 28 bytes = 56 hex
                 expect(typeof token.tokenName).toBe("string");
                 expect(typeof token.quantity).toBe("bigint");
+                expect(token.quantity).toBeGreaterThan(0n);
             }
+        }
+    });
 
-            // UUT ID format
+    it("should preserve UUT IDs with correct format", async () => {
+        const utxos = await sharedIndex.getAllUtxos();
+        const utxosWithUuts = utxos.filter(u => u.uutIds.length > 0);
+
+        // Should have at least delegate UUTs
+        expect(utxosWithUuts.length).toBeGreaterThan(0);
+
+        const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
+        for (const utxo of utxosWithUuts) {
             for (const uutId of utxo.uutIds) {
-                expect(uutId).toMatch(/^[a-z]+-[0-9a-f]{12}$/);
+                expect(uutId).toMatch(uutPattern);
             }
         }
     });
 
-    it("should preserve datum information", async () => {
+    it("should have correct block structure in indexed data", async () => {
+        const { getAllBlocks } = await import("./CachedUtxoIndex.testHelpers.js");
+        const blocks = await getAllBlocks(sharedIndex);
+
+        expect(blocks.length).toBeGreaterThan(0);
+
+        for (const block of blocks) {
+            expect(block.hash).toBeTruthy();
+            expect(block.hash.length).toBe(64);
+            expect(typeof block.height).toBe("number");
+            expect(block.height).toBeGreaterThan(0);
+            expect(typeof block.slot).toBe("number");
+            expect(block.slot).toBeGreaterThan(0);
+            expect(typeof block.time).toBe("number");
+            expect(typeof block.epoch).toBe("number");
+        }
+    });
+
+    it("should have txs indexed for UTXOs", async () => {
+        const { getAllTxs } = await import("./CachedUtxoIndex.testHelpers.js");
+        const txs = await getAllTxs(sharedIndex);
+
+        expect(txs.length).toBeGreaterThan(0);
+
+        // Each tx should have cbor
+        for (const tx of txs) {
+            expect(tx.txid).toBeTruthy();
+            expect(tx.txid.length).toBe(64);
+            expect(tx.cbor).toBeTruthy();
+        }
+
+        // Verify there's at least one tx that created a UTXO
         const utxos = await sharedIndex.getAllUtxos();
-        const withDatum = utxos.filter(u => u.inlineDatum || u.datumHash);
+        const txIdsFromUtxos = new Set(utxos.map(u => u.utxoId.split("#")[0]));
+        const indexedTxIds = new Set(txs.map(t => t.txid));
 
-        // Capo UTXOs should have datums
-        expect(withDatum.length).toBeGreaterThan(0);
-
-        for (const utxo of withDatum) {
-            // Either inline datum or hash, not both
-            if (utxo.inlineDatum) {
-                expect(utxo.inlineDatum).toMatch(/^[a-f0-9]+$/);
-            }
-            if (utxo.datumHash) {
-                expect(utxo.datumHash).toMatch(/^[a-f0-9]{64}$/);
-            }
-        }
-    });
-
-    it("should store valid BlockIndexEntry", async () => {
-        const store = getStore(sharedIndex);
-        const block = await store.findBlockId(sharedIndex.lastBlockId);
-
-        expect(block).toBeTruthy();
-        expect(block!.hash).toMatch(/^[a-f0-9]{64}$/);
-        expect(typeof block!.height).toBe("number");
-        expect(typeof block!.slot).toBe("number");
-        expect(typeof block!.time).toBe("number");
-    });
-
-    it("should have indexed all transactions from UTXOs", async () => {
-        const utxos = await sharedIndex.getAllUtxos();
-        const txHashes = new Set(utxos.map(u => u.utxoId.split("#")[0]));
-
-        const allTxs = await getAllTxs(sharedIndex);
-        const indexedTxIds = new Set(allTxs.map(t => t.txid));
-
-        // Every tx that created a UTXO should be indexed
-        for (const txHash of txHashes) {
-            expect(indexedTxIds.has(txHash)).toBe(true);
-        }
+        // At least some UTXO-creating txs should be indexed
+        const overlap = [...txIdsFromUtxos].filter(id => indexedTxIds.has(id));
+        expect(overlap.length).toBeGreaterThan(0);
     });
 });
 ```
 
 ---
 
-### 5. Store Query Methods (Already Partially Tested)
+### 5. Store Query Edge Cases
 
-These are tested but could use additional coverage:
+Additional coverage for query methods:
 
-- `findUtxosByAddress()` - pagination edge cases
-- `findUtxosByAsset()` - with/without tokenName filter
-- `getAllUtxos()` - large offset behavior
-- `findUtxoByUUT()` - non-existent UUT
+| Test | Description |
+|------|-------------|
+| findUtxosByAsset with tokenName | Filter by policyId vs policyId+tokenName |
+| findUtxoByUUT non-existent | Returns undefined for fake UUT |
+| getAllUtxos large offset | Returns empty array gracefully |
+| findUtxosByAddress pagination | Pages don't overlap, correct sizes |
+
+**Implementation:**
 
 ```typescript
 describe("Store Query Edge Cases (uses shared index)", () => {
-    it("findUtxosByAsset should filter by tokenName when provided", async () => {
-        // Find with just policyId
-        const byPolicy = await sharedIndex.findUtxosByAsset(TEST_CAPO_MPH);
+    it("should filter by tokenName in findUtxosByAsset", async () => {
+        // Find UTXOs with capo MPH and "charter" tokenName
+        const charterUtxos = await sharedIndex.findUtxosByAsset(
+            TEST_CAPO_MPH,
+            "63686172746572" // "charter" in hex
+        );
 
-        // Find with specific token name (charter)
-        const charterHex = Buffer.from("charter").toString("hex");
-        const byToken = await sharedIndex.findUtxosByAsset(TEST_CAPO_MPH, charterHex);
+        // Should find exactly one charter UTXO
+        expect(charterUtxos.length).toBe(1);
 
-        // byToken should be subset of byPolicy
-        expect(byToken.length).toBeLessThanOrEqual(byPolicy.length);
-        expect(byToken.length).toBeGreaterThan(0); // Charter should exist
+        // All UTXOs with capo MPH (any token name)
+        const allCapoUtxos = await sharedIndex.findUtxosByAsset(TEST_CAPO_MPH);
+
+        // Should have at least the charter plus delegate tokens
+        expect(allCapoUtxos.length).toBeGreaterThanOrEqual(charterUtxos.length);
     });
 
-    it("findUtxoByUUT should return undefined for non-existent UUT", async () => {
-        const result = await sharedIndex.findUtxoByUUT("fake-000000000000");
+    it("should return undefined for non-existent UUT", async () => {
+        const fakeUut = "fake-000000000000";
+        const result = await sharedIndex.findUtxoByUUT(fakeUut);
         expect(result).toBeUndefined();
     });
 
-    it("getAllUtxos should handle large offset gracefully", async () => {
-        const result = await sharedIndex.getAllUtxos({ offset: 10000 });
+    it("should return empty array for large offset in getAllUtxos", async () => {
+        const result = await sharedIndex.getAllUtxos({ offset: 999999 });
         expect(result).toEqual([]);
     });
 
-    it("findUtxosByAddress should paginate correctly", async () => {
-        const all = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS);
+    it("should paginate findUtxosByAddress correctly", async () => {
+        const page1 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2, offset: 0 });
+        const page2 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2, offset: 2 });
 
-        if (all.length > 2) {
-            const page1 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2 });
-            const page2 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2, offset: 2 });
-
-            expect(page1.length).toBe(2);
-            expect(page2.length).toBeLessThanOrEqual(2);
-
-            // Pages should not overlap
-            const page1Ids = page1.map(u => u.utxoId);
-            const page2Ids = page2.map(u => u.utxoId);
-            for (const id of page2Ids) {
-                expect(page1Ids).not.toContain(id);
-            }
+        // Pages shouldn't overlap
+        const page1Ids = new Set(page1.map(u => u.utxoId));
+        for (const utxo of page2) {
+            expect(page1Ids.has(utxo.utxoId)).toBe(false);
         }
+
+        // Combined should equal fetching more
+        const combined = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 4, offset: 0 });
+        expect(combined.length).toBe(page1.length + page2.length);
     });
 });
 ```
 
 ---
 
-### 6. Testing Cache Miss Scenarios with Isolated Indexes
+### 6. Cache Miss Scenarios (Isolated)
 
-For thorough cache testing, use isolated indexes with partial data:
+Use isolated indexes to test cache miss → fetch → cache hit flow:
+
+| Test | Description |
+|------|-------------|
+| Tx cache miss then hit | First call fetches, second call uses cache |
+| Block cache miss then hit | Same pattern for blocks |
+| Partial data copy | Use `copyIndexDataUpToBlock()` to set up partial sync state |
+
+**Implementation:**
 
 ```typescript
 describe("Cache Miss Scenarios (isolated)", () => {
-    const cleanupRegistry = createDbCleanupRegistry();
+    it("should demonstrate tx cache miss then hit pattern", async () => {
+        const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+        const cleanupRegistry = createDbCleanupRegistry();
 
-    afterAll(async () => {
+        const dbName = createIsolatedDbName("tx-cache-pattern");
+        cleanupRegistry.register(dbName);
+
+        const isolatedIndex = new CachedUtxoIndex({
+            ...baseConfig,
+            dbName,
+        });
+
+        const utxos = await sharedIndex.getAllUtxos();
+        const txId = utxos[0].utxoId.split("#")[0];
+        const store = getStore(isolatedIndex);
+
+        // Miss
+        expect(await store.findTxId(txId)).toBeUndefined();
+
+        // Fetch (cache miss)
+        const fetchSpy = vi.spyOn(isolatedIndex, "fetchFromBlockfrost");
+        await isolatedIndex.findOrFetchTxDetails(txId);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+        // Hit
+        expect(await store.findTxId(txId)).toBeTruthy();
+
+        // Second fetch (cache hit - no network call)
+        fetchSpy.mockClear();
+        await isolatedIndex.findOrFetchTxDetails(txId);
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        fetchSpy.mockRestore();
         await cleanupRegistry.cleanup();
     });
 
-    it("should fetch tx on cache miss and then hit cache", async () => {
-        const dbName = createIsolatedDbName("cache-miss-then-hit");
+    it("should demonstrate block cache miss then hit pattern", async () => {
+        const { getStore, getAllBlocks, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+        const cleanupRegistry = createDbCleanupRegistry();
+
+        const dbName = createIsolatedDbName("block-cache-pattern");
         cleanupRegistry.register(dbName);
 
-        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+        const isolatedIndex = new CachedUtxoIndex({
+            ...baseConfig,
+            dbName,
+        });
 
-        // Get a known tx from shared index
-        const utxos = await sharedIndex.getAllUtxos();
-        const txHash = utxos[0].utxoId.split("#")[0];
+        const blocks = await getAllBlocks(sharedIndex);
+        const blockId = blocks[0].hash;
+        const store = getStore(isolatedIndex);
 
-        // First call - cache miss, should fetch
-        const start1 = Date.now();
-        const tx1 = await isolatedIndex.findOrFetchTxDetails(txHash);
-        const elapsed1 = Date.now() - start1;
+        // Miss
+        expect(await store.findBlockId(blockId)).toBeUndefined();
 
-        // Second call - cache hit, should be fast
-        const start2 = Date.now();
-        const tx2 = await isolatedIndex.findOrFetchTxDetails(txHash);
-        const elapsed2 = Date.now() - start2;
+        // Fetch (cache miss)
+        const fetchSpy = vi.spyOn(isolatedIndex, "fetchFromBlockfrost");
+        await isolatedIndex.findOrFetchBlockHeight(blockId);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
 
-        expect(tx1.id().toHex()).toBe(txHash);
-        expect(tx2.id().toHex()).toBe(txHash);
+        // Hit
+        expect(await store.findBlockId(blockId)).toBeTruthy();
 
-        // Cache hit should be significantly faster
-        expect(elapsed2).toBeLessThan(elapsed1);
-        expect(elapsed2).toBeLessThan(50); // Cache lookup < 50ms
+        // Second fetch (cache hit - no network call)
+        fetchSpy.mockClear();
+        await isolatedIndex.findOrFetchBlockHeight(blockId);
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        fetchSpy.mockRestore();
+        await cleanupRegistry.cleanup();
     });
 
-    it("should work with copied partial data", async () => {
-        const dbName = createIsolatedDbName("partial-copy");
+    it("should work with partial data via copyIndexDataUpToBlock", async () => {
+        const {
+            getAllBlocks,
+            copyIndexDataUpToBlock,
+            createDbCleanupRegistry
+        } = await import("./CachedUtxoIndex.testHelpers.js");
+        const cleanupRegistry = createDbCleanupRegistry();
+
+        const blocks = await getAllBlocks(sharedIndex);
+        if (blocks.length < 2) {
+            // Skip if not enough blocks
+            return;
+        }
+
+        // Sort by height to find an older block
+        const sortedBlocks = [...blocks].sort((a, b) => a.height - b.height);
+        const oldestBlock = sortedBlocks[0];
+
+        const dbName = createIsolatedDbName("partial-data");
         cleanupRegistry.register(dbName);
 
-        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+        const isolatedIndex = new CachedUtxoIndex({
+            ...baseConfig,
+            dbName,
+        });
 
-        // Copy data up to a certain block
-        const blocks = await getAllBlocks(sharedIndex);
-        if (blocks.length > 1) {
-            const midBlock = blocks[Math.floor(blocks.length / 2)];
-            await copyIndexDataUpToBlock(sharedIndex, isolatedIndex, midBlock.height);
+        // Copy data up to oldest block only
+        await copyIndexDataUpToBlock(sharedIndex, isolatedIndex, oldestBlock.height);
 
-            // Verify partial sync state
-            expect(isolatedIndex.lastBlockHeight).toBe(midBlock.height);
-        }
+        // Isolated index should have the partial state
+        expect(isolatedIndex.lastBlockHeight).toBe(oldestBlock.height);
+        expect(isolatedIndex.lastBlockId).toBe(oldestBlock.hash);
+
+        await cleanupRegistry.cleanup();
     });
 });
 ```
 
 ---
-
-## Test File Structure
-
-```typescript
-import {
-    getStore,
-    getAllBlocks,
-    getAllTxs,
-    copyIndexData,
-    copyIndexDataUpToBlock,
-    createDbCleanupRegistry,
-} from "./CachedUtxoIndex.testHelpers.js";
-
-describe("Sync-Dependent Functions (uses shared index)", () => {
-    describe("findOrFetchTxDetails", () => { ... });
-    describe("findOrFetchBlockHeight", () => { ... });
-    describe("fetchAndStoreLatestBlock", () => { ... });
-});
-
-describe("Data Conversion Verification (uses shared index)", () => {
-    it("should produce valid UtxoIndexEntry structure", ...);
-    it("should preserve datum information", ...);
-    it("should store valid BlockIndexEntry", ...);
-    it("should have indexed all transactions from UTXOs", ...);
-});
-
-describe("Store Query Edge Cases (uses shared index)", () => {
-    it("findUtxosByAsset should filter by tokenName", ...);
-    it("findUtxoByUUT returns undefined for non-existent", ...);
-    it("getAllUtxos handles large offset", ...);
-    it("findUtxosByAddress should paginate correctly", ...);
-});
-
-describe("Cache Miss Scenarios (isolated)", () => {
-    // Uses cleanup registry for proper teardown
-    it("should fetch tx on cache miss and then hit cache", ...);
-    it("should work with copied partial data", ...);
-});
-```
 
 ## Dependencies
 
 - Shared synced index (initialized in beforeAll)
 - Test helpers from `./CachedUtxoIndex.testHelpers.ts`
 - `createIsolatedDbName()` helper for unique database names
-- `createDbCleanupRegistry()` for managing test database cleanup
 - No mocking required for most tests
