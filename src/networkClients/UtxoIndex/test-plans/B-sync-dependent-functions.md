@@ -51,7 +51,7 @@ These tests verify:
 
 ## Functions to Test
 
-### 1. `findOrFetchTxDetails(txId)`
+### 1. `findOrFetchTxDetails(txId)` ✅ IMPLEMENTED
 
 **Location:** `CachedUtxoIndex.ts:1034`
 

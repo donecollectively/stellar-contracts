@@ -12,7 +12,7 @@
 // MUST be first - polyfills IndexedDB globally for Node.js
 import "fake-indexeddb/auto";
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
 import Dexie from "dexie";
 import { makeBlockfrostV0Client } from "@helios-lang/tx-utils";
 
@@ -57,6 +57,17 @@ if (!BLOCKFROST_API_KEY) {
         let network: ReturnType<typeof makeBlockfrostV0Client>;
         let bridge: CapoDataBridge;
 
+        // Reusable config for creating isolated indexes
+        let baseConfig: {
+            address: string;
+            mph: string;
+            isMainnet: boolean;
+            network: ReturnType<typeof makeBlockfrostV0Client>;
+            bridge: CapoDataBridge;
+            blockfrostKey: string;
+            storeIn: "dexie";
+        };
+
         // Setup shared resources once for the entire suite
         beforeAll(async () => {
             // Create network client for preprod
@@ -64,6 +75,17 @@ if (!BLOCKFROST_API_KEY) {
 
             // Create bridge for charter datum decoding
             bridge = new CapoDataBridge(false); // false = not mainnet
+
+            // Initialize reusable config
+            baseConfig = {
+                address: TEST_CAPO_ADDRESS,
+                mph: TEST_CAPO_MPH,
+                isMainnet: false,
+                network,
+                bridge,
+                blockfrostKey: BLOCKFROST_API_KEY,
+                storeIn: "dexie",
+            };
 
             // Create and sync the shared index ONCE
             sharedIndex = new CachedUtxoIndex({
@@ -325,6 +347,97 @@ if (!BLOCKFROST_API_KEY) {
 
                 const exists = await sharedIndex.hasUtxo(utxoId);
                 expect(exists).toBe(true);
+            });
+        });
+
+        // ============================================================
+        // Plan B Tests: Functions Used During Sync, Testable Post-Sync
+        // ============================================================
+
+        describe("findOrFetchTxDetails (uses shared index)", () => {
+            it("should return tx from cache without network call", async () => {
+                const { getStore, getAllTxs } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                // Get a txId that was cached during sync
+                const cachedTxs = await getAllTxs(sharedIndex);
+                expect(cachedTxs.length).toBeGreaterThan(0);
+                const txId = cachedTxs[0].txid;
+
+                // Spy on fetchFromBlockfrost to verify no network call
+                const fetchSpy = vi.spyOn(sharedIndex, "fetchFromBlockfrost");
+
+                const tx = await sharedIndex.findOrFetchTxDetails(txId);
+
+                expect(tx).toBeTruthy();
+                expect(tx.id().toHex()).toBe(txId);
+                expect(fetchSpy).not.toHaveBeenCalled();
+
+                fetchSpy.mockRestore();
+            });
+
+            it("should fetch from network on cache miss and cache result", async () => {
+                const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+                const cleanupRegistry = createDbCleanupRegistry();
+
+                // Create isolated index WITHOUT copying tx data
+                const dbName = createIsolatedDbName("tx-cache-miss");
+                cleanupRegistry.register(dbName);
+
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+
+                // Get a txId from shared index that is NOT in isolated index
+                const utxos = await sharedIndex.getAllUtxos();
+                const txId = utxos[0].utxoId.split("#")[0];
+
+                // Verify not in isolated cache
+                const isolatedStore = getStore(isolatedIndex);
+                const beforeFetch = await isolatedStore.findTxId(txId);
+                expect(beforeFetch).toBeUndefined();
+
+                // Fetch - should hit network
+                const tx = await isolatedIndex.findOrFetchTxDetails(txId);
+                expect(tx).toBeTruthy();
+                expect(tx.id().toHex()).toBe(txId);
+
+                // Verify now cached
+                const afterFetch = await isolatedStore.findTxId(txId);
+                expect(afterFetch).toBeTruthy();
+                expect(afterFetch!.txid).toBe(txId);
+
+                await cleanupRegistry.cleanup();
+            });
+
+            it("should use cache on second call", async () => {
+                const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+                const cleanupRegistry = createDbCleanupRegistry();
+
+                const dbName = createIsolatedDbName("tx-second-call");
+                cleanupRegistry.register(dbName);
+
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+
+                const utxos = await sharedIndex.getAllUtxos();
+                const txId = utxos[0].utxoId.split("#")[0];
+
+                // First call - fetches from network
+                await isolatedIndex.findOrFetchTxDetails(txId);
+
+                // Spy for second call
+                const fetchSpy = vi.spyOn(isolatedIndex, "fetchFromBlockfrost");
+
+                // Second call - should use cache
+                const tx2 = await isolatedIndex.findOrFetchTxDetails(txId);
+                expect(tx2.id().toHex()).toBe(txId);
+                expect(fetchSpy).not.toHaveBeenCalled();
+
+                fetchSpy.mockRestore();
+                await cleanupRegistry.cleanup();
             });
         });
     });
