@@ -17,6 +17,21 @@ Test plans should include these sections (see Plan B for reference):
 6. **Shared Config Pattern** - The `baseConfig` object for reducing repetition
 7. **Functions to Test** - Test cases and sketches for each function
 
+### Mockability Analysis
+
+For each function to be tested, analyze:
+
+1. **Success indicators** - What behavior distinguishes success? (e.g., "returns from cache" vs "fetches from network")
+2. **Observable methods** - Which internal methods indicate that behavior? (e.g., spy on `fetchFromBlockfrost` to verify cache hit)
+3. **State variations** - What state setup enables each test case? (e.g., isolated DB with/without specific data)
+4. **External dependencies** - Which imperative code makes external calls (API, I/O) that need mocking to eliminate externalities?
+5. **Runtime variations** - Which data or runtime conditions can vary in practice (external responses, data shapes, timing, edge cases) where we want to control those (mocked) conditions and verify correct handling
+
+Include a **Mockability Notes** subsection under each function listing:
+- Methods to spy on (with expected call patterns)
+- Methods to mock (to control external behavior and runtime conditions)
+- State variations needed (populated cache, empty cache, partial sync, etc.)
+
 ### Planning Practices
 
 - Draft test sketches using `//! ...pseudocode placeholders` to make human review on semantics easy. Design this pseudocode with consistency in mind and alignment to the overall testing strategy.
