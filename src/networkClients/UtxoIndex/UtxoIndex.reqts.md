@@ -291,6 +291,16 @@ Ensures the CachedUtxoIndex can be used as a drop-in replacement for Helios netw
  - **REQT-1.6.7**/gz9a5b8qv: COMPLETED: **now Property** - Must implement `now: number` property returning current slot number. Must be initialized from cached block data at startup and kept in sync with latest block information.
  - **REQT-1.6.8**/ha0b6c9rw: COMPLETED: **parameters Property** - Must implement `parameters: Promise<NetworkParams>` to provide network parameters. Must fetch from underlying network client or cache.
 
+### REQT-1.7/ss7w87ecmj: NEXT: **Full TxInput Restoration**
+
+#### Purpose
+Ensures that Tx objects returned from cache have fully-restored TxInputs with complete output data, matching what BlockfrostV0Client provides. Raw Tx CBOR only contains TxOutputId references for inputs; full TxInput restoration requires fetching output details (address, value, datum) and reference scripts.
+
+ - **REQT-1.7.1**/nqemw2gvm2: NEXT: **restoreTxInput Method** - Must implement `restoreTxInput(txOutputId: TxOutputId): Promise<TxInput>` to reconstruct a full TxInput from a TxOutputId reference. Must fetch the original output's address, value, inline datum (or hashed datum), and reference script. Must cache fetched data in the UTXO store for future lookups.
+ - **REQT-1.7.2**/tqrhbphgyx: NEXT: **Reference Script Fetching** - When a UTXO has a `reference_script_hash`, must fetch script CBOR from Blockfrost `/scripts/{hash}/cbor` endpoint. Must decode using `decodeUplcProgramV2FromCbor()`. Must include decoded script in restored TxOutput.
+ - **REQT-1.7.3**/qc7qgsqphv: NEXT: **getTx with Restored Inputs** - Must enhance `getTx()` to return a Tx with fully-restored TxInputs. After decoding Tx CBOR, must iterate inputs and restore each using `restoreTxInput()`. Must handle both regular inputs and reference inputs.
+ - **REQT-1.7.4**/k2wvnd3f1e: NEXT: **Script Storage** - Must extend storage schema to cache reference script CBOR by script hash. Must implement `store.saveScript(hash, cbor)` and `store.findScript(hash)`. Prevents redundant Blockfrost queries for commonly-used reference scripts.
+
 ### Component: UtxoStoreGeneric Interface
 
 #### Overview
@@ -452,6 +462,13 @@ CachedUtxoIndex accepts discrete components instead of requiring a full Capo ins
 * Network client for underlying blockchain queries
 * Bridge component for decoding charter datum
 This enables CachedUtxoIndex to be used as the network client for a Capo, avoiding circular dependencies.
+
+#### NEXT: Full TxInput Restoration (REQT/ss7w87ecmj)
+Tx CBOR from Blockfrost only contains TxOutputId references for inputs, not full output data.
+To match BlockfrostV0Client behavior, we must restore full TxInputs with:
+* Output address, value, inline datum (or hashed datum)
+* Reference script (fetched from `/scripts/{hash}/cbor` endpoint)
+* Cached script storage to avoid redundant fetches
 
 ## Release Management Plan
 

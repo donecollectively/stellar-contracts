@@ -324,6 +324,31 @@ interface ReadonlyCardanoClient {
 
 **Initialization**: On startup, `syncNow()` initializes `lastSlot`, `lastBlockId`, and `lastBlockHeight` from the cached latest block (via `store.getLatestBlock()`). This ensures the `now` property reflects previously discovered block data.
 
+**Full TxInput Restoration** (REQT/ss7w87ecmj):
+Tx CBOR from Blockfrost only contains TxOutputId references for inputs, not full output data. To match BlockfrostV0Client behavior, we restore full TxInputs:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ getTx(id)                                                       │
+│ 1. Decode Tx from CBOR                                          │
+│ 2. For each input TxOutputId:                                   │
+│    └─► restoreTxInput(outputId)                                 │
+│        ├─ Check UTXO cache for output data                      │
+│        ├─ On miss: fetch from network/Blockfrost                │
+│        ├─ If reference_script_hash: fetch script CBOR           │
+│        │   └─► /scripts/{hash}/cbor                             │
+│        └─ Return full TxInput with address, value, datum, script│
+│ 3. Return Tx with restored inputs                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+| Requirement | Status | Description |
+|-------------|--------|-------------|
+| REQT/nqemw2gvm2 | NEXT | `restoreTxInput()` method |
+| REQT/tqrhbphgyx | NEXT | Reference script fetching |
+| REQT/qc7qgsqphv | NEXT | `getTx()` with restored inputs |
+| REQT/k2wvnd3f1e | NEXT | Script storage caching |
+
 **Query API Methods** (REQT/50zkk5xgrx):
 - `findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined>`
 - `findUtxosByAsset(policyId, tokenName?, options?): Promise<UtxoIndexEntry[]>`
@@ -599,5 +624,5 @@ The indexer implements `ReadonlyCardanoClient`, enabling drop-in replacement of 
 
 ---
 
-**Document Version**: 1.4
-**Last Updated**: 2026-01-17 - Decoupled from Capo dependency; uses bridge for charter decoding
+**Document Version**: 1.5
+**Last Updated**: 2026-01-17 - Added Full TxInput Restoration requirements (REQT/ss7w87ecmj)
