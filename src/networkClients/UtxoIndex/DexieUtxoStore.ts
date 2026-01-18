@@ -30,33 +30,13 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     constructor() {
         super("StellarDappIndex-v0.1");
 
-        // Schema v1: initial schema
+        // Schema v1: Complete schema with all tables and indexes
+        // - blocks: block metadata indexed by hash and height
+        // - utxos: UTXO data with *uutIds multiEntry index (REQT/nt1pqd3m3z) and address index (REQT/50zkk5xgrx)
+        // - txs: transaction CBOR indexed by txid
+        // - scripts: reference script CBOR indexed by scriptHash (REQT/k2wvnd3f1e)
+        // - logs: operational logs indexed by logId and [pid,time]
         this.version(1).stores({
-            blocks: "hash, height",
-            utxos: "utxoId, blockHeight",
-            txs: "txid",
-            logs: "logId,[pid,time]",
-        });
-
-        // Schema v2: adds *uutIds multiEntry index for fast UUT lookups
-        // REQT/nt1pqd3m3z (UUT Catalog Entity)
-        this.version(2).stores({
-            blocks: "hash, height",
-            utxos: "utxoId, *uutIds",
-            txs: "txid",
-            logs: "logId,[pid,time]",
-        });
-
-        // Schema v3: adds address index for REQT/50zkk5xgrx query API
-        this.version(3).stores({
-            blocks: "hash, height",
-            utxos: "utxoId, *uutIds, address",
-            txs: "txid",
-            logs: "logId,[pid,time]",
-        });
-
-        // Schema v4: adds scripts table for REQT/k2wvnd3f1e (Script Storage)
-        this.version(4).stores({
             blocks: "hash, height",
             utxos: "utxoId, *uutIds, address",
             txs: "txid",
