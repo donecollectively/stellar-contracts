@@ -6,6 +6,84 @@ These functions operate independently of the initial sync process and can be tes
 
 The agent MUST use the workflow described in ./TestingWorkflow.md.
 
+## Test Helpers: REQUIRED
+
+Import and use helpers from `./CachedUtxoIndex.testHelpers.ts`. The file contains detailed usage patterns in its header documentation.
+
+## Required Imports
+
+Add to the existing imports at the top of the test file:
+
+```typescript
+import { vi } from "vitest";
+```
+
+## Existing Helpers (from testHelpers.ts)
+
+| Helper | Purpose |
+|--------|---------|
+| `getStore(index)` | Access internal DexieUtxoStore for verification |
+| `getAllBlocks(index)` | Get all cached blocks |
+| `getAllTxs(index)` | Get all cached transactions |
+| `getUtxosFromTx(index, txHash)` | Get UTXOs created by a specific tx |
+| `setLastSyncedBlock(index, height, id, slot)` | Simulate partially synced state |
+| `copyIndexData(source, target)` | Copy all data between indexes |
+| `copyIndexDataUpToBlock(source, target, maxHeight)` | Copy partial data |
+| `deleteUtxo(index, utxoId)` | Remove specific UTXO from cache |
+| `deleteTx(index, txId)` | Remove specific tx from cache |
+| `createDbCleanupRegistry()` | Track isolated DBs for cleanup |
+
+## New Helpers Needed
+
+```typescript
+// Find the most recent block and a transaction within it
+findMostRecentTxAndBlock(index: CachedUtxoIndex): Promise<{
+    txId: string;
+    blockHeight: number;
+    blockHash: string;
+}>
+
+// Find a UTXO that has a reference script (if any exist)
+findUtxoWithReferenceScript(index: CachedUtxoIndex): Promise<UtxoIndexEntry | undefined>
+
+// Find the block where the charter token was minted (via Blockfrost asset history)
+// Uses: GET /assets/{policy_id}{asset_name}/history
+// Example asset: 6b413535...63686172746572 (mph + hex "charter")
+findCharterMintBlock(index: CachedUtxoIndex): Promise<{
+    blockHeight: number;
+    txHash: string;
+}>
+
+// Create an isolated index synced only to the first block (charter mint block)
+// Encapsulates: find charter mint block, create index, sync only that block's txns
+createFirstBlockOnlyIndex(
+    baseConfig: BaseConfig,
+    sharedIndex: CachedUtxoIndex,
+    options?: { syncPageSize?: number; maxSyncPages?: number }
+): Promise<{
+    index: CachedUtxoIndex;
+    charterMintBlock: { blockHeight: number; txHash: string };
+    dbName: string;  // for cleanup registration
+}>
+```
+
+## Shared Config Pattern
+
+Create a reusable config object to reduce repetition when creating isolated indexes:
+
+```typescript
+// Inside the main describe block, after sharedIndex declaration:
+const baseConfig = {
+    address: TEST_CAPO_ADDRESS,
+    mph: TEST_CAPO_MPH,
+    isMainnet: false,
+    network,
+    bridge,
+    blockfrostKey: BLOCKFROST_API_KEY,
+    storeIn: "dexie" as const,
+};
+```
+
 ## Overview
 
 These tests exercise functionality that runs **after** initial sync completes, primarily:
@@ -45,56 +123,62 @@ describe("checkForNewTxns (uses shared index)", () => {
 
     it("should throw when lastBlockHeight is 0 and no param provided", async () => {
         const dbName = createIsolatedDbName("check-no-sync");
-        const index = new CachedUtxoIndex({...config, dbName});
+        const index = new CachedUtxoIndex({...baseConfig, dbName});
         // Don't call syncNow - lastBlockHeight remains 0
-        await expect(index.checkForNewTxns()).rejects.toThrow("block height 0");
+        //! calling checkForNewTxns() should throw "block height 0"
     });
-    
+
     it("incrementally loads txs in most recent block", async () => {
-        const { makeTxId } = await import("@helios-lang/ledger");
-        
-        // ! finds the most recent transaction and the block in which that tx exists
+        // Find the most recent tx and its block
+        const { txId, blockHeight, blockHash } = await findMostRecentTxAndBlock(sharedIndex);
 
-        // ! makes an isolated index
-        // ! inserts all the data from the shared index, except for those
-        // in the most recent block
-        // ! fixes up the details in the isolated index so it looks like the most recent block was not processed
+        // Create isolated index with all data except the most recent tx
+        const dbName = createIsolatedDbName("incremental-sync");
+        const isolatedIndex = new CachedUtxoIndex({...baseConfig, dbName});
+        await copyIndexData(sharedIndex, isolatedIndex);
+        await deleteTx(isolatedIndex, txId);
+        setLastSyncedBlock(isolatedIndex, previousBlockHeight, previousBlockHash, previousSlot);
 
-        // ! verifies that the skipped transaction is not found in the isolated index
-        // ! syncs the isolated index
+        //! verify tx is NOT in isolated index before sync
 
-        // ! verifies that the skipped transaction is found in the isolated index after sync
+        await isolatedIndex.checkForNewTxns();
+
+        //! verify tx IS now in isolated index after sync
     });
-    
+
     it("honors the page size limits during syncing", async () => {
-        const { makeTxId } = await import("@helios-lang/ledger");        
+        // Create index synced only to first block (charter mint), with limited page size
+        const { index: isolatedIndex, dbName } = await createFirstBlockOnlyIndex(
+            baseConfig,
+            sharedIndex,
+            { syncPageSize: 4, maxSyncPages: 1 }
+        );
+        const txCountBefore = await getAllTxs(isolatedIndex);
 
-        // ! sets up an isolated sync in which only the first block is processed`: {..    
-        //    // ! finds the tx in which the charter was minted (via blockfrost GET `/assets/{asset}/history`) recent transaction and the block in which that tx exists
-        //    // asset: string  // Concatenation of the policy_id and hex-encoded asset_name
-        //    //     example: b0d07d45fe9514f80213f4020e5a61241458be626841cde717cb38a76e7574636f696e
-            
-        //    // ! makes an isolated index
-        //    // ! syncs only the txns in that initial block        
-        // }
+        await isolatedIndex.checkForNewTxns();
 
-        // ! overloads the pageSize to 4
+        //! verify at most 4 new transactions were processed (one page limit)
+    });
 
-        // ! mocks something so only one page of transactions will be processed
-    })
-    it("fetches multiple pages during syncing", () => {
+    it("fetches multiple pages during syncing", async () => {
+        // Create index synced only to first block, with pageSize=4, maxPages=1
+        const { index: isolatedIndex, dbName } = await createFirstBlockOnlyIndex(
+            baseConfig,
+            sharedIndex,
+            { syncPageSize: 4, maxSyncPages: 1 }
+        );
 
-        // ! sets up an isolated sync in which only the first block is processed`
+        await isolatedIndex.checkForNewTxns();
+        const txCountAfterOnePage = await getAllTxs(isolatedIndex);
 
-        // ! checks that only 4 transactions were added.
+        // Now allow 3 pages and sync again
+        isolatedIndex.maxSyncPages = 3;
+        await isolatedIndex.checkForNewTxns();
+        const txCountAfterThreePages = await getAllTxs(isolatedIndex);
 
-        // ! changes to allow 3 pages of transactions to be processed
-
-        // ! syncs the isolated index
-
-        // ! checks that 12 transactions were added.
-
-    })
+        //! verify more transactions were fetched with increased page limit
+        //! (txCountAfterThreePages > txCountAfterOnePage)
+    });
 });
 ```
 
@@ -124,26 +208,26 @@ describe("getTx (uses shared index)", () => {
         const txHash = utxos[0].utxoId.split("#")[0];
         const { makeTxId } = await import("@helios-lang/ledger");
 
-        // mock getTx in underlying network
+        //! spy on fetchFromBlockfrost
         const tx = await sharedIndex.getTx(makeTxId(txHash));
         expect(tx).toBeTruthy();
         expect(tx.id().toHex()).toBe(txHash);
-        // !ensure the mock wasn't called
+        //! the spy should NOT have been called (cache hit)
     });
-    
-    it("should pass through to underlying network", async () => {
-        const txId = "txId";
+
+    it("should fetch from network on cache miss", async () => {
+        const utxos = await sharedIndex.getAllUtxos();
+        const txHash = utxos[0].utxoId.split("#")[0];
         const { makeTxId } = await import("@helios-lang/ledger");
 
-        // !fetch a tx from the shared index
-        // ! make an isolated index
+        //! create an isolated index with baseConfig (no data copied)
+        //! use deleteTx to ensure tx is not in isolated cache
 
-        // ! spy on getTx in underlying network and call through
-        // 
-        const tx = await sharedIndex.getTx(makeTxId(txId));
+        //! spy on fetchFromBlockfrost on the isolated index
+        const tx = await isolatedIndex.getTx(makeTxId(txHash));
         expect(tx).toBeTruthy();
-        expect(tx.id().toHex()).toBe(txId);
-        // !ensure the mock was called
+        expect(tx.id().toHex()).toBe(txHash);
+        //! the spy SHOULD have been called (cache miss -> network fetch)
     });
 });
 ```
@@ -373,6 +457,8 @@ describe("Script Caching (uses shared index)", () => {
 
 ## Dependencies
 
-- Shared synced index (already set up)
+- Shared synced index (from existing test setup)
 - `@helios-lang/ledger` imports for type construction
-- No mocking required
+- Test helpers from `./CachedUtxoIndex.testHelpers.ts`
+- `vi` from vitest for spying on methods
+- `createIsolatedDbName()` from main test file
