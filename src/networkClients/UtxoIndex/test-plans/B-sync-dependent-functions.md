@@ -159,7 +159,7 @@ describe("findOrFetchTxDetails (uses shared index)", () => {
 
 ---
 
-### 2. `findOrFetchBlockHeight(blockId)`
+### 2. `findOrFetchBlockHeight(blockId)` ✅ IMPLEMENTED
 
 **Location:** `CachedUtxoIndex.ts:932`
 

@@ -440,5 +440,56 @@ if (!BLOCKFROST_API_KEY) {
                 await cleanupRegistry.cleanup();
             });
         });
+
+        describe("findOrFetchBlockHeight (uses shared index)", () => {
+            it("should return height from cache for lastBlockId", async () => {
+                const blockId = sharedIndex.lastBlockId;
+                const expectedHeight = sharedIndex.lastBlockHeight;
+
+                // Spy to verify no network call
+                const fetchSpy = vi.spyOn(sharedIndex, "fetchFromBlockfrost");
+
+                const height = await sharedIndex.findOrFetchBlockHeight(blockId);
+
+                expect(height).toBe(expectedHeight);
+                expect(fetchSpy).not.toHaveBeenCalled();
+
+                fetchSpy.mockRestore();
+            });
+
+            it("should fetch and cache uncached block", async () => {
+                const { getStore, getAllBlocks, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+                const cleanupRegistry = createDbCleanupRegistry();
+
+                const dbName = createIsolatedDbName("block-cache-miss");
+                cleanupRegistry.register(dbName);
+
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+
+                // Use a block from shared index that isn't in isolated
+                const blocks = await getAllBlocks(sharedIndex);
+                expect(blocks.length).toBeGreaterThan(0);
+                const testBlock = blocks[0];
+
+                // Verify not in isolated cache
+                const isolatedStore = getStore(isolatedIndex);
+                const beforeFetch = await isolatedStore.findBlockId(testBlock.hash);
+                expect(beforeFetch).toBeUndefined();
+
+                // Fetch - should hit network and cache
+                const height = await isolatedIndex.findOrFetchBlockHeight(testBlock.hash);
+                expect(height).toBe(testBlock.height);
+
+                // Verify now cached
+                const afterFetch = await isolatedStore.findBlockId(testBlock.hash);
+                expect(afterFetch).toBeTruthy();
+                expect(afterFetch!.height).toBe(testBlock.height);
+
+                await cleanupRegistry.cleanup();
+            });
+        });
     });
 }
