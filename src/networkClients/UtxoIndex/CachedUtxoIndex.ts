@@ -923,7 +923,9 @@ export class CachedUtxoIndex {
         delegateLink: RelativeDelegateLink,
         label: string,
     ): Promise<void> {
-        const assetClass = makeAssetClass(this._mph, delegateLink.uutName);
+        // Convert UTF-8 UUT name to bytes for makeAssetClass
+        const tokenNameBytes = encodeUtf8(delegateLink.uutName);
+        const assetClass = makeAssetClass(this._mph, tokenNameBytes);
 
         const address = delegateLink.delegateValidatorHash
             ? makeAddress(
@@ -1188,8 +1190,12 @@ export class CachedUtxoIndex {
         const txOutputId = makeTxOutputId(txId, outputIndex);
 
         // Create Value from lovelace and tokens
+        // Use explicit 2-arg form: makeAssetClass(mph, tokenNameBytes)
         const assets: [AssetClass, bigint][] = entry.tokens.map((t) => [
-            makeAssetClass(`${t.policyId}.${t.tokenName}`),
+            makeAssetClass(
+                makeMintingPolicyHash(t.policyId),
+                hexToBytes(t.tokenName),
+            ),
             t.quantity,
         ]);
         const value = makeValue(entry.lovelace, assets);
