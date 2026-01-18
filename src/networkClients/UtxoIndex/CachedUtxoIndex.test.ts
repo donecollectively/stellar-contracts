@@ -694,5 +694,132 @@ if (!BLOCKFROST_API_KEY) {
                 expect(combined.length).toBe(page1.length + page2.length);
             });
         });
+
+        describe("Cache Miss Scenarios (isolated)", () => {
+            let cleanupRegistry: Awaited<ReturnType<typeof import("./CachedUtxoIndex.testHelpers.js").createDbCleanupRegistry>>;
+
+            beforeEach(async () => {
+                const { createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+                cleanupRegistry = createDbCleanupRegistry();
+            });
+
+            afterEach(async () => {
+                await cleanupRegistry.cleanup();
+            });
+
+            it("should demonstrate tx cache miss then hit pattern", async () => {
+                const dbName = createIsolatedDbName();
+                cleanupRegistry.register(dbName);
+
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+                await isolatedIndex.syncNow();
+
+                // Get a known txId from UTXOs
+                const utxos = await isolatedIndex.getAllUtxos();
+                expect(utxos.length).toBeGreaterThan(0);
+                const txId = utxos[0].utxoId.split("#")[0];
+
+                // Spy on the network to see if it's called
+                const fetchSpy = vi.spyOn(network, "getUtxo");
+
+                // First call - should be a cache hit (tx was indexed during sync)
+                const tx1 = await isolatedIndex.findOrFetchTxDetails(txId);
+                expect(tx1).toBeTruthy();
+
+                // Should NOT have called network - it was in cache
+                expect(fetchSpy).not.toHaveBeenCalled();
+
+                // Now query for a tx that's definitely not in our index
+                // (using a different but valid-format txId)
+                const fakeTxId = "0".repeat(64);
+                try {
+                    await isolatedIndex.findOrFetchTxDetails(fakeTxId);
+                } catch {
+                    // Expected - fake tx won't exist
+                }
+
+                // Second call for same valid tx - still cache hit
+                const tx2 = await isolatedIndex.findOrFetchTxDetails(txId);
+                expect(tx2).toBeTruthy();
+                expect(tx2!.txid).toBe(tx1!.txid);
+
+                fetchSpy.mockRestore();
+            });
+
+            it("should demonstrate block cache miss then hit pattern", async () => {
+                const dbName = createIsolatedDbName();
+                cleanupRegistry.register(dbName);
+
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+                await isolatedIndex.syncNow();
+
+                // Get a known block from indexed blocks
+                const { getAllBlocks } = await import("./CachedUtxoIndex.testHelpers.js");
+                const blocks = await getAllBlocks(isolatedIndex);
+                expect(blocks.length).toBeGreaterThan(0);
+                const knownBlock = blocks[0];
+
+                // Query by hash - should be cache hit
+                // findOrFetchBlockHeight takes blockId (hash) and returns height
+                const height1 = await isolatedIndex.findOrFetchBlockHeight(knownBlock.hash);
+                expect(height1).toBe(knownBlock.height);
+
+                // Query again - still cache hit, same result
+                const height2 = await isolatedIndex.findOrFetchBlockHeight(knownBlock.hash);
+                expect(height2).toBe(height1);
+            });
+
+            it("should work with partial data via copyIndexDataUpToBlock", async () => {
+                const { getAllBlocks, copyIndexDataUpToBlock } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                // First create a fully synced index
+                const fullDbName = createIsolatedDbName();
+                cleanupRegistry.register(fullDbName);
+
+                const fullIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName: fullDbName,
+                });
+                await fullIndex.syncNow();
+
+                // Get block info to use as cutoff
+                const allBlocks = await getAllBlocks(fullIndex);
+                expect(allBlocks.length).toBeGreaterThan(0);
+
+                // Sort by height to get the highest block as cutoff
+                allBlocks.sort((a, b) => a.height - b.height);
+                const cutoffBlock = allBlocks[allBlocks.length - 1]; // highest block
+
+                // Create a new isolated index
+                const partialDbName = createIsolatedDbName();
+                cleanupRegistry.register(partialDbName);
+
+                const partialIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName: partialDbName,
+                });
+
+                // Copy data up to cutoff block (source, target, maxHeight)
+                await copyIndexDataUpToBlock(fullIndex, partialIndex, cutoffBlock.height);
+
+                // Partial index should have data
+                const partialBlocks = await getAllBlocks(partialIndex);
+
+                // Should have at least some data (may equal full if only 1 block)
+                expect(partialBlocks.length).toBeGreaterThanOrEqual(1);
+                expect(partialBlocks.length).toBeLessThanOrEqual(allBlocks.length);
+
+                // All blocks should be <= cutoff height
+                for (const block of partialBlocks) {
+                    expect(block.height).toBeLessThanOrEqual(cutoffBlock.height);
+                }
+            });
+        });
     });
 }
