@@ -94,6 +94,7 @@ The UtxoIndex addresses these challenges by providing a centralized, persistent 
 5. **Block Information**: Cache block details (height, hash, time) for efficient blockchain state queries
 6. **Structured Logging**: Provide detailed logging with process IDs and timestamps for debugging and monitoring
 7. **Storage Strategy Abstraction**: Support multiple storage backends (Dexie, memory, future: Dred) via a generic interface
+8. **Testability**: Support efficient testing patterns that minimize external API calls while enabling database isolation when needed
 
 ### The Development Plan
 
@@ -324,8 +325,9 @@ Dexie-based implementation of `UtxoStoreGeneric` providing persistent browser st
 #### Purpose
 Defines the IndexedDB schema and entity mappings for the Dexie storage backend. Applied when modifying database structure, adding tables, or changing indexes.
 
- - **REQT-3.1.1**/6h4f158gvs: COMPLETED: **Database Definition** - Must extend Dexie with database name "StellarDappIndex-v0.1". Must define schema with tables and indexed fields: `blocks` (hash, height), `utxos` (utxoId, *uutIds, blockHeight), `txs` (txid), `logs` (logId, [pid,time]).
+ - **REQT-3.1.1**/6h4f158gvs: COMPLETED: **Database Definition** - Must extend Dexie with configurable database name (default: "StellarDappIndex-v0.1"). Must define schema with tables and indexed fields: `blocks` (hash, height), `utxos` (utxoId, *uutIds, blockHeight), `txs` (txid), `logs` (logId, [pid+time]).
  - **REQT-3.1.2**/exv4s020a0: COMPLETED: **Entity Mapping** - Must map tables to appropriate Dexie Entity classes for type-safe storage.
+ - **REQT-3.1.3**/t7dbk8n4mx: COMPLETED: **Database Name Configuration** - DexieUtxoStore constructor must accept optional `dbName` parameter for test isolation. CachedUtxoIndex must pass through `dbName` option to allow tests to create isolated database instances.
 
 ### REQT-3.2/754gq4cbqk: COMPLETED: **Logging & Process Management**
 

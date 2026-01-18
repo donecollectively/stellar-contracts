@@ -3,12 +3,16 @@
  *
  * These tests run against live preprod Blockfrost data using a real Capo instance.
  * Requires BLOCKFROST_API_KEY environment variable to be set to a preprod key.
+ *
+ * Efficiency: Read-only query tests share a single synced index to minimize
+ * Blockfrost API calls. Tests requiring isolation can create separate databases
+ * which are automatically registered for cleanup.
  */
 
 // MUST be first - polyfills IndexedDB globally for Node.js
 import "fake-indexeddb/auto";
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import Dexie from "dexie";
 import { makeBlockfrostV0Client } from "@helios-lang/tx-utils";
 
@@ -18,19 +22,20 @@ import { CapoDataBridge } from "../../helios/scriptBundling/CapoHeliosBundle.bri
 // Test configuration for preprod
 const TEST_CAPO_ADDRESS = "addr_test1wzz7gwv7yc5r4kfc5qau7nf67pc2pp4jz7vhqvmcs63wddsyvhdfz";
 const TEST_CAPO_MPH = "6b413535a846297b5d8a949663f787b11bae34f24835f2f72dbfd128";
-const DATABASE_NAME = "StellarDappIndex-v0.1";
+const SHARED_DB_NAME = "StellarDappIndex-test-shared";
 
 const BLOCKFROST_API_KEY = process.env.BLOCKFROST_API_KEY;
 
+// Registry of isolated database names to clean up after each test
+const isolatedDbCleanupRegistry: Set<string> = new Set();
+
 /**
- * Clean up the Dexie database before tests
+ * Creates a unique database name for isolated tests and registers it for cleanup.
  */
-async function cleanupDatabase(): Promise<void> {
-    try {
-        await Dexie.delete(DATABASE_NAME);
-    } catch (e) {
-        // Database might not exist, which is fine
-    }
+function createIsolatedDbName(testName: string): string {
+    const dbName = `StellarDappIndex-test-${testName}-${Date.now()}`;
+    isolatedDbCleanupRegistry.add(dbName);
+    return dbName;
 }
 
 if (!BLOCKFROST_API_KEY) {
@@ -47,38 +52,64 @@ if (!BLOCKFROST_API_KEY) {
 } else {
     // Full test suite when API key is available
     describe("CachedUtxoIndex", () => {
-        let index: CachedUtxoIndex;
+        // Shared resources for read-only tests
+        let sharedIndex: CachedUtxoIndex;
         let network: ReturnType<typeof makeBlockfrostV0Client>;
         let bridge: CapoDataBridge;
 
+        // Setup shared resources once for the entire suite
         beforeAll(async () => {
-            // Clean up any existing database
-            await cleanupDatabase();
-
             // Create network client for preprod
             network = makeBlockfrostV0Client("preprod", BLOCKFROST_API_KEY);
 
             // Create bridge for charter datum decoding
             bridge = new CapoDataBridge(false); // false = not mainnet
+
+            // Create and sync the shared index ONCE
+            sharedIndex = new CachedUtxoIndex({
+                address: TEST_CAPO_ADDRESS,
+                mph: TEST_CAPO_MPH,
+                isMainnet: false,
+                network,
+                bridge,
+                blockfrostKey: BLOCKFROST_API_KEY,
+                storeIn: "dexie",
+                dbName: SHARED_DB_NAME,
+            });
+
+            // Wait for sync to complete
+            await sharedIndex.syncNow();
+        });
+
+        // Clean up isolated test databases after each test
+        afterEach(async () => {
+            for (const dbName of isolatedDbCleanupRegistry) {
+                try {
+                    await Dexie.delete(dbName);
+                } catch (e) {
+                    // Database might not exist, which is fine
+                }
+            }
+            isolatedDbCleanupRegistry.clear();
         });
 
         afterAll(async () => {
             // Stop periodic refresh if running
-            if (index?.isPeriodicRefreshActive) {
-                index.stopPeriodicRefresh();
+            if (sharedIndex?.isPeriodicRefreshActive) {
+                sharedIndex.stopPeriodicRefresh();
             }
-            // Clean up database
-            await cleanupDatabase();
+            // Clean up shared database
+            try {
+                await Dexie.delete(SHARED_DB_NAME);
+            } catch (e) {
+                // Database might not exist
+            }
         });
 
-        beforeEach(async () => {
-            // Ensure clean state for each test
-            await cleanupDatabase();
-        });
-
-        describe("Initialization", () => {
+        describe("Initialization (isolated)", () => {
             it("should initialize with correct address and mph", async () => {
-                index = new CachedUtxoIndex({
+                const dbName = createIsolatedDbName("init-props");
+                const index = new CachedUtxoIndex({
                     address: TEST_CAPO_ADDRESS,
                     mph: TEST_CAPO_MPH,
                     isMainnet: false,
@@ -86,6 +117,7 @@ if (!BLOCKFROST_API_KEY) {
                     bridge,
                     blockfrostKey: BLOCKFROST_API_KEY,
                     storeIn: "dexie",
+                    dbName,
                 });
 
                 // Verify properties are correctly set
@@ -95,7 +127,8 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should set correct blockfrost base URL for preprod key", async () => {
-                index = new CachedUtxoIndex({
+                const dbName = createIsolatedDbName("init-url");
+                const index = new CachedUtxoIndex({
                     address: TEST_CAPO_ADDRESS,
                     mph: TEST_CAPO_MPH,
                     isMainnet: false,
@@ -103,6 +136,7 @@ if (!BLOCKFROST_API_KEY) {
                     bridge,
                     blockfrostKey: BLOCKFROST_API_KEY,
                     storeIn: "dexie",
+                    dbName,
                 });
 
                 // The blockfrostBaseUrl should be set for preprod
@@ -110,67 +144,25 @@ if (!BLOCKFROST_API_KEY) {
             });
         });
 
-        describe("Sync and Block Tracking", () => {
+        describe("Sync and Block Tracking (uses shared index)", () => {
             it("should populate block tracking fields after syncNow completes", async () => {
-                index = new CachedUtxoIndex({
-                    address: TEST_CAPO_ADDRESS,
-                    mph: TEST_CAPO_MPH,
-                    isMainnet: false,
-                    network,
-                    bridge,
-                    blockfrostKey: BLOCKFROST_API_KEY,
-                    storeIn: "dexie",
-                });
-
-                // Wait for initial sync to complete
-                // syncNow is called in constructor, but it's async so we need to wait
-                // We'll call it again explicitly to ensure it completes
-                await index.syncNow();
-
-                // Block tracking fields should be populated
-                expect(index.lastBlockHeight).toBeGreaterThan(0);
-                expect(index.lastBlockId).toBeTruthy();
-                expect(index.lastBlockId.length).toBe(64); // Block hash is 64 hex chars
-                expect(index.lastSlot).toBeGreaterThan(0);
+                // Block tracking fields should be populated from shared sync
+                expect(sharedIndex.lastBlockHeight).toBeGreaterThan(0);
+                expect(sharedIndex.lastBlockId).toBeTruthy();
+                expect(sharedIndex.lastBlockId.length).toBe(64); // Block hash is 64 hex chars
+                expect(sharedIndex.lastSlot).toBeGreaterThan(0);
             });
 
             it("should have 'now' property reflect lastSlot value", async () => {
-                index = new CachedUtxoIndex({
-                    address: TEST_CAPO_ADDRESS,
-                    mph: TEST_CAPO_MPH,
-                    isMainnet: false,
-                    network,
-                    bridge,
-                    blockfrostKey: BLOCKFROST_API_KEY,
-                    storeIn: "dexie",
-                });
-
-                await index.syncNow();
-
                 // 'now' should equal lastSlot (ReadonlyCardanoClient interface)
-                expect(index.now).toBe(index.lastSlot);
-                expect(index.now).toBeGreaterThan(0);
+                expect(sharedIndex.now).toBe(sharedIndex.lastSlot);
+                expect(sharedIndex.now).toBeGreaterThan(0);
             });
         });
 
-        describe("UTXO Queries", () => {
-            beforeEach(async () => {
-                index = new CachedUtxoIndex({
-                    address: TEST_CAPO_ADDRESS,
-                    mph: TEST_CAPO_MPH,
-                    isMainnet: false,
-                    network,
-                    bridge,
-                    blockfrostKey: BLOCKFROST_API_KEY,
-                    storeIn: "dexie",
-                });
-
-                // Wait for sync to complete
-                await index.syncNow();
-            });
-
+        describe("UTXO Queries (uses shared index)", () => {
             it("should find UTXOs by address", async () => {
-                const utxos = await index.findUtxosByAddress(TEST_CAPO_ADDRESS);
+                const utxos = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS);
 
                 // The Capo address should have at least the charter UTXO
                 expect(utxos.length).toBeGreaterThan(0);
@@ -185,7 +177,7 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should find UTXOs by asset (capo mph)", async () => {
-                const utxos = await index.findUtxosByAsset(TEST_CAPO_MPH);
+                const utxos = await sharedIndex.findUtxosByAsset(TEST_CAPO_MPH);
 
                 // Should find at least the charter token
                 expect(utxos.length).toBeGreaterThan(0);
@@ -200,7 +192,7 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should return all indexed UTXOs with getAllUtxos", async () => {
-                const allUtxos = await index.getAllUtxos();
+                const allUtxos = await sharedIndex.getAllUtxos();
 
                 // Should have indexed at least the capo UTXOs
                 expect(allUtxos.length).toBeGreaterThan(0);
@@ -214,43 +206,29 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should support pagination in getAllUtxos", async () => {
-                const allUtxos = await index.getAllUtxos();
+                const allUtxos = await sharedIndex.getAllUtxos();
 
                 if (allUtxos.length >= 2) {
                     // Test limit
-                    const limited = await index.getAllUtxos({ limit: 1 });
+                    const limited = await sharedIndex.getAllUtxos({ limit: 1 });
                     expect(limited.length).toBe(1);
 
                     // Test offset
-                    const offset = await index.getAllUtxos({ offset: 1, limit: 1 });
+                    const offset = await sharedIndex.getAllUtxos({ offset: 1, limit: 1 });
                     expect(offset.length).toBe(1);
                     expect(offset[0].utxoId).not.toBe(limited[0].utxoId);
                 }
             });
         });
 
-        describe("UUT Lookups", () => {
-            beforeEach(async () => {
-                index = new CachedUtxoIndex({
-                    address: TEST_CAPO_ADDRESS,
-                    mph: TEST_CAPO_MPH,
-                    isMainnet: false,
-                    network,
-                    bridge,
-                    blockfrostKey: BLOCKFROST_API_KEY,
-                    storeIn: "dexie",
-                });
-
-                await index.syncNow();
-            });
-
+        describe("UUT Lookups (uses shared index)", () => {
             it("should find delegate UUTs after sync", async () => {
                 // After sync, delegate UUTs should be cataloged
                 // UUT names follow pattern: {purpose}-{12 hex chars}
                 // We can check for common delegate types
 
                 // Get all UTXOs and look for any with uutIds
-                const allUtxos = await index.getAllUtxos();
+                const allUtxos = await sharedIndex.getAllUtxos();
                 const utxosWithUuts = allUtxos.filter(
                     (u) => u.uutIds && u.uutIds.length > 0
                 );
@@ -270,7 +248,7 @@ if (!BLOCKFROST_API_KEY) {
 
             it("should find UTXO by specific UUT ID", async () => {
                 // First, find a UUT ID from the indexed data
-                const allUtxos = await index.getAllUtxos();
+                const allUtxos = await sharedIndex.getAllUtxos();
                 const utxoWithUut = allUtxos.find(
                     (u) => u.uutIds && u.uutIds.length > 0
                 );
@@ -279,7 +257,7 @@ if (!BLOCKFROST_API_KEY) {
                     const uutId = utxoWithUut.uutIds[0];
 
                     // Look up the UTXO by UUT ID
-                    const found = await index.findUtxoByUUT(uutId);
+                    const found = await sharedIndex.findUtxoByUUT(uutId);
 
                     expect(found).toBeTruthy();
                     expect(found!.utxoId).toBe(utxoWithUut.utxoId);
@@ -288,9 +266,10 @@ if (!BLOCKFROST_API_KEY) {
             });
         });
 
-        describe("Periodic Refresh", () => {
+        describe("Periodic Refresh (isolated)", () => {
             it("should start and stop periodic refresh", async () => {
-                index = new CachedUtxoIndex({
+                const dbName = createIsolatedDbName("periodic-refresh");
+                const index = new CachedUtxoIndex({
                     address: TEST_CAPO_ADDRESS,
                     mph: TEST_CAPO_MPH,
                     isMainnet: false,
@@ -298,6 +277,7 @@ if (!BLOCKFROST_API_KEY) {
                     bridge,
                     blockfrostKey: BLOCKFROST_API_KEY,
                     storeIn: "dexie",
+                    dbName,
                 });
 
                 // Initially should not be active
@@ -321,23 +301,9 @@ if (!BLOCKFROST_API_KEY) {
             });
         });
 
-        describe("ReadonlyCardanoClient Interface", () => {
-            beforeEach(async () => {
-                index = new CachedUtxoIndex({
-                    address: TEST_CAPO_ADDRESS,
-                    mph: TEST_CAPO_MPH,
-                    isMainnet: false,
-                    network,
-                    bridge,
-                    blockfrostKey: BLOCKFROST_API_KEY,
-                    storeIn: "dexie",
-                });
-
-                await index.syncNow();
-            });
-
+        describe("ReadonlyCardanoClient Interface (uses shared index)", () => {
             it("should provide network parameters via parameters property", async () => {
-                const params = await index.parameters;
+                const params = await sharedIndex.parameters;
 
                 // Network params should have expected properties
                 expect(params).toBeTruthy();
@@ -346,7 +312,7 @@ if (!BLOCKFROST_API_KEY) {
 
             it("should check UTXO existence with hasUtxo", async () => {
                 // Get a known UTXO
-                const allUtxos = await index.getAllUtxos();
+                const allUtxos = await sharedIndex.getAllUtxos();
                 expect(allUtxos.length).toBeGreaterThan(0);
 
                 const knownUtxo = allUtxos[0];
@@ -357,7 +323,7 @@ if (!BLOCKFROST_API_KEY) {
                 const txId = makeTxId(txHash);
                 const utxoId = makeTxOutputId(txId, parseInt(indexStr, 10));
 
-                const exists = await index.hasUtxo(utxoId);
+                const exists = await sharedIndex.hasUtxo(utxoId);
                 expect(exists).toBe(true);
             });
         });

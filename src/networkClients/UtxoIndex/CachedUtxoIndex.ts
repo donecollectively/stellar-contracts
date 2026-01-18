@@ -157,6 +157,7 @@ export class CachedUtxoIndex {
         bridge,
         blockfrostKey,
         storeIn: strategy = "dexie",
+        dbName,
     }: {
         address: Address | string;
         mph: MintingPolicyHash | string;
@@ -165,6 +166,7 @@ export class CachedUtxoIndex {
         bridge: CapoDataBridge;
         blockfrostKey: string;
         storeIn?: "dexie" | "memory" | "dred";
+        dbName?: string;
     }) {
         // Convert string inputs to proper types if needed
         this._address = typeof address === "string" ? makeAddress(address) : address;
@@ -185,7 +187,7 @@ export class CachedUtxoIndex {
         this.lastBlockHeight = 0;
         this.lastSlot = 0;
         if (strategy === "dexie") {
-            this.store = new DexieUtxoStore();
+            this.store = new DexieUtxoStore(dbName);
         } else if (strategy === "memory") {
             throw new Error("Memory strategy not implemented");
         } else if (strategy === "dred") {

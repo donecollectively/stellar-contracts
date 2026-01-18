@@ -254,7 +254,7 @@ This section defines where each specific area of functionality belongs.
 
 ### Public API (CachedUtxoIndex)
 
-**Constructor** (NEXT: decoupled from Capo):
+**Constructor**:
 ```typescript
 new CachedUtxoIndex({
     address: Address | string,           // Capo address to monitor
@@ -263,7 +263,8 @@ new CachedUtxoIndex({
     network: CardanoClient,              // Underlying network client
     bridge: CapoHeliosBundleBridge,      // For decoding charter datum
     blockfrostKey: string,
-    storeIn?: "dexie" | "memory" | "dred"
+    storeIn?: "dexie" | "memory" | "dred",
+    dbName?: string                      // Optional database name for test isolation
 })
 ```
 
@@ -547,6 +548,25 @@ The indexer implements `ReadonlyCardanoClient`, enabling drop-in replacement of 
 
 ---
 
+## Testability
+
+### Design Goals
+
+The UtxoIndex supports efficient testing that minimizes external API calls (Blockfrost) while enabling database isolation when needed.
+
+### Test Patterns
+
+| Pattern | Use Case | API Efficiency |
+|---------|----------|----------------|
+| **Shared Index** | Read-only tests (UTXO queries, UUT lookups, pagination) | ~1 sync per suite |
+| **Isolated Database** | Tests needing fresh state (initialization, periodic refresh) | ~1 sync per test |
+
+The `dbName` constructor parameter enables database isolation: tests requiring fresh state create uniquely-named databases, while read-only tests share a single synced instance.
+
+Isolated databases are cleaned up after each test; the shared database is cleaned up after the suite completes.
+
+---
+
 ## Design Decisions
 
 ### Single-Address Monitoring
@@ -624,5 +644,5 @@ The indexer implements `ReadonlyCardanoClient`, enabling drop-in replacement of 
 
 ---
 
-**Document Version**: 1.5
-**Last Updated**: 2026-01-17 - Added Full TxInput Restoration requirements (REQT/ss7w87ecmj)
+**Document Version**: 1.6
+**Last Updated**: 2026-01-18 - Added Testability section with dbName parameter for database isolation (REQT/t7dbk8n4mx)

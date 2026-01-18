@@ -10,6 +10,8 @@ import { dexieBlockDetails } from "./dexieRecords/BlockDetails.js";
 import { indexerLogs } from "./dexieRecords/Logs.js";
 import { dexieUtxoDetails } from "./dexieRecords/UtxoDetails.js";
 
+const DEFAULT_DB_NAME = "StellarDappIndex-v0.1";
+
 /**
  * Dexie/IndexedDB implementation of UtxoStoreGeneric.
  *
@@ -27,8 +29,8 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
 
     pid: number = 0;
 
-    constructor() {
-        super("StellarDappIndex-v0.1");
+    constructor(dbName: string = DEFAULT_DB_NAME) {
+        super(dbName);
 
         // Schema v1: Complete schema with all tables and indexes
         // - blocks: block metadata indexed by hash and height
