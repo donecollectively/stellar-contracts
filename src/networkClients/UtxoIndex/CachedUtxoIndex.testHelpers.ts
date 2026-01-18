@@ -3,6 +3,61 @@
  *
  * These utilities provide access to internal state and bulk operations
  * needed for testing, without polluting the main class API.
+ *
+ * ## Usage Patterns
+ *
+ * ### Accessing Internal State
+ * Use `getStore(index)` instead of accessing `index.store` directly:
+ * ```typescript
+ * const store = getStore(sharedIndex);
+ * const cached = await store.findTxId(txHash);
+ * ```
+ *
+ * ### Simulating Sync States
+ * Use `setLastSyncedBlock()` to simulate partially synced indexes:
+ * ```typescript
+ * setLastSyncedBlock(isolatedIndex, blockHeight, blockHash, slot);
+ * ```
+ *
+ * ### Setting Up Isolated Tests with Pre-existing Data
+ * Use `copyIndexData()` or `copyIndexDataUpToBlock()` to populate isolated test databases:
+ * ```typescript
+ * const dbName = createIsolatedDbName("my-test");
+ * const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+ * await copyIndexData(sharedIndex, isolatedIndex);
+ * // or for partial data:
+ * await copyIndexDataUpToBlock(sharedIndex, isolatedIndex, maxBlockHeight);
+ * ```
+ *
+ * ### Database Cleanup
+ * Use `createDbCleanupRegistry()` for managing test database cleanup:
+ * ```typescript
+ * const cleanupRegistry = createDbCleanupRegistry();
+ *
+ * beforeEach(() => {
+ *     const dbName = createIsolatedDbName("test-case");
+ *     cleanupRegistry.register(dbName);
+ *     // create index with dbName...
+ * });
+ *
+ * afterAll(async () => {
+ *     await cleanupRegistry.cleanup();
+ * });
+ * ```
+ *
+ * ### Verifying Cache State
+ * ```typescript
+ * const store = getStore(index);
+ * const txCached = await store.findTxId(txHash);
+ * const blockCached = await store.findBlockId(blockHash);
+ * ```
+ *
+ * ### Getting All Indexed Data
+ * ```typescript
+ * const allBlocks = await getAllBlocks(index);
+ * const allTxs = await getAllTxs(index);
+ * const utxosFromTx = await getUtxosFromTx(index, txHash);
+ * ```
  */
 
 import Dexie from "dexie";

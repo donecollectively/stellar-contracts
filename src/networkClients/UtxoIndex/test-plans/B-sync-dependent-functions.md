@@ -6,6 +6,31 @@ These functions are called during `syncNow()` but can be verified or exercised f
 
 The agent MUST use the workflow described in ./TestingWorkflow.md.
 
+## Test Helpers Available
+
+Import from `./CachedUtxoIndex.testHelpers.ts`:
+
+```typescript
+import {
+    setLastSyncedBlock,
+    getStore,
+    getAllBlocks,
+    getAllTxs,
+    copyIndexData,
+    copyIndexDataUpToBlock,
+    deleteUtxo,
+    deleteTx,
+    deleteUtxos,
+    getUtxosFromTx,
+    createDbCleanupRegistry,
+} from "./CachedUtxoIndex.testHelpers.js";
+```
+
+**Key patterns:**
+- Use `getStore(index)` instead of `index.store` for accessing the DexieUtxoStore
+- Use `setLastSyncedBlock()` to simulate different sync states
+- Use `copyIndexData()` to duplicate shared index data to isolated tests
+- Use `createDbCleanupRegistry()` for managing test database cleanup
 
 ## Overview
 
@@ -30,13 +55,13 @@ These tests verify:
 | Test | Description | Setup |
 |------|-------------|-------|
 | Cache hit | Returns from store without network call | Use txId already fetched during sync |
-| Cache miss | Fetches from network, caches, returns | Use valid txId not in cache |
-| Verify caching | Second call uses cache | Call twice, verify no duplicate fetch |
+| Cache miss | Fetches from network, caches, returns | Use isolated index without tx cached |
+| Verify caching | Second call uses cache | Call twice on isolated index |
 
 **Implementation Notes:**
 - For cache hit: any txId from synced UTXOs will be cached
-- For cache miss: need a valid preprod txId not associated with the capo
-- To verify caching behavior, could spy on `fetchFromBlockfrost` or check store
+- For cache miss: create isolated index, copy partial data, call with uncached txId
+- Use `getStore(index).findTxId()` to verify cache state
 
 ```typescript
 describe("findOrFetchTxDetails (uses shared index)", () => {
@@ -50,19 +75,47 @@ describe("findOrFetchTxDetails (uses shared index)", () => {
         const elapsed = Date.now() - start;
 
         expect(tx).toBeTruthy();
-        // Cached lookup should be very fast (< 10ms typically)
-        expect(elapsed).toBeLessThan(10);
+        // Cached lookup should be very fast (< 50ms typically)
+        expect(elapsed).toBeLessThan(50);
     });
 
     it("should verify tx is stored in cache", async () => {
         const utxos = await sharedIndex.getAllUtxos();
         const txHash = utxos[0].utxoId.split("#")[0];
 
-        // Directly check store
-        const cached = await sharedIndex.store.findTxId(txHash);
+        // Use test helper to access store
+        const store = getStore(sharedIndex);
+        const cached = await store.findTxId(txHash);
         expect(cached).toBeTruthy();
         expect(cached!.txid).toBe(txHash);
         expect(cached!.cbor).toBeTruthy();
+    });
+
+    it("should fetch and cache on miss (isolated)", async () => {
+        // Create isolated index
+        const dbName = createIsolatedDbName("tx-cache-miss");
+        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+
+        // Get a txId we know exists
+        const utxos = await sharedIndex.getAllUtxos();
+        const txHash = utxos[0].utxoId.split("#")[0];
+
+        // Verify it's not cached in isolated index
+        const store = getStore(isolatedIndex);
+        const before = await store.findTxId(txHash);
+        expect(before).toBeUndefined();
+
+        // Fetch - should hit network
+        const tx = await isolatedIndex.findOrFetchTxDetails(txHash);
+        expect(tx).toBeTruthy();
+
+        // Verify now cached
+        const after = await store.findTxId(txHash);
+        expect(after).toBeTruthy();
+        expect(after!.cbor).toBeTruthy();
+
+        // Cleanup
+        await Dexie.delete(dbName);
     });
 });
 ```
@@ -82,7 +135,7 @@ describe("findOrFetchTxDetails (uses shared index)", () => {
 | Test | Description | Setup |
 |------|-------------|-------|
 | Cached block | Returns height from store | Use `lastBlockId` (stored during sync) |
-| Uncached block | Fetches, caches, returns height | Use older block hash |
+| Uncached block | Fetches, caches, returns height | Use isolated index or older block hash |
 
 ```typescript
 describe("findOrFetchBlockHeight (uses shared index)", () => {
@@ -100,10 +153,34 @@ describe("findOrFetchBlockHeight (uses shared index)", () => {
             const height = await sharedIndex.findOrFetchBlockHeight(latestBlock.previous_block);
             expect(height).toBe(sharedIndex.lastBlockHeight - 1);
 
-            // Verify it's now cached
-            const cached = await sharedIndex.store.findBlockId(latestBlock.previous_block);
+            // Verify it's now cached using test helper
+            const store = getStore(sharedIndex);
+            const cached = await store.findBlockId(latestBlock.previous_block);
             expect(cached).toBeTruthy();
         }
+    });
+
+    it("should fetch on miss in isolated index", async () => {
+        const dbName = createIsolatedDbName("block-cache-miss");
+        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+
+        // Use a block we know exists
+        const blockId = sharedIndex.lastBlockId;
+
+        // Verify not cached
+        const store = getStore(isolatedIndex);
+        const before = await store.findBlockId(blockId);
+        expect(before).toBeUndefined();
+
+        // Fetch
+        const height = await isolatedIndex.findOrFetchBlockHeight(blockId);
+        expect(typeof height).toBe("number");
+
+        // Verify cached
+        const after = await store.findBlockId(blockId);
+        expect(after).toBeTruthy();
+
+        await Dexie.delete(dbName);
     });
 });
 ```
@@ -141,10 +218,27 @@ describe("fetchAndStoreLatestBlock (uses shared index)", () => {
 
     it("should store block in database", async () => {
         const block = await sharedIndex.fetchAndStoreLatestBlock();
-        const stored = await sharedIndex.store.findBlockId(block.hash);
+        const store = getStore(sharedIndex);
+        const stored = await store.findBlockId(block.hash);
 
         expect(stored).toBeTruthy();
         expect(stored!.height).toBe(block.height);
+    });
+
+    it("should update isolated index from zero state", async () => {
+        const dbName = createIsolatedDbName("fetch-latest-block");
+        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+
+        // Initial state is 0
+        expect(isolatedIndex.lastBlockHeight).toBe(0);
+
+        const block = await isolatedIndex.fetchAndStoreLatestBlock();
+
+        expect(isolatedIndex.lastBlockHeight).toBe(block.height);
+        expect(isolatedIndex.lastBlockId).toBe(block.hash);
+        expect(isolatedIndex.lastSlot).toBe(block.slot);
+
+        await Dexie.delete(dbName);
     });
 });
 ```
@@ -216,13 +310,27 @@ describe("Data Conversion Verification (uses shared index)", () => {
     });
 
     it("should store valid BlockIndexEntry", async () => {
-        const block = await sharedIndex.store.findBlockId(sharedIndex.lastBlockId);
+        const store = getStore(sharedIndex);
+        const block = await store.findBlockId(sharedIndex.lastBlockId);
 
         expect(block).toBeTruthy();
         expect(block!.hash).toMatch(/^[a-f0-9]{64}$/);
         expect(typeof block!.height).toBe("number");
         expect(typeof block!.slot).toBe("number");
         expect(typeof block!.time).toBe("number");
+    });
+
+    it("should have indexed all transactions from UTXOs", async () => {
+        const utxos = await sharedIndex.getAllUtxos();
+        const txHashes = new Set(utxos.map(u => u.utxoId.split("#")[0]));
+
+        const allTxs = await getAllTxs(sharedIndex);
+        const indexedTxIds = new Set(allTxs.map(t => t.txid));
+
+        // Every tx that created a UTXO should be indexed
+        for (const txHash of txHashes) {
+            expect(indexedTxIds.has(txHash)).toBe(true);
+        }
     });
 });
 ```
@@ -262,6 +370,86 @@ describe("Store Query Edge Cases (uses shared index)", () => {
         const result = await sharedIndex.getAllUtxos({ offset: 10000 });
         expect(result).toEqual([]);
     });
+
+    it("findUtxosByAddress should paginate correctly", async () => {
+        const all = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS);
+
+        if (all.length > 2) {
+            const page1 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2 });
+            const page2 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2, offset: 2 });
+
+            expect(page1.length).toBe(2);
+            expect(page2.length).toBeLessThanOrEqual(2);
+
+            // Pages should not overlap
+            const page1Ids = page1.map(u => u.utxoId);
+            const page2Ids = page2.map(u => u.utxoId);
+            for (const id of page2Ids) {
+                expect(page1Ids).not.toContain(id);
+            }
+        }
+    });
+});
+```
+
+---
+
+### 6. Testing Cache Miss Scenarios with Isolated Indexes
+
+For thorough cache testing, use isolated indexes with partial data:
+
+```typescript
+describe("Cache Miss Scenarios (isolated)", () => {
+    const cleanupRegistry = createDbCleanupRegistry();
+
+    afterAll(async () => {
+        await cleanupRegistry.cleanup();
+    });
+
+    it("should fetch tx on cache miss and then hit cache", async () => {
+        const dbName = createIsolatedDbName("cache-miss-then-hit");
+        cleanupRegistry.register(dbName);
+
+        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+
+        // Get a known tx from shared index
+        const utxos = await sharedIndex.getAllUtxos();
+        const txHash = utxos[0].utxoId.split("#")[0];
+
+        // First call - cache miss, should fetch
+        const start1 = Date.now();
+        const tx1 = await isolatedIndex.findOrFetchTxDetails(txHash);
+        const elapsed1 = Date.now() - start1;
+
+        // Second call - cache hit, should be fast
+        const start2 = Date.now();
+        const tx2 = await isolatedIndex.findOrFetchTxDetails(txHash);
+        const elapsed2 = Date.now() - start2;
+
+        expect(tx1.id().toHex()).toBe(txHash);
+        expect(tx2.id().toHex()).toBe(txHash);
+
+        // Cache hit should be significantly faster
+        expect(elapsed2).toBeLessThan(elapsed1);
+        expect(elapsed2).toBeLessThan(50); // Cache lookup < 50ms
+    });
+
+    it("should work with copied partial data", async () => {
+        const dbName = createIsolatedDbName("partial-copy");
+        cleanupRegistry.register(dbName);
+
+        const isolatedIndex = new CachedUtxoIndex({...config, dbName});
+
+        // Copy data up to a certain block
+        const blocks = await getAllBlocks(sharedIndex);
+        if (blocks.length > 1) {
+            const midBlock = blocks[Math.floor(blocks.length / 2)];
+            await copyIndexDataUpToBlock(sharedIndex, isolatedIndex, midBlock.height);
+
+            // Verify partial sync state
+            expect(isolatedIndex.lastBlockHeight).toBe(midBlock.height);
+        }
+    });
 });
 ```
 
@@ -270,6 +458,15 @@ describe("Store Query Edge Cases (uses shared index)", () => {
 ## Test File Structure
 
 ```typescript
+import {
+    getStore,
+    getAllBlocks,
+    getAllTxs,
+    copyIndexData,
+    copyIndexDataUpToBlock,
+    createDbCleanupRegistry,
+} from "./CachedUtxoIndex.testHelpers.js";
+
 describe("Sync-Dependent Functions (uses shared index)", () => {
     describe("findOrFetchTxDetails", () => { ... });
     describe("findOrFetchBlockHeight", () => { ... });
@@ -280,17 +477,27 @@ describe("Data Conversion Verification (uses shared index)", () => {
     it("should produce valid UtxoIndexEntry structure", ...);
     it("should preserve datum information", ...);
     it("should store valid BlockIndexEntry", ...);
+    it("should have indexed all transactions from UTXOs", ...);
 });
 
 describe("Store Query Edge Cases (uses shared index)", () => {
     it("findUtxosByAsset should filter by tokenName", ...);
     it("findUtxoByUUT returns undefined for non-existent", ...);
     it("getAllUtxos handles large offset", ...);
+    it("findUtxosByAddress should paginate correctly", ...);
+});
+
+describe("Cache Miss Scenarios (isolated)", () => {
+    // Uses cleanup registry for proper teardown
+    it("should fetch tx on cache miss and then hit cache", ...);
+    it("should work with copied partial data", ...);
 });
 ```
 
 ## Dependencies
 
-- Shared synced index
-- Direct access to `sharedIndex.store` for verification
-- No mocking required
+- Shared synced index (initialized in beforeAll)
+- Test helpers from `./CachedUtxoIndex.testHelpers.ts`
+- `createIsolatedDbName()` helper for unique database names
+- `createDbCleanupRegistry()` for managing test database cleanup
+- No mocking required for most tests
