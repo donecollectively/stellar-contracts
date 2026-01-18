@@ -531,13 +531,14 @@ export class CachedUtxoIndex {
         }
 
         // Extract datum
+        // Store raw UPLC data CBOR for inline datums (consistent with Blockfrost format)
         let datumHash: string | null = null;
         let inlineDatum: string | null = null;
         if (output.datum) {
             if (output.datum.kind === "HashedTxOutputDatum") {
                 datumHash = output.datum.hash.toHex();
             } else if (output.datum.kind === "InlineTxOutputDatum") {
-                inlineDatum = bytesToHex(output.datum.toCbor());
+                inlineDatum = bytesToHex(output.datum.data.toCbor());
             }
         }
 
@@ -577,13 +578,14 @@ export class CachedUtxoIndex {
         }
 
         // Extract datum
+        // Store raw UPLC data CBOR for inline datums (consistent with Blockfrost format)
         let datumHash: string | null = null;
         let inlineDatum: string | null = null;
         if (txInput.datum) {
             if (txInput.datum.kind === "HashedTxOutputDatum") {
                 datumHash = txInput.datum.hash.toHex();
             } else if (txInput.datum.kind === "InlineTxOutputDatum") {
-                inlineDatum = bytesToHex(txInput.datum.toCbor());
+                inlineDatum = bytesToHex(txInput.datum.data.toCbor());
             }
         }
 

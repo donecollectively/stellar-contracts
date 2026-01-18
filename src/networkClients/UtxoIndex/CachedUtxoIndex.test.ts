@@ -925,6 +925,35 @@ if (!BLOCKFROST_API_KEY) {
             });
         });
 
+        describe("getUtxos (uses shared index)", () => {
+            it("should return TxInput array for capo address", async () => {
+                const { makeAddress } = await import("@helios-lang/ledger");
+                const addr = makeAddress(TEST_CAPO_ADDRESS);
+
+                const txInputs = await sharedIndex.getUtxos(addr);
+
+                expect(txInputs.length).toBeGreaterThan(0);
+                expect(txInputs[0].address.toBech32()).toBe(TEST_CAPO_ADDRESS);
+            });
+        });
+
+        describe("getUtxosWithAssetClass (uses shared index)", () => {
+            it("should find UTXOs with charter token", async () => {
+                const { makeAddress, makeAssetClass, makeValue } = await import("@helios-lang/ledger");
+                const addr = makeAddress(TEST_CAPO_ADDRESS);
+                // "charter" in hex = 63686172746572
+                const charterAsset = makeAssetClass(`${TEST_CAPO_MPH}.63686172746572`);
+
+                const txInputs = await sharedIndex.getUtxosWithAssetClass(addr, charterAsset);
+
+                // Should find exactly one charter UTXO
+                expect(txInputs.length).toBe(1);
+                // Verify it has the charter token by checking value is >= 1 of that asset
+                const minAssetValue = makeValue(charterAsset.mph, charterAsset.tokenName, 1n);
+                expect(txInputs[0].value.isGreaterOrEqual(minAssetValue)).toBe(true);
+            });
+        });
+
         describe("fetchBlockDetails (uses shared index)", () => {
             it("should fetch block by hash", async () => {
                 const blockHash = sharedIndex.lastBlockId;
