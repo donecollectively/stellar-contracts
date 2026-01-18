@@ -41,7 +41,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             utxos: "utxoId, *uutIds, address",
             txs: "txid",
             scripts: "scriptHash",
-            logs: "logId,[pid,time]",
+            logs: "logId, [pid+time]",
         });
 
         this.blocks.mapToClass(dexieBlockDetails);
@@ -81,9 +81,11 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         const pid = this.initializing ? await this.initializing : this.pid;
 
         console.log(`${id}: ${message}`);
+        // Use nanoid to generate unique logId, concatenated with the short id for readability
+        const logId = `${id}-${nanoid()}`;
         await this.logs.add(
             {
-                logId: id,
+                logId,
                 pid,
                 time: Date.now(),
                 location,

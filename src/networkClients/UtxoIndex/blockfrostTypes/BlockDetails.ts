@@ -2,23 +2,24 @@ import { jsonSchemaToType } from "@ark/json-schema";
 import { type } from "arktype";
 
 // schema for response from https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/{hash_or_number}
+// Note: Several fields can be null for genesis block or latest block
 export const BlockDetailsFactory = type({
     time: "number",
-    height: "number",
+    height: "number | null",
     hash: "string",
-    slot: "number",
-    epoch: "number",
-    epoch_slot: "number",
+    slot: "number | null",
+    epoch: "number | null",
+    epoch_slot: "number | null",
     slot_leader: "string",
     size: "number",
     tx_count: "number",
-    output: "string",
-    fees: "string",
-    block_vrf: "string",
-    op_cert: "string",
-    op_cert_counter: "string",
-    previous_block: "string",
-    next_block: "string",
+    output: "string | null",
+    fees: "string | null",
+    block_vrf: "string | null",
+    op_cert: "string | null",
+    op_cert_counter: "string | null",
+    previous_block: "string | null",
+    next_block: "string | null",
     confirmations: "number",
 })
 export type BlockDetailsType = typeof BlockDetailsFactory.infer
