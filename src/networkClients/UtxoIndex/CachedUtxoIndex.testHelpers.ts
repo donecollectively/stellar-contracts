@@ -303,3 +303,219 @@ export function createDbCleanupRegistry(): {
         },
     };
 }
+
+// ============================================================
+// Plan A Helpers: Post-Sync Function Testing
+// ============================================================
+
+/**
+ * Finds a recent transaction and its containing block from indexed data.
+ * Uses the lastBlockId/lastBlockHeight from the index and finds a tx
+ * that created one of the indexed UTXOs.
+ */
+export async function findRecentTxAndBlock(index: CachedUtxoIndex): Promise<{
+    txId: string;
+    blockHeight: number;
+    blockHash: string;
+    slot: number;
+}> {
+    const internal = index as CachedUtxoIndexInternal;
+
+    // Get a transaction from the indexed UTXOs
+    const utxos = await index.getAllUtxos();
+    if (utxos.length === 0) {
+        throw new Error("No UTXOs indexed - cannot find recent tx");
+    }
+
+    const txId = utxos[0].utxoId.split("#")[0];
+
+    return {
+        txId,
+        blockHeight: internal.lastBlockHeight,
+        blockHash: internal.lastBlockId,
+        slot: internal.lastSlot,
+    };
+}
+
+/**
+ * Finds a UTXO that has a reference script hash (if any exist in the indexed data).
+ */
+export async function findUtxoWithReferenceScript(
+    index: CachedUtxoIndex
+): Promise<UtxoIndexEntry | undefined> {
+    const allUtxos = await index.getAllUtxos();
+    return allUtxos.find(u => u.referenceScriptHash !== null && u.referenceScriptHash !== undefined);
+}
+
+/**
+ * Finds the block where the charter token was minted by querying Blockfrost asset history.
+ * Uses: GET /assets/{policy_id}{asset_name}/history
+ */
+export async function findCharterMintBlock(
+    index: CachedUtxoIndex,
+    blockfrostKey: string
+): Promise<{
+    blockHeight: number;
+    txHash: string;
+}> {
+    const capoMph = index.capoMph;
+    // "charter" in hex = 63686172746572
+    const charterHex = "63686172746572";
+    const asset = `${capoMph}${charterHex}`;
+
+    const baseUrl = index.blockfrostBaseUrl;
+    const response = await fetch(
+        `${baseUrl}/api/v0/assets/${asset}/history?order=asc&count=1`,
+        {
+            headers: {
+                project_id: blockfrostKey,
+            },
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch asset history: ${response.statusText}`);
+    }
+
+    const history = await response.json() as Array<{
+        tx_hash: string;
+        action: string;
+        amount: string;
+    }>;
+
+    if (history.length === 0) {
+        throw new Error("No charter mint history found");
+    }
+
+    // The first entry with action "minted" is the charter mint
+    const mintEntry = history.find(h => h.action === "minted");
+    if (!mintEntry) {
+        throw new Error("No mint action found in charter history");
+    }
+
+    // Get block height for this tx
+    const txResponse = await fetch(
+        `${baseUrl}/api/v0/txs/${mintEntry.tx_hash}`,
+        {
+            headers: {
+                project_id: blockfrostKey,
+            },
+        }
+    );
+
+    if (!txResponse.ok) {
+        throw new Error(`Failed to fetch tx details: ${txResponse.statusText}`);
+    }
+
+    const txDetails = await txResponse.json() as { block_height: number };
+
+    return {
+        blockHeight: txDetails.block_height,
+        txHash: mintEntry.tx_hash,
+    };
+}
+
+/**
+ * Creates an isolated index synced only up to a specific block height.
+ * Useful for testing incremental sync scenarios.
+ *
+ * @param baseConfig - Base configuration for creating indexes
+ * @param sharedIndex - Source index to copy data from
+ * @param targetBlockHeight - Sync up to this block height
+ * @param options - Optional sync configuration overrides
+ */
+export async function createPartialSyncIndex(
+    baseConfig: {
+        address: string;
+        mph: string;
+        isMainnet: boolean;
+        network: unknown;
+        bridge: unknown;
+        blockfrostKey: string;
+        storeIn: "dexie";
+    },
+    sharedIndex: CachedUtxoIndex,
+    targetBlockHeight: number,
+    options?: {
+        syncPageSize?: number;
+        maxSyncPages?: number;
+        dbName?: string;
+    }
+): Promise<{
+    index: CachedUtxoIndex;
+    dbName: string;
+}> {
+    const { CachedUtxoIndex } = await import("./CachedUtxoIndex.js");
+
+    const dbName = options?.dbName || `StellarDappIndex-test-partial-${Date.now()}`;
+
+    const isolatedIndex = new CachedUtxoIndex({
+        ...baseConfig,
+        dbName,
+        syncPageSize: options?.syncPageSize,
+        maxSyncPages: options?.maxSyncPages,
+    });
+
+    // Copy data up to target block
+    await copyIndexDataUpToBlock(sharedIndex, isolatedIndex, targetBlockHeight);
+
+    return {
+        index: isolatedIndex,
+        dbName,
+    };
+}
+
+/**
+ * Creates an isolated index that only has data from the charter mint block.
+ * This is useful for testing incremental sync from the very beginning.
+ */
+export async function createFirstBlockOnlyIndex(
+    baseConfig: {
+        address: string;
+        mph: string;
+        isMainnet: boolean;
+        network: unknown;
+        bridge: unknown;
+        blockfrostKey: string;
+        storeIn: "dexie";
+    },
+    sharedIndex: CachedUtxoIndex,
+    options?: {
+        syncPageSize?: number;
+        maxSyncPages?: number;
+    }
+): Promise<{
+    index: CachedUtxoIndex;
+    charterMintBlock: { blockHeight: number; txHash: string };
+    dbName: string;
+}> {
+    // Find the charter mint block
+    const charterMintBlock = await findCharterMintBlock(sharedIndex, baseConfig.blockfrostKey);
+
+    const { CachedUtxoIndex } = await import("./CachedUtxoIndex.js");
+
+    const dbName = `StellarDappIndex-test-firstblock-${Date.now()}`;
+
+    // Create a new index with limited sync parameters
+    const isolatedIndex = new CachedUtxoIndex({
+        ...baseConfig,
+        dbName,
+        syncPageSize: options?.syncPageSize ?? 100,
+        maxSyncPages: options?.maxSyncPages ?? Infinity,
+    });
+
+    // Set the lastBlockHeight to the charter mint block
+    // This simulates an index that was synced only to this point
+    setLastSyncedBlock(
+        isolatedIndex,
+        charterMintBlock.blockHeight,
+        "", // We don't have the block hash, but it's not strictly needed
+        0   // Slot unknown
+    );
+
+    return {
+        index: isolatedIndex,
+        charterMintBlock,
+        dbName,
+    };
+}
