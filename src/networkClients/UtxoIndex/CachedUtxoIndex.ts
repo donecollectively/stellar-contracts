@@ -67,6 +67,10 @@ import type { RelativeDelegateLink } from "../../delegation/UnspecializedDelegat
 const refreshInterval = 60 * 1000; // 1 minute
 const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
 
+// Default sync configuration
+const DEFAULT_SYNC_PAGE_SIZE = 100;
+const DEFAULT_MAX_SYNC_PAGES = Infinity;
+
 export class CachedUtxoIndex {
     blockfrostKey: string;
     blockfrostBaseUrl: string = "https://cardano-mainnet.blockfrost.io";
@@ -76,6 +80,10 @@ export class CachedUtxoIndex {
     lastSlot: number;
     store: UtxoStoreGeneric;
     network: CardanoClient;
+
+    // Configurable sync parameters (for testing)
+    syncPageSize: number = DEFAULT_SYNC_PAGE_SIZE;
+    maxSyncPages: number = DEFAULT_MAX_SYNC_PAGES;
 
     // Decoupled components (instead of full Capo instance)
     private _address: Address;
@@ -158,6 +166,8 @@ export class CachedUtxoIndex {
         blockfrostKey,
         storeIn: strategy = "dexie",
         dbName,
+        syncPageSize,
+        maxSyncPages,
     }: {
         address: Address | string;
         mph: MintingPolicyHash | string;
@@ -167,6 +177,10 @@ export class CachedUtxoIndex {
         blockfrostKey: string;
         storeIn?: "dexie" | "memory" | "dred";
         dbName?: string;
+        /** Number of transactions to fetch per page during sync (default: 100) */
+        syncPageSize?: number;
+        /** Maximum number of pages to fetch during sync (default: unlimited) */
+        maxSyncPages?: number;
     }) {
         // Convert string inputs to proper types if needed
         this._address = typeof address === "string" ? makeAddress(address) : address;
@@ -186,6 +200,15 @@ export class CachedUtxoIndex {
         this.lastBlockId = "";
         this.lastBlockHeight = 0;
         this.lastSlot = 0;
+
+        // Apply sync configuration
+        if (syncPageSize !== undefined) {
+            this.syncPageSize = syncPageSize;
+        }
+        if (maxSyncPages !== undefined) {
+            this.maxSyncPages = maxSyncPages;
+        }
+
         if (strategy === "dexie") {
             this.store = new DexieUtxoStore(dbName);
         } else if (strategy === "memory") {
@@ -264,6 +287,7 @@ export class CachedUtxoIndex {
 
     /**
      * Checks for new transactions at the capo address and indexes new UTXOs.
+     * Supports pagination with configurable page size and max pages.
      *
      * REQT-1.3.2 (checkForNewTxns)
      */
@@ -277,30 +301,59 @@ export class CachedUtxoIndex {
                 "Cannot start checking for new transactions at block height 0",
             );
         }
-        const url = `addresses/${this.capoAddress}/transactions?order=desc&count=100&from=${startHeight}`;
-        const untyped = await this.fetchFromBlockfrost<unknown[]>(url);
 
-        if (!Array.isArray(untyped) || untyped.length === 0) {
-            return;
-        }
-        if (untyped.length > 100) {
-            throw new Error("Needed: support for fast transaction discovery");
-        }
+        let currentPage = 1;
+        let hasMorePages = true;
+        let lastTxIndex: number | undefined;
 
-        const transactionSummaries: AddressTransactionSummariesType[] = [];
-        for (const item of untyped) {
-            const validationResult = AddressTransactionSummariesFactory(item);
-            if (validationResult instanceof ArkErrors) {
-                console.error(`Error validating transaction summary:`, item);
-                validationResult.throw();
+        while (hasMorePages && currentPage <= this.maxSyncPages) {
+            // Build URL with pagination parameters
+            let url = `addresses/${this.capoAddress}/transactions?order=asc&count=${this.syncPageSize}&from=${startHeight}`;
+            if (lastTxIndex !== undefined) {
+                // For subsequent pages, use the last tx_index as offset
+                url += `&after=${lastTxIndex}`;
             }
-            transactionSummaries.push(
-                validationResult as AddressTransactionSummariesType,
-            );
+
+            const untyped = await this.fetchFromBlockfrost<unknown[]>(url);
+
+            if (!Array.isArray(untyped) || untyped.length === 0) {
+                hasMorePages = false;
+                break;
+            }
+
+            const transactionSummaries: AddressTransactionSummariesType[] = [];
+            for (const item of untyped) {
+                const validationResult = AddressTransactionSummariesFactory(item);
+                if (validationResult instanceof ArkErrors) {
+                    console.error(`Error validating transaction summary:`, item);
+                    validationResult.throw();
+                }
+                transactionSummaries.push(
+                    validationResult as AddressTransactionSummariesType,
+                );
+            }
+
+            // Process transactions from this page
+            for (const summary of transactionSummaries) {
+                await this.processTransactionForNewUtxos(summary.tx_hash, summary);
+            }
+
+            // Check if there might be more pages
+            if (untyped.length < this.syncPageSize) {
+                hasMorePages = false;
+            } else {
+                // Use the last transaction's tx_index for pagination
+                const lastSummary = transactionSummaries[transactionSummaries.length - 1];
+                lastTxIndex = lastSummary.tx_index;
+                currentPage++;
+            }
         }
 
-        for (const summary of transactionSummaries) {
-            await this.processTransactionForNewUtxos(summary.tx_hash, summary);
+        if (currentPage > this.maxSyncPages && hasMorePages) {
+            await this.store.log(
+                "pglim",
+                `Stopped after ${this.maxSyncPages} pages (maxSyncPages limit reached)`,
+            );
         }
     }
 
