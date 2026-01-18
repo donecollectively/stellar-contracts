@@ -134,7 +134,6 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
    - MUST query Blockfrost for each UUT using `capoMph + uutName` to find current UTXO location
    - MUST store UUT identifiers in the UTXO's `uutIds` array field
    - MUST handle missing delegates gracefully (log warnings, continue processing)
-   - MUST use UNCACHED hint (`findCached: false`) to ensure fresh network fetches rather than cached values
 
 5. **Block Management**:
    - MUST fetch and store latest block details using `blocks/latest` endpoint
@@ -254,7 +253,7 @@ Governs delegate UUT discovery, cataloging, and updates based on charter changes
 #### Purpose
 Defines how the indexer performs initial synchronization and ongoing transaction monitoring of the Capo address. Applied when implementing sync logic, periodic monitoring, or transaction processing.
 
- - **REQT-1.3.1**/vk2bywdycn: COMPLETED: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via underlying provider (`capo.findCapoUtxos( {findCached: false} )`. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
+ - **REQT-1.3.1**/vk2bywdycn: COMPLETED: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via underlying provider. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
  - **REQT-1.3.2**/fh56sce22g: COMPLETED: **Transaction Monitoring** - Must implement `checkForNewTxns()` to check for new transactions at `capoAddress`. Must query Blockfrost `addresses/{capoAddress}/transactions` endpoint with `order=desc`, `count=100`, and `from` parameter set to last synced block. Must process each new transaction via `processTransactionForNewUtxos()`. Must update last synced block details on success.
  - **REQT-1.3.3**/0vrkpk6a6h: COMPLETED: **Transaction Processing** - Must implement `processTransactionForNewUtxos()` to extract and index relevant UTXOs from transactions. Must fetch full transaction CBOR and decode using Helios `decodeTx()`. Must examine each transaction output. Must check if UTXO already exists in store via `store.findUtxoId()`. Must index new UTXOs via `indexUtxoFromOutput()`. Must update UUT catalog if delegate UUTs moved.
     - **REQT-1.3.4**/mvjrak021s: COMPLETED: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to store UTXO id and any mph-matching token values for later search. Must extract inline datum as binary data or datum hash. Must save to store via `store.saveUtxo()`.
@@ -278,7 +277,7 @@ Documents planned features and performance improvements not yet implemented. App
  - **REQT-1.5.3**/0aewmbbfct: BACKLOG: **Pagination for High-Volume Activity** - Must handle cases where `addresses/{address}/transactions` endpoint returns 100+ results in single monitoring cycle. Must implement pagination strategy to fetch additional pages when response count equals limit.
  - **REQT-1.5.4**/50zkk5xgrx: COMPLETED: **Query API Methods** - Must provide public query interface for indexed UTXOs. Must implement `findUtxoId(id)`, `findUtxoByUUT(uutId)`, and queries by asset (mph, tokenName). Must support filtering and pagination options.
 
-### REQT-1.6/rc7km2x8hp: NEXT: **ReadonlyCardanoClient Interface Conformance**
+### REQT-1.6/rc7km2x8hp: COMPLETED: **ReadonlyCardanoClient Interface Conformance**
 
 #### Purpose
 Ensures the CachedUtxoIndex can be used as a drop-in replacement for Helios network clients, enabling cached UTXO lookups during transaction building. Applied when implementing or modifying the public API to match Helios interface contracts.
@@ -436,7 +435,7 @@ All UUT storage infrastructure is now in place:
 * Implemented automated periodic refresh with timer-based `checkForNewTxns()` (REQT/zzsg63b2fb)
 * Implemented public query API methods: `findUtxoByUUT()`, `findUtxosByAsset()`, `findUtxosByAddress()`, `getAllUtxos()` (REQT/50zkk5xgrx)
 
-#### IN-PROGRESS: ReadonlyCardanoClient Conformance (REQT/rc7km2x8hp)
+#### COMPLETED: ReadonlyCardanoClient Conformance (REQT/rc7km2x8hp)
 * DONE: `isMainnet()` (REQT/gy8z4a7pu)
 * DONE: `hasUtxo(utxoId)` (REQT/gw6x2y5ns)
 * DONE: `getUtxo(id)` returning Helios `TxInput` (REQT/gt3ux9v2kp)
@@ -446,6 +445,13 @@ All UUT storage infrastructure is now in place:
 * DONE: `now` property returning current slot from lastSlot field, initialized from cache at startup (REQT/gz9a5b8qv)
 * DONE: `parameters` property delegating to underlying network client (REQT/ha0b6c9rw)
 * DONE: `getLatestBlock()` method added to UtxoStoreGeneric for cache initialization
+
+#### Decoupled Architecture
+CachedUtxoIndex accepts discrete components instead of requiring a full Capo instance:
+* Address and minting policy hash for monitoring
+* Network client for underlying blockchain queries
+* Bridge component for decoding charter datum
+This enables CachedUtxoIndex to be used as the network client for a Capo, avoiding circular dependencies.
 
 ## Release Management Plan
 

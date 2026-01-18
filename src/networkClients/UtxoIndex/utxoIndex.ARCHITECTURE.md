@@ -243,8 +243,9 @@ This section defines where each specific area of functionality belongs.
 | `utxoIndex.ARCHITECTURE.md` | UtxoIndex | This document |
 
 **External Dependencies**:
-- Capo instance (provides address list, charter data)
-- Blockfrost API (provides blockchain data)
+- Capo address, minting policy hash, and charter data bridge (for decoding charter datum)
+- Network client implementing CardanoClient (for blockchain queries)
+- Blockfrost API key (for direct Blockfrost queries during sync)
 - Browser IndexedDB (provides persistence)
 
 ---
@@ -253,13 +254,36 @@ This section defines where each specific area of functionality belongs.
 
 ### Public API (CachedUtxoIndex)
 
-**Constructor**:
+**Constructor** (NEXT: decoupled from Capo):
 ```typescript
 new CachedUtxoIndex({
-    capo: Capo<any, any>,
+    address: Address | string,           // Capo address to monitor
+    mph: MintingPolicyHash | string,     // Capo minting policy hash
+    isMainnet: boolean,
+    network: CardanoClient,              // Underlying network client
+    bridge: CapoHeliosBundleBridge,      // For decoding charter datum
     blockfrostKey: string,
     storeIn?: "dexie" | "memory" | "dred"
 })
+```
+
+This decoupled design allows CachedUtxoIndex to be used as the network client for a Capo, avoiding circular dependencies:
+```typescript
+// Create index first with bridge for charter decoding
+const index = new CachedUtxoIndex({
+    address: capoAddress,
+    mph: capoMph,
+    isMainnet: false,
+    network: blockfrostClient,
+    bridge: CapoHeliosBundle.bridge,
+    blockfrostKey: apiKey,
+});
+
+// Then create Capo using the index as its network
+const capo = new MyCapo({
+    setup: { network: index, ... },
+    config: ...
+});
 ```
 
 **Core Methods**:
@@ -355,10 +379,12 @@ interface UtxoStoreGeneric {
          ▼
 ┌────────────────────────────────┐
 │ syncNow()                      │
-│ 1. Fetch charter data          │──────► capo.findCharterData()
-│ 2. Fetch all Capo UTXOs        │──────► GET addresses/{capo}/utxos
-│ 3. Store UTXOs in DB           │──────► store.saveUtxo()
-│ 4. Catalog delegate UUTs       │
+│ 1. Initialize from cache       │──────► store.getLatestBlock()
+│ 2. Fetch charter UTXO          │──────► network.getUtxos(capoAddress)
+│ 3. Decode charter datum        │──────► bridge.charterDatumReader()
+│ 4. Fetch all Capo UTXOs        │──────► GET addresses/{capo}/utxos
+│ 5. Store UTXOs in DB           │──────► store.saveUtxo()
+│ 6. Catalog delegate UUTs       │
 └────────┬───────────────────────┘
          │
          ▼
@@ -429,8 +455,9 @@ interface UtxoStoreGeneric {
          ▼
 ┌──────────────────────────────┐
 │ Charter change detected:     │
-│ 1. Fetch new charter data    │──────► capo.findCharterData()
-│ 2. Re-catalog delegate UUTs  │──────► catalogDelegateUuts()
+│ 1. Fetch charter UTXO        │──────► network.getUtxos(capoAddress)
+│ 2. Decode charter datum      │──────► bridge.charterDatumReader()
+│ 3. Re-catalog delegate UUTs  │──────► catalogDelegateUuts()
 └──────────────────────────────┘
 ```
 
@@ -440,10 +467,14 @@ interface UtxoStoreGeneric {
 
 ### Dependencies (UtxoIndex USES)
 
-**Capo** (External):
-- `capo.findCharterData()` - Get current charter to discover delegates
-- `capo.address` - The address to monitor
-- `capo.mph` - Minting policy hash for filtering tokens and identifying UUTs
+**Capo Components** (passed at construction, decoupled):
+- `address` - The Capo address to monitor (bech32 string or Address)
+- `mph` - Minting policy hash for filtering tokens and identifying UUTs
+- `bridge` - CapoHeliosBundleBridge for decoding charter datum to discover delegates
+
+**Network Client** (External):
+- CardanoClient interface for underlying blockchain queries
+- Used as fallback when cache misses occur
 
 **Blockfrost API** (External):
 - REST endpoints for blockchain queries
@@ -463,21 +494,31 @@ interface UtxoStoreGeneric {
 - Browser-based Stellar Contracts dApps
 - UI components requiring fast UTXO lookups
 - Transaction builders needing current UTXO state
+- Capo instances (using CachedUtxoIndex as their network client)
 
-**Usage pattern** (proposed):
+**Usage pattern**:
 ```typescript
-const indexer = new CachedUtxoIndex({
-    capo: myCapo,
-    blockfrostKey: "preprod_..."
+// Create index with discrete components (decoupled from Capo)
+const index = new CachedUtxoIndex({
+    address: capoAddress,
+    mph: capoMph,
+    isMainnet: false,
+    network: blockfrostClient,
+    bridge: CapoHeliosBundle.bridge,
+    blockfrostKey: "preprod_...",
 });
 
-// Indexer automatically syncs and monitors in background
+// Index can then be used as the network client for a Capo
+const capo = new MyCapo({
+    setup: { network: index, ... },
+    config: ...
+});
 
-// Query UTXOs (future API)
-const utxos = await indexer.queryUtxosByAddress(address);
+// Query UTXOs via ReadonlyCardanoClient interface
+const utxos = await index.getUtxos(address);
 ```
 
-This usage SHOULD match with other helios network-clients and be used via the same interface.
+The indexer implements `ReadonlyCardanoClient`, enabling drop-in replacement of network clients with cached lookups.
 
 ---
 
@@ -558,5 +599,5 @@ This usage SHOULD match with other helios network-clients and be used via the sa
 
 ---
 
-**Document Version**: 1.3
-**Last Updated**: 2026-01-17 - Added ReadonlyCardanoClient conformance (REQT/rc7km2x8hp)
+**Document Version**: 1.4
+**Last Updated**: 2026-01-17 - Decoupled from Capo dependency; uses bridge for charter decoding
