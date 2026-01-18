@@ -300,7 +300,7 @@ describe("fetchAndStoreLatestBlock (isolated)", () => {
         expect(storedBlock).toBeTruthy();
         expect(storedBlock!.height).toBe(result.height);
         expect(storedBlock!.slot).toBe(result.slot);
-        expect(storedBlock!.epoch).toBe(result.epoch);
+        expect(storedBlock!.time).toBe(result.time);
 
         await cleanupRegistry.cleanup();
     });
@@ -309,7 +309,7 @@ describe("fetchAndStoreLatestBlock (isolated)", () => {
 
 ---
 
-### 4. Data Conversion Verification (Private Methods)
+### 4. Data Conversion Verification (Private Methods) ✅ IMPLEMENTED
 
 These private methods are tested indirectly by verifying the stored data structure:
 
@@ -401,7 +401,7 @@ describe("Data Conversion Verification (uses shared index)", () => {
             expect(typeof block.slot).toBe("number");
             expect(block.slot).toBeGreaterThan(0);
             expect(typeof block.time).toBe("number");
-            expect(typeof block.epoch).toBe("number");
+            // Note: BlockIndexEntry has: hash, height, time, slot (no epoch)
         }
     });
 

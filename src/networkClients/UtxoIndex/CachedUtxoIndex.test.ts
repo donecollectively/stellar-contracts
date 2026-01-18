@@ -546,9 +546,106 @@ if (!BLOCKFROST_API_KEY) {
                 expect(storedBlock).toBeTruthy();
                 expect(storedBlock!.height).toBe(result.height);
                 expect(storedBlock!.slot).toBe(result.slot);
-                expect(storedBlock!.epoch).toBe(result.epoch);
+                expect(storedBlock!.time).toBe(result.time);
 
                 await cleanupRegistry.cleanup();
+            });
+        });
+
+        describe("Data Conversion Verification (uses shared index)", () => {
+            it("should have correct UTXO structure in indexed data", async () => {
+                const utxos = await sharedIndex.getAllUtxos();
+                expect(utxos.length).toBeGreaterThan(0);
+
+                for (const utxo of utxos) {
+                    // Required fields
+                    expect(utxo.utxoId).toBeTruthy();
+                    expect(utxo.utxoId).toMatch(/^[0-9a-f]{64}#\d+$/);
+                    expect(utxo.address).toBeTruthy();
+                    expect(typeof utxo.lovelace).toBe("bigint");
+                    expect(Array.isArray(utxo.tokens)).toBe(true);
+                    expect(Array.isArray(utxo.uutIds)).toBe(true);
+
+                    // Optional fields have correct types if present
+                    if (utxo.datumHash) {
+                        expect(typeof utxo.datumHash).toBe("string");
+                        expect(utxo.datumHash.length).toBe(64);
+                    }
+                    if (utxo.inlineDatum) {
+                        expect(typeof utxo.inlineDatum).toBe("string");
+                    }
+                }
+            });
+
+            it("should have correct token structure", async () => {
+                const utxos = await sharedIndex.findUtxosByAsset(TEST_CAPO_MPH);
+                expect(utxos.length).toBeGreaterThan(0);
+
+                for (const utxo of utxos) {
+                    for (const token of utxo.tokens) {
+                        expect(typeof token.policyId).toBe("string");
+                        expect(token.policyId.length).toBe(56); // MPH is 28 bytes = 56 hex
+                        expect(typeof token.tokenName).toBe("string");
+                        expect(typeof token.quantity).toBe("bigint");
+                        expect(token.quantity).toBeGreaterThan(0n);
+                    }
+                }
+            });
+
+            it("should preserve UUT IDs with correct format", async () => {
+                const utxos = await sharedIndex.getAllUtxos();
+                const utxosWithUuts = utxos.filter(u => u.uutIds.length > 0);
+
+                // Should have at least delegate UUTs
+                expect(utxosWithUuts.length).toBeGreaterThan(0);
+
+                const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
+                for (const utxo of utxosWithUuts) {
+                    for (const uutId of utxo.uutIds) {
+                        expect(uutId).toMatch(uutPattern);
+                    }
+                }
+            });
+
+            it("should have correct block structure in indexed data", async () => {
+                const { getAllBlocks } = await import("./CachedUtxoIndex.testHelpers.js");
+                const blocks = await getAllBlocks(sharedIndex);
+
+                expect(blocks.length).toBeGreaterThan(0);
+
+                for (const block of blocks) {
+                    // BlockIndexEntry fields: hash, height, time, slot
+                    expect(block.hash).toBeTruthy();
+                    expect(block.hash.length).toBe(64);
+                    expect(typeof block.height).toBe("number");
+                    expect(block.height).toBeGreaterThan(0);
+                    expect(typeof block.slot).toBe("number");
+                    expect(block.slot).toBeGreaterThan(0);
+                    expect(typeof block.time).toBe("number");
+                }
+            });
+
+            it("should have txs indexed for UTXOs", async () => {
+                const { getAllTxs } = await import("./CachedUtxoIndex.testHelpers.js");
+                const txs = await getAllTxs(sharedIndex);
+
+                expect(txs.length).toBeGreaterThan(0);
+
+                // Each tx should have cbor
+                for (const tx of txs) {
+                    expect(tx.txid).toBeTruthy();
+                    expect(tx.txid.length).toBe(64);
+                    expect(tx.cbor).toBeTruthy();
+                }
+
+                // Verify there's at least one tx that created a UTXO
+                const utxos = await sharedIndex.getAllUtxos();
+                const txIdsFromUtxos = new Set(utxos.map(u => u.utxoId.split("#")[0]));
+                const indexedTxIds = new Set(txs.map(t => t.txid));
+
+                // At least some UTXO-creating txs should be indexed
+                const overlap = [...txIdsFromUtxos].filter(id => indexedTxIds.has(id));
+                expect(overlap.length).toBeGreaterThan(0);
             });
         });
     });
