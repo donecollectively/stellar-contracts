@@ -69,8 +69,9 @@ The agent MUST take the tests described in the plan one at a time, thinking abou
 5. **Run the test** - Ensure it passes
 6. **Run the test suite** - If any implementation code was changed, you must ensure it didn't break any other tests
 7. **Implement other closely related tests** e.g. of that same function, especially if the tests are small.  Don't group tests that require code changes.  Don't group tests of different functions.
-8. **Update the plan** - to reflect the updated status of implemented test(s)
-9. **Watch for rate limits** - Look out for errors caused by Blockfrost rate limits and stop work if necessary
+8. **Check for type errors and build the project** - to be sure nothing was broken
+9. **Update the plan** - to reflect the updated status of implemented test(s)
+10. **Watch for rate limits** - Look out for errors caused by Blockfrost rate limits and stop work if necessary
 
 ### After Each Test
 
