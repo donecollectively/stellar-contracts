@@ -20,6 +20,7 @@ import {
     makeDatumHash,
     makeHashedTxOutputDatum,
     makeInlineTxOutputDatum,
+    makeMintingPolicyHash,
     makeValidatorHash,
     makeTxId,
     makeTxInput,
@@ -40,7 +41,7 @@ import {
 import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
 import { decodeUplcData } from "@helios-lang/uplc";
 import type { CardanoClient } from "@helios-lang/tx-utils";
-import type { Capo } from "../../Capo.js";
+import type { CapoDataBridge } from "../../helios/scriptBundling/CapoHeliosBundle.bridge.js";
 
 import { DexieUtxoStore } from "./DexieUtxoStore.js";
 import type { UtxoStoreGeneric } from "./types/UtxoStoreGeneric.js";
@@ -61,7 +62,6 @@ import {
 } from "./blockfrostTypes/AddressTransactionSummaries.js";
 import type { CharterData } from "../../CapoTypes.js";
 import type { RelativeDelegateLink } from "../../delegation/UnspecializedDelegate.typeInfo.js";
-import type { StellarDelegate } from "../../delegation/StellarDelegate.js";
 
 // periodically queries for new utxos at the capo address
 const refreshInterval = 60 * 1000; // 1 minute
@@ -75,20 +75,25 @@ export class CachedUtxoIndex {
     lastBlockHeight: number;
     lastSlot: number;
     store: UtxoStoreGeneric;
-    capo: Capo<any, any>;
     network: CardanoClient;
+
+    // Decoupled components (instead of full Capo instance)
+    private _address: Address;
+    private _mph: MintingPolicyHash;
+    private _isMainnet: boolean;
+    private bridge: CapoDataBridge;
 
     // REQT/zzsg63b2fb: Timer for periodic refresh
     private refreshTimerId: ReturnType<typeof setInterval> | null = null;
 
     // REQT/9a0nx1gr4b (Core State) - expose capoAddress for external access
     get capoAddress(): string {
-        return this.addressToBech32(this.capo.address);
+        return this.addressToBech32(this._address);
     }
 
     // REQT/9a0nx1gr4b (Core State) - expose capoMph for external access
     get capoMph(): string {
-        return this.capo.mph.toHex();
+        return this._mph.toHex();
     }
 
     /**
@@ -112,7 +117,7 @@ export class CachedUtxoIndex {
      * REQT/gy8z4a7pu (isMainnet Method)
      */
     isMainnet(): boolean {
-        return this.capo.setup.isMainnet;
+        return this._isMainnet;
     }
 
     /**
@@ -145,17 +150,30 @@ export class CachedUtxoIndex {
     }
 
     constructor({
-        capo,
+        address,
+        mph,
+        isMainnet,
+        network,
+        bridge,
         blockfrostKey,
         storeIn: strategy = "dexie",
     }: {
-        capo: Capo<any, any>;
+        address: Address | string;
+        mph: MintingPolicyHash | string;
+        isMainnet: boolean;
+        network: CardanoClient;
+        bridge: CapoDataBridge;
         blockfrostKey: string;
         storeIn?: "dexie" | "memory" | "dred";
     }) {
-        this.capo = capo;
+        // Convert string inputs to proper types if needed
+        this._address = typeof address === "string" ? makeAddress(address) : address;
+        this._mph = typeof mph === "string" ? makeMintingPolicyHash(mph) : mph;
+        this._isMainnet = isMainnet;
+        this.network = network;
+        this.bridge = bridge;
         this.blockfrostKey = blockfrostKey;
-        this.network = capo.setup.network;
+
         if (blockfrostKey.startsWith("mainnet")) {
             this.blockfrostBaseUrl = "https://cardano-mainnet.blockfrost.io";
         } else if (blockfrostKey.startsWith("preprod")) {
@@ -177,7 +195,7 @@ export class CachedUtxoIndex {
         }
         this.store.log(
             "agsbb",
-            `CachedUtxoIndex created for capo: ${this.capo.address.toString()}`,
+            `CachedUtxoIndex created for address: ${this._address.toString()}`,
         );
         this.syncNow();
     }
@@ -195,8 +213,8 @@ export class CachedUtxoIndex {
             );
         }
 
-        // Fetch all UTXOs from the capo address using the Capo's findCapoUtxos() method
-        const capoUtxos = await this.capo.findCapoUtxos();
+        // Fetch all UTXOs from the capo address using the network
+        const capoUtxos = await this.network.getUtxos(this._address);
 
         await this.store.log("yz58q", `Found ${capoUtxos.length} capo UTXOs`);
 
@@ -226,14 +244,14 @@ export class CachedUtxoIndex {
             await this.findOrFetchTxDetails(txId);
         }
 
-        // Find the charter UTXO
-        const charterUtxo = await this.capo.mustFindCharterUtxo(capoUtxos);
+        // Find the charter UTXO (contains the "charter" token from capo mph)
+        const charterUtxo = this.findCharterUtxo(capoUtxos);
+        if (!charterUtxo) {
+            throw new Error("Charter UTXO not found at capo address");
+        }
 
-        // Get charter data to resolve delegates
-        const charterData = await this.capo.findCharterData(charterUtxo, {
-            optional: false,
-            capoUtxos: capoUtxos,
-        });
+        // Decode charter data using the bridge
+        const charterData = this.decodeCharterData(charterUtxo);
 
         // Resolve and catalog delegate UUTs
         await this.catalogDelegateUuts(charterData);
@@ -257,9 +275,7 @@ export class CachedUtxoIndex {
                 "Cannot start checking for new transactions at block height 0",
             );
         }
-        const capoAddress = this.capo.address.toString();
-
-        const url = `addresses/${capoAddress}/transactions?order=desc&count=100&from=${startHeight}`;
+        const url = `addresses/${this.capoAddress}/transactions?order=desc&count=100&from=${startHeight}`;
         const untyped = await this.fetchFromBlockfrost<unknown[]>(url);
 
         if (!Array.isArray(untyped) || untyped.length === 0) {
@@ -341,7 +357,7 @@ export class CachedUtxoIndex {
         summary: AddressTransactionSummariesType,
     ): Promise<void> {
         const tx = await this.findOrFetchTxDetails(txHash);
-        const mph = this.capo.mph;
+        const mph = this._mph;
         let charterChanged = false;
 
         for (
@@ -382,8 +398,13 @@ export class CachedUtxoIndex {
                 "ch4rt",
                 `Charter token detected in tx ${txHash}, re-cataloging delegates`,
             );
-            const charterData = await this.capo.findCharterData();
-            await this.catalogDelegateUuts(charterData);
+            // Fetch fresh UTXOs and decode charter
+            const capoUtxos = await this.network.getUtxos(this._address);
+            const charterUtxo = this.findCharterUtxo(capoUtxos);
+            if (charterUtxo) {
+                const charterData = this.decodeCharterData(charterUtxo);
+                await this.catalogDelegateUuts(charterData);
+            }
         }
     }
 
@@ -396,7 +417,7 @@ export class CachedUtxoIndex {
     private extractUutIds(output: TxOutput): string[] {
         const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
         const tokenNames = output.value.assets.getPolicyTokenNames(
-            this.capo.mph,
+            this._mph,
         );
 
         return tokenNames
@@ -416,7 +437,7 @@ export class CachedUtxoIndex {
     private extractUutIdsFromTxInput(txInput: TxInput): string[] {
         const uutPattern = /^[a-z]+-[0-9a-f]{12}$/;
         const tokenNames = txInput.value.assets.getPolicyTokenNames(
-            this.capo.mph,
+            this._mph,
         );
 
         return tokenNames
@@ -597,6 +618,38 @@ export class CachedUtxoIndex {
     }
 
     /**
+     * Finds the charter UTXO from a list of UTXOs.
+     * The charter UTXO contains the "charter" token from the capo's minting policy.
+     */
+    private findCharterUtxo(utxos: TxInput[]): TxInput | undefined {
+        const charterTokenName = bytesToHex([...new TextEncoder().encode("charter")]);
+        for (const utxo of utxos) {
+            const tokens = utxo.value.assets.getPolicyTokens(this._mph);
+            for (const [tokenName, _qty] of tokens) {
+                if (bytesToHex(tokenName) === charterTokenName) {
+                    return utxo;
+                }
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Decodes charter data from a charter UTXO using the bridge.
+     */
+    private decodeCharterData(charterUtxo: TxInput): CharterData {
+        const datum = charterUtxo.datum;
+        if (!datum || !datum.data) {
+            throw new Error("Charter UTXO has no datum");
+        }
+        const decoded = this.bridge.reader.CapoDatum(datum.data);
+        if (!decoded.CharterData) {
+            throw new Error("Charter UTXO datum is not CharterData");
+        }
+        return decoded.CharterData;
+    }
+
+    /**
      * Indexes a UTXO from a transaction output.
      *
      * REQT/mvjrak021s (UTXO Indexing)
@@ -612,6 +665,7 @@ export class CachedUtxoIndex {
 
     /**
      * Catalogs delegate UUTs mentioned in the charter.
+     * Uses delegate links directly with Blockfrost queries (decoupled from Capo).
      *
      * REQT-1.2.1 (catalogDelegateUuts)
      */
@@ -626,8 +680,7 @@ export class CachedUtxoIndex {
                     "ht8mg",
                     `Fetching mint delegate UUT: ${mintDelegateLink.uutName}`,
                 );
-                const delegate = await this.capo.getMintDelegate(charterData);
-                await this.fetchAndIndexDelegateUut(delegate, "mintDelegate");
+                await this.fetchAndIndexDelegateLinkUut(mintDelegateLink, "mintDelegate");
             }
         } catch (e) {
             console.warn("Could not resolve mint delegate UUT:", e);
@@ -641,8 +694,7 @@ export class CachedUtxoIndex {
                     "fgmtv",
                     `Fetching spend delegate UUT: ${spendDelegateLink.uutName}`,
                 );
-                const delegate = await this.capo.getSpendDelegate(charterData);
-                await this.fetchAndIndexDelegateUut(delegate, "spendDelegate");
+                await this.fetchAndIndexDelegateLinkUut(spendDelegateLink, "spendDelegate");
             }
         } catch (e) {
             console.warn("Could not resolve spend delegate UUT:", e);
@@ -656,8 +708,7 @@ export class CachedUtxoIndex {
                     "g8xpk",
                     `Fetching gov authority UUT: ${govAuthorityLink.uutName}`,
                 );
-                const delegate = await this.capo.findGovDelegate(charterData);
-                await this.fetchAndIndexDelegateUut(delegate, "govAuthority");
+                await this.fetchAndIndexDelegateLinkUut(govAuthorityLink, "govAuthority");
             }
         } catch (e) {
             console.warn("Could not resolve gov authority UUT:", e);
@@ -692,16 +743,12 @@ export class CachedUtxoIndex {
                         "uutName" in delegateLink &&
                         delegateLink.uutName
                     ) {
-                        const delegate = await this.capo.getOtherNamedDelegate(
-                            delegateName,
-                            charterData,
-                        );
                         await this.store.log(
                             "nd8uu",
                             `Fetching named delegate '${delegateName}' UUT`,
                         );
-                        await this.fetchAndIndexDelegateUut(
-                            delegate,
+                        await this.fetchAndIndexDelegateLinkUut(
+                            delegateLink as RelativeDelegateLink,
                             `namedDelegate:${delegateName}`,
                         );
                     }
@@ -714,7 +761,7 @@ export class CachedUtxoIndex {
             }
         }
 
-        // Get dgData controller UUTs
+        // Get dgData controller UUTs from manifest
         for (const [entryName, entryInfo] of charterData.manifest.entries()) {
             const { DgDataPolicy } = entryInfo.entryType;
             if (!DgDataPolicy) {
@@ -726,23 +773,14 @@ export class CachedUtxoIndex {
                 continue;
             }
             try {
-                const controller = await this.capo.getDgDataController(
-                    entryName,
-                    {
-                        charterData,
-                        optional: true,
-                    },
-                );
                 const { policyLink } = DgDataPolicy;
-                const uutName = policyLink.uutName;
-
-                await this.store.log(
-                    "c6awj",
-                    `Fetching dgData controller UUT: ${uutName}`,
-                );
-                if (controller) {
-                    await this.fetchAndIndexDelegateUut(
-                        controller,
+                if (policyLink?.uutName) {
+                    await this.store.log(
+                        "c6awj",
+                        `Fetching dgData controller UUT: ${policyLink.uutName}`,
+                    );
+                    await this.fetchAndIndexDelegateLinkUut(
+                        policyLink,
                         `dgDataController:${entryName}`,
                     );
                 }
@@ -756,43 +794,20 @@ export class CachedUtxoIndex {
     }
 
     /**
-     * Fetches and indexes a delegate's authority token UTXO.
-     */
-    private async fetchAndIndexDelegateUut(
-        delegate: StellarDelegate,
-        label: string,
-    ): Promise<void> {
-        try {
-            const utxo = await delegate.DelegateMustFindAuthorityToken(
-                this.capo.mkTcx(),
-                label,
-                { findCached: false },
-            );
-
-            const entry = this.txInputToIndexEntry(utxo);
-            await this.store.saveUtxo(entry);
-        } catch (e) {
-            console.warn(`Failed to fetch delegate UUT for ${label}:`, e);
-            throw e;
-        }
-    }
-
-    /**
      * Fetches and indexes a delegate's authority token UTXO from a delegate link.
      */
     private async fetchAndIndexDelegateLinkUut(
         delegateLink: RelativeDelegateLink,
         label: string,
     ): Promise<void> {
-        const mph = this.capo.mph;
-        const assetClass = makeAssetClass(mph, delegateLink.uutName);
+        const assetClass = makeAssetClass(this._mph, delegateLink.uutName);
 
         const address = delegateLink.delegateValidatorHash
             ? makeAddress(
-                  this.capo.setup.isMainnet,
+                  this._isMainnet,
                   makeValidatorHash(delegateLink.delegateValidatorHash),
               )
-            : this.capo.address;
+            : this._address;
 
         await this.store.log(
             "dx8pq",
