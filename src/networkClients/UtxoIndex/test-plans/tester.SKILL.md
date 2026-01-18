@@ -67,9 +67,10 @@ The agent MUST take the tests described in the plan one at a time, thinking abou
 3. **Implement the test** - Augment the sketch to follow inline guidance on testing approach, using helper methods effectively
 4. **Retain comments** - Keep comments interleaved with test implementation to create continuity between plan and implementation, without unnecessary redundancy
 5. **Run the test** - Ensure it passes
-6. **Run the test suite** - Ensure all tests pass
-7. **Update the plan** - to reflect the updated status of implemented test(s)
-7. **Watch for rate limits** - Look out for errors caused by Blockfrost rate limits and stop work if necessary
+6. **Run the test suite** - If any implementation code was changed, you must ensure it didn't break any other tests
+7. **Implement other closely related tests** e.g. of that same function, especially if the tests are small.  Don't group tests that require code changes.  Don't group tests of different functions.
+8. **Update the plan** - to reflect the updated status of implemented test(s)
+9. **Watch for rate limits** - Look out for errors caused by Blockfrost rate limits and stop work if necessary
 
 ### After Each Test
 
