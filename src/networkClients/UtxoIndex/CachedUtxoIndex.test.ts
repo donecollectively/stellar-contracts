@@ -648,5 +648,51 @@ if (!BLOCKFROST_API_KEY) {
                 expect(overlap.length).toBeGreaterThan(0);
             });
         });
+
+        describe("Store Query Edge Cases (uses shared index)", () => {
+            it("should filter by tokenName in findUtxosByAsset", async () => {
+                // Find UTXOs with capo MPH and "charter" tokenName
+                // "charter" in hex = 63686172746572
+                const charterUtxos = await sharedIndex.findUtxosByAsset(
+                    TEST_CAPO_MPH,
+                    "63686172746572"
+                );
+
+                // Should find exactly one charter UTXO
+                expect(charterUtxos.length).toBe(1);
+
+                // All UTXOs with capo MPH (any token name)
+                const allCapoUtxos = await sharedIndex.findUtxosByAsset(TEST_CAPO_MPH);
+
+                // Should have at least the charter plus delegate tokens
+                expect(allCapoUtxos.length).toBeGreaterThanOrEqual(charterUtxos.length);
+            });
+
+            it("should return undefined for non-existent UUT", async () => {
+                const fakeUut = "fake-000000000000";
+                const result = await sharedIndex.findUtxoByUUT(fakeUut);
+                expect(result).toBeUndefined();
+            });
+
+            it("should return empty array for large offset in getAllUtxos", async () => {
+                const result = await sharedIndex.getAllUtxos({ offset: 999999 });
+                expect(result).toEqual([]);
+            });
+
+            it("should paginate findUtxosByAddress correctly", async () => {
+                const page1 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2, offset: 0 });
+                const page2 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2, offset: 2 });
+
+                // Pages shouldn't overlap
+                const page1Ids = new Set(page1.map(u => u.utxoId));
+                for (const utxo of page2) {
+                    expect(page1Ids.has(utxo.utxoId)).toBe(false);
+                }
+
+                // Combined should equal fetching more
+                const combined = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 4, offset: 0 });
+                expect(combined.length).toBe(page1.length + page2.length);
+            });
+        });
     });
 }

@@ -432,7 +432,7 @@ describe("Data Conversion Verification (uses shared index)", () => {
 
 ---
 
-### 5. Store Query Edge Cases
+### 5. Store Query Edge Cases ✅ IMPLEMENTED
 
 Additional coverage for query methods:
 
