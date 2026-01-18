@@ -821,5 +821,131 @@ if (!BLOCKFROST_API_KEY) {
                 }
             });
         });
+
+        // ============================================================
+        // Plan A Tests: Post-Sync Operations
+        // ============================================================
+
+        describe("checkForNewTxns (uses shared index)", () => {
+            it("should return cleanly when no new transactions exist", async () => {
+                // Call with block height beyond current - should find nothing new
+                const futureHeight = sharedIndex.lastBlockHeight + 1000;
+                await expect(sharedIndex.checkForNewTxns(futureHeight)).resolves.toBeUndefined();
+            });
+
+            it("should throw when lastBlockHeight is 0 and no param provided", async () => {
+                const { setLastSyncedBlock } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                // Create isolated index and wait for sync to complete
+                const dbName = createIsolatedDbName("check-zero-height");
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+                await isolatedIndex.syncNow();
+
+                // Force lastBlockHeight to 0 to simulate unsynced state
+                setLastSyncedBlock(isolatedIndex, 0, "", 0);
+
+                // Calling checkForNewTxns without param should throw
+                await expect(isolatedIndex.checkForNewTxns()).rejects.toThrow(
+                    "Cannot start checking for new transactions at block height 0"
+                );
+            });
+        });
+
+        describe("getTx (uses shared index)", () => {
+            it("should return cached transaction without network call", async () => {
+                // Get a txHash from a known UTXO
+                const utxos = await sharedIndex.getAllUtxos();
+                const txHash = utxos[0].utxoId.split("#")[0];
+                const { makeTxId } = await import("@helios-lang/ledger");
+
+                // Spy on fetchFromBlockfrost to verify no network call
+                const fetchSpy = vi.spyOn(sharedIndex, "fetchFromBlockfrost");
+
+                const tx = await sharedIndex.getTx(makeTxId(txHash));
+
+                expect(tx).toBeTruthy();
+                expect(tx.id().toHex()).toBe(txHash);
+                // Cache hit - should NOT have called fetchFromBlockfrost
+                expect(fetchSpy).not.toHaveBeenCalled();
+
+                fetchSpy.mockRestore();
+            });
+
+            it("should fetch from network on cache miss", async () => {
+                const { getStore } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                // Get a txHash from shared index
+                const utxos = await sharedIndex.getAllUtxos();
+                const txHash = utxos[0].utxoId.split("#")[0];
+                const { makeTxId } = await import("@helios-lang/ledger");
+
+                // Create isolated index without copying data
+                const dbName = createIsolatedDbName("getTx-miss");
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+
+                // Verify tx is NOT in isolated cache
+                const store = getStore(isolatedIndex);
+                const beforeFetch = await store.findTxId(txHash);
+                expect(beforeFetch).toBeUndefined();
+
+                // Spy on fetchFromBlockfrost
+                const fetchSpy = vi.spyOn(isolatedIndex, "fetchFromBlockfrost");
+
+                const tx = await isolatedIndex.getTx(makeTxId(txHash));
+
+                expect(tx).toBeTruthy();
+                expect(tx.id().toHex()).toBe(txHash);
+                // Cache miss - SHOULD have called fetchFromBlockfrost
+                expect(fetchSpy).toHaveBeenCalled();
+
+                fetchSpy.mockRestore();
+            });
+        });
+
+        describe("getUtxo (uses shared index)", () => {
+            it("should return TxInput for cached UTXO", async () => {
+                // Get a known UTXO from indexed data
+                const entries = await sharedIndex.getAllUtxos();
+                const [txHash, idx] = entries[0].utxoId.split("#");
+                const { makeTxOutputId, makeTxId } = await import("@helios-lang/ledger");
+
+                const utxoId = makeTxOutputId(makeTxId(txHash), parseInt(idx));
+                const txInput = await sharedIndex.getUtxo(utxoId);
+
+                expect(txInput).toBeTruthy();
+                expect(txInput.id.toString()).toBe(entries[0].utxoId);
+                // Verify it has value data
+                expect(txInput.value.lovelace).toBeGreaterThan(0n);
+            });
+        });
+
+        describe("fetchBlockDetails (uses shared index)", () => {
+            it("should fetch block by hash", async () => {
+                const blockHash = sharedIndex.lastBlockId;
+                const details = await sharedIndex.fetchBlockDetails(blockHash);
+
+                expect(details.hash).toBe(blockHash);
+                expect(details.height).toBe(sharedIndex.lastBlockHeight);
+            });
+        });
+
+        describe("fetchTxDetails (uses shared index)", () => {
+            it("should fetch and decode transaction", async () => {
+                // Get a known txId from UTXOs
+                const utxos = await sharedIndex.getAllUtxos();
+                const txId = utxos[0].utxoId.split("#")[0];
+
+                const tx = await sharedIndex.fetchTxDetails(txId);
+
+                expect(tx).toBeTruthy();
+                expect(tx.id().toHex()).toBe(txId);
+            });
+        });
     });
 }
