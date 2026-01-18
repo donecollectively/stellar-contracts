@@ -491,5 +491,65 @@ if (!BLOCKFROST_API_KEY) {
                 await cleanupRegistry.cleanup();
             });
         });
+
+        describe("fetchAndStoreLatestBlock (isolated)", () => {
+            it("should update state fields after fetching", async () => {
+                const { createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+                const cleanupRegistry = createDbCleanupRegistry();
+
+                const dbName = createIsolatedDbName("latest-block-state");
+                cleanupRegistry.register(dbName);
+
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+
+                // Initially zero (fresh index, no sync)
+                expect(isolatedIndex.lastBlockHeight).toBe(0);
+                expect(isolatedIndex.lastBlockId).toBe("");
+                expect(isolatedIndex.lastSlot).toBe(0);
+
+                const result = await isolatedIndex.fetchAndStoreLatestBlock();
+
+                // State should be updated
+                expect(isolatedIndex.lastBlockHeight).toBeGreaterThan(0);
+                expect(isolatedIndex.lastBlockId.length).toBe(64);
+                expect(isolatedIndex.lastSlot).toBeGreaterThan(0);
+
+                // Return value should match state
+                expect(result.height).toBe(isolatedIndex.lastBlockHeight);
+                expect(result.hash).toBe(isolatedIndex.lastBlockId);
+                expect(result.slot).toBe(isolatedIndex.lastSlot);
+
+                await cleanupRegistry.cleanup();
+            });
+
+            it("should store block in database", async () => {
+                const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
+                const cleanupRegistry = createDbCleanupRegistry();
+
+                const dbName = createIsolatedDbName("latest-block-store");
+                cleanupRegistry.register(dbName);
+
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+
+                const result = await isolatedIndex.fetchAndStoreLatestBlock();
+
+                // Verify block was stored
+                const store = getStore(isolatedIndex);
+                const storedBlock = await store.findBlockId(result.hash);
+
+                expect(storedBlock).toBeTruthy();
+                expect(storedBlock!.height).toBe(result.height);
+                expect(storedBlock!.slot).toBe(result.slot);
+                expect(storedBlock!.epoch).toBe(result.epoch);
+
+                await cleanupRegistry.cleanup();
+            });
+        });
     });
 }

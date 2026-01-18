@@ -229,7 +229,7 @@ describe("findOrFetchBlockHeight (uses shared index)", () => {
 
 ---
 
-### 3. `fetchAndStoreLatestBlock()`
+### 3. `fetchAndStoreLatestBlock()` ✅ IMPLEMENTED
 
 **Location:** `CachedUtxoIndex.ts:958`
 
