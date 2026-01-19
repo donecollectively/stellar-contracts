@@ -121,14 +121,15 @@ export function RateMeterGauge({
     const cy = size / 2;
     const outerRadius = size * 0.42;
     const arcRadius = size * 0.38;
-    const needleLength = size * 0.42 - 1; // 1px short of track outer edge
+    const needleLength = size * 0.41; // Slightly short of track outer edge
     const innerTickRadius = size * 0.28;
 
     // Scale: default to 1.5x base rate, or use prop
     const maxScale = maxScaleProp ?? Math.max(metrics.baseRefillRate * 1.5, 10);
 
-    // Calculate angles
-    const needleAngle = valueToAngle(metrics.requestsPerSecond, maxScale);
+    // Calculate angles (needle has small minimum to rest on zero peg)
+    const minNeedleValue = maxScale * 0.02;
+    const needleAngle = valueToAngle(Math.max(metrics.requestsPerSecond, minNeedleValue), maxScale);
     const rateLimitAngle = valueToAngle(metrics.currentRefillRate, maxScale);
 
     // Arc paths
@@ -136,14 +137,17 @@ export function RateMeterGauge({
     const innerArcRadius = size * 0.36; // Inner half of gauge track
     const redZoneArc = describeArc(cx, cy, innerArcRadius, rateLimitAngle, END_ANGLE - 15);
 
-    // Needle endpoints (extends 5% past center on back side)
-    const needleTip = polarToCartesian(cx, cy, needleLength, needleAngle);
-    const needleBack = polarToCartesian(cx, cy, needleLength * 0.05, needleAngle + 180);
+    // Needle rotation (CSS transform handles animation)
+    // SVG rotation is clockwise from 3 o'clock, so we negate and offset
+    const needleRotation = -needleAngle;
 
     // Label positions
     const zeroPos = polarToCartesian(cx, cy, innerTickRadius, START_ANGLE);
     const maxPos = polarToCartesian(cx, cy, innerTickRadius, END_ANGLE);
     const limitPos = polarToCartesian(cx, cy, outerRadius + 8, rateLimitAngle);
+    // Zero peg at inside of track
+    const innerTrackRadius = arcRadius - size * 0.04; // Inside edge of track
+    const zeroPegPos = polarToCartesian(cx, cy, innerTrackRadius, START_ANGLE);
 
     // Colors based on state
     let gaugeColor = "#4ade80"; // green - normal
@@ -188,6 +192,9 @@ export function RateMeterGauge({
                 strokeWidth={size * 0.08}
                 strokeLinecap="round"
             />
+
+            {/* Zero peg at inside of track */}
+            <circle cx={zeroPegPos.x} cy={zeroPegPos.y} r={size * 0.02} fill="black" />
 
             {/* Red zone arc - REQT/7gzfvcb4w7, clipped to track shape */}
             <path
@@ -314,17 +321,33 @@ export function RateMeterGauge({
 
             {/* Needle - REQT/gy3tnvgtmd (rendered last to be on top) */}
             <line
-                x1={needleBack.x}
-                y1={needleBack.y}
-                x2={needleTip.x}
-                y2={needleTip.y}
+                x1={cx - needleLength * 0.15}
+                y1={cy}
+                x2={cx + needleLength}
+                y2={cy}
                 stroke="#3b82f6"
                 strokeWidth={size * 0.04}
                 strokeLinecap="butt"
                 opacity={0.7}
                 style={{
-                    transition: "x1 200ms ease-out, y1 200ms ease-out, x2 200ms ease-out, y2 200ms ease-out",
+                    transform: `rotate(${needleRotation}deg)`,
                     transformOrigin: `${cx}px ${cy}px`,
+                    transition: "transform 1s ease-out",
+                }}
+            />
+            {/* White indicator at needle tip (last 10%) */}
+            <line
+                x1={cx + needleLength * 0.9}
+                y1={cy}
+                x2={cx + needleLength}
+                y2={cy}
+                stroke="white"
+                strokeWidth={2}
+                strokeLinecap="butt"
+                style={{
+                    transform: `rotate(${needleRotation}deg)`,
+                    transformOrigin: `${cx}px ${cy}px`,
+                    transition: "transform 1s ease-out",
                 }}
             />
 
