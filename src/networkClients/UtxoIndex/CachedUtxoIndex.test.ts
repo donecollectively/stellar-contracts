@@ -12,23 +12,62 @@
 // MUST be first - polyfills IndexedDB globally for Node.js
 import "fake-indexeddb/auto";
 
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
+import {
+    describe,
+    it,
+    expect,
+    beforeAll,
+    afterAll,
+    afterEach,
+    vi,
+    beforeEach,
+} from "vitest";
 import Dexie from "dexie";
 import { makeBlockfrostV0Client } from "@helios-lang/tx-utils";
 
+import {
+    makeAddress,
+    makeTxId,
+    makeTxOutputId,
+    makeAssetClass,
+    makeValue,
+} from "@helios-lang/ledger";
 import { CachedUtxoIndex } from "./CachedUtxoIndex.js";
 import { CapoDataBridge } from "../../helios/scriptBundling/CapoHeliosBundle.bridge.js";
+import {
+    setLastSyncedBlock,
+    getStore,
+    closeStore,
+    createDbCleanupRegistry,
+    getAllBlocks,
+    getAllTxs,
+    copyIndexData,
+    copyIndexDataUpToBlock,
+    deleteUtxo,
+    deleteTx,
+    deleteUtxos,
+    getUtxosFromTx,
+    findBlockForTx,
+    findRecentTxAndBlock,
+    findUtxoWithReferenceScript,
+    findCharterMintBlock,
+    createPartialSyncIndex,
+    createFirstBlockOnlyIndex,
+} from "./CachedUtxoIndex.testHelpers.js";
 
 // Test configuration for preprod
-const TEST_CAPO_ADDRESS = "addr_test1wzz7gwv7yc5r4kfc5qau7nf67pc2pp4jz7vhqvmcs63wddsyvhdfz";
-const TEST_CAPO_MPH = "6b413535a846297b5d8a949663f787b11bae34f24835f2f72dbfd128";
+const TEST_CAPO_ADDRESS =
+    "addr_test1wzz7gwv7yc5r4kfc5qau7nf67pc2pp4jz7vhqvmcs63wddsyvhdfz";
+const TEST_CAPO_MPH =
+    "6b413535a846297b5d8a949663f787b11bae34f24835f2f72dbfd128";
 const SHARED_DB_NAME = "StellarDappIndex-test-shared";
 
 const BLOCKFROST_API_KEY = process.env.BLOCKFROST_API_KEY;
 
 // Registry of isolated indexes to clean up after each test
 // Maps dbName -> index (for closing Dexie connections before deletion)
-const isolatedIndexRegistry: Map<string, CachedUtxoIndex | undefined> = new Map();
+const isolatedIndexRegistry: Map<string, CachedUtxoIndex | undefined> =
+    new Map();
 
 /**
  * Creates a unique database name for isolated tests and registers it for cleanup.
@@ -47,15 +86,14 @@ function registerIsolatedIndex(dbName: string, index: CachedUtxoIndex): void {
     isolatedIndexRegistry.set(dbName, index);
 }
 
-
 if (!BLOCKFROST_API_KEY) {
     // Single failing test when API key is not provided
     describe("CachedUtxoIndex", () => {
         it("requires BLOCKFROST_API_KEY environment variable", () => {
             expect.fail(
                 "BLOCKFROST_API_KEY environment variable is not set.\n" +
-                "To run these tests, set BLOCKFROST_API_KEY to a valid preprod Blockfrost API key:\n" +
-                "  BLOCKFROST_API_KEY=preprodXXXXXXXX pnpm test CachedUtxoIndex"
+                    "To run these tests, set BLOCKFROST_API_KEY to a valid preprod Blockfrost API key:\n" +
+                    "  BLOCKFROST_API_KEY=preprodXXXXXXXX pnpm test CachedUtxoIndex",
             );
         });
     });
@@ -115,8 +153,7 @@ if (!BLOCKFROST_API_KEY) {
 
         // Clean up isolated test databases after each test
         afterEach(async () => {
-            const { closeStore } = await import("./CachedUtxoIndex.testHelpers.js");
-
+            
             for (const [dbName, index] of isolatedIndexRegistry) {
                 try {
                     // Close Dexie connection first to avoid "Another connection wants to delete" warnings
@@ -132,8 +169,7 @@ if (!BLOCKFROST_API_KEY) {
         });
 
         afterAll(async () => {
-            const { closeStore } = await import("./CachedUtxoIndex.testHelpers.js");
-
+            
             // Stop periodic refresh if running
             if (sharedIndex?.isPeriodicRefreshActive) {
                 sharedIndex.stopPeriodicRefresh();
@@ -184,7 +220,9 @@ if (!BLOCKFROST_API_KEY) {
                 });
 
                 // The blockfrostBaseUrl should be set for preprod
-                expect(index.blockfrostBaseUrl).toBe("https://cardano-preprod.blockfrost.io");
+                expect(index.blockfrostBaseUrl).toBe(
+                    "https://cardano-preprod.blockfrost.io",
+                );
             });
         });
 
@@ -206,7 +244,8 @@ if (!BLOCKFROST_API_KEY) {
 
         describe("UTXO Queries (uses shared index)", () => {
             it("should find UTXOs by address", async () => {
-                const utxos = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS);
+                const utxos =
+                    await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS);
 
                 // The Capo address should have at least the charter UTXO
                 expect(utxos.length).toBeGreaterThan(0);
@@ -229,7 +268,7 @@ if (!BLOCKFROST_API_KEY) {
                 // Each UTXO should have tokens with the capo mph
                 for (const utxo of utxos) {
                     const hasCapoToken = utxo.tokens.some(
-                        (t) => t.policyId === TEST_CAPO_MPH
+                        (t) => t.policyId === TEST_CAPO_MPH,
                     );
                     expect(hasCapoToken).toBe(true);
                 }
@@ -258,7 +297,10 @@ if (!BLOCKFROST_API_KEY) {
                     expect(limited.length).toBe(1);
 
                     // Test offset
-                    const offset = await sharedIndex.getAllUtxos({ offset: 1, limit: 1 });
+                    const offset = await sharedIndex.getAllUtxos({
+                        offset: 1,
+                        limit: 1,
+                    });
                     expect(offset.length).toBe(1);
                     expect(offset[0].utxoId).not.toBe(limited[0].utxoId);
                 }
@@ -274,7 +316,7 @@ if (!BLOCKFROST_API_KEY) {
                 // Get all UTXOs and look for any with uutIds
                 const allUtxos = await sharedIndex.getAllUtxos();
                 const utxosWithUuts = allUtxos.filter(
-                    (u) => u.uutIds && u.uutIds.length > 0
+                    (u) => u.uutIds && u.uutIds.length > 0,
                 );
 
                 // A working Capo should have at least some delegate UUTs indexed
@@ -294,7 +336,7 @@ if (!BLOCKFROST_API_KEY) {
                 // First, find a UUT ID from the indexed data
                 const allUtxos = await sharedIndex.getAllUtxos();
                 const utxoWithUut = allUtxos.find(
-                    (u) => u.uutIds && u.uutIds.length > 0
+                    (u) => u.uutIds && u.uutIds.length > 0,
                 );
 
                 if (utxoWithUut && utxoWithUut.uutIds.length > 0) {
@@ -363,8 +405,7 @@ if (!BLOCKFROST_API_KEY) {
                 const [txHash, indexStr] = knownUtxo.utxoId.split("#");
 
                 // Import TxOutputId maker
-                const { makeTxOutputId, makeTxId } = await import("@helios-lang/ledger");
-                const txId = makeTxId(txHash);
+                                const txId = makeTxId(txHash);
                 const utxoId = makeTxOutputId(txId, parseInt(indexStr, 10));
 
                 const exists = await sharedIndex.hasUtxo(utxoId);
@@ -378,8 +419,7 @@ if (!BLOCKFROST_API_KEY) {
 
         describe("findOrFetchTxDetails (uses shared index)", () => {
             it("should return tx from cache without network call", async () => {
-                const { getStore, getAllTxs } = await import("./CachedUtxoIndex.testHelpers.js");
-
+                
                 // Get a txId that was cached during sync
                 const cachedTxs = await getAllTxs(sharedIndex);
                 expect(cachedTxs.length).toBeGreaterThan(0);
@@ -398,8 +438,7 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should fetch from network on cache miss and cache result", async () => {
-                const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
-                const cleanupRegistry = createDbCleanupRegistry();
+                                const cleanupRegistry = createDbCleanupRegistry();
 
                 // Create isolated index WITHOUT copying tx data
                 const dbName = createIsolatedDbName("tx-cache-miss");
@@ -433,8 +472,7 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should use cache on second call", async () => {
-                const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
-                const cleanupRegistry = createDbCleanupRegistry();
+                                const cleanupRegistry = createDbCleanupRegistry();
 
                 const dbName = createIsolatedDbName("tx-second-call");
                 cleanupRegistry.register(dbName);
@@ -471,7 +509,8 @@ if (!BLOCKFROST_API_KEY) {
                 // Spy to verify no network call
                 const fetchSpy = vi.spyOn(sharedIndex, "fetchFromBlockfrost");
 
-                const height = await sharedIndex.findOrFetchBlockHeight(blockId);
+                const height =
+                    await sharedIndex.findOrFetchBlockHeight(blockId);
 
                 expect(height).toBe(expectedHeight);
                 expect(fetchSpy).not.toHaveBeenCalled();
@@ -480,8 +519,7 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should fetch and cache uncached block", async () => {
-                const { getStore, getAllBlocks, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
-                const cleanupRegistry = createDbCleanupRegistry();
+                                const cleanupRegistry = createDbCleanupRegistry();
 
                 const dbName = createIsolatedDbName("block-cache-miss");
                 cleanupRegistry.register(dbName);
@@ -498,15 +536,21 @@ if (!BLOCKFROST_API_KEY) {
 
                 // Verify not in isolated cache
                 const isolatedStore = getStore(isolatedIndex);
-                const beforeFetch = await isolatedStore.findBlockId(testBlock.hash);
+                const beforeFetch = await isolatedStore.findBlockId(
+                    testBlock.hash,
+                );
                 expect(beforeFetch).toBeUndefined();
 
                 // Fetch - should hit network and cache
-                const height = await isolatedIndex.findOrFetchBlockHeight(testBlock.hash);
+                const height = await isolatedIndex.findOrFetchBlockHeight(
+                    testBlock.hash,
+                );
                 expect(height).toBe(testBlock.height);
 
                 // Verify now cached
-                const afterFetch = await isolatedStore.findBlockId(testBlock.hash);
+                const afterFetch = await isolatedStore.findBlockId(
+                    testBlock.hash,
+                );
                 expect(afterFetch).toBeTruthy();
                 expect(afterFetch!.height).toBe(testBlock.height);
 
@@ -516,8 +560,7 @@ if (!BLOCKFROST_API_KEY) {
 
         describe("fetchAndStoreLatestBlock (isolated)", () => {
             it("should update state fields after fetching", async () => {
-                const { createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
-                const cleanupRegistry = createDbCleanupRegistry();
+                                const cleanupRegistry = createDbCleanupRegistry();
 
                 const dbName = createIsolatedDbName("latest-block-state");
                 cleanupRegistry.register(dbName);
@@ -548,8 +591,7 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should store block in database", async () => {
-                const { getStore, createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
-                const cleanupRegistry = createDbCleanupRegistry();
+                                const cleanupRegistry = createDbCleanupRegistry();
 
                 const dbName = createIsolatedDbName("latest-block-store");
                 cleanupRegistry.register(dbName);
@@ -616,7 +658,7 @@ if (!BLOCKFROST_API_KEY) {
 
             it("should preserve UUT IDs with correct format", async () => {
                 const utxos = await sharedIndex.getAllUtxos();
-                const utxosWithUuts = utxos.filter(u => u.uutIds.length > 0);
+                const utxosWithUuts = utxos.filter((u) => u.uutIds.length > 0);
 
                 // Should have at least delegate UUTs
                 expect(utxosWithUuts.length).toBeGreaterThan(0);
@@ -630,8 +672,7 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should have correct block structure in indexed data", async () => {
-                const { getAllBlocks } = await import("./CachedUtxoIndex.testHelpers.js");
-                const blocks = await getAllBlocks(sharedIndex);
+                                const blocks = await getAllBlocks(sharedIndex);
 
                 expect(blocks.length).toBeGreaterThan(0);
 
@@ -648,8 +689,7 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should have txs indexed for UTXOs", async () => {
-                const { getAllTxs } = await import("./CachedUtxoIndex.testHelpers.js");
-                const txs = await getAllTxs(sharedIndex);
+                                const txs = await getAllTxs(sharedIndex);
 
                 expect(txs.length).toBeGreaterThan(0);
 
@@ -662,11 +702,15 @@ if (!BLOCKFROST_API_KEY) {
 
                 // Verify there's at least one tx that created a UTXO
                 const utxos = await sharedIndex.getAllUtxos();
-                const txIdsFromUtxos = new Set(utxos.map(u => u.utxoId.split("#")[0]));
-                const indexedTxIds = new Set(txs.map(t => t.txid));
+                const txIdsFromUtxos = new Set(
+                    utxos.map((u) => u.utxoId.split("#")[0]),
+                );
+                const indexedTxIds = new Set(txs.map((t) => t.txid));
 
                 // At least some UTXO-creating txs should be indexed
-                const overlap = [...txIdsFromUtxos].filter(id => indexedTxIds.has(id));
+                const overlap = [...txIdsFromUtxos].filter((id) =>
+                    indexedTxIds.has(id),
+                );
                 expect(overlap.length).toBeGreaterThan(0);
             });
         });
@@ -677,17 +721,20 @@ if (!BLOCKFROST_API_KEY) {
                 // "charter" in hex = 63686172746572
                 const charterUtxos = await sharedIndex.findUtxosByAsset(
                     TEST_CAPO_MPH,
-                    "63686172746572"
+                    "63686172746572",
                 );
 
                 // Should find exactly one charter UTXO
                 expect(charterUtxos.length).toBe(1);
 
                 // All UTXOs with capo MPH (any token name)
-                const allCapoUtxos = await sharedIndex.findUtxosByAsset(TEST_CAPO_MPH);
+                const allCapoUtxos =
+                    await sharedIndex.findUtxosByAsset(TEST_CAPO_MPH);
 
                 // Should have at least the charter plus delegate tokens
-                expect(allCapoUtxos.length).toBeGreaterThanOrEqual(charterUtxos.length);
+                expect(allCapoUtxos.length).toBeGreaterThanOrEqual(
+                    charterUtxos.length,
+                );
             });
 
             it("should return undefined for non-existent UUT", async () => {
@@ -697,32 +744,46 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should return empty array for large offset in getAllUtxos", async () => {
-                const result = await sharedIndex.getAllUtxos({ offset: 999999 });
+                const result = await sharedIndex.getAllUtxos({
+                    offset: 999999,
+                });
                 expect(result).toEqual([]);
             });
 
             it("should paginate findUtxosByAddress correctly", async () => {
-                const page1 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2, offset: 0 });
-                const page2 = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 2, offset: 2 });
+                const page1 = await sharedIndex.findUtxosByAddress(
+                    TEST_CAPO_ADDRESS,
+                    { limit: 2, offset: 0 },
+                );
+                const page2 = await sharedIndex.findUtxosByAddress(
+                    TEST_CAPO_ADDRESS,
+                    { limit: 2, offset: 2 },
+                );
 
                 // Pages shouldn't overlap
-                const page1Ids = new Set(page1.map(u => u.utxoId));
+                const page1Ids = new Set(page1.map((u) => u.utxoId));
                 for (const utxo of page2) {
                     expect(page1Ids.has(utxo.utxoId)).toBe(false);
                 }
 
                 // Combined should equal fetching more
-                const combined = await sharedIndex.findUtxosByAddress(TEST_CAPO_ADDRESS, { limit: 4, offset: 0 });
+                const combined = await sharedIndex.findUtxosByAddress(
+                    TEST_CAPO_ADDRESS,
+                    { limit: 4, offset: 0 },
+                );
                 expect(combined.length).toBe(page1.length + page2.length);
             });
         });
 
         describe("Cache Miss Scenarios (isolated)", () => {
-            let cleanupRegistry: Awaited<ReturnType<typeof import("./CachedUtxoIndex.testHelpers.js").createDbCleanupRegistry>>;
+            let cleanupRegistry: Awaited<
+                ReturnType<
+                    typeof import("./CachedUtxoIndex.testHelpers.js").createDbCleanupRegistry
+                >
+            >;
 
             beforeEach(async () => {
-                const { createDbCleanupRegistry } = await import("./CachedUtxoIndex.testHelpers.js");
-                cleanupRegistry = createDbCleanupRegistry();
+                                cleanupRegistry = createDbCleanupRegistry();
             });
 
             afterEach(async () => {
@@ -766,7 +827,7 @@ if (!BLOCKFROST_API_KEY) {
                 // Second call for same valid tx - still cache hit
                 const tx2 = await isolatedIndex.findOrFetchTxDetails(txId);
                 expect(tx2).toBeTruthy();
-                expect(tx2!.txid).toBe(tx1!.txid);
+                expect(tx2!.id().isEqual(tx1.id())).toBe(true);
 
                 fetchSpy.mockRestore();
             });
@@ -782,24 +843,26 @@ if (!BLOCKFROST_API_KEY) {
                 await isolatedIndex.syncNow();
 
                 // Get a known block from indexed blocks
-                const { getAllBlocks } = await import("./CachedUtxoIndex.testHelpers.js");
-                const blocks = await getAllBlocks(isolatedIndex);
+                                const blocks = await getAllBlocks(isolatedIndex);
                 expect(blocks.length).toBeGreaterThan(0);
                 const knownBlock = blocks[0];
 
                 // Query by hash - should be cache hit
                 // findOrFetchBlockHeight takes blockId (hash) and returns height
-                const height1 = await isolatedIndex.findOrFetchBlockHeight(knownBlock.hash);
+                const height1 = await isolatedIndex.findOrFetchBlockHeight(
+                    knownBlock.hash,
+                );
                 expect(height1).toBe(knownBlock.height);
 
                 // Query again - still cache hit, same result
-                const height2 = await isolatedIndex.findOrFetchBlockHeight(knownBlock.hash);
+                const height2 = await isolatedIndex.findOrFetchBlockHeight(
+                    knownBlock.hash,
+                );
                 expect(height2).toBe(height1);
             });
 
             it("should work with partial data via copyIndexDataUpToBlock", async () => {
-                const { getAllBlocks, copyIndexDataUpToBlock } = await import("./CachedUtxoIndex.testHelpers.js");
-
+                
                 // First create a fully synced index
                 const fullDbName = createIsolatedDbName();
                 cleanupRegistry.register(fullDbName);
@@ -828,18 +891,26 @@ if (!BLOCKFROST_API_KEY) {
                 });
 
                 // Copy data up to cutoff block (source, target, maxHeight)
-                await copyIndexDataUpToBlock(fullIndex, partialIndex, cutoffBlock.height);
+                await copyIndexDataUpToBlock(
+                    fullIndex,
+                    partialIndex,
+                    cutoffBlock.height,
+                );
 
                 // Partial index should have data
                 const partialBlocks = await getAllBlocks(partialIndex);
 
                 // Should have at least some data (may equal full if only 1 block)
                 expect(partialBlocks.length).toBeGreaterThanOrEqual(1);
-                expect(partialBlocks.length).toBeLessThanOrEqual(allBlocks.length);
+                expect(partialBlocks.length).toBeLessThanOrEqual(
+                    allBlocks.length,
+                );
 
                 // All blocks should be <= cutoff height
                 for (const block of partialBlocks) {
-                    expect(block.height).toBeLessThanOrEqual(cutoffBlock.height);
+                    expect(block.height).toBeLessThanOrEqual(
+                        cutoffBlock.height,
+                    );
                 }
             });
         });
@@ -852,12 +923,13 @@ if (!BLOCKFROST_API_KEY) {
             it("should return cleanly when no new transactions exist", async () => {
                 // Call with block height beyond current - should find nothing new
                 const futureHeight = sharedIndex.lastBlockHeight + 1000;
-                await expect(sharedIndex.checkForNewTxns(futureHeight)).resolves.toBeUndefined();
+                await expect(
+                    sharedIndex.checkForNewTxns(futureHeight),
+                ).resolves.toBeUndefined();
             });
 
             it("should throw when lastBlockHeight is 0 and no param provided", async () => {
-                const { setLastSyncedBlock } = await import("./CachedUtxoIndex.testHelpers.js");
-
+                
                 // Create isolated index and wait for sync to complete
                 const dbName = createIsolatedDbName("check-zero-height");
                 const isolatedIndex = new CachedUtxoIndex({
@@ -871,15 +943,17 @@ if (!BLOCKFROST_API_KEY) {
 
                 // Calling checkForNewTxns without param should throw
                 await expect(isolatedIndex.checkForNewTxns()).rejects.toThrow(
-                    "Cannot start checking for new transactions at block height 0"
+                    "Cannot start checking for new transactions at block height 0",
                 );
             });
 
             it("should load transactions when syncing from an earlier block", async () => {
-                const { setLastSyncedBlock, getAllTxs, findCharterMintBlock } = await import("./CachedUtxoIndex.testHelpers.js");
-
+                
                 // Find the charter mint block (earliest relevant block)
-                const charterMint = await findCharterMintBlock(sharedIndex, BLOCKFROST_API_KEY);
+                const charterMint = await findCharterMintBlock(
+                    sharedIndex,
+                    BLOCKFROST_API_KEY,
+                );
 
                 // Create isolated index and sync it
                 const dbName = createIsolatedDbName("incremental-sync");
@@ -892,24 +966,35 @@ if (!BLOCKFROST_API_KEY) {
                 await isolatedIndex.syncNow();
 
                 // Record tx count after initial sync
-                const txCountAfterSync = (await getAllTxs(isolatedIndex)).length;
+                const txCountAfterSync = (await getAllTxs(isolatedIndex))
+                    .length;
 
                 // Set lastBlockHeight back to charter mint block to simulate "catching up"
-                setLastSyncedBlock(isolatedIndex, charterMint.blockHeight, "", 0);
+                setLastSyncedBlock(
+                    isolatedIndex,
+                    charterMint.blockHeight,
+                    "",
+                    0,
+                );
 
                 // Call checkForNewTxns - should find transactions after charter mint
                 await isolatedIndex.checkForNewTxns();
 
                 // Should have loaded some transactions (up to page limit)
-                const txCountAfterCheck = (await getAllTxs(isolatedIndex)).length;
-                expect(txCountAfterCheck).toBeGreaterThanOrEqual(txCountAfterSync);
+                const txCountAfterCheck = (await getAllTxs(isolatedIndex))
+                    .length;
+                expect(txCountAfterCheck).toBeGreaterThanOrEqual(
+                    txCountAfterSync,
+                );
             });
 
             it("should honor page size limits during syncing", async () => {
-                const { setLastSyncedBlock, getAllTxs, findCharterMintBlock } = await import("./CachedUtxoIndex.testHelpers.js");
-
+                
                 // Find the charter mint block
-                const charterMint = await findCharterMintBlock(sharedIndex, BLOCKFROST_API_KEY);
+                const charterMint = await findCharterMintBlock(
+                    sharedIndex,
+                    BLOCKFROST_API_KEY,
+                );
 
                 // Create isolated index with small page size and single page limit
                 const dbName = createIsolatedDbName("page-limit");
@@ -925,7 +1010,12 @@ if (!BLOCKFROST_API_KEY) {
                 const txCountBefore = (await getAllTxs(isolatedIndex)).length;
 
                 // Set back to charter mint to force re-sync
-                setLastSyncedBlock(isolatedIndex, charterMint.blockHeight, "", 0);
+                setLastSyncedBlock(
+                    isolatedIndex,
+                    charterMint.blockHeight,
+                    "",
+                    0,
+                );
 
                 // Sync with limited pages
                 await isolatedIndex.checkForNewTxns();
@@ -939,10 +1029,12 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should fetch multiple pages when allowed", async () => {
-                const { setLastSyncedBlock, getAllTxs, findCharterMintBlock } = await import("./CachedUtxoIndex.testHelpers.js");
-
+                
                 // Find the charter mint block
-                const charterMint = await findCharterMintBlock(sharedIndex, BLOCKFROST_API_KEY);
+                const charterMint = await findCharterMintBlock(
+                    sharedIndex,
+                    BLOCKFROST_API_KEY,
+                );
 
                 // Create index with small page size but allow multiple pages
                 const dbName = createIsolatedDbName("multi-page");
@@ -955,18 +1047,32 @@ if (!BLOCKFROST_API_KEY) {
                 await isolatedIndex.syncNow();
 
                 // First sync with 1 page
-                setLastSyncedBlock(isolatedIndex, charterMint.blockHeight, "", 0);
+                setLastSyncedBlock(
+                    isolatedIndex,
+                    charterMint.blockHeight,
+                    "",
+                    0,
+                );
                 await isolatedIndex.checkForNewTxns();
-                const txCountAfterOnePage = (await getAllTxs(isolatedIndex)).length;
+                const txCountAfterOnePage = (await getAllTxs(isolatedIndex))
+                    .length;
 
                 // Now allow more pages and sync again
                 isolatedIndex.maxSyncPages = 3;
-                setLastSyncedBlock(isolatedIndex, charterMint.blockHeight, "", 0);
+                setLastSyncedBlock(
+                    isolatedIndex,
+                    charterMint.blockHeight,
+                    "",
+                    0,
+                );
                 await isolatedIndex.checkForNewTxns();
-                const txCountAfterThreePages = (await getAllTxs(isolatedIndex)).length;
+                const txCountAfterThreePages = (await getAllTxs(isolatedIndex))
+                    .length;
 
                 // Should have fetched more transactions with more pages allowed
-                expect(txCountAfterThreePages).toBeGreaterThanOrEqual(txCountAfterOnePage);
+                expect(txCountAfterThreePages).toBeGreaterThanOrEqual(
+                    txCountAfterOnePage,
+                );
             });
         });
 
@@ -975,8 +1081,7 @@ if (!BLOCKFROST_API_KEY) {
                 // Get a txHash from a known UTXO
                 const utxos = await sharedIndex.getAllUtxos();
                 const txHash = utxos[0].utxoId.split("#")[0];
-                const { makeTxId } = await import("@helios-lang/ledger");
-
+                
                 // Spy on fetchFromBlockfrost to verify no network call
                 const fetchSpy = vi.spyOn(sharedIndex, "fetchFromBlockfrost");
 
@@ -991,13 +1096,11 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should fetch from network on cache miss", async () => {
-                const { getStore } = await import("./CachedUtxoIndex.testHelpers.js");
-
+                
                 // Get a txHash from shared index
                 const utxos = await sharedIndex.getAllUtxos();
                 const txHash = utxos[0].utxoId.split("#")[0];
-                const { makeTxId } = await import("@helios-lang/ledger");
-
+                
                 // Create isolated index without copying data
                 const dbName = createIsolatedDbName("getTx-miss");
                 const isolatedIndex = new CachedUtxoIndex({
@@ -1029,8 +1132,7 @@ if (!BLOCKFROST_API_KEY) {
                 // Get a known UTXO from indexed data
                 const entries = await sharedIndex.getAllUtxos();
                 const [txHash, idx] = entries[0].utxoId.split("#");
-                const { makeTxOutputId, makeTxId } = await import("@helios-lang/ledger");
-
+                
                 const utxoId = makeTxOutputId(makeTxId(txHash), parseInt(idx));
                 const txInput = await sharedIndex.getUtxo(utxoId);
 
@@ -1043,30 +1145,39 @@ if (!BLOCKFROST_API_KEY) {
 
         describe("getUtxos (uses shared index)", () => {
             it("should return TxInput array for capo address", async () => {
-                const { makeAddress } = await import("@helios-lang/ledger");
-                const addr = makeAddress(TEST_CAPO_ADDRESS);
+                                const addr = makeAddress(TEST_CAPO_ADDRESS);
 
                 const txInputs = await sharedIndex.getUtxos(addr);
 
                 expect(txInputs.length).toBeGreaterThan(0);
-                expect(txInputs[0].address.toBech32()).toBe(TEST_CAPO_ADDRESS);
+                expect(txInputs[0].address.toString()).toBe(TEST_CAPO_ADDRESS);
             });
         });
 
         describe("getUtxosWithAssetClass (uses shared index)", () => {
             it("should find UTXOs with charter token", async () => {
-                const { makeAddress, makeAssetClass, makeValue } = await import("@helios-lang/ledger");
-                const addr = makeAddress(TEST_CAPO_ADDRESS);
+                                const addr = makeAddress(TEST_CAPO_ADDRESS);
                 // "charter" in hex = 63686172746572
-                const charterAsset = makeAssetClass(`${TEST_CAPO_MPH}.63686172746572`);
+                const charterAsset = makeAssetClass(
+                    `${TEST_CAPO_MPH}.63686172746572`,
+                );
 
-                const txInputs = await sharedIndex.getUtxosWithAssetClass(addr, charterAsset);
+                const txInputs = await sharedIndex.getUtxosWithAssetClass(
+                    addr,
+                    charterAsset,
+                );
 
                 // Should find exactly one charter UTXO
                 expect(txInputs.length).toBe(1);
                 // Verify it has the charter token by checking value is >= 1 of that asset
-                const minAssetValue = makeValue(charterAsset.mph, charterAsset.tokenName, 1n);
-                expect(txInputs[0].value.isGreaterOrEqual(minAssetValue)).toBe(true);
+                const minAssetValue = makeValue(
+                    charterAsset.mph,
+                    charterAsset.tokenName,
+                    1n,
+                );
+                expect(txInputs[0].value.isGreaterOrEqual(minAssetValue)).toBe(
+                    true,
+                );
             });
         });
 
@@ -1095,8 +1206,7 @@ if (!BLOCKFROST_API_KEY) {
 
         describe("restoreTxInputs (isolated)", () => {
             it("should restore TxInputs with address and value from cached UTXOs", async () => {
-                const { getStore } = await import("./CachedUtxoIndex.testHelpers.js");
-
+                
                 // Create an isolated index
                 const dbName = createIsolatedDbName("restore-inputs");
                 const isolatedIndex = new CachedUtxoIndex({
@@ -1139,7 +1249,7 @@ if (!BLOCKFROST_API_KEY) {
                 // Each restored input should have the address and value we put in
                 for (const input of restoredInputs) {
                     expect(input.address).toBeTruthy();
-                    expect(input.address.toBech32()).toBe(TEST_CAPO_ADDRESS);
+                    expect(input.address.toString()).toBe(TEST_CAPO_ADDRESS);
                     expect(input.value).toBeTruthy();
                     expect(input.value.lovelace).toBe(testLovelace);
                 }
@@ -1148,21 +1258,24 @@ if (!BLOCKFROST_API_KEY) {
 
         describe("fetchAndCacheScript (uses shared index)", () => {
             it("should fetch and cache a valid script", async () => {
-                const { findUtxoWithReferenceScript, getStore } = await import("./CachedUtxoIndex.testHelpers.js");
-
+                
                 // Find a UTXO with a reference script hash
-                const utxoWithScript = await findUtxoWithReferenceScript(sharedIndex);
+                const utxoWithScript =
+                    await findUtxoWithReferenceScript(sharedIndex);
 
                 if (!utxoWithScript) {
                     // No UTXOs with reference scripts in test data - skip test
-                    console.log("No UTXOs with reference scripts found - skipping test");
+                    console.log(
+                        "No UTXOs with reference scripts found - skipping test",
+                    );
                     return;
                 }
 
                 const scriptHash = utxoWithScript.referenceScriptHash!;
 
                 // Fetch the script
-                const script = await sharedIndex.fetchAndCacheScript(scriptHash);
+                const script =
+                    await sharedIndex.fetchAndCacheScript(scriptHash);
 
                 expect(script).toBeTruthy();
 
@@ -1175,12 +1288,14 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("should return cached script on second call without network fetch", async () => {
-                const { findUtxoWithReferenceScript } = await import("./CachedUtxoIndex.testHelpers.js");
-
-                const utxoWithScript = await findUtxoWithReferenceScript(sharedIndex);
+                
+                const utxoWithScript =
+                    await findUtxoWithReferenceScript(sharedIndex);
 
                 if (!utxoWithScript) {
-                    console.log("No UTXOs with reference scripts found - skipping test");
+                    console.log(
+                        "No UTXOs with reference scripts found - skipping test",
+                    );
                     return;
                 }
 
@@ -1193,7 +1308,8 @@ if (!BLOCKFROST_API_KEY) {
                 const fetchSpy = vi.spyOn(sharedIndex, "fetchFromBlockfrost");
 
                 // Second call - should use cache
-                const script2 = await sharedIndex.fetchAndCacheScript(scriptHash);
+                const script2 =
+                    await sharedIndex.fetchAndCacheScript(scriptHash);
 
                 expect(script2).toBeTruthy();
                 // Should NOT have called fetchFromBlockfrost (cache hit)
@@ -1206,7 +1322,9 @@ if (!BLOCKFROST_API_KEY) {
                 // Use a fake but valid-format script hash (64 hex chars)
                 const fakeScriptHash = "0".repeat(56);
 
-                await expect(sharedIndex.fetchAndCacheScript(fakeScriptHash)).rejects.toThrow();
+                await expect(
+                    sharedIndex.fetchAndCacheScript(fakeScriptHash),
+                ).rejects.toThrow();
             });
         });
     });

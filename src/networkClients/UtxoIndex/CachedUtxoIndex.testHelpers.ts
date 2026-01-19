@@ -61,7 +61,7 @@
  */
 
 import Dexie from "dexie";
-import type { CachedUtxoIndex } from "./CachedUtxoIndex.js";
+import { CachedUtxoIndex } from "./CachedUtxoIndex.js";
 import { DexieUtxoStore } from "./DexieUtxoStore.js";
 import type { UtxoIndexEntry } from "./types/UtxoIndexEntry.js";
 import type { BlockIndexEntry } from "./types/BlockIndexEntry.js";
@@ -459,8 +459,6 @@ export async function createPartialSyncIndex(
     index: CachedUtxoIndex;
     dbName: string;
 }> {
-    const { CachedUtxoIndex } = await import("./CachedUtxoIndex.js");
-
     const dbName = options?.dbName || `StellarDappIndex-test-partial-${Date.now()}`;
 
     const isolatedIndex = new CachedUtxoIndex({
@@ -505,8 +503,6 @@ export async function createFirstBlockOnlyIndex(
 }> {
     // Find the charter mint block
     const charterMintBlock = await findCharterMintBlock(sharedIndex, baseConfig.blockfrostKey);
-
-    const { CachedUtxoIndex } = await import("./CachedUtxoIndex.js");
 
     const dbName = `StellarDappIndex-test-firstblock-${Date.now()}`;
 
