@@ -80,6 +80,9 @@ const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
 const DEFAULT_SYNC_PAGE_SIZE = 100;
 const DEFAULT_MAX_SYNC_PAGES = Infinity;
 
+// REQT/92m7kpkny7: Wallet address staleness threshold (default 30 seconds)
+const DEFAULT_WALLET_STALENESS_MS = 30 * 1000;
+
 export interface CachedUtxoIndexEvents {
     /** Emitted when initial sync from scratch begins */
     syncStart: [];
@@ -106,6 +109,9 @@ export class CachedUtxoIndex {
     // Configurable sync parameters (for testing)
     syncPageSize: number = DEFAULT_SYNC_PAGE_SIZE;
     maxSyncPages: number = DEFAULT_MAX_SYNC_PAGES;
+
+    // REQT/92m7kpkny7: Wallet staleness threshold (configurable)
+    walletStalenessMs: number = DEFAULT_WALLET_STALENESS_MS;
 
     // Decoupled components (instead of full Capo instance)
     private _address: Address;
@@ -484,6 +490,104 @@ export class CachedUtxoIndex {
      */
     get isPeriodicRefreshActive(): boolean {
         return this.refreshTimerId !== null;
+    }
+
+    // =========================================================================
+    // REQT/ngn9agx52a: Wallet Address Indexing
+    // =========================================================================
+
+    /**
+     * Registers a wallet address for UTXO indexing.
+     * Fetches current UTXOs and stores them in the cache.
+     *
+     * REQT/mp4dx7ngvf (Address Registration)
+     */
+    async addWalletAddress(address: string): Promise<void> {
+        await this.syncReady;
+
+        // Check if already registered
+        const existing = await this.store.findWalletAddress(address);
+        if (existing) {
+            await this.store.log(
+                "wa1sk",
+                `Wallet address ${address} already registered, skipping`,
+            );
+            return;
+        }
+
+        await this.store.log("wa1rg", `Registering wallet address: ${address}`);
+
+        // Fetch current UTXOs from network
+        const heliosAddress = makeAddress(address);
+        const utxos = await this.network.getUtxos(heliosAddress);
+
+        // Store each UTXO in the cache
+        for (const utxo of utxos) {
+            const entry = this.txInputToIndexEntry(utxo);
+            await this.store.saveUtxo(entry);
+        }
+
+        // Save wallet address with sync state
+        await this.store.saveWalletAddress({
+            address,
+            lastBlockHeight: this.lastBlockHeight,
+            lastSyncTime: Date.now(),
+        });
+
+        await this.store.log(
+            "wa1ok",
+            `Registered wallet address ${address} with ${utxos.length} UTXOs`,
+        );
+    }
+
+    /**
+     * Syncs UTXOs for a registered wallet address if stale.
+     * Returns true if sync was performed, false if cache was fresh.
+     *
+     * REQT/92m7kpkny7 (On-Demand Sync)
+     */
+    private async syncWalletAddressIfStale(address: string): Promise<boolean> {
+        const walletEntry = await this.store.findWalletAddress(address);
+        if (!walletEntry) {
+            return false; // Not a registered wallet
+        }
+
+        const now = Date.now();
+        const age = now - walletEntry.lastSyncTime;
+
+        if (age < this.walletStalenessMs) {
+            return false; // Cache is fresh
+        }
+
+        await this.store.log(
+            "wa2sy",
+            `Wallet ${address} is stale (${Math.round(age / 1000)}s old), syncing`,
+        );
+
+        // Fetch fresh UTXOs from network
+        const heliosAddress = makeAddress(address);
+        const utxos = await this.network.getUtxos(heliosAddress);
+
+        // Update cached UTXOs for this address
+        // First, we store the new UTXOs (put will overwrite existing)
+        for (const utxo of utxos) {
+            const entry = this.txInputToIndexEntry(utxo);
+            await this.store.saveUtxo(entry);
+        }
+
+        // Update sync state
+        await this.store.saveWalletAddress({
+            address,
+            lastBlockHeight: this.lastBlockHeight,
+            lastSyncTime: now,
+        });
+
+        await this.store.log(
+            "wa2ok",
+            `Synced wallet ${address}: ${utxos.length} UTXOs`,
+        );
+
+        return true;
     }
 
     /**
@@ -1339,6 +1443,10 @@ export class CachedUtxoIndex {
     async getUtxos(address: Address): Promise<TxInput[]> {
         await this.syncReady;
         const addrStr = this.addressToBech32(address);
+
+        // REQT/92m7kpkny7: Sync wallet address if stale before returning cached data
+        await this.syncWalletAddressIfStale(addrStr);
+
         const entries = await this.store.findUtxosByAddress(addrStr);
 
         if (entries.length > 0) {

@@ -11,6 +11,7 @@ import type { UtxoIndexEntry } from "./UtxoIndexEntry.js";
 import type { BlockIndexEntry } from "./BlockIndexEntry.js";
 import type { TxIndexEntry } from "./TxIndexEntry.js";
 import type { ScriptIndexEntry } from "./ScriptIndexEntry.js";
+import type { WalletAddressEntry } from "./WalletAddressEntry.js";
 
 export interface UtxoStoreGeneric {
     // Logging
@@ -53,4 +54,9 @@ export interface UtxoStoreGeneric {
         limit?: number;
         offset?: number;
     }): Promise<UtxoIndexEntry[]>;
+
+    // REQT/620ypcc34d: Wallet Address Storage
+    findWalletAddress(address: string): Promise<WalletAddressEntry | undefined>;
+    saveWalletAddress(entry: WalletAddressEntry): Promise<void>;
+    getAllWalletAddresses(): Promise<WalletAddressEntry[]>;
 }

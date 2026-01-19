@@ -279,6 +279,7 @@ Documents planned features and performance improvements not yet implemented. App
  - **REQT-1.5.2**/zzsg63b2fb: COMPLETED: **Automated Periodic Refresh** - Must implement timer-based refresh using defined intervals (`refreshInterval` 60 seconds for transaction monitoring). Must trigger `checkForNewTxns()` on refresh interval.
  - **REQT-1.5.3**/0aewmbbfct: BACKLOG: **Pagination for High-Volume Activity** - Must handle cases where `addresses/{address}/transactions` endpoint returns 100+ results in single monitoring cycle. Must implement pagination strategy to fetch additional pages when response count equals limit.
  - **REQT-1.5.4**/50zkk5xgrx: COMPLETED: **Query API Methods** - Must provide public query interface for indexed UTXOs. Must implement `findUtxoId(id)`, `findUtxoByUUT(uutId)`, and queries by asset (mph, tokenName). Must support filtering and pagination options.
+ - **REQT-1.5.5**/70sncha8f2: BACKLOG: **Ogmios Backend for Multi-Address Monitoring** - Must support Ogmios as alternative backend for scanning transactions in new blocks. Enables efficient monitoring of both Capo and wallet addresses by processing block-level transaction data rather than per-address polling.
 
 ### REQT-1.6/rc7km2x8hp: COMPLETED: **ReadonlyCardanoClient Interface Conformance**
 
@@ -314,15 +315,15 @@ Ensures that Tx objects returned from cache have fully-restored TxInputs with co
  - **REQT-1.7.3**/qc7qgsqphv: COMPLETED: **getTxInfo with Restored Inputs** - Must provide method to retrieve Tx with fully-restored TxInputs. Following Helios convention, `getTx()` returns raw decoded Tx while `getTxInfo()` uses `tx.recover(this)` to restore input data. *(Implemented as `getTxInfo()` which leverages CachedUtxoIndex's `getUtxo()` implementation.)*
  - **REQT-1.7.4**/k2wvnd3f1e: COMPLETED: **Script Storage** - Must extend storage schema to cache reference script CBOR by script hash. Must implement `store.saveScript(hash, cbor)` and `store.findScript(hash)`. Prevents redundant Blockfrost queries for commonly-used reference scripts. *(Implemented in DexieUtxoStore with scripts table.)*
 
-### REQT-1.9/ngn9agx52a: NEXT: **Wallet Address Indexing**
+### REQT-1.9/ngn9agx52a: IN PROGRESS: **Wallet Address Indexing**
 
 #### Purpose
 Enables the indexer to cache UTXOs from connected wallet addresses, not just the Capo address. This allows the CapoDappProvider to serve actor UTXO queries from cache, reducing network calls and improving responsiveness when finding user-specific UTXOs for transaction building. Applied when implementing wallet integration or modifying address registration logic.
 
- - **REQT-1.9.1**/mp4dx7ngvf: NEXT: **Address Registration** - Must implement `addWalletAddress(address: string): Promise<void>` to register additional addresses for indexing. Must store registered addresses persistently. Must trigger an initial sync for newly registered addresses. Must skip registration if address is already registered.
+ - **REQT-1.9.1**/mp4dx7ngvf: COMPLETED: **Address Registration** - Must implement `addWalletAddress(address: string): Promise<void>` to register additional addresses for indexing. Must store registered addresses persistently. Must trigger an initial sync for newly registered addresses. Must skip registration if address is already registered. *(Implemented in CachedUtxoIndex.addWalletAddress())*
  - **REQT-1.9.2**/ctc4z2k5pq: NEXT: **CapoDappProvider Integration** - When a wallet is connected via CapoDappProvider, must automatically call `addWalletAddress()` with the wallet's base address. Must handle wallet disconnection gracefully (addresses may remain indexed for faster reconnection).
- - **REQT-1.9.3**/92m7kpkny7: NEXT: **On-Demand Sync** - When `getUtxos(address)` is called for a registered wallet address, must first check if sync is needed (based on `lastSyncTime` for that address). If stale (configurable threshold, default 30 seconds), must perform incremental sync before returning results. Must not block indefinitely - use existing rate limiter.
- - **REQT-1.9.4**/620ypcc34d: NEXT: **Multi-Address Storage** - Must extend storage schema to track per-address sync state (lastBlockHeight, lastSyncTime). Must support querying UTXOs filtered by source address. Must distinguish between Capo-address UTXOs (which have UUT tracking) and wallet-address UTXOs (which do not).
+ - **REQT-1.9.3**/92m7kpkny7: COMPLETED: **On-Demand Sync** - When `getUtxos(address)` is called for a registered wallet address, must first check if sync is needed (based on `lastSyncTime` for that address). If stale (configurable threshold, default 30 seconds), must perform incremental sync before returning results. Must not block indefinitely - use existing rate limiter. *(Implemented via syncWalletAddressIfStale() called from getUtxos())*
+ - **REQT-1.9.4**/620ypcc34d: COMPLETED: **Multi-Address Storage** - Must extend storage schema to track per-address sync state (lastBlockHeight, lastSyncTime). Must support querying UTXOs filtered by source address. Must distinguish between Capo-address UTXOs (which have UUT tracking) and wallet-address UTXOs (which do not). *(Implemented WalletAddressEntry type and walletAddresses table in DexieUtxoStore)*
 
 ### Component: UtxoStoreGeneric Interface
 
@@ -512,12 +513,14 @@ To match BlockfrostV0Client behavior, we restore full TxInputs with:
 * DONE: Script storage in DexieUtxoStore with `saveScript()`/`findScript()` (REQT/k2wvnd3f1e)
 * DONE: `getTxInfo()` uses `tx.recover(this)` for input restoration, following Helios convention where `getTx()` returns raw Tx (REQT/qc7qgsqphv)
 
-#### NEXT: Wallet Address Indexing (REQT/ngn9agx52a)
+#### IN PROGRESS: Wallet Address Indexing (REQT/ngn9agx52a)
 Extends indexer to cache UTXOs from connected wallet addresses:
-* `addWalletAddress()` method for registering addresses
-* CapoDappProvider integration to auto-register on wallet connect
-* On-demand sync with staleness threshold before answering queries
-* Multi-address storage with per-address sync state tracking
+* DONE: `WalletAddressEntry` type for per-address sync state (REQT/620ypcc34d)
+* DONE: `walletAddresses` table in DexieUtxoStore schema (REQT/620ypcc34d)
+* DONE: `addWalletAddress()` method for registering addresses (REQT/mp4dx7ngvf)
+* DONE: `syncWalletAddressIfStale()` for on-demand refresh (REQT/92m7kpkny7)
+* DONE: `getUtxos()` checks staleness for registered wallet addresses (REQT/92m7kpkny7)
+* TODO: CapoDappProvider integration to auto-register on wallet connect (REQT/ctc4z2k5pq)
 
 ## Release Management Plan
 

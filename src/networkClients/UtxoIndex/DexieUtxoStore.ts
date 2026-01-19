@@ -6,6 +6,7 @@ import type { UtxoIndexEntry } from "./types/UtxoIndexEntry.js";
 import type { BlockIndexEntry } from "./types/BlockIndexEntry.js";
 import type { TxIndexEntry } from "./types/TxIndexEntry.js";
 import type { ScriptIndexEntry } from "./types/ScriptIndexEntry.js";
+import type { WalletAddressEntry } from "./types/WalletAddressEntry.js";
 import { dexieBlockDetails } from "./dexieRecords/BlockDetails.js";
 import { indexerLogs } from "./dexieRecords/Logs.js";
 import { dexieUtxoDetails } from "./dexieRecords/UtxoDetails.js";
@@ -25,6 +26,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     utxos!: EntityTable<dexieUtxoDetails, "utxoId">;
     txs!: EntityTable<TxIndexEntry, "txid">;
     scripts!: EntityTable<ScriptIndexEntry, "scriptHash">;
+    walletAddresses!: EntityTable<WalletAddressEntry, "address">;
     logs!: EntityTable<indexerLogs, "logId">;
 
     pid: number = 0;
@@ -37,12 +39,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         // - utxos: UTXO data with *uutIds multiEntry index (REQT/nt1pqd3m3z) and address index (REQT/50zkk5xgrx)
         // - txs: transaction CBOR indexed by txid
         // - scripts: reference script CBOR indexed by scriptHash (REQT/k2wvnd3f1e)
+        // - walletAddresses: registered wallet addresses with sync state (REQT/620ypcc34d)
         // - logs: operational logs indexed by logId and [pid,time]
         this.version(1).stores({
             blocks: "hash, height",
             utxos: "utxoId, *uutIds, address",
             txs: "txid",
             scripts: "scriptHash",
+            walletAddresses: "address",
             logs: "logId, [pid+time]",
         });
 
@@ -191,5 +195,23 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         const { limit = 100, offset = 0 } = options ?? {};
 
         return await this.utxos.offset(offset).limit(limit).toArray();
+    }
+
+    // REQT/620ypcc34d: Wallet Address Storage
+    async findWalletAddress(
+        address: string
+    ): Promise<WalletAddressEntry | undefined> {
+        return await this.walletAddresses
+            .where("address")
+            .equals(address)
+            .first();
+    }
+
+    async saveWalletAddress(entry: WalletAddressEntry): Promise<void> {
+        await this.walletAddresses.put(entry);
+    }
+
+    async getAllWalletAddresses(): Promise<WalletAddressEntry[]> {
+        return await this.walletAddresses.toArray();
     }
 }
