@@ -47,7 +47,7 @@ export default defineConfig({
     ],
     test: {
         // include: ['tests/new*.test.ts', ],
-        include: ["tests/*.test.ts", "tests/*.test.js"],
+        include: ["tests/*.test.ts", "tests/*.test.js", "src/**/*.test.ts"],
         restoreMocks: true,
         ...profilingOptions,
         hookTimeout: 500000,
