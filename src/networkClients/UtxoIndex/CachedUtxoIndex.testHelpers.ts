@@ -275,31 +275,45 @@ export async function findBlockForTx(
 }
 
 /**
- * Creates a registry for tracking isolated database names for cleanup.
+ * Closes the Dexie store connection for an index.
+ * This should be called before deleting the database.
+ */
+export function closeStore(index: CachedUtxoIndex): void {
+    const store = getStore(index);
+    store.close();
+}
+
+/**
+ * Creates a registry for tracking isolated indexes for cleanup.
+ * Closes Dexie connections before deleting databases.
  */
 export function createDbCleanupRegistry(): {
-    register: (dbName: string) => void;
+    register: (dbName: string, index?: CachedUtxoIndex) => void;
     cleanup: () => Promise<void>;
     getNames: () => string[];
 } {
-    const dbNames: Set<string> = new Set();
+    const entries: Map<string, CachedUtxoIndex | undefined> = new Map();
 
     return {
-        register(dbName: string) {
-            dbNames.add(dbName);
+        register(dbName: string, index?: CachedUtxoIndex) {
+            entries.set(dbName, index);
         },
         async cleanup() {
-            for (const dbName of dbNames) {
+            for (const [dbName, index] of entries) {
                 try {
+                    // Close Dexie connection first
+                    if (index) {
+                        closeStore(index);
+                    }
                     await Dexie.delete(dbName);
                 } catch (e) {
                     // Ignore errors during cleanup
                 }
             }
-            dbNames.clear();
+            entries.clear();
         },
         getNames() {
-            return [...dbNames];
+            return [...entries.keys()];
         },
     };
 }

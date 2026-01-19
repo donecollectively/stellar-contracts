@@ -26,17 +26,27 @@ const SHARED_DB_NAME = "StellarDappIndex-test-shared";
 
 const BLOCKFROST_API_KEY = process.env.BLOCKFROST_API_KEY;
 
-// Registry of isolated database names to clean up after each test
-const isolatedDbCleanupRegistry: Set<string> = new Set();
+// Registry of isolated indexes to clean up after each test
+// Maps dbName -> index (for closing Dexie connections before deletion)
+const isolatedIndexRegistry: Map<string, CachedUtxoIndex | undefined> = new Map();
 
 /**
  * Creates a unique database name for isolated tests and registers it for cleanup.
  */
-function createIsolatedDbName(testName: string): string {
-    const dbName = `StellarDappIndex-test-${testName}-${Date.now()}`;
-    isolatedDbCleanupRegistry.add(dbName);
+function createIsolatedDbName(testName?: string): string {
+    const suffix = testName ? `-${testName}` : "";
+    const dbName = `StellarDappIndex-test${suffix}-${Date.now()}`;
+    isolatedIndexRegistry.set(dbName, undefined);
     return dbName;
 }
+
+/**
+ * Registers an index for cleanup. Call after creating the index.
+ */
+function registerIsolatedIndex(dbName: string, index: CachedUtxoIndex): void {
+    isolatedIndexRegistry.set(dbName, index);
+}
+
 
 if (!BLOCKFROST_API_KEY) {
     // Single failing test when API key is not provided
@@ -105,20 +115,32 @@ if (!BLOCKFROST_API_KEY) {
 
         // Clean up isolated test databases after each test
         afterEach(async () => {
-            for (const dbName of isolatedDbCleanupRegistry) {
+            const { closeStore } = await import("./CachedUtxoIndex.testHelpers.js");
+
+            for (const [dbName, index] of isolatedIndexRegistry) {
                 try {
+                    // Close Dexie connection first to avoid "Another connection wants to delete" warnings
+                    if (index) {
+                        closeStore(index);
+                    }
                     await Dexie.delete(dbName);
                 } catch (e) {
                     // Database might not exist, which is fine
                 }
             }
-            isolatedDbCleanupRegistry.clear();
+            isolatedIndexRegistry.clear();
         });
 
         afterAll(async () => {
+            const { closeStore } = await import("./CachedUtxoIndex.testHelpers.js");
+
             // Stop periodic refresh if running
             if (sharedIndex?.isPeriodicRefreshActive) {
                 sharedIndex.stopPeriodicRefresh();
+            }
+            // Close shared index connection before deleting
+            if (sharedIndex) {
+                closeStore(sharedIndex);
             }
             // Clean up shared database
             try {
