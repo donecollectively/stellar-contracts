@@ -313,6 +313,15 @@ Ensures that Tx objects returned from cache have fully-restored TxInputs with co
  - **REQT-1.7.2**/tqrhbphgyx: NEXT: **Reference Script Fetching** - When a UTXO has a `reference_script_hash`, must fetch script CBOR from Blockfrost `/scripts/{hash}/cbor` endpoint. Must decode using `decodeUplcProgramV2FromCbor()`. Must include decoded script in restored TxOutput.
  - **REQT-1.7.3**/qc7qgsqphv: NEXT: **getTx with Restored Inputs** - Must enhance `getTx()` to return a Tx with fully-restored TxInputs. After decoding Tx CBOR, must iterate inputs and restore each using `restoreTxInput()`. Must handle both regular inputs and reference inputs.
  - **REQT-1.7.4**/k2wvnd3f1e: NEXT: **Script Storage** - Must extend storage schema to cache reference script CBOR by script hash. Must implement `store.saveScript(hash, cbor)` and `store.findScript(hash)`. Prevents redundant Blockfrost queries for commonly-used reference scripts.
+### REQT-1.9/ngn9agx52a: NEXT: **Wallet Address Indexing**
+
+#### Purpose
+Enables the indexer to cache UTXOs from connected wallet addresses, not just the Capo address. This allows the CapoDappProvider to serve actor UTXO queries from cache, reducing network calls and improving responsiveness when finding user-specific UTXOs for transaction building. Applied when implementing wallet integration or modifying address registration logic.
+
+ - **REQT-1.9.1**/mp4dx7ngvf: NEXT: **Address Registration** - Must implement `addWalletAddress(address: string): Promise<void>` to register additional addresses for indexing. Must store registered addresses persistently. Must trigger an initial sync for newly registered addresses. Must skip registration if address is already registered.
+ - **REQT-1.9.2**/ctc4z2k5pq: NEXT: **CapoDappProvider Integration** - When a wallet is connected via CapoDappProvider, must automatically call `addWalletAddress()` with the wallet's base address. Must handle wallet disconnection gracefully (addresses may remain indexed for faster reconnection).
+ - **REQT-1.9.3**/92m7kpkny7: NEXT: **On-Demand Sync** - When `getUtxos(address)` is called for a registered wallet address, must first check if sync is needed (based on `lastSyncTime` for that address). If stale (configurable threshold, default 30 seconds), must perform incremental sync before returning results. Must not block indefinitely - use existing rate limiter.
+ - **REQT-1.9.4**/620ypcc34d: NEXT: **Multi-Address Storage** - Must extend storage schema to track per-address sync state (lastBlockHeight, lastSyncTime). Must support querying UTXOs filtered by source address. Must distinguish between Capo-address UTXOs (which have UUT tracking) and wallet-address UTXOs (which do not).
 
 ### Component: UtxoStoreGeneric Interface
 
@@ -501,6 +510,13 @@ To match BlockfrostV0Client behavior, we must restore full TxInputs with:
 * Reference script (fetched from `/scripts/{hash}/cbor` endpoint)
 * Cached script storage to avoid redundant fetches
 
+#### NEXT: Wallet Address Indexing (REQT/ngn9agx52a)
+Extends indexer to cache UTXOs from connected wallet addresses:
+* `addWalletAddress()` method for registering addresses
+* CapoDappProvider integration to auto-register on wallet connect
+* On-demand sync with staleness threshold before answering queries
+* Multi-address storage with per-address sync state tracking
+
 ## Release Management Plan
 
 ### v1 (Current)
@@ -513,12 +529,14 @@ To match BlockfrostV0Client behavior, we must restore full TxInputs with:
     - Dexie storage backend (REQT/dbwnqvqwa1, REQT/pdctymd7yj)
 
 ### v2 (Planned)
- - **Goal**: Production-Ready with Query API and Periodic Refresh
+ - **Goal**: Production-Ready with Query API, Periodic Refresh, and Wallet Integration
  - **Criteria**:
     - Automated periodic refresh (REQT/zzsg63b2fb)
     - Public query API methods (REQT/50zkk5xgrx)
     - Pagination for high-volume activity (REQT/0aewmbbfct)
     - Invariant support (REQT/jz6zf4py6n)
+    - Full TxInput restoration (REQT/ss7w87ecmj)
+    - Wallet address indexing (REQT/ngn9agx52a)
 
 ### v3 (Future)
  - **Goal**: Multi-Backend Storage Support
