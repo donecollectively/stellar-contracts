@@ -121,7 +121,7 @@ export function RateMeterGauge({
     const cy = size / 2;
     const outerRadius = size * 0.42;
     const arcRadius = size * 0.38;
-    const needleLength = size * 0.42;
+    const needleLength = size * 0.42 - 1; // 1px short of track outer edge
     const innerTickRadius = size * 0.28;
 
     // Scale: default to 1.5x base rate, or use prop
@@ -136,8 +136,9 @@ export function RateMeterGauge({
     const innerArcRadius = size * 0.36; // Inner half of gauge track
     const redZoneArc = describeArc(cx, cy, innerArcRadius, rateLimitAngle, END_ANGLE - 15);
 
-    // Needle endpoint
+    // Needle endpoints (extends 5% past center on back side)
     const needleTip = polarToCartesian(cx, cy, needleLength, needleAngle);
+    const needleBack = polarToCartesian(cx, cy, needleLength * 0.05, needleAngle + 180);
 
     // Label positions
     const zeroPos = polarToCartesian(cx, cy, innerTickRadius, START_ANGLE);
@@ -313,22 +314,22 @@ export function RateMeterGauge({
 
             {/* Needle - REQT/gy3tnvgtmd (rendered last to be on top) */}
             <line
-                x1={cx}
-                y1={cy}
+                x1={needleBack.x}
+                y1={needleBack.y}
                 x2={needleTip.x}
                 y2={needleTip.y}
                 stroke="#3b82f6"
-                strokeWidth={size * 0.05}
+                strokeWidth={size * 0.04}
                 strokeLinecap="butt"
                 opacity={0.7}
                 style={{
-                    transition: "x2 200ms ease-out, y2 200ms ease-out",
+                    transition: "x1 200ms ease-out, y1 200ms ease-out, x2 200ms ease-out, y2 200ms ease-out",
                     transformOrigin: `${cx}px ${cy}px`,
                 }}
             />
 
             {/* Needle pivot */}
-            <circle cx={cx} cy={cy} r={size * 0.04} fill={textColor} />
+            <circle cx={cx} cy={cy} r={size * 0.013} fill="black" />
 
             {/* CSS for pulse animation */}
             <style>
