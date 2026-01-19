@@ -18,8 +18,8 @@ import type { CachedUtxoIndexEvents } from "../networkClients/UtxoIndex/CachedUt
 import type { RateLimiterMetrics } from "../networkClients/UtxoIndex/RateLimitedFetch.js";
 
 export interface RateMeterGaugeProps {
-    /** EventEmitter from CachedUtxoIndex.events */
-    events: EventEmitter<CachedUtxoIndexEvents>;
+    /** EventEmitter from CachedUtxoIndex.events (optional - shows idle state if not provided) */
+    events?: EventEmitter<CachedUtxoIndexEvents>;
     /** Size of the gauge in pixels (default: 120) */
     size?: number;
     /** Maximum scale value (default: baseRefillRate * 1.5, or 10 before first metrics) */
@@ -109,6 +109,7 @@ export function RateMeterGauge({
 
     // REQT/ytd4r23v30: Subscribe to rateLimitMetrics on mount
     useEffect(() => {
+        if (!events) return;
         const handler = (m: RateLimiterMetrics) => setMetrics(m);
         events.on("rateLimitMetrics", handler);
         return () => {
