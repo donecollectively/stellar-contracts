@@ -2,6 +2,27 @@
 
 These functions operate independently of the initial sync process and can be tested using the shared synced index or isolated databases without needing to mock sync behavior.
 
+## Implementation Status
+
+| Function | Test Case | Status |
+|----------|-----------|--------|
+| `checkForNewTxns` | No new transactions | ✅ Done |
+| `checkForNewTxns` | Zero block height error | ✅ Done |
+| `checkForNewTxns` | Incrementally loads txs | ✅ Done |
+| `checkForNewTxns` | Honors page size limits | ✅ Done |
+| `checkForNewTxns` | Fetches multiple pages | ✅ Done |
+| `getTx` | Cached transaction | ✅ Done |
+| `getTx` | Cache miss | ✅ Done |
+| `getUtxo` | Cached UTXO | ✅ Done |
+| `getUtxos` | Capo address | ✅ Done |
+| `getUtxosWithAssetClass` | Charter token | ✅ Done |
+| `restoreTxInputs` | Cached inputs | ✅ Done |
+| `fetchAndCacheScript` | Valid script | ⏳ Not started |
+| `fetchAndCacheScript` | Cached script | ⏳ Not started |
+| `fetchAndCacheScript` | Invalid hash | ⏳ Not started |
+| `fetchBlockDetails` | By hash | ✅ Done |
+| `fetchTxDetails` | Valid txId | ✅ Done |
+
 ## Workflow Loop: REQUIRED
 
 The agent MUST use the workflow described in ./TestingWorkflow.md.
@@ -94,7 +115,7 @@ These tests exercise functionality that runs **after** initial sync completes, p
 
 ## Functions to Test
 
-### 1. `checkForNewTxns(fromBlockHeight?)`
+### 1. `checkForNewTxns(fromBlockHeight?)` ✅ Done
 
 **Location:** `CachedUtxoIndex.ts:270`
 
@@ -184,7 +205,7 @@ describe("checkForNewTxns (uses shared index)", () => {
 
 ---
 
-### 2. `getTx(id: TxId)`
+### 2. `getTx(id: TxId)` ✅ Done
 
 **Location:** `CachedUtxoIndex.ts:975`
 
@@ -234,7 +255,7 @@ describe("getTx (uses shared index)", () => {
 
 ---
 
-### 3. `getUtxo(id: TxOutputId)`
+### 3. `getUtxo(id: TxOutputId)` ✅ Done
 
 **Location:** `CachedUtxoIndex.ts:1108`
 
@@ -267,7 +288,7 @@ describe("getUtxo (uses shared index)", () => {
 
 ---
 
-### 4. `getUtxos(address: Address)`
+### 4. `getUtxos(address: Address)` ✅ Done
 
 **Location:** `CachedUtxoIndex.ts:1126`
 
@@ -295,7 +316,7 @@ describe("getUtxos (uses shared index)", () => {
 
 ---
 
-### 5. `getUtxosWithAssetClass(address, assetClass)`
+### 5. `getUtxosWithAssetClass(address, assetClass)` ✅ Done
 
 **Location:** `CachedUtxoIndex.ts:1146`
 
@@ -328,7 +349,7 @@ describe("getUtxosWithAssetClass (uses shared index)", () => {
 
 ---
 
-### 6. `restoreTxInputs(tx: Tx)`
+### 6. `restoreTxInputs(tx: Tx)` ✅ Done
 
 **Location:** `CachedUtxoIndex.ts:1026`
 
@@ -393,7 +414,7 @@ describe("restoreTxInputs (uses shared index)", () => {
 
 ---
 
-### 8. `fetchBlockDetails(blockId)`
+### 8. `fetchBlockDetails(blockId)` ✅ Done
 
 **Location:** `CachedUtxoIndex.ts:890`
 
@@ -420,7 +441,7 @@ describe("fetchBlockDetails (uses shared index)", () => {
 
 ---
 
-### 9. `fetchTxDetails(txId)`
+### 9. `fetchTxDetails(txId)` ✅ Done
 
 **Location:** `CachedUtxoIndex.ts:997`
 

@@ -167,6 +167,17 @@ export class CachedUtxoIndex {
         return entry !== undefined;
     }
 
+    /**
+     * Submits a transaction to the network.
+     * Delegates to the underlying network client.
+     *
+     * This allows CachedUtxoIndex to be used as a full CardanoClient replacement,
+     * not just a ReadonlyCardanoClient.
+     */
+    async submitTx(tx: Tx): Promise<TxId> {
+        return this.network.submitTx(tx);
+    }
+
     constructor({
         address,
         mph,
@@ -396,7 +407,7 @@ export class CachedUtxoIndex {
                 console.warn("Periodic refresh failed:", e);
                 this.store.log(
                     "pr5er",
-                    `Periodic refresh error: ${e.message || e}`,
+                    `Periodic refresh error: ${e instanceof Error ? e.message : String(e)}`,
                 );
             }
         }, refreshInterval);

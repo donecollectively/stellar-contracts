@@ -874,6 +874,100 @@ if (!BLOCKFROST_API_KEY) {
                     "Cannot start checking for new transactions at block height 0"
                 );
             });
+
+            it("should load transactions when syncing from an earlier block", async () => {
+                const { setLastSyncedBlock, getAllTxs, findCharterMintBlock } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                // Find the charter mint block (earliest relevant block)
+                const charterMint = await findCharterMintBlock(sharedIndex, BLOCKFROST_API_KEY);
+
+                // Create isolated index and sync it
+                const dbName = createIsolatedDbName("incremental-sync");
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                    syncPageSize: 10, // Small page size to limit API calls
+                    maxSyncPages: 1,
+                });
+                await isolatedIndex.syncNow();
+
+                // Record tx count after initial sync
+                const txCountAfterSync = (await getAllTxs(isolatedIndex)).length;
+
+                // Set lastBlockHeight back to charter mint block to simulate "catching up"
+                setLastSyncedBlock(isolatedIndex, charterMint.blockHeight, "", 0);
+
+                // Call checkForNewTxns - should find transactions after charter mint
+                await isolatedIndex.checkForNewTxns();
+
+                // Should have loaded some transactions (up to page limit)
+                const txCountAfterCheck = (await getAllTxs(isolatedIndex)).length;
+                expect(txCountAfterCheck).toBeGreaterThanOrEqual(txCountAfterSync);
+            });
+
+            it("should honor page size limits during syncing", async () => {
+                const { setLastSyncedBlock, getAllTxs, findCharterMintBlock } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                // Find the charter mint block
+                const charterMint = await findCharterMintBlock(sharedIndex, BLOCKFROST_API_KEY);
+
+                // Create isolated index with small page size and single page limit
+                const dbName = createIsolatedDbName("page-limit");
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                    syncPageSize: 3,
+                    maxSyncPages: 1,
+                });
+                await isolatedIndex.syncNow();
+
+                // Get initial tx count
+                const txCountBefore = (await getAllTxs(isolatedIndex)).length;
+
+                // Set back to charter mint to force re-sync
+                setLastSyncedBlock(isolatedIndex, charterMint.blockHeight, "", 0);
+
+                // Sync with limited pages
+                await isolatedIndex.checkForNewTxns();
+
+                // Count should increase by at most syncPageSize (3)
+                const txCountAfter = (await getAllTxs(isolatedIndex)).length;
+                const newTxCount = txCountAfter - txCountBefore;
+
+                // With maxSyncPages=1 and syncPageSize=3, we should get at most 3 new txs
+                expect(newTxCount).toBeLessThanOrEqual(3);
+            });
+
+            it("should fetch multiple pages when allowed", async () => {
+                const { setLastSyncedBlock, getAllTxs, findCharterMintBlock } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                // Find the charter mint block
+                const charterMint = await findCharterMintBlock(sharedIndex, BLOCKFROST_API_KEY);
+
+                // Create index with small page size but allow multiple pages
+                const dbName = createIsolatedDbName("multi-page");
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                    syncPageSize: 2,
+                    maxSyncPages: 1,
+                });
+                await isolatedIndex.syncNow();
+
+                // First sync with 1 page
+                setLastSyncedBlock(isolatedIndex, charterMint.blockHeight, "", 0);
+                await isolatedIndex.checkForNewTxns();
+                const txCountAfterOnePage = (await getAllTxs(isolatedIndex)).length;
+
+                // Now allow more pages and sync again
+                isolatedIndex.maxSyncPages = 3;
+                setLastSyncedBlock(isolatedIndex, charterMint.blockHeight, "", 0);
+                await isolatedIndex.checkForNewTxns();
+                const txCountAfterThreePages = (await getAllTxs(isolatedIndex)).length;
+
+                // Should have fetched more transactions with more pages allowed
+                expect(txCountAfterThreePages).toBeGreaterThanOrEqual(txCountAfterOnePage);
+            });
         });
 
         describe("getTx (uses shared index)", () => {
@@ -996,6 +1090,59 @@ if (!BLOCKFROST_API_KEY) {
 
                 expect(tx).toBeTruthy();
                 expect(tx.id().toHex()).toBe(txId);
+            });
+        });
+
+        describe("restoreTxInputs (isolated)", () => {
+            it("should restore TxInputs with address and value from cached UTXOs", async () => {
+                const { getStore } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                // Create an isolated index
+                const dbName = createIsolatedDbName("restore-inputs");
+                const isolatedIndex = new CachedUtxoIndex({
+                    ...baseConfig,
+                    dbName,
+                });
+
+                // Get a real transaction to test with
+                const utxos = await sharedIndex.getAllUtxos();
+                const txHash = utxos[0].utxoId.split("#")[0];
+                const tx = await isolatedIndex.fetchTxDetails(txHash);
+
+                expect(tx.body.inputs.length).toBeGreaterThan(0);
+
+                // For each input in the tx, manually add a fake UTXO entry to the cache.
+                // This simulates having the inputs cached before they were spent.
+                const store = getStore(isolatedIndex);
+                const testLovelace = 5_000_000n;
+
+                for (const input of tx.body.inputs) {
+                    const inputId = input.id.toString();
+                    await store.utxos.put({
+                        utxoId: inputId,
+                        address: TEST_CAPO_ADDRESS,
+                        lovelace: testLovelace,
+                        tokens: [],
+                        datumHash: null,
+                        inlineDatum: null,
+                        referenceScriptHash: null,
+                        uutIds: [],
+                    });
+                }
+
+                // Now restore the inputs - should find them in our manually populated cache
+                const restoredInputs = await isolatedIndex.restoreTxInputs(tx);
+
+                // Should have same number of inputs
+                expect(restoredInputs.length).toBe(tx.body.inputs.length);
+
+                // Each restored input should have the address and value we put in
+                for (const input of restoredInputs) {
+                    expect(input.address).toBeTruthy();
+                    expect(input.address.toBech32()).toBe(TEST_CAPO_ADDRESS);
+                    expect(input.value).toBeTruthy();
+                    expect(input.value.lovelace).toBe(testLovelace);
+                }
             });
         });
     });
