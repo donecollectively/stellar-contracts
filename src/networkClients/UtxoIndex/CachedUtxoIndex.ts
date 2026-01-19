@@ -38,7 +38,7 @@ import {
     type MintingPolicyHash,
     type NetworkParams,
 } from "@helios-lang/ledger";
-import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
+import { bytesToHex, encodeUtf8, hexToBytes } from "@helios-lang/codec-utils";
 import {
     decodeUplcData,
     decodeUplcProgramV2FromCbor,
@@ -48,6 +48,10 @@ import type { CardanoClient } from "@helios-lang/tx-utils";
 import type { CapoDataBridge } from "../../helios/scriptBundling/CapoHeliosBundle.bridge.js";
 
 import { DexieUtxoStore } from "./DexieUtxoStore.js";
+import {
+    blockfrostRateLimiter,
+    type RateLimiterMetrics,
+} from "./RateLimitedFetch.js";
 import type { UtxoStoreGeneric } from "./types/UtxoStoreGeneric.js";
 import type { UtxoIndexEntry } from "./types/UtxoIndexEntry.js";
 import type { BlockIndexEntry } from "./types/BlockIndexEntry.js";
@@ -969,25 +973,28 @@ export class CachedUtxoIndex {
     }
 
     async fetchFromBlockfrost<T>(url: string): Promise<T> {
-        return fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
-            headers: {
-                project_id: this.blockfrostKey,
-            },
-        }).then(async (res) => {
-            const result = await res.json();
-            if (!res.ok) {
+        // Use global rate limiter to avoid exceeding Blockfrost's rate limits
+        return blockfrostRateLimiter
+            .fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
+                headers: {
+                    project_id: this.blockfrostKey,
+                },
+            })
+            .then(async (res) => {
+                const result = await res.json();
+                if (!res.ok) {
+                    await this.store.log(
+                        "3ecxh",
+                        `Error fetching from blockfrost: ${url} ${result.message}`,
+                    );
+                    throw new Error(result.message);
+                }
                 await this.store.log(
-                    "3ecxh",
-                    `Error fetching from blockfrost: ${url} ${result.message}`,
+                    "rm7g8",
+                    `Successfully fetched from blockfrost: ${url} ${JSON.stringify(result)}`,
                 );
-                throw new Error(result.message);
-            }
-            await this.store.log(
-                "rm7g8",
-                `Successfully fetched from blockfrost: ${url} ${JSON.stringify(result)}`,
-            );
-            return result as T;
-        });
+                return result as T;
+            });
     }
 
     async findOrFetchBlockHeight(blockId: string): Promise<number> {
