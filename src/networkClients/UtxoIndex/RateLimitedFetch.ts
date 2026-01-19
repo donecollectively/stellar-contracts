@@ -206,12 +206,18 @@ class RateLimitedFetch {
         // Wait 10 seconds
         await this.sleep(10000);
 
-        // Reduce refill rate by half
-        this.currentRefillRate = this.baseRefillRate / 2;
+        // Reduce refill rate by golden ratio (compounds on repeated 429s)
+        // Minimum of 0.5 req/s to prevent complete stall
+        const PHI = 1.61;
+        const MIN_REFILL_RATE = 0.5;
+        this.currentRefillRate = Math.max(
+            MIN_REFILL_RATE,
+            this.currentRefillRate / PHI,
+        );
 
         if (this.logOnRateLimited) {
             console.log(
-                `[${this.name}] Resuming with reduced refill rate: ${this.currentRefillRate}/s`,
+                `[${this.name}] Resuming with reduced refill rate: ${this.currentRefillRate.toFixed(2)}/s`,
             );
         }
 

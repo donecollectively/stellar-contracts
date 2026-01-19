@@ -298,7 +298,7 @@ Ensures the CachedUtxoIndex can be used as a drop-in replacement for Helios netw
 Ensures Blockfrost API calls stay within rate limits and provides observable events for sync status and metrics. Applied when monitoring indexer behavior or integrating with UI components.
 
  - **REQT-1.7.1**/tb4n3q7def: COMPLETED: **Token Bucket Rate Limiter** - Must implement global rate limiter with token bucket algorithm. Must allow bursts up to 300 requests. Must refill at 7 tokens/second. Must wait 1 second when bucket is exhausted.
- - **REQT-1.7.2**/uc5o4r8ghi: COMPLETED: **HTTP 429 Handling** - Must detect HTTP 429 responses from Blockfrost. Must exhaust bucket, pause all requests for 10 seconds, then retry. Must reduce refill rate to half (3.5/s) after 429. Must gradually restore refill rate by 1/s every 10 seconds until back to normal.
+ - **REQT-1.7.2**/uc5o4r8ghi: COMPLETED: **HTTP 429 Handling** - Must detect HTTP 429 responses from Blockfrost. Must exhaust bucket, pause all requests for 10 seconds, then retry. Must reduce refill rate by dividing current rate by 1.61 (golden ratio) after each 429, compounding on repeated errors. Must enforce minimum refill rate of 0.5 req/s. Must gradually restore refill rate by +1/s every 10 seconds until back to base rate.
  - **REQT-1.7.3**/vd6p5s9jkl: COMPLETED: **Rate Limiter Metrics** - Must expose metrics via EventEmitter: requestsPerSecond, currentRefillRate, availableBurst, isRateLimited, isOnHold, isRecovering. Must emit metrics once per second when changed.
  - **REQT-1.7.4**/we7q6t0mno: COMPLETED: **Sync Events** - Must emit `syncStart` when initial sync begins. Must emit `syncComplete` when initial sync finishes. Must emit `syncing` when incremental sync begins. Must emit `synced` when incremental sync completes. Must forward rate limiter metrics as `rateLimitMetrics` event.
 
@@ -483,6 +483,7 @@ This enables CachedUtxoIndex to be used as the network client for a Capo, avoidi
 * Rate limiter metrics exposed via EventEmitter (requestsPerSecond, isRateLimited, etc.)
 * CachedUtxoIndex events: `syncStart`, `syncComplete`, `syncing`, `synced`, `rateLimitMetrics`
 * Single event emitter on CachedUtxoIndex for all client subscriptions
+* Updated: 429 rate reduction now compounds using golden ratio (÷1.61) instead of fixed half; minimum 0.5 req/s floor
 
 #### NEXT: Full TxInput Restoration (REQT/ss7w87ecmj)
 Tx CBOR from Blockfrost only contains TxOutputId references for inputs, not full output data.
