@@ -151,56 +151,56 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
 ## Component: RateMeterGauge
 
-### REQT-1.0/dyf2tb78vk: NEXT: **SVG Gauge Structure**
+### REQT-1.0/dyf2tb78vk: COMPLETED: **SVG Gauge Structure**
 
 #### Purpose: Establishes the foundational SVG structure and geometry. Applied when creating or modifying the gauge's visual layout.
 
- - **REQT-1.0.1**/m1b61a2xgh: NEXT: MUST render an SVG element with viewBox scaled to `size` prop (default 120)
- - **REQT-1.0.2**/ytd4r23v30: NEXT: MUST render background arc from 225° to 45° (270° sweep, counterclockwise from 7:30 to 4:30)
- - **REQT-1.0.3**/zez2rnncz7: NEXT: MUST use stroke-based arcs (not filled wedges) for clean gauge appearance
+ - **REQT-1.0.1**/m1b61a2xgh: COMPLETED: MUST render an SVG element with viewBox scaled to `size` prop (default 120)
+ - **REQT-1.0.2**/ytd4r23v30: COMPLETED: MUST render background arc from 225° to 45° (270° sweep, counterclockwise from 7:30 to 4:30)
+ - **REQT-1.0.3**/zez2rnncz7: COMPLETED: MUST use stroke-based arcs (not filled wedges) for clean gauge appearance
 
-### REQT-1.1/7gzfvcb4w7: NEXT: **Rate Limit Red Zone**
+### REQT-1.1/7gzfvcb4w7: COMPLETED: **Rate Limit Red Zone**
 
 #### Purpose: Governs the visual representation of the rate-limited danger zone. Applied when implementing or adjusting the red arc display.
 
- - **REQT-1.1.1**/fxfa3034wg: NEXT: MUST render red arc from the position corresponding to `currentRefillRate` to 4:30 (45°)
- - **REQT-1.1.2**/e1sbp3k00j: NEXT: MUST expand red arc counterclockwise when `currentRefillRate < baseRefillRate`
- - **REQT-1.1.3**/6aactpv9c8: NEXT: MUST animate red arc position changes with CSS transition (~300ms ease-out)
+ - **REQT-1.1.1**/fxfa3034wg: COMPLETED: MUST render red arc from the position corresponding to `currentRefillRate` to 4:30 (45°)
+ - **REQT-1.1.2**/e1sbp3k00j: COMPLETED: MUST expand red arc counterclockwise when `currentRefillRate < baseRefillRate`
+ - **REQT-1.1.3**/6aactpv9c8: COMPLETED: MUST animate red arc position changes with CSS transition (~300ms ease-out)
 
-### REQT-1.2/gy3tnvgtmd: NEXT: **Needle Indicator**
+### REQT-1.2/gy3tnvgtmd: COMPLETED: **Needle Indicator**
 
 #### Purpose: Defines the needle behavior for indicating current request rate. Applied when implementing the needle component.
 
- - **REQT-1.2.1**/qa12srtmn2: NEXT: MUST render needle pivoting from gauge center
- - **REQT-1.2.2**/hcs7jktjg2: NEXT: MUST position needle at 225° when `requestsPerSecond` = 0
- - **REQT-1.2.3**/scknyt1a5d: NEXT: MUST position needle at angle corresponding to `requestsPerSecond` relative to scale maximum
- - **REQT-1.2.4**/fvy98mzy0q: NEXT: MUST animate needle rotation with CSS transition (~200ms ease-out)
+ - **REQT-1.2.1**/qa12srtmn2: COMPLETED: MUST render needle pivoting from gauge center
+ - **REQT-1.2.2**/hcs7jktjg2: COMPLETED: MUST position needle at 225° when `requestsPerSecond` = 0
+ - **REQT-1.2.3**/scknyt1a5d: COMPLETED: MUST position needle at angle corresponding to `requestsPerSecond` relative to scale maximum
+ - **REQT-1.2.4**/fvy98mzy0q: COMPLETED: MUST animate needle rotation with CSS transition (~200ms ease-out)
 
-### REQT-1.3/071fre8ztj: NEXT: **Numeric Display**
+### REQT-1.3/071fre8ztj: COMPLETED: **Numeric Display**
 
 #### Purpose: Specifies the numeric readouts shown on the gauge. Applied when implementing text labels and values.
 
- - **REQT-1.3.1**/wmmjdka66q: NEXT: MUST display `requestsPerSecond` as large centered number (prominent, readable)
- - **REQT-1.3.2**/5j2fhgbgge: NEXT: MUST display "0" label near 7:30 position
- - **REQT-1.3.3**/jdy9846msg: NEXT: MUST display scale maximum label near 4:30 position
- - **REQT-1.3.4**/yvnxkvget6: BACKLOG: MAY display `availableBurst` as secondary indicator
+ - **REQT-1.3.1**/wmmjdka66q: COMPLETED: MUST display `requestsPerSecond` as large centered number (prominent, readable)
+ - **REQT-1.3.2**/5j2fhgbgge: COMPLETED: MUST display "0" label near 7:30 position
+ - **REQT-1.3.3**/jdy9846msg: COMPLETED: MUST display scale maximum label near 4:30 position
+ - **REQT-1.3.4**/yvnxkvget6: COMPLETED: MAY display `availableBurst` as secondary indicator
 
-### REQT-1.4/yvbwgkxace: NEXT: **State Visualization**
+### REQT-1.4/yvbwgkxace: COMPLETED: **State Visualization**
 
 #### Purpose: Defines visual feedback for operational states (hold, recovery). Applied when implementing state indicator logic.
 
- - **REQT-1.4.1**/kf06cys92c: NEXT: MUST indicate `isOnHold` state visually (e.g., red pulse, "HOLD" text)
- - **REQT-1.4.2**/dyf2tb78vk: NEXT: MUST indicate `isRecovering` state visually (e.g., amber/yellow tint)
- - **REQT-1.4.3**/m1b61a2xgh: NEXT: SHOULD use green/neutral coloring for normal operating state
+ - **REQT-1.4.1**/kf06cys92c: COMPLETED: MUST indicate `isOnHold` state visually (e.g., red pulse, "HOLD" text)
+ - **REQT-1.4.2**/dyf2tb78vk: COMPLETED: MUST indicate `isRecovering` state visually (e.g., amber/yellow tint)
+ - **REQT-1.4.3**/m1b61a2xgh: COMPLETED: SHOULD use green/neutral coloring for normal operating state
 
-### REQT-2.0/ytd4r23v30: NEXT: **Event Integration**
+### REQT-2.0/ytd4r23v30: COMPLETED: **Event Integration**
 
 #### Purpose: Governs subscription to metrics events. Applied when implementing the component's data flow.
 
- - **REQT-2.0.1**/zez2rnncz7: NEXT: MUST accept `events` prop of type `EventEmitter<CachedUtxoIndexEvents>`
- - **REQT-2.0.2**/7gzfvcb4w7: NEXT: MUST subscribe to `rateLimitMetrics` event on component mount
- - **REQT-2.0.3**/fxfa3034wg: NEXT: MUST unsubscribe from `rateLimitMetrics` event on component unmount
- - **REQT-2.0.4**/e1sbp3k00j: NEXT: MUST render sensible defaults before first metrics event received
+ - **REQT-2.0.1**/zez2rnncz7: COMPLETED: MUST accept `events` prop of type `EventEmitter<CachedUtxoIndexEvents>`
+ - **REQT-2.0.2**/7gzfvcb4w7: COMPLETED: MUST subscribe to `rateLimitMetrics` event on component mount
+ - **REQT-2.0.3**/fxfa3034wg: COMPLETED: MUST unsubscribe from `rateLimitMetrics` event on component unmount
+ - **REQT-2.0.4**/e1sbp3k00j: COMPLETED: MUST render sensible defaults before first metrics event received
 
 ### REQT-2.1/6aactpv9c8: BACKLOG: **Props Interface**
 
@@ -224,7 +224,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
 Meta-requirements: maintainers MUST NOT modify past details in the implementation log (e.g. in response to architectural changes). Instead, future changes should be appended to the implementation log to show the progression of the implementation and architecture.
 
-### Phase 0: Requirements Definition (Current)
+### Phase 0: Requirements Definition (Completed)
 
  - Defined component purpose and scope
  - Documented metrics interface from `RateLimitedFetch.ts`
@@ -233,30 +233,42 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
  - Specified numeric display requirements
  - Defined event integration pattern
 
+### Phase 1: Core Implementation (Completed)
+
+ - Implemented SVG gauge structure with 270° arc (7:30 to 4:30)
+ - Added animated needle with CSS transitions (200ms ease-out)
+ - Implemented dynamic red zone arc that expands when rate limit decreases
+ - Added numeric displays: current rate (large), scale labels (0, max), rate limit indicator
+ - Implemented state indicators: HOLD (red pulse), recovering (amber), normal (green)
+ - Integrated EventEmitter subscription with proper mount/unmount lifecycle
+ - Added burst capacity display as secondary indicator
+ - Exported component from `src/ui/index.ts`
+
 #### Next Recommendations
 
-1. **Implement SVG Structure**: Create basic gauge arc and scaling
-2. **Add Needle Component**: Implement rotating needle with CSS transitions
-3. **Add Red Zone Arc**: Implement dynamic rate limit visualization
-4. **Integrate Events**: Connect to CachedUtxoIndex event emitter
+1. **Props Interface Export**: Export `RateMeterGaugeProps` for TypeScript consumers
+2. **Custom Scale Maximum**: Add support for `maxScale` prop customization
+3. **Visual Polish**: Consider adding tick marks on the scale
 
 ---
 
 ## Release Management Plan
 
-### v1 (Planned)
+### v1 (Current - Complete)
 
 - **Goal**: Functional rate meter with core visualization
 - **Criteria**:
-    - SVG gauge renders with correct geometry (REQT-1.0)
-    - Needle animates smoothly based on metrics (REQT-1.2)
-    - Red zone displays and animates (REQT-1.1)
-    - Event subscription works correctly (REQT-2.0)
+    - SVG gauge renders with correct geometry (REQT-1.0) ✓
+    - Needle animates smoothly based on metrics (REQT-1.2) ✓
+    - Red zone displays and animates (REQT-1.1) ✓
+    - Event subscription works correctly (REQT-2.0) ✓
+    - Hold and recovery states indicated (REQT-1.4) ✓
+    - Burst capacity display (REQT-1.3.4) ✓
 
 ### v2 (Future)
 
-- **Goal**: Enhanced state visualization and customization
+- **Goal**: Enhanced customization and visual polish
 - **Criteria**:
-    - Hold and recovery states clearly indicated (REQT-1.4)
-    - Burst capacity display (REQT-1.3.4)
-    - Customizable scale maximum (REQT-2.1.4)
+    - Exported `RateMeterGaugeProps` interface (REQT-2.1.1)
+    - Tick marks on scale
+    - Theme customization (colors)
