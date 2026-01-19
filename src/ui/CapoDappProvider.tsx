@@ -74,7 +74,9 @@ import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
 import { nanoid } from "../util/nanoid.js";
 
 import type { CachedUtxoIndex } from "../networkClients/UtxoIndex/CachedUtxoIndex.js";
+import type { RateLimiterMetrics } from "../networkClients/UtxoIndex/RateLimitedFetch.js";
 import type { CapoDataBridge } from "../helios/scriptBundling/CapoHeliosBundle.bridge.js";
+import { RateMeterGauge } from "./RateMeterGauge.js";
 
 /**
  * @public
@@ -209,6 +211,10 @@ export type CapoDappProviderState<CapoType extends Capo<any>> = {
     dAppName?: string;
     /** CachedUtxoIndex instance when useCachedIndex is enabled */
     utxoIndex?: CachedUtxoIndex;
+    /** True when CachedUtxoIndex is performing initial sync */
+    isIndexSyncing?: boolean;
+    /** Current rate limiter metrics from CachedUtxoIndex */
+    rateMetrics?: RateLimiterMetrics;
 };
 
 /**
@@ -448,6 +454,26 @@ export class CapoDAppProvider<
 
         const progressLabel = "string" == typeof progressBar ? progressBar : "";
 
+        // Show rate meter when syncing or rate-limited
+        const { utxoIndex, isIndexSyncing, rateMetrics } = this.state;
+        const showRateMeter = utxoIndex && (
+            isIndexSyncing ||
+            rateMetrics?.isRateLimited ||
+            rateMetrics?.isOnHold ||
+            rateMetrics?.isRecovering
+        );
+
+        const rateMeterElement = showRateMeter ? (
+            <div className="fixed bottom-4 right-4 z-50 bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg p-2">
+                <RateMeterGauge events={utxoIndex.events} size={100} />
+                {isIndexSyncing && (
+                    <div className="text-center text-xs text-gray-600 dark:text-gray-300 mt-1">
+                        Syncing...
+                    </div>
+                )}
+            </div>
+        ) : null;
+
         const renderedStatus =
             (message && (
                 <InPortal
@@ -481,6 +507,7 @@ export class CapoDAppProvider<
                             {renderedStatus}
                             {userDetails}
                             {txBatchUI}
+                            {rateMeterElement}
                             {results as any}
                         </div>
                     </CapoDappProviderContext.Provider>
@@ -1005,9 +1032,10 @@ export class CapoDAppProvider<
     async componentWillUnmount() {
         this._unmounted = true;
 
-        // Stop UTXO index periodic refresh if enabled
+        // Stop UTXO index and clean up event subscriptions
         if (this.state.utxoIndex) {
             this.state.utxoIndex.stopPeriodicRefresh();
+            this.state.utxoIndex.events.removeAllListeners();
         }
 
         // not really an error - just big and red so it's super obvious when it happens
@@ -1759,6 +1787,17 @@ export class CapoDAppProvider<
             ...options,
         });
 
+        // Subscribe to sync events
+        utxoIndex.events.on("syncStart", () => {
+            this.setState({ isIndexSyncing: true });
+        });
+        utxoIndex.events.on("syncComplete", () => {
+            this.setState({ isIndexSyncing: false });
+        });
+        utxoIndex.events.on("rateLimitMetrics", (metrics) => {
+            this.setState({ rateMetrics: metrics });
+        });
+
         // Swap the network client - all subsequent queries go through cache
         capo.setup.network = utxoIndex;
 
@@ -1766,7 +1805,8 @@ export class CapoDAppProvider<
         utxoIndex.startPeriodicRefresh();
 
         await new Promise<void>((resolve) => {
-            this.setState({ utxoIndex }, resolve);
+            // Set initial syncing state (syncNow is called in constructor)
+            this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
         });
 
         return utxoIndex;
