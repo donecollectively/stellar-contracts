@@ -1145,5 +1145,69 @@ if (!BLOCKFROST_API_KEY) {
                 }
             });
         });
+
+        describe("fetchAndCacheScript (uses shared index)", () => {
+            it("should fetch and cache a valid script", async () => {
+                const { findUtxoWithReferenceScript, getStore } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                // Find a UTXO with a reference script hash
+                const utxoWithScript = await findUtxoWithReferenceScript(sharedIndex);
+
+                if (!utxoWithScript) {
+                    // No UTXOs with reference scripts in test data - skip test
+                    console.log("No UTXOs with reference scripts found - skipping test");
+                    return;
+                }
+
+                const scriptHash = utxoWithScript.referenceScriptHash!;
+
+                // Fetch the script
+                const script = await sharedIndex.fetchAndCacheScript(scriptHash);
+
+                expect(script).toBeTruthy();
+
+                // Verify it was cached
+                const store = getStore(sharedIndex);
+                const cached = await store.findScript(scriptHash);
+                expect(cached).toBeTruthy();
+                expect(cached!.scriptHash).toBe(scriptHash);
+                expect(cached!.cbor).toBeTruthy();
+            });
+
+            it("should return cached script on second call without network fetch", async () => {
+                const { findUtxoWithReferenceScript } = await import("./CachedUtxoIndex.testHelpers.js");
+
+                const utxoWithScript = await findUtxoWithReferenceScript(sharedIndex);
+
+                if (!utxoWithScript) {
+                    console.log("No UTXOs with reference scripts found - skipping test");
+                    return;
+                }
+
+                const scriptHash = utxoWithScript.referenceScriptHash!;
+
+                // First call - may or may not hit cache depending on previous tests
+                await sharedIndex.fetchAndCacheScript(scriptHash);
+
+                // Spy on fetchFromBlockfrost for second call
+                const fetchSpy = vi.spyOn(sharedIndex, "fetchFromBlockfrost");
+
+                // Second call - should use cache
+                const script2 = await sharedIndex.fetchAndCacheScript(scriptHash);
+
+                expect(script2).toBeTruthy();
+                // Should NOT have called fetchFromBlockfrost (cache hit)
+                expect(fetchSpy).not.toHaveBeenCalled();
+
+                fetchSpy.mockRestore();
+            });
+
+            it("should throw error for non-existent script hash", async () => {
+                // Use a fake but valid-format script hash (64 hex chars)
+                const fakeScriptHash = "0".repeat(56);
+
+                await expect(sharedIndex.fetchAndCacheScript(fakeScriptHash)).rejects.toThrow();
+            });
+        });
     });
 }

@@ -17,9 +17,9 @@ These functions operate independently of the initial sync process and can be tes
 | `getUtxos` | Capo address | ✅ Done |
 | `getUtxosWithAssetClass` | Charter token | ✅ Done |
 | `restoreTxInputs` | Cached inputs | ✅ Done |
-| `fetchAndCacheScript` | Valid script | ⏳ Not started |
-| `fetchAndCacheScript` | Cached script | ⏳ Not started |
-| `fetchAndCacheScript` | Invalid hash | ⏳ Not started |
+| `fetchAndCacheScript` | Valid script | ✅ Done |
+| `fetchAndCacheScript` | Cached script | ✅ Done |
+| `fetchAndCacheScript` | Invalid hash | ✅ Done |
 | `fetchBlockDetails` | By hash | ✅ Done |
 | `fetchTxDetails` | Valid txId | ✅ Done |
 
@@ -394,7 +394,7 @@ describe("restoreTxInputs (uses shared index)", () => {
 
 ---
 
-### 7. `fetchAndCacheScript(scriptHash)`
+### 7. `fetchAndCacheScript(scriptHash)` ✅ Done
 
 **Location:** `CachedUtxoIndex.ts:938`
 
