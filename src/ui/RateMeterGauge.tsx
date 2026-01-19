@@ -121,7 +121,7 @@ export function RateMeterGauge({
     const cy = size / 2;
     const outerRadius = size * 0.42;
     const arcRadius = size * 0.38;
-    const needleLength = size * 0.32;
+    const needleLength = size * 0.42;
     const innerTickRadius = size * 0.28;
 
     // Scale: default to 1.5x base rate, or use prop
@@ -133,7 +133,8 @@ export function RateMeterGauge({
 
     // Arc paths
     const backgroundArc = describeArc(cx, cy, arcRadius, START_ANGLE, END_ANGLE);
-    const redZoneArc = describeArc(cx, cy, arcRadius, rateLimitAngle, END_ANGLE);
+    const innerArcRadius = size * 0.36; // Inner half of gauge track
+    const redZoneArc = describeArc(cx, cy, innerArcRadius, rateLimitAngle, END_ANGLE - 15);
 
     // Needle endpoint
     const needleTip = polarToCartesian(cx, cy, needleLength, needleAngle);
@@ -155,6 +156,9 @@ export function RateMeterGauge({
         gaugeColor = "#f59e0b"; // amber when burst exhausted
     }
 
+    // Unique ID for the mask (use a stable ID based on component)
+    const maskId = "gauge-track-mask";
+
     return (
         <svg
             width={size}
@@ -162,6 +166,19 @@ export function RateMeterGauge({
             viewBox={`0 0 ${size} ${size}`}
             style={{ fontFamily: "system-ui, sans-serif" }}
         >
+            <defs>
+                {/* Mask defining the gauge track shape */}
+                <mask id={maskId}>
+                    <path
+                        d={backgroundArc}
+                        fill="none"
+                        stroke="white"
+                        strokeWidth={size * 0.08}
+                        strokeLinecap="round"
+                    />
+                </mask>
+            </defs>
+
             {/* Background arc - REQT/dyf2tb78vk */}
             <path
                 d={backgroundArc}
@@ -171,13 +188,14 @@ export function RateMeterGauge({
                 strokeLinecap="round"
             />
 
-            {/* Red zone arc - REQT/7gzfvcb4w7 */}
+            {/* Red zone arc - REQT/7gzfvcb4w7, clipped to track shape */}
             <path
                 d={redZoneArc}
                 fill="none"
-                stroke="#fca5a5"
-                strokeWidth={size * 0.08}
-                strokeLinecap="round"
+                stroke="#f87171"
+                strokeWidth={size * 0.04}
+                strokeLinecap="butt"
+                mask={`url(#${maskId})`}
                 style={{
                     transition: "d 300ms ease-out",
                 }}
@@ -197,29 +215,11 @@ export function RateMeterGauge({
                 />
             )}
 
-            {/* Needle - REQT/gy3tnvgtmd */}
-            <line
-                x1={cx}
-                y1={cy}
-                x2={needleTip.x}
-                y2={needleTip.y}
-                stroke={textColor}
-                strokeWidth={size * 0.025}
-                strokeLinecap="round"
-                style={{
-                    transition: "x2 200ms ease-out, y2 200ms ease-out",
-                    transformOrigin: `${cx}px ${cy}px`,
-                }}
-            />
-
-            {/* Needle pivot */}
-            <circle cx={cx} cy={cy} r={size * 0.04} fill={textColor} />
-
             {/* Scale labels - REQT/071fre8ztj */}
             <text
                 x={zeroPos.x}
                 y={zeroPos.y + size * 0.02}
-                fontSize={size * 0.08}
+                fontSize={size * 0.12}
                 fill="#9ca3af"
                 textAnchor="middle"
             >
@@ -228,7 +228,7 @@ export function RateMeterGauge({
             <text
                 x={maxPos.x}
                 y={maxPos.y + size * 0.02}
-                fontSize={size * 0.08}
+                fontSize={size * 0.12}
                 fill="#9ca3af"
                 textAnchor="middle"
             >
@@ -239,7 +239,7 @@ export function RateMeterGauge({
             <text
                 x={limitPos.x}
                 y={limitPos.y}
-                fontSize={size * 0.07}
+                fontSize={size * 0.11}
                 fill="#ef4444"
                 textAnchor="middle"
                 style={{
@@ -252,14 +252,11 @@ export function RateMeterGauge({
             {/* Current rate (large) - REQT/071fre8ztj */}
             <text
                 x={cx}
-                y={cy + size * 0.18}
-                fontSize={size * 0.2}
+                y={cy - size * 0.02}
+                fontSize={size * 0.35}
                 fontWeight="bold"
-                fill={textColor}
+                fill="#ccc"
                 textAnchor="middle"
-                style={{
-                    transition: "fill 200ms ease-out",
-                }}
             >
                 {metrics.requestsPerSecond}
             </text>
@@ -267,9 +264,9 @@ export function RateMeterGauge({
             {/* Unit label */}
             <text
                 x={cx}
-                y={cy + size * 0.28}
-                fontSize={size * 0.07}
-                fill="#9ca3af"
+                y={cy + size * 0.12}
+                fontSize={size * 0.1}
+                fill="#ccc"
                 textAnchor="middle"
             >
                 req/s
@@ -280,7 +277,7 @@ export function RateMeterGauge({
                 <text
                     x={cx}
                     y={cy - size * 0.15}
-                    fontSize={size * 0.1}
+                    fontSize={size * 0.14}
                     fontWeight="bold"
                     fill="#ef4444"
                     textAnchor="middle"
@@ -295,7 +292,7 @@ export function RateMeterGauge({
                 <text
                     x={cx}
                     y={cy - size * 0.15}
-                    fontSize={size * 0.08}
+                    fontSize={size * 0.11}
                     fill="#f59e0b"
                     textAnchor="middle"
                 >
@@ -306,13 +303,32 @@ export function RateMeterGauge({
             {/* Burst indicator (small) */}
             <text
                 x={cx}
-                y={cy + size * 0.38}
-                fontSize={size * 0.06}
+                y={cy + size * 0.42}
+                fontSize={size * 0.09}
                 fill={metrics.isRateLimited ? "#ef4444" : "#9ca3af"}
                 textAnchor="middle"
             >
                 burst: {Math.round(metrics.availableBurst)}
             </text>
+
+            {/* Needle - REQT/gy3tnvgtmd (rendered last to be on top) */}
+            <line
+                x1={cx}
+                y1={cy}
+                x2={needleTip.x}
+                y2={needleTip.y}
+                stroke="#3b82f6"
+                strokeWidth={size * 0.05}
+                strokeLinecap="butt"
+                opacity={0.7}
+                style={{
+                    transition: "x2 200ms ease-out, y2 200ms ease-out",
+                    transformOrigin: `${cx}px ${cy}px`,
+                }}
+            />
+
+            {/* Needle pivot */}
+            <circle cx={cx} cy={cy} r={size * 0.04} fill={textColor} />
 
             {/* CSS for pulse animation */}
             <style>
