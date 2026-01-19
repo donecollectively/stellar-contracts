@@ -13,6 +13,7 @@
  */
 
 import { ArkErrors } from "arktype";
+import EventEmitter from "eventemitter3";
 import {
     decodeTx,
     makeAddress,
@@ -79,6 +80,19 @@ const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
 const DEFAULT_SYNC_PAGE_SIZE = 100;
 const DEFAULT_MAX_SYNC_PAGES = Infinity;
 
+export interface CachedUtxoIndexEvents {
+    /** Emitted when initial sync from scratch begins */
+    syncStart: [];
+    /** Emitted when initial sync from scratch completes */
+    syncComplete: [];
+    /** Emitted when incremental sync begins */
+    syncing: [];
+    /** Emitted when incremental sync completes */
+    synced: [];
+    /** Forwarded rate limiter metrics */
+    rateLimitMetrics: [RateLimiterMetrics];
+}
+
 export class CachedUtxoIndex {
     blockfrostKey: string;
     blockfrostBaseUrl: string = "https://cardano-mainnet.blockfrost.io";
@@ -101,6 +115,9 @@ export class CachedUtxoIndex {
 
     // REQT/zzsg63b2fb: Timer for periodic refresh
     private refreshTimerId: ReturnType<typeof setInterval> | null = null;
+
+    // Event emitter for sync status and rate limit metrics
+    public readonly events = new EventEmitter<CachedUtxoIndexEvents>();
 
     // REQT/9a0nx1gr4b (Core State) - expose capoAddress for external access
     get capoAddress(): string {
@@ -244,10 +261,18 @@ export class CachedUtxoIndex {
             "agsbb",
             `CachedUtxoIndex created for address: ${this._address.toString()}`,
         );
+
+        // Forward rate limiter metrics to our event emitter
+        blockfrostRateLimiter.events.on("metrics", (metrics) => {
+            this.events.emit("rateLimitMetrics", metrics);
+        });
+
         this.syncNow();
     }
 
     async syncNow() {
+        this.events.emit("syncStart");
+
         // REQT/gz9a5b8qv: Initialize from cached block data if available
         const cachedBlock = await this.store.getLatestBlock();
         if (cachedBlock) {
@@ -305,6 +330,8 @@ export class CachedUtxoIndex {
 
         // Fetch and store the latest block details
         await this.fetchAndStoreLatestBlock();
+
+        this.events.emit("syncComplete");
     }
 
     /**
@@ -314,11 +341,14 @@ export class CachedUtxoIndex {
      * REQT-1.3.2 (checkForNewTxns)
      */
     async checkForNewTxns(fromBlockHeight?: number): Promise<void> {
+        this.events.emit("syncing");
+
         const startHeight =
             fromBlockHeight ??
             (this.lastBlockHeight > 0 ? this.lastBlockHeight + 1 : 0);
 
         if (startHeight == 0) {
+            this.events.emit("synced");
             throw new Error(
                 "Cannot start checking for new transactions at block height 0",
             );
@@ -385,6 +415,8 @@ export class CachedUtxoIndex {
                 `Stopped after ${this.maxSyncPages} pages (maxSyncPages limit reached)`,
             );
         }
+
+        this.events.emit("synced");
     }
 
     /**

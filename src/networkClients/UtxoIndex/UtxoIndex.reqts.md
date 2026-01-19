@@ -292,7 +292,17 @@ Ensures the CachedUtxoIndex can be used as a drop-in replacement for Helios netw
  - **REQT-1.6.7**/gz9a5b8qv: COMPLETED: **now Property** - Must implement `now: number` property returning current slot number. Must be initialized from cached block data at startup and kept in sync with latest block information.
  - **REQT-1.6.8**/ha0b6c9rw: COMPLETED: **parameters Property** - Must implement `parameters: Promise<NetworkParams>` to provide network parameters. Must fetch from underlying network client or cache.
 
-### REQT-1.7/ss7w87ecmj: NEXT: **Full TxInput Restoration**
+### REQT-1.7/rl8m2x9abc: COMPLETED: **Rate Limiting & Event System**
+
+#### Purpose
+Ensures Blockfrost API calls stay within rate limits and provides observable events for sync status and metrics. Applied when monitoring indexer behavior or integrating with UI components.
+
+ - **REQT-1.7.1**/tb4n3q7def: COMPLETED: **Token Bucket Rate Limiter** - Must implement global rate limiter with token bucket algorithm. Must allow bursts up to 300 requests. Must refill at 7 tokens/second. Must wait 1 second when bucket is exhausted.
+ - **REQT-1.7.2**/uc5o4r8ghi: COMPLETED: **HTTP 429 Handling** - Must detect HTTP 429 responses from Blockfrost. Must exhaust bucket, pause all requests for 10 seconds, then retry. Must reduce refill rate to half (3.5/s) after 429. Must gradually restore refill rate by 1/s every 10 seconds until back to normal.
+ - **REQT-1.7.3**/vd6p5s9jkl: COMPLETED: **Rate Limiter Metrics** - Must expose metrics via EventEmitter: requestsPerSecond, currentRefillRate, availableBurst, isRateLimited, isOnHold, isRecovering. Must emit metrics once per second when changed.
+ - **REQT-1.7.4**/we7q6t0mno: COMPLETED: **Sync Events** - Must emit `syncStart` when initial sync begins. Must emit `syncComplete` when initial sync finishes. Must emit `syncing` when incremental sync begins. Must emit `synced` when incremental sync completes. Must forward rate limiter metrics as `rateLimitMetrics` event.
+
+### REQT-1.8/ss7w87ecmj: NEXT: **Full TxInput Restoration**
 
 #### Purpose
 Ensures that Tx objects returned from cache have fully-restored TxInputs with complete output data, matching what BlockfrostV0Client provides. Raw Tx CBOR only contains TxOutputId references for inputs; full TxInput restoration requires fetching output details (address, value, datum) and reference scripts.
@@ -388,13 +398,14 @@ Defines Dexie Entity classes for type-safe storage. Applied when modifying datab
 1. `src/networkClients/UtxoIndex/CachedUtxoIndex.ts`
 2. `src/networkClients/UtxoIndex/DexieUtxoStore.ts`
 3. `src/networkClients/UtxoIndex/UtxoStoreGeneric.ts`
-4. `src/networkClients/UtxoIndex/types/UtxoIndexEntry.ts`
-5. `src/networkClients/UtxoIndex/blockfrostTypes/BlockDetails.ts`
-6. `src/networkClients/UtxoIndex/blockfrostTypes/UtxoDetails.ts`
-7. `src/networkClients/UtxoIndex/blockfrostTypes/AddressTransactionSummaries.ts`
-8. `src/networkClients/UtxoIndex/dexieRecords/BlockDetails.ts`
-9. `src/networkClients/UtxoIndex/dexieRecords/UtxoDetails.ts`
-10. `src/networkClients/UtxoIndex/dexieRecords/Logs.ts`
+4. `src/networkClients/UtxoIndex/RateLimitedFetch.ts`
+5. `src/networkClients/UtxoIndex/types/UtxoIndexEntry.ts`
+6. `src/networkClients/UtxoIndex/blockfrostTypes/BlockDetails.ts`
+7. `src/networkClients/UtxoIndex/blockfrostTypes/UtxoDetails.ts`
+8. `src/networkClients/UtxoIndex/blockfrostTypes/AddressTransactionSummaries.ts`
+9. `src/networkClients/UtxoIndex/dexieRecords/BlockDetails.ts`
+10. `src/networkClients/UtxoIndex/dexieRecords/UtxoDetails.ts`
+11. `src/networkClients/UtxoIndex/dexieRecords/Logs.ts`
 
 ## Implementation Notes
 
@@ -464,6 +475,14 @@ CachedUtxoIndex accepts discrete components instead of requiring a full Capo ins
 * Network client for underlying blockchain queries
 * Bridge component for decoding charter datum
 This enables CachedUtxoIndex to be used as the network client for a Capo, avoiding circular dependencies.
+
+#### COMPLETED: Rate Limiting & Event System (REQT/rl8m2x9abc)
+* Implemented `RateLimitedFetch` class with token bucket algorithm (300 burst, 7/s refill)
+* HTTP 429 handling with 10s backoff, refill rate reduction, and gradual recovery
+* Global `blockfrostRateLimiter` instance shared across all CachedUtxoIndex instances
+* Rate limiter metrics exposed via EventEmitter (requestsPerSecond, isRateLimited, etc.)
+* CachedUtxoIndex events: `syncStart`, `syncComplete`, `syncing`, `synced`, `rateLimitMetrics`
+* Single event emitter on CachedUtxoIndex for all client subscriptions
 
 #### NEXT: Full TxInput Restoration (REQT/ss7w87ecmj)
 Tx CBOR from Blockfrost only contains TxOutputId references for inputs, not full output data.
