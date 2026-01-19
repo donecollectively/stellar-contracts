@@ -73,6 +73,9 @@ import { environment } from "../environment.js";
 import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
 import { nanoid } from "../util/nanoid.js";
 
+import type { CachedUtxoIndex } from "../networkClients/UtxoIndex/CachedUtxoIndex.js";
+import type { CapoDataBridge } from "../helios/scriptBundling/CapoHeliosBundle.bridge.js";
+
 /**
  * @public
  */
@@ -167,6 +170,22 @@ export type propsType<CapoType extends Capo<any>> = {
     onWalletChange?: (wallet: Wallet | undefined) => void;
     children: React.ReactNode;
     // ??current-transaction display/state-change hook
+    /**
+     * Enables UTXO caching via CachedUtxoIndex for faster lookups.
+     * @remarks
+     * When enabled, the provider creates a CachedUtxoIndex after the Capo is configured,
+     * replacing the network client with a caching layer that stores UTXOs in IndexedDB.
+     *
+     * Set to `true` for defaults, or provide options:
+     * - `dbName`: Custom database name for test isolation
+     * - `syncPageSize`: Number of transactions per sync page (default: 100)
+     * - `maxSyncPages`: Maximum pages to fetch during sync (default: unlimited)
+     */
+    useCachedIndex?: boolean | {
+        dbName?: string;
+        syncPageSize?: number;
+        maxSyncPages?: number;
+    };
 };
 
 let singleton = undefined as CapoDAppProvider<any> | undefined;
@@ -188,6 +207,8 @@ export type CapoDappProviderState<CapoType extends Capo<any>> = {
     tcx?: StellarTxnContext<any>;
     bf?: BlockfrostV0Client;
     dAppName?: string;
+    /** CachedUtxoIndex instance when useCachedIndex is enabled */
+    utxoIndex?: CachedUtxoIndex;
 };
 
 /**
@@ -984,6 +1005,11 @@ export class CapoDAppProvider<
     async componentWillUnmount() {
         this._unmounted = true;
 
+        // Stop UTXO index periodic refresh if enabled
+        if (this.state.utxoIndex) {
+            this.state.utxoIndex.stopPeriodicRefresh();
+        }
+
         // not really an error - just big and red so it's super obvious when it happens
         console.error("capo dApp provider unmounted");
     }
@@ -1625,6 +1651,19 @@ export class CapoDAppProvider<
                 debugger
             }
 
+            // Enable UTXO caching if requested
+            if (this.props.useCachedIndex) {
+                await this.updateStatus(
+                    "initializing UTXO cache...",
+                    {
+                        progressBar: true,
+                        developerGuidance: "caching UTXOs for faster lookups",
+                    },
+                    `//${id}: enabling utxo cache`
+                );
+                await this.enableUtxoCache(capo);
+            }
+
             if (!autoNext) {
                 await this.updateStatus(
                     "",
@@ -1686,6 +1725,51 @@ export class CapoDAppProvider<
             environment.CARDANO_NETWORK
         );
         return isMainnet;
+    }
+
+    /**
+     * Enables UTXO caching for faster lookups by creating a CachedUtxoIndex.
+     * @remarks
+     * This method creates a CachedUtxoIndex that wraps the underlying Blockfrost client,
+     * providing persistent caching of UTXOs in IndexedDB. Once enabled, all UTXO queries
+     * through the Capo will check the cache first before falling back to Blockfrost.
+     *
+     * The index starts periodic refresh automatically to keep the cache up-to-date.
+     *
+     * @param capo - The Capo instance to enable caching for
+     * @returns The created CachedUtxoIndex instance
+     */
+    async enableUtxoCache(capo: CapoType): Promise<CachedUtxoIndex> {
+        // Dynamic import to keep bundle size small when caching is not used
+        const { CachedUtxoIndex } = await import(
+            "../networkClients/UtxoIndex/CachedUtxoIndex.js"
+        );
+
+        const options = typeof this.props.useCachedIndex === "object"
+            ? this.props.useCachedIndex
+            : {};
+
+        const utxoIndex = new CachedUtxoIndex({
+            address: capo.address.toString(),
+            mph: capo.mintingPolicyHash.toHex(),
+            isMainnet: this.isMainnet(),
+            network: this.bf,  // original BlockfrostV0Client
+            bridge: capo.onchain as CapoDataBridge,
+            blockfrostKey: this.props.blockfrostKey,
+            ...options,
+        });
+
+        // Swap the network client - all subsequent queries go through cache
+        capo.setup.network = utxoIndex;
+
+        // Start periodic refresh to keep cache current
+        utxoIndex.startPeriodicRefresh();
+
+        await new Promise<void>((resolve) => {
+            this.setState({ utxoIndex }, resolve);
+        });
+
+        return utxoIndex;
     }
 
     async mkDefaultCharterArgs(): Promise<MinimalCharterDataArgs> {
