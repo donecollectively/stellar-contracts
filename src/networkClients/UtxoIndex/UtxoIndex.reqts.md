@@ -239,6 +239,8 @@ Establishes the foundational data structures and initialization sequence for the
 
  - **REQT-1.1.1**/xxkzfx9gf4: COMPLETED: **Constructor & Initialization** - Must accept `capo`, `blockfrostKey`, and optional `storeIn` strategy. Must determine Blockfrost base URL from API key prefix (mainnet/preprod/preview). Must initialize storage backend based on strategy. `static async createAndSync()` must trigger `async syncNow()` after construction and initialization.
  - **REQT-1.1.2**/9a0nx1gr4b: COMPLETED: **Core State** - Must maintain: `capoAddress` (bech32 string), `capoMph` (hex-encoded minting policy hash for filtering), `lastBlockHeight` (last block height processed), `lastBlockId`.
+ - **REQT-1.1.3**/j8vn3rm90z: COMPLETED: **Sync-Ready Promise** - Must expose a `syncReady` promise that resolves when initial sync completes. All query methods (`getUtxo`, `getUtxos`, `getUtxosWithAssetClass`, `getTx`, `hasUtxo`, `findUtxoByUUT`, `findUtxosByAsset`, `findUtxosByAddress`, `getAllUtxos`) must await `syncReady` before accessing cached data. This ensures queries block until the cache is populated, preventing premature network fallbacks.
+ - **REQT-1.1.4**/n5kffw8tf2: COMPLETED: **Cache-First Startup** - On construction, `syncNow()` must check for existing cached block data via `store.getLatestBlock()`. If cached data exists, must initialize `lastBlockHeight`, `lastBlockId`, and `lastSlot` from cache, then perform incremental sync via `checkForNewTxns()` instead of full sync. This enables fast startup from persisted IndexedDB data.
 
 ### REQT-1.2/y034z487y5: COMPLETED: **UUT Cataloging & Charter Tracking**
 
@@ -484,6 +486,13 @@ This enables CachedUtxoIndex to be used as the network client for a Capo, avoidi
 * CachedUtxoIndex events: `syncStart`, `syncComplete`, `syncing`, `synced`, `rateLimitMetrics`
 * Single event emitter on CachedUtxoIndex for all client subscriptions
 * Updated: 429 rate reduction now compounds using golden ratio (÷1.61) instead of fixed half; minimum 0.5 req/s floor
+
+#### COMPLETED: Sync-Ready & Cache-First Startup (REQT/j8vn3rm90z, REQT/n5kffw8tf2)
+* Added `syncReady` promise that resolves when initial sync completes
+* All query methods now await `syncReady` before accessing cache, preventing premature network fallbacks
+* Modified `syncNow()` to check for existing cached block data via `store.getLatestBlock()`
+* If cached data exists, initializes state from cache and performs incremental sync via `checkForNewTxns()` instead of full sync
+* Enables fast startup from persisted IndexedDB - subsequent page loads skip full Blockfrost sync
 
 #### NEXT: Full TxInput Restoration (REQT/ss7w87ecmj)
 Tx CBOR from Blockfrost only contains TxOutputId references for inputs, not full output data.

@@ -116,6 +116,11 @@ export class CachedUtxoIndex {
     // REQT/zzsg63b2fb: Timer for periodic refresh
     private refreshTimerId: ReturnType<typeof setInterval> | null = null;
 
+    // Promise that resolves when initial sync completes.
+    // Query methods await this before accessing the cache.
+    private syncReady: Promise<void>;
+    private syncReadyResolve!: () => void;
+
     // Event emitter for sync status and rate limit metrics
     public readonly events = new EventEmitter<CachedUtxoIndexEvents>();
 
@@ -179,6 +184,7 @@ export class CachedUtxoIndex {
      * REQT/gw6x2y5ns (hasUtxo Method)
      */
     async hasUtxo(utxoId: TxOutputId): Promise<boolean> {
+        await this.syncReady;
         const id = utxoId.toString();
         const entry = await this.store.findUtxoId(id);
         return entry !== undefined;
@@ -267,6 +273,11 @@ export class CachedUtxoIndex {
             this.events.emit("rateLimitMetrics", metrics);
         });
 
+        // Initialize sync-ready promise - query methods await this before accessing cache
+        this.syncReady = new Promise<void>((resolve) => {
+            this.syncReadyResolve = resolve;
+        });
+
         this.syncNow();
     }
 
@@ -283,8 +294,15 @@ export class CachedUtxoIndex {
                 "c8init",
                 `Initialized from cache: block #${cachedBlock.height}, slot ${cachedBlock.slot}`,
             );
+
+            // Have cached data - just do incremental sync for new transactions
+            await this.checkForNewTxns();
+            this.syncReadyResolve();
+            this.events.emit("syncComplete");
+            return;
         }
 
+        // No cached data - do full initial sync
         // Fetch all UTXOs from the capo address using the network
         const capoUtxos = await this.network.getUtxos(this._address);
 
@@ -331,6 +349,7 @@ export class CachedUtxoIndex {
         // Fetch and store the latest block details
         await this.fetchAndStoreLatestBlock();
 
+        this.syncReadyResolve();
         this.events.emit("syncComplete");
     }
 
@@ -1142,6 +1161,7 @@ export class CachedUtxoIndex {
      * REQT/gx7y3z6ot (getTx Method)
      */
     async getTx(id: TxId): Promise<Tx> {
+        await this.syncReady;
         return this.findOrFetchTxDetails(id.toHex());
     }
 
@@ -1282,6 +1302,7 @@ export class CachedUtxoIndex {
      * REQT/gt3ux9v2kp (getUtxo Method)
      */
     async getUtxo(id: TxOutputId): Promise<TxInput> {
+        await this.syncReady;
         const utxoId = id.toString();
         const entry = await this.store.findUtxoId(utxoId);
 
@@ -1300,6 +1321,7 @@ export class CachedUtxoIndex {
      * REQT/gu4vy0w3lq (getUtxos Method)
      */
     async getUtxos(address: Address): Promise<TxInput[]> {
+        await this.syncReady;
         const addrStr = this.addressToBech32(address);
         const entries = await this.store.findUtxosByAddress(addrStr);
 
@@ -1323,6 +1345,7 @@ export class CachedUtxoIndex {
         address: Address,
         assetClass: AssetClass,
     ): Promise<TxInput[]> {
+        await this.syncReady;
         const addrStr = this.addressToBech32(address);
         const policyId = assetClass.mph.toHex();
         const tokenName = assetClass.tokenName.toString();
@@ -1358,6 +1381,7 @@ export class CachedUtxoIndex {
      * REQT/50zkk5xgrx (Query API Methods)
      */
     async findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined> {
+        await this.syncReady;
         return this.store.findUtxoByUUT(uutId);
     }
 
@@ -1371,6 +1395,7 @@ export class CachedUtxoIndex {
         tokenName?: string,
         options?: { limit?: number; offset?: number },
     ): Promise<UtxoIndexEntry[]> {
+        await this.syncReady;
         return this.store.findUtxosByAsset(policyId, tokenName, options);
     }
 
@@ -1383,6 +1408,7 @@ export class CachedUtxoIndex {
         address: string,
         options?: { limit?: number; offset?: number },
     ): Promise<UtxoIndexEntry[]> {
+        await this.syncReady;
         return this.store.findUtxosByAddress(address, options);
     }
 
@@ -1395,6 +1421,7 @@ export class CachedUtxoIndex {
         limit?: number;
         offset?: number;
     }): Promise<UtxoIndexEntry[]> {
+        await this.syncReady;
         return this.store.getAllUtxos(options);
     }
 }
