@@ -7,6 +7,30 @@
  * Also handles HTTP 429 responses by backing off and reducing refill rate.
  */
 
+import EventEmitter from "eventemitter3";
+
+export interface RateLimiterMetrics {
+    /** Requests completed in the last second */
+    requestsPerSecond: number;
+    /** Current refill rate (may be reduced during recovery) */
+    currentRefillRate: number;
+    /** Base refill rate */
+    baseRefillRate: number;
+    /** Available burst tokens */
+    availableBurst: number;
+    /** Whether currently rate limited (burst exhausted) */
+    isRateLimited: boolean;
+    /** Whether currently on hold due to HTTP 429 */
+    isOnHold: boolean;
+    /** Whether in recovery mode (refill rate reduced) */
+    isRecovering: boolean;
+}
+
+export interface RateLimiterEvents {
+    // ee3 wants the type of listener-args: in this case, a tuple of one item with these props
+    metrics: [RateLimiterMetrics];
+}
+
 class RateLimitedFetch {
     private availableBurst: number;
     private lastUpdateTime: number;
@@ -20,6 +44,12 @@ class RateLimitedFetch {
     private onHold: Promise<void> | null = null;
     private resolveHold: (() => void) | null = null;
     private recoveryInterval: ReturnType<typeof setInterval> | null = null;
+
+    // Metrics tracking
+    private requestTimestamps: number[] = [];
+    private metricsInterval: ReturnType<typeof setInterval> | null = null;
+    private lastEmittedMetrics: RateLimiterMetrics | null = null;
+    public readonly events: EventEmitter<RateLimiterEvents>;
 
     /**
      * @param options.name - Name for logging (default: "RateLimitedFetch")
@@ -42,6 +72,90 @@ class RateLimitedFetch {
         this.logOnRateLimited = options.logOnRateLimited ?? true;
         this.availableBurst = this.maxBurst;
         this.lastUpdateTime = Date.now();
+        this.events = new EventEmitter<RateLimiterEvents>();
+
+        // Start metrics emission interval
+        this.startMetricsInterval();
+    }
+
+    /**
+     * Starts the interval that emits metrics once per second if changed.
+     */
+    private startMetricsInterval(): void {
+        this.metricsInterval = setInterval(() => {
+            this.emitMetricsIfChanged();
+        }, 1000);
+    }
+
+    /**
+     * Emits metrics event if they have changed since last emission.
+     */
+    private emitMetricsIfChanged(): void {
+        const metrics = this.getMetrics();
+
+        if (
+            !this.lastEmittedMetrics ||
+            !this.metricsEqual(metrics, this.lastEmittedMetrics)
+        ) {
+            this.lastEmittedMetrics = metrics;
+            this.events.emit("metrics", metrics);
+        }
+    }
+
+    /**
+     * Compares two metrics objects for equality.
+     */
+    private metricsEqual(
+        a: RateLimiterMetrics,
+        b: RateLimiterMetrics,
+    ): boolean {
+        return (
+            a.requestsPerSecond === b.requestsPerSecond &&
+            a.currentRefillRate === b.currentRefillRate &&
+            a.baseRefillRate === b.baseRefillRate &&
+            a.availableBurst === b.availableBurst &&
+            a.isRateLimited === b.isRateLimited &&
+            a.isOnHold === b.isOnHold &&
+            a.isRecovering === b.isRecovering
+        );
+    }
+
+    /**
+     * Gets current metrics snapshot.
+     */
+    getMetrics(): RateLimiterMetrics {
+        this.refillTokens();
+        this.pruneOldRequestTimestamps();
+
+        return {
+            requestsPerSecond: this.requestTimestamps.length,
+            currentRefillRate: this.currentRefillRate,
+            baseRefillRate: this.baseRefillRate,
+            availableBurst: Math.floor(this.availableBurst),
+            isRateLimited: this.availableBurst < 1,
+            isOnHold: this.onHold !== null,
+            isRecovering: this.recoveryInterval !== null,
+        };
+    }
+
+    /**
+     * Records a request timestamp for metrics tracking.
+     */
+    private recordRequest(): void {
+        this.requestTimestamps.push(Date.now());
+    }
+
+    /**
+     * Removes request timestamps older than 1 second.
+     */
+    private pruneOldRequestTimestamps(): void {
+        const cutoff = Date.now() - 1000;
+        while (
+            this.requestTimestamps.length > 0 &&
+            this.requestTimestamps[0] < cutoff
+        ) {
+            this.requestTimestamps.shift();
+        }
     }
 
     /**
@@ -55,6 +169,7 @@ class RateLimitedFetch {
         }
 
         await this.acquireToken();
+        this.recordRequest();
         const response = await fetch(url, options);
 
         // Handle HTTP 429 Too Many Requests
@@ -209,6 +324,21 @@ class RateLimitedFetch {
      */
     get refillRate(): number {
         return this.currentRefillRate;
+    }
+
+    /**
+     * Stops the metrics interval. Call when shutting down.
+     */
+    destroy(): void {
+        if (this.metricsInterval) {
+            clearInterval(this.metricsInterval);
+            this.metricsInterval = null;
+        }
+        if (this.recoveryInterval) {
+            clearInterval(this.recoveryInterval);
+            this.recoveryInterval = null;
+        }
+        this.events.removeAllListeners();
     }
 }
 
