@@ -1165,6 +1165,22 @@ export class CachedUtxoIndex {
         return this.findOrFetchTxDetails(id.toHex());
     }
 
+    /**
+     * Retrieves a transaction by ID with fully-restored input data.
+     * Uses Helios tx.recover() to populate input output data from cache.
+     *
+     * Unlike getTx() which returns raw decoded Tx, this method ensures
+     * inputs have their output data (address, value, datum, refScript).
+     *
+     * REQT/qc7qgsqphv (getTx with Restored Inputs)
+     */
+    async getTxInfo(id: TxId): Promise<Tx> {
+        await this.syncReady;
+        const tx = await this.findOrFetchTxDetails(id.toHex());
+        await tx.recover(this); // CachedUtxoIndex implements getUtxo()
+        return tx;
+    }
+
     async findOrFetchTxDetails(txId: string): Promise<Tx> {
         const txCbor = await this.store.findTxId(txId);
 

@@ -325,30 +325,40 @@ interface ReadonlyCardanoClient {
 
 **Initialization**: On startup, `syncNow()` initializes `lastSlot`, `lastBlockId`, and `lastBlockHeight` from the cached latest block (via `store.getLatestBlock()`). This ensures the `now` property reflects previously discovered block data.
 
-**Full TxInput Restoration** (REQT/ss7w87ecmj):
-Tx CBOR from Blockfrost only contains TxOutputId references for inputs, not full output data. To match BlockfrostV0Client behavior, we restore full TxInputs:
+**Transaction Restoration Methods**:
+
+| Method | Returns | Use Case |
+|--------|---------|----------|
+| `getTx(id)` | Raw decoded Tx | When you just need the Tx structure |
+| `getTxInfo(id)` | Tx with restored inputs | When you need input values/addresses |
+
+**Helios Transaction Recovery Pattern** (REQT/qc7qgsqphv):
+
+Tx CBOR from Blockfrost only contains TxOutputId references for inputs, not full output data. The `getTxInfo()` method uses Helios's `tx.recover(network)` to restore full input data:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ getTx(id)                                                       │
-│ 1. Decode Tx from CBOR                                          │
-│ 2. For each input TxOutputId:                                   │
-│    └─► restoreTxInput(outputId)                                 │
-│        ├─ Check UTXO cache for output data                      │
-│        ├─ On miss: fetch from network/Blockfrost                │
-│        ├─ If reference_script_hash: fetch script CBOR           │
-│        │   └─► /scripts/{hash}/cbor                             │
-│        └─ Return full TxInput with address, value, datum, script│
-│ 3. Return Tx with restored inputs                               │
-└─────────────────────────────────────────────────────────────────┘
+tx.recover(network)
+  └─► TxBody.recover(network)
+        └─► TxInput.recover(network)  [for each input, refInput, collateral]
+              └─► network.getUtxo(id)
+              └─► mutates this._output in place
+  └─► TxWitnesses.recover(refScripts)
 ```
+
+Since CachedUtxoIndex implements `getUtxo()`, it can serve as the network parameter for `tx.recover()`, providing efficient cached lookups for input restoration.
+
+**Why This Pattern**:
+- Follows Helios convention: BlockfrostV0Client, IrisClient, and Emulator all return raw Tx from `getTx()`
+- `recover()` calls `getUtxo()` for each input - expensive for network clients (N calls)
+- For CachedUtxoIndex, `getUtxo()` hits local cache - no performance concern
+- Separating concerns: callers choose whether they need restored data
 
 | Requirement | Status | Description |
 |-------------|--------|-------------|
-| REQT/nqemw2gvm2 | NEXT | `restoreTxInput()` method |
-| REQT/tqrhbphgyx | NEXT | Reference script fetching |
-| REQT/qc7qgsqphv | NEXT | `getTx()` with restored inputs |
-| REQT/k2wvnd3f1e | NEXT | Script storage caching |
+| REQT/nqemw2gvm2 | COMPLETED | `restoreTxInput()` method (via tx.recover) |
+| REQT/tqrhbphgyx | COMPLETED | Reference script fetching |
+| REQT/qc7qgsqphv | COMPLETED | `getTxInfo()` with restored inputs |
+| REQT/k2wvnd3f1e | COMPLETED | Script storage caching |
 
 **Query API Methods** (REQT/50zkk5xgrx):
 - `findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined>`
@@ -644,5 +654,5 @@ Isolated databases are cleaned up after each test; the shared database is cleane
 
 ---
 
-**Document Version**: 1.6
-**Last Updated**: 2026-01-18 - Added Testability section with dbName parameter for database isolation (REQT/t7dbk8n4mx)
+**Document Version**: 1.7
+**Last Updated**: 2026-01-19 - Added getTxInfo() method documentation; updated transaction restoration pattern (REQT/qc7qgsqphv)

@@ -304,15 +304,16 @@ Ensures Blockfrost API calls stay within rate limits and provides observable eve
  - **REQT-1.7.3**/vd6p5s9jkl: COMPLETED: **Rate Limiter Metrics** - Must expose metrics via EventEmitter: requestsPerSecond, currentRefillRate, availableBurst, isRateLimited, isOnHold, isRecovering. Must emit metrics once per second when changed.
  - **REQT-1.7.4**/we7q6t0mno: COMPLETED: **Sync Events** - Must emit `syncStart` when initial sync begins. Must emit `syncComplete` when initial sync finishes. Must emit `syncing` when incremental sync begins. Must emit `synced` when incremental sync completes. Must forward rate limiter metrics as `rateLimitMetrics` event.
 
-### REQT-1.8/ss7w87ecmj: NEXT: **Full TxInput Restoration**
+### REQT-1.8/ss7w87ecmj: COMPLETED: **Full TxInput Restoration**
 
 #### Purpose
 Ensures that Tx objects returned from cache have fully-restored TxInputs with complete output data, matching what BlockfrostV0Client provides. Raw Tx CBOR only contains TxOutputId references for inputs; full TxInput restoration requires fetching output details (address, value, datum) and reference scripts.
 
- - **REQT-1.7.1**/nqemw2gvm2: NEXT: **restoreTxInput Method** - Must implement `restoreTxInput(txOutputId: TxOutputId): Promise<TxInput>` to reconstruct a full TxInput from a TxOutputId reference. Must fetch the original output's address, value, inline datum (or hashed datum), and reference script. Must cache fetched data in the UTXO store for future lookups.
- - **REQT-1.7.2**/tqrhbphgyx: NEXT: **Reference Script Fetching** - When a UTXO has a `reference_script_hash`, must fetch script CBOR from Blockfrost `/scripts/{hash}/cbor` endpoint. Must decode using `decodeUplcProgramV2FromCbor()`. Must include decoded script in restored TxOutput.
- - **REQT-1.7.3**/qc7qgsqphv: NEXT: **getTx with Restored Inputs** - Must enhance `getTx()` to return a Tx with fully-restored TxInputs. After decoding Tx CBOR, must iterate inputs and restore each using `restoreTxInput()`. Must handle both regular inputs and reference inputs.
- - **REQT-1.7.4**/k2wvnd3f1e: NEXT: **Script Storage** - Must extend storage schema to cache reference script CBOR by script hash. Must implement `store.saveScript(hash, cbor)` and `store.findScript(hash)`. Prevents redundant Blockfrost queries for commonly-used reference scripts.
+ - **REQT-1.7.1**/nqemw2gvm2: COMPLETED: **restoreTxInput Method** - Must implement `restoreTxInput(txOutputId: TxOutputId): Promise<TxInput>` to reconstruct a full TxInput from a TxOutputId reference. Must fetch the original output's address, value, inline datum (or hashed datum), and reference script. Must cache fetched data in the UTXO store for future lookups. *(Implemented as `indexEntryToTxInput()` which converts UtxoIndexEntry to TxInput with full restoration including reference scripts.)*
+ - **REQT-1.7.2**/tqrhbphgyx: COMPLETED: **Reference Script Fetching** - When a UTXO has a `reference_script_hash`, must fetch script CBOR from Blockfrost `/scripts/{hash}/cbor` endpoint. Must decode using `decodeUplcProgramV2FromCbor()`. Must include decoded script in restored TxOutput. *(Implemented in `fetchAndCacheScript()`.)*
+ - **REQT-1.7.3**/qc7qgsqphv: COMPLETED: **getTxInfo with Restored Inputs** - Must provide method to retrieve Tx with fully-restored TxInputs. Following Helios convention, `getTx()` returns raw decoded Tx while `getTxInfo()` uses `tx.recover(this)` to restore input data. *(Implemented as `getTxInfo()` which leverages CachedUtxoIndex's `getUtxo()` implementation.)*
+ - **REQT-1.7.4**/k2wvnd3f1e: COMPLETED: **Script Storage** - Must extend storage schema to cache reference script CBOR by script hash. Must implement `store.saveScript(hash, cbor)` and `store.findScript(hash)`. Prevents redundant Blockfrost queries for commonly-used reference scripts. *(Implemented in DexieUtxoStore with scripts table.)*
+
 ### REQT-1.9/ngn9agx52a: NEXT: **Wallet Address Indexing**
 
 #### Purpose
@@ -503,12 +504,13 @@ This enables CachedUtxoIndex to be used as the network client for a Capo, avoidi
 * If cached data exists, initializes state from cache and performs incremental sync via `checkForNewTxns()` instead of full sync
 * Enables fast startup from persisted IndexedDB - subsequent page loads skip full Blockfrost sync
 
-#### NEXT: Full TxInput Restoration (REQT/ss7w87ecmj)
+#### COMPLETED: Full TxInput Restoration (REQT/ss7w87ecmj)
 Tx CBOR from Blockfrost only contains TxOutputId references for inputs, not full output data.
-To match BlockfrostV0Client behavior, we must restore full TxInputs with:
-* Output address, value, inline datum (or hashed datum)
-* Reference script (fetched from `/scripts/{hash}/cbor` endpoint)
-* Cached script storage to avoid redundant fetches
+To match BlockfrostV0Client behavior, we restore full TxInputs with:
+* DONE: `indexEntryToTxInput()` method restores TxInput from cached UtxoIndexEntry (REQT/nqemw2gvm2)
+* DONE: `fetchAndCacheScript()` fetches reference script CBOR from `/scripts/{hash}/cbor` endpoint (REQT/tqrhbphgyx)
+* DONE: Script storage in DexieUtxoStore with `saveScript()`/`findScript()` (REQT/k2wvnd3f1e)
+* DONE: `getTxInfo()` uses `tx.recover(this)` for input restoration, following Helios convention where `getTx()` returns raw Tx (REQT/qc7qgsqphv)
 
 #### NEXT: Wallet Address Indexing (REQT/ngn9agx52a)
 Extends indexer to cache UTXOs from connected wallet addresses:
