@@ -931,6 +931,12 @@ export class CapoDAppProvider<
         const id = nanoid(4);
         const location = new Error("um?").stack!.split("\n").slice(2).join("\n");
         debugBox(`${id}: doInitialize ${location}`);
+
+        // Initialize CachedUtxoIndex from bundle config before wallet connection
+        if (this.props.useCachedIndex !== false && !this.state.utxoIndex) {
+            await this.initUtxoIndexFromBundleConfig();
+        }
+
         if ("undefined" != typeof window) {
             const autoWallet = window.localStorage.getItem(
                 "capoAutoConnectWalletName"
@@ -1390,6 +1396,11 @@ export class CapoDAppProvider<
 
         if (this.capo) this.capo.actorContext.wallet = wallet;
 
+        // Register wallet address with CachedUtxoIndex so it can serve wallet UTXOs from cache
+        if (this.state.utxoIndex && addrString) {
+            await this.state.utxoIndex.addWalletAddress(addrString);
+        }
+
         await walletHelper.utxos.then((walletUtxos: TxInput[]) => {
             return this.updateStatus(
                 undefined,
@@ -1596,70 +1607,17 @@ export class CapoDAppProvider<
             txBatcher = new TxBatcher(batcherOptions);
         }
 
-        // Create CachedUtxoIndex BEFORE Capo if we have config with mph/address info
-        let network: CardanoClient = this.bf;
-        let utxoIndex: CachedUtxoIndex | undefined;
+        // Use existing CachedUtxoIndex or create one if needed
+        let network: CardanoClient = this.state.utxoIndex || this.bf;
+        let utxoIndex: CachedUtxoIndex | undefined = this.state.utxoIndex;
 
-        // First try to get config from the bundle's precompiled details (static access)
-        const bundleClass = await this.capoClass.scriptBundleClass();
-        // precompiledScriptDetails is a static property added by rollup bundler
-        const bundleConfig = (bundleClass as any).precompiledScriptDetails?.capo?.config as CapoConfig | undefined;
-
-        // Fall back to localStorage config if bundle doesn't have precompiled config
-        const localParsedConfig = 'config' in config ? config.config as CapoConfig : undefined;
-        const parsedConfig = bundleConfig || localParsedConfig;
-
-        console.log("CachedUtxoIndex condition check:", {
-            useCachedIndex: this.props.useCachedIndex,
-            hasMph: !!parsedConfig?.mph,
-            hasRootCapoScriptHash: !!parsedConfig?.rootCapoScriptHash,
-            configSource: bundleConfig ? "bundle" : localParsedConfig ? "localStorage" : "none",
-        });
-
-        if (this.props.useCachedIndex !== false && parsedConfig?.mph && parsedConfig?.rootCapoScriptHash) {
-            await this.updateStatus(
-                "initializing UTXO cache...",
-                {
-                    progressBar: true,
-                    developerGuidance: "caching UTXOs for faster lookups",
-                },
-                `//${id}: enabling utxo cache early`
-            );
-
-            const options = typeof this.props.useCachedIndex === "object"
-                ? this.props.useCachedIndex
-                : {};
-
-            // Compute address from rootCapoScriptHash
-            const capoAddress = makeAddress(this.isMainnet(), parsedConfig.rootCapoScriptHash);
-
-            utxoIndex = new CachedUtxoIndex({
-                address: capoAddress.toBech32(),
-                mph: parsedConfig.mph.toHex(),
-                isMainnet: this.isMainnet(),
-                network: this.bf,  // original BlockfrostV0Client as fallback
-                bridge: new CapoDataBridge(this.isMainnet()),
-                blockfrostKey: this.props.blockfrostKey,
-                ...options,
-            });
-
-            // Subscribe to sync events
-            utxoIndex.events.on("syncStart", () => {
-                this.setState({ isIndexSyncing: true });
-            });
-            utxoIndex.events.on("syncComplete", () => {
-                this.setState({ isIndexSyncing: false });
-            });
-            utxoIndex.events.on("rateLimitMetrics", (metrics) => {
-                this.setState({ rateMetrics: metrics });
-            });
-
-            // Set state immediately
-            await new Promise<void>((resolve) => {
-                this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
-            });
-
-            // Use the caching index as the network client for Capo
+        if (!utxoIndex && this.props.useCachedIndex !== false) {
+            // Try to create one now if we have config
+            utxoIndex = await this.initUtxoIndexFromBundleConfig();
+            if (utxoIndex) {
+                network = utxoIndex;
+            }
+        } else if (utxoIndex) {
             network = utxoIndex;
         }
         //@ts-expect-error - sorry, typescript : /
@@ -1875,6 +1833,59 @@ export class CapoDAppProvider<
 
         await new Promise<void>((resolve) => {
             // Set initial syncing state (syncNow is called in constructor)
+            this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
+        });
+
+        return utxoIndex;
+    }
+
+    /**
+     * Creates CachedUtxoIndex using the bundle's precompiled config.
+     * Called before wallet connection to ensure SimpleWallet uses the cache.
+     * @internal
+     */
+    async initUtxoIndexFromBundleConfig(): Promise<CachedUtxoIndex | undefined> {
+        // Get config from the bundle's precompiled details
+        const bundleClass = await this.capoClass.scriptBundleClass();
+        // precompiledScriptDetails is a static property added by rollup bundler
+        const bundleConfig = (bundleClass as any).precompiledScriptDetails?.capo?.config as CapoConfig | undefined;
+
+        if (!bundleConfig?.mph || !bundleConfig?.rootCapoScriptHash) {
+            console.log("initUtxoIndexFromBundleConfig: no precompiled config, deferring to initCapo");
+            return undefined;
+        }
+
+        console.log("initUtxoIndexFromBundleConfig: creating CachedUtxoIndex");
+
+        const options = typeof this.props.useCachedIndex === "object"
+            ? this.props.useCachedIndex
+            : {};
+
+        // Compute address from rootCapoScriptHash
+        const capoAddress = makeAddress(this.isMainnet(), bundleConfig.rootCapoScriptHash);
+
+        const utxoIndex = new CachedUtxoIndex({
+            address: capoAddress.toBech32(),
+            mph: bundleConfig.mph.toHex(),
+            isMainnet: this.isMainnet(),
+            network: this.bf,
+            bridge: new CapoDataBridge(this.isMainnet()),
+            blockfrostKey: this.props.blockfrostKey,
+            ...options,
+        });
+
+        // Subscribe to sync events
+        utxoIndex.events.on("syncStart", () => {
+            this.setState({ isIndexSyncing: true });
+        });
+        utxoIndex.events.on("syncComplete", () => {
+            this.setState({ isIndexSyncing: false });
+        });
+        utxoIndex.events.on("rateLimitMetrics", (metrics) => {
+            this.setState({ rateMetrics: metrics });
+        });
+
+        await new Promise<void>((resolve) => {
             this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
         });
 
