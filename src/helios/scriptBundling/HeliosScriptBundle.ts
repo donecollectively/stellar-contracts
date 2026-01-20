@@ -1137,6 +1137,9 @@ export abstract class HeliosScriptBundle {
     }
 
     loadProgram() {
+        const bundleName = this.constructor.name;
+        const perfLabel = `loadProgram:${bundleName}`;
+
         if (this._program) {
             // bust through pre-cached version if the
             // fundamental settings are changed
@@ -1148,9 +1151,12 @@ export abstract class HeliosScriptBundle {
                 console.warn("busting program cache");
                 this._program = undefined;
             } else {
+                // Cache hit - no load needed
                 return this._program;
             }
         }
+
+        performance.mark(`${perfLabel}:start`);
         const isMainnet = this.setup?.isMainnet ?? false;
         const isTestnet = !isMainnet;
 
@@ -1165,7 +1171,7 @@ export abstract class HeliosScriptBundle {
             debugger;
         }
         try {
-            console.warn(`${this.constructor.name}: loading program`);
+            console.warn(`${bundleName}: loading program`);
             // console.log(`HERE ${this.___id}: ${new Error("(where?)").stack}`)
             const p = new HeliosProgramWithCacheAPI(this.main, {
                 isTestnet,
@@ -1178,16 +1184,21 @@ export abstract class HeliosScriptBundle {
 
             // Hi!  Are you investigating a duplicate load of the same module?
             //  🔥🔥🔥  thanks! you're saving people 100ms at a time!
+            performance.mark(`${perfLabel}:end`);
+            performance.measure(perfLabel, `${perfLabel}:start`, `${perfLabel}:end`);
+            const loadTime = Date.now() - ts1;
             console.log(
                 `📦 ${mName}: loaded & parsed ${
                     this.isPrecompiled
                         ? "w/ pre-compiled program"
                         : "for type-gen"
-                }: ${Date.now() - ts1}ms`
+                }: ${loadTime}ms`
                 // new Error(`stack`).stack
             );
             return p;
         } catch (e: any) {
+            performance.mark(`${perfLabel}:error`);
+            performance.measure(`${perfLabel}:error`, `${perfLabel}:start`, `${perfLabel}:error`);
             // !!! probably this stuff needs to move to compileWithScriptParams()
             if (e.message.match(/invalid parameter name/)) {
                 debugger;
