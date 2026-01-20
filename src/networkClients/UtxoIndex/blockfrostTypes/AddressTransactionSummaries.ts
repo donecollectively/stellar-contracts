@@ -1,5 +1,15 @@
-import { jsonSchemaToType } from "@ark/json-schema";
-import { scope, type } from "arktype";
+// ArkType removed from critical path - using manual interface only
+
+// Manually defined type for Blockfrost address transaction summary response
+export interface AddressTransactionSummariesType {
+    tx_hash: string;
+    tx_index: number;
+    block_height: number;
+    block_time: number;
+}
+
+/* COMMENTED OUT - ArkType validators removed from critical path
+import { type } from "arktype";
 
 export const AddressTransactionSummariesFactory = type({
     tx_hash: "string",
@@ -10,7 +20,9 @@ export const AddressTransactionSummariesFactory = type({
 
 export type AddressTransactionSummariesType =
     typeof AddressTransactionSummariesFactory.infer;
+*/
 
+/* COMMENTED OUT - unused, executes at module load time
 const addressTransactionSummariesJsonSchema = jsonSchemaToType({
     type: "array",
     items: {
@@ -61,3 +73,4 @@ const addressTransactionSummariesJsonSchema = jsonSchemaToType({
         ],
     ],
 });
+*/

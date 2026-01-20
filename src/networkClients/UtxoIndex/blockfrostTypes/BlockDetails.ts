@@ -1,8 +1,31 @@
-import { jsonSchemaToType } from "@ark/json-schema";
-import { type } from "arktype";
+// ArkType removed from critical path - using manual interface only
 
+// Manually defined type for Blockfrost block response
 // schema for response from https://docs.blockfrost.io/#tag/cardano--blocks/get/blocks/{hash_or_number}
 // Note: next_block is null for the latest block; previous_block is null for genesis
+export interface BlockDetailsType {
+    time: number;
+    height: number;
+    hash: string;
+    slot: number;
+    epoch: number;
+    epoch_slot: number;
+    slot_leader: string;
+    size: number;
+    tx_count: number;
+    output: string | null;
+    fees: string | null;
+    block_vrf: string | null;
+    op_cert: string | null;
+    op_cert_counter: string | null;
+    previous_block: string | null;
+    next_block: string | null;
+    confirmations: number;
+}
+
+/* COMMENTED OUT - ArkType validators removed from critical path
+import { type } from "arktype";
+
 export const BlockDetailsFactory = type({
     time: "number",
     height: "number",
@@ -23,9 +46,11 @@ export const BlockDetailsFactory = type({
     confirmations: "number",
 })
 export type BlockDetailsType = typeof BlockDetailsFactory.infer
+*/
 
 // manually defined above; can convert to json-schema if/when it gives us TYPES,
 // and not only validation functions:
+/* COMMENTED OUT - unused, executes at module load time
   const blockSchema = jsonSchemaToType({
     "type": "object",
     "properties": {
@@ -204,5 +229,6 @@ export type BlockDetailsType = typeof BlockDetailsFactory.infer
       "confirmations"
     ]
   } as const);
+*/
 //   type BlockDetails = typeof blockSchema.infer
 

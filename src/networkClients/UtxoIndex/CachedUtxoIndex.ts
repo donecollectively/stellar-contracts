@@ -12,7 +12,7 @@
  * before passing to the store.
  */
 
-import { ArkErrors } from "arktype";
+// ArkErrors import removed - using type casting instead of runtime validation
 import EventEmitter from "eventemitter3";
 import {
     decodeTx,
@@ -57,16 +57,15 @@ import type { UtxoStoreGeneric } from "./types/UtxoStoreGeneric.js";
 import type { UtxoIndexEntry } from "./types/UtxoIndexEntry.js";
 import type { BlockIndexEntry } from "./types/BlockIndexEntry.js";
 
+// Runtime validators removed - using type casting instead
+// Type definitions still used for compile-time safety
 import {
-    BlockDetailsFactory,
     type BlockDetailsType,
 } from "./blockfrostTypes/BlockDetails.js";
 import {
-    validateUtxoDetails,
     type UtxoDetailsType,
 } from "./blockfrostTypes/UtxoDetails.js";
 import {
-    AddressTransactionSummariesFactory,
     type AddressTransactionSummariesType,
 } from "./blockfrostTypes/AddressTransactionSummaries.js";
 import type { CharterData } from "../../CapoTypes.js";
@@ -398,21 +397,8 @@ export class CachedUtxoIndex {
                 break;
             }
 
-            const transactionSummaries: AddressTransactionSummariesType[] = [];
-            for (const item of untyped) {
-                const validationResult =
-                    AddressTransactionSummariesFactory(item);
-                if (validationResult instanceof ArkErrors) {
-                    console.error(
-                        `Error validating transaction summary:`,
-                        item,
-                    );
-                    validationResult.throw();
-                }
-                transactionSummaries.push(
-                    validationResult as AddressTransactionSummariesType,
-                );
-            }
+            // Type cast instead of runtime validation - trusting Blockfrost API
+            const transactionSummaries = untyped as AddressTransactionSummariesType[];
 
             // Process transactions from this page
             for (const summary of transactionSummaries) {
@@ -1126,7 +1112,8 @@ export class CachedUtxoIndex {
             return;
         }
 
-        const typed = validateUtxoDetails(untyped[0]);
+        // Type cast instead of runtime validation - trusting Blockfrost API
+        const typed = untyped[0] as UtxoDetailsType;
         const utxoId = this.formatUtxoId(typed.tx_hash, typed.output_index);
         const entry = this.blockfrostUtxoToIndexEntry(typed, utxoId);
         await this.store.saveUtxo(entry);
@@ -1183,20 +1170,15 @@ export class CachedUtxoIndex {
             `Fetching block details for ${blockId} from blockfrost`,
         );
         const untyped = await this.fetchFromBlockfrost(`blocks/${blockId}`);
-        const typed = BlockDetailsFactory(untyped);
-        if (typed instanceof ArkErrors) {
-            return typed.throw();
-        }
-        return typed;
+        // Type cast instead of runtime validation - trusting Blockfrost API
+        return untyped as BlockDetailsType;
     }
 
     async fetchAndStoreLatestBlock(): Promise<BlockIndexEntry> {
         await this.store.log("x2xzt", `Fetching latest block from blockfrost`);
         const untyped = await this.fetchFromBlockfrost(`blocks/latest`);
-        const typed = BlockDetailsFactory(untyped);
-        if (typed instanceof ArkErrors) {
-            return typed.throw();
-        }
+        // Type cast instead of runtime validation - trusting Blockfrost API
+        const typed = untyped as BlockDetailsType;
         await this.store.log(
             "8y2yn",
             `latest block from blockfrost: #${typed.height} ${typed.hash}`,

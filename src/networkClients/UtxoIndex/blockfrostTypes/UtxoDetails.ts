@@ -3,10 +3,9 @@
 // schema for response from https://docs.blockfrost.io/#tag/cardano--addresses/get/addresses/{address}/utxos/{asset}
 // also used for responses from https://docs.blockfrost.io/#tag/cardano--addresses/get/addresses/{address}/utxos
 
-import { jsonSchemaToType } from "@ark/json-schema";
-import { type } from "arktype";
+// ArkType removed from critical path - using manual interface only
 
-// Manually defined type to avoid arktype type portability issues
+// Manually defined type for Blockfrost UTXO response
 export interface UtxoDetailsType {
     address: string;
     tx_hash: string;
@@ -19,7 +18,9 @@ export interface UtxoDetailsType {
     reference_script_hash: string | null;
 }
 
-// Arktype validator - kept internal
+/* COMMENTED OUT - ArkType validators removed from critical path
+import { type } from "arktype";
+
 const ValueType = type({
     unit: "string",
     quantity: "string.numeric.parse",
@@ -44,9 +45,11 @@ export function validateUtxoDetails(data: unknown): UtxoDetailsType {
     }
     return result as UtxoDetailsType;
 }
+*/
 
  // ^ manually defined above; can convert to json-schema if/when it gives us TYPES,
  // and not only validation functions:
+/* COMMENTED OUT - unused, executes at module load time
 const utxoDetailSchema = jsonSchemaToType({
     "type": "array",
     "items": {
@@ -192,4 +195,5 @@ const utxoDetailSchema = jsonSchemaToType({
       ]
     ]
   });
+*/
 //   type AssetUtxosAtAddress = typeof assetUtxosAtAddressSchema.infer
