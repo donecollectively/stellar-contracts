@@ -1,0 +1,1 @@
+{"version":3,"file":"WalletAddressEntry.d.ts","sourceRoot":"","sources":["../../../../../../src/networkClients/UtxoIndex/types/WalletAddressEntry.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AACH,MAAM,WAAW,kBAAkB;IAC/B,0CAA0C;IAC1C,OAAO,EAAE,MAAM,CAAC;IAChB,gDAAgD;IAChD,eAAe,EAAE,MAAM,CAAC;IACxB,8CAA8C;IAC9C,YAAY,EAAE,MAAM,CAAC;CACxB"}
