@@ -1766,6 +1766,10 @@ export abstract class Capo<
                 // strategyName,
                 delegate,
             } = cachedRole;
+            // If non-readOnly and not yet compiled, compile now (fixes readOnly cache poisoning)
+            if (!options?.readOnly && delegate.usesContractScript && !delegate._bundle?.alreadyCompiledScript) {
+                await delegate.asyncCompiledScript();
+            }
             console.log(`  ✅ 💁 ${role} - from cache `);
             return delegate as DT;
         }
