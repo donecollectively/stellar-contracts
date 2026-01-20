@@ -317,6 +317,7 @@ export function CharterHighlights({
                 if (entryInfo.entryType.DgDataPolicy) {
                     const dgt = await capo.getDgDataController(entryName, {
                         charterData,
+                        onchain: false,  // UI display only
                     });
                     await dgt?.getBundle();
                     dataControllers[entryName] = dgt;

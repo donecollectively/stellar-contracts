@@ -1729,11 +1729,18 @@ export abstract class Capo<
         role: RN,
         //!!! OK: using Ergo because the links are from charterData
         delegateLink: RelativeDelegateLinkLike, // | OffchainRelativeDelegateLink |
-        options?: {
-            /** Skip script compilation and upgrade detection - use for read-only operations */
-            readOnly?: boolean
+        options: {
+            /** Whether this delegate will be used for on-chain operations (transactions).
+             *  true = compile script for transaction building
+             *  false = skip compilation, only reading data */
+            onchain: boolean
         }
     ): Promise<DT> {
+        if (typeof options?.onchain !== 'boolean') {
+            throw new Error(
+                `connectDelegateWithOnchainRDLink: 'onchain' option is required (true for transactions, false for read-only)`
+            );
+        }
         const foundRole = this.delegateRoles[role] as DelegateSetup<
             any,
             DT,
@@ -1766,8 +1773,8 @@ export abstract class Capo<
                 // strategyName,
                 delegate,
             } = cachedRole;
-            // If non-readOnly and not yet compiled, compile now (fixes readOnly cache poisoning)
-            if (!options?.readOnly && delegate.usesContractScript && !delegate._bundle?.alreadyCompiledScript) {
+            // If onchain and not yet compiled, compile now (fixes cache poisoning from earlier non-onchain use)
+            if (options.onchain && delegate.usesContractScript && !delegate._bundle?.alreadyCompiledScript) {
                 await delegate.asyncCompiledScript();
             }
             console.log(`  ✅ 💁 ${role} - from cache `);
@@ -1857,9 +1864,9 @@ export abstract class Capo<
             // addrHint,
         });
 
-        // Skip compilation and upgrade detection for read-only operations (e.g., reading delegated data)
-        // The data bridge's newReadDatum() uses pre-generated cast functions that don't need the compiled program
-        if (!options?.readOnly) {
+        // Compile and run upgrade detection for on-chain operations (transaction building)
+        // Skip for read-only - the data bridge's newReadDatum() uses pre-generated cast functions
+        if (options.onchain) {
             if (delegate.usesContractScript) {
                 await delegate.asyncCompiledScript();
             }
@@ -2170,15 +2177,15 @@ export abstract class Capo<
             this.connectDelegateWithOnchainRDLink<
                 "mintDelegate",
                 BasicMintDelegate
-            >("mintDelegate", mintDelegateLink),
+            >("mintDelegate", mintDelegateLink, { onchain: true }),
             this.connectDelegateWithOnchainRDLink<
                 "govAuthority",
                 AuthorityPolicy
-            >("govAuthority", govAuthorityLink),
+            >("govAuthority", govAuthorityLink, { onchain: true }),
             this.connectDelegateWithOnchainRDLink<
                 "spendDelegate",
                 ContractBasedDelegate
-            >("spendDelegate", spendDelegateLink),
+            >("spendDelegate", spendDelegateLink, { onchain: true }),
         ]);
     }
 
@@ -2250,12 +2257,13 @@ export abstract class Capo<
     //     return adapter.toOnchainDatum(settings) as any;
     // }
 
-    async findGovDelegate(charterData?: CharterData) {
+    async findGovDelegate(charterData?: CharterData, options: { onchain: boolean } = { onchain: true }) {
         const chD = charterData || (await this.findCharterData());
 
         const capoGovDelegate = await this.connectDelegateWithOnchainRDLink(
             "govAuthority",
-            chD.govAuthorityLink
+            chD.govAuthorityLink,
+            { onchain: options.onchain }
         );
         console.log(
             "finding charter's govDelegate via link" +
@@ -2317,7 +2325,8 @@ export abstract class Capo<
         // <
         //     T extends BasicMintDelegate=BasicMintDelegate
         // >(
-        charterData?: CharterData
+        charterData?: CharterData,
+        options: { onchain: boolean } = { onchain: true }
     ): Promise<BasicMintDelegate> {
         if (!this.configIn) {
             // throw new Error(`what now?`);
@@ -2328,11 +2337,11 @@ export abstract class Capo<
         return this.connectDelegateWithOnchainRDLink<
             "mintDelegate",
             BasicMintDelegate
-        >("mintDelegate", chD.mintDelegateLink);
+        >("mintDelegate", chD.mintDelegateLink, { onchain: options.onchain });
     }
 
     // todo: get spendDelegate type from delegateRoles
-    async getSpendDelegate(charterData?: CharterData) {
+    async getSpendDelegate(charterData?: CharterData, options: { onchain: boolean } = { onchain: true }) {
         const chD = charterData || (await this.findCharterData());
         // if (!charterData) {
         //     charterData = await this.findCharterData();
@@ -2341,7 +2350,7 @@ export abstract class Capo<
         return this.connectDelegateWithOnchainRDLink<
             "spendDelegate",
             BasicMintDelegate
-        >("spendDelegate", chD.spendDelegateLink);
+        >("spendDelegate", chD.spendDelegateLink, { onchain: options.onchain });
     }
 
     getSettingsController(this: SELF, options: FindableViaCharterData) {
@@ -2358,9 +2367,14 @@ export abstract class Capo<
     async getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(
         this: SELF,
         recordTypeName: RN,
-        options?: FindableViaCharterData
+        options: FindableViaCharterData
     ): Promise<undefined | DelegatedDataContract<any, any>> {
-        const { charterData, optional, readOnly } = options || {};
+        if (typeof options?.onchain !== 'boolean') {
+            throw new Error(
+                `getDgDataController: 'onchain' option is required (true for transactions, false for read-only)`
+            );
+        }
+        const { charterData, optional, onchain } = options;
         const chD = await (
             charterData ||
             this.findCharterData(undefined, {
@@ -2392,7 +2406,7 @@ export abstract class Capo<
             return this.connectDelegateWithOnchainRDLink<
                 RN,
                 DelegatedDataContract<any, any>
-            >(recordTypeName, foundME.entryType.DgDataPolicy.policyLink, { readOnly });
+            >(recordTypeName, foundME.entryType.DgDataPolicy.policyLink, { onchain });
         } else {
             const actualEntryType = Object.keys(foundME.entryType)[0];
             throw new Error(
@@ -2414,7 +2428,8 @@ export abstract class Capo<
      **/
     async getOtherNamedDelegate(
         delegateName: string,
-        charterData?: CharterData
+        charterData?: CharterData,
+        options: { onchain: boolean } = { onchain: true }
     ): Promise<ContractBasedDelegate> {
         const chD = charterData || (await this.findCharterData());
 
@@ -2427,10 +2442,10 @@ export abstract class Capo<
         return this.connectDelegateWithOnchainRDLink<
             typeof delegateName,
             ContractBasedDelegate
-        >(delegateName, foundDelegateLink);
+        >(delegateName, foundDelegateLink, { onchain: options.onchain });
     }
 
-    async getNamedDelegates(charterData?: CharterData) {
+    async getNamedDelegates(charterData?: CharterData, options: { onchain: boolean } = { onchain: true }) {
         const chD = charterData || (await this.findCharterData());
         const namedDelegates = chD.otherNamedDelegates;
 
@@ -2441,7 +2456,7 @@ export abstract class Capo<
                     await this.connectDelegateWithOnchainRDLink<
                         typeof otherDgtName,
                         ContractBasedDelegate
-                    >(otherDgtName, v),
+                    >(otherDgtName, v, { onchain: options.onchain }),
                 ] as [string, ContractBasedDelegate];
             }
         );
@@ -2887,6 +2902,7 @@ export abstract class Capo<
             const foundDelegate = await this.getDgDataController("settings", {
                 charterData,
                 optional,
+                onchain: false,  // Just checking existence
             });
             if (!foundDelegate) {
                 tcx.includeAddlTxn("create settings delegate", {
@@ -2912,7 +2928,7 @@ export abstract class Capo<
                     optional: false,
                     mkTcx: async () => {
                         const settingsController =
-                            await this.getDgDataController("settings");
+                            await this.getDgDataController("settings", { onchain: true });
                         if (!settingsController) {
                             throw new Error(
                                 `no settings policy found in the Capo manifest`
@@ -2963,7 +2979,7 @@ export abstract class Capo<
                     mkTcx: async () => {
                         const settingsController = await (
                             this as Capo<any>
-                        ).getDgDataController("settings");
+                        ).getDgDataController("settings", { onchain: true });
                         // settingsController.$find
 
                         const settingsUtxo = (
@@ -3380,7 +3396,7 @@ export abstract class Capo<
         if ("undefined" !== typeof type) {
             const dgtForType = await this.getDgDataController(type as any, {
                 charterData,
-                readOnly: true,  // Skip compilation - we only need the data bridge for reading
+                onchain: false,  // Skip compilation - we only need the data bridge for reading
             });
 
             if (!dgtForType) {
@@ -3480,7 +3496,7 @@ export abstract class Capo<
                         (await this.getDgDataController(datumType, {
                             charterData,
                             optional: true,
-                            readOnly: true,  // Skip compilation - we only need the data bridge for reading
+                            onchain: false,  // Skip compilation - we only need the data bridge for reading
                         }));
                     performance.mark(`${loadLabel}:end`);
                     performance.measure(loadLabel, `${loadLabel}:start`, `${loadLabel}:end`);
@@ -4234,6 +4250,7 @@ export abstract class Capo<
             {
                 charterData,
                 optional: true,
+                onchain: false,  // Just checking existence
             }
         );
 
@@ -4622,7 +4639,7 @@ export abstract class Capo<
                         if (entryType.DgDataPolicy) {
                             const previousDgt = await (
                                 this as unknown as SELF
-                            ).getDgDataController(name);
+                            ).getDgDataController(name, { onchain: true });
                             if (!previousDgt) {
                                 throw new Error(
                                     `can't find previous dgDataPolicy: ${name}`

@@ -749,6 +749,7 @@ export abstract class DelegatedDataContract<
             {
                 charterData,
                 optional: true,
+                onchain: false,  // Just checking existence
             }
         );
         const action = existing ? "update" : "create";

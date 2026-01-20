@@ -436,8 +436,11 @@ export type hasGovAuthority = StellarTxnContext<
 export type FindableViaCharterData = {
     charterData?: CharterData | Promise<CharterData>;
     optional?: true;
-    /** Skip script compilation - use for read-only operations like reading delegated data */
-    readOnly?: boolean;
+    /** Whether this delegate will be used for on-chain operations (transactions).
+     *  true = compile script for transaction building
+     *  false = skip compilation, only reading data
+     *  REQUIRED - must be explicitly specified */
+    onchain: boolean;
 };
 
 /**
