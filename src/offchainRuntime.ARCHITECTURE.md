@@ -1,7 +1,7 @@
 # Offchain Runtime Architecture
 
-> **Git Reference**: Based on commit `b4cafd0` (perf: avoid expensive load of onchain scripts during app start)
-> Use `git diff b4cafd0..HEAD -- src/Capo.ts src/StellarContract.ts src/CapoTypes.ts` to see changes since this doc was written.
+> **Git Reference**: Based on commit `51e52f05` (perf: avoid expensive load of onchain scripts during app start)
+> Use `git diff 51e52f05..HEAD -- ...files` to see changes since this doc was written.
 
 ## Files Involved in Read/Write Path Optimization
 
