@@ -189,7 +189,7 @@ export function RateMeterGauge({
             <path
                 d={backgroundArc}
                 fill="none"
-                stroke="#e5e7eb"
+                stroke="#374151"
                 strokeWidth={size * 0.08}
                 strokeLinecap="round"
             />
@@ -329,7 +329,7 @@ export function RateMeterGauge({
                 stroke="#3b82f6"
                 strokeWidth={size * 0.04}
                 strokeLinecap="butt"
-                opacity={0.7}
+                opacity={0.82}
                 style={{
                     transform: `rotate(${needleRotation}deg)`,
                     transformOrigin: `${cx}px ${cy}px`,
