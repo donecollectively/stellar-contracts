@@ -1280,18 +1280,13 @@ export abstract class Capo<
             config,
             noPreviousOnchainScript
         );
-        await minter.asyncCompiledScript();
 
-        if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
-            throw new Error(
-                `This minter script with this seed-utxo doesn't produce the required  minting policy hash\n` +
-                    "expected: " +
-                    expectedMph.toHex() +
-                    "\nactual: " +
-                    minter.mintingPolicyHash?.toHex()
-            );
-        } else if (!expectedMph) {
-            console.log(`${this.constructor.name}: seeding new minting policy`);
+        // When expectedMph is available from precompiled bundle, we trust it and skip compilation.
+        // The mintingPolicyHash getter will use configuredScriptDetails.scriptHash from the bundle.
+        // Compilation is only needed when seeding a new minting policy (no expectedMph).
+        if (!expectedMph) {
+            console.log(`${this.constructor.name}: seeding new minting policy - compiling script`);
+            await minter.asyncCompiledScript();
         }
         console.log("temp: skipping mintingCharter activity check");
         // minter.mustHaveActivity("mintingCharter");
@@ -1733,7 +1728,11 @@ export abstract class Capo<
     >(
         role: RN,
         //!!! OK: using Ergo because the links are from charterData
-        delegateLink: RelativeDelegateLinkLike // | OffchainRelativeDelegateLink |
+        delegateLink: RelativeDelegateLinkLike, // | OffchainRelativeDelegateLink |
+        options?: {
+            /** Skip script compilation and upgrade detection - use for read-only operations */
+            readOnly?: boolean
+        }
     ): Promise<DT> {
         const foundRole = this.delegateRoles[role] as DelegateSetup<
             any,
@@ -1854,55 +1853,57 @@ export abstract class Capo<
             // addrHint,
         });
 
-        if (delegate.usesContractScript) {
-            await delegate.asyncCompiledScript();
+        // Skip compilation and upgrade detection for read-only operations (e.g., reading delegated data)
+        // The data bridge's newReadDatum() uses pre-generated cast functions that don't need the compiled program
+        if (!options?.readOnly) {
+            if (delegate.usesContractScript) {
+                await delegate.asyncCompiledScript();
+            }
+
+            const previousOnchainScript = await (async () => {
+                if (!onchainValidatorHash) return undefined;
+
+                const hasOnchainVH = !!onchainValidatorHash;
+                let needsUpgrade = false;
+                const currentDvh = delegate.delegateValidatorHash;
+                // if (serializedCfg1 !== serializedCfg2) hasExistingOnchainScript = true;
+                if (!currentDvh) {
+                    // when the delegate doesn't use a script, it doesn't need an upgrade
+                    // (unless maybe it's change from having a script, to having none?)
+                    // ... if you need that case, ask for support
+                    return undefined;
+                }
+
+                if (!currentDvh.isEqual(onchainValidatorHash)) {
+                    needsUpgrade = true;
+                }
+                if (!needsUpgrade) return undefined;
+
+                const refScriptUtxo = await this.findRefScriptUtxo(
+                    onchainValidatorHash!.bytes,
+                    await this.findCapoUtxos()
+                );
+
+                if (!refScriptUtxo?.output.refScript) {
+                    throw new Error(`unexpected: refScript for ${role} not found`);
+                }
+
+                return {
+                    validatorHash: onchainValidatorHash.bytes,
+                    uplcProgram: refScriptUtxo?.output.refScript as anyUplcProgram,
+                };
+            })();
+
+            if (previousOnchainScript) {
+                console.warn(
+                    `Delegate configuration for role '${role}' requires upgrade\n` +
+                        `  Previous config: ${serializedCfg2}\n` +
+                        `  Next config: ${serializedCfg1}\n`
+                );
+                delegate._bundle!.previousOnchainScript = previousOnchainScript;
+                this.needsCoreDelegateUpdates = true;
+            }
         }
-
-        const previousOnchainScript = await (async () => {
-            if (!onchainValidatorHash) return undefined;
-
-            const hasOnchainVH = !!onchainValidatorHash;
-            let needsUpgrade = false;
-            const currentDvh = delegate.delegateValidatorHash;
-            // if (serializedCfg1 !== serializedCfg2) hasExistingOnchainScript = true;
-            if (!currentDvh) {
-                // when the delegate doesn't use a script, it doesn't need an upgrade
-                // (unless maybe it's change from having a script, to having none?)
-                // ... if you need that case, ask for support
-                return undefined;
-            }
-
-            if (!currentDvh.isEqual(onchainValidatorHash)) {
-                needsUpgrade = true;
-            }
-            if (!needsUpgrade) return undefined;
-
-            const refScriptUtxo = await this.findRefScriptUtxo(
-                onchainValidatorHash!.bytes,
-                await this.findCapoUtxos()
-            );
-
-            if (!refScriptUtxo?.output.refScript) {
-                throw new Error(`unexpected: refScript for ${role} not found`);
-            }
-
-            return {
-                validatorHash: onchainValidatorHash.bytes,
-                uplcProgram: refScriptUtxo?.output.refScript as anyUplcProgram,
-            };
-        })();
-
-        if (previousOnchainScript) {
-            console.warn(
-                `Delegate configuration for role '${role}' requires upgrade\n` +
-                    `  Previous config: ${serializedCfg2}\n` +
-                    `  Next config: ${serializedCfg1}\n`
-            );
-            delegate._bundle!.previousOnchainScript = previousOnchainScript;
-            this.needsCoreDelegateUpdates = true;
-        }
-
-        const bundledValidatorHash = delegate.delegateValidatorHash!;
 
         console.log(
             `   ✅ 💁 ${role}  (now cached) ` // +Debug info: +` @ key = ${cacheKey}`
@@ -2355,7 +2356,7 @@ export abstract class Capo<
         recordTypeName: RN,
         options?: FindableViaCharterData
     ): Promise<undefined | DelegatedDataContract<any, any>> {
-        const { charterData, optional } = options || {};
+        const { charterData, optional, readOnly } = options || {};
         const chD =
             charterData ||
             (await this.findCharterData(undefined, {
@@ -2386,7 +2387,7 @@ export abstract class Capo<
             return this.connectDelegateWithOnchainRDLink<
                 RN,
                 DelegatedDataContract<any, any>
-            >(recordTypeName, foundME.entryType.DgDataPolicy.policyLink);
+            >(recordTypeName, foundME.entryType.DgDataPolicy.policyLink, { readOnly });
         } else {
             const actualEntryType = Object.keys(foundME.entryType)[0];
             throw new Error(
@@ -3374,6 +3375,7 @@ export abstract class Capo<
         if ("undefined" !== typeof type) {
             const dgtForType = await this.getDgDataController(type as any, {
                 charterData,
+                readOnly: true,  // Skip compilation - we only need the data bridge for reading
             });
 
             if (!dgtForType) {
@@ -3504,6 +3506,7 @@ export abstract class Capo<
                         (await this.getDgDataController(datumType, {
                             charterData,
                             optional: true,
+                            readOnly: true,  // Skip compilation - we only need the data bridge for reading
                         }));
                     performance.mark(`${loadLabel}:end`);
                     performance.measure(loadLabel, `${loadLabel}:start`, `${loadLabel}:end`);

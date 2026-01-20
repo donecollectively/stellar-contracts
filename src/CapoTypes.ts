@@ -436,6 +436,8 @@ export type hasGovAuthority = StellarTxnContext<
 export type FindableViaCharterData = {
     charterData?: CharterData;
     optional?: true;
+    /** Skip script compilation - use for read-only operations like reading delegated data */
+    readOnly?: boolean;
 };
 
 /**
