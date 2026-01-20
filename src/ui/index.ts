@@ -13,5 +13,6 @@ export * from "./Button.jsx"
 export * from "./CapoDappProviderContext.js"
 export * from "./FormManager.js"
 export * from "./ThemedBackgroundDecorations.js"
+export * from "./RateMeterGauge.jsx"
 
 import "./defaultStyles.css"

@@ -9,7 +9,7 @@ import type { ConcreteCapoDelegateBundle } from "../helios/scriptBundling/CapoDe
 export declare class UnspecializedMintDelegate extends BasicMintDelegate {
     dataBridgeClass: typeof UnspecializedDelegateBridge;
     get delegateName(): string;
-    scriptBundleClass(): Promise<ConcreteCapoDelegateBundle>;
+    static scriptBundleClass(): Promise<ConcreteCapoDelegateBundle>;
     activityMintingUutsAppSpecific(seedFrom: hasSeedUtxo, purposes: string[]): import("../ActivityTypes.js").isActivity;
     activityCreatingTestNamedDelegate(seedFrom: hasSeed, purpose: string): import("../ActivityTypes.js").isActivity;
 }

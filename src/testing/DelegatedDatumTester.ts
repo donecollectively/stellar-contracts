@@ -30,7 +30,7 @@ export class DelegatedDatumTester extends DelegatedDataContract<
 > {
     dataBridgeClass = DelegateDatumTesterDataBridge;
 
-    async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
+    static async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
         const bundleModule = await import("./DelegatedDatumTester.hlb.js");
         return bundleModule.DelegatedDatumTesterBundle;
     }
@@ -108,7 +108,8 @@ export class DelegatedDatumTester2 extends DelegatedDatumTester {
     get delegateName() {
         return "TestDataDgt2";
     }
+    //@ts-expect-error overriding the type name
     get recordTypeName() {
-        return "testData2";
+        return "testData2" as const;
     }
 }

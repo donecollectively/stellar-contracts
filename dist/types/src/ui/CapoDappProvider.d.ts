@@ -1,8 +1,10 @@
 import React, { type ChangeEventHandler, type MouseEventHandler, Component } from "react";
 import { type BlockfrostV0Client, type CardanoClient, type Cip30FullHandle, type HydraClientOptions, type SimpleWallet, type Wallet, type WalletHelper } from "@helios-lang/tx-utils";
-import type { NetworkParams, TxInput } from "@helios-lang/ledger";
+import { type NetworkParams, type TxInput } from "@helios-lang/ledger";
 import type { Capo, MinimalCharterDataArgs, namedSubmitters, simpleOgmiosConn, stellarSubclass, submitterName, TxDescription } from "@donecollectively/stellar-contracts";
 import { StellarTxnContext, TxBatcher, UutName } from "@donecollectively/stellar-contracts";
+import { CachedUtxoIndex } from "../networkClients/UtxoIndex/CachedUtxoIndex.js";
+import type { RateLimiterMetrics } from "../networkClients/UtxoIndex/RateLimitedFetch.js";
 /**
  * @public
  */
@@ -70,6 +72,23 @@ export type propsType<CapoType extends Capo<any>> = {
     onContextChange?: (provider?: CapoDAppProvider<CapoType, any>) => void;
     onWalletChange?: (wallet: Wallet | undefined) => void;
     children: React.ReactNode;
+    /**
+     * Controls UTXO caching via CachedUtxoIndex for faster lookups.
+     * @remarks
+     * Enabled by default. The provider creates a CachedUtxoIndex after the Capo is configured,
+     * replacing the network client with a caching layer that stores UTXOs in IndexedDB.
+     *
+     * Set to `false` to disable, or provide options object to customize:
+     * - `dbName`: Custom database name for test isolation
+     * - `syncPageSize`: Number of transactions per sync page (default: 100)
+     * - `maxSyncPages`: Maximum pages to fetch during sync (default: unlimited)
+     * @defaultValue true
+     */
+    useCachedIndex?: boolean | {
+        dbName?: string;
+        syncPageSize?: number;
+        maxSyncPages?: number;
+    };
 };
 /**
  * @remarks
@@ -86,6 +105,12 @@ export type CapoDappProviderState<CapoType extends Capo<any>> = {
     tcx?: StellarTxnContext<any>;
     bf?: BlockfrostV0Client;
     dAppName?: string;
+    /** CachedUtxoIndex instance when useCachedIndex is enabled */
+    utxoIndex?: CachedUtxoIndex;
+    /** True when CachedUtxoIndex is performing initial sync */
+    isIndexSyncing?: boolean;
+    /** Current rate limiter metrics from CachedUtxoIndex */
+    rateMetrics?: RateLimiterMetrics;
 };
 /**
  * @public
@@ -281,6 +306,19 @@ export declare class CapoDAppProvider<CapoType extends Capo<any>, UserActions ex
     getStartedMessage(): string;
     connectCapo(autoNext?: boolean, reset?: "reset"): Promise<any>;
     private isMainnet;
+    /**
+     * Enables UTXO caching for faster lookups by creating a CachedUtxoIndex.
+     * @remarks
+     * This method creates a CachedUtxoIndex that wraps the underlying Blockfrost client,
+     * providing persistent caching of UTXOs in IndexedDB. Once enabled, all UTXO queries
+     * through the Capo will check the cache first before falling back to Blockfrost.
+     *
+     * The index starts periodic refresh automatically to keep the cache up-to-date.
+     *
+     * @param capo - The Capo instance to enable caching for
+     * @returns The created CachedUtxoIndex instance
+     */
+    enableUtxoCache(capo: CapoType): Promise<CachedUtxoIndex>;
     mkDefaultCharterArgs(): Promise<MinimalCharterDataArgs>;
     bootstrapCapo(): Promise<any>;
     /**

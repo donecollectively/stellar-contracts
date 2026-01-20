@@ -143,7 +143,7 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
     get canPartialConfig(): boolean;
     get newReadDatum(): mustFindReadDatumType<this>;
     getBundle(): Promise<CapoHeliosBundle>;
-    scriptBundleClass(): Promise<typeof CapoHeliosBundle>;
+    static scriptBundleClass(): Promise<typeof CapoHeliosBundle>;
     mkScriptBundle(setupDetails?: StellarBundleSetupDetails<any>): Promise<any>;
     /**
      * Reveals any bootstrapping details that may be present during initial creation

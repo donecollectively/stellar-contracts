@@ -165,18 +165,18 @@ export abstract class DelegatedDataContract<
     //         .then(this.capo.singleItem);
     // }
 
-    get abstractBundleClass(): undefined | typeof DelegatedDataBundle {
+    static get abstractBundleClass(): undefined | typeof DelegatedDataBundle {
         return undefined;
     }
 
-    async scriptBundleClass() : Promise<typeof DelegatedDataBundle> {
+    static async scriptBundleClass() : Promise<typeof DelegatedDataBundle> {
         if (this.abstractBundleClass) {
             throw new Error(
-                `${this.constructor.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.\n` +
-                    `First, ensure you have derived a subclass for the controller, with a scriptBundle() method.\n` +
+                `${this.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.\n` +
+                    `First, ensure you have derived a subclass for the controller, with a static scriptBundleClass() method.\n` +
                     `\nThat method should \`return YourConcreteBundleClass\`\n` +
                     `\n  ... where YourConcreteBundle is a subclass of CapoDelegateBundle that you've created.\n` +
-                    `\nA concrete bundle class should be defined in \`${this.delegateName}.concrete.hlb.ts\`\n` +
+                    `\nA concrete bundle class should be defined in a \`.concrete.hlb.ts\` file\n` +
                     `  ... in the same directory as your derived controller class:\n\n` +
                     `    import {YourAppCapo} from "./YourAppCapo.js";\n` +
                     `    import {${this.abstractBundleClass.name}} from ...\n` +
@@ -187,7 +187,7 @@ export abstract class DelegatedDataContract<
         }
 
         throw new Error(
-            `${this.constructor.name}: missing required implementation of scriptBundleClass()\n` +
+            `${this.name}: missing required implementation of static scriptBundleClass()\n` +
                 `\nThat method may dynamically \`import(''./YourBundle.hlb.ts")\` file, and should \`return YourScriptBundleClass\`\n` +
                 `\n  ... where YourScriptBundle is a subclass of DelegateDataBundle that you've created.\n` +
                 `\nDefined in a \`*.hlb.ts\` file, it should have at minimum:\n` +

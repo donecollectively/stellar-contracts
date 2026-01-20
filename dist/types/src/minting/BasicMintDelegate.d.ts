@@ -37,7 +37,7 @@ export declare class BasicMintDelegate extends ContractBasedDelegate {
      * specialization.  TODO: a generator to make this easier.  Until then,
      * you can copy the UnspecializedDelegate.hl and specialize it.
      */
-    scriptBundleClass(): Promise<ConcreteCapoDelegateBundle>;
+    static scriptBundleClass(): Promise<ConcreteCapoDelegateBundle>;
     static get defaultParams(): {
         delegateName: string;
         isMintDelegate: boolean;

@@ -18,7 +18,7 @@ import {
     type Wallet,
     type WalletHelper,
 } from "@helios-lang/tx-utils";
-import type { NetworkParams, Tx, TxInput } from "@helios-lang/ledger";
+import { makeAddress, type NetworkParams, type Tx, type TxInput } from "@helios-lang/ledger";
 import {
     makeBlockfrostV0Client,
     makeCip30Wallet,
@@ -72,6 +72,11 @@ import { TxBatchUI } from "./TxBatchUI.js";
 import { environment } from "../environment.js";
 import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
 import { nanoid } from "../util/nanoid.js";
+
+import { CachedUtxoIndex } from "../networkClients/UtxoIndex/CachedUtxoIndex.js";
+import type { RateLimiterMetrics } from "../networkClients/UtxoIndex/RateLimitedFetch.js";
+import { CapoDataBridge } from "../helios/scriptBundling/CapoHeliosBundle.bridge.js";
+import { RateMeterGauge } from "./RateMeterGauge.js";
 
 /**
  * @public
@@ -167,6 +172,23 @@ export type propsType<CapoType extends Capo<any>> = {
     onWalletChange?: (wallet: Wallet | undefined) => void;
     children: React.ReactNode;
     // ??current-transaction display/state-change hook
+    /**
+     * Controls UTXO caching via CachedUtxoIndex for faster lookups.
+     * @remarks
+     * Enabled by default. The provider creates a CachedUtxoIndex after the Capo is configured,
+     * replacing the network client with a caching layer that stores UTXOs in IndexedDB.
+     *
+     * Set to `false` to disable, or provide options object to customize:
+     * - `dbName`: Custom database name for test isolation
+     * - `syncPageSize`: Number of transactions per sync page (default: 100)
+     * - `maxSyncPages`: Maximum pages to fetch during sync (default: unlimited)
+     * @defaultValue true
+     */
+    useCachedIndex?: boolean | {
+        dbName?: string;
+        syncPageSize?: number;
+        maxSyncPages?: number;
+    };
 };
 
 let singleton = undefined as CapoDAppProvider<any> | undefined;
@@ -188,6 +210,12 @@ export type CapoDappProviderState<CapoType extends Capo<any>> = {
     tcx?: StellarTxnContext<any>;
     bf?: BlockfrostV0Client;
     dAppName?: string;
+    /** CachedUtxoIndex instance when useCachedIndex is enabled */
+    utxoIndex?: CachedUtxoIndex;
+    /** True when CachedUtxoIndex is performing initial sync */
+    isIndexSyncing?: boolean;
+    /** Current rate limiter metrics from CachedUtxoIndex */
+    rateMetrics?: RateLimiterMetrics;
 };
 
 /**
@@ -427,6 +455,20 @@ export class CapoDAppProvider<
 
         const progressLabel = "string" == typeof progressBar ? progressBar : "";
 
+        // Show rate meter always (shows idle state before utxoIndex is ready)
+        const { utxoIndex, isIndexSyncing } = this.state;
+
+        const rateMeterElement = (
+            <div className="fixed bottom-4 right-4 z-50 bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg p-2">
+                <RateMeterGauge events={utxoIndex?.events} size={120} />
+                {isIndexSyncing && (
+                    <div className="text-center text-xs text-gray-600 dark:text-gray-300 mt-1">
+                        Syncing...
+                    </div>
+                )}
+            </div>
+        );
+
         const renderedStatus =
             (message && (
                 <InPortal
@@ -460,6 +502,7 @@ export class CapoDAppProvider<
                             {renderedStatus}
                             {userDetails}
                             {txBatchUI}
+                            {rateMeterElement}
                             {results as any}
                         </div>
                     </CapoDappProviderContext.Provider>
@@ -984,6 +1027,12 @@ export class CapoDAppProvider<
     async componentWillUnmount() {
         this._unmounted = true;
 
+        // Stop UTXO index and clean up event subscriptions
+        if (this.state.utxoIndex) {
+            this.state.utxoIndex.stopPeriodicRefresh();
+            this.state.utxoIndex.events.removeAllListeners();
+        }
+
         // not really an error - just big and red so it's super obvious when it happens
         console.error("capo dApp provider unmounted");
     }
@@ -1146,9 +1195,10 @@ export class CapoDAppProvider<
                     isForMainnet: isMainnet,
                     ...hydraOptions,
                 })
-                : this.bf;
+                : (this.state.utxoIndex || this.bf);
             simpleWallet = makeSimpleWallet(privKey, networkClient);
-            if (this.capo) {
+            // Only update capo network if not already using CachedUtxoIndex
+            if (this.capo && !this.state.utxoIndex) {
                 this.capo.setup.network = networkClient;
             }
         } else {
@@ -1267,7 +1317,10 @@ export class CapoDAppProvider<
             wallet = simpleWallet;
             foundNetworkName = this.props.targetNetwork;
             if (this.capo) {
-                this.capo.setup.network = simpleWallet.cardanoClient;
+                // Only update network if not already using CachedUtxoIndex
+                if (!this.state.utxoIndex) {
+                    this.capo.setup.network = simpleWallet.cardanoClient;
+                }
                 this.capo.setup.actorContext.wallet = wallet;
             }
             const networkParams = await simpleWallet.cardanoClient.parameters;
@@ -1543,12 +1596,79 @@ export class CapoDAppProvider<
             txBatcher = new TxBatcher(batcherOptions);
         }
 
+        // Create CachedUtxoIndex BEFORE Capo if we have config with mph/address info
         let network: CardanoClient = this.bf;
+        let utxoIndex: CachedUtxoIndex | undefined;
+
+        // First try to get config from the bundle's precompiled details (static access)
+        const bundleClass = await this.capoClass.scriptBundleClass();
+        // precompiledScriptDetails is a static property added by rollup bundler
+        const bundleConfig = (bundleClass as any).precompiledScriptDetails?.capo?.config as CapoConfig | undefined;
+
+        // Fall back to localStorage config if bundle doesn't have precompiled config
+        const localParsedConfig = 'config' in config ? config.config as CapoConfig : undefined;
+        const parsedConfig = bundleConfig || localParsedConfig;
+
+        console.log("CachedUtxoIndex condition check:", {
+            useCachedIndex: this.props.useCachedIndex,
+            hasMph: !!parsedConfig?.mph,
+            hasRootCapoScriptHash: !!parsedConfig?.rootCapoScriptHash,
+            configSource: bundleConfig ? "bundle" : localParsedConfig ? "localStorage" : "none",
+        });
+
+        if (this.props.useCachedIndex !== false && parsedConfig?.mph && parsedConfig?.rootCapoScriptHash) {
+            await this.updateStatus(
+                "initializing UTXO cache...",
+                {
+                    progressBar: true,
+                    developerGuidance: "caching UTXOs for faster lookups",
+                },
+                `//${id}: enabling utxo cache early`
+            );
+
+            const options = typeof this.props.useCachedIndex === "object"
+                ? this.props.useCachedIndex
+                : {};
+
+            // Compute address from rootCapoScriptHash
+            const capoAddress = makeAddress(this.isMainnet(), parsedConfig.rootCapoScriptHash);
+
+            utxoIndex = new CachedUtxoIndex({
+                address: capoAddress.toBech32(),
+                mph: parsedConfig.mph.toHex(),
+                isMainnet: this.isMainnet(),
+                network: this.bf,  // original BlockfrostV0Client as fallback
+                bridge: new CapoDataBridge(this.isMainnet()),
+                blockfrostKey: this.props.blockfrostKey,
+                ...options,
+            });
+
+            // Subscribe to sync events
+            utxoIndex.events.on("syncStart", () => {
+                this.setState({ isIndexSyncing: true });
+            });
+            utxoIndex.events.on("syncComplete", () => {
+                this.setState({ isIndexSyncing: false });
+            });
+            utxoIndex.events.on("rateLimitMetrics", (metrics) => {
+                this.setState({ rateMetrics: metrics });
+            });
+
+            // Set state immediately
+            await new Promise<void>((resolve) => {
+                this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
+            });
+
+            // Use the caching index as the network client for Capo
+            network = utxoIndex;
+        }
         //@ts-expect-error - sorry, typescript : /
         if (this.state.userInfo.wallet?.cardanoClient) {
-            network = (this.state.userInfo.wallet! as SimpleWallet)
+            // Get networkParams from wallet's client, but don't overwrite network
+            // (otherwise we bypass the CachedUtxoIndex)
+            const walletClient = (this.state.userInfo.wallet! as SimpleWallet)
                 .cardanoClient;
-            networkParams = await network.parameters;
+            networkParams = await walletClient.parameters;
         }
         const setup = {
             network,
@@ -1625,6 +1745,27 @@ export class CapoDAppProvider<
                 debugger
             }
 
+            // Enable UTXO caching (default: true)
+            // If we created the index early (before Capo), just start periodic refresh
+            // Otherwise, create it now (fallback for when no config was available early)
+            if (this.props.useCachedIndex !== false) {
+                if (utxoIndex) {
+                    // Index was created early - just start periodic refresh
+                    utxoIndex.startPeriodicRefresh();
+                } else {
+                    // Fallback: create index now (shouldn't normally happen with deployed config)
+                    await this.updateStatus(
+                        "initializing UTXO cache...",
+                        {
+                            progressBar: true,
+                            developerGuidance: "caching UTXOs for faster lookups",
+                        },
+                        `//${id}: enabling utxo cache`
+                    );
+                    utxoIndex = await this.enableUtxoCache(capo);
+                }
+            }
+
             if (!autoNext) {
                 await this.updateStatus(
                     "",
@@ -1686,6 +1827,58 @@ export class CapoDAppProvider<
             environment.CARDANO_NETWORK
         );
         return isMainnet;
+    }
+
+    /**
+     * Enables UTXO caching for faster lookups by creating a CachedUtxoIndex.
+     * @remarks
+     * This method creates a CachedUtxoIndex that wraps the underlying Blockfrost client,
+     * providing persistent caching of UTXOs in IndexedDB. Once enabled, all UTXO queries
+     * through the Capo will check the cache first before falling back to Blockfrost.
+     *
+     * The index starts periodic refresh automatically to keep the cache up-to-date.
+     *
+     * @param capo - The Capo instance to enable caching for
+     * @returns The created CachedUtxoIndex instance
+     */
+    async enableUtxoCache(capo: CapoType): Promise<CachedUtxoIndex> {
+        const options = typeof this.props.useCachedIndex === "object"
+            ? this.props.useCachedIndex
+            : {};
+
+        const utxoIndex = new CachedUtxoIndex({
+            address: capo.address.toString(),
+            mph: capo.mintingPolicyHash.toHex(),
+            isMainnet: this.isMainnet(),
+            network: this.bf,  // original BlockfrostV0Client
+            bridge: capo.onchain as CapoDataBridge,
+            blockfrostKey: this.props.blockfrostKey,
+            ...options,
+        });
+
+        // Subscribe to sync events
+        utxoIndex.events.on("syncStart", () => {
+            this.setState({ isIndexSyncing: true });
+        });
+        utxoIndex.events.on("syncComplete", () => {
+            this.setState({ isIndexSyncing: false });
+        });
+        utxoIndex.events.on("rateLimitMetrics", (metrics) => {
+            this.setState({ rateMetrics: metrics });
+        });
+
+        // Swap the network client - all subsequent queries go through cache
+        capo.setup.network = utxoIndex;
+
+        // Start periodic refresh to keep cache current
+        utxoIndex.startPeriodicRefresh();
+
+        await new Promise<void>((resolve) => {
+            // Set initial syncing state (syncNow is called in constructor)
+            this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
+        });
+
+        return utxoIndex;
     }
 
     async mkDefaultCharterArgs(): Promise<MinimalCharterDataArgs> {

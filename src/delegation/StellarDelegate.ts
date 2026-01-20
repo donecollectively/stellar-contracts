@@ -15,6 +15,7 @@ import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
 import { mkTv } from "../utils.js";
 import type { UplcData } from "@helios-lang/uplc";
+import type { UtxoSearchScope } from "../UtxoHelper.js";
 
 export type GrantAuthorityOptions = {
     skipReturningDelegate?: true;
@@ -221,7 +222,8 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
      **/
     abstract DelegateMustFindAuthorityToken(
         tcx: StellarTxnContext,
-        label: string
+        label: string,
+        options?: UtxoSearchScope
     ): Promise<TxInput>;
 
     /**

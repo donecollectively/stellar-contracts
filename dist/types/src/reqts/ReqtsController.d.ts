@@ -12,7 +12,7 @@ export declare class ReqtsController extends DelegatedDataContract<ReqtData, Req
     get idPrefix(): string;
     get recordTypeName(): "Reqt";
     exampleData(): minimalReqtData;
-    scriptBundleClass(): Promise<typeof DelegatedDataBundle>;
+    static scriptBundleClass(): Promise<typeof DelegatedDataBundle>;
     activityCreatingReqt(seedFrom: hasSeed): import("../ActivityTypes.js").isActivity;
     activityUpdatingReqt(id: any): import("../ActivityTypes.js").isActivity;
     activityCreatingRequirement(seedFrom: hasSeed): import("../ActivityTypes.js").isActivity;

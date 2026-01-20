@@ -1,9 +1,9 @@
 import { makeTxOutput, makeTxInput } from '@helios-lang/ledger';
-import { S as StellarContract, b as dumpAny, _ as mkTv, A as Activity, d as datum } from './StellarContract2.mjs';
+import { S as StellarContract, A as Activity, d as datum } from './StellarContract2.mjs';
+import { d as dumpAny, R as mkTv } from './DataBridge.mjs';
 import { decodeUtf8 } from '@helios-lang/codec-utils';
 import '@helios-lang/crypto';
 import '@helios-lang/tx-utils';
-import './nanoid.mjs';
 import { placeholderSetupDetails } from './HeliosBundle.mjs';
 
 const TODO = Symbol("needs to be implemented");
@@ -271,7 +271,7 @@ class ContractBasedDelegate extends StellarDelegate {
     if (this._scriptBundle) return this._scriptBundle;
     const bundle = await super.mkScriptBundle(setupDetails);
     if (bundle.isConcrete) return this._scriptBundle = bundle;
-    const bundleClass = await this.scriptBundleClass();
+    const bundleClass = await this.constructor.scriptBundleClass();
     const myCapoBundle = await this.capo.mkScriptBundle();
     const capoBoundBundle = bundleClass.usingCapoBundleClass(
       myCapoBundle.constructor
@@ -320,12 +320,12 @@ class ContractBasedDelegate extends StellarDelegate {
   //     const capoBundle = capo.getBundle() as CapoHeliosBundle;
   //     return new BundleClass(capoBundle);
   // }
-  async scriptBundleClass() {
+  static async scriptBundleClass() {
     throw new Error(
-      `${this.constructor.name}: missing required implementation of scriptBundle()
+      `${this.name}: missing required implementation of static scriptBundleClass()
 
-Each contract-based delegate must provide a scriptBundle() method.
-It should return an instance of a class defined in a *.hlb.ts file.  At minimum:
+Each contract-based delegate must provide a static scriptBundleClass() method.
+It should return a class defined in a *.hlb.ts file.  At minimum:
 
     import {YourAppCapo} from "./YourAppCapo.js";
 
@@ -336,7 +336,7 @@ It should return an instance of a class defined in a *.hlb.ts file.  At minimum:
     }
 
 We'll generate an additional .typeInfo.d.ts, based on the types in your Helios sources,
-  ... and a .bridge.ts with generated data-conversion code for bridging between off-chain  ... and on-chain data encoding.Your scriptBundle() method can \`return new SomeDelegateBundle()\``
+  ... and a .bridge.ts with generated data-conversion code for bridging between off-chain  ... and on-chain data encoding.Your static scriptBundleClass() method can \`return SomeDelegateBundle\``
     );
   }
   get scriptDatumName() {
@@ -467,12 +467,14 @@ We'll generate an additional .typeInfo.d.ts, based on the types in your Helios s
   /**
    * @see {@link StellarDelegate.DelegateMustFindAuthorityToken|DelegateMustFindAuthorityToken()}
    **/
-  async DelegateMustFindAuthorityToken(tcx, label) {
+  async DelegateMustFindAuthorityToken(tcx, label, options = {}) {
+    const { findCached } = options;
     return this.mustFindMyUtxo(
       `${label}: ${decodeUtf8(this.configIn.tn)}`,
       {
         predicate: this.uh.mkTokenPredicate(this.tvAuthorityToken()),
-        extraErrorHint: "this delegate strategy might need to override txnMustFindAuthorityToken()"
+        extraErrorHint: "this delegate strategy might need to override txnMustFindAuthorityToken()",
+        findCached
       }
     );
   }

@@ -89,8 +89,8 @@ export declare abstract class DelegatedDataContract<T extends AnyDataTemplate<an
      */
     get delegateName(): string;
     abstract requirements(): ReqtsMap<any, any> | ReqtsMap<any, noInheritedReqts>;
-    get abstractBundleClass(): undefined | typeof DelegatedDataBundle;
-    scriptBundleClass(): Promise<typeof DelegatedDataBundle>;
+    static get abstractBundleClass(): undefined | typeof DelegatedDataBundle;
+    static scriptBundleClass(): Promise<typeof DelegatedDataBundle>;
     /**
      * Finds records of this delegate's type, optionally by ID.
      * @remarks

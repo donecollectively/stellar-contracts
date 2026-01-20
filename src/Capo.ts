@@ -345,9 +345,9 @@ export abstract class Capo<
         return super.getBundle() as Promise<CapoHeliosBundle>;
     }
 
-    async scriptBundleClass(): Promise<typeof CapoHeliosBundle> {
+    static async scriptBundleClass(): Promise<typeof CapoHeliosBundle> {
         console.warn(
-            `${this.constructor.name}: each Capo will need to provide a scriptBundleClass() method.\n` +
+            `${this.name}: each Capo will need to provide a static scriptBundleClass() method.\n` +
                 `It should return an instance of a class defined in a *.hlb.ts file.  At minimum:\n\n` +
                 `    export default class MyAppCapoBundle extends CapoHeliosBundle {\n` +
                 `       get modules() { \n` +
@@ -359,7 +359,7 @@ export abstract class Capo<
                 `    }\n\n` +
                 `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
                 `It's recommended to import your bundle asyncrhonously.` +
-                `Your scriptBundleClass() method can \`module= await import("./MyAppCapoBundle.js"); return module.MyAppCapoBundle;\`\n\n` +
+                `Your static scriptBundleClass() method can \`module= await import("./MyAppCapoBundle.js"); return module.MyAppCapoBundle;\`\n\n` +
                 `We suggest naming your Capo bundle class with your application's name.\n`
         );
         console.warn(
@@ -371,7 +371,7 @@ export abstract class Capo<
     async mkScriptBundle(
         setupDetails: StellarBundleSetupDetails<any> = placeholderSetupDetails
     ) {
-        const c = await this.scriptBundleClass();
+        const c = await (this.constructor as typeof Capo).scriptBundleClass();
         return c.create({
             params: this.configIn,
             ...setupDetails,

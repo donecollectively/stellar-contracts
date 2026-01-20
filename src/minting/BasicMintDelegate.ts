@@ -49,7 +49,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      * specialization.  TODO: a generator to make this easier.  Until then,
      * you can copy the UnspecializedDelegate.hl and specialize it.
      */
-    async scriptBundleClass(): Promise<ConcreteCapoDelegateBundle> {
+    static async scriptBundleClass(): Promise<ConcreteCapoDelegateBundle> {
         const bundleModule = await import(
             "../delegation/UnspecializedDelegate.hlb.js"
         );

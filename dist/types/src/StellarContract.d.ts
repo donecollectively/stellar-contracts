@@ -34,6 +34,7 @@ export type stellarSubclass<S extends StellarContract<any>> = (new (setup: Setup
     defaultParams: Partial<ConfigFor<S>>;
     createWith(args: StellarSetupDetails<ConfigFor<S>>): Promise<S>;
     parseConfig(rawJsonConfig: any): any;
+    scriptBundleClass(): Promise<typeof HeliosScriptBundle>;
 };
 /**
  * Properties for Datum structures for on-chain scripts
@@ -258,7 +259,7 @@ export declare class StellarContract<ConfigType extends configBaseWithRev> {
      * Once the data-bridge class is generated, you should import it into your contract
      * module and assign it to your `dataBridgeClass` attribute.
      */
-    scriptBundleClass(): Promise<typeof HeliosScriptBundle>;
+    static scriptBundleClass(): Promise<typeof HeliosScriptBundle>;
     /**
      * the dataBridgeClass attribute MUST be defined for any bundle having a datum type
      *  - this is the bridge class for converting from off-chain data types to on-chain data
@@ -586,6 +587,7 @@ export declare class StellarContract<ConfigType extends configBaseWithRev> {
         extraErrorHint?: string;
         /** any utxos already in the transaction context are disregarded and not passed to the predicate function */
         utxos?: TxInput[];
+        findCached?: false;
     }): Promise<TxInput>;
     /**
      * Reuses an existing transaction context, or creates a new one with the given name and the current actor context

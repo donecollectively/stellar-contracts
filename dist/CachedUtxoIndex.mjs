@@ -4677,7 +4677,260 @@ class DexieUtxoStore extends Dexie {
   }
 }
 
-let blockfrostRateLimiter = null;
+class RateLimitedFetch {
+  availableBurst;
+  lastUpdateTime;
+  maxBurst;
+  baseRefillRate;
+  currentRefillRate;
+  name;
+  logOnRateLimited;
+  // Hold state for external rate limiting (HTTP 429)
+  onHold = null;
+  resolveHold = null;
+  recoveryInterval = null;
+  // Metrics tracking
+  requestTimestamps = [];
+  metricsInterval = null;
+  lastEmittedMetrics = null;
+  events;
+  /**
+   * @param options.name - Name for logging (default: "RateLimitedFetch")
+   * @param options.maxBurst - Maximum burst capacity (default: 300)
+   * @param options.refillRate - Tokens refilled per second (default: 7)
+   * @param options.logOnRateLimited - Log when rate limiting kicks in (default: true)
+   */
+  constructor(options = {}) {
+    this.name = options.name ?? "RateLimitedFetch";
+    this.maxBurst = options.maxBurst ?? 300;
+    this.baseRefillRate = options.refillRate ?? 7;
+    this.currentRefillRate = this.baseRefillRate;
+    this.logOnRateLimited = options.logOnRateLimited ?? true;
+    this.availableBurst = this.maxBurst;
+    this.lastUpdateTime = Date.now();
+    this.events = new EventEmitter();
+    this.startMetricsInterval();
+  }
+  /**
+   * Starts the interval that emits metrics once per second if changed.
+   */
+  startMetricsInterval() {
+    this.metricsInterval = setInterval(() => {
+      this.emitMetricsIfChanged();
+    }, 1e3);
+    console.log("unref at startMetricsInterval " + new Error().stack);
+    this.metricsInterval.unref();
+  }
+  /**
+   * Emits metrics event if they have changed since last emission.
+   */
+  emitMetricsIfChanged() {
+    const metrics = this.getMetrics();
+    if (!this.lastEmittedMetrics || !this.metricsEqual(metrics, this.lastEmittedMetrics)) {
+      this.lastEmittedMetrics = metrics;
+      this.events.emit("metrics", metrics);
+    }
+  }
+  /**
+   * Compares two metrics objects for equality.
+   */
+  metricsEqual(a, b) {
+    return a.requestsPerSecond === b.requestsPerSecond && a.currentRefillRate === b.currentRefillRate && a.baseRefillRate === b.baseRefillRate && a.availableBurst === b.availableBurst && a.isRateLimited === b.isRateLimited && a.isOnHold === b.isOnHold && a.isRecovering === b.isRecovering;
+  }
+  /**
+   * Gets current metrics snapshot.
+   */
+  getMetrics() {
+    this.refillTokens();
+    this.pruneOldRequestTimestamps();
+    return {
+      requestsPerSecond: this.requestTimestamps.length,
+      currentRefillRate: this.currentRefillRate,
+      baseRefillRate: this.baseRefillRate,
+      availableBurst: Math.floor(this.availableBurst),
+      isRateLimited: this.availableBurst < 1,
+      isOnHold: this.onHold !== null,
+      isRecovering: this.recoveryInterval !== null
+    };
+  }
+  /**
+   * Records a request timestamp for metrics tracking.
+   */
+  recordRequest() {
+    this.requestTimestamps.push(Date.now());
+  }
+  /**
+   * Removes request timestamps older than 1 second.
+   */
+  pruneOldRequestTimestamps() {
+    const cutoff = Date.now() - 1e3;
+    while (this.requestTimestamps.length > 0 && this.requestTimestamps[0] < cutoff) {
+      this.requestTimestamps.shift();
+    }
+  }
+  /**
+   * Waits if necessary to stay within rate limits, then executes the fetch.
+   * Handles HTTP 429 by backing off and retrying.
+   */
+  async fetch(url, options) {
+    if (this.onHold) {
+      await this.onHold;
+    }
+    await this.acquireToken();
+    this.recordRequest();
+    const response = await fetch(url, options);
+    if (response.status === 429) {
+      await this.handleExternalRateLimit();
+      return this.fetch(url, options);
+    }
+    return response;
+  }
+  /**
+   * Handles external rate limiting (HTTP 429).
+   * Exhausts bucket, waits 10s, then reduces refill rate and starts recovery.
+   */
+  async handleExternalRateLimit() {
+    if (this.logOnRateLimited) {
+      console.log(
+        `[${this.name}] HTTP 429 - External rate limit hit, backing off 10s`
+      );
+    }
+    this.availableBurst = 0;
+    if (!this.onHold) {
+      this.onHold = new Promise((resolve) => {
+        this.resolveHold = resolve;
+      });
+    }
+    await this.sleep(1e4);
+    const PHI = 1.61;
+    const MIN_REFILL_RATE = 0.5;
+    this.currentRefillRate = Math.max(
+      MIN_REFILL_RATE,
+      this.currentRefillRate / PHI
+    );
+    if (this.logOnRateLimited) {
+      console.log(
+        `[${this.name}] Resuming with reduced refill rate: ${this.currentRefillRate.toFixed(2)}/s`
+      );
+    }
+    if (this.resolveHold) {
+      this.resolveHold();
+      this.onHold = null;
+      this.resolveHold = null;
+    }
+    this.startRecovery();
+  }
+  /**
+   * Starts the recovery process to gradually restore refill rate.
+   * Increases by 1 qps every 10 seconds until back to base rate.
+   */
+  startRecovery() {
+    if (this.recoveryInterval) {
+      clearInterval(this.recoveryInterval);
+    }
+    this.recoveryInterval = setInterval(() => {
+      if (this.currentRefillRate < this.baseRefillRate) {
+        this.currentRefillRate = Math.min(
+          this.baseRefillRate,
+          this.currentRefillRate + 1
+        );
+        if (this.logOnRateLimited) {
+          console.log(
+            `[${this.name}] Recovery: refill rate now ${this.currentRefillRate}/s`
+          );
+        }
+      }
+      if (this.currentRefillRate >= this.baseRefillRate) {
+        if (this.recoveryInterval) {
+          clearInterval(this.recoveryInterval);
+          this.recoveryInterval = null;
+        }
+        if (this.logOnRateLimited) {
+          console.log(
+            `[${this.name}] Recovery complete, refill rate restored to ${this.baseRefillRate}/s`
+          );
+        }
+      }
+    }, 1e4);
+    console.log("unref at startRecovery " + new Error().stack);
+    this.recoveryInterval.unref();
+  }
+  /**
+   * Acquires a token, waiting if the bucket is empty.
+   */
+  async acquireToken() {
+    this.refillTokens();
+    if (this.availableBurst < 1) {
+      if (this.logOnRateLimited) {
+        console.log(
+          `[${this.name}] Rate limited - waiting 1s (burst exhausted)`
+        );
+      }
+      while (this.availableBurst < 1) {
+        await this.sleep(1e3);
+        this.refillTokens();
+      }
+    }
+    this.availableBurst -= 1;
+  }
+  /**
+   * Refills tokens based on time elapsed since last update.
+   */
+  refillTokens() {
+    const now = Date.now();
+    const elapsedSeconds = (now - this.lastUpdateTime) / 1e3;
+    const tokensToAdd = elapsedSeconds * this.currentRefillRate;
+    this.availableBurst = Math.min(
+      this.maxBurst,
+      this.availableBurst + tokensToAdd
+    );
+    this.lastUpdateTime = now;
+  }
+  /**
+   * Sleep for the specified number of milliseconds.
+   */
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  /**
+   * Returns the current number of available burst tokens.
+   * Useful for debugging/monitoring.
+   */
+  get currentBurstAvailable() {
+    this.refillTokens();
+    return Math.floor(this.availableBurst);
+  }
+  /**
+   * Returns the current refill rate (may be reduced during recovery).
+   */
+  get refillRate() {
+    return this.currentRefillRate;
+  }
+  /**
+   * Stops the metrics interval. Call when shutting down.
+   */
+  destroy() {
+    if (this.metricsInterval) {
+      clearInterval(this.metricsInterval);
+      this.metricsInterval = null;
+    }
+    if (this.recoveryInterval) {
+      clearInterval(this.recoveryInterval);
+      this.recoveryInterval = null;
+    }
+    this.events.removeAllListeners();
+  }
+}
+let blockfrostRateLimiter$1 = null;
+function getBlockfrostRateLimiter() {
+  if (blockfrostRateLimiter$1) {
+    return blockfrostRateLimiter$1;
+  }
+  blockfrostRateLimiter$1 = new RateLimitedFetch({
+    name: "Blockfrost"
+  });
+  return blockfrostRateLimiter$1;
+}
 
 const BlockDetailsFactory = type({
   time: "number",
@@ -5390,7 +5643,7 @@ class CachedUtxoIndex {
         );
       }
     }, refreshInterval);
-    this.refreshTimerId.unref?.();
+    this.refreshTimerId.unref();
   }
   /**
    * Stops the periodic refresh timer.
@@ -5919,7 +6172,7 @@ class CachedUtxoIndex {
     await this.store.saveUtxo(entry);
   }
   async fetchFromBlockfrost(url) {
-    return blockfrostRateLimiter.fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
+    return getBlockfrostRateLimiter().fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
       headers: {
         project_id: this.blockfrostKey
       }

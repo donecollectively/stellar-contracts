@@ -73,7 +73,7 @@ export class ReqtsController extends DelegatedDataContract<
     //     return new ReqtsAdapter(this);
     // }
 
-    async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
+    static async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
         const bundleModule = await import("./Reqts.concrete.hlb.js");
         return bundleModule.ReqtsConcreteBundle;
     }

@@ -44,7 +44,7 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
         return (await super.getMintDelegate()) as MintDelegateWithGenericUuts;
     }
 
-    async scriptBundleClass() {
+    static async scriptBundleClass() {
         return CapoHeliosBundle;
     }
     

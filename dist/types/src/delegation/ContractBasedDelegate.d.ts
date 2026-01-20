@@ -10,6 +10,7 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { CapoDelegateBundle } from "../helios/scriptBundling/CapoDelegateBundle.js";
 import type { isActivity } from "../ActivityTypes.js";
 import { type HeliosScriptBundle } from "../helios/index.js";
+import type { UtxoSearchScope } from "../UtxoHelper.js";
 /**
  * Base class for delegates controlled by a smart contract, as opposed
  * to a simple delegate backed by an issued token, whose presence
@@ -46,7 +47,7 @@ export declare class ContractBasedDelegate extends StellarDelegate {
     get mkDatum(): mustFindDatumType<this>;
     get newReadDatum(): mustFindReadDatumType<this>;
     get capo(): Capo<any, any>;
-    scriptBundleClass(): Promise<typeof CapoDelegateBundle>;
+    static scriptBundleClass(): Promise<typeof CapoDelegateBundle>;
     get scriptDatumName(): string;
     get scriptActivitiesName(): string;
     static isMintDelegate: boolean;
@@ -144,7 +145,7 @@ export declare class ContractBasedDelegate extends StellarDelegate {
     /**
      * @see {@link StellarDelegate.DelegateMustFindAuthorityToken|DelegateMustFindAuthorityToken()}
      **/
-    DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string): Promise<TxInput>;
+    DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string, options?: UtxoSearchScope): Promise<TxInput>;
     /**
      * Adds the delegate's authority token to a transaction
      * @public

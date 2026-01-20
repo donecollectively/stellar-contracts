@@ -1,0 +1,213 @@
+
+import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash
+} from ScriptContext
+
+func meetsPriceRequirements(
+    self, 
+    scriptAddress: Address,
+    validationContext: ValueValidationContext 
+        = initialValidationContext(scriptAddress)
+) -> Bool {
+    self.switch {
+        onePrice{price} => {
+            if (!tx.value_locked_by(script_addr).contains(price)) {
+                error("price not met")
+            }
+        },
+        showControlOf{required} => {
+            if (!tx.value_locked_by(script_addr).contains(required)) {
+                error("required value not met")
+            }
+        },
+        allOf{values, payTheseAll} => {
+            if (!values.all((v: Value) -> Bool {
+                tx.value_locked_by(script_addr).contains(v)
+            })) {
+                error("not all values met")
+            };
+            if (!payTheseAll.all((pv: PricingVariant) -> Bool {
+                pv.meetsPriceRequirements()
+            })) {
+                error("not all prices met")
+            }
+        },
+        anyOf{anyOf} => {
+            if (!anyOf.any((pv: PricingVariant) -> Bool {
+                pv.meetsPriceRequirements(ctx)
+            })) {
+                error("no prices met")
+            }
+        }
+    };
+    true
+}
+
+
+// data definitions for identity, authority, and certification
+
+// RotatedKey typically represents a person or an organization, 
+//   with a rotating external-facing key having ephermeral validity.
+// REQT: allows an identity include key rotation as part of its definition
+// REQT: doesn't specify the mechanism for key rotation or any other
+//    ... operational details of its maintenance.
+struct RotatedKey {
+    key: PubKey  "@ky"
+    lastFreshened: Time "@at"
+    rotationInterval: Interval  "@ntrvl"
+    seed: Int "@sd"
+    orAdmin: AuthorityAudiences "@admin"
+}
+
+
+
+
+// Includes or references a document.  Must include a content-hash.  
+// it is valid to have the other 3 fields be empty.  Most applications SHOULD
+// specify one or more of url, content, or utxo.
+struct DocumentLink {
+    url: String
+    content: string
+    utxo: TxOutputId
+
+    contentHash: Hash   
+}
+
+enum requirements {
+    allOf {
+        these: [] requirements
+    }
+    anyOf {
+        these: [] requirements
+    }
+    atLeast {
+        some: [] requirements,
+        minimumThreshold: Int // how many of the some must be satisfied
+    }
+    untilVersion {
+        version: Int
+        requirements: requirements
+    }
+    untilTime {
+        time: Time
+        requirements: requirements
+    }
+}
+
+
+
+enum CertProvider {
+    KeySignature { 
+        key: PubKey
+    }
+    RotatedKey {
+        r : RotatedKey
+    }
+    SemanticCertification {
+        label: String
+        requirements: Requirements
+        semantic: String
+    }
+    Syndicate {
+        syndicate: [] CertProvider
+        threshold: Int  // how many of the syndicate must be satisfied
+    }
+    CertificateStandard {
+        standardizationSyndicate: CertProvider::Syndicate,
+        standardsSpecification: DocumentLink
+        applicationContract: DelegateLink // with "application" protocol
+    }
+
+    
+    validate(self, validationContext: ValidationContext) {
+        self.switch {
+            RotatedKey{key, lastFreshened, seed, orAdmin} => {
+                if (lastFreshened > Time::now()) {
+                    error("lastFreshened is in the future")
+                };
+                if (seed < 999999999999999999999) {
+                    error("seed too small")
+                };
+                orAdmin.validate()
+            },
+
+
+            // CertificateStandard{standardizationSyndicate} => {
+            //     standardizationSyndicate.validate()
+            // },
+        }
+    }
+}
+
+
+// REQT: allows many different ways of expressing authority for an element of a transaction
+//   ... including the ability to require multiple authorities to be satisfied.
+// REQT: allows for both public-blockchain authority (public record) and
+//   ... for private authorities to be expressed
+
+enum AuthorityAudiences {
+    PubKey {
+        key: PubKey
+    }
+
+    PublicNFT {
+        assetId: AssetClass
+    }
+    PaysRequiredAssets {
+        required: PricingVariant
+    }
+    ShowsCertificationFor {
+        assetId: AssetClass
+        asSignedBy: CertProvider
+    }
+    ChallengeResponse {
+        signedBy: PubKey
+        scope: String
+        validity: Interval
+    }
+
+    DemonstratesRemoteAuthority {
+        dgTkn: DelegationDetail
+        usingActivity: AbstractDelegateActivitiesEnum
+    }
+    RotatedKey {
+        r : RotatedKey
+    }
+    ChallengeResponse {
+        signedBy: PubKey
+        scope: String
+        validity: Interval
+    }
+    someOf {
+        some: [] AuthorityAudiences
+        minimumThreshold: Int // how many of the anyOf must be satisfied
+    }
+    anyOf {
+        any: [] AuthorityAudiences
+    }
+    hasTimeout {
+        timeout: Interval
+        lastFreshened: Time
+        audience: AuthorityAudiences
+    }
+    hasDelay {
+        timeout: Interval
+        audience: AuthorityAudiences
+    }
+
+    validate(self, validationContext: ValidationContext) {
+        self.switch {
+            RotatedKey{key, lastFreshened, seed, orAdmin} => {
+                if (lastFreshened > Time::now()) {
+                    error("lastFreshened is in the future")
+                };
+                if (seed < 999999999999999999999) {
+                    error("seed too small")
+                };
+                orAdmin.validate()
+            },
+        }
+    }
+}

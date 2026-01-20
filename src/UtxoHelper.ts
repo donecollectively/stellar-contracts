@@ -73,6 +73,8 @@ export type UtxoSearchScope = {
      */
     searchOthers?: boolean;
 
+    findCached?: false
+
     /**
      * extra hint to add to the error message if no utxos are found
      */
@@ -693,6 +695,11 @@ export class UtxoHelper {
         const utxos: TxInput[] = [];
         for (const addr of addrs.flat(1)) {
             if (!addr) continue;
+            if (options.findCached) {
+                // const cachedUtxos = await this.cacheStore.findUtxos(addr);
+                // utxos.push(...cachedUtxos);
+                console.log(`  Temporary: calling through to network instead of using cache`);
+            }
             const addrUtxos = await this.network.getUtxos(addr);
             utxos.push(...addrUtxos);
         }
@@ -785,7 +792,7 @@ export class UtxoHelper {
         mode: T = "single" as T
     ) {
         const wallet = options.wallet ?? this.wallet;
-        const { searchOthers = false } = options;
+        const { searchOthers = false, findCached = true } = options;
 
         // doesn't go through the wallet's interface - uses the network client instead,
         // so that txChainBuilder can take into account the UTxO's already being spent in the tx-chain.
@@ -793,7 +800,15 @@ export class UtxoHelper {
         const utxos: TxInput[] = [];
         for (const addr of addrs.flat(1)) {
             if (!addr) continue;
-            const addrUtxos = await this.network.getUtxos(addr);
+            if (findCached) {
+                // const cachedUtxos = await this.cacheStore.findUtxos(addr);
+                // utxos.push(...cachedUtxos);
+                console.log(`  Temporary: calling through to network instead of using cache`);
+            }
+            // } else {
+                const addrUtxos = await this.network.getUtxos(addr);
+                utxos.push(...addrUtxos);
+            // }
             utxos.push(...addrUtxos);
         }
 
@@ -1003,6 +1018,7 @@ export class UtxoHelper {
             wallet,
             address,
             exceptInTcx,            
+            findCached = true,
         } = options;
         // const { address, exceptInTcx } = searchScope;
 
@@ -1010,6 +1026,11 @@ export class UtxoHelper {
         const utxos: TxInput[] = [];
         for (const addr of addrs.flat(1)) {
             if (!addr) continue;
+            if (findCached) {
+                // const cachedUtxos = await this.cacheStore.findUtxos(addr);
+                // utxos.push(...cachedUtxos);
+                console.log(`  Temporary: calling through to network instead of using cache`);
+            }
             const addrUtxos = await this.network.getUtxos(addr);
             utxos.push(...addrUtxos);
         }

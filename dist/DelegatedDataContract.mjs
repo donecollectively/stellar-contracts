@@ -1,10 +1,10 @@
 import { makeValue, makeTxOutput } from '@helios-lang/ledger';
 import { makeIntData } from '@helios-lang/uplc';
 import { C as ContractBasedDelegate } from './ContractBasedDelegate2.mjs';
-import { u as uplcDataSerializer, O as betterJsonSerializer, b as dumpAny } from './StellarContract2.mjs';
+import { u as uplcDataSerializer, I as betterJsonSerializer, d as dumpAny } from './DataBridge.mjs';
 import { encodeUtf8 } from '@helios-lang/codec-utils';
 import '@helios-lang/tx-utils';
-import './nanoid.mjs';
+import './StellarContract2.mjs';
 import '@helios-lang/crypto';
 import './HeliosBundle.mjs';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
@@ -55,20 +55,20 @@ class DelegatedDataContract extends ContractBasedDelegate {
   //         })
   //         .then(this.capo.singleItem);
   // }
-  get abstractBundleClass() {
+  static get abstractBundleClass() {
     return void 0;
   }
-  async scriptBundleClass() {
+  static async scriptBundleClass() {
     if (this.abstractBundleClass) {
       throw new Error(
-        `${this.constructor.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.
-First, ensure you have derived a subclass for the controller, with a scriptBundle() method.
+        `${this.name}: this pluggable delegate requires a bit of setup that doesn't seem to be done yet.
+First, ensure you have derived a subclass for the controller, with a static scriptBundleClass() method.
 
 That method should \`return YourConcreteBundleClass\`
 
   ... where YourConcreteBundle is a subclass of CapoDelegateBundle that you've created.
 
-A concrete bundle class should be defined in \`${this.delegateName}.concrete.hlb.ts\`
+A concrete bundle class should be defined in a \`.concrete.hlb.ts\` file
   ... in the same directory as your derived controller class:
 
     import {YourAppCapo} from "./YourAppCapo.js";
@@ -80,7 +80,7 @@ export default YourConcreteBundle;`
       );
     }
     throw new Error(
-      `${this.constructor.name}: missing required implementation of scriptBundleClass()
+      `${this.name}: missing required implementation of static scriptBundleClass()
 
 That method may dynamically \`import(''./YourBundle.hlb.ts")\` file, and should \`return YourScriptBundleClass\`
 

@@ -2,16 +2,23 @@ import * as React from 'react';
 import React__default, { useState, useMemo, useEffect, useCallback, Component, Fragment } from 'react';
 import clsx from 'clsx';
 import { makeBlockfrostV0Client, makeRandomRootPrivateKey, makeRootPrivateKey, makeHydraClient, makeSimpleWallet, makeCip30Wallet, makeWalletHelper } from '@helios-lang/tx-utils';
+import { decodeTx, makeAddress, makeShelleyAddress } from '@helios-lang/ledger';
 import '@cardano-ogmios/client';
-import { n as nanoid } from './nanoid.mjs';
-import { d as debugBox } from './consoleHelper.mjs';
+import { U as nanoid } from './DataBridge.mjs';
+import { d as debugBox, b as CachedUtxoIndex, C as CapoDataBridge } from './CachedUtxoIndex.mjs';
 import { dumpAny, OgmiosTxSubmitter, GenericSigner, TxBatcher, uplcDataSerializer, bytesToText, abbrevAddress } from '@donecollectively/stellar-contracts';
 import { createPortal } from 'react-dom';
-import { decodeTx, makeShelleyAddress } from '@helios-lang/ledger';
 import { e as environment } from './environment.mjs';
 import { bytesToHex, hexToBytes } from '@helios-lang/codec-utils';
 import { useCapoDappProvider as useCapoDappProvider$1 } from '@donecollectively/stellar-contracts/ui';
+import '@helios-lang/contract-utils';
+import '@helios-lang/crypto';
 import 'nanoid';
+import '@helios-lang/uplc';
+import 'arktype';
+import 'eventemitter3';
+import 'dexie';
+import '@ark/json-schema';
 
 const styles = {
   primary: {
@@ -889,6 +896,282 @@ function TxBatchUI() {
   );
 }
 
+const START_ANGLE = 225;
+const END_ANGLE = -45;
+const SWEEP_DEGREES = 270;
+function valueToAngle(value, max) {
+  const ratio = Math.min(Math.max(value / max, 0), 1);
+  return START_ANGLE - ratio * SWEEP_DEGREES;
+}
+function degToRad(deg) {
+  return deg * Math.PI / 180;
+}
+function polarToCartesian(cx, cy, radius, angleDeg) {
+  const rad = degToRad(angleDeg);
+  return {
+    x: cx + radius * Math.cos(rad),
+    y: cy - radius * Math.sin(rad)
+    // SVG y is inverted
+  };
+}
+function describeArc(cx, cy, radius, startAngle, endAngle) {
+  const start = polarToCartesian(cx, cy, radius, startAngle);
+  const end = polarToCartesian(cx, cy, radius, endAngle);
+  let sweep = startAngle - endAngle;
+  if (sweep < 0) sweep += 360;
+  const largeArcFlag = sweep > 180 ? 1 : 0;
+  const sweepFlag = 1;
+  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${end.x} ${end.y}`;
+}
+const defaultMetrics = {
+  requestsPerSecond: 0,
+  currentRefillRate: 7,
+  baseRefillRate: 7,
+  availableBurst: 300,
+  isRateLimited: false,
+  isOnHold: false,
+  isRecovering: false
+};
+function RateMeterGauge({
+  events,
+  size = 120,
+  maxScale: maxScaleProp
+}) {
+  const [metrics, setMetrics] = useState(defaultMetrics);
+  useEffect(() => {
+    if (!events) return;
+    const handler = (m) => setMetrics(m);
+    events.on("rateLimitMetrics", handler);
+    return () => {
+      events.off("rateLimitMetrics", handler);
+    };
+  }, [events]);
+  const cx = size / 2;
+  const cy = size / 2;
+  const outerRadius = size * 0.42;
+  const arcRadius = size * 0.38;
+  const needleLength = size * 0.41;
+  const innerTickRadius = size * 0.28;
+  const maxScale = maxScaleProp ?? Math.max(metrics.baseRefillRate * 1.5, 10);
+  const minNeedleValue = maxScale * 0.02;
+  const needleAngle = valueToAngle(Math.max(metrics.requestsPerSecond, minNeedleValue), maxScale);
+  const rateLimitAngle = valueToAngle(metrics.currentRefillRate, maxScale);
+  const backgroundArc = describeArc(cx, cy, arcRadius, START_ANGLE, END_ANGLE);
+  const innerArcRadius = size * 0.36;
+  const redZoneArc = describeArc(cx, cy, innerArcRadius, rateLimitAngle, END_ANGLE - 15);
+  const needleRotation = -needleAngle;
+  const zeroPos = polarToCartesian(cx, cy, innerTickRadius, START_ANGLE);
+  const maxPos = polarToCartesian(cx, cy, innerTickRadius, END_ANGLE);
+  const limitPos = polarToCartesian(cx, cy, outerRadius + 8, rateLimitAngle);
+  const innerTrackRadius = arcRadius - size * 0.04;
+  const zeroPegPos = polarToCartesian(cx, cy, innerTrackRadius, START_ANGLE);
+  let gaugeColor = "#4ade80";
+  if (metrics.isOnHold) {
+    gaugeColor = "#ef4444";
+  } else if (metrics.isRecovering) {
+    gaugeColor = "#f59e0b";
+  } else if (metrics.isRateLimited) {
+    gaugeColor = "#f59e0b";
+  }
+  const maskId = "gauge-track-mask";
+  return /* @__PURE__ */ React__default.createElement(
+    "svg",
+    {
+      width: size,
+      height: size,
+      viewBox: `0 0 ${size} ${size}`,
+      style: { fontFamily: "system-ui, sans-serif" }
+    },
+    /* @__PURE__ */ React__default.createElement("defs", null, /* @__PURE__ */ React__default.createElement("mask", { id: maskId }, /* @__PURE__ */ React__default.createElement(
+      "path",
+      {
+        d: backgroundArc,
+        fill: "none",
+        stroke: "white",
+        strokeWidth: size * 0.08,
+        strokeLinecap: "round"
+      }
+    ))),
+    /* @__PURE__ */ React__default.createElement(
+      "path",
+      {
+        d: backgroundArc,
+        fill: "none",
+        stroke: "#374151",
+        strokeWidth: size * 0.08,
+        strokeLinecap: "round"
+      }
+    ),
+    /* @__PURE__ */ React__default.createElement("circle", { cx: zeroPegPos.x, cy: zeroPegPos.y, r: size * 0.02, fill: "black" }),
+    /* @__PURE__ */ React__default.createElement(
+      "path",
+      {
+        d: redZoneArc,
+        fill: "none",
+        stroke: "#f87171",
+        strokeWidth: size * 0.04,
+        strokeLinecap: "butt",
+        mask: `url(#${maskId})`,
+        style: {
+          transition: "d 300ms ease-out"
+        }
+      }
+    ),
+    metrics.requestsPerSecond > 0 && /* @__PURE__ */ React__default.createElement(
+      "path",
+      {
+        d: describeArc(cx, cy, arcRadius, START_ANGLE, needleAngle),
+        fill: "none",
+        stroke: gaugeColor,
+        strokeWidth: size * 0.06,
+        strokeLinecap: "round",
+        style: {
+          transition: "stroke 200ms ease-out"
+        }
+      }
+    ),
+    /* @__PURE__ */ React__default.createElement(
+      "text",
+      {
+        x: zeroPos.x,
+        y: zeroPos.y + size * 0.02,
+        fontSize: size * 0.12,
+        fill: "#9ca3af",
+        textAnchor: "middle"
+      },
+      "0"
+    ),
+    /* @__PURE__ */ React__default.createElement(
+      "text",
+      {
+        x: maxPos.x,
+        y: maxPos.y + size * 0.02,
+        fontSize: size * 0.12,
+        fill: "#9ca3af",
+        textAnchor: "middle"
+      },
+      Math.round(maxScale)
+    ),
+    /* @__PURE__ */ React__default.createElement(
+      "text",
+      {
+        x: limitPos.x,
+        y: limitPos.y,
+        fontSize: size * 0.11,
+        fill: "#ef4444",
+        textAnchor: "middle",
+        style: {
+          transition: "x 300ms ease-out, y 300ms ease-out"
+        }
+      },
+      Math.round(metrics.currentRefillRate)
+    ),
+    /* @__PURE__ */ React__default.createElement(
+      "text",
+      {
+        x: cx,
+        y: cy - size * 0.02,
+        fontSize: size * 0.35,
+        fontWeight: "bold",
+        fill: "#ccc",
+        textAnchor: "middle"
+      },
+      metrics.requestsPerSecond
+    ),
+    /* @__PURE__ */ React__default.createElement(
+      "text",
+      {
+        x: cx,
+        y: cy + size * 0.12,
+        fontSize: size * 0.1,
+        fill: "#ccc",
+        textAnchor: "middle"
+      },
+      "req/s"
+    ),
+    metrics.isOnHold && /* @__PURE__ */ React__default.createElement(
+      "text",
+      {
+        x: cx,
+        y: cy - size * 0.15,
+        fontSize: size * 0.14,
+        fontWeight: "bold",
+        fill: "#ef4444",
+        textAnchor: "middle",
+        style: {
+          animation: "pulse 1s ease-in-out infinite"
+        }
+      },
+      "HOLD"
+    ),
+    metrics.isRecovering && !metrics.isOnHold && /* @__PURE__ */ React__default.createElement(
+      "text",
+      {
+        x: cx,
+        y: cy - size * 0.15,
+        fontSize: size * 0.11,
+        fill: "#f59e0b",
+        textAnchor: "middle"
+      },
+      "recovering"
+    ),
+    /* @__PURE__ */ React__default.createElement(
+      "text",
+      {
+        x: cx,
+        y: cy + size * 0.42,
+        fontSize: size * 0.09,
+        fill: metrics.isRateLimited ? "#ef4444" : "#9ca3af",
+        textAnchor: "middle"
+      },
+      "burst: ",
+      Math.round(metrics.availableBurst)
+    ),
+    /* @__PURE__ */ React__default.createElement(
+      "line",
+      {
+        x1: cx - needleLength * 0.15,
+        y1: cy,
+        x2: cx + needleLength,
+        y2: cy,
+        stroke: "#3b82f6",
+        strokeWidth: size * 0.04,
+        strokeLinecap: "butt",
+        opacity: 0.82,
+        style: {
+          transform: `rotate(${needleRotation}deg)`,
+          transformOrigin: `${cx}px ${cy}px`,
+          transition: "transform 1s ease-out"
+        }
+      }
+    ),
+    /* @__PURE__ */ React__default.createElement(
+      "line",
+      {
+        x1: cx + needleLength * 0.9,
+        y1: cy,
+        x2: cx + needleLength,
+        y2: cy,
+        stroke: "white",
+        strokeWidth: 2,
+        strokeLinecap: "butt",
+        style: {
+          transform: `rotate(${needleRotation}deg)`,
+          transformOrigin: `${cx}px ${cy}px`,
+          transition: "transform 1s ease-out"
+        }
+      }
+    ),
+    /* @__PURE__ */ React__default.createElement("circle", { cx, cy, r: size * 0.013, fill: "black" }),
+    /* @__PURE__ */ React__default.createElement("style", null, `
+                    @keyframes pulse {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.5; }
+                    }
+                `)
+  );
+}
+
 const networkNames = {
   0: "preprod",
   1: "mainnet",
@@ -1039,6 +1322,8 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
       /* @__PURE__ */ React__default.createElement(TxBatchUI, null)
     );
     const progressLabel = "string" == typeof progressBar ? progressBar : "";
+    const { utxoIndex, isIndexSyncing } = this.state;
+    const rateMeterElement = /* @__PURE__ */ React__default.createElement("div", { className: "fixed bottom-4 right-4 z-50 bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg p-2" }, /* @__PURE__ */ React__default.createElement(RateMeterGauge, { events: utxoIndex?.events, size: 120 }), isIndexSyncing && /* @__PURE__ */ React__default.createElement("div", { className: "text-center text-xs text-gray-600 dark:text-gray-300 mt-1" }, "Syncing..."));
     const renderedStatus = message && /* @__PURE__ */ React__default.createElement(
       InPortal,
       {
@@ -1055,7 +1340,7 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
     return /* @__PURE__ */ React__default.createElement(
       ClientSideOnly,
       {
-        children: /* @__PURE__ */ React__default.createElement(CapoDappProviderContext.Provider, { value: this }, /* @__PURE__ */ React__default.createElement("div", null, renderedStatus, userDetails, txBatchUI, results))
+        children: /* @__PURE__ */ React__default.createElement(CapoDappProviderContext.Provider, { value: this }, /* @__PURE__ */ React__default.createElement("div", null, renderedStatus, userDetails, txBatchUI, rateMeterElement, results))
       }
     );
   }
@@ -1458,6 +1743,10 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
   _unmounted = false;
   async componentWillUnmount() {
     this._unmounted = true;
+    if (this.state.utxoIndex) {
+      this.state.utxoIndex.stopPeriodicRefresh();
+      this.state.utxoIndex.events.removeAllListeners();
+    }
     console.error("capo dApp provider unmounted");
   }
   /**
@@ -1593,9 +1882,9 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
         },
         isForMainnet: isMainnet,
         ...hydraOptions
-      }) : this.bf;
+      }) : this.state.utxoIndex || this.bf;
       simpleWallet = makeSimpleWallet(privKey, networkClient);
-      if (this.capo) {
+      if (this.capo && !this.state.utxoIndex) {
         this.capo.setup.network = networkClient;
       }
     } else {
@@ -1700,7 +1989,9 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
       wallet = simpleWallet;
       foundNetworkName = this.props.targetNetwork;
       if (this.capo) {
-        this.capo.setup.network = simpleWallet.cardanoClient;
+        if (!this.state.utxoIndex) {
+          this.capo.setup.network = simpleWallet.cardanoClient;
+        }
         this.capo.setup.actorContext.wallet = wallet;
       }
       const networkParams = await simpleWallet.cardanoClient.parameters;
@@ -1897,9 +2188,55 @@ ${new Error().stack.split("\n").slice(2).join("\n")}`);
       txBatcher = new TxBatcher(batcherOptions);
     }
     let network = this.bf;
+    let utxoIndex;
+    const bundleClass = await this.capoClass.scriptBundleClass();
+    const bundleConfig = bundleClass.precompiledScriptDetails?.capo?.config;
+    const localParsedConfig = "config" in config ? config.config : void 0;
+    const parsedConfig = bundleConfig || localParsedConfig;
+    console.log("CachedUtxoIndex condition check:", {
+      useCachedIndex: this.props.useCachedIndex,
+      hasMph: !!parsedConfig?.mph,
+      hasRootCapoScriptHash: !!parsedConfig?.rootCapoScriptHash,
+      configSource: bundleConfig ? "bundle" : localParsedConfig ? "localStorage" : "none"
+    });
+    if (this.props.useCachedIndex !== false && parsedConfig?.mph && parsedConfig?.rootCapoScriptHash) {
+      await this.updateStatus(
+        "initializing UTXO cache...",
+        {
+          progressBar: true,
+          developerGuidance: "caching UTXOs for faster lookups"
+        },
+        `//${id}: enabling utxo cache early`
+      );
+      const options = typeof this.props.useCachedIndex === "object" ? this.props.useCachedIndex : {};
+      const capoAddress = makeAddress(this.isMainnet(), parsedConfig.rootCapoScriptHash);
+      utxoIndex = new CachedUtxoIndex({
+        address: capoAddress.toBech32(),
+        mph: parsedConfig.mph.toHex(),
+        isMainnet: this.isMainnet(),
+        network: this.bf,
+        // original BlockfrostV0Client as fallback
+        bridge: new CapoDataBridge(this.isMainnet()),
+        blockfrostKey: this.props.blockfrostKey,
+        ...options
+      });
+      utxoIndex.events.on("syncStart", () => {
+        this.setState({ isIndexSyncing: true });
+      });
+      utxoIndex.events.on("syncComplete", () => {
+        this.setState({ isIndexSyncing: false });
+      });
+      utxoIndex.events.on("rateLimitMetrics", (metrics) => {
+        this.setState({ rateMetrics: metrics });
+      });
+      await new Promise((resolve) => {
+        this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
+      });
+      network = utxoIndex;
+    }
     if (this.state.userInfo.wallet?.cardanoClient) {
-      network = this.state.userInfo.wallet.cardanoClient;
-      networkParams = await network.parameters;
+      const walletClient = this.state.userInfo.wallet.cardanoClient;
+      networkParams = await walletClient.parameters;
     }
     const setup = {
       network,
@@ -1962,6 +2299,21 @@ ${new Error().stack.split("\n").slice(2).join("\n")}`);
         console.warn(`${id}: no config yet for this capo (dbpa)`);
         debugger;
       }
+      if (this.props.useCachedIndex !== false) {
+        if (utxoIndex) {
+          utxoIndex.startPeriodicRefresh();
+        } else {
+          await this.updateStatus(
+            "initializing UTXO cache...",
+            {
+              progressBar: true,
+              developerGuidance: "caching UTXOs for faster lookups"
+            },
+            `//${id}: enabling utxo cache`
+          );
+          utxoIndex = await this.enableUtxoCache(capo2);
+        }
+      }
       if (!autoNext) {
         await this.updateStatus(
           "",
@@ -2006,6 +2358,46 @@ ${new Error().stack.split("\n").slice(2).join("\n")}`);
       environment.CARDANO_NETWORK
     );
     return isMainnet;
+  }
+  /**
+   * Enables UTXO caching for faster lookups by creating a CachedUtxoIndex.
+   * @remarks
+   * This method creates a CachedUtxoIndex that wraps the underlying Blockfrost client,
+   * providing persistent caching of UTXOs in IndexedDB. Once enabled, all UTXO queries
+   * through the Capo will check the cache first before falling back to Blockfrost.
+   *
+   * The index starts periodic refresh automatically to keep the cache up-to-date.
+   *
+   * @param capo - The Capo instance to enable caching for
+   * @returns The created CachedUtxoIndex instance
+   */
+  async enableUtxoCache(capo) {
+    const options = typeof this.props.useCachedIndex === "object" ? this.props.useCachedIndex : {};
+    const utxoIndex = new CachedUtxoIndex({
+      address: capo.address.toString(),
+      mph: capo.mintingPolicyHash.toHex(),
+      isMainnet: this.isMainnet(),
+      network: this.bf,
+      // original BlockfrostV0Client
+      bridge: capo.onchain,
+      blockfrostKey: this.props.blockfrostKey,
+      ...options
+    });
+    utxoIndex.events.on("syncStart", () => {
+      this.setState({ isIndexSyncing: true });
+    });
+    utxoIndex.events.on("syncComplete", () => {
+      this.setState({ isIndexSyncing: false });
+    });
+    utxoIndex.events.on("rateLimitMetrics", (metrics) => {
+      this.setState({ rateMetrics: metrics });
+    });
+    capo.setup.network = utxoIndex;
+    utxoIndex.startPeriodicRefresh();
+    await new Promise((resolve) => {
+      this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
+    });
+    return utxoIndex;
   }
   async mkDefaultCharterArgs() {
     const { walletHelper } = this.state;
@@ -2667,5 +3059,5 @@ function useFormManager(options) {
   };
 }
 
-export { ActionButton, Button, CapoDAppProvider, CapoDappProviderContext, CharterHighlights, CharterStatus, ClientSideOnly, Column, DashHighlightItem, DashSummaryItem, DashboardHighlights, DashboardRow, DashboardSummary, DashboardTemplate, FormManager, Highlight, InPortal, Lowlight, Progress, ShowFailedActivity, ShowPendingTxns, Softlight, ThemedBackgroundDecorations, TxBatchViewer, useCapoDappProvider, useFormManager };
+export { ActionButton, Button, CapoDAppProvider, CapoDappProviderContext, CharterHighlights, CharterStatus, ClientSideOnly, Column, DashHighlightItem, DashSummaryItem, DashboardHighlights, DashboardRow, DashboardSummary, DashboardTemplate, FormManager, Highlight, InPortal, Lowlight, Progress, RateMeterGauge, ShowFailedActivity, ShowPendingTxns, Softlight, ThemedBackgroundDecorations, TxBatchViewer, useCapoDappProvider, useFormManager };
 //# sourceMappingURL=ui.mjs.map
