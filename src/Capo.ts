@@ -3325,24 +3325,35 @@ export abstract class Capo<
             capoUtxos?: TxInput[];
         }
     ): Promise<FoundDatumUtxo<RAW_DATUM_TYPE, PARSED_DATUM_TYPE>[]> {
+        const perfLabel = `findDelegatedDataUtxos(${type || 'all'})`;
+        performance.mark(`${perfLabel}:start`);
+
         if (!type && !predicate && !id) {
             throw new Error("Must provide either type, predicate or id");
         }
         if (id && predicate) {
             throw new Error("Cannot provide both id and predicate");
         }
+
+        performance.mark(`${perfLabel}:findCapoUtxos:start`);
         if (!capoUtxos) {
             // check to see if this can be more efficient
             // debugger;
             capoUtxos = await this.findCapoUtxos();
         }
+        performance.mark(`${perfLabel}:findCapoUtxos:end`);
+        performance.measure(`${perfLabel}:findCapoUtxos`, `${perfLabel}:findCapoUtxos:start`, `${perfLabel}:findCapoUtxos:end`);
 
+        performance.mark(`${perfLabel}:findCharterData:start`);
         if (!charterData) {
             charterData = await this.findCharterData(undefined, {
                 optional: false,
                 capoUtxos: capoUtxos,
             });
         }
+        performance.mark(`${perfLabel}:findCharterData:end`);
+        performance.measure(`${perfLabel}:findCharterData`, `${perfLabel}:findCharterData:start`, `${perfLabel}:findCharterData:end`);
+
         if (id) {
             let idBytes: number[];
             if (Array.isArray(id)) {
@@ -3359,6 +3370,7 @@ export abstract class Capo<
         }
         // console.log("\n\n\n\n\n\n\n\n\n======= findDelegatedDataUtxos =======\n\n\n\n\n\n\n\n\n");
         // console.log({ type, types: Object.keys(this.datumAdapters)})
+        performance.mark(`${perfLabel}:getDgDataController:start`);
         if ("undefined" !== typeof type) {
             const dgtForType = await this.getDgDataController(type as any, {
                 charterData,
@@ -3377,12 +3389,16 @@ export abstract class Capo<
                 // this.datumAdapters = updated as any;
             }
         }
+        performance.mark(`${perfLabel}:getDgDataController:end`);
+        performance.measure(`${perfLabel}:getDgDataController`, `${perfLabel}:getDgDataController:start`, `${perfLabel}:getDgDataController:end`);
         // console.log("findDelegatedDataUtxos", type, predicate);
 
         // console.log("utxos", dumpAny(utxos));
+        performance.mark(`${perfLabel}:processUtxos:start`);
+        let controllerLoadCount = 0;
         const utxosWithDatum = (
             await Promise.all(
-                capoUtxos.map(async (utxo: TxInput) => {
+                capoUtxos.map(async (utxo: TxInput, utxoIdx: number) => {
                     const { datum } = utxo.output;
                     // console.log("datum", datum);
                     if (!datum?.data) return null;
@@ -3405,7 +3421,7 @@ export abstract class Capo<
                     //     type &&
                     //     this.dataWrappers[type] // as unknown as ADAPTER_TYPE);
 
-                    let type: string | undefined;
+                    let datumType: string | undefined;
                     if (datum.data.kind == "constr") {
                         const cField = datum.data.fields[0];
                         if (!cField) {
@@ -3427,7 +3443,7 @@ export abstract class Capo<
                                 }
                             })?.[1];
                             if (seenTypeBytes?.kind == "bytes") {
-                                type = bytesToText(seenTypeBytes.bytes);
+                                datumType = bytesToText(seenTypeBytes.bytes);
                             }
                         } else {
                             console.log(
@@ -3435,7 +3451,7 @@ export abstract class Capo<
                                 datum.data.dataPath
                             );
                         }
-                        if (!type) {
+                        if (!datumType) {
                             // ignore datums with no type field
                             console.log(
                                 "   - no type field in datum",
@@ -3444,12 +3460,54 @@ export abstract class Capo<
                             return undefined;
                         }
                     }
+
+                    // Skip loading controller if a specific type was requested and this datum doesn't match
+                    if (type && datumType !== type) {
+                        return undefined;
+                    }
+
+                    // For "all" query: check if controller is already cached, use it if so
+                    // Otherwise return unparsed datum without loading controllers
+                    if (!type) {
+                        const cachedControllers = this._delegateCache[datumType!];
+                        if (cachedControllers && Object.keys(cachedControllers).length > 0) {
+                            // Controller is cached - use it to parse
+                            const cachedEntry = Object.values(cachedControllers)[0] as { delegate: DelegatedDataContract<any, any> };
+                            const cachedController = cachedEntry?.delegate;
+                            if (cachedController) {
+                                const data = cachedController.newReadDatum(datum.data) as any;
+                                const typedData = data.capoStoredData.data;
+                                return mkFoundDatum(utxo, cachedController, datum, typedData);
+                            }
+                        }
+                        // No cached controller - return unparsed UTxO
+                        return {
+                            utxo,
+                            datum,
+                            datumType,
+                            data: undefined,
+                            dataWrapped: undefined,
+                            toJSON() {
+                                return {
+                                    utxo: utxo.id.toString(),
+                                    datumType,
+                                    data: "[unparsed - no type filter]",
+                                };
+                            },
+                        } as any;
+                    }
+
+                    const loadLabel = `${perfLabel}:loadController:${datumType}:utxo${utxoIdx}`;
+                    performance.mark(`${loadLabel}:start`);
                     const dgtForType =
-                        type &&
-                        (await this.getDgDataController(type, {
+                        datumType &&
+                        (await this.getDgDataController(datumType, {
                             charterData,
                             optional: true,
                         }));
+                    performance.mark(`${loadLabel}:end`);
+                    performance.measure(loadLabel, `${loadLabel}:start`, `${loadLabel}:end`);
+                    controllerLoadCount++;
                     if (!dgtForType) {
                         console.log(
                             "no type found in datum",
@@ -3458,8 +3516,8 @@ export abstract class Capo<
                             dumpAny(utxo.id)
                         );
 
-                        const msg = type
-                            ? `no delegate for type ${type}`
+                        const msg = datumType
+                            ? `no delegate for type ${datumType}`
                             : "no type in datum";
                         return {
                             utxo,
@@ -3497,7 +3555,16 @@ export abstract class Capo<
         )
             // filter corrects any possible nulls
             .filter((x) => !!x) as FoundDatumUtxo<any>[];
-        console.log(type, `findDelegatedData: `, utxosWithDatum.length);
+        performance.mark(`${perfLabel}:processUtxos:end`);
+        performance.measure(`${perfLabel}:processUtxos`, `${perfLabel}:processUtxos:start`, `${perfLabel}:processUtxos:end`);
+
+        performance.mark(`${perfLabel}:end`);
+        performance.measure(perfLabel, `${perfLabel}:start`, `${perfLabel}:end`);
+
+        // Summary for easy console viewing
+        const totalTime = performance.getEntriesByName(perfLabel)[0]?.duration || 0;
+        console.log(`⏱️ ${perfLabel}: ${totalTime.toFixed(1)}ms (${capoUtxos.length} utxos, ${controllerLoadCount} controller loads, ${utxosWithDatum.length} results)`);
+
         return utxosWithDatum;
 
         function mkFoundDatum(
