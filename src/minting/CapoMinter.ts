@@ -64,16 +64,16 @@ export class CapoMinter
     extends StellarContract<BasicMinterParams>
     implements MinterBaseMethods
 {
-    async scriptBundleClass() {
+    static async scriptBundleClass() {
         const bundleModule = await import("./CapoMinter.hlb.js");
-        
+
         return bundleModule.CapoMinterBundle
     }
 
     async mkScriptBundle(
         setupDetails: StellarBundleSetupDetails<any> = placeholderSetupDetails
     ) {
-        const bundleClass = await this.scriptBundleClass();
+        const bundleClass = await (this.constructor as typeof CapoMinter).scriptBundleClass();
         return bundleClass.create({
             ...setupDetails,
             setup: this.setup,

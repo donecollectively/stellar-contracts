@@ -100,6 +100,7 @@ export type stellarSubclass<S extends StellarContract<any>> = (new (
     defaultParams: Partial<ConfigFor<S>>;
     createWith(args: StellarSetupDetails<ConfigFor<S>>): Promise<S>;
     parseConfig(rawJsonConfig: any): any;
+    scriptBundleClass(): Promise<typeof HeliosScriptBundle>;
 };
 
 /**
@@ -454,11 +455,11 @@ export class StellarContract<
      * Once the data-bridge class is generated, you should import it into your contract
      * module and assign it to your `dataBridgeClass` attribute.
      */
-    async scriptBundleClass(): Promise<typeof HeliosScriptBundle> {
+    static async scriptBundleClass(): Promise<typeof HeliosScriptBundle> {
         debugger; // eslint-disable-line no-debugger - keep for downstream troubleshooting
         throw new Error(
-            `${this.constructor.name}: missing required implementation of scriptBundleClass()\n` +
-                `...each Stellar Contract must provide a scriptBundleClass() method. \n` +
+            `${this.name}: missing required implementation of scriptBundleClass()\n` +
+                `...each Stellar Contract must provide a static scriptBundleClass() method. \n` +
                 `It should return a class (not an instance) defined in a *.hlb.ts file.  At minimum:\n\n` +
                 `    export default class MyScriptBundle extends HeliosScriptBundle { ... }\n` +
                 ` or export default CapoDelegateBundle.usingCapoBundleClass(SomeCapoBundleClass) { ... }\n\n` +
@@ -1045,7 +1046,7 @@ export class StellarContract<
     async mkScriptBundle(
         setupDetails: PartialStellarBundleDetails<any> = placeholderSetupDetails
     ) {
-        const bundleClass = await this.scriptBundleClass();
+        const bundleClass = await (this.constructor as typeof StellarContract).scriptBundleClass();
         return bundleClass.create({
             ...setupDetails,
             setup: this.setup,

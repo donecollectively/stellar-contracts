@@ -1599,7 +1599,22 @@ export class CapoDAppProvider<
         // Create CachedUtxoIndex BEFORE Capo if we have config with mph/address info
         let network: CardanoClient = this.bf;
         let utxoIndex: CachedUtxoIndex | undefined;
-        const parsedConfig = 'config' in config ? config.config as CapoConfig : undefined;
+
+        // First try to get config from the bundle's precompiled details (static access)
+        const bundleClass = await this.capoClass.scriptBundleClass();
+        // precompiledScriptDetails is a static property added by rollup bundler
+        const bundleConfig = (bundleClass as any).precompiledScriptDetails?.capo?.config as CapoConfig | undefined;
+
+        // Fall back to localStorage config if bundle doesn't have precompiled config
+        const localParsedConfig = 'config' in config ? config.config as CapoConfig : undefined;
+        const parsedConfig = bundleConfig || localParsedConfig;
+
+        console.log("CachedUtxoIndex condition check:", {
+            useCachedIndex: this.props.useCachedIndex,
+            hasMph: !!parsedConfig?.mph,
+            hasRootCapoScriptHash: !!parsedConfig?.rootCapoScriptHash,
+            configSource: bundleConfig ? "bundle" : localParsedConfig ? "localStorage" : "none",
+        });
 
         if (this.props.useCachedIndex !== false && parsedConfig?.mph && parsedConfig?.rootCapoScriptHash) {
             await this.updateStatus(

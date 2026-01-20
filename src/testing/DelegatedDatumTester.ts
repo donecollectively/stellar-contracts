@@ -30,7 +30,7 @@ export class DelegatedDatumTester extends DelegatedDataContract<
 > {
     dataBridgeClass = DelegateDatumTesterDataBridge;
 
-    async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
+    static async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
         const bundleModule = await import("./DelegatedDatumTester.hlb.js");
         return bundleModule.DelegatedDatumTesterBundle;
     }

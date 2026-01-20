@@ -12,7 +12,7 @@ export class MintDelegateWithGenericUuts extends BasicMintDelegate {
         return "uutMintingDelegate";
     }
 
-    async scriptBundleClass(): Promise<ConcreteCapoDelegateBundle> {
+    static async scriptBundleClass(): Promise<ConcreteCapoDelegateBundle> {
         const bundleModule = await import("./uutMintingMintDelegate.hlb.js");
 
         return bundleModule.BundleMintDelegateWithGenericUuts as any;

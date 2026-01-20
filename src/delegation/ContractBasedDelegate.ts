@@ -90,7 +90,7 @@ export class ContractBasedDelegate extends StellarDelegate {
         const bundle = await super.mkScriptBundle(setupDetails);
         if (bundle.isConcrete) return (this._scriptBundle = bundle);
 
-        const bundleClass = await this.scriptBundleClass();
+        const bundleClass = await (this.constructor as typeof ContractBasedDelegate).scriptBundleClass();
         const myCapoBundle = await this.capo!.mkScriptBundle();
         const capoBoundBundle = bundleClass.usingCapoBundleClass(
             myCapoBundle.constructor as any
@@ -156,11 +156,11 @@ export class ContractBasedDelegate extends StellarDelegate {
     //     return new BundleClass(capoBundle);
     // }
 
-    async scriptBundleClass(): Promise<typeof CapoDelegateBundle> {
+    static async scriptBundleClass(): Promise<typeof CapoDelegateBundle> {
         throw new Error(
-            `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
-                `\nEach contract-based delegate must provide a scriptBundle() method.\n` +
-                `It should return an instance of a class defined in a *.hlb.ts file.  At minimum:\n\n` +
+            `${this.name}: missing required implementation of static scriptBundleClass()\n` +
+                `\nEach contract-based delegate must provide a static scriptBundleClass() method.\n` +
+                `It should return a class defined in a *.hlb.ts file.  At minimum:\n\n` +
                 `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
                 `    import SomeSpecializedDelegate from "./YourSpecializedDelegate.hl";\n\n` +
                 `    export default class SomeDelegateBundle extends CapoDelegateBundle.using(YourAppCapo) {\n` +
@@ -169,7 +169,7 @@ export class ContractBasedDelegate extends StellarDelegate {
                 `We'll generate an additional .typeInfo.d.ts, based on the types in your Helios sources,\n` +
                 `  ... and a .bridge.ts with generated data-conversion code for bridging between off-chain` +
                 `  ... and on-chain data encoding.` +
-                `Your scriptBundle() method can \`return new SomeDelegateBundle()\``
+                `Your static scriptBundleClass() method can \`return SomeDelegateBundle\``
         );
     }
 

@@ -19,7 +19,7 @@ export class BadSettingsController extends DelegatedDataContract<
 > {
     dataBridgeClass = BadSettingsPolicyDataBridge;
 
-    async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
+    static async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
         const bundleModule = await import("./BadSettings.hlb.js");
         return bundleModule.BadSettingsBundle;
     }
@@ -67,7 +67,7 @@ export class BadSettingsControllerWithWrapper extends WrappedDgDataContract<
     NoOpWrapper
 > {
     dataBridgeClass = BadSettingsPolicyDataBridge;
-    async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
+    static async scriptBundleClass(): Promise<typeof DelegatedDataBundle> {
         const bundleModule = await import("./BadSettings.hlb.js");
         return bundleModule.BadSettingsBundle;
     }

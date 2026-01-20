@@ -13,7 +13,7 @@ export class UnspecializedMintDelegate extends BasicMintDelegate {
     dataBridgeClass = UnspecializedDelegateBridge;
     get delegateName() { return "UnspecializedDelegate" }
 
-    async scriptBundleClass() : Promise<ConcreteCapoDelegateBundle>{
+    static async scriptBundleClass() : Promise<ConcreteCapoDelegateBundle>{
         if (process.env.NODE_ENV === "development") {
             console.warn(
                 "mint+spend delegate: using unspecialized delegate bundle\n"+
