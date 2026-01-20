@@ -50,7 +50,7 @@ import type { CapoDataBridge } from "../../helios/scriptBundling/CapoHeliosBundl
 
 import { DexieUtxoStore } from "./DexieUtxoStore.js";
 import {
-    blockfrostRateLimiter,
+    getBlockfrostRateLimiter,
     type RateLimiterMetrics,
 } from "./RateLimitedFetch.js";
 import type { UtxoStoreGeneric } from "./types/UtxoStoreGeneric.js";
@@ -1140,8 +1140,7 @@ export class CachedUtxoIndex {
 
     async fetchFromBlockfrost<T>(url: string): Promise<T> {
         // Use global rate limiter to avoid exceeding Blockfrost's rate limits
-        return blockfrostRateLimiter
-            .fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
+        return getBlockfrostRateLimiter().fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
                 headers: {
                     project_id: this.blockfrostKey,
                 },

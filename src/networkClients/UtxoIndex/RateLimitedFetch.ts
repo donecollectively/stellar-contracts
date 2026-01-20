@@ -85,6 +85,7 @@ class RateLimitedFetch {
         this.metricsInterval = setInterval(() => {
             this.emitMetricsIfChanged();
         }, 1000);
+        console.log("unref at startMetricsInterval "+ new Error().stack);
     }
 
     /**
@@ -269,6 +270,7 @@ class RateLimitedFetch {
                 }
             }
         }, 10000);
+        console.log("unref at startRecovery "+ new Error().stack);
     }
 
     /**
