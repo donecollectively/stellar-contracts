@@ -468,6 +468,7 @@ export class CachedUtxoIndex {
                 );
             }
         }, refreshInterval);
+        this.refreshTimerId.unref();
     }
 
     /**

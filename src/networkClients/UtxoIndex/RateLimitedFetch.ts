@@ -86,6 +86,8 @@ class RateLimitedFetch {
             this.emitMetricsIfChanged();
         }, 1000);
         console.log("unref at startMetricsInterval "+ new Error().stack);
+
+        this.metricsInterval.unref();
     }
 
     /**
@@ -271,6 +273,7 @@ class RateLimitedFetch {
             }
         }, 10000);
         console.log("unref at startRecovery "+ new Error().stack);
+        this.recoveryInterval.unref();
     }
 
     /**
@@ -354,6 +357,14 @@ class RateLimitedFetch {
  * Global rate limiter for Blockfrost API calls.
  * Shared across all CachedUtxoIndex instances.
  */
-export const blockfrostRateLimiter = new RateLimitedFetch({
-    name: "Blockfrost",
-});
+export let blockfrostRateLimiter : RateLimitedFetch | null = null;
+
+export function getBlockfrostRateLimiter(): RateLimitedFetch {
+    if (blockfrostRateLimiter) {
+        return blockfrostRateLimiter;
+    }
+    blockfrostRateLimiter = new RateLimitedFetch({
+        name: "Blockfrost",
+    });
+    return blockfrostRateLimiter;
+}
