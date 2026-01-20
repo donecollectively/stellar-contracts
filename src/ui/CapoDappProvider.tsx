@@ -5,9 +5,11 @@ import React, {
     Fragment,
 } from "react";
 import {
+    makeBip32PrivateKey,
     makeHydraClient,
     makeRandomRootPrivateKey,
     makeRootPrivateKey,
+    type Bip32PrivateKey,
     type BlockfrostV0Client,
     type CardanoClient,
     type Cip30FullHandle,
@@ -1170,20 +1172,74 @@ export class CapoDAppProvider<
         let simpleWallet: SimpleWallet | undefined;
         let walletHandle: Cip30FullHandle | undefined;
         if (selectedWallet === "zwallet") {
-            let privKeyHex = window.localStorage.getItem("zwk");
-            if (!privKeyHex) {
-                const entropy = makeRandomRootPrivateKey().entropy;
-                privKeyHex = bytesToHex(entropy);
-                window.localStorage.setItem("zwk", privKeyHex);
-            }
-            const privKey = makeRootPrivateKey(hexToBytes(privKeyHex));
-            // console.log(privKey.toPhrase());
+            // Storage keys
+            const ZWALLET_KEY = "zWallet";      // New structured format
+            const ZWALLET_LEGACY_KEY = "zwk";   // Old format (entropy only)
 
-            // const capo = this.state.capo;
-            // if (!capo) {
-            //     throw new Error("capo not initialized")
-            // }
+            // New format stores derived Bip32PrivateKey bytes for instant loading
+            type ZWalletData = {
+                entropy: string;       // hex - original entropy for backup/recovery
+                spendingKey: string;   // hex - derived spending key bytes (fast path)
+                stakingKey: string;    // hex - derived staking key bytes (fast path)
+                pubKey: string;        // hex - public key
+                address: string;       // bech32 address
+            };
+
             const isMainnet = this.props.targetNetwork === "mainnet";
+            let spendingKey!: Bip32PrivateKey;
+            let stakingKey: Bip32PrivateKey | undefined;
+            let needsSave = false;
+            let walletData: ZWalletData | null = null;
+
+            // Try new format first
+            const storedData = window.localStorage.getItem(ZWALLET_KEY);
+            if (storedData) {
+                try {
+                    walletData = JSON.parse(storedData) as ZWalletData;
+                    if (walletData.spendingKey && walletData.stakingKey) {
+                        // Fast path: reconstruct Bip32PrivateKey directly from cached bytes
+                        spendingKey = makeBip32PrivateKey(hexToBytes(walletData.spendingKey));
+                        stakingKey = makeBip32PrivateKey(hexToBytes(walletData.stakingKey));
+                        console.log("zWallet: loaded from cache (fast path)");
+                    } else {
+                        // Old format without spendingKey/stakingKey - need to migrate
+                        walletData = null;
+                    }
+                } catch (e) {
+                    console.warn("zWallet: invalid stored data, will recreate", e);
+                    walletData = null;
+                }
+            }
+
+            if (!walletData) {
+                // Check for legacy format (entropy only) or create new wallet
+                let entropyHex = window.localStorage.getItem(ZWALLET_LEGACY_KEY);
+                if (entropyHex) {
+                    console.log("zWallet: migrating from legacy format...");
+                } else {
+                    // New wallet: generate fresh entropy
+                    console.log("zWallet: creating new wallet...");
+                    const entropy = makeRandomRootPrivateKey().entropy;
+                    entropyHex = bytesToHex(entropy);
+                }
+
+                // Expensive derivation (only needed once, then cached)
+                console.log("zWallet: deriving keys (one-time operation)...");
+                const rootKey = makeRootPrivateKey(hexToBytes(entropyHex));
+                spendingKey = rootKey.deriveSpendingKey();
+                stakingKey = rootKey.deriveStakingKey();
+
+                // Prepare wallet data for saving
+                walletData = {
+                    entropy: entropyHex,
+                    spendingKey: bytesToHex(spendingKey.bytes),
+                    stakingKey: bytesToHex(stakingKey.bytes),
+                    pubKey: bytesToHex(spendingKey.derivePubKey().bytes),
+                    address: "",  // Will be filled after wallet creation
+                };
+                needsSave = true;
+            }
+
             const useHydra = !!this.props.hydra;
             const hydraOptions: HydraClientOptions | undefined = useHydra
                 ? ({
@@ -1200,7 +1256,17 @@ export class CapoDAppProvider<
                     ...hydraOptions,
                 })
                 : (this.state.utxoIndex || this.bf);
-            simpleWallet = makeSimpleWallet(privKey, networkClient);
+
+            // Use the second overload of makeSimpleWallet with Bip32PrivateKey directly
+            simpleWallet = makeSimpleWallet(spendingKey, stakingKey, networkClient);
+
+            // Save the new format if needed (after wallet creation so we have address)
+            if (needsSave && walletData) {
+                walletData.address = simpleWallet.address.toString();
+                window.localStorage.setItem(ZWALLET_KEY, JSON.stringify(walletData));
+                console.log("zWallet: cached for fast future loading");
+            }
+
             // Only update capo network if not already using CachedUtxoIndex
             if (this.capo && !this.state.utxoIndex) {
                 this.capo.setup.network = networkClient;
