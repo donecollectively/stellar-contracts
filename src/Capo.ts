@@ -3468,40 +3468,9 @@ export abstract class Capo<
                         }
                     }
 
-                    // Skip loading controller if a specific type was requested and this datum doesn't match
+                    // Skip if a specific type was requested and this datum doesn't match
                     if (type && datumType !== type) {
                         return undefined;
-                    }
-
-                    // For "all" query: check if controller is already cached, use it if so
-                    // Otherwise return unparsed datum without loading controllers
-                    if (!type) {
-                        const cachedControllers = this._delegateCache[datumType!];
-                        if (cachedControllers && Object.keys(cachedControllers).length > 0) {
-                            // Controller is cached - use it to parse
-                            const cachedEntry = Object.values(cachedControllers)[0] as { delegate: DelegatedDataContract<any, any> };
-                            const cachedController = cachedEntry?.delegate;
-                            if (cachedController) {
-                                const data = cachedController.newReadDatum(datum.data) as any;
-                                const typedData = data.capoStoredData.data;
-                                return mkFoundDatum(utxo, cachedController, datum, typedData);
-                            }
-                        }
-                        // No cached controller - return unparsed UTxO
-                        return {
-                            utxo,
-                            datum,
-                            datumType,
-                            data: undefined,
-                            dataWrapped: undefined,
-                            toJSON() {
-                                return {
-                                    utxo: utxo.id.toString(),
-                                    datumType,
-                                    data: "[unparsed - no type filter]",
-                                };
-                            },
-                        } as any;
                     }
 
                     const loadLabel = `${perfLabel}:loadController:${datumType}:utxo${utxoIdx}`;
