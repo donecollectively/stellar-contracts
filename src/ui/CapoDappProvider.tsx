@@ -455,19 +455,17 @@ export class CapoDAppProvider<
 
         const progressLabel = "string" == typeof progressBar ? progressBar : "";
 
-        // Show rate meter always (shows idle state before utxoIndex is ready)
+        // Show rate meter only while syncing, positioned above the message box
         const { utxoIndex, isIndexSyncing } = this.state;
 
-        const rateMeterElement = (
-            <div className="fixed bottom-4 right-4 z-50 bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg p-2">
-                <RateMeterGauge events={utxoIndex?.events} size={120} />
-                {isIndexSyncing && (
-                    <div className="text-center text-xs text-gray-600 dark:text-gray-300 mt-1">
-                        Syncing...
-                    </div>
-                )}
+        const rateMeterElement = isIndexSyncing ? (
+            <div className="fixed bottom-20 right-4 z-50 bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg p-2">
+                <RateMeterGauge events={utxoIndex?.events} size={100} />
+                <div className="text-center text-xs text-gray-600 dark:text-gray-300 mt-1">
+                    Syncing...
+                </div>
             </div>
-        );
+        ) : null;
 
         const renderedStatus =
             (message && (
