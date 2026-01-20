@@ -434,7 +434,7 @@ export type hasGovAuthority = StellarTxnContext<
  * @public
  */
 export type FindableViaCharterData = {
-    charterData?: CharterData;
+    charterData?: CharterData | Promise<CharterData>;
     optional?: true;
     /** Skip script compilation - use for read-only operations like reading delegated data */
     readOnly?: boolean;

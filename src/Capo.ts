@@ -2357,11 +2357,12 @@ export abstract class Capo<
         options?: FindableViaCharterData
     ): Promise<undefined | DelegatedDataContract<any, any>> {
         const { charterData, optional, readOnly } = options || {};
-        const chD =
+        const chD = await (
             charterData ||
-            (await this.findCharterData(undefined, {
+            this.findCharterData(undefined, {
                 optional: optional || false,
-            }));
+            })
+        );
         const foundME = chD.manifest.get(recordTypeName);
         if (!foundME) {
             // debugger;
