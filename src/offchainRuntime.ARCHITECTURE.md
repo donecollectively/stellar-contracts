@@ -1,188 +1,339 @@
 # Offchain Runtime Architecture
 
-> **Git Reference**: This document was written based on commit `1d55f10` (with uncommitted changes adding `readOnly` optimization).
-> If the code has changed since then, compare key functions against this commit to understand evolution.
+> **Git Reference**: Based on commit `b4cafd0` (perf: avoid expensive load of onchain scripts during app start)
+> Use `git diff b4cafd0..HEAD -- src/Capo.ts src/StellarContract.ts src/CapoTypes.ts` to see changes since this doc was written.
+
+## Files Involved in Read/Write Path Optimization
+
+| File | Role in Optimization |
+|------|---------------------|
+| `src/Capo.ts` | `connectDelegateWithOnchainRDLink()` - `readOnly` option skips compilation; `connectMintingScript()` - skips compilation when precompiled |
+| `src/CapoTypes.ts` | `FindableViaCharterData` type includes `readOnly?: boolean` |
+| `src/StellarContract.ts` | `asyncCompiledScript()`, `mintingPolicyHash` getter uses `bundle.scriptHash` |
+| `src/helios/scriptBundling/HeliosScriptBundle.ts` | `scriptHash` getter resolves from `configuredScriptDetails` before falling back to compilation |
+| `src/minting/CapoMinter.hlb.ts` | Sets `configuredScriptDetails` from `precompiledScriptDetails.minter` |
+| `src/helios/scriptBundling/CapoHeliosBundle.ts` | Sets `configuredScriptDetails` from `precompiledScriptDetails.capo` |
+| `src/delegation/ContractBasedDelegate.ts` | `mkScriptBundle()` creates delegate bundles |
+| `src/delegation/DelegatedDataContract.ts` | Data controller base class |
 
 ## Overview
 
-The offchain runtime handles TypeScript interactions with Cardano smart contracts, including:
-- Reading data from UTxOs (delegated data, charter data)
-- Building transactions
-- Managing delegates and their lifecycle
+The offchain runtime is the TypeScript layer that interacts with Cardano smart contracts. It handles:
+- Reading on-chain data (delegated data, charter data, UTxOs)
+- Building and submitting transactions
+- Managing contract delegates and their lifecycle
+- Bridging between TypeScript types and on-chain UPLC data
 
-## Critical Performance Insight: Read vs Write Paths
+## Core Components
 
-### The Core Problem
+### Capo (src/Capo.ts)
 
-When reading delegated data (e.g., `findDelegatedDataUtxos`), the system was unnecessarily compiling Helios scripts. Script compilation is expensive (100-500ms per script) but is **only needed for transaction building**, not for reading data.
+The "leader" contract that orchestrates the entire contract suite. Key responsibilities:
+- Maintains the charter (configuration) for all delegates
+- Provides methods for reading delegated data
+- Coordinates transaction building across delegates
+- Caches delegate instances for reuse
 
-### Why Script Compilation Was Happening
+### StellarContract (src/StellarContract.ts)
 
-The call chain for reading data was:
+Base class for all contracts. Provides:
+- Script bundle management (`getBundle`, `mkScriptBundle`)
+- Compiled script access (`asyncCompiledScript`, `compiledScript`)
+- Validator hash computation (`validatorHash`)
+- Data bridge access (`onchain`, `offchain`, `reader`)
 
-```
-findDelegatedDataUtxos()
-  └─> getDgDataController()
-        └─> connectDelegateWithOnchainRDLink()
-              └─> mustGetDelegate()   // Creates delegate instance
-              └─> asyncCompiledScript()  // ❌ EXPENSIVE - compiles Helios
-              └─> upgrade detection (needs validatorHash)
-```
+### HeliosScriptBundle (src/helios/scriptBundling/HeliosScriptBundle.ts)
 
-### The Solution: `readOnly` Option
+Manages Helios script compilation and caching:
+- `loadProgram()` - Parses and loads the Helios program (expensive)
+- `compiledScript()` - Compiles to UPLC (expensive)
+- `scriptHash` - Returns hash, using precompiled value when available
 
-Added `readOnly?: boolean` option to `connectDelegateWithOnchainRDLink` and `getDgDataController`:
+### Data Bridges (*.bridge.ts files)
+
+Pre-generated TypeScript classes that convert between:
+- On-chain UPLC data structures
+- Off-chain TypeScript types
+
+Key insight: **Data bridges don't require compiled scripts** - they use pre-generated cast functions.
+
+## Delegate System
+
+### Delegate Roles
+
+Delegates are modular contracts that handle specific responsibilities:
+- **mintDelegate**: Controls token minting
+- **spendDelegate**: Controls UTxO spending
+- **govAuthority**: Controls governance actions
+- **Named delegates**: Application-specific (e.g., "settings", custom data types)
+
+### Delegate Connection
 
 ```typescript
-// src/Capo.ts:1730-1740
-async connectDelegateWithOnchainRDLink<...>(
+// src/Capo.ts:1730
+async connectDelegateWithOnchainRDLink<RN, DT>(
     role: RN,
     delegateLink: RelativeDelegateLinkLike,
-    options?: { readOnly?: boolean }  // NEW
+    options?: { readOnly?: boolean }
 ): Promise<DT>
 ```
 
-When `readOnly: true`:
-1. Skip `asyncCompiledScript()` call
-2. Skip upgrade detection (which requires `delegateValidatorHash`)
+This method:
+1. Checks the delegate cache - returns immediately if cached
+2. Creates delegate instance via `mustGetDelegate()`
+3. Optionally compiles script and checks for upgrades (when `readOnly: false`)
+4. Caches the delegate for future use
 
-### Why This Works
-
-The data bridge's `newReadDatum()` function uses **pre-generated cast functions** that don't require the compiled program:
-
-```
-newReadDatum(uplcData)
-  └─> bridge.readDatum(d)
-        └─> Pre-generated type casts (no compilation needed)
-```
-
-The pre-generated `.bridge.ts` files contain all the type conversion logic at build time.
-
-## Key Code Paths
-
-### 1. Reading Delegated Data (Optimized Path)
-
-**File**: `src/Capo.ts` - `findDelegatedDataUtxos()` (line ~3304)
-
-```
-findDelegatedDataUtxos({ type: "settings" })
-  ├─> findCapoUtxos()           // Get UTxOs from network/cache
-  ├─> findCharterData()         // Parse charter datum
-  └─> For each UTxO:
-        ├─> Extract datum type from on-chain data
-        ├─> getDgDataController(type, { readOnly: true })  // ✅ No compilation
-        └─> controller.newReadDatum(datum)                  // Pre-generated casts
-```
-
-### 2. Building Transactions (Full Compilation Path)
-
-When building transactions, compilation IS needed:
-
-```
-mkTxnCreateRecord()
-  └─> getDgDataController(type)  // readOnly: false (default)
-        └─> connectDelegateWithOnchainRDLink()
-              └─> asyncCompiledScript()  // ✅ Needed for txn building
-              └─> upgrade detection      // ✅ Needed to detect stale scripts
-```
-
-### 3. Delegate Connection and Caching
-
-**File**: `src/Capo.ts` - `connectDelegateWithOnchainRDLink()` (line ~1730)
-
-```
-connectDelegateWithOnchainRDLink(role, delegateLink, options?)
-  ├─> Check _delegateCache[role][cacheKey]  // Return cached if available
-  │     └─> ✅ Cache hit returns immediately
-  │
-  └─> Cache miss:
-        ├─> mustGetDelegate()               // Create delegate instance
-        ├─> if (!options?.readOnly):
-        │     ├─> asyncCompiledScript()     // Compile Helios
-        │     └─> upgrade detection         // Compare validator hashes
-        └─> Cache delegate for future use
-```
-
-## Key Files and Their Roles
-
-| File | Purpose | Key Functions |
-|------|---------|---------------|
-| `src/Capo.ts` | Main Capo contract class | `findDelegatedDataUtxos`, `getDgDataController`, `connectDelegateWithOnchainRDLink` |
-| `src/StellarContract.ts` | Base contract class | `asyncCompiledScript`, `validatorHash`, `getBundle`, `mkScriptBundle` |
-| `src/helios/scriptBundling/HeliosScriptBundle.ts` | Script bundle management | `loadProgram`, `compiledScript`, `scriptHash` getter |
-| `src/delegation/ContractBasedDelegate.ts` | Base for contract-backed delegates | `delegateValidatorHash`, `mkScriptBundle` |
-| `src/CapoTypes.ts` | Type definitions | `FindableViaCharterData` (includes `readOnly` option) |
-
-## Script Hash Availability Without Compilation
-
-For precompiled bundles, `scriptHash` is available via:
-
-```typescript
-// src/helios/scriptBundling/HeliosScriptBundle.ts:327-341
-get scriptHash() {
-    const hash =
-        this.previousOnchainScript?.uplcProgram.hash() ||
-        this.configuredScriptDetails?.scriptHash ||  // ✅ Available for precompiled
-        this.alreadyCompiledScript?.hash();
-    if (!hash) {
-        // Falls back to compilation if nothing else available
-        const script = this.compiledScript();
-        return script.hash();
-    }
-    return hash;
-}
-```
-
-**Note**: Delegate bundles (e.g., `DelegatedDataBundle`) are typically NOT precompiled, so they require JIT compilation for `scriptHash`. This is why we skip the entire `delegateValidatorHash` access for read-only operations.
-
-## Performance Instrumentation
-
-The codebase includes Performance API marks for profiling:
-
-```typescript
-// In findDelegatedDataUtxos():
-performance.mark(`${perfLabel}:start`);
-performance.mark(`${perfLabel}:findCapoUtxos:start`);
-// ... operations ...
-performance.mark(`${perfLabel}:findCapoUtxos:end`);
-performance.measure(`${perfLabel}:findCapoUtxos`, ...);
-```
-
-View in Chrome DevTools Performance panel or via `performance.getEntriesByType('measure')`.
-
-## Delegate Cache Structure
+### Delegate Cache
 
 ```typescript
 // src/Capo.ts:1720-1727
 _delegateCache: {
     [roleName: string]: {
-        [delegateLink: string]: {
+        [delegateLinkKey: string]: {
             delegate: StellarDelegate;
         };
     };
-} = {};
+}
 ```
 
-Cache key is `JSON.stringify(onchainDgtLink, delegateLinkSerializer)`.
+Cache key is derived from the on-chain delegate link configuration.
 
-## Future Optimization Opportunities
+## Delegate Initialization: Cheap vs Expensive Operations
 
-1. **Lazy Compilation**: Delegates could defer compilation until `validatorHash` is actually accessed
-2. **Bundle Precompilation**: More delegate bundles could be precompiled at build time
-3. **Parallel Loading**: Multiple delegate controllers could be loaded in parallel when reading multiple types
+### What init() Does (Cheap)
 
-## Related Requirements
+When a delegate is created via `mustGetDelegate()` → `createWith()` → `init()`:
 
-- **REQT-1.7.3/qc7qgsqphv**: getTxInfo with Restored Inputs (in CachedUtxoIndex)
+```
+init(args)
+  ├─> mkScriptBundle()                    // Creates bundle instance
+  │     └─> bundleClass.create()
+  │           └─> bundle.init()           // Sets up configuredScriptDetails
+  ├─> Sets configuredParams from config
+  └─> Logs "bundle loaded"                // No compilation yet
+```
 
-## Code Change Detection
+The `init()` method is cheap because it:
+- Creates the bundle instance
+- Sets up `configuredScriptDetails` from precompiled data (if available)
+- Does NOT compile the Helios script
 
-To detect if the code has changed since this doc was written:
+Note: There's a disabled eager-compile path at `src/StellarContract.ts:1007` (`if (false && ...)`) that would compile during init, but it's turned off.
+
+### What Happens After init() (Expensive)
+
+The expensive operations occur in `connectDelegateWithOnchainRDLink()` AFTER `mustGetDelegate()` returns:
+
+```typescript
+// src/Capo.ts - connectDelegateWithOnchainRDLink()
+const delegate = await this.mustGetDelegate(...);  // init() called here (cheap)
+
+// AFTER init() returns - this is where expensive work happens:
+if (!options?.readOnly) {
+    if (delegate.usesContractScript) {
+        await delegate.asyncCompiledScript();      // EXPENSIVE: compiles Helios
+    }
+    // Upgrade detection accesses delegateValidatorHash
+    // which may trigger scriptHash getter → compilation fallback
+}
+```
+
+### Why readOnly Works
+
+The `readOnly` option skips the post-init expensive operations:
+- `asyncCompiledScript()` - Helios compilation (100-500ms per script)
+- Upgrade detection - requires `delegateValidatorHash` which needs `scriptHash`
+
+The delegate instance from `init()` is still fully usable for reading data because:
+- The data bridge (`newReadDatum`) uses pre-generated cast functions
+- Cast functions are generated at build time, not runtime
+- No compiled script needed to convert UPLC data to TypeScript types
+
+### Minter Connection (connectMintingScript)
+
+The minter is connected during Capo init. Compilation is deferred when precompiled config is available:
+
+```typescript
+// src/Capo.ts - connectMintingScript()
+const { mph: expectedMph } = bundle.configuredParams;  // From precompiled bundle
+
+if (!expectedMph) {
+    // New deployment: must compile to get MPH
+    await minter.asyncCompiledScript();
+}
+// Existing deployment: trust precompiled config, skip compilation
+// mintingPolicyHash getter uses configuredScriptDetails.scriptHash
+```
+
+The `mintingPolicyHash` getter (src/StellarContract.ts:1165) uses `bundle.scriptHash`, which resolves from `configuredScriptDetails.scriptHash` for precompiled bundles.
+
+## Read Path vs Write Path
+
+### Read Path (readOnly: true)
+
+Used for querying on-chain data without building transactions.
+
+```
+findDelegatedDataUtxos({ type, readOnly: true })
+  ├─> findCapoUtxos()                    // Fetch UTxOs from network/cache
+  ├─> findCharterData()                  // Parse charter datum
+  └─> For each UTxO with matching type:
+        ├─> getDgDataController(type, { readOnly: true })
+        │     └─> connectDelegateWithOnchainRDLink(..., { readOnly: true })
+        │           ├─> mustGetDelegate() → init()    // Cheap
+        │           └─> Skips asyncCompiledScript()   // No compilation
+        └─> controller.newReadDatum(datum.data)
+              └─> Uses pre-generated bridge casts (no compilation needed)
+```
+
+The `readOnly` option skips:
+- Script compilation (`asyncCompiledScript()`)
+- Upgrade detection (which requires `delegateValidatorHash`)
+
+This is valid because reading data only needs the data bridge, not the compiled script.
+
+### Write Path (readOnly: false, default)
+
+Used when building transactions.
+
+```
+mkTxnCreateRecord()
+  └─> getDgDataController(type)          // readOnly: false (default)
+        └─> connectDelegateWithOnchainRDLink()
+              ├─> mustGetDelegate() → init()   // Cheap
+              ├─> asyncCompiledScript()        // EXPENSIVE: Compile Helios to UPLC
+              └─> Upgrade detection            // Compare validator hashes
+```
+
+Script compilation is required for:
+- Getting the validator hash for transaction outputs
+- Validating that bundled scripts match on-chain scripts
+- Detecting when delegates need upgrades
+
+## Accessing Precompiled Bundle Config
+
+### Static scriptBundleClass()
+
+Each contract class has a static `scriptBundleClass()` method that returns the bundle class with precompiled details:
+
+```typescript
+// Access bundle class without instantiating contract
+const BundleClass = await MyCapo.scriptBundleClass();
+
+// Precompiled details are available on the class
+const { capo, minter } = BundleClass.prototype.precompiledScriptDetails || {};
+// capo.config - { mph, rev, ... }
+// capo.scriptHash - validator hash (hex string)
+// minter.scriptHash - minting policy hash
+```
+
+This enables:
+- Getting `mph` and `scriptHash` before contract instantiation
+- Configuring CachedUtxoIndex with contract addresses early
+- Avoiding compilation just to read config values
+
+### precompiledScriptDetails Structure
+
+```typescript
+precompiledScriptDetails: {
+    capo?: {
+        config: { mph, rev, ... },
+        scriptHash: string,        // hex-encoded
+        programBundle?: {...}      // serialized UPLC (optional)
+    },
+    minter?: {
+        config: { seedTxn, seedIndex },
+        scriptHash: string
+    },
+    // ... other precompiled scripts
+}
+```
+
+Built at compile time by the Stellar Rollup bundler. Available without any runtime compilation.
+
+## Script Hash Resolution
+
+The `scriptHash` getter in HeliosScriptBundle resolves in order:
+
+```typescript
+// src/helios/scriptBundling/HeliosScriptBundle.ts:327
+get scriptHash() {
+    return (
+        this.previousOnchainScript?.uplcProgram.hash() ||  // 1. From on-chain ref
+        this.configuredScriptDetails?.scriptHash ||        // 2. From precompiled bundle
+        this.alreadyCompiledScript?.hash() ||              // 3. From JIT compilation cache
+        this.compiledScript().hash()                       // 4. Fallback: compile now
+    );
+}
+```
+
+For precompiled bundles (like CapoHeliosBundle), `configuredScriptDetails.scriptHash` is available at initialization, avoiding compilation.
+
+For delegate bundles (like DelegatedDataBundle), compilation is typically required to get the hash.
+
+## Key Type Definitions
+
+### FindableViaCharterData (src/CapoTypes.ts:436)
+
+```typescript
+type FindableViaCharterData = {
+    charterData?: CharterData;
+    optional?: true;
+    readOnly?: boolean;  // Skip compilation for read-only operations
+};
+```
+
+### ConfiguredScriptDetails
+
+Contains precompiled script information:
+- `scriptHash`: The validator hash
+- `config`: Script parameters
+- `programBundle`: Serialized program (when precompiled)
+
+## Performance Instrumentation
+
+The runtime includes Performance API marks for profiling:
+
+```typescript
+performance.mark(`${label}:start`);
+// ... operation ...
+performance.mark(`${label}:end`);
+performance.measure(label, `${label}:start`, `${label}:end`);
+```
+
+Key instrumented operations in `findDelegatedDataUtxos`:
+- `findCapoUtxos` - UTxO fetching
+- `findCharterData` - Charter parsing
+- `getDgDataController` - Delegate loading
+- `loadController:${type}` - Per-type controller loading
+- `processUtxos` - Overall UTxO processing
+
+View via Chrome DevTools Performance panel or `performance.getEntriesByType('measure')`.
+
+## File Reference
+
+| File | Role |
+|------|------|
+| `src/Capo.ts` | Main Capo class, delegate management, data queries |
+| `src/StellarContract.ts` | Base contract class, script management |
+| `src/CapoTypes.ts` | Type definitions including `FindableViaCharterData` |
+| `src/helios/scriptBundling/HeliosScriptBundle.ts` | Script bundle base class |
+| `src/helios/scriptBundling/CapoHeliosBundle.ts` | Capo-specific bundle (precompiled) |
+| `src/helios/scriptBundling/CapoDelegateBundle.ts` | Delegate bundle base |
+| `src/helios/scriptBundling/DelegatedDataBundle.ts` | Data controller bundle |
+| `src/delegation/ContractBasedDelegate.ts` | Base for contract-backed delegates |
+| `src/delegation/DelegatedDataContract.ts` | Base for data controller delegates |
+
+## Verification
 
 ```bash
-# Check if key functions have changed
-git diff 1d55f10..HEAD -- src/Capo.ts | grep -A5 -B5 "connectDelegateWithOnchainRDLink\|getDgDataController\|findDelegatedDataUtxos"
-
-# Check if the readOnly option is still in place
+# Check readOnly option usage
 grep -n "readOnly" src/Capo.ts src/CapoTypes.ts
+
+# Check delegate caching
+grep -n "_delegateCache" src/Capo.ts
+
+# Check script compilation paths
+grep -n "asyncCompiledScript" src/Capo.ts src/StellarContract.ts
 ```
