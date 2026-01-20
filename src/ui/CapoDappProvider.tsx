@@ -1195,9 +1195,10 @@ export class CapoDAppProvider<
                     isForMainnet: isMainnet,
                     ...hydraOptions,
                 })
-                : this.bf;
+                : (this.state.utxoIndex || this.bf);
             simpleWallet = makeSimpleWallet(privKey, networkClient);
-            if (this.capo) {
+            // Only update capo network if not already using CachedUtxoIndex
+            if (this.capo && !this.state.utxoIndex) {
                 this.capo.setup.network = networkClient;
             }
         } else {
@@ -1316,7 +1317,10 @@ export class CapoDAppProvider<
             wallet = simpleWallet;
             foundNetworkName = this.props.targetNetwork;
             if (this.capo) {
-                this.capo.setup.network = simpleWallet.cardanoClient;
+                // Only update network if not already using CachedUtxoIndex
+                if (!this.state.utxoIndex) {
+                    this.capo.setup.network = simpleWallet.cardanoClient;
+                }
                 this.capo.setup.actorContext.wallet = wallet;
             }
             const networkParams = await simpleWallet.cardanoClient.parameters;
@@ -1645,9 +1649,11 @@ export class CapoDAppProvider<
         }
         //@ts-expect-error - sorry, typescript : /
         if (this.state.userInfo.wallet?.cardanoClient) {
-            network = (this.state.userInfo.wallet! as SimpleWallet)
+            // Get networkParams from wallet's client, but don't overwrite network
+            // (otherwise we bypass the CachedUtxoIndex)
+            const walletClient = (this.state.userInfo.wallet! as SimpleWallet)
                 .cardanoClient;
-            networkParams = await network.parameters;
+            networkParams = await walletClient.parameters;
         }
         const setup = {
             network,
