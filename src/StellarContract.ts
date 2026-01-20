@@ -1017,7 +1017,8 @@ export class StellarContract<
                 }
                 console.log(
                     bundle.configuredScriptDetails?.programName ||
-                        bundle.loadProgram().name,
+                        bundle.moduleName ||
+                        this.constructor.name,
                     "bundle loaded"
                 );
             }
