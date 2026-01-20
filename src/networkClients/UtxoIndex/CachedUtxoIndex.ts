@@ -275,7 +275,7 @@ export class CachedUtxoIndex {
         );
 
         // Forward rate limiter metrics to our event emitter
-        blockfrostRateLimiter.events.on("metrics", (metrics) => {
+        getBlockfrostRateLimiter().events.on("metrics", (metrics) => {
             this.events.emit("rateLimitMetrics", metrics);
         });
 
@@ -468,7 +468,8 @@ export class CachedUtxoIndex {
                 );
             }
         }, refreshInterval);
-        this.refreshTimerId.unref();
+        
+        this.refreshTimerId.unref?.();
     }
 
     /**

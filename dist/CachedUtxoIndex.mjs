@@ -4921,15 +4921,15 @@ class RateLimitedFetch {
     this.events.removeAllListeners();
   }
 }
-let blockfrostRateLimiter$1 = null;
+let blockfrostRateLimiter = null;
 function getBlockfrostRateLimiter() {
-  if (blockfrostRateLimiter$1) {
-    return blockfrostRateLimiter$1;
+  if (blockfrostRateLimiter) {
+    return blockfrostRateLimiter;
   }
-  blockfrostRateLimiter$1 = new RateLimitedFetch({
+  blockfrostRateLimiter = new RateLimitedFetch({
     name: "Blockfrost"
   });
-  return blockfrostRateLimiter$1;
+  return blockfrostRateLimiter;
 }
 
 const BlockDetailsFactory = type({
@@ -5498,7 +5498,7 @@ class CachedUtxoIndex {
       "agsbb",
       `CachedUtxoIndex created for address: ${this._address.toString()}`
     );
-    blockfrostRateLimiter.events.on("metrics", (metrics) => {
+    getBlockfrostRateLimiter().events.on("metrics", (metrics) => {
       this.events.emit("rateLimitMetrics", metrics);
     });
     this.syncReady = new Promise((resolve) => {
