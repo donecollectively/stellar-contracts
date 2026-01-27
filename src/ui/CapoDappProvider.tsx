@@ -650,7 +650,7 @@ export class CapoDAppProvider<
                 role="alert"
                 key="errorStatus"
             >
-                <div className="">
+                <div className="max-h-[calc(100vh-100px)] overflow-y-auto">
                     <strong className="font-bold">Whoops! &nbsp;&nbsp;</strong>
                     <span key="status-err" className="block sm:inline">
                         {message!.split("\n").map((line, i) => (
