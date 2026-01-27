@@ -312,6 +312,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
     kind: "StellarTxnContext" = "StellarTxnContext";
     id: string = nanoid(5);
     inputs: TxInput[] = [];
+    /** Maps input ID (as hex string) to the stack trace where it was added */
+    inputStackTraces: Map<string, string> = new Map();
     collateral?: TxInput;
     outputs: TxOutput[] = [];
     feeLimit?: bigint;
@@ -844,6 +846,27 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 // JSON.stringify(r, delegateLinkSerializer)
             );
         }
+
+        // Capture stack trace for this input addition (REQT/8j3c498xwy)
+        const currentStack = new Error().stack || "(stack unavailable)";
+        const inputIdKey = input.id.toString()
+
+        // Check for duplicate input (REQT/et8ttdrs77)
+        const existingStack = this.inputStackTraces.get(inputIdKey);
+        if (existingStack) {
+            const originalStackSummary = existingStack
+                .split("\n")
+                .slice(1, 6)
+                .join("\n");
+            throw new Error(
+                `Duplicate input detected: ${inputIdKey}\n\n` +
+                    `Original input was added at:\n${originalStackSummary}\n\n` +
+                    `Duplicate addition attempted at:\n${currentStack}`,
+            );
+        }
+
+        // Store the stack trace for this input
+        this.inputStackTraces.set(inputIdKey, currentStack);
 
         //@ts-expect-error probing for pubKeyHash
         if (input.address.pubKeyHash)
