@@ -66,6 +66,27 @@ describe("Transaction context", async () => {
             const tcx = capo.mkTcx();
             expect(tcx.id).toBeTruthy();
             expect(capo.setup.txBatcher._current).toBeTruthy();
-        })        
+        })
+
+        it("StellarTxnContext: validFor() captures _txnEndTime", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            await h.reusableBootstrap();
+
+            const capo = h.capo
+            const tcx = capo.mkTcx();
+
+            // validFor() should set _txnEndTime to txnTime + duration
+            const validityDurationMs = 10 * 60 * 1000; // 10 minutes
+            tcx.validFor(validityDurationMs);
+
+            // Access the internal _txnEndTime property
+            const endTime = (tcx as any)._txnEndTime;
+            expect(endTime).toBeInstanceOf(Date);
+
+            // Verify the end time is approximately correct (txnTime + duration)
+            const expectedEndTime = new Date(tcx.txnTime.getTime() + validityDurationMs);
+            expect(endTime.getTime()).toBe(expectedEndTime.getTime());
+        })
     })
 })

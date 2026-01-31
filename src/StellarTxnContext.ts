@@ -769,9 +769,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
         // If the current validity period is greater than the desired duration,
         //   we SHOULD constrain the tx validity to this more restrictive duration.
         this._validityPeriodSet = true;
+        this._txnEndTime = new Date(startMoment + durationMs);
         this.txb
             .validFromTime(new Date(startMoment))
-            .validToTime(new Date(startMoment + durationMs));
+            .validToTime(this._txnEndTime);
 
         return this;
     }
