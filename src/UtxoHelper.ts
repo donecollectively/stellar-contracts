@@ -801,14 +801,12 @@ export class UtxoHelper {
         for (const addr of addrs.flat(1)) {
             if (!addr) continue;
             if (findCached) {
+                // TODO: implement cache lookup
                 // const cachedUtxos = await this.cacheStore.findUtxos(addr);
                 // utxos.push(...cachedUtxos);
                 console.log(`  Temporary: calling through to network instead of using cache`);
             }
-            // } else {
-                const addrUtxos = await this.network.getUtxos(addr);
-                utxos.push(...addrUtxos);
-            // }
+            const addrUtxos = await this.network.getUtxos(addr);
             utxos.push(...addrUtxos);
         }
 
