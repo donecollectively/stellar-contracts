@@ -321,6 +321,19 @@ export abstract class StellarTestHelper<
         );
         preProdParams.maxTxExCpu = maxCpu;
 
+        const origRefScriptsFeePerByte = preProdParams.refScriptsFeePerByte;
+        //@ts-expect-error on our synthetic property
+        preProdParams.origRefScriptsFeePerByte = origRefScriptsFeePerByte;
+
+        const refScriptsFeePerByte = Math.floor(origRefScriptsFeePerByte / 4);
+        console.log(
+            "test env: 🔧🔧🔧 fixup refScripts fee per byte",
+            origRefScriptsFeePerByte,
+            " -> 🔧",
+            refScriptsFeePerByte,
+        );
+        preProdParams.refScriptsFeePerByte = refScriptsFeePerByte;
+
         //@ts-expect-error on our synthetic property
         preProdParams.isFixedUp = true;
         return preProdParams;
