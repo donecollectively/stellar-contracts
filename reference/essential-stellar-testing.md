@@ -72,7 +72,7 @@ Key example patterns to mirror in your app:
 - Update flow that requires consent/authority plus data integrity checks.
 - Full-lifecycle testing: exercise each state and constraint with negative tests.
 - Negative tests should be present to verify each constraint, demonstrating the transaction failure with clear error messages.
-- Not typically necessary to do granular testing of separate field changes in a positive test; a single test that changes all fields at once is usually sufficient.
+- NEVER have multiple happy-path tests that run the same setup and test different results unless there's an important reaon.  Instead, make a single test with the happy setup, and check all the desired results, with failure messages indicating any unexpected results.
 - Make tests for your data-controller/policy right next to its code, making them easily found and portable when refactoring.
 
 ## Boilerplate you can copy
@@ -87,24 +87,19 @@ Key example patterns to mirror in your app:
     ```
     If you need a different snapshot, you can then call its `snapToFoo()` method on the helper. For example, if you need to test the "activate" state, you can call `await h.snapToActivate()` after the bootstrap.
 - Define and use snapshot methods in the test helper to prepare a predefined state that directly connects the bootstrap state to specific test scenarios.  The test helpers will re-use the snapshots via the `snapTo‹SnapshotName›()` method.  See `reference/boilerplate/testing/basic-offchain.test.ts` and `reference/boilerplate/testing/policy-flow.test.ts`  and `reference/boilerplate/testHelper.ts` for examples.
- - WHENEVER you are changing on-chain code in `*.hl` files, the code may take up to 30s to be compiled and start to give you definitive feedback (syntax problems will show up more quickly).  The terminal should show you when scripts are being compiled and when the compilation is done.  You should be patient, and DO NOT pause for chat interaction while waiting for the feedback to appear. You need to notice when the tests are still running, and you need to watch for the onscreen indication of the test being complete or failing.
+  - ALWAYS read and understand the test helper code before writing tests or when troubleshooting.
   - When there is a test failure, be sure to look at the whole error message and not only the first line of the error; often Helios reports the script name and the actual site of the error in later lines of the error message.
 
 ## Tips and pitfalls
 - Prefer using a snapshot (`h.snapTo...`) or `await h.reusableBootstrap()` when you need to test onchain functionality.  `initialize()` is faster and good for testing off-chain-only code, but it can't check any onchain policies.
+- For one-off transaction execution, use submitTxnWithBlock() directly for one-off cases of submitting a txn built directly from a controller mkTxn* method.  Can use mocking.
+- To DRY up tests, create helper methods that have options?: { submit?: boolean; expectError?: true; } and call through to submitTxnWithBlock().  mock-compatible if it doesn't use snapshots.  
+ - Use await expect(... expectError: true ... ).rejects.toThrow(/pattern/) to assert on the specific error thrown by the policy, while hinting to the txn executor that a failure is good.
+- For mocking, you MUST NOT call to a snapshot or a helper method that calls a snapshot after the mock has been set.  Instead, load an earlier snapshot before setting the mock, then non-snapshot method(s) to build (with mocking) and submit the txn.  
+- Prefer to use an approropriate existing helper method that has {submit,expectError} options, instead of calling a controller's mkTxn* method directly
 - Use `h.setActor("<name>")` to impersonate wallets; `findSufficientActorUtxos` and `mustFindActorUtxo` handle tcx exclusions for you.
 - For rejection cases, assert on the specific regex the policy emits; many helpers throw descriptive errors (e.g., “missing required…capoGov-”).
 - When debugging, `dumpAny` is available; `h.network.tick(n)` advances slots when the timing of transactions is important for your smart-contract policies.
-
-## Driving changes through testing
-
-When you are a person or an agent making changes to the codebase, you should follow a workflow that allows you to incrementally verify your code changes with tests while remaining deeply connected to the intention and requirements of the existing codebase.  The Workflow and Practices Guidance below will help you do this.  It's important to understand the intent of the requirements, and to be able to explain them to someone else, and to receive and integrate feedback.
-
-While working on code and test changes, you should understand clearly which requirements are new, and what the intent is for those new requirements.  You should be able to explain the intent of the requirements to someone else, and receive and integrate feedback.  
-
-You should be able to adapt when existing requirements change, with special attention to the reason for the change in those requirements and the needed changes to the codebase to support the new requirements.  
-
-You should generally use a long-term goal to make the suite green (fully passing) by taking tests one at a time. For each proposed on-chain/off-chain/test change, you should apply the minimal fix, run with `it.only(...)`, verify locally, then pause for review before moving on or broadening scope.
 
 
 ## Where to look next
