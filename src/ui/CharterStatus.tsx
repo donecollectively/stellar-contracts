@@ -449,9 +449,12 @@ function DelegatedDataPolicyItem({
                 <div>
                     <Softlight>
                         Delegated data policy
-                        <div className="text-xs">
+                        <div key="thing1" className="text-xs">
                             &nbsp;&nbsp;&nbsp;
                             {bytesToText(foundRole.tokenName)}
+                        </div>
+                        <div key="thing2" className="text-xs">
+                        policy {delegate?.validatorHash.toHex()}
                         </div>
                     </Softlight>
                 </div>
