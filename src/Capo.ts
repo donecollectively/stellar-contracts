@@ -3308,9 +3308,12 @@ export abstract class Capo<
      * Returns a single item from a list, throwing an error if it has multiple items
      *
      */
-    singleItem<T>(xs: Array<T>): T {
+    singleItem<T  extends FoundDatumUtxo<any, any>>(xs: Array<T>): T {
         const [first, ...excess] = xs;
         if (excess.length) {
+            console.error("expected single item", dumpAny(
+                xs.map(x => x.utxo), this.networkParams)
+            )
             throw new Error("expected single item, got extra " + excess.length);
         }
         return first;
