@@ -168,9 +168,11 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
  - **REQT-1.1.1**/rchyr7skd2: COMPLETED: **Input Tracking** - MUST track inputs in local array and record witness needs for pubkey addresses.
      - **REQT-1.1.1.1**/8j3c498xwy: COMPLETED: **Input Stack Trace** - MUST gather a stack trace for the function that added the input.
-     - **REQT-1.1.1.2**/et8ttdrs77: COMPLETED: **Error On Duplicate Input** - MUST throw an error if the same input is added twice. The error MUST show the original input's stack summary and the stack trace where the duplicate is added.
+     - **REQT-1.1.1.2**/acczfb1bd6: COMPLETED: **Reference Input Stack Trace** - MUST gather a stack trace for the function that added the reference input.
+     - **REQT-1.1.1.3**/et8ttdrs77: COMPLETED: **Error On Duplicate Input** - MUST throw an error if the same input is added twice. The error MUST show the original input's stack summary and the stack trace where the duplicate is added.
+     - **REQT-1.1.1.4**/p0eze6w4kk: COMPLETED: **Error Spending Reference Input** - MUST throw an error if the added input is already a reference input.
  - **REQT-1.1.2**/w9na1tska1: COMPLETED: **Output Tracking** - MUST track outputs in local array with clear error messages on failure.
- - **REQT-1.1.3**/68y4byt3bt: COMPLETED: **Reference Input Idempotency** - `addRefInput()` MUST be idempotent and MUST NOT add inputs already in the inputs array.
+ - **REQT-1.1.3**/68y4byt3bt: COMPLETED: **Reference Input Idempotency** - `addRefInput()` MUST be idempotent and MUST NOT add inputs already in the inputs array, without causing an error.
  - **REQT-1.1.4**/ft97ch6fsr: COMPLETED: **Reservation Tracking** - `reservedUtxos()` MUST return all inputs reserved by this and parent contexts.
 
 ### REQT-1.2/kw8dyfhnm1: COMPLETED: **Transaction Validity**

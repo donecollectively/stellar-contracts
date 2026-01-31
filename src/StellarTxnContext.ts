@@ -312,8 +312,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
     kind: "StellarTxnContext" = "StellarTxnContext";
     id: string = nanoid(5);
     inputs: TxInput[] = [];
-    /** Maps input ID (as hex string) to the stack trace where it was added */
+    /** Maps input ID (as string) to the stack trace where it was added */
     inputStackTraces: Map<string, string> = new Map();
+    /** Maps reference input ID (as string) to the stack trace where it was added (REQT/acczfb1bd6) */
+    refInputStackTraces: Map<string, string> = new Map();
     collateral?: TxInput;
     outputs: TxOutput[] = [];
     feeLimit?: bigint;
@@ -791,6 +793,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this.noFacade("addRefInput");
         if (!input) throw new Error(`missing required input for addRefInput()`);
 
+        // Capture stack trace for this reference input (REQT/acczfb1bd6)
+        const currentStack = new Error().stack || "(stack unavailable)";
+        const inputIdKey = input.id.toString();
+
         if (this.txRefInputs.find((v) => v.id.isEqual(input.id))) {
             console.warn("suppressing second add of refInput");
             return this;
@@ -801,6 +807,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
             );
             return this;
         }
+
+        // Store the stack trace for this reference input
+        this.refInputStackTraces.set(inputIdKey, currentStack);
         this.txRefInputs.push(input);
 
         //@ts-expect-error private field
@@ -864,6 +873,20 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     `Duplicate addition attempted at:\n${currentStack}`,
             );
         }
+
+        // Check if input is already a reference input (REQT/p0eze6w4kk)
+        // const existingRefStack = this.refInputStackTraces.get(inputIdKey);
+        // if (existingRefStack) {
+        //     const refStackSummary = existingRefStack
+        //         .split("\n")
+        //         .slice(1, 6)
+        //         .join("\n");
+        //     throw new Error(
+        //         `Cannot spend input that is already a reference input: ${inputIdKey}\n\n` +
+        //             `Reference input was added at:\n${refStackSummary}\n\n` +
+        //             `Spend attempt at:\n${currentStack}`,
+        //     );
+        // }
 
         // Store the stack trace for this input
         this.inputStackTraces.set(inputIdKey, currentStack);
