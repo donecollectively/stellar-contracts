@@ -20,4 +20,5 @@ export interface UtxoIndexEntry {
     inlineDatum: string | null;  // CBOR hex
     referenceScriptHash: string | null;  // script hash hex (REQT/tqrhbphgyx)
     uutIds: string[];            // extracted UUT identifiers
+    spentInTx: string | null;    // txHash that spent this UTXO, or null if unspent (REQT/11msfc4wv8)
 }

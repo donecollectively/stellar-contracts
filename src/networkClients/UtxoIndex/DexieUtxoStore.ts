@@ -126,9 +126,17 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         await this.utxos.put(entry as dexieUtxoDetails);
     }
 
+    // REQT/hhbcnvd9aj: Mark a UTXO as spent
+    async markUtxoSpent(utxoId: string, spentInTx: string): Promise<void> {
+        await this.utxos.where("utxoId").equals(utxoId).modify({ spentInTx });
+    }
+
     // REQT/cchf3wgnk3 (UUT Catalog Storage) - query UTXOs by UUT identifier
+    // REQT/g3jen1rcvd: Filter out spent UTXOs
     async findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined> {
-        return await this.utxos.where("uutIds").equals(uutId).first();
+        const results = await this.utxos.where("uutIds").equals(uutId).toArray();
+        // Return first unspent UTXO with this UUT
+        return results.find(u => u.spentInTx === null || u.spentInTx === undefined);
     }
 
     // REQT/nm2ed7m80y (Transaction Storage)
@@ -150,6 +158,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // REQT/50zkk5xgrx: Query API Methods
+    // REQT/g3jen1rcvd: All query methods filter out spent UTXOs
 
     async findUtxosByAsset(
         policyId: string,
@@ -163,6 +172,8 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         const allUtxos = await this.utxos.toArray();
 
         const filtered = allUtxos.filter((utxo) => {
+            // Filter out spent UTXOs
+            if (utxo.spentInTx !== null && utxo.spentInTx !== undefined) return false;
             return utxo.tokens.some((token) => {
                 if (token.policyId !== policyId) return false;
                 if (tokenName !== undefined && token.tokenName !== tokenName)
@@ -180,12 +191,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     ): Promise<UtxoIndexEntry[]> {
         const { limit = 100, offset = 0 } = options ?? {};
 
-        return await this.utxos
+        const results = await this.utxos
             .where("address")
             .equals(address)
-            .offset(offset)
-            .limit(limit)
             .toArray();
+
+        // Filter out spent UTXOs, then apply pagination
+        const unspent = results.filter(u => u.spentInTx === null || u.spentInTx === undefined);
+        return unspent.slice(offset, offset + limit);
     }
 
     async getAllUtxos(options?: {
@@ -194,7 +207,10 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }): Promise<UtxoIndexEntry[]> {
         const { limit = 100, offset = 0 } = options ?? {};
 
-        return await this.utxos.offset(offset).limit(limit).toArray();
+        const allUtxos = await this.utxos.toArray();
+        // Filter out spent UTXOs, then apply pagination
+        const unspent = allUtxos.filter(u => u.spentInTx === null || u.spentInTx === undefined);
+        return unspent.slice(offset, offset + limit);
     }
 
     // REQT/620ypcc34d: Wallet Address Storage

@@ -24,4 +24,5 @@ export class dexieUtxoDetails
     inlineDatum!: string | null;
     referenceScriptHash!: string | null;  // REQT/tqrhbphgyx
     uutIds!: string[];
+    spentInTx!: string | null;  // REQT/11msfc4wv8
 }

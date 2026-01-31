@@ -261,6 +261,15 @@ Defines how the indexer performs initial synchronization and ongoing transaction
  - **REQT-1.3.3**/0vrkpk6a6h: COMPLETED: **Transaction Processing** - Must implement `processTransactionForNewUtxos()` to extract and index relevant UTXOs from transactions. Must fetch full transaction CBOR and decode using Helios `decodeTx()`. Must examine each transaction output. Must check if UTXO already exists in store via `store.findUtxoId()`. Must index new UTXOs via `indexUtxoFromOutput()`. Must update UUT catalog if delegate UUTs moved.
     - **REQT-1.3.4**/mvjrak021s: COMPLETED: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to store UTXO id and any mph-matching token values for later search. Must extract inline datum as binary data or datum hash. Must save to store via `store.saveUtxo()`.
 
+### REQT-1.3.5/2jk4j31mgr: COMPLETED: **Spent UTXO Eviction**
+
+#### Purpose
+Ensures the index only returns active (unspent) UTXOs when queried. Without this, spent UTXOs accumulate in the cache and are incorrectly returned by query methods, causing transaction building failures. Applied when processing transactions or implementing query methods.
+
+ - **REQT-1.3.5.1**/hhbcnvd9aj: COMPLETED: **Input Detection** - When processing a transaction via `processTransactionForNewUtxos()`, MUST examine `tx.body.inputs` to identify spent UTXOs. For each input whose utxoId exists in the cache, MUST mark that UTXO as spent.
+ - **REQT-1.3.5.2**/11msfc4wv8: COMPLETED: **Soft Delete Strategy** - MUST use soft delete by adding a `spentInTx: string | null` field to `UtxoIndexEntry`. When a UTXO is spent, MUST set this field to the spending transaction's hash. This preserves historical data for debugging and allows potential restoration during chain reorganization handling.
+ - **REQT-1.3.5.3**/g3jen1rcvd: COMPLETED: **Query Filtering** - All query methods (`getUtxos`, `getUtxosWithAssetClass`, `findUtxosByAddress`, `findUtxosByAsset`, `getAllUtxos`, `findUtxoByUUT`) MUST filter out UTXOs where `spentInTx` is not null. The storage layer MUST provide filtered query methods or the CachedUtxoIndex MUST filter results before returning.
+
 ### REQT-1.4/k3xfpg6jkb: COMPLETED: **External Data Services & Utilities**
 
 #### Purpose
@@ -512,6 +521,13 @@ To match BlockfrostV0Client behavior, we restore full TxInputs with:
 * DONE: `fetchAndCacheScript()` fetches reference script CBOR from `/scripts/{hash}/cbor` endpoint (REQT/tqrhbphgyx)
 * DONE: Script storage in DexieUtxoStore with `saveScript()`/`findScript()` (REQT/k2wvnd3f1e)
 * DONE: `getTxInfo()` uses `tx.recover(this)` for input restoration, following Helios convention where `getTx()` returns raw Tx (REQT/qc7qgsqphv)
+
+#### COMPLETED: Spent UTXO Eviction (REQT/2jk4j31mgr)
+Critical bug fix: spent UTXOs were retained in cache and returned by query methods.
+* DONE: Added `spentInTx: string | null` field to UtxoIndexEntry and dexieUtxoDetails (REQT/11msfc4wv8)
+* DONE: Added `markUtxoSpent()` method to UtxoStoreGeneric interface and DexieUtxoStore
+* DONE: Process `tx.body.inputs` in `processTransactionForNewUtxos()` to mark spent UTXOs (REQT/hhbcnvd9aj)
+* DONE: All query methods filter out spent UTXOs: `findUtxoByUUT`, `findUtxosByAsset`, `findUtxosByAddress`, `getAllUtxos` (REQT/g3jen1rcvd)
 
 #### IN PROGRESS: Wallet Address Indexing (REQT/ngn9agx52a)
 Extends indexer to cache UTXOs from connected wallet addresses:

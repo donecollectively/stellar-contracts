@@ -25,6 +25,8 @@ export interface UtxoStoreGeneric {
     // UTXO operations - uses storage-agnostic UtxoIndexEntry
     findUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined>;
     saveUtxo(entry: UtxoIndexEntry): Promise<void>;
+    // REQT/hhbcnvd9aj: Mark a UTXO as spent by recording the spending tx hash
+    markUtxoSpent(utxoId: string, spentInTx: string): Promise<void>;
 
     // Transaction operations
     findTxId(txId: string): Promise<TxIndexEntry | undefined>;

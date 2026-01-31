@@ -628,6 +628,19 @@ export class CachedUtxoIndex {
             }
         }
 
+        // REQT/hhbcnvd9aj: Process inputs to mark spent UTXOs
+        for (const input of tx.body.inputs) {
+            const utxoId = input.id.toString();
+            const existingUtxo = await this.store.findUtxoId(utxoId);
+            if (existingUtxo && !existingUtxo.spentInTx) {
+                await this.store.markUtxoSpent(utxoId, txHash);
+                await this.store.log(
+                    "sp3nt",
+                    `Marked UTXO ${utxoId} as spent in tx ${txHash}`,
+                );
+            }
+        }
+
         // REQT-1.2.2: Re-catalog delegates if charter changed
         if (charterChanged) {
             await this.store.log(
@@ -745,6 +758,7 @@ export class CachedUtxoIndex {
             inlineDatum,
             referenceScriptHash,
             uutIds: this.extractUutIds(output),
+            spentInTx: null,  // REQT/11msfc4wv8: New UTXOs are unspent
         };
     }
 
@@ -796,6 +810,7 @@ export class CachedUtxoIndex {
             inlineDatum,
             referenceScriptHash,
             uutIds: this.extractUutIdsFromTxInput(txInput),
+            spentInTx: null,  // REQT/11msfc4wv8: New UTXOs are unspent
         };
     }
 
@@ -864,6 +879,7 @@ export class CachedUtxoIndex {
             inlineDatum: bfUtxo.inline_datum,
             referenceScriptHash: bfUtxo.reference_script_hash,
             uutIds,
+            spentInTx: null,  // REQT/11msfc4wv8: New UTXOs are unspent
         };
     }
 
