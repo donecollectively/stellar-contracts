@@ -298,7 +298,7 @@ export abstract class StellarTestHelper<
         //@ts-expect-error on our synthetic property
         preProdParams.origMaxTxExMem = origMaxMem;
 
-        const maxMem = Math.floor(origMaxMem * 8);
+        const maxMem = Math.floor(origMaxMem * 9);
         console.log(
             "test env: 🔧🔧🔧 fixup max memory",
             origMaxMem,
