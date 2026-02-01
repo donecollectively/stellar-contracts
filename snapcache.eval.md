@@ -20,7 +20,7 @@
   - [x] REQT-1.2.2.4/bck1nj7r3h: Includes spend delegate bundle hash
   - [~] REQT-1.2.2.5/zjkckrz6np: Includes DefaultCapo.hl bundle hash *(partial - included via capo bundle)*
   - [x] REQT-1.2.2.6/hdwf9fdcg2: All hashes combined into list and hashed together
-- [~] **REQT-1.2.3/ek3ksgysxv**: enabledDelegatesDeployed Snapshot *(see note on 1.2.3.4)*
+- [~] **REQT-1.2.3/ek3ksgysxv**: enabledDelegatesDeployed Snapshot *(REQT-1.2.3.4 fails - dgData controllers missing)*
   - [x] REQT-1.2.3.1/th2fsv10x7: Includes parent (capoInitialized) snapshot's block hash
   - [x] REQT-1.2.3.2/venhawwjrz: Includes all enabled delegate bundles' dependency hashes
   - [x] REQT-1.2.3.3/8wqpt8zq60: Includes dependencies resolved via Capo's bundle
@@ -388,28 +388,41 @@ this.blockHashes.push(blockHash);
 
 ## Issues Found
 
-### ISSUE-1: REQT-1.2.3.4 featureFlags for dgData controllers - needs verification
-**Severity**: LOW (reduced from MEDIUM after reqts clarification)
-**Description**: REQT-1.2.3.4 (now corrected) states featureFlags applies only to dgData controllers, NOT to namedDelegates. The implementation at `CapoTestHelper.ts:887-910` correctly iterates `getNamedDelegates()` (which should always be included).
+### ISSUE-1: REQT-1.2.3.4 dgData controllers missing from cache key
+**Severity**: HIGH
+**Description**: Per architecture (Emulator.ARCHITECTURE.md:242-253), `resolveEnabledDelegatesDependencies()` should iterate `delegateRoles` (dgData controllers) filtered by `featureEnabled(typeName)`. The bundle list changes when featureFlags changes, naturally producing different cache keys.
 
-**Remaining question**: Does the implementation:
-1. Separately handle dgData controllers filtered by featureFlags?
-2. Include the featureFlags config in the cache key `extra` field?
+The implementation at `CapoTestHelper.ts:1034-1057` only iterates `getNamedDelegates()` and does NOT include dgData controllers at all.
 
-**Evidence**:
+**Architecture spec** (lines 242-253):
 ```typescript
-// CapoTestHelper.ts:887-910
-async resolveEnabledDelegatesDependencies(): Promise<CacheKeyInputs> {
-    const coreInputs = await this.resolveCoreCapoDependencies();
-    const bundles = [...coreInputs.bundles];
-    // Correctly iterates namedDelegates (always included)
-    // But does it handle dgData controllers separately with featureFlags?
+resolveEnabledDelegatesDependencies(): CacheKeyInputs {
+  const coreBundles = this.resolveCoreCapoDependencies().bundles;
+  const delegateBundles = Object.values(this.capo.delegateRoles)
+    .filter(d => this.capo.featureEnabled(d.typeName))
+    .map(d => d.bundle.getCacheKeyInputs());
+
+  return {
+    bundles: [...coreBundles, ...delegateBundles],
+    extra: { heliosVersion: VERSION }
+  };
 }
 ```
 
-**Impact**: If dgData controllers aren't filtered by featureFlags in the cache key, different feature configurations for dgData might incorrectly hit the same cache.
+**Current implementation** (CapoTestHelper.ts:1034-1057):
+```typescript
+async resolveEnabledDelegatesDependencies(): Promise<CacheKeyInputs> {
+    const coreInputs = await this.resolveCoreCapoDependencies();
+    const bundles = [...coreInputs.bundles];
+    // Only iterates namedDelegates - MISSING delegateRoles!
+    const namedDelegates = await this.capo.getNamedDelegates();
+    // ...
+}
+```
 
-**Recommendation**: Verify dgData controller handling and consider adding `featureFlags: this.featureFlags` to `extra` field if dgData controllers are feature-gated.
+**Impact**: Different featureFlags configurations produce the SAME cache key, causing incorrect cache hits when tests run with different feature sets.
+
+**Recommendation**: Update implementation to match architecture - add iteration of `delegateRoles` filtered by `featureEnabled(typeName)`.
 
 ### ISSUE-2: Test uses `Map` for allUtxos but implementation uses `Record`
 **Severity**: LOW
@@ -432,16 +445,16 @@ addressUtxos: Record<string, TxInput[]>;
 
 ## Summary
 
-### Overall Assessment: **PASS with Minor Issues**
+### Overall Assessment: **PASS with One Significant Issue**
 
 | Category | Pass | Partial | Fail | N/A (BACKLOG/FUTURE) |
 |----------|------|---------|------|----------------------|
-| REQT-1.2 Cache Invalidation | 15 | 2 | 0 | 2 |
+| REQT-1.2 Cache Invalidation | 14 | 2 | 1 | 2 |
 | REQT-3.1 Bundle Hashing | 4 | 0 | 0 | 0 |
 | REQT-3.2 Script Resolution | 4 | 0 | 0 | 0 |
 | Architecture Verification | 8 | 0 | 0 | 0 |
 | Integration Points | 3 | 0 | 0 | 0 |
-| **TOTAL** | **34** | **2** | **0** | **2** |
+| **TOTAL** | **33** | **2** | **1** | **2** |
 
 ### Key Findings
 
@@ -451,13 +464,13 @@ addressUtxos: Record<string, TxInput[]>;
 
 3. **Integration Complete**: CapoTestHelper properly orchestrates the three-tier snapshot hierarchy (actors → capoInitialized → enabledDelegatesDeployed).
 
-4. **Minor Clarification Needed**: REQT-1.2.3.4 (featureFlags) applies only to dgData controllers, not namedDelegates. Implementation correctly includes all namedDelegates; dgData controller handling needs verification.
+4. **One Significant Bug**: REQT-1.2.3.4 - dgData controllers are NOT included in the cache key. Implementation only iterates namedDelegates, missing the `delegateRoles` filtered by `featureEnabled()` as specified in the architecture.
 
 5. **Test Coverage Good**: Unit tests exist and verify core functionality including freshness touch behavior.
 
 ### Recommendations
 
-1. **Verify ISSUE-1**: Confirm dgData controller handling in `resolveEnabledDelegatesDependencies()` - may need featureFlags in `extra` field if dgData is feature-gated.
+1. **Fix ISSUE-1 (HIGH)**: Update `resolveEnabledDelegatesDependencies()` to match architecture - add iteration of `this.capo.delegateRoles` filtered by `featureEnabled(typeName)` to include dgData controller bundles in cache key.
 2. **Update Test Mocks**: Change `Map()` to `Record` in test fixtures.
 3. **Document Additional APIs**: Add `has()` and `delete()` to architecture document.
 4. **Update Reqts**: Add randomSeed to REQT-1.2.1 sub-requirements.
