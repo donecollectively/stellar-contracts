@@ -244,7 +244,7 @@ export abstract class HeliosScriptBundle {
                     this.constructor.name
                 }: overrides scriptParamsSource (originator '${
                     specialOriginatorLabel || "‹unknown›"
-                }')    '\n        was ${
+                }') - was ${
                     this.scriptParamsSource
                 }, now ${scriptParamsSource}`
             );
@@ -264,7 +264,8 @@ export abstract class HeliosScriptBundle {
                         `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
                     );
                 }
-                console.log(
+                //@ts-expect-error - move to custom logger
+                console.canDebug?.(
                     `special originator '${specialOriginatorLabel}' initializing with basic config`
                 );
             }
@@ -330,7 +331,7 @@ export abstract class HeliosScriptBundle {
             this.configuredScriptDetails?.scriptHash ||
             this.alreadyCompiledScript?.hash();
         if (!hash) {
-            console.log(
+            console.warn(
                 "scriptHash called before program is loaded.  Call loadProgram() first (expensive!) if this is intentional"
             );
             const script = this.compiledScript();
@@ -915,6 +916,7 @@ export abstract class HeliosScriptBundle {
     compiledScript(asyncOk?: true): anyUplcProgram | Promise<anyUplcProgram> {
         const { setup, previousOnchainScript, _program: loadedProgram } = this;
 
+        // console.error("-> compiledScript", new Error().stack);
         if (this.alreadyCompiledScript) {
             return this.alreadyCompiledScript;
         }
@@ -1021,7 +1023,8 @@ export abstract class HeliosScriptBundle {
                 // });
                 this.alreadyCompiledScript = uplcProgram;
                 const scriptHash = bytesToHex(uplcProgram.hash());
-                console.log(
+                //@ts-expect-error - move to custom logger
+                console.canDebug?.(
                     "timing (ms):",
                         (program.compileTime ||
                             `compiled: ${new Date().getTime() - t}ms`),
@@ -1171,7 +1174,8 @@ export abstract class HeliosScriptBundle {
             debugger;
         }
         try {
-            console.warn(`${bundleName}: loading program`);
+            //@ts-expect-error - move to custom logger
+            console.canDebug?.(`${bundleName}: loading program`);
             // console.log(`HERE ${this.___id}: ${new Error("(where?)").stack}`)
             const p = new HeliosProgramWithCacheAPI(this.main, {
                 isTestnet,

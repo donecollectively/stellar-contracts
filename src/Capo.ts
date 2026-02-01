@@ -1428,7 +1428,8 @@ export abstract class Capo<
             delegateLinkSerializer
             // 4 // indent 4 spaces
         );
-        console.log("offchainDgtLink cache key", role, cacheKey);
+        //@ts-expect-error - move to custom logger
+        console.canDebug?.(`offchainDgtLink cache key`, role, cacheKey);
         this._delegateCache[role] = this._delegateCache[role] || {};
         this._delegateCache[role][cacheKey] = configured;
         //@ts-expect-error "could be instantiated with a different type" - TS2352
@@ -1777,7 +1778,8 @@ export abstract class Capo<
             if (options.onchain && delegate.usesContractScript && !delegate._bundle?.alreadyCompiledScript) {
                 await delegate.asyncCompiledScript();
             }
-            console.log(`  ✅ 💁 ${role} - from cache `);
+            //@ts-expect-error - move to custom logger
+            console.canDebug?.(`  ✅ 💁 ${role} - from cache `);
             return delegate as DT;
         }
         console.log(`   🔎delegate 💁 ${role}`);
@@ -3461,7 +3463,7 @@ export abstract class Capo<
                                 if (k.kind != "bytes") {
                                     console.log("   - key not bytes", k.kind);
                                 } else {
-                                    console.log("key ", bytesToText(k.bytes));
+                                    // console.log("key ", bytesToText(k.bytes));
                                     return (
                                         k.kind == "bytes" &&
                                         equalsBytes(k.bytes, typeBytes)

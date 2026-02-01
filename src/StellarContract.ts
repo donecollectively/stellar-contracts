@@ -725,7 +725,8 @@ export class StellarContract<
                 const datumType = this._bundle.locateDatumType();
                 if (datumType) {
                     // verifies that the dataBridge ALSO has a datum-type
-                    console.log(
+                    //@ts-expect-error - move to custom logger
+                    console.canDebug?.(
                         `${this.constructor.name} dataBridgeClass = `,
                         dataBridgeClass.name
                     );
@@ -969,7 +970,8 @@ export class StellarContract<
             //   required variant config
             const variant = (config || partialConfig).variant;
 
-            console.log(
+            //@ts-expect-error - move to custom logger
+            console.canDebug?.(
                 `${this.constructor.name}: stellar offchain class init with config`
             );
             let params = config
@@ -1015,7 +1017,8 @@ export class StellarContract<
                     debugger;
                     throw new Error(`what is this situation here? (dbpa)`);
                 }
-                console.log(
+                //@ts-expect-error - move to custom logger
+                console.canDebug?.(
                     bundle.configuredScriptDetails?.programName ||
                         bundle.moduleName ||
                         this.constructor.name,
@@ -1139,11 +1142,10 @@ export class StellarContract<
                 "This contract isn't yet configured with a validatorHash"
             );
         }
-        console.log(this.constructor.name, "caching addr");
         console.log(
-            "TODO TODO TODO - ensure each contract can indicate the right stake part of its address"
+            "TODO - ensure each contract can indicate the right stake part of its address"
         );
-        console.log("and that the onchain part also supports it");
+        // console.log("and that the onchain part also supports it");
         const isMainnet = this.setup.isMainnet;
         if ("undefined" == typeof isMainnet) {
             throw new Error(

@@ -230,6 +230,7 @@ export class CachedHeliosProgram extends Program {
                 );
             } else {
                 const { version } = value;
+                console.error("-> initCacheFromBundle -> programFromCacheEntry", new Error().stack);
                 if (version !== "PlutusV2" && version !== "PlutusV3") {
                     console.log(
                         `🐢${this.id}: unknown version '${version}'' in compiler cache entry: ${key}; skipping`
@@ -440,6 +441,7 @@ export class CachedHeliosProgram extends Program {
     async compileWithCache(
         optimizeOrOptions: boolean | CompileOptionsForCachedHeliosProgram
     ): Promise<UplcProgramV2> {
+        // console.error("-> compileWithCache", new Error().stack);
         // Promise<UplcProgramV2 | UplcProgramV3> {
         const options: CompileOptionsForCachedHeliosProgram =
             typeof optimizeOrOptions === "boolean"
@@ -457,7 +459,8 @@ export class CachedHeliosProgram extends Program {
         const fromCache = await this.getFromCache(cacheKey);
         if (fromCache) {
             // const programCount = fromCache.alt ? 2 : 1;
-            console.log(`🐢${this.id}: ${cacheKey}: from cache`);
+            //@ts-expect-error - move to custom logger
+            console.canDebug?.(`🐢${this.id}: ${cacheKey}: from cache`);
             const end1 = Date.now();
             this.compileTime = {
                 fetchedCache: end1 - start,
@@ -587,6 +590,7 @@ export class CachedHeliosProgram extends Program {
     async getFromCache(
         cacheKey: string
     ): Promise<undefined | UplcProgramV2 /* | UplcProgramV3 */> {
+        // console.error("-> getFromCache", new Error().stack);
         const cacheEntry = await this.ifCached(cacheKey);
         if (cacheEntry) {
             this.cacheEntry = deserializeHeliosCacheEntry(cacheEntry)

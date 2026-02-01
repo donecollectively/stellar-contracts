@@ -698,7 +698,9 @@ export class UtxoHelper {
             if (options.findCached) {
                 // const cachedUtxos = await this.cacheStore.findUtxos(addr);
                 // utxos.push(...cachedUtxos);
-                console.log(`  Temporary: calling through to network instead of using cache`);
+                console.log(`  Temporary: calling through to network instead of using cache: `+ 
+                    this.network.constructor.name || "‹no network name›"
+                );
             }
             const addrUtxos = await this.network.getUtxos(addr);
             utxos.push(...addrUtxos);

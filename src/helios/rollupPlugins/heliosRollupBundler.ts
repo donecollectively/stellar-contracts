@@ -568,14 +568,14 @@ export function heliosRollupBundler(
                                 // file happening on a separate track.
                                 // and the package-relative import name used in place of normal
                                 // load/transform processing of the separate chunk.
-                                console.log(
-                                    // `˚. ✦.˳·˖✶ ⋆.✧̣̇˚. `
-                                    `--------------------------------------------------------------\n` +
+                                this.debug(
+                                    // `˚. ✦.˳·˖✶ ⋆.✧̣̇˚. `    
+                                    // `--------------------------------------------------------------\n` +
                                         `  -- stellar-bundler: emitting ${isPreconfiguredCapo} ${relativePath(
                                             resolved.id
                                         )}\n` +
                                         `     for import("${packageImportName}") (condition = network-${networkId})` +
-                                        `\n--------------------------------------------------------------\n` +
+                                        // `\n--------------------------------------------------------------\n` +
                                         ""
                                 );
 
