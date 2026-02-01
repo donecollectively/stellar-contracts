@@ -26,7 +26,7 @@ import {
 } from "@helios-lang/ledger";
 
 import { type BytesLike, type IntLike } from "@helios-lang/codec-utils";
-import {colors} from "../utils.js"
+import {colors} from "../../utils.js"
 const { magenta } = colors
 
 import {

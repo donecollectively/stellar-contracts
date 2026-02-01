@@ -11,7 +11,10 @@ import {
 } from "@helios-lang/ledger";
 import { generateBytes, mulberry32 } from "@helios-lang/crypto";
 
-import { SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
+import {
+    SimpleWallet_stellar as emulatedWallet,
+    StellarNetworkEmulator,
+} from "./emulator/StellarNetworkEmulator.js";
 
 import {
     StellarContract,
@@ -41,10 +44,6 @@ import type {
     canHaveRandomSeed,
     canSkipSetup,
 } from "./types.js";
-import {
-    SimpleWallet_stellar,
-    StellarNetworkEmulator,
-} from "./StellarNetworkEmulator.js";
 import { makeRootPrivateKey, type Wallet } from "@helios-lang/tx-utils";
 
 /**
@@ -678,8 +677,8 @@ export abstract class StellarTestHelper<
      * Special genesis transactions are added to the emulated chain in order to create these assets.
      * @public
      */
-    createWallet(lovelace = 0n, assets = makeAssets([])): SimpleWallet_stellar {
-        const wallet = SimpleWallet_stellar.fromRootPrivateKey(
+    createWallet(lovelace = 0n, assets = makeAssets([])): emulatedWallet {
+        const wallet = emulatedWallet.fromRootPrivateKey(
             makeRootPrivateKey(generateBytes(this.network.mulberry32, 32)),
             this.networkCtx,
         );

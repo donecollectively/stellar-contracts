@@ -14,7 +14,7 @@ import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
 import {
     SimpleWallet_stellar as emulatedWallet,
     type NetworkSnapshot,
-} from "./StellarNetworkEmulator.js";
+} from "./emulator/StellarNetworkEmulator.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
 // import type {
 //     StellarTestContext,
