@@ -257,31 +257,44 @@ App snapshots inherit from `enabledDelegatesDeployed` and typically don't add ne
 
 ### SnapshotCache API
 
-**Location**: `.stellar/emulator/<cacheKey>.json`
+**Location**: `.stellar/emulator/{snapshotName}-{cacheKey}.json`
 
 ```typescript
 class SnapshotCache {
-  // Look up cached snapshot by key
-  find(cacheKey: string): Promise<CachedSnapshot | null>
+  // Look up cached snapshot by key and name
+  find(cacheKey: string, snapshotName: string): Promise<CachedSnapshot | null>
 
-  // Store snapshot with key
+  // Store snapshot with key (name extracted from snapshot.name)
   store(cacheKey: string, snapshot: CachedSnapshot): Promise<void>
+
+  // Check if cached snapshot exists
+  has(cacheKey: string, snapshotName: string): boolean
+
+  // Delete cached snapshot
+  delete(cacheKey: string, snapshotName: string): boolean
 
   // Compute cache key from inputs
   computeKey(parentHash: string | null, inputs: CacheKeyInputs): string
 }
 
 type CachedSnapshot = {
-  blocks: SerializedBlock[];      // incremental blocks since parent
+  snapshot: NetworkSnapshot;
   namedRecords: Record<string, string>;
-  parentHash: string | null;
-  snapshotHash: string;           // hash of this file, for child keys
+  parentName: string | null;       // logical parent name
+  parentHash: string | null;       // parent's block hash (for validation)
+  parentCacheKey: string | null;   // parent's cache key (for O(1) file lookup)
+  snapshotHash: string;            // this snapshot's block hash
 }
 ```
 
+**File Naming**:
+- Pattern: `{snapshotName}-{cacheKey}.json` (e.g., `bootstrapWithActors-a1b2c3d4.json`)
+- Snapshot names sanitized: alphanumeric, underscore, hyphen only; max 50 chars
+- Multiple files with same name but different hashes is expected (code changes produce new hashes)
+
 **Behavior**:
 - `find()`: Returns null on miss; touches file if mtime > 1 day
-- `store()`: Writes JSON; snapshotHash comes from emulator's last block hash
+- `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON
 - `computeKey()`: `hash(parentHash + JSON.stringify(inputs))`
 
 ### Block Hash Computation
@@ -385,6 +398,8 @@ class StellarNetworkEmulator implements Emulator {
 | **`.stellar/emulator/` location** | Project-local, gitignore-able |
 | **Helios VERSION in cache key** | Compiler changes could affect output |
 | **autoSetup + featureFlags** | autoSetup triggers iteration; featureFlags filters which deploy |
+| **Human-readable filenames** `{name}-{key}.json` | Enables `ls bootstrapWithActors-*`, debugging, targeted cleanup |
+| **`parentCacheKey` in CachedSnapshot** | O(1) parent file lookup for incremental storage (vs scanning all files) |
 
 ---
 

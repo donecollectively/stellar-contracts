@@ -204,6 +204,13 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
  - **REQT-1.2.8/v4c7x9m1kz**: COMPLETED: **Helios Version in Cache Key** - The base snapshot cache key MUST include the Helios compiler version (available via `import { VERSION } from "@helios-lang/compiler"`)
 
+ - **REQT-1.2.9/d34w6546fx**: NEXT: **Human-Readable Cache Filenames** - Cache files MUST use human-readable naming for consumability:
+    - **REQT-1.2.9.1/d230hkb6vm**: NEXT: Cache files MUST be named `{snapshotName}-{cacheKey}.json` (e.g., `bootstrapWithActors-a1b2c3d4.json`)
+    - **REQT-1.2.9.2/asb3wybpc7**: NEXT: Snapshot names MUST be sanitized for filesystem safety: only alphanumeric, underscore, and hyphen allowed; truncated to 50 characters maximum
+    - **REQT-1.2.9.3/xqnwt4ajgq**: NEXT: Each snapshot file SHOULD include `parentCacheKey` to enable O(1) parent file lookup for incremental storage
+
+> **RATIONALE (id:d34w6546fx)**: Human-readable filenames enable developers to identify snapshot purpose at a glance (`ls bootstrapWithActors-*`), debug cache misses by seeing which named snapshots exist, and perform targeted cleanup (`rm capoInitialized-*.json`). The cache key suffix preserves uniqueness—multiple files with the same snapshot name but different hashes is expected when code changes.
+
 ### REQT-1.3/qr6r27cg3q: COMPLETED: **Transaction Validation**
 
 #### Purpose: Ensures submitted transactions meet network requirements. Applied when modifying transaction submission logic.
@@ -378,6 +385,7 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
    - ✅ Cache location in `.stellar/emulator/` (REQT-1.2.6)
    - ✅ Cache freshness management with touch-on-use (REQT-1.2.7.1)
    - ✅ Helios version in cache key (REQT-1.2.8)
+   - ⏳ Human-readable cache filenames (REQT-1.2.9) - NEXT
    - ✅ Bundle dependency hashing (REQT-3.1)
    - ✅ Script dependency resolution (REQT-3.2)
 
