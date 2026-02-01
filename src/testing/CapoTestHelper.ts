@@ -16,7 +16,15 @@ import type { BundleCacheKeyInputs } from "../helios/scriptBundling/HeliosScript
 import type { NetworkSnapshot } from "./emulator/StellarNetworkEmulator.js";
 
 import { StellarTestHelper } from "./StellarTestHelper.js";
-import { canHaveRandomSeed, TestHelperState } from "./types.js";
+import { addTestContext, type canHaveRandomSeed, type TestHelperState } from "./types.js";
+import type { StellarTestContext } from "./StellarTestContext.js";
+import {
+    describe as vitestDescribe,
+    it as vitestIt,
+    beforeEach,
+    type TestAPI,
+    type SuiteAPI,
+} from "vitest";
 
 const ACTORS_ALREADY_MOVED =
     "NONE! all actors were moved from a different network via snapshot";
@@ -48,6 +56,50 @@ export type ScriptDependencyResolver = (helper: AnyCapoTestHelper) => Promise<Ca
 export type SnapshotDecoratorOptions = {
     actor: string;
     resolveScriptDependencies?: ScriptDependencyResolver;
+};
+
+/**
+ * Type for the wrapped describe function with .only, .skip, .todo variants
+ * @public
+ */
+export type WrappedDescribe<TC> = {
+    (name: string, fn: () => void): void;
+    only: (name: string, fn: () => void) => void;
+    skip: SuiteAPI["skip"];
+    todo: SuiteAPI["todo"];
+};
+
+/**
+ * Return type for createTestContext
+ * @public
+ */
+export type TestContextFactory<TC> = {
+    describe: WrappedDescribe<TC>;
+    it: TestAPI<TC>;
+    fit: TestAPI<TC>["only"];
+    xit: TestAPI<TC>["skip"];
+};
+
+/**
+ * Config type for createTestContext that matches addTestContext's expected type
+ * @internal
+ */
+type TestContextConfig<SC extends Capo<any>> = SC extends Capo<any, infer FF>
+    ? Partial<{ featureFlags: FF } & ConfigFor<SC>>
+    : Partial<ConfigFor<SC>>;
+
+/**
+ * Options for createTestContext
+ * @public
+ */
+export type CreateTestContextOptions<
+    SC extends Capo<any>,
+    SpecialState extends Record<string, any> = Record<string, never>
+> = {
+    /** Optional pre-existing helperState for snapshot sharing */
+    helperState?: TestHelperState<SC, SpecialState>;
+    /** Optional config to pass to the helper */
+    config?: TestContextConfig<SC>;
 };
 
 /**
@@ -91,6 +143,112 @@ export abstract class CapoTestHelper<
             }
         }
     }
+
+    /**
+     * Default helperState shared across all instances of this helper class.
+     * Subclasses can override this to provide custom default state.
+     * @public
+     */
+    static defaultHelperState: TestHelperState<any, any> = {
+        snapshots: {},
+        namedRecords: {},
+        bootstrapped: false,
+    } as any;
+
+    /**
+     * Creates pre-wired describe/it functions that automatically inject this test helper.
+     *
+     * @remarks
+     * This eliminates the need for boilerplate beforeEach setup in every test file.
+     * The returned describe/it functions automatically set up the test context with
+     * this helper class.
+     *
+     * @example
+     * ```typescript
+     * // In your test helper file:
+     * export const { describe, it } = MyCapoTestHelper.createTestContext();
+     *
+     * // In your test files:
+     * import { describe, it } from "../MyCapoTestHelper.js";
+     *
+     * describe("My Tests", () => {
+     *     it("works", async ({ h }) => {
+     *         await h.reusableBootstrap();
+     *         // h is already wired up
+     *     });
+     * });
+     * ```
+     *
+     * @param options - Optional configuration including helperState and config
+     * @returns An object with describe, it, fit, and xit functions
+     * @public
+     */
+    static createTestContext<
+        TH extends CapoTestHelper<SC, SS>,
+        SC extends Capo<any>,
+        SS extends Record<string, any> = Record<string, never>,
+        TC extends StellarTestContext<TH, SC> = StellarTestContext<TH, SC>
+    >(
+        this: new (...args: any[]) => TH,
+        options?: CreateTestContextOptions<SC, SS>
+    ): TestContextFactory<TC> {
+        const HelperClass = this;
+        const {
+            helperState = (HelperClass as any).defaultHelperState,
+            config
+        } = options ?? {};
+
+        // Track nesting depth to only add beforeEach at top level of each describe tree
+        let nestingDepth = 0;
+
+        /**
+         * Wraps a vitest describe function to auto-inject beforeEach at top level
+         */
+        const wrapDescribe = (
+            vitestFn: typeof vitestDescribe | typeof vitestDescribe.only
+        ) => {
+            return (name: string, fn: () => void): void => {
+                vitestFn(name, () => {
+                    const isTopLevel = nestingDepth === 0;
+                    nestingDepth++;
+
+                    if (isTopLevel) {
+                        beforeEach<TC>(async (context) => {
+                            // Config type is structurally identical to what addTestContext expects,
+                            // but TypeScript can't unify conditional types with unresolved generics.
+                            // The cast is safe because TestContextConfig<SC> ≡ addTestContext's config type.
+                            await addTestContext(
+                                context,
+                                HelperClass as any,
+                                config as Parameters<typeof addTestContext>[2],
+                                helperState
+                            );
+                        });
+                    }
+
+                    try {
+                        fn();
+                    } finally {
+                        nestingDepth--;
+                    }
+                });
+            };
+        };
+
+        // Create the wrapped describe with all variants
+        const describe = wrapDescribe(vitestDescribe) as WrappedDescribe<TC>;
+        describe.only = wrapDescribe(vitestDescribe.only);
+        describe.skip = vitestDescribe.skip;
+        describe.todo = vitestDescribe.todo;
+
+        // Cast it to the correct context type
+        const it = vitestIt as TestAPI<TC>;
+        const fit = it.only;
+        const xit = it.skip;
+
+        return { describe, it, fit, xit };
+    }
+
     async initialize(
         { randomSeed = 42 }: { randomSeed?: number } = {},
         args?: Partial<MinimalCharterDataArgs>,
@@ -339,6 +497,9 @@ export abstract class CapoTestHelper<
         await this.setupActors();
         this.network.tick(1);
 
+        // Ensure helperState exists for disk caching
+        this.ensureHelperState();
+
         // Compute cache key based on actor setup info
         const cacheKeyInputs = this.resolveActorsDependencies();
         const cacheKey = this.snapshotCache.computeKey(null, cacheKeyInputs);
@@ -349,12 +510,12 @@ export abstract class CapoTestHelper<
             console.log(`  -- 🎭 actors snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
             // Restore network state from cache
             this.network.loadSnapshot(cached.snapshot);
-            this.helperState!.snapshots[SNAP_ACTORS] = cached.snapshot;
+            this.helperState.snapshots[SNAP_ACTORS] = cached.snapshot;
         } else {
             console.log(`  -- 🎭 actors snapshot cache MISS (key: ${cacheKey.slice(0, 8)}...)`);
             // Create and save snapshot
             const snapshot = this.network.snapshot(SNAP_ACTORS);
-            this.helperState!.snapshots[SNAP_ACTORS] = snapshot;
+            this.helperState.snapshots[SNAP_ACTORS] = snapshot;
 
             const cachedSnapshot: CachedSnapshot = {
                 snapshot,
@@ -367,6 +528,22 @@ export abstract class CapoTestHelper<
         }
 
         await this.setDefaultActor();
+    }
+
+    /**
+     * Ensures helperState exists, creating a default one if needed.
+     * This enables disk caching for test helpers that don't use the @hasNamedSnapshot decorator.
+     * @internal
+     */
+    ensureHelperState(): void {
+        if (!this.helperState) {
+            //@ts-expect-error - creating minimal helperState without previousHelper
+            this.helperState = {
+                bootstrapped: false,
+                snapshots: {},
+                namedRecords: {},
+            };
+        }
     }
 
     hasSnapshot(snapshotName: string) {
@@ -609,6 +786,7 @@ export abstract class CapoTestHelper<
 
         const parentHash = actorsSnapshot.blockHashes?.slice(-1)[0] || "genesis";
         const cacheKeyInputs = await this.resolveCoreCapoDependencies();
+        console.log(`  -- ⚗️ tryRestoreCapoInitialized: parentHash=${parentHash.slice(0, 8)}..., bundles=${JSON.stringify(cacheKeyInputs.bundles.map(b => ({name: b.name, hash: b.sourceHash.slice(0, 8)})))}`);
         const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
 
         const cached = await this.snapshotCache.find(cacheKey);
@@ -633,6 +811,7 @@ export abstract class CapoTestHelper<
         const parentHash = actorsSnapshot?.blockHashes?.slice(-1)[0] || "genesis";
         const cacheKeyInputs = await this.resolveCoreCapoDependencies();
         const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
+        console.log(`  -- ⚗️ saveCapoInitializedSnapshot: key=${cacheKey.slice(0, 8)}..., parentHash=${parentHash.slice(0, 8)}..., bundles=${JSON.stringify(cacheKeyInputs.bundles.map(b => ({name: b.name, hash: b.sourceHash.slice(0, 8)})))}`);
 
         const snapshot = this.network.snapshot(SNAP_CAPO_INIT);
         this.helperState!.snapshots[SNAP_CAPO_INIT] = snapshot;

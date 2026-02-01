@@ -79,12 +79,13 @@ export type canSkipSetup = {
  * @public
  */
 export type TestHelperState<
-    SC extends StellarContract<any>, 
+    SC extends StellarContract<any>,
     Special extends Record<string, any> = {[key: string]: never}
 > = {
     bootstrapped: Boolean;
     bootstrappedStrella?: SC;
     snapshots: Record<string, NetworkSnapshot>;
+    namedRecords: Record<string, string>;
     previousHelper: StellarTestHelper<any>;
 } & Special;
 

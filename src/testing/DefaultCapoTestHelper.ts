@@ -91,6 +91,14 @@ export class DefaultCapoTestHelper<
             get stellarClass() {
                 return s;
             }
+
+            /**
+             * Merged defaultHelperState including any specialState fields
+             */
+            static override defaultHelperState = {
+                ...DefaultCapoTestHelper.defaultHelperState,
+                ...(specialState ?? {}),
+            } as TestHelperState<CAPO, SpecialState>;
         }
         return specificCapoHelper;
     }

@@ -193,70 +193,31 @@ export abstract class StellarTestHelper<
         return this.setActor("hiro");
     }
 
-    helperState?: TestHelperState<SC, SpecialState>;
+    /**
+     * Helper state for snapshots and named records.
+     * Always initialized from the class's static defaultHelperState.
+     */
+    helperState: TestHelperState<SC, SpecialState>;
+
+    /**
+     * Default helperState shared across all instances of this helper class.
+     * Subclasses can override this to provide custom default state.
+     * @public
+     */
+    static defaultHelperState: TestHelperState<any, any> = {
+        snapshots: {},
+        namedRecords: {},
+        bootstrapped: false,
+    } as any;
+
     constructor(
         config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup,
         helperState?: TestHelperState<SC, SpecialState>,
     ) {
         this.state = {};
-        if (!helperState) {
-            console.warn(
-                // warning emoji: "⚠️"
-                // info emoji: "ℹ️"
-                `⚠️ ⚠️ ⚠️ Note: this test helper doesn't have a helperState, so it won't be able to use test-chain snapshots
-ℹ️ ℹ️ ℹ️ ... to add helper state, follow this pattern:
-
-    // in your test helper:
-
-    @CapoTestHelper.hasNamedSnapshot("yourSnapshot", "tina")
-    snapTo‹YourSnapshot›() {
-        // never called
-    }
-    async ‹yourSnapshot›() {
-        this.setActor("tina");
-
-        // ... your good sequence of transaction(s) here
-        const tcx = this.capo.mkTxn‹...›(...)
-        return this.submitTxnWithBlock(tcx);
-    }
-
-    // in your test setup:
-
-    type localTC = StellarTestContext<YourCapo>;
-    let helperState: TestHelperState<YourCapo> = {
-        snapshots: {},
-    } as any;
-
-    beforeEach<localTC>(async (context) => {
-        await addTestContext(context,
-            YourCapoTestHelper,
-            undefined,
-            helperState
-        )
-    }
-
-    // in your tests:
-
-    describe("your thing", async () => {
-        it("your test", async (context: localTC) => {
-            // prettier-ignore
-            const {h, h:{network, actors, delay, state} } = context;
-            await h.reusableBootstrap();
-
-            await h.snapTo‹yourSnapshot›()
-        });
-        it("your other test", async (context: localTC) => {
-            // prettier-ignore
-            const {h, h:{network, actors, delay, state} } = context;
-            // this one will use the snapshot generated earlier
-            await h.snapTo‹yourSnapshot›()
-        });
-    })
-
-... happy (and snappy) testing!`,
-            );
-        }
-        this.helperState = helperState;
+        // Use class-level default helperState if none provided
+        this.helperState = helperState ??
+            (this.constructor as typeof StellarTestHelper).defaultHelperState;
         const cfg = config || {};
         if (Object.keys(cfg).length) {
             console.log(

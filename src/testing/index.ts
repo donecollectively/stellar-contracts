@@ -36,3 +36,15 @@ export {
     SimpleWallet_stellar
 } from "./emulator/StellarNetworkEmulator.js";
 
+export {
+    SnapshotCache,
+    type CacheKeyInputs,
+    type CachedSnapshot,
+} from "./emulator/SnapshotCache.js";
+
+export type {
+    WrappedDescribe,
+    TestContextFactory,
+    CreateTestContextOptions,
+} from "./CapoTestHelper.js";
+
