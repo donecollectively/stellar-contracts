@@ -33,9 +33,8 @@ const ACTORS_ALREADY_MOVED =
 export const SNAP_ACTORS = "bootstrapWithActors";
 export const SNAP_CAPO_INIT = "capoInitialized";
 export const SNAP_DELEGATES = "enabledDelegatesDeployed";
-// Legacy names for compatibility
+// Legacy name for compatibility
 export const SNAP_INIT = "initialized";
-export const SNAP_BOOTSTRAP = "bootstrapped";
 
 /**
  * Base type for CapoTestHelper that can be used in callbacks where the exact
@@ -381,13 +380,11 @@ export abstract class CapoTestHelper<
     }
 
     async reusableBootstrap(
-        snap = SNAP_BOOTSTRAP,
-        // override = false
+        snap = SNAP_DELEGATES,
     ) {
         let capo;
         const helperState = this.helperState!;
         if (helperState.bootstrapped) {
-            // debugger
             console.log("  ---  ⚗️🐞🐞 already bootstrapped");
             if (!helperState.previousHelper) {
                 debugger;
@@ -401,13 +398,12 @@ export abstract class CapoTestHelper<
             helperState.bootstrappedStrella = capo;
         }
         const { previousHelper } = helperState;
-        if (!previousHelper) {
-            this.snapshot(SNAP_BOOTSTRAP);
-        } else {
+        if (previousHelper) {
             console.log(
                 `changing helper from network ${previousHelper.network.id} to ${this.network.id}`,
             );
         }
+        // SNAP_DELEGATES is already created in bootstrap() → saveDelegatesDeployedSnapshot()
         helperState.bootstrapped = true;
         helperState.previousHelper = this;
 
@@ -609,16 +605,14 @@ export abstract class CapoTestHelper<
                 if (resolveScriptDependencies) {
                     const cacheKeyInputs = await resolveScriptDependencies(this);
                     const parentHash = this.helperState!.snapshots[SNAP_DELEGATES]?.blockHashes?.slice(-1)[0]
-                        || this.helperState!.snapshots[SNAP_BOOTSTRAP]?.blockHashes?.slice(-1)[0]
                         || "genesis";
-                    const parentName = this.helperState!.snapshots[SNAP_DELEGATES] ? SNAP_DELEGATES : SNAP_BOOTSTRAP;
                     const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
                     const snapshot = this.helperState!.snapshots[snapshotName];
 
                     const cachedSnapshot: CachedSnapshot = {
                         snapshot,
                         namedRecords: { ...this.helperState!.namedRecords },
-                        parentName,
+                        parentName: SNAP_DELEGATES,
                         parentHash,
                         snapshotHash: this.network.lastBlockHash,
                     };
