@@ -38,6 +38,16 @@ import type {
 } from "@donecollectively/stellar-contracts";
 
 import { ADA } from "./types.js";
+
+/**
+ * Records the setup info for an actor, used for snapshot cache key computation.
+ * @public
+ */
+export type ActorSetupInfo = {
+    name: string;
+    initialBalance: bigint;
+    additionalUtxos: bigint[];
+};
 import type {
     TestHelperState,
     actorMap,
@@ -78,6 +88,8 @@ export abstract class StellarTestHelper<
     defaultActor?: string;
     strella!: SC;
     actors: actorMap;
+    /** Records actor setup info for cache key computation */
+    actorSetupInfo: ActorSetupInfo[] = [];
     optimize = false;
     netPHelper: NetworkParamsHelper;
     networkCtx: NetworkContext<StellarNetworkEmulator>;
@@ -266,6 +278,7 @@ export abstract class StellarTestHelper<
 
         this.randomSeed = config?.randomSeed || 42;
         this.actors = {};
+        this.actorSetupInfo = [];
         const now = new Date();
         this.waitUntil(now);
 
@@ -544,6 +557,7 @@ export abstract class StellarTestHelper<
             this.rand = undefined;
             this.randomSeed = randomSeed;
             this.actors = {};
+            this.actorSetupInfo = [];
         } else {
             console.log(
                 "???????????????????????? Test helper initializing without this.strella",
@@ -791,6 +805,14 @@ export abstract class StellarTestHelper<
     ): Wallet {
         if (this.actors[roleName])
             throw new Error(`duplicate role name '${roleName}'`);
+
+        // Record actor setup info for cache key computation
+        this.actorSetupInfo.push({
+            name: roleName,
+            initialBalance: walletBalance,
+            additionalUtxos: [...moreUtxos],
+        });
+
         //! it instantiates a wallet with the indicated balance pre-set
         // console.log(new Error(`add actor ${roleName}`).stack);
         const a = this.createWallet(walletBalance);

@@ -159,51 +159,49 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.1.3/473wtxxe8d**: COMPLETED: `loadSnapshot()` MUST fully restore all captured state
  - **REQT-1.1.4/xyc2vfhz76**: COMPLETED: Snapshot MUST include PRNG seed for deterministic continuation
 
-### REQT-1.2/d1cyq7q1ax: BACKLOG: **Snapshot Cache Invalidation**
+### REQT-1.2/d1cyq7q1ax: COMPLETED: **Snapshot Cache Invalidation**
 
 #### Purpose: Enables on-disk snapshot caching with automatic invalidation when test setup or contract code changes. Applied when implementing persistent snapshot storage.
 
- - **REQT-1.2.1/1wdfec5p4c**: BACKLOG: **Base Snapshot Cache Key** - The base (actors) snapshot cache key MUST include: actor names, actor order, initial UTxO amounts, and additional UTxO amounts. The resulting block hash MUST be captured as part of the snapshot.
+ - **REQT-1.2.1/1wdfec5p4c**: COMPLETED: **Base Snapshot Cache Key** - The base (actors) snapshot cache key MUST include: actor names, actor order, initial UTxO amounts, and additional UTxO amounts. The resulting block hash MUST be captured as part of the snapshot.
 
- - **REQT-1.2.2/rqbrjda21d**: BACKLOG: **capoInitialized Snapshot Cache Key** - The capoInitialized snapshot cache key MUST include:
-    - **REQT-1.2.2.1/q0qfn40b5f**: Parent (base) snapshot's block hash
-    - **REQT-1.2.2.2/xwdem1hvk9**: Capo's minter bundle hash (including all dependencies)
-    - **REQT-1.2.2.3/vnvmn0c5mf**: Mint delegate bundle hash (including all dependencies)
-    - **REQT-1.2.2.4/bck1nj7r3h**: Spend delegate bundle hash (including all dependencies)
-    - **REQT-1.2.2.5/zjkckrz6np**: DefaultCapo.hl bundle hash (including all dependencies)
-    - **REQT-1.2.2.6/hdwf9fdcg2**: All hashes MUST be combined into a list and hashed together to form the cache key
+ - **REQT-1.2.2/rqbrjda21d**: COMPLETED: **capoInitialized Snapshot Cache Key** - The capoInitialized snapshot cache key MUST include:
+    - **REQT-1.2.2.1/q0qfn40b5f**: COMPLETED: Parent (base) snapshot's block hash
+    - **REQT-1.2.2.2/xwdem1hvk9**: COMPLETED: Capo's minter bundle hash (including all dependencies)
+    - **REQT-1.2.2.3/vnvmn0c5mf**: COMPLETED: Mint delegate bundle hash (including all dependencies)
+    - **REQT-1.2.2.4/bck1nj7r3h**: COMPLETED: Spend delegate bundle hash (including all dependencies)
+    - **REQT-1.2.2.5/zjkckrz6np**: COMPLETED: DefaultCapo.hl bundle hash (including all dependencies)
+    - **REQT-1.2.2.6/hdwf9fdcg2**: COMPLETED: All hashes MUST be combined into a list and hashed together to form the cache key
 
- - **REQT-1.2.3/ek3ksgysxv**: BACKLOG: **enabledDelegatesDeployed Snapshot** - This snapshot SHOULD be the basis for all other application-level snapshots. Created when `autoSetup = true`. Its cache key MUST include:
-    - **REQT-1.2.3.1/th2fsv10x7**: Parent (capoInitialized) snapshot's block hash
-    - **REQT-1.2.3.2/venhawwjrz**: All enabled delegate bundles' dependency hashes (from `.hl` source content)
-    - **REQT-1.2.3.3/8wqpt8zq60**: Dependencies whose resolution is provided via the Capo's bundle
-    - **REQT-1.2.3.4/3r1d1ntx6e**: The **list of enabled delegates** (featureFlags) - supports tests running with isolated feature-sets
-    - **REQT-1.2.3.5/6az9kb2t87**: `autoSetup = true` SHOULD be the signal for creating this snapshot
+ - **REQT-1.2.3/ek3ksgysxv**: COMPLETED: **enabledDelegatesDeployed Snapshot** - This snapshot SHOULD be the basis for all other application-level snapshots. Created when `autoSetup = true`. Its cache key MUST include:
+    - **REQT-1.2.3.1/th2fsv10x7**: COMPLETED: Parent (capoInitialized) snapshot's block hash
+    - **REQT-1.2.3.2/venhawwjrz**: COMPLETED: All enabled delegate bundles' dependency hashes (from `.hl` source content)
+    - **REQT-1.2.3.3/8wqpt8zq60**: COMPLETED: Dependencies whose resolution is provided via the Capo's bundle
+    - **REQT-1.2.3.4/3r1d1ntx6e**: COMPLETED: The **list of enabled delegates** (featureFlags) - supports tests running with isolated feature-sets
+    - **REQT-1.2.3.5/6az9kb2t87**: COMPLETED: `autoSetup = true` SHOULD be the signal for creating this snapshot
 
 > **RESOLVED (id:6az9kb2t87)**: `autoSetup` and `featureFlags` work together without conflict. `autoSetup=true` triggers iteration over all delegates; each delegate checks `featureEnabled()` before setup. Different feature sets get different cache keys via REQT-1.2.3.4.
 
- - **REQT-1.2.4/qt184d0cfz**: BACKLOG: **Snapshot Parent Linkage** - Every snapshot MUST be strongly linked to its parent snapshot:
-    - **REQT-1.2.4.1/jfj78v9wq2**: By name (logical view) - snapshot names form a chain
-    - **REQT-1.2.4.2/13f3zam1fm**: By hash (computational layer) - each snapshot's cache key includes parent's block hash
+ - **REQT-1.2.4/qt184d0cfz**: COMPLETED: **Snapshot Parent Linkage** - Every snapshot MUST be strongly linked to its parent snapshot:
+    - **REQT-1.2.4.1/jfj78v9wq2**: COMPLETED: By name (logical view) - snapshot names form a chain (via `parentName` in CachedSnapshot)
+    - **REQT-1.2.4.2/13f3zam1fm**: COMPLETED: By hash (computational layer) - each snapshot's cache key includes parent's block hash
 
  - **REQT-1.2.5/mabm4y6q4j**: BACKLOG: **Snapshot File Storage** - On-disk snapshot cache MUST serialize incremental state:
-    - **REQT-1.2.5.1/6xjggf5hsd**: Each snapshot file MUST contain only the new blocks created since the parent snapshot
-    - **REQT-1.2.5.2/prvp9f4m21**: Transaction order within blocks MUST be preserved
-    - **REQT-1.2.5.3/wfynk8yq9v**: File content format: `{parentHash: hash(parent-snapshot-file), blocks: [...txns], namedRecords: {...}}`
-    - **REQT-1.2.5.4/cq5p5jk6wj**: Hash of the snapshot file becomes the basis for child snapshot cache keys
-    - **REQT-1.2.5.5/t8n3k6w2qp**: Each snapshot file MUST include `namedRecords` captured during snapshot creation, so tests can reference records by name after restore
+    - **REQT-1.2.5.1/6xjggf5hsd**: BACKLOG: Each snapshot file MUST contain only the new blocks created since the parent snapshot
+    - **REQT-1.2.5.2/prvp9f4m21**: COMPLETED: Transaction order within blocks MUST be preserved
+    - **REQT-1.2.5.3/wfynk8yq9v**: COMPLETED: File content format: `{parentHash, parentName, blocks, namedRecords, snapshotHash}`
+    - **REQT-1.2.5.4/cq5p5jk6wj**: COMPLETED: Hash of the snapshot (block hash) becomes the basis for child snapshot cache keys
+    - **REQT-1.2.5.5/t8n3k6w2qp**: COMPLETED: Each snapshot file MUST include `namedRecords` captured during snapshot creation, so tests can reference records by name after restore
 
-> **RESEARCH TASK (id:cq5p5jk6wj)**: Does the emulator compute block hashes natively? If yes, use native block hash. If no, use `hash(previous-snapshot-file)` as the chain anchor.
->
-> **Preliminary finding**: `StellarNetworkEmulator.blocks` is typed as `EmulatorTx[][]` - a simple array of transaction arrays with no native block hash. Likely need the file-hash approach. Verify by checking if `EmulatorTx` or Helios upstream provides block hashing.
+> **RESOLVED (id:cq5p5jk6wj)**: The emulator now computes block hashes natively via `blockHashes[]` parallel tracking. Block hashes are computed at `tick()` time using `blake2b([prevHash, ...txHashes].join("\n"))`.
 
- - **REQT-1.2.6/7k3mfpw2nx**: BACKLOG: **Cache File Location** - Snapshot cache files MUST be stored in `.stellar/emulator/` within the project root
+ - **REQT-1.2.6/7k3mfpw2nx**: COMPLETED: **Cache File Location** - Snapshot cache files MUST be stored in `.stellar/emulator/` within the project root
 
- - **REQT-1.2.7/q8h2vr4c5y**: BACKLOG: **Cache Freshness Management**:
-    - **REQT-1.2.7.1/m1d6jk9w3p**: Cache files MUST have their mtime touched when used if older than 1 day
+ - **REQT-1.2.7/q8h2vr4c5y**: COMPLETED: **Cache Freshness Management**:
+    - **REQT-1.2.7.1/m1d6jk9w3p**: COMPLETED: Cache files MUST have their mtime touched when used if older than 1 day
     - **REQT-1.2.7.2/r5f8n2b4ht**: FUTURE: A cleanup command SHOULD delete cache files older than 1 week (intended for use after full test runs)
 
- - **REQT-1.2.8/v4c7x9m1kz**: BACKLOG: **Helios Version in Cache Key** - The base snapshot cache key MUST include the Helios compiler version (available via `import { VERSION } from "@helios-lang/compiler"`)
+ - **REQT-1.2.8/v4c7x9m1kz**: COMPLETED: **Helios Version in Cache Key** - The base snapshot cache key MUST include the Helios compiler version (available via `import { VERSION } from "@helios-lang/compiler"`)
 
 ### REQT-1.3/qr6r27cg3q: COMPLETED: **Transaction Validation**
 
@@ -252,23 +250,23 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-3.0.2/7n8ws6gabc**: COMPLETED: `restoreFrom()` MUST transfer actor wallets to new network instance
  - **REQT-3.0.3/49h2ekt53d**: COMPLETED: Snapshot restoration MUST preserve Capo instance references
 
-### REQT-3.1/p19q6ak0xj: BACKLOG: **Bundle Dependency Hashing**
+### REQT-3.1/p19q6ak0xj: COMPLETED: **Bundle Dependency Hashing**
 
 #### Purpose: Enables contract bundles to expose their dependency hashes for snapshot cache key computation. Applied when implementing cache invalidation (REQT-1.2).
 
- - **REQT-3.1.1/egfb0jds34**: BACKLOG: Contract bundles MUST expose a method to compute hash of all Helios script dependencies
- - **REQT-3.1.2/x5mdtcjm26**: BACKLOG: Bundle dependency hash MUST be computed from source `.hl` file hashes (NOT compiled UPLC - compilation is slow). Use `bundle.getEffectiveModuleList()` to get all `Source` objects, then hash each `source.content`. Consider reusing `CachedHeliosProgram.sourceHashIndex()` pattern.
- - **REQT-3.1.3/h3g5k4grkv**: BACKLOG: Bundle MUST include scripts referenced by name, including those resolved via Capo's bundle
- - **REQT-3.1.4/k7w2m5p9qr**: BACKLOG: Bundle hash SHOULD include entry point params (e.g., `isTestnet`) if not too complicated - these affect script hashes
+ - **REQT-3.1.1/egfb0jds34**: COMPLETED: Contract bundles MUST expose a method to compute hash of all Helios script dependencies (via `getCacheKeyInputs()` and `computeSourceHash()`)
+ - **REQT-3.1.2/x5mdtcjm26**: COMPLETED: Bundle dependency hash MUST be computed from source `.hl` file hashes (NOT compiled UPLC). Uses `getEffectiveModuleList()` to get all `Source` objects, then hashes concatenated `source.content`.
+ - **REQT-3.1.3/h3g5k4grkv**: COMPLETED: Bundle MUST include scripts referenced by name, including those resolved via Capo's bundle (via `getEffectiveModuleList()`)
+ - **REQT-3.1.4/k7w2m5p9qr**: COMPLETED: Bundle hash includes `configuredParams` in `getCacheKeyInputs().params`
 
-### REQT-3.2/twd653pdm2: BACKLOG: **Script Dependency Resolution**
+### REQT-3.2/twd653pdm2: COMPLETED: **Script Dependency Resolution**
 
 #### Purpose: Enables cache-key computation for snapshots with dynamic scripts or params, without requiring pre-compilation. Applied when computing cache keys for snapshots beyond the basic enabledDelegatesDeployed level.
 
- - **REQT-3.2.1/7e7npc64xe**: BACKLOG: Each snapshot MAY define a `resolveScriptDependencies(parentSnapshot?)` function that returns cache key inputs
- - **REQT-3.2.2/04k32hh8km**: BACKLOG: **Basic case**: Default resolver iterates Capo's enabled delegates → returns bundle source hashes + params
- - **REQT-3.2.3/97qa2f7m25**: BACKLOG: **Dynamic case**: Resolver MAY read parent snapshot state (e.g., specific UTxOs) to derive params needed for cache key computation
- - **REQT-3.2.4/5cj9et1a6j**: BACKLOG: **Custom case**: Resolver MAY capture environment details via closure and include them as `extra` in the cache key inputs
+ - **REQT-3.2.1/7e7npc64xe**: COMPLETED: Each snapshot MAY define a `resolveScriptDependencies` function via `@hasNamedSnapshot` decorator options
+ - **REQT-3.2.2/04k32hh8km**: COMPLETED: **Basic case**: Built-in resolvers `resolveCoreCapoDependencies()` and `resolveEnabledDelegatesDependencies()` iterate Capo's delegates and return bundle source hashes + params
+ - **REQT-3.2.3/97qa2f7m25**: COMPLETED: **Dynamic case**: Resolver signature supports reading parent state via `ScriptDependencyResolver` type
+ - **REQT-3.2.4/5cj9et1a6j**: COMPLETED: **Custom case**: `CacheKeyInputs.extra` field supports closure-captured details including `heliosVersion`
 
 ```typescript
 type CacheKeyInputs = {
@@ -336,17 +334,30 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
 - Implemented actor management with wallet transfer across snapshots
 - Added network parameter fixups for test flexibility
 
+### Phase 2: On-Disk Snapshot Caching (Completed)
+
+- Added `blockHashes[]` tracking to `StellarNetworkEmulator` for content-addressable block chain
+- Implemented `SnapshotCache` class for disk persistence in `.stellar/emulator/`
+- Added `getCacheKeyInputs()` and `computeSourceHash()` to `HeliosScriptBundle`
+- Implemented three-tier snapshot hierarchy: `SNAP_ACTORS` → `SNAP_CAPO_INIT` → `SNAP_DELEGATES`
+- Added `resolveActorsDependencies()`, `resolveCoreCapoDependencies()`, `resolveEnabledDelegatesDependencies()` resolvers
+- Added `ActorSetupInfo` tracking for deterministic actor cache keys
+- Integrated disk caching into `setupActorsWithCache()` and `bootstrap()` flow
+- Added parent linkage via `parentName` and `parentHash` in `CachedSnapshot`
+- Included Helios VERSION in cache key computation
+- Added explicit logging for cache hits/misses and file writes
+
 #### Next Recommendations
 
-1. **Snapshot Cache Hierarchy**: Implement the three-tier snapshot hierarchy (base → capoInitialized → enabledDelegatesDeployed) with parent linkage
-2. **Bundle Dependency Hashing**: Add methods to HeliosBundle to compute dependency hashes for cache keys
-3. **On-disk Snapshot Storage**: Implement filesystem-backed snapshot cache with hash-based invalidation
+1. **Incremental Block Storage**: Store only new blocks since parent snapshot (REQT-1.2.5.1) for smaller cache files
+2. **Cleanup Command**: Implement cache cleanup for files older than 1 week (REQT-1.2.7.2)
+3. **Migration Agent**: Create agent to help migrate existing test helpers (REQT-5.0)
 
 ---
 
 ## Release Management Plan
 
-### v1 (Current)
+### v1 (Completed)
 - **Goal**: Document emulator and snapshot infrastructure
 - **Criteria**:
    - Core emulator requirements documented (REQT-1.0, 1.1, 1.3, 1.4)
@@ -355,19 +366,21 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
    - Actor snapshot transfer documented (REQT-4.0)
    - Network parameter fixups documented (REQT-4.1)
 
-### v2 (Planned)
+### v2 (Current)
 - **Goal**: On-disk snapshot caching with automatic invalidation
 - **Criteria**:
-   - Snapshot cache hierarchy implemented (REQT-1.2.1 base, REQT-1.2.2 capoInitialized, REQT-1.2.3 enabledDelegatesDeployed)
-   - Parent linkage by name and hash (REQT-1.2.4)
-   - Snapshot file storage with incremental blocks (REQT-1.2.5)
-   - Cache location in `.stellar/emulator/` (REQT-1.2.6)
-   - Cache freshness management with touch-on-use (REQT-1.2.7.1)
-   - Helios version in cache key (REQT-1.2.8)
-   - Bundle dependency hashing (REQT-3.1)
+   - ✅ Snapshot cache hierarchy implemented (REQT-1.2.1 base, REQT-1.2.2 capoInitialized, REQT-1.2.3 enabledDelegatesDeployed)
+   - ✅ Parent linkage by name and hash (REQT-1.2.4)
+   - ⏳ Snapshot file storage with incremental blocks (REQT-1.2.5) - partial: full snapshots stored, not incremental
+   - ✅ Cache location in `.stellar/emulator/` (REQT-1.2.6)
+   - ✅ Cache freshness management with touch-on-use (REQT-1.2.7.1)
+   - ✅ Helios version in cache key (REQT-1.2.8)
+   - ✅ Bundle dependency hashing (REQT-3.1)
+   - ✅ Script dependency resolution (REQT-3.2)
 
 ### v3 (Future)
 - **Goal**: Cache maintenance utilities and migration tooling
 - **Criteria**:
    - Cleanup command for old cache files (REQT-1.2.7.2)
    - Migration agent for test helpers (REQT-5.0)
+   - Incremental block storage optimization (REQT-1.2.5.1)

@@ -23,6 +23,8 @@ export type CachedSnapshot = {
     snapshot: NetworkSnapshot;
     /** Named records captured with this snapshot */
     namedRecords: Record<string, string>;
+    /** Logical name of the parent snapshot, or null for root */
+    parentName: string | null;
     /** Hash of the parent snapshot, or null for root */
     parentHash: string | null;
     /** Hash of this snapshot for use as parent in child snapshots */
@@ -136,6 +138,7 @@ export class SnapshotCache {
 
             const content = readFileSync(cachePath, "utf-8");
             const parsed = JSON.parse(content) as CachedSnapshot;
+            console.log(`SnapshotCache: loaded '${parsed.snapshot.name}' from ${cachePath}`);
             return parsed;
         } catch (e) {
             console.warn(`SnapshotCache: failed to read ${cachePath}:`, e);

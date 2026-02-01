@@ -1,4 +1,5 @@
 import { Capo, StellarTxnContext } from "@donecollectively/stellar-contracts";
+import { VERSION as HELIOS_VERSION } from "@helios-lang/compiler";
 import type {
     hasBootstrappedCapoConfig,
     hasUutContext,
@@ -20,16 +21,33 @@ import { canHaveRandomSeed, TestHelperState } from "./types.js";
 const ACTORS_ALREADY_MOVED =
     "NONE! all actors were moved from a different network via snapshot";
 
+export const SNAP_ACTORS = "actors";
+export const SNAP_CAPO_INIT = "capoInitialized";
+export const SNAP_DELEGATES = "enabledDelegatesDeployed";
+// Legacy names for compatibility
 export const SNAP_INIT = "initialized";
 export const SNAP_BOOTSTRAP = "bootstrapped";
+
+/**
+ * Base type for CapoTestHelper that can be used in callbacks where the exact
+ * generic parameters don't matter.
+ * @public
+ */
+export type AnyCapoTestHelper = CapoTestHelper<Capo<any>, Record<string, any>>;
+
+/**
+ * Callback type for resolving script dependencies for cache key computation.
+ * @public
+ */
+export type ScriptDependencyResolver = (helper: AnyCapoTestHelper) => Promise<CacheKeyInputs>;
 
 /**
  * Options for the hasNamedSnapshot decorator.
  * @public
  */
-export type SnapshotDecoratorOptions<SC extends Capo<any> = Capo<any>, SS extends Record<string, any> = Record<string, any>> = {
+export type SnapshotDecoratorOptions = {
     actor: string;
-    resolveScriptDependencies?: (helper: CapoTestHelper<SC, SS>) => Promise<CacheKeyInputs>;
+    resolveScriptDependencies?: ScriptDependencyResolver;
 };
 
 /**
@@ -106,6 +124,7 @@ export abstract class CapoTestHelper<
             //@ts-expect-error
             this.strella = undefined;
             this.actors = {};
+            this.actorSetupInfo = [];
             this._actorName = "";
         }
         await this.delay(1);
@@ -115,11 +134,7 @@ export abstract class CapoTestHelper<
         if (Object.keys(this.actors).length) {
             console.log("Skipping actor setup - already done");
         } else {
-            console.log("  -- 🎭🎭🎭 actor setup...");
-            const actorSetup = this.setupActors();
-            await actorSetup;
-            this.network.tick(1);
-            await this.setDefaultActor();
+            await this.setupActorsWithCache();
         }
 
         this.state.mintedCharterToken = undefined;
@@ -245,11 +260,11 @@ export abstract class CapoTestHelper<
      * @param snapshotName - The name of the snapshot
      * @param options - Either an actor name (string) or an options object with actor and optional resolveScriptDependencies
      */
-    static hasNamedSnapshot<SC extends Capo<any>, SS extends Record<string, any>>(
+    static hasNamedSnapshot(
         snapshotName: string,
-        options: string | SnapshotDecoratorOptions<SC, SS>,
+        options: string | SnapshotDecoratorOptions,
     ) {
-        const opts: SnapshotDecoratorOptions<SC, SS> = typeof options === "string"
+        const opts: SnapshotDecoratorOptions = typeof options === "string"
             ? { actor: options }
             : options;
         const { actor: actorName, resolveScriptDependencies } = opts;
@@ -285,7 +300,7 @@ export abstract class CapoTestHelper<
                 methodName,
             );
 
-            async function SnapWrap(this: CapoTestHelper<any>, ...args: any[]) {
+            async function SnapWrap(this: AnyCapoTestHelper, ...args: any[]) {
                 await this.reusableBootstrap();
 
                 return this.findOrCreateSnapshot(
@@ -304,11 +319,54 @@ export abstract class CapoTestHelper<
                                 return result;
                             });
                     },
-                    resolveScriptDependencies as any,
+                    resolveScriptDependencies,
                 );
             }
             return descriptor;
         };
+    }
+
+    /**
+     * Sets up actors with disk cache support.
+     * If a cached actors snapshot exists, restores from it.
+     * Otherwise, creates actors and caches the snapshot.
+     * @internal
+     */
+    async setupActorsWithCache(): Promise<void> {
+        console.log("  -- 🎭🎭🎭 actor setup...");
+
+        // Always run setupActors to populate actorSetupInfo
+        await this.setupActors();
+        this.network.tick(1);
+
+        // Compute cache key based on actor setup info
+        const cacheKeyInputs = this.resolveActorsDependencies();
+        const cacheKey = this.snapshotCache.computeKey(null, cacheKeyInputs);
+
+        // Check disk cache
+        const cached = await this.snapshotCache.find(cacheKey);
+        if (cached) {
+            console.log(`  -- 🎭 actors snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
+            // Restore network state from cache
+            this.network.loadSnapshot(cached.snapshot);
+            this.helperState!.snapshots[SNAP_ACTORS] = cached.snapshot;
+        } else {
+            console.log(`  -- 🎭 actors snapshot cache MISS (key: ${cacheKey.slice(0, 8)}...)`);
+            // Create and save snapshot
+            const snapshot = this.network.snapshot(SNAP_ACTORS);
+            this.helperState!.snapshots[SNAP_ACTORS] = snapshot;
+
+            const cachedSnapshot: CachedSnapshot = {
+                snapshot,
+                namedRecords: {},
+                parentName: null,
+                parentHash: null,
+                snapshotHash: this.network.lastBlockHash,
+            };
+            await this.snapshotCache.store(cacheKey, cachedSnapshot);
+        }
+
+        await this.setDefaultActor();
     }
 
     hasSnapshot(snapshotName: string) {
@@ -330,7 +388,7 @@ export abstract class CapoTestHelper<
         snapshotName: string,
         actorName: string,
         contentBuilder: () => Promise<StellarTxnContext<any>>,
-        resolveScriptDependencies?: (helper: CapoTestHelper<SC, SpecialState>) => Promise<CacheKeyInputs>,
+        resolveScriptDependencies?: ScriptDependencyResolver,
     ): Promise<SC> {
         // First check in-memory snapshots
         if (this.helperState!.snapshots[snapshotName]) {
@@ -372,13 +430,17 @@ export abstract class CapoTestHelper<
                 // Store to disk cache if we have a dependency resolver
                 if (resolveScriptDependencies) {
                     const cacheKeyInputs = await resolveScriptDependencies(this);
-                    const parentHash = this.helperState!.snapshots[SNAP_BOOTSTRAP]?.blockHashes?.slice(-1)[0] || "genesis";
+                    const parentHash = this.helperState!.snapshots[SNAP_DELEGATES]?.blockHashes?.slice(-1)[0]
+                        || this.helperState!.snapshots[SNAP_BOOTSTRAP]?.blockHashes?.slice(-1)[0]
+                        || "genesis";
+                    const parentName = this.helperState!.snapshots[SNAP_DELEGATES] ? SNAP_DELEGATES : SNAP_BOOTSTRAP;
                     const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
                     const snapshot = this.helperState!.snapshots[snapshotName];
 
                     const cachedSnapshot: CachedSnapshot = {
                         snapshot,
                         namedRecords: { ...this.helperState!.namedRecords },
+                        parentName,
                         parentHash,
                         snapshotHash: this.network.lastBlockHash,
                     };
@@ -505,14 +567,136 @@ export abstract class CapoTestHelper<
                 this.network.tick(1);
             },
         };
-        await this.mintCharterToken(args, options);
-        console.log(
-            "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter",
-        );
 
-        this.network.tick(1);
-        await this.extraBootstrapping(args, options);
+        // Try to restore capoInitialized from cache
+        const capoInitRestored = await this.tryRestoreCapoInitialized();
+        if (!capoInitRestored) {
+            // Cache miss - need to mint charter
+            await this.mintCharterToken(args, options);
+            console.log(
+                "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter",
+            );
+            this.network.tick(1);
+
+            // Save capoInitialized snapshot
+            await this.saveCapoInitializedSnapshot();
+        }
+
+        // Try to restore enabledDelegatesDeployed from cache
+        const delegatesRestored = await this.tryRestoreDelegatesDeployed();
+        if (!delegatesRestored) {
+            // Cache miss - need to run extra bootstrapping
+            await this.extraBootstrapping(args, options);
+
+            // Save enabledDelegatesDeployed snapshot
+            await this.saveDelegatesDeployedSnapshot();
+        }
+
         return strella;
+    }
+
+    /**
+     * Tries to restore capoInitialized snapshot from disk cache.
+     * Returns true if restored, false if cache miss.
+     * @internal
+     */
+    private async tryRestoreCapoInitialized(): Promise<boolean> {
+        const actorsSnapshot = this.helperState!.snapshots[SNAP_ACTORS];
+        if (!actorsSnapshot) {
+            console.log("  -- No actors snapshot to base capoInitialized on");
+            return false;
+        }
+
+        const parentHash = actorsSnapshot.blockHashes?.slice(-1)[0] || "genesis";
+        const cacheKeyInputs = await this.resolveCoreCapoDependencies();
+        const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
+
+        const cached = await this.snapshotCache.find(cacheKey);
+        if (cached) {
+            console.log(`  -- ⚗️ capoInitialized snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
+            this.network.loadSnapshot(cached.snapshot);
+            this.helperState!.snapshots[SNAP_CAPO_INIT] = cached.snapshot;
+            Object.assign(this.helperState!.namedRecords, cached.namedRecords);
+            return true;
+        }
+
+        console.log(`  -- ⚗️ capoInitialized snapshot cache MISS (key: ${cacheKey.slice(0, 8)}...)`);
+        return false;
+    }
+
+    /**
+     * Saves capoInitialized snapshot to disk cache.
+     * @internal
+     */
+    private async saveCapoInitializedSnapshot(): Promise<void> {
+        const actorsSnapshot = this.helperState!.snapshots[SNAP_ACTORS];
+        const parentHash = actorsSnapshot?.blockHashes?.slice(-1)[0] || "genesis";
+        const cacheKeyInputs = await this.resolveCoreCapoDependencies();
+        const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
+
+        const snapshot = this.network.snapshot(SNAP_CAPO_INIT);
+        this.helperState!.snapshots[SNAP_CAPO_INIT] = snapshot;
+
+        const cachedSnapshot: CachedSnapshot = {
+            snapshot,
+            namedRecords: { ...this.helperState!.namedRecords },
+            parentName: SNAP_ACTORS,
+            parentHash,
+            snapshotHash: this.network.lastBlockHash,
+        };
+        await this.snapshotCache.store(cacheKey, cachedSnapshot);
+    }
+
+    /**
+     * Tries to restore enabledDelegatesDeployed snapshot from disk cache.
+     * Returns true if restored, false if cache miss.
+     * @internal
+     */
+    private async tryRestoreDelegatesDeployed(): Promise<boolean> {
+        const capoInitSnapshot = this.helperState!.snapshots[SNAP_CAPO_INIT];
+        if (!capoInitSnapshot) {
+            console.log("  -- No capoInitialized snapshot to base delegates on");
+            return false;
+        }
+
+        const parentHash = capoInitSnapshot.blockHashes?.slice(-1)[0] || "genesis";
+        const cacheKeyInputs = await this.resolveEnabledDelegatesDependencies();
+        const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
+
+        const cached = await this.snapshotCache.find(cacheKey);
+        if (cached) {
+            console.log(`  -- 🔧 enabledDelegatesDeployed snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
+            this.network.loadSnapshot(cached.snapshot);
+            this.helperState!.snapshots[SNAP_DELEGATES] = cached.snapshot;
+            Object.assign(this.helperState!.namedRecords, cached.namedRecords);
+            return true;
+        }
+
+        console.log(`  -- 🔧 enabledDelegatesDeployed snapshot cache MISS (key: ${cacheKey.slice(0, 8)}...)`);
+        return false;
+    }
+
+    /**
+     * Saves enabledDelegatesDeployed snapshot to disk cache.
+     * @internal
+     */
+    private async saveDelegatesDeployedSnapshot(): Promise<void> {
+        const capoInitSnapshot = this.helperState!.snapshots[SNAP_CAPO_INIT];
+        const parentHash = capoInitSnapshot?.blockHashes?.slice(-1)[0] || "genesis";
+        const cacheKeyInputs = await this.resolveEnabledDelegatesDependencies();
+        const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
+
+        const snapshot = this.network.snapshot(SNAP_DELEGATES);
+        this.helperState!.snapshots[SNAP_DELEGATES] = snapshot;
+
+        const cachedSnapshot: CachedSnapshot = {
+            snapshot,
+            namedRecords: { ...this.helperState!.namedRecords },
+            parentName: SNAP_CAPO_INIT,
+            parentHash,
+            snapshotHash: this.network.lastBlockHash,
+        };
+        await this.snapshotCache.store(cacheKey, cachedSnapshot);
     }
 
     /**
@@ -618,8 +802,31 @@ export abstract class CapoTestHelper<
     >;
 
     /**
+     * Resolves cache key inputs for the base actors snapshot.
+     * Cache key includes: actor names, order, initial amounts, additional UTxO amounts.
+     * @public
+     */
+    resolveActorsDependencies(): CacheKeyInputs {
+        // Convert actor setup info to a deterministic format for hashing
+        const actorData = this.actorSetupInfo.map((actor) => ({
+            name: actor.name,
+            initialBalance: actor.initialBalance.toString(),
+            additionalUtxos: actor.additionalUtxos.map((u) => u.toString()),
+        }));
+
+        return {
+            bundles: [], // No script bundles for actors snapshot
+            extra: {
+                actors: actorData,
+                randomSeed: this.randomSeed,
+                heliosVersion: HELIOS_VERSION,
+            },
+        };
+    }
+
+    /**
      * Resolves cache key inputs for core Capo scripts (minter, mint delegate, spend delegate).
-     * Used for snapshot cache key computation for the base capoInitialized snapshot.
+     * Used for snapshot cache key computation for the capoInitialized snapshot.
      * @public
      */
     async resolveCoreCapoDependencies(): Promise<CacheKeyInputs> {
@@ -646,7 +853,7 @@ export abstract class CapoTestHelper<
         return {
             bundles,
             extra: {
-                // Helios version would go here when available
+                heliosVersion: HELIOS_VERSION,
             },
         };
     }
