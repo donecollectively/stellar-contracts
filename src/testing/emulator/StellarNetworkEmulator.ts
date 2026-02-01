@@ -47,6 +47,8 @@ import {
     signCip30CoseData,
 } from "@helios-lang/tx-utils";
 import type { NumberGenerator } from "@helios-lang/crypto";
+import { blake2b } from "@helios-lang/crypto";
+import { bytesToHex, encodeUtf8 } from "@helios-lang/codec-utils";
 import { DEFAULT_NETWORK_PARAMS } from "@helios-lang/ledger";
 import { type UplcLogger } from "@helios-lang/uplc";
 
@@ -383,6 +385,7 @@ export type NetworkSnapshot = {
     slot: number;
     genesis: EmulatorGenesisTx[];
     blocks: EmulatorTx[][];
+    blockHashes: string[];
     allUtxos: Record<string, TxInput>;
     consumedUtxos: Set<string>;
     addressUtxos: Record<string, TxInput[]>;
@@ -402,6 +405,7 @@ export class StellarNetworkEmulator implements Emulator {
     genesis: EmulatorGenesisTx[];
     mempool: EmulatorTx[];
     blocks: EmulatorTx[][];
+    blockHashes: string[];
 
     /**
      * Cached map of all UTxOs ever created
@@ -441,6 +445,7 @@ export class StellarNetworkEmulator implements Emulator {
         this.genesis = [];
         this.mempool = [];
         this.blocks = [];
+        this.blockHashes = [];
 
         this._allUtxos = {};
         this._consumedUtxos = new Set();
@@ -492,6 +497,16 @@ export class StellarNetworkEmulator implements Emulator {
     }
 
     /**
+     * Returns the hash of the last committed block, or "genesis" if no blocks.
+     * Used for snapshot cache key computation.
+     */
+    get lastBlockHash(): string {
+        return this.blockHashes.length > 0
+            ? this.blockHashes[this.blockHashes.length - 1]
+            : "genesis";
+    }
+
+    /**
      * Ignores the genesis txs
      */
     get txIds(): TxId[] {
@@ -539,6 +554,7 @@ export class StellarNetworkEmulator implements Emulator {
             slot: this.currentSlot,
             genesis: [...this.genesis],
             blocks: [...this.blocks],
+            blockHashes: [...this.blockHashes],
             allUtxos: { ...this._allUtxos },
             consumedUtxos: new Set(this._consumedUtxos),
             addressUtxos: Object.fromEntries(
@@ -557,6 +573,7 @@ export class StellarNetworkEmulator implements Emulator {
         this.currentSlot = snapshot.slot;
         this.genesis = [...snapshot.genesis];
         this.blocks = [...snapshot.blocks];
+        this.blockHashes = [...(snapshot.blockHashes || [])];
         this.fromSnapshot = snapshot.name;
 
         this._allUtxos = { ...snapshot.allUtxos };
@@ -817,6 +834,12 @@ ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
      * @internal
      */
     pushBlock(txs: EmulatorTx[]) {
+        // Compute block hash for cache key computation
+        const prevHash = this.lastBlockHash;
+        const txHashes = txs.map((tx) => tx.id().toString());
+        const blockHash = bytesToHex(blake2b(encodeUtf8([prevHash, ...txHashes].join("\n"))));
+        this.blockHashes.push(blockHash);
+
         this.blocks.push(txs);
 
         // add all new utxos

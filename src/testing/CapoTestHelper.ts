@@ -10,6 +10,9 @@ import type {
     CapoConfig,
     CapoFeatureFlags,
 } from "@donecollectively/stellar-contracts";
+import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot } from "./emulator/SnapshotCache.js";
+import type { BundleCacheKeyInputs } from "../helios/scriptBundling/HeliosScriptBundle.js";
+import type { NetworkSnapshot } from "./emulator/StellarNetworkEmulator.js";
 
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import { canHaveRandomSeed, TestHelperState } from "./types.js";
@@ -19,6 +22,15 @@ const ACTORS_ALREADY_MOVED =
 
 export const SNAP_INIT = "initialized";
 export const SNAP_BOOTSTRAP = "bootstrapped";
+
+/**
+ * Options for the hasNamedSnapshot decorator.
+ * @public
+ */
+export type SnapshotDecoratorOptions<SC extends Capo<any> = Capo<any>, SS extends Record<string, any> = Record<string, any>> = {
+    actor: string;
+    resolveScriptDependencies?: (helper: CapoTestHelper<SC, SS>) => Promise<CacheKeyInputs>;
+};
 
 /**
  * Base class for test helpers for Capo contracts
@@ -38,6 +50,9 @@ export abstract class CapoTestHelper<
         return this.strella;
     }
     featureFlags: CapoFeatureFlags | undefined = undefined;
+
+    /** Disk cache for snapshots, enabling fast test restarts */
+    snapshotCache: SnapshotCache = new SnapshotCache();
     constructor(
         config?: SC extends Capo<any, infer FF>
             ? ConfigFor<SC> & CapoConfig<FF>
@@ -225,8 +240,20 @@ export abstract class CapoTestHelper<
         return capo;
     }
 
-    // a decorator for test-helper functions that generate named snapshots
-    static hasNamedSnapshot(snapshotName: string, actorName: string) {
+    /**
+     * A decorator for test-helper functions that generate named snapshots.
+     * @param snapshotName - The name of the snapshot
+     * @param options - Either an actor name (string) or an options object with actor and optional resolveScriptDependencies
+     */
+    static hasNamedSnapshot<SC extends Capo<any>, SS extends Record<string, any>>(
+        snapshotName: string,
+        options: string | SnapshotDecoratorOptions<SC, SS>,
+    ) {
+        const opts: SnapshotDecoratorOptions<SC, SS> = typeof options === "string"
+            ? { actor: options }
+            : options;
+        const { actor: actorName, resolveScriptDependencies } = opts;
+
         return function (
             target: any,
             propertyKey: string,
@@ -277,6 +304,7 @@ export abstract class CapoTestHelper<
                                 return result;
                             });
                     },
+                    resolveScriptDependencies as any,
                 );
             }
             return descriptor;
@@ -302,24 +330,61 @@ export abstract class CapoTestHelper<
         snapshotName: string,
         actorName: string,
         contentBuilder: () => Promise<StellarTxnContext<any>>,
+        resolveScriptDependencies?: (helper: CapoTestHelper<SC, SpecialState>) => Promise<CacheKeyInputs>,
     ): Promise<SC> {
+        // First check in-memory snapshots
         if (this.helperState!.snapshots[snapshotName]) {
             const capo = await this.restoreFrom(snapshotName);
             await this.setActor(actorName);
             return capo;
         }
+
+        // If we have a dependency resolver, try the disk cache
+        if (resolveScriptDependencies) {
+            const cacheKeyInputs = await resolveScriptDependencies(this);
+            const parentHash = this.network.lastBlockHash;
+            const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
+
+            const cached = await this.snapshotCache.find(cacheKey);
+            if (cached) {
+                console.log(`SnapshotCache: hit for ${snapshotName} (key: ${cacheKey.slice(0, 8)}...)`);
+                // Restore from disk cache
+                this.network.loadSnapshot(cached.snapshot);
+                Object.assign(this.helperState!.namedRecords, cached.namedRecords);
+                this.helperState!.snapshots[snapshotName] = cached.snapshot;
+                await this.setActor(actorName);
+                return this.strella;
+            }
+            console.log(`SnapshotCache: miss for ${snapshotName} (key: ${cacheKey.slice(0, 8)}...)`);
+        }
+
+        // Build the snapshot
         let result;
         try {
             result = await contentBuilder();
             return this.strella;
-            // the correct actor name is expected from the underlying activity
-            // await this.setActor(actorName);
-            return result;
         } catch (e) {
             throw e;
         } finally {
             if (result) {
                 this.snapshot(snapshotName);
+
+                // Store to disk cache if we have a dependency resolver
+                if (resolveScriptDependencies) {
+                    const cacheKeyInputs = await resolveScriptDependencies(this);
+                    const parentHash = this.helperState!.snapshots[SNAP_BOOTSTRAP]?.blockHashes?.slice(-1)[0] || "genesis";
+                    const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
+                    const snapshot = this.helperState!.snapshots[snapshotName];
+
+                    const cachedSnapshot: CachedSnapshot = {
+                        snapshot,
+                        namedRecords: { ...this.helperState!.namedRecords },
+                        parentHash,
+                        snapshotHash: this.network.lastBlockHash,
+                    };
+
+                    await this.snapshotCache.store(cacheKey, cachedSnapshot);
+                }
             }
         }
     }
@@ -551,4 +616,68 @@ export abstract class CapoTestHelper<
             hasBootstrappedCapoConfig &
             hasAddlTxns<any>
     >;
+
+    /**
+     * Resolves cache key inputs for core Capo scripts (minter, mint delegate, spend delegate).
+     * Used for snapshot cache key computation for the base capoInitialized snapshot.
+     * @public
+     */
+    async resolveCoreCapoDependencies(): Promise<CacheKeyInputs> {
+        const capoBundle = await this.capo.getBundle();
+        const bundles: BundleCacheKeyInputs[] = [capoBundle.getCacheKeyInputs()];
+
+        // Add core delegate bundles
+        try {
+            const mintDelegate = await this.capo.getMintDelegate();
+            const mintBundle = await mintDelegate.getBundle();
+            bundles.push(mintBundle.getCacheKeyInputs());
+        } catch (e) {
+            console.warn(`CapoTestHelper: skipping mint delegate for cache key: ${e}`);
+        }
+
+        try {
+            const spendDelegate = await this.capo.getSpendDelegate();
+            const spendBundle = await spendDelegate.getBundle();
+            bundles.push(spendBundle.getCacheKeyInputs());
+        } catch (e) {
+            console.warn(`CapoTestHelper: skipping spend delegate for cache key: ${e}`);
+        }
+
+        return {
+            bundles,
+            extra: {
+                // Helios version would go here when available
+            },
+        };
+    }
+
+    /**
+     * Resolves cache key inputs for all enabled delegates.
+     * Used for snapshot cache key computation for the enabledDelegatesDeployed snapshot.
+     * @public
+     */
+    async resolveEnabledDelegatesDependencies(): Promise<CacheKeyInputs> {
+        const coreInputs = await this.resolveCoreCapoDependencies();
+        const bundles = [...coreInputs.bundles];
+
+        // Add bundles for named delegates
+        try {
+            const namedDelegates = await this.capo.getNamedDelegates();
+            for (const delegate of Object.values(namedDelegates)) {
+                try {
+                    const bundle = await delegate.getBundle();
+                    bundles.push(bundle.getCacheKeyInputs());
+                } catch (e) {
+                    console.warn(`CapoTestHelper: skipping delegate for cache key: ${e}`);
+                }
+            }
+        } catch (e) {
+            // No named delegates available
+        }
+
+        return {
+            bundles,
+            extra: coreInputs.extra,
+        };
+    }
 }

@@ -30,7 +30,8 @@ import {
     type PrecompiledProgramJSON,
 } from "../CachedHeliosProgram.js";
 import type { DeployedScriptDetails } from "../../configuration/DeployedScriptConfigs.js";
-import { bytesToHex, equalsBytes } from "@helios-lang/codec-utils";
+import { bytesToHex, equalsBytes, encodeUtf8 } from "@helios-lang/codec-utils";
+import { blake2b } from "@helios-lang/crypto";
 import { makeCast } from "@helios-lang/contract-utils";
 import { makeMintingPolicyHash } from "@helios-lang/ledger";
 import { environment } from "../../environment.js";
@@ -39,6 +40,16 @@ import { environment } from "../../environment.js";
  * @internal
  */
 export const defaultNoDefinedModuleName = "‹default-needs-override›";
+
+/**
+ * Cache key inputs for a single bundle, used for snapshot cache key computation.
+ * @public
+ */
+export type BundleCacheKeyInputs = {
+    name: string;
+    sourceHash: string;
+    params: Record<string, unknown>;
+};
 
 /**
  * @public
@@ -743,6 +754,32 @@ export abstract class HeliosScriptBundle {
         }
 
         return [...this.resolveCapoIncludedModules(), ...this.modules];
+    }
+
+    /**
+     * Computes a hash of all source content in this bundle.
+     * Used for snapshot cache key computation.
+     * @public
+     */
+    computeSourceHash(): string {
+        const allSources = [this.main, ...this.getEffectiveModuleList()];
+        const allContent = allSources
+            .map((s) => `${s.moduleName || s.name}:\n${s.content}`)
+            .join("\n---\n");
+        return bytesToHex(blake2b(encodeUtf8(allContent)));
+    }
+
+    /**
+     * Returns cache key inputs for this bundle.
+     * Used by CapoTestHelper for snapshot cache key computation.
+     * @public
+     */
+    getCacheKeyInputs(): BundleCacheKeyInputs {
+        return {
+            name: this.moduleName || this.constructor.name,
+            sourceHash: this.computeSourceHash(),
+            params: this.configuredParams || {},
+        };
     }
 
     resolveCapoIncludedModules() {
