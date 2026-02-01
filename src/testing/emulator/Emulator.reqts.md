@@ -175,12 +175,12 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
  - **REQT-1.2.3/ek3ksgysxv**: COMPLETED: **enabledDelegatesDeployed Snapshot** - This snapshot SHOULD be the basis for all other application-level snapshots. Created when `autoSetup = true`. Its cache key MUST include:
     - **REQT-1.2.3.1/th2fsv10x7**: COMPLETED: Parent (capoInitialized) snapshot's block hash
-    - **REQT-1.2.3.2/venhawwjrz**: COMPLETED: All enabled delegate bundles' dependency hashes (from `.hl` source content)
+    - **REQT-1.2.3.2/venhawwjrz**: COMPLETED: All namedDelegate bundles' dependency hashes (namedDelegates are always included, not feature-gated)
     - **REQT-1.2.3.3/8wqpt8zq60**: COMPLETED: Dependencies whose resolution is provided via the Capo's bundle
-    - **REQT-1.2.3.4/3r1d1ntx6e**: COMPLETED: The **list of enabled delegates** (featureFlags) - supports tests running with isolated feature-sets
+    - **REQT-1.2.3.4/3r1d1ntx6e**: COMPLETED: dgData controller bundles filtered by `featureEnabled(typeName)` - featureFlags names match dgData controller typeNames exactly, so different featureFlags produce different bundle lists and thus different cache keys
     - **REQT-1.2.3.5/6az9kb2t87**: COMPLETED: `autoSetup = true` SHOULD be the signal for creating this snapshot
 
-> **RESOLVED (id:6az9kb2t87)**: `autoSetup` and `featureFlags` work together without conflict. `autoSetup=true` triggers iteration over all delegates; each delegate checks `featureEnabled()` before setup. Different feature sets get different cache keys via REQT-1.2.3.4.
+> **RESOLVED (id:6az9kb2t87)**: `autoSetup` and `featureFlags` work together without conflict. `autoSetup=true` triggers iteration over all delegates; namedDelegates are always included, while dgData controllers are filtered by `featureEnabled(typeName)`. Different feature sets produce different bundle lists via REQT-1.2.3.4, naturally creating different cache keys.
 
  - **REQT-1.2.4/qt184d0cfz**: COMPLETED: **Snapshot Parent Linkage** - Every snapshot MUST be strongly linked to its parent snapshot:
     - **REQT-1.2.4.1/jfj78v9wq2**: COMPLETED: By name (logical view) - snapshot names form a chain (via `parentName` in CachedSnapshot)
