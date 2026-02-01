@@ -119,9 +119,9 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
    - MUST support lazy snapshot creation via `findOrCreateSnapshot()`
    - MUST support actor state transfer across snapshot restores
 4. **Snapshot Cache Hierarchy** (for on-disk caching):
-   - **base** (actors setup) → cache key: actor names/order/amounts → captures block hash
-   - **capoInitialized** → cache key: parent block hash + minter/delegate bundle hashes
-   - **enabledDelegatesDeployed** → cache key: parent block hash + all enabled delegate bundle hashes
+   - **base** (actors setup) → cache key: actor names/order/amounts + randomSeed + heliosVersion → captures block hash
+   - **capoInitialized** → cache key: parent block hash + core bundle hashes (minter, mintDelegate, spendDelegate)
+   - **enabledDelegatesDeployed** → cache key: parent block hash + namedDelegate bundles (always included) + dgData controller bundles (filtered by `featureEnabled(typeName)`)
    - Each snapshot MUST link to parent by name (logical) and block hash (computational)
 
 ### 4. Time Management
@@ -164,6 +164,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 #### Purpose: Enables on-disk snapshot caching with automatic invalidation when test setup or contract code changes. Applied when implementing persistent snapshot storage.
 
  - **REQT-1.2.1/1wdfec5p4c**: COMPLETED: **Base Snapshot Cache Key** - The base (actors) snapshot cache key MUST include: actor names, actor order, initial UTxO amounts, and additional UTxO amounts. The resulting block hash MUST be captured as part of the snapshot.
+    - **REQT-1.2.1.1/xh612fhw3c**: COMPLETED: The base snapshot cache key MUST include `randomSeed` (default 42). Since wallet addresses are derived from the seeded PRNG, different seeds produce different wallets and thus different UTxO addresses. Including randomSeed ensures cache correctness when non-default seeds are used; the parent hash chain propagates this to all child snapshots.
 
  - **REQT-1.2.2/rqbrjda21d**: COMPLETED: **capoInitialized Snapshot Cache Key** - The capoInitialized snapshot cache key MUST include:
     - **REQT-1.2.2.1/q0qfn40b5f**: COMPLETED: Parent (base) snapshot's block hash
@@ -339,7 +340,7 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
 - Added `blockHashes[]` tracking to `StellarNetworkEmulator` for content-addressable block chain
 - Implemented `SnapshotCache` class for disk persistence in `.stellar/emulator/`
 - Added `getCacheKeyInputs()` and `computeSourceHash()` to `HeliosScriptBundle`
-- Implemented three-tier snapshot hierarchy: `SNAP_ACTORS` → `SNAP_CAPO_INIT` → `SNAP_DELEGATES`
+- Implemented three-tier snapshot hierarchy: `SNAP_ACTORS` ("bootstrapWithActors") → `SNAP_CAPO_INIT` → `SNAP_DELEGATES`
 - Added `resolveActorsDependencies()`, `resolveCoreCapoDependencies()`, `resolveEnabledDelegatesDependencies()` resolvers
 - Added `ActorSetupInfo` tracking for deterministic actor cache keys
 - Integrated disk caching into `setupActorsWithCache()` and `bootstrap()` flow

@@ -359,10 +359,10 @@ this.blockHashes.push(blockHash);
 
 ## Findings: Implemented but Not Marked COMPLETE
 
-### 1. `randomSeed` in Actor Cache Key (IMPLEMENTED, not in reqts)
+### 1. `randomSeed` in Actor Cache Key (IMPLEMENTED, now documented)
 **Location**: `CapoTestHelper.ts:843`
-**Finding**: The actors snapshot cache key includes `randomSeed: this.randomSeed` in the extra field. This is not explicitly mentioned in REQT-1.2.1 but is a sensible addition for determinism.
-**Recommendation**: Add to reqts REQT-1.2.1 as a sub-requirement.
+**Finding**: The actors snapshot cache key includes `randomSeed: this.randomSeed` in the extra field.
+**Resolution**: Added as REQT-1.2.1.1/xh612fhw3c - documents that randomSeed (default 42) affects wallet addresses via PRNG, and parent hash chain propagates this to child snapshots.
 
 ### 2. `SnapshotCache.has()` method (IMPLEMENTED, not in ARCH)
 **Location**: `SnapshotCache.ts:464-466`
@@ -473,7 +473,7 @@ addressUtxos: Record<string, TxInput[]>;
 1. **Fix ISSUE-1 (HIGH)**: Update `resolveEnabledDelegatesDependencies()` to match architecture - add iteration of `this.capo.delegateRoles` filtered by `featureEnabled(typeName)` to include dgData controller bundles in cache key.
 2. **Update Test Mocks**: Change `Map()` to `Record` in test fixtures.
 3. **Document Additional APIs**: Add `has()` and `delete()` to architecture document.
-4. **Update Reqts**: Add randomSeed to REQT-1.2.1 sub-requirements.
+4. ~~**Update Reqts**: Add randomSeed to REQT-1.2.1 sub-requirements.~~ ✅ Done (REQT-1.2.1.1/xh612fhw3c)
 
 ### Compliance with BACKLOG/FUTURE Items
 
