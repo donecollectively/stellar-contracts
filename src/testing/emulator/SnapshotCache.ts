@@ -10,7 +10,7 @@ import {
     makeEmulatorGenesisTx,
     makeEmulatorRegularTx,
 } from "@helios-lang/tx-utils";
-import { decodeTx, makeAddress, makeAssets, type TxInput, makeTxInput, makeTxOutputId, makeTxOutput, makeValue } from "@helios-lang/ledger";
+import { decodeTx, makeAddress, makeAssets, makeTxId, makeMintingPolicyHash, type TxInput, makeTxInput, makeTxOutputId, makeTxOutput, makeValue, type MintingPolicyHash } from "@helios-lang/ledger";
 
 /**
  * Inputs for computing a snapshot cache key.
@@ -145,12 +145,17 @@ function serializeGenesisTx(tx: EmulatorGenesisTx): SerializedGenesisTx {
  * @internal
  */
 function deserializeGenesisTx(data: SerializedGenesisTx): EmulatorGenesisTx {
-    const assets = makeAssets();
-    for (const [mphHex, tokens] of data.assets) {
-        for (const [nameHex, qtyStr] of tokens) {
-            assets.addComponent(mphHex, hexToBytes(nameHex), BigInt(qtyStr));
-        }
-    }
+    // Build assets array in format expected by makeAssets: [[mph, [[tokenName, qty]]]]
+    const assetsArray: [MintingPolicyHash, [number[], bigint][]][] = data.assets.map(
+        ([mphHex, tokens]) => [
+            makeMintingPolicyHash(mphHex),
+            tokens.map(([nameHex, qtyStr]) => [
+                [...hexToBytes(nameHex)],
+                BigInt(qtyStr)
+            ] as [number[], bigint])
+        ]
+    );
+    const assets = makeAssets(assetsArray);
     return makeEmulatorGenesisTx(
         data.id,
         makeAddress(data.address),
@@ -182,10 +187,12 @@ function serializeBlocks(blocks: EmulatorTx[][]): SerializedBlock[] {
                 return { type: "genesis" as const, data: serializeGenesisTx(tx) };
             } else {
                 // Regular transaction - get CBOR from wrapped tx
-                const txAny = tx as any;
-                const innerTx = txAny._tx || txAny;
-                const cbor = innerTx.toCbor ? innerTx.toCbor() : tx.toCbor();
-                return { type: "regular" as const, cbor: bytesToHex(cbor) };
+                // EmulatorRegularTx wraps a Tx internally in _tx property
+                const innerTx = (tx as { _tx?: { toCbor(): number[] } })._tx;
+                if (!innerTx) {
+                    throw new Error(`EmulatorRegularTx missing internal _tx property`);
+                }
+                return { type: "regular" as const, cbor: bytesToHex(innerTx.toCbor()) };
             }
         })
     );
@@ -228,7 +235,7 @@ function rebuildUtxoIndexes(
     const addUtxo = (utxo: TxInput) => {
         const id = utxo.id.toString();
         allUtxos[id] = utxo;
-        const addr = utxo.address.toBech32();
+        const addr = utxo.address.toString();
         if (!addressUtxos[addr]) {
             addressUtxos[addr] = [];
         }
@@ -240,7 +247,7 @@ function rebuildUtxoIndexes(
         consumedUtxos.add(id);
         const utxo = allUtxos[id];
         if (utxo) {
-            const addr = utxo.address.toBech32();
+            const addr = utxo.address.toString();
             if (addressUtxos[addr]) {
                 addressUtxos[addr] = addressUtxos[addr].filter(u => u.id.toString() !== id);
             }
@@ -248,6 +255,8 @@ function rebuildUtxoIndexes(
     };
 
     // Process genesis transactions
+    // Genesis transactions always have exactly one output at index 0
+    const genesisAlwaysSingleOutputIndex = 0;
     for (const tx of genesis) {
         const txId = getProp<any>(tx, "id"); // Can be a method or number
         const address = getProp<any>(tx, "address");
@@ -256,8 +265,8 @@ function rebuildUtxoIndexes(
         const output = makeTxOutput(address, makeValue(lovelace, txAssets));
         // Use tx.id() to get the TxId if it's a method, otherwise construct from genesis index
         const outputId = typeof tx.id === "function"
-            ? makeTxOutputId(tx.id(), 0)
-            : makeTxOutputId(`${"0".repeat(64 - String(txId).length)}${txId}`, 0);
+            ? makeTxOutputId(tx.id(), genesisAlwaysSingleOutputIndex)
+            : makeTxOutputId(makeTxId(`${"0".repeat(64 - String(txId).length)}${txId}`), genesisAlwaysSingleOutputIndex);
         const utxo = makeTxInput(outputId, output);
         addUtxo(utxo);
     }

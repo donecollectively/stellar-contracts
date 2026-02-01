@@ -265,7 +265,9 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 #### Purpose: Enables cache-key computation for snapshots with dynamic scripts or params, without requiring pre-compilation. Applied when computing cache keys for snapshots beyond the basic enabledDelegatesDeployed level.
 
  - **REQT-3.2.1/7e7npc64xe**: COMPLETED: Each snapshot MAY define a `resolveScriptDependencies` function via `@hasNamedSnapshot` decorator options
- - **REQT-3.2.2/04k32hh8km**: COMPLETED: **Basic case**: Built-in resolvers `resolveCoreCapoDependencies()` and `resolveEnabledDelegatesDependencies()` iterate Capo's delegates and return bundle source hashes + params
+ - **REQT-3.2.2/04k32hh8km**: COMPLETED: **Basic case**: Built-in resolvers return bundle source hashes + params:
+    - `resolveCoreCapoDependencies()` returns core bundles (capo minter, mintDelegate, spendDelegate)
+    - `resolveEnabledDelegatesDependencies()` returns core bundles + namedDelegate bundles (always) + dgData controller bundles (filtered by `featureEnabled(typeName)`)
  - **REQT-3.2.3/97qa2f7m25**: COMPLETED: **Dynamic case**: Resolver signature supports reading parent state via `ScriptDependencyResolver` type
  - **REQT-3.2.4/5cj9et1a6j**: COMPLETED: **Custom case**: `CacheKeyInputs.extra` field supports closure-captured details including `heliosVersion`
 

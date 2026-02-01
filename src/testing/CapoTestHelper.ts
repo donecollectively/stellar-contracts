@@ -10,6 +10,7 @@ import type {
     ConfigFor,
     CapoConfig,
     CapoFeatureFlags,
+    DelegateSetup,
 } from "@donecollectively/stellar-contracts";
 import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot } from "./emulator/SnapshotCache.js";
 import type { BundleCacheKeyInputs } from "../helios/scriptBundling/HeliosScriptBundle.js";
@@ -29,7 +30,7 @@ import {
 const ACTORS_ALREADY_MOVED =
     "NONE! all actors were moved from a different network via snapshot";
 
-export const SNAP_ACTORS = "actors";
+export const SNAP_ACTORS = "bootstrapWithActors";
 export const SNAP_CAPO_INIT = "capoInitialized";
 export const SNAP_DELEGATES = "enabledDelegatesDeployed";
 // Legacy names for compatibility
@@ -1040,30 +1041,56 @@ export abstract class CapoTestHelper<
     /**
      * Resolves cache key inputs for all enabled delegates.
      * Used for snapshot cache key computation for the enabledDelegatesDeployed snapshot.
+     * Includes dgData controllers (filtered by featureFlags) per REQT-1.2.3.2 and REQT-1.2.3.4.
      * @public
      */
     async resolveEnabledDelegatesDependencies(): Promise<CacheKeyInputs> {
         const coreInputs = await this.resolveCoreCapoDependencies();
         const bundles = [...coreInputs.bundles];
 
-        // Add bundles for named delegates
-        try {
-            const namedDelegates = await this.capo.getNamedDelegates();
-            for (const delegate of Object.values(namedDelegates)) {
+        // Iterate delegateRoles for dgData controllers
+        const { delegateRoles } = this.capo;
+
+        for (const [roleName, roleSetup] of Object.entries(delegateRoles)) {
+            const { delegateType, delegateClass } = roleSetup as DelegateSetup<any, any, any>;
+
+            // Skip core delegates (already in coreInputs from resolveCoreCapoDependencies)
+            if (["spendDgt", "mintDgt", "authority"].includes(delegateType)) {
+                continue;
+            }
+
+            // For dgDataPolicy: check featureEnabled via this.featureFlags
+            // (this.capo.featureEnabled has generic constraint keyof featureFlags which
+            // resolves to 'never' when featureFlags defaults to {})
+            if (delegateType === "dgDataPolicy") {
+                if (!this.featureFlags?.[roleName]) {
+                    continue;
+                }
+
+                // Get bundle from an instantiated delegate
                 try {
+                    const delegate = await (this.capo as Capo<any>).getDgDataController(
+                        roleName as string & keyof Capo<any>["_delegateRoles"],
+                        { onchain: false }
+                    );
+                    if (!delegate) {
+                        console.warn(`CapoTestHelper: dgData controller ${roleName} returned undefined`);
+                        continue;
+                    }
                     const bundle = await delegate.getBundle();
                     bundles.push(bundle.getCacheKeyInputs());
                 } catch (e) {
-                    console.warn(`CapoTestHelper: skipping delegate for cache key: ${e}`);
+                    console.warn(`CapoTestHelper: skipping dgData controller ${roleName} for cache key: ${e}`);
                 }
             }
-        } catch (e) {
-            // No named delegates available
         }
 
         return {
             bundles,
-            extra: coreInputs.extra,
+            extra: {
+                ...coreInputs.extra,
+                featureFlags: this.featureFlags || {},
+            },
         };
     }
 }
