@@ -567,7 +567,7 @@ class StellarNetworkEmulator implements Emulator {
 - [ ] **Pending**: Migrate built-in snapshots (actors, capoInit, delegates) to use `@hasNamedSnapshot` decorator for consistent registration model
 - [ ] **Pending**: Add reqts for built-in snapshot decorator migration
 - [x] ~~Finalize SnapshotCache.find() and store() interface signatures~~ → Name-based: `find(snapshotName)`, `store(snapshotName, snapshot)`. Path computed via registry.
-- [ ] **Pending**: Update Emulator.reqts.md to reflect hierarchical directories, just-in-time registration, and touch directories (not files)
+- [x] ~~Update Emulator.reqts.md to reflect hierarchical directories, just-in-time registration, and touch directories (not files)~~ → Done: REQT-1.2.7.1, 1.2.9.x updated; parentCacheKey deprecated
 - [ ] **Cleanup after impl**: Remove deprecated `parentCacheKey` references from this doc (CachedSnapshot type, code examples) once hierarchical dirs are working
 
 ---

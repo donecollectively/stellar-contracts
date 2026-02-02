@@ -199,20 +199,21 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.2.6/7k3mfpw2nx**: COMPLETED: **Cache File Location** - Snapshot cache files MUST be stored in `.stellar/emu/` within the project root
 
  - **REQT-1.2.7/q8h2vr4c5y**: COMPLETED: **Cache Freshness Management**:
-    - **REQT-1.2.7.1/m1d6jk9w3p**: COMPLETED: Cache files MUST have their mtime touched when used if older than 1 day
+    - **REQT-1.2.7.1/m1d6jk9w3p**: NEXT: Cache directories MUST have their mtime touched when used if older than 1 day
     - **REQT-1.2.7.2/r5f8n2b4ht**: FUTURE: A cleanup command SHOULD delete cache files older than 1 week (intended for use after full test runs)
 
  - **REQT-1.2.8/v4c7x9m1kz**: COMPLETED: **Helios Version in Cache Key** - The base snapshot cache key MUST include the Helios compiler version (available via `import { VERSION } from "@helios-lang/compiler"`)
 
- - **REQT-1.2.9/d34w6546fx**: NEXT: **Human-Readable Cache Filenames** - Cache files MUST use human-readable naming for consumability:
-    - **REQT-1.2.9.1/d230hkb6vm**: NEXT: Cache files MUST be named `{snapshotName}-{cacheKey}.json` (e.g., `bootstrapWithActors-a1b2c3d4.json`)
+ - **REQT-1.2.9/d34w6546fx**: NEXT: **Hierarchical Cache Directories** - Cache MUST use hierarchical directory structure for consumability:
+    - **REQT-1.2.9.1/d230hkb6vm**: NEXT: Cache MUST use hierarchical directories: `{parentPath}/{snapshotName}-{cacheKey}/snapshot.json` (e.g., `.stellar/emu/bootstrapWithActors-AAAAAA/capoInitialized-CICICICI/snapshot.json`)
     - **REQT-1.2.9.2/asb3wybpc7**: NEXT: Snapshot names MUST be sanitized for filesystem safety: only alphanumeric, underscore, and hyphen allowed; truncated to 50 characters maximum
-    - **REQT-1.2.9.3/xqnwt4ajgq**: COMPLETED: Snapshot files MUST use flat file storage with explicit parent linkage fields (evolved from nested directories approach)
-        - **REQT-1.2.9.3.1/nnhm7a33kg**: COMPLETED: `parentCacheKey` field MUST enable O(1) parent file lookup—construct path as `{parentSnapName}-{parentCacheKey}.json`
-        - **REQT-1.2.9.3.2/rgxhbqp84g**: COMPLETED: `parentHash` field MUST be verified on load—if loaded parent's `snapshotHash` doesn't match, `find()` MUST return null to trigger cache rebuild
-        - **REQT-1.2.9.3.3/q6f457kp86**: COMPLETED: Post-load integrity check—`find()` MUST verify that the final `blockHashes[-1]` equals recorded `snapshotHash`; return null on mismatch to detect corruption or implementation bugs
+    - **REQT-1.2.9.3/xqnwt4ajgq**: NEXT: Snapshot files MUST use hierarchical directory storage with parent path implicit in filesystem structure
+        - **REQT-1.2.9.3.1/nnhm7a33kg**: DEPRECATED: `parentCacheKey` field—with hierarchical directories, parent path is implicit; field retained in type as breadcrumb but MUST NOT be used for path construction
+        - **REQT-1.2.9.3.2/rgxhbqp84g**: NEXT: `parentHash` field MUST be verified on load—if loaded parent's `snapshotHash` doesn't match, `find()` MUST return null to trigger cache rebuild
+        - **REQT-1.2.9.3.3/q6f457kp86**: NEXT: Post-load integrity check—`find()` MUST verify that the final `blockHashes[-1]` equals recorded `snapshotHash`; return null on mismatch to detect corruption or implementation bugs
+    - **REQT-1.2.9.4/dwaf8qb8s1**: NEXT: Hierarchical structure MUST enable subtree deletion via `rm -rf {snapshotDir}` when a parent snapshot is invalidated
 
-> **RATIONALE (id:d34w6546fx)**: Human-readable filenames enable developers to identify snapshot purpose at a glance (`ls bootstrapWithActors-*`), debug cache misses by seeing which named snapshots exist, and perform targeted cleanup (`rm capoInitialized-*.json`). The cache key suffix preserves uniqueness—multiple files with the same snapshot name but different hashes is expected when code changes. Flat file storage with explicit `parentCacheKey`/`parentHash` fields was chosen over nested directories for simpler cache management and atomic file operations.
+> **RATIONALE (id:d34w6546fx)**: Hierarchical directories enable developers to see the snapshot chain structure via `ls -R`, identify parent-child relationships at a glance, and perform targeted cleanup via `rm -rf` on any subtree. Parent path is implicit in directory structure—no `parentCacheKey` needed. The `parentHash` field enables verification that loaded parent state matches expected state.
 
 ### REQT-1.3/qr6r27cg3q: COMPLETED: **Transaction Validation**
 
@@ -368,11 +369,21 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
 - Implemented post-load integrity check: verify `blockHashes[-1]` equals recorded `snapshotHash`
 - Updated architecture documentation to clarify verification mechanism
 
+### Phase 4: Hierarchical Directory Architecture (In Progress)
+
+Architecture evolution from flat files to hierarchical directories:
+- Evolved REQT-1.2.9 from flat `{name}-{key}.json` to hierarchical `{parentPath}/{name}-{key}/snapshot.json`
+- Deprecated `parentCacheKey` field (REQT-1.2.9.3.1)—with hierarchical directories, parent path is implicit
+- Retained `parentHash` verification (REQT-1.2.9.3.2) for stale cache detection
+- Added subtree deletion requirement (REQT-1.2.9.4) for `rm -rf` cleanup
+- Changed cache freshness from "touch files" to "touch directories" (REQT-1.2.7.1)
+
 #### Next Recommendations
 
-1. **Incremental Block Storage**: Store only new blocks since parent snapshot (REQT-1.2.5.1) for smaller cache files
-2. **Cleanup Command**: Implement cache cleanup for files older than 1 week (REQT-1.2.7.2)
-3. **Migration Agent**: Create agent to help migrate existing test helpers (REQT-5.0)
+1. **Implement Hierarchical Directories**: Update SnapshotCache to use `{parentPath}/{name}-{key}/snapshot.json` pattern
+2. **Incremental Block Storage**: Store only new blocks since parent snapshot (REQT-1.2.5.1) for smaller cache files
+3. **Cleanup Command**: Implement cache cleanup for directories older than 1 week (REQT-1.2.7.2)
+4. **Migration Agent**: Create agent to help migrate existing test helpers (REQT-5.0)
 
 ---
 
@@ -394,9 +405,9 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
    - ✅ Parent linkage by name and hash (REQT-1.2.4)
    - ⏳ Snapshot file storage with incremental blocks (REQT-1.2.5) - partial: full snapshots stored, not incremental
    - ✅ Cache location in `.stellar/emu/` (REQT-1.2.6)
-   - ✅ Cache freshness management with touch-on-use (REQT-1.2.7.1)
+   - ⏳ Cache freshness management (REQT-1.2.7.1) - needs update for directories instead of files
    - ✅ Helios version in cache key (REQT-1.2.8)
-   - ✅ Human-readable cache filenames (REQT-1.2.9) - flat files + parentCacheKey + parentHash verification complete
+   - ⏳ Hierarchical cache directories (REQT-1.2.9) - architecture evolved from flat files to hierarchical; impl pending
    - ✅ Bundle dependency hashing (REQT-3.1)
    - ✅ Script dependency resolution (REQT-3.2)
 
