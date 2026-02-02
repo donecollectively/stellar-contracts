@@ -210,6 +210,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
     - **REQT-1.2.9.3/xqnwt4ajgq**: COMPLETED: Snapshot files MUST use flat file storage with explicit parent linkage fields (evolved from nested directories approach)
         - **REQT-1.2.9.3.1/nnhm7a33kg**: COMPLETED: `parentCacheKey` field MUST enable O(1) parent file lookup—construct path as `{parentSnapName}-{parentCacheKey}.json`
         - **REQT-1.2.9.3.2/rgxhbqp84g**: COMPLETED: `parentHash` field MUST be verified on load—if loaded parent's `snapshotHash` doesn't match, `find()` MUST return null to trigger cache rebuild
+        - **REQT-1.2.9.3.3/q6f457kp86**: COMPLETED: Post-load integrity check—`find()` MUST verify that the final `blockHashes[-1]` equals recorded `snapshotHash`; return null on mismatch to detect corruption or implementation bugs
 
 > **RATIONALE (id:d34w6546fx)**: Human-readable filenames enable developers to identify snapshot purpose at a glance (`ls bootstrapWithActors-*`), debug cache misses by seeing which named snapshots exist, and perform targeted cleanup (`rm capoInitialized-*.json`). The cache key suffix preserves uniqueness—multiple files with the same snapshot name but different hashes is expected when code changes. Flat file storage with explicit `parentCacheKey`/`parentHash` fields was chosen over nested directories for simpler cache management and atomic file operations.
 

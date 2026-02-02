@@ -496,7 +496,18 @@ export class SnapshotCache {
                 }
             }
 
-            console.log(`SnapshotCache: loaded '${thisSnapshot.name}' from ${cachePath}`);
+            // Verify snapshot integrity: computed block hash must match recorded snapshotHash (REQT-1.2.9.3.3)
+            const verifyStart = performance.now();
+            const computedHash = thisSnapshot.blockHashes.length > 0
+                ? thisSnapshot.blockHashes[thisSnapshot.blockHashes.length - 1]
+                : "genesis";
+            if (computedHash !== serialized.snapshotHash) {
+                console.warn(`SnapshotCache: snapshot hash mismatch for '${snapshotName}': computed ${computedHash}, recorded ${serialized.snapshotHash}`);
+                return null; // Corruption or implementation bug, trigger rebuild
+            }
+            const verifyMs = (performance.now() - verifyStart).toFixed(2);
+
+            console.log(`SnapshotCache: loaded '${thisSnapshot.name}' from ${cachePath} (integrity check: ${verifyMs}ms)`);
             return {
                 snapshot: thisSnapshot,
                 namedRecords: serialized.namedRecords,

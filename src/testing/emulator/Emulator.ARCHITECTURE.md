@@ -325,13 +325,16 @@ type CachedSnapshot = {
 - Multiple files with same name but different hashes is expected (code changes produce new hashes)
 
 **Behavior**:
-- `find()`: Returns null on miss; touches file if mtime > 1 day; recursively loads parent chain via `parentCacheKey`; SHOULD verify `parentHash` matches loaded parent's `snapshotHash` (returns null on mismatch to trigger rebuild)
+- `find()`: Returns null on miss; touches file if mtime > 1 day; recursively loads parent chain via `parentCacheKey`; verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild)
 - `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON with incremental blocks only
 - `computeKey()`: `hash(parentHash + JSON.stringify(inputs))`
 
 **Parent Chain Fields**:
 - `parentCacheKey`: Enables O(1) parent file lookup (`{parentSnapName}-{parentCacheKey}.json`) for incremental chain loading
 - `parentHash`: Enables verification that loaded parent state matches expected state; if mismatch, cache is stale and should be rebuilt
+
+**Integrity Verification**:
+- After chain loading, `find()` verifies `blockHashes[-1] === snapshotHash` to detect file corruption or implementation bugs
 
 ### Snapshot State Management
 
