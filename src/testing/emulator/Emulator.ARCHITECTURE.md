@@ -708,6 +708,7 @@ Efficient loading when parent snapshots are already in process memory from prior
 ## Related Documents
 
 - `./Emulator.reqts.md` - Detailed requirements
+- `./snapshot-impl-audit.4xb49a4jyw.workUnit.md` - Implementation audit (goal state alignment)
 - `../../reference/essential-stellar-testing.md` - Testing conventions
 - `../CapoTestHelper.ts` - Snapshot orchestration implementation
 - `../../helios/CachedHeliosProgram.ts` - Compilation cache pattern

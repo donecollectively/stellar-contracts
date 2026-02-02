@@ -1,5 +1,6 @@
 # Snapshot Implementation Audit - State File
 
+**UUT**: `4xb49a4jyw`
 *Created: 2026-02-02*
 *Expertise: Architect (system prompt) + Discrepancy Audit skill*
 *Theme: Goal state alignment - implementation should match architecture*
@@ -177,6 +178,7 @@ async snapToEnabledDelegatesDeployed(): Promise<void> {
 9. **CapoTestHelper.ts**: Added `internal` option to decorator, implemented `snapToCapoInitialized()` (WU0, WU1)
 10. **Emulator.ARCHITECTURE.md**: Added `internal` option to SnapshotDecoratorOptions type and built-in relationships
 11. **StellarNetworkEmulator.ts**: `loadSnapshot()` syncs emulator to wall-clock time after restore (F6)
+12. **Emulator.ARCHITECTURE.md**: Clarified `actor: "default"` semantic in SnapshotDecoratorOptions (calls `setDefaultActor()` not `setActor("default")`)
 
 ## Next Steps
 
