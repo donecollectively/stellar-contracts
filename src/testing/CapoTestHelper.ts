@@ -517,7 +517,7 @@ export abstract class CapoTestHelper<
             const cachedSnapshot: CachedSnapshot = {
                 snapshot,
                 namedRecords: {},
-                parentName: null,
+                parentSnapName: "genesis",
                 parentHash: null,
                 snapshotHash: this.network.lastBlockHash,
             };
@@ -612,7 +612,7 @@ export abstract class CapoTestHelper<
                     const cachedSnapshot: CachedSnapshot = {
                         snapshot,
                         namedRecords: { ...this.helperState!.namedRecords },
-                        parentName: SNAP_DELEGATES,
+                        parentSnapName: SNAP_DELEGATES,
                         parentHash,
                         snapshotHash: this.network.lastBlockHash,
                     };
@@ -814,7 +814,7 @@ export abstract class CapoTestHelper<
         const cachedSnapshot: CachedSnapshot = {
             snapshot,
             namedRecords: { ...this.helperState!.namedRecords },
-            parentName: SNAP_ACTORS,
+            parentSnapName: SNAP_ACTORS,
             parentHash,
             snapshotHash: this.network.lastBlockHash,
         };
@@ -866,7 +866,7 @@ export abstract class CapoTestHelper<
         const cachedSnapshot: CachedSnapshot = {
             snapshot,
             namedRecords: { ...this.helperState!.namedRecords },
-            parentName: SNAP_CAPO_INIT,
+            parentSnapName: SNAP_CAPO_INIT,
             parentHash,
             snapshotHash: this.network.lastBlockHash,
         };

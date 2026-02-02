@@ -22,6 +22,18 @@ export type CacheKeyInputs = {
 };
 
 /**
+ * Parent snapshot name - identifies which snapshot is the parent.
+ * @public
+ */
+export type ParentSnapName =
+    | "genesis"                     // root level (no parent)
+    | "bootstrapWithActors"         // actors initialized
+    | "capoInitialized"             // capo charter minted
+    | "enabledDelegatesDeployed"    // delegates deployed
+    | "bootstrapped"                // symbolic alias → "enabledDelegatesDeployed"
+    | (string & {});                // custom snapshot name
+
+/**
  * A snapshot stored in the cache, including metadata for chaining.
  * @public
  */
@@ -30,8 +42,8 @@ export type CachedSnapshot = {
     snapshot: NetworkSnapshot;
     /** Named records captured with this snapshot */
     namedRecords: Record<string, string>;
-    /** Logical name of the parent snapshot, or null for root */
-    parentName: string | null;
+    /** Parent snapshot name ("genesis" for root) */
+    parentSnapName: ParentSnapName;
     /** Hash of the parent snapshot, or null for root */
     parentHash: string | null;
     /** Hash of this snapshot for use as parent in child snapshots */
@@ -84,7 +96,7 @@ type SerializedSnapshot = {
 type SerializedCachedSnapshot = {
     snapshot: SerializedSnapshot;
     namedRecords: Record<string, string>;
-    parentName: string | null;
+    parentSnapName: ParentSnapName;
     parentHash: string | null;
     snapshotHash: string;
 };
@@ -435,7 +447,7 @@ export class SnapshotCache {
             return {
                 snapshot,
                 namedRecords: serialized.namedRecords,
-                parentName: serialized.parentName,
+                parentSnapName: serialized.parentSnapName,
                 parentHash: serialized.parentHash,
                 snapshotHash: serialized.snapshotHash,
             };
@@ -456,7 +468,7 @@ export class SnapshotCache {
         const serialized: SerializedCachedSnapshot = {
             snapshot: serializeSnapshot(cachedSnapshot.snapshot),
             namedRecords: cachedSnapshot.namedRecords,
-            parentName: cachedSnapshot.parentName,
+            parentSnapName: cachedSnapshot.parentSnapName,
             parentHash: cachedSnapshot.parentHash,
             snapshotHash: cachedSnapshot.snapshotHash,
         };
