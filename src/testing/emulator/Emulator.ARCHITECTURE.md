@@ -331,24 +331,26 @@ type CachedSnapshot = {
   namedRecords: Record<string, string>;
   parentSnapName: ParentSnapName;  // parent snapshot name ("genesis" for root)
   parentHash: string | null;       // parent's snapshotHash - verified on load to detect stale cache
-  parentCacheKey: string | null;   // parent's cache key - enables O(1) file lookup for chain loading
+  parentCacheKey: string | null;   // DO NOT USE - probably obsolete: with hierarchical dirs, parent path is implicit
   snapshotHash: string;            // this snapshot's resulting block hash (becomes child's parentHash)
 }
 ```
 
-**File Naming**:
-- Pattern: `{snapshotName}-{cacheKey}.json` (e.g., `bootstrapWithActors-a1b2c3d4.json`)
+**File Naming** (Hierarchical Directories):
+- Path pattern: `{parentPath}/{snapshotName}-{cacheKey}/snapshot.json`
+- Root snapshots: `.stellar/emu/{name}-{key}/snapshot.json`
+- Nested example: `.stellar/emu/bootstrapWithActors-AAAAAA/capoInitialized-CICICICI/snapshot.json`
 - Snapshot names sanitized: alphanumeric, underscore, hyphen only; max 50 chars
-- Multiple files with same name but different hashes is expected (code changes produce new hashes)
+- Parent relationship implicit in directory structure; enables `rm -rf` for subtree deletion
 
 **Behavior**:
 - `find()`: Returns null on miss; touches directory if mtime > 1 day; recursively ensures parent chain via registered metadata; verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild)
 - `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON with incremental blocks only
 - `computeKey()`: `hash(parentHash + JSON.stringify(inputs))`
 
-**Parent Chain Fields**:
-- `parentCacheKey`: Enables O(1) parent file lookup (`{parentSnapName}-{parentCacheKey}.json`) for incremental chain loading
-- `parentHash`: Enables verification that loaded parent state matches expected state; if mismatch, cache is stale and should be rebuilt
+**Parent Chain Verification**:
+- `parentHash`: Verifies loaded parent state matches expected state; if mismatch, cache is stale and `find()` returns null to trigger rebuild
+- Parent path is implicit in directory structure (no `parentCacheKey` needed—we find() parent first, then construct child path from `parent.path + "{name}-{cacheKey}/"`)
 
 **Integrity Verification**:
 - After chain loading, `find()` verifies `blockHashes[-1] === snapshotHash` to detect file corruption or implementation bugs
