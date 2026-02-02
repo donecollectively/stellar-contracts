@@ -169,7 +169,7 @@
 
 | ARCH-UUT | Interface | Mechanism | Direction | Payload |
 |----------|-----------|-----------|-----------|---------|
-| ARCH-aydwtq95c3 | CapoTestHelper → SnapshotCache | function call | Helper initiates | cache key, snapshot name, namedRecords |
+| ARCH-aydwtq95c3 | CapoTestHelper → SnapshotCache | function call | Helper initiates | snapshot name, namedRecords |
 | ARCH-ae9pa14a5a | CapoTestHelper → StellarNetworkEmulator | function call | Helper initiates | snapshot operations |
 | ARCH-te1et77ze7 | CapoTestHelper → Capo | property access | Helper initiates | bundle hash resolution |
 | ARCH-0qtqvk6a41 | Capo → HeliosScriptBundle | function call | Capo initiates | getEffectiveModuleList() |
@@ -179,7 +179,7 @@
 
 **Mechanism**: function call
 **Direction**: CapoTestHelper initiates
-**Payload**: cache key (from resolveScriptDependencies), snapshot name, namedRecords
+**Payload**: snapshot name, namedRecords (cache key computed internally via registry)
 **Errors**: Cache miss triggers snapshot creation; hash mismatch triggers rebuild
 
 ### ARCH-ae9pa14a5a: CapoTestHelper → StellarNetworkEmulator
@@ -420,14 +420,14 @@ private getSnapshotBlockHash(snapName: string): string {
 **When Saving Child Snapshots**:
 
 ```typescript
-// Get parent's cache key via recomputation
-const parentCacheKey = await this.getSnapshotCacheKey(parentSnapName);
+// // deprecated: Get parent's cache key via recomputation
+// const parentCacheKey = await this.getSnapshotCacheKey(parentSnapName);
 
 const cachedSnapshot: CachedSnapshot = {
   snapshot,
   parentSnapName,
   parentHash: this.getSnapshotBlockHash(parentSnapName),
-  parentCacheKey,  // For O(1) lookup during chain loading
+  // parentCacheKey,  // deprecated: with hierarchical dirs, parent path is implicit
   snapshotHash: this.network.lastBlockHash,
   namedRecords: {},
 };
@@ -530,7 +530,7 @@ class StellarNetworkEmulator implements Emulator {
 | **CapoTestHelper owns SnapshotCache interaction** | Helper knows the Capo; keeps emulator focused on simulation |
 | **`resolveScriptDependencies()` pattern** | Enables cache-key pre-computation for dynamic scripts/params |
 | **namedRecords persisted with snapshot** | Tests need record IDs after restore |
-| **Touch files > 1 day old** | Keeps recently-used caches fresh for cleanup detection |
+| **Touch directories > 1 day old** | Keeps recently-used caches fresh for cleanup detection |
 | **`.stellar/emu/` location** | Project-local, gitignore-able |
 | **Helios VERSION in cache key** | Compiler changes could affect output |
 | **autoSetup + featureFlags** | autoSetup triggers iteration; featureFlags filters which deploy |
@@ -568,6 +568,7 @@ class StellarNetworkEmulator implements Emulator {
 - [ ] **Pending**: Add reqts for built-in snapshot decorator migration
 - [x] ~~Finalize SnapshotCache.find() and store() interface signatures~~ → Name-based: `find(snapshotName)`, `store(snapshotName, snapshot)`. Path computed via registry.
 - [ ] **Pending**: Update Emulator.reqts.md to reflect hierarchical directories, just-in-time registration, and touch directories (not files)
+- [ ] **Cleanup after impl**: Remove deprecated `parentCacheKey` references from this doc (CachedSnapshot type, code examples) once hierarchical dirs are working
 
 ---
 
