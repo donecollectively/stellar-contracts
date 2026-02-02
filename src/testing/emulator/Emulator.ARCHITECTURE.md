@@ -524,19 +524,23 @@ Bootstrap proceeds through three snapshot layers. Each layer uses `@hasNamedSnap
 
 ### Workflow: Cached Bootstrap (cache hit)
 
+When snapshots are already in memory (from prior test in same run):
+
 1. **Test Suite** calls `reusableBootstrap()` on **CapoTestHelper**
-2. **CapoTestHelper** calls `resolveScriptDependencies()` → cache key
-3. **CapoTestHelper** checks **SnapshotCache** → cache hit
-4. **SnapshotCache** loads snapshot + namedRecords from disk
+2. **CapoTestHelper** detects `helperState.bootstrapped = true`
+3. **CapoTestHelper** calls `restoreFrom(snapshotName)`
+4. **SnapshotCache** returns cached snapshot (in-memory or disk)
 5. **CapoTestHelper** restores to **StellarNetworkEmulator**
-6. **StellarTestHelper** transfers actor wallets
+6. **CapoTestHelper** transfers actor wallets (in `restoreFrom()`)
 
 ```
-[Test] → [CapoTestHelper] → [SnapshotCache] → hit → load
+[Test] → reusableBootstrap() → restoreFrom()
                 ↓
-    [StellarNetworkEmulator] ← restore
+         [SnapshotCache] → in-memory or disk
                 ↓
-      [StellarTestHelper] ← wallet transfer
+         [StellarNetworkEmulator] ← restore
+                ↓
+         actor wallets transferred
 ```
 
 ### Workflow: Disk Chain Load (cold cache, REQT-1.2.10)
@@ -613,10 +617,12 @@ Efficient loading when parent snapshots are already in process memory from prior
 
 ### Workflow: Cache Invalidation
 
-1. Source file changes → bundle hash changes
-2. Next test run computes new cache key
-3. Old cache key not found → treated as cache miss
-4. Old cache files age out (> 1 week) and get cleaned up
+1. Source file changes → bundle hash changes (via `getCacheKeyInputs()`)
+2. Next test run computes new cache key (via `resolveScriptDependencies()`)
+3. New cache key not found → cache miss → rebuild and store under new key
+4. *(FUTURE: REQT-1.2.7.2)* Old cache directories age out (> 1 week) and get cleaned up
+
+**Note**: Touch mechanism (REQT-1.2.7.1) keeps active directories fresh; cleanup command not yet implemented.
 
 ---
 
