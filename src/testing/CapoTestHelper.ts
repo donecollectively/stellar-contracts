@@ -489,6 +489,12 @@ export abstract class CapoTestHelper<
 
             async function SnapWrap(this: AnyCapoTestHelper, ...args: any[]) {
                 // For genesis (root) snapshots, skip bootstrap - we ARE the root
+                if (parentSnapName === "genesis") {
+                    this.ensureHelperState();
+                } else {
+                    await this.reusableBootstrap();
+                }
+
                 // Register snapshot with the cache (resolver bound to this helper instance)
                 const boundResolver = resolveScriptDependencies
                     ? async () => resolveScriptDependencies(this)
@@ -504,8 +510,15 @@ export abstract class CapoTestHelper<
                     () => {
                         return generateSnapshotFunc
                             .apply(this, ...args)
-                            .then((result) => {
-                                if (this.actorName !== actorName) {
+                            .then((result: any) => {
+                                // "default" means accept whatever setDefaultActor() set (just verify one is set)
+                                if (actorName === "default") {
+                                    if (!this.actorName) {
+                                        throw new Error(
+                                            `snapshot ${snapshotName}: expected default actor to be set, but no actor is set`,
+                                        );
+                                    }
+                                } else if (this.actorName !== actorName) {
                                     throw new Error(
                                         `snapshot ${snapshotName}: expected actor '${actorName}', but current actor is '${this.actorName}'`,
                                     );
@@ -514,7 +527,6 @@ export abstract class CapoTestHelper<
                                 return result;
                             });
                     },
-                    resolveScriptDependencies,
                 );
             }
             return descriptor;
@@ -522,6 +534,22 @@ export abstract class CapoTestHelper<
     }
 
     /**
+     * Creates test actors for the emulator.
+     * Idempotent: only runs if actors haven't been set up yet.
+     * Called by snapToBootstrapWithActors via @hasNamedSnapshot decorator.
+     * @internal
+     */
+    async bootstrapWithActors(): Promise<void> {
+        // Only run if actors haven't been set up yet
+        // (resolver may have already called setupActors to get actorSetupInfo)
+        if (this.actorSetupInfo.length === 0) {
+            await this.setupActors();
+        }
+        // Set the default actor so decorator's actor check passes
+        await this.setDefaultActor();
+        // tick happens in decorator wrapper after this returns
+    }
+
     /**
      * Decorated wrapper for bootstrapWithActors.
      * Uses @hasNamedSnapshot with parentSnapName: "genesis" for root snapshot.
@@ -536,7 +564,13 @@ export abstract class CapoTestHelper<
                 await h.setupActors();
                 // DON'T tick here - let the decorator handle tick after builder
             }
+            return h.resolveActorsDependencies();
         },
+    })
+    async snapToBootstrapWithActors(): Promise<void> {
+        // Decorator calls bootstrapWithActors() and handles caching
+    }
+
     /**
      * Sets up actors with disk cache support.
      * @deprecated Use snapToBootstrapWithActors() instead
@@ -618,10 +652,42 @@ export abstract class CapoTestHelper<
         snapshotName: string,
         actorName: string,
         contentBuilder: () => Promise<StellarTxnContext<any>>,
-        resolveScriptDependencies?: ScriptDependencyResolver,
     ): Promise<SC> {
+        // Check registry to determine if this is a genesis (actors) snapshot
+        const entry = this.snapshotCache["registry"].get(snapshotName);
+        const isGenesisSnapshot = entry?.parentSnapName === "genesis";
+
         // First check in-memory snapshots
         if (this.helperState!.snapshots[snapshotName]) {
+            if (isGenesisSnapshot) {
+                console.log(`findOrCreateSnapshot: in-memory hit for genesis '${snapshotName}'`);
+                // For genesis snapshots (actors), just restore network state
+                // No capo exists yet, so we can't use restoreFrom()
+                this.network.loadSnapshot(this.helperState!.snapshots[snapshotName]);
+
+                // Restore actorSetupInfo from namedRecords if available
+                const actorSetupInfoJson = this.helperState!.namedRecords["__actorSetupInfo__"];
+                console.log(`  actorSetupInfo from namedRecords: ${actorSetupInfoJson ? "found" : "NOT FOUND"}`);
+                if (actorSetupInfoJson && this.actorSetupInfo.length === 0) {
+                    this.actorSetupInfo = JSON.parse(actorSetupInfoJson);
+                    console.log(`  parsed ${this.actorSetupInfo.length} actors from namedRecords`);
+                }
+
+                // Regenerate actors from PRNG using actorSetupInfo
+                console.log(`  actorSetupInfo=${this.actorSetupInfo.length}, actors=${Object.keys(this.actors).length}`);
+                if (this.actorSetupInfo.length > 0 && Object.keys(this.actors).length === 0) {
+                    this.regenerateActorsFromSetupInfo();
+                }
+
+                // Set actor (might be "default" which calls setDefaultActor)
+                console.log(`  actors after regeneration: ${Object.keys(this.actors).join(", ") || "EMPTY"}`);
+                if (actorName === "default") {
+                    await this.setDefaultActor();
+                } else if (this.actors[actorName]) {
+                    await this.setActor(actorName);
+                }
+                return this.strella; // May be undefined for actors, that's OK
+            }
             const capo = await this.restoreFrom(snapshotName);
             await this.setActor(actorName);
             return capo;
@@ -636,6 +702,25 @@ export abstract class CapoTestHelper<
             Object.assign(this.helperState!.namedRecords, cached.namedRecords);
             this.helperState!.snapshots[snapshotName] = cached.snapshot;
 
+            if (isGenesisSnapshot) {
+                // Restore actorSetupInfo from namedRecords if available
+                const actorSetupInfoJson = cached.namedRecords["__actorSetupInfo__"];
+                if (actorSetupInfoJson && this.actorSetupInfo.length === 0) {
+                    this.actorSetupInfo = JSON.parse(actorSetupInfoJson);
+                }
+
+                // Regenerate actors from PRNG using actorSetupInfo
+                if (this.actorSetupInfo.length > 0 && Object.keys(this.actors).length === 0) {
+                    this.regenerateActorsFromSetupInfo();
+                }
+
+                // Set actor
+                if (actorName === "default") {
+                    await this.setDefaultActor();
+                } else if (this.actors[actorName]) {
+                    await this.setActor(actorName);
+                }
+                return this.strella; // May be undefined for actors, that's OK
             }
             console.log(`SnapshotCache: miss for ${snapshotName} (key: ${cacheKey.slice(0, 8)}...)`);
 
@@ -665,11 +750,14 @@ export abstract class CapoTestHelper<
                     : null;
                 const parentHash = parentSnapshot?.blockHashes?.slice(-1)[0] || null;
 
-                    const parentCacheKey = await this.getSnapshotCacheKey(SNAP_DELEGATES);
-                    const parentBlockCount = delegatesSnapshot?.blocks?.length ?? 0;
                 // For genesis snapshots, store actorSetupInfo for regeneration on cache load
                 const namedRecords = { ...this.helperState!.namedRecords };
                 if (parentSnapName === "genesis" && this.actorSetupInfo.length > 0) {
+                    const actorSetupJson = JSON.stringify(this.actorSetupInfo);
+                    namedRecords["__actorSetupInfo__"] = actorSetupJson;
+                    // Also store in helperState for in-memory cache
+                    this.helperState!.namedRecords["__actorSetupInfo__"] = actorSetupJson;
+                }
 
                 const cachedSnapshot: CachedSnapshot = {
                     snapshot,

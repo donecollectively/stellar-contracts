@@ -316,11 +316,11 @@ class SnapshotCache {
   // Store snapshot by name - computes path via registry
   store(snapshotName: string, snapshot: CachedSnapshot): Promise<void>
 
-  // Check if cached snapshot exists
-  has(snapshotName: string): boolean
+  // Check if cached snapshot exists (async: must resolve parent chain)
+  has(snapshotName: string): Promise<boolean>
 
-  // Delete cached snapshot and all children (recursive directory delete)
-  delete(snapshotName: string): boolean
+  // Delete cached snapshot and all children (async: resolves path via registry)
+  delete(snapshotName: string): Promise<boolean>
 
   // Compute cache key from inputs
   computeKey(parentHash: string | null, inputs: CacheKeyInputs): string
