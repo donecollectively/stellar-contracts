@@ -372,7 +372,7 @@ function deserializeSnapshot(data: SerializedSnapshot): NetworkSnapshot {
 /**
  * Manages on-disk caching of emulator snapshots.
  *
- * Snapshots are stored in `.stellar/emulator/<cacheKey>.json` and are keyed
+ * Snapshots are stored in `.stellar/emu/<cacheKey>.json` and are keyed
  * by a hash of the parent snapshot + script dependencies + params.
  *
  * @public
@@ -382,7 +382,7 @@ export class SnapshotCache {
 
     constructor(projectRoot?: string) {
         const root = projectRoot || this.findProjectRoot();
-        this.cacheDir = join(root, ".stellar", "emulator");
+        this.cacheDir = join(root, ".stellar", "emu");
         this.ensureCacheDir();
     }
 

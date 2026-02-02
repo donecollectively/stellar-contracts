@@ -87,14 +87,15 @@
 **Location**: local/internal (new component)
 
 **Activities**:
-- Persist snapshots to `.stellar/emulator/`
-- Load snapshots from disk
+- Track registered snapshot metadata (name → parentSnapName, resolver) via just-in-time registration
+- Persist snapshots to `.stellar/emu/` in hierarchical directory structure
+- Load snapshots from disk, recursively resolving parent chain
 - Compute cache keys from bundle hashes + params
-- Manage freshness (touch files > 1 day old)
+- Manage freshness (touch directories > 1 day old on access)
 - Invalidate stale entries automatically via hash mismatch
 
 **Concerns**:
-- Owns **Cache files** (`.stellar/emulator/`)
+- Owns **Cache files** (`.stellar/emu/`)
 - Owns **Snapshot chain** hierarchy (base → capoInitialized → enabledDelegatesDeployed → app)
 - Depends on **Bundle hashes** for cache key computation
 - Depends on **namedRecords** (persists with snapshot)
@@ -289,7 +290,7 @@ App snapshots inherit from `enabledDelegatesDeployed` and typically don't add ne
 
 ### SnapshotCache API
 
-**Location**: `.stellar/emulator/{snapshotName}-{cacheKey}.json`
+**Location**: `.stellar/emu/{snapshotName}-{cacheKey}.json`
 
 ```typescript
 class SnapshotCache {
@@ -325,7 +326,7 @@ type CachedSnapshot = {
 - Multiple files with same name but different hashes is expected (code changes produce new hashes)
 
 **Behavior**:
-- `find()`: Returns null on miss; touches file if mtime > 1 day; recursively loads parent chain via `parentCacheKey`; verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild)
+- `find()`: Returns null on miss; touches directory if mtime > 1 day; recursively ensures parent chain via registered metadata; verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild)
 - `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON with incremental blocks only
 - `computeKey()`: `hash(parentHash + JSON.stringify(inputs))`
 
@@ -512,11 +513,11 @@ class StellarNetworkEmulator implements Emulator {
 | **`resolveScriptDependencies()` pattern** | Enables cache-key pre-computation for dynamic scripts/params |
 | **namedRecords persisted with snapshot** | Tests need record IDs after restore |
 | **Touch files > 1 day old** | Keeps recently-used caches fresh for cleanup detection |
-| **`.stellar/emulator/` location** | Project-local, gitignore-able |
+| **`.stellar/emu/` location** | Project-local, gitignore-able |
 | **Helios VERSION in cache key** | Compiler changes could affect output |
 | **autoSetup + featureFlags** | autoSetup triggers iteration; featureFlags filters which deploy |
-| **Human-readable filenames** `{name}-{key}.json` | Enables `ls bootstrapWithActors-*`, debugging, targeted cleanup |
-| **Flat files + `parentCacheKey`** | O(1) parent file lookup for chain loading; flat structure simplifies cache management vs nested directories |
+| **Hierarchical directories** `{parent}/{name}-{key}/snapshot.json` | Parent relationship implicit in path; easy subtree deletion via `rm -rf`; enables `ls` to see chain structure |
+| **Just-in-time registration** | Snapshots register metadata (parentSnapName, resolver) before use; SnapshotCache resolves parent chain recursively |
 | **`parentHash` verification** | Detects stale cache when parent was rebuilt with same inputs but different resulting state; returns null to trigger rebuild |
 | **Cache key recomputation** | No Map needed—resolvers are deterministic, parent hashes stored in helperState |
 | **`fromSnapshot` cleared on pushBlock** | Provenance tracking; diverged state shouldn't claim snapshot identity |
@@ -543,8 +544,12 @@ class StellarNetworkEmulator implements Emulator {
 - [x] ~~namedRecords serialization format~~ → Inline JSON with blocks in CachedSnapshot
 - [x] ~~Block hash computation~~ → Parallel `blockHashes[]` computed at tick(), maintains Helios interface compatibility
 - [x] ~~Project root detection~~ → Walk up to find package.json
-- [x] ~~Cleanup command~~ → `find .stellar/emulator -mtime +7 | xargs rm`
+- [x] ~~Cleanup command~~ → `find .stellar/emu -mtime +7 -type d | xargs rm -rf` (directories, not files)
 - [x] ~~Parent cache key tracking~~ → Recompute via `getSnapshotCacheKey()`; no Map needed. See "Cache Key Recomputation" section.
+- [ ] **Pending**: Migrate built-in snapshots (actors, capoInit, delegates) to use `@hasNamedSnapshot` decorator for consistent registration model
+- [ ] **Pending**: Add reqts for built-in snapshot decorator migration
+- [ ] **Pending**: Finalize SnapshotCache.find() and store() interface signatures for hierarchical directories
+- [ ] **Pending**: Update Emulator.reqts.md to reflect hierarchical directories, just-in-time registration, and touch directories (not files)
 
 ---
 

@@ -196,7 +196,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
 > **RESOLVED (id:cq5p5jk6wj)**: The emulator now computes block hashes natively via `blockHashes[]` parallel tracking. Block hashes are computed at `tick()` time using `blake2b([prevHash, ...txHashes].join("\n"))`.
 
- - **REQT-1.2.6/7k3mfpw2nx**: COMPLETED: **Cache File Location** - Snapshot cache files MUST be stored in `.stellar/emulator/` within the project root
+ - **REQT-1.2.6/7k3mfpw2nx**: COMPLETED: **Cache File Location** - Snapshot cache files MUST be stored in `.stellar/emu/` within the project root
 
  - **REQT-1.2.7/q8h2vr4c5y**: COMPLETED: **Cache Freshness Management**:
     - **REQT-1.2.7.1/m1d6jk9w3p**: COMPLETED: Cache files MUST have their mtime touched when used if older than 1 day
@@ -350,7 +350,7 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
 ### Phase 2: On-Disk Snapshot Caching (Completed)
 
 - Added `blockHashes[]` tracking to `StellarNetworkEmulator` for content-addressable block chain
-- Implemented `SnapshotCache` class for disk persistence in `.stellar/emulator/`
+- Implemented `SnapshotCache` class for disk persistence in `.stellar/emu/`
 - Added `getCacheKeyInputs()` and `computeSourceHash()` to `HeliosScriptBundle`
 - Implemented three-tier snapshot hierarchy: `SNAP_ACTORS` ("bootstrapWithActors") → `SNAP_CAPO_INIT` → `SNAP_DELEGATES`
 - Added `resolveActorsDependencies()`, `resolveCoreCapoDependencies()`, `resolveEnabledDelegatesDependencies()` resolvers
@@ -365,6 +365,7 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
 - Evolved REQT-1.2.9.3 from nested directories to flat files with explicit parent linkage
 - Implemented `parentCacheKey` for O(1) parent file lookup during chain loading
 - Implemented `parentHash` verification in `find()` to detect stale cache and trigger rebuild
+- Implemented post-load integrity check: verify `blockHashes[-1]` equals recorded `snapshotHash`
 - Updated architecture documentation to clarify verification mechanism
 
 #### Next Recommendations
@@ -392,7 +393,7 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
    - ✅ Snapshot cache hierarchy implemented (REQT-1.2.1 base, REQT-1.2.2 capoInitialized, REQT-1.2.3 enabledDelegatesDeployed)
    - ✅ Parent linkage by name and hash (REQT-1.2.4)
    - ⏳ Snapshot file storage with incremental blocks (REQT-1.2.5) - partial: full snapshots stored, not incremental
-   - ✅ Cache location in `.stellar/emulator/` (REQT-1.2.6)
+   - ✅ Cache location in `.stellar/emu/` (REQT-1.2.6)
    - ✅ Cache freshness management with touch-on-use (REQT-1.2.7.1)
    - ✅ Helios version in cache key (REQT-1.2.8)
    - ✅ Human-readable cache filenames (REQT-1.2.9) - flat files + parentCacheKey + parentHash verification complete
