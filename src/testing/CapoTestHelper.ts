@@ -150,7 +150,7 @@ export abstract class CapoTestHelper<
         // Register the actors snapshot (doesn't need capo)
         this.snapshotCache.register(SNAP_ACTORS, {
             parentSnapName: "genesis",
-            resolveScriptDependencies: this.resolveActorsDependencies.bind(this),
+            resolveScriptDependencies: async () => this.resolveActorsDependencies(),
         });
     }
 

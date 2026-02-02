@@ -343,6 +343,83 @@ function rebuildUtxoIndexes(
 }
 
 /**
+ * Applies incremental blocks to existing UTxO state without rebuilding from genesis.
+ * Used for efficient chain loading where parent state is already computed (REQT-1.2.10.1).
+ * @internal
+ */
+function applyIncrementalBlocks(
+    parentState: {
+        allUtxos: Record<string, TxInput>;
+        consumedUtxos: Set<string>;
+        addressUtxos: Record<string, TxInput[]>;
+    },
+    incrementalBlocks: EmulatorTx[][]
+): {
+    allUtxos: Record<string, TxInput>;
+    consumedUtxos: Set<string>;
+    addressUtxos: Record<string, TxInput[]>;
+} {
+    // Clone parent state to avoid mutation
+    const allUtxos: Record<string, TxInput> = { ...parentState.allUtxos };
+    const consumedUtxos = new Set<string>(parentState.consumedUtxos);
+    const addressUtxos: Record<string, TxInput[]> = {};
+
+    // Deep clone addressUtxos arrays
+    for (const [addr, utxos] of Object.entries(parentState.addressUtxos)) {
+        addressUtxos[addr] = [...utxos];
+    }
+
+    // Helper to add UTxO to indexes
+    const addUtxo = (utxo: TxInput) => {
+        const id = utxo.id.toString();
+        allUtxos[id] = utxo;
+        const addr = utxo.address.toString();
+        if (!addressUtxos[addr]) {
+            addressUtxos[addr] = [];
+        }
+        addressUtxos[addr].push(utxo);
+    };
+
+    // Helper to consume UTxO
+    const consumeUtxo = (id: string) => {
+        consumedUtxos.add(id);
+        const utxo = allUtxos[id];
+        if (utxo) {
+            const addr = utxo.address.toString();
+            if (addressUtxos[addr]) {
+                addressUtxos[addr] = addressUtxos[addr].filter(u => u.id.toString() !== id);
+            }
+        }
+    };
+
+    // Process only the incremental blocks
+    for (const block of incrementalBlocks) {
+        for (const tx of block) {
+            // Genesis transactions don't have body, skip them
+            if (!("body" in tx) || !(tx as any).body) {
+                continue;
+            }
+
+            // Mark inputs as consumed
+            for (const input of (tx as any).body.inputs) {
+                consumeUtxo(input.id.toString());
+            }
+
+            // Add new outputs as UTxOs
+            const txId = tx.id();
+            const outputs = (tx as any).body.outputs;
+            for (let i = 0; i < outputs.length; i++) {
+                const output = outputs[i];
+                const utxo = makeTxInput(makeTxOutputId(txId, i), output);
+                addUtxo(utxo);
+            }
+        }
+    }
+
+    return { allUtxos, consumedUtxos, addressUtxos };
+}
+
+/**
  * Serializes a NetworkSnapshot to JSON-safe format.
  * @internal
  */
@@ -501,6 +578,14 @@ export class SnapshotCache {
      * Verifies parentHash and snapshotHash for integrity (REQT-1.2.9.3.2, REQT-1.2.9.3.3).
      */
     async find(snapshotName: string): Promise<CachedSnapshot | null> {
+        // Check in-memory cache first (REQT-1.2.10.3)
+        // Within a single SnapshotCache instance, resolvers are deterministic,
+        // so snapshot name maps to exactly one cache key.
+        const cached = this.loadedSnapshots.get(snapshotName);
+        if (cached) {
+            return cached;
+        }
+
         const entry = this.getRegistryEntry(snapshotName);
         if (!entry) {
             console.warn(`SnapshotCache: no registry entry for '${snapshotName}'`);
@@ -561,21 +646,30 @@ export class SnapshotCache {
                 return null; // Cache invalid, trigger rebuild
             }
 
-            // Chain loading: concatenate parent blocks with incremental blocks (REQT-1.2.5.1)
+            // Chain loading: apply incremental blocks to parent state (REQT-1.2.10.1, 1.2.10.2)
             if (parent) {
-                thisSnapshot.blocks = [...parent.snapshot.blocks, ...thisSnapshot.blocks];
+                // Save incremental blocks before concatenation
+                const incrementalBlocks = thisSnapshot.blocks;
+                const incrementalBlockCount = incrementalBlocks.length;
+
+                // Concatenate block arrays for final snapshot
+                thisSnapshot.blocks = [...parent.snapshot.blocks, ...incrementalBlocks];
                 thisSnapshot.blockHashes = [...parent.snapshot.blockHashes, ...thisSnapshot.blockHashes];
 
-                // Rebuild UTxO indexes from the full chain
-                const { allUtxos, consumedUtxos, addressUtxos } = rebuildUtxoIndexes(
-                    thisSnapshot.genesis,
-                    thisSnapshot.blocks
+                // Apply only incremental blocks to parent's UTxO state (not full rebuild)
+                const { allUtxos, consumedUtxos, addressUtxos } = applyIncrementalBlocks(
+                    {
+                        allUtxos: parent.snapshot.allUtxos,
+                        consumedUtxos: parent.snapshot.consumedUtxos,
+                        addressUtxos: parent.snapshot.addressUtxos,
+                    },
+                    incrementalBlocks
                 );
                 thisSnapshot.allUtxos = allUtxos;
                 thisSnapshot.consumedUtxos = consumedUtxos;
                 thisSnapshot.addressUtxos = addressUtxos;
 
-                console.log(`SnapshotCache: chain-loaded '${thisSnapshot.name}' (${thisSnapshot.blocks.length} blocks total)`);
+                console.log(`SnapshotCache: chain-loaded '${thisSnapshot.name}' (${thisSnapshot.blocks.length} total, ${incrementalBlockCount} incremental)`);
             }
 
             // Verify snapshot integrity: computed block hash must match recorded snapshotHash (REQT-1.2.9.3.3)
@@ -590,7 +684,9 @@ export class SnapshotCache {
             const verifyMs = (performance.now() - verifyStart).toFixed(2);
 
             console.log(`SnapshotCache: loaded '${thisSnapshot.name}' from ${cachePath} (integrity check: ${verifyMs}ms)`);
-            return {
+
+            // Build result and cache before returning (REQT-1.2.10.3)
+            const result: CachedSnapshot = {
                 snapshot: thisSnapshot,
                 namedRecords: serialized.namedRecords,
                 parentSnapName: serialized.parentSnapName,
@@ -599,6 +695,8 @@ export class SnapshotCache {
                 snapshotHash: serialized.snapshotHash,
                 path: snapshotDir,
             };
+            this.loadedSnapshots.set(snapshotName, result);
+            return result;
         } catch (e) {
             console.warn(`SnapshotCache: failed to read ${cachePath}:`, e);
             return null;

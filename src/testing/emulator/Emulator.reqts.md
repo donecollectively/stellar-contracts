@@ -199,7 +199,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
     - **REQT-1.2.4.2/13f3zam1fm**: COMPLETED: By hash (computational layer) - each snapshot's cache key includes parent's block hash
 
  - **REQT-1.2.5/mabm4y6q4j**: COMPLETED: **Snapshot File Storage** - On-disk snapshot cache MUST serialize incremental state:
-    - **REQT-1.2.5.1/6xjggf5hsd**: BROKEN: Each snapshot file MUST contain only the new blocks created since the parent snapshot
+    - **REQT-1.2.5.1/6xjggf5hsd**: COMPLETED: Each snapshot file MUST contain only the new blocks created since the parent snapshot
     - **REQT-1.2.5.2/prvp9f4m21**: COMPLETED: Transaction order within blocks MUST be preserved
     - **REQT-1.2.5.3/wfynk8yq9v**: COMPLETED: File content format: `{parentHash, parentSnapName, blocks, namedRecords, snapshotHash}`
     - **REQT-1.2.5.4/cq5p5jk6wj**: COMPLETED: Hash of the snapshot (block hash) becomes the basis for child snapshot cache keys
