@@ -1,6 +1,6 @@
 import { blake2b } from "@helios-lang/crypto";
 import { bytesToHex, encodeUtf8, hexToBytes } from "@helios-lang/codec-utils";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, utimesSync, statSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, utimesSync, statSync, rmSync } from "fs";
 import { dirname, join } from "path";
 import type { NetworkSnapshot } from "./StellarNetworkEmulator.js";
 import type { BundleCacheKeyInputs } from "../../helios/scriptBundling/HeliosScriptBundle.js";
@@ -46,10 +46,23 @@ export type CachedSnapshot = {
     parentSnapName: ParentSnapName;
     /** Hash of the parent snapshot—verified on load to detect stale cache (REQT-1.2.9.3.2), null for root */
     parentHash: string | null;
-    /** Cache key of the parent snapshot for O(1 file lookup (REQT-1.2.9.3.1), null for root */
+    /** @deprecated With hierarchical directories, parent path is implicit. Retained as breadcrumb but MUST NOT be used for path construction (REQT-1.2.9.3.1) */
     parentCacheKey: string | null;
     /** Hash of this snapshot for use as parent in child snapshots */
     snapshotHash: string;
+    /** Directory path where this snapshot is stored (set after find() or store()) */
+    path?: string;
+};
+
+/**
+ * Metadata for a registered snapshot, used to resolve parent chain and compute cache keys.
+ * @public
+ */
+export type SnapshotRegistryEntry = {
+    /** Parent snapshot name */
+    parentSnapName: ParentSnapName;
+    /** Resolver function to compute cache key inputs (must be pre-bound to helper instance) */
+    resolveScriptDependencies?: () => Promise<CacheKeyInputs>;
 };
 
 /**
@@ -380,10 +393,32 @@ function deserializeSnapshot(data: SerializedSnapshot): NetworkSnapshot {
 export class SnapshotCache {
     private cacheDir: string;
 
+    /** Registry of snapshot metadata for resolving parent chain and computing cache keys */
+    private registry: Map<string, SnapshotRegistryEntry> = new Map();
+
     constructor(projectRoot?: string) {
         const root = projectRoot || this.findProjectRoot();
         this.cacheDir = join(root, ".stellar", "emu");
         this.ensureCacheDir();
+    }
+
+    /**
+     * Registers snapshot metadata for cache key computation and parent chain resolution.
+     * NOTE: resolveScriptDependencies must be pre-bound to helper instance before registration.
+     * @param snapshotName - The snapshot name to register
+     * @param metadata - Parent snapshot name and optional resolver function
+     * @public
+     */
+    register(snapshotName: string, metadata: SnapshotRegistryEntry): void {
+        this.registry.set(snapshotName, metadata);
+    }
+
+    /**
+     * Gets registered metadata for a snapshot name.
+     * @internal
+     */
+    private getRegistryEntry(snapshotName: string): SnapshotRegistryEntry | undefined {
+        return this.registry.get(snapshotName);
     }
 
     /**
@@ -428,35 +463,83 @@ export class SnapshotCache {
     }
 
     /**
-     * Gets the file path for a cache key and snapshot name.
-     * Format: {sanitizedName}-{cacheKey}.json (REQT-1.2.9.1)
+     * Gets the directory path for a snapshot.
+     * Format: {parentPath}/{snapshotName}-{cacheKey}/ (REQT-1.2.9.1)
+     * @param cacheKey - The cache key for this snapshot
+     * @param snapshotName - The snapshot name
+     * @param parentPath - Parent directory path, or null for root snapshots
      * @internal
      */
-    private getCachePath(cacheKey: string, snapshotName: string): string {
+    private getSnapshotDir(cacheKey: string, snapshotName: string, parentPath: string | null): string {
         const sanitizedName = sanitizeSnapshotName(snapshotName);
-        return join(this.cacheDir, `${sanitizedName}-${cacheKey}.json`);
+        const dirName = `${sanitizedName}-${cacheKey}`;
+        if (parentPath) {
+            return join(parentPath, dirName);
+        }
+        return join(this.cacheDir, dirName);
     }
 
     /**
-     * Looks up a cached snapshot by key and snapshot name.
-     * Returns null on cache miss.
-     * Touches the file if it's more than 1 day old.
-     * Recursively loads parent chain and concatenates blocks (REQT-1.2.5.1).
+     * Gets the snapshot.json file path within a snapshot directory.
+     * @internal
      */
-    async find(cacheKey: string, snapshotName: string): Promise<CachedSnapshot | null> {
-        const cachePath = this.getCachePath(cacheKey, snapshotName);
+    private getSnapshotFilePath(snapshotDir: string): string {
+        return join(snapshotDir, "snapshot.json");
+    }
+
+    /**
+     * Looks up a cached snapshot by name using registered metadata.
+     * Resolves parent chain via registry, computes cache key, loads from hierarchical path.
+     * Returns null on cache miss.
+     * Touches the directory if it's more than 1 day old (REQT-1.2.7.1).
+     * Verifies parentHash and snapshotHash for integrity (REQT-1.2.9.3.2, REQT-1.2.9.3.3).
+     */
+    async find(snapshotName: string): Promise<CachedSnapshot | null> {
+        const entry = this.getRegistryEntry(snapshotName);
+        if (!entry) {
+            console.warn(`SnapshotCache: no registry entry for '${snapshotName}'`);
+            return null;
+        }
+
+        // Resolve parent chain first
+        let parentPath: string | null = null;
+        let parentHash: string | null = null;
+        let parent: CachedSnapshot | null = null;
+
+        if (entry.parentSnapName !== "genesis") {
+            parent = await this.find(entry.parentSnapName);
+            if (!parent) {
+                // Parent not in cache, can't resolve this snapshot
+                return null;
+            }
+            parentPath = parent.path || null;
+            parentHash = parent.snapshotHash;
+        }
+
+        // Compute cache key using resolver
+        let cacheKey: string;
+        if (entry.resolveScriptDependencies) {
+            cacheKey = this.computeKey(parentHash, inputs);
+        } else {
+            // No resolver - use parent hash only (for simple snapshots)
+            cacheKey = this.computeKey(parentHash, { bundles: [] });
+        }
+
+        // Construct hierarchical path
+        const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath);
+        const cachePath = this.getSnapshotFilePath(snapshotDir);
 
         if (!existsSync(cachePath)) {
             return null;
         }
 
         try {
-            // Touch file if older than 1 day to keep it fresh for cleanup
-            const stats = statSync(cachePath);
+            // Touch directory if older than 1 day to keep it fresh for cleanup (REQT-1.2.7.1)
+            const stats = statSync(snapshotDir);
             const age = Date.now() - stats.mtimeMs;
             if (age > ONE_DAY_MS) {
                 const now = new Date();
-                utimesSync(cachePath, now, now);
+                utimesSync(snapshotDir, now, now);
             }
 
             const content = readFileSync(cachePath, "utf-8");
@@ -465,35 +548,13 @@ export class SnapshotCache {
             // Deserialize the snapshot blocks stored in this file
             const thisSnapshot = deserializeSnapshot(serialized.snapshot);
 
-            // Chain loading: if we have a parent, recursively load and concatenate (REQT-1.2.5.1, REQT-1.2.9.3)
-            if (serialized.parentCacheKey && serialized.parentSnapName !== "genesis") {
-                const parent = await this.find(serialized.parentCacheKey, serialized.parentSnapName);
-                if (parent) {
-                    // Verify parent hash matches expected (REQT-1.2.9.3.2)
-                    if (serialized.parentHash && serialized.parentHash !== parent.snapshotHash) {
-                        console.warn(`SnapshotCache: parent hash mismatch for '${snapshotName}': expected ${serialized.parentHash}, got ${parent.snapshotHash}`);
-                        return null; // Cache invalid, trigger rebuild
-                    }
-                    // Concatenate parent blocks with this snapshot's incremental blocks
-                    // Parent genesis + this genesis should be the same (genesis is immutable)
-                    // Parent blocks + this incremental blocks = full chain
-                    thisSnapshot.blocks = [...parent.snapshot.blocks, ...thisSnapshot.blocks];
-                    // Parent blockHashes + this incremental blockHashes
-                    thisSnapshot.blockHashes = [...parent.snapshot.blockHashes, ...thisSnapshot.blockHashes];
+            // Verify parent hash matches expected (REQT-1.2.9.3.2)
+            if (parent && serialized.parentHash && serialized.parentHash !== parent.snapshotHash) {
+                console.warn(`SnapshotCache: parent hash mismatch for '${snapshotName}': expected ${serialized.parentHash}, got ${parent.snapshotHash}`);
+                return null; // Cache invalid, trigger rebuild
+            }
 
-                    // Rebuild UTxO indexes from the full chain
-                    const { allUtxos, consumedUtxos, addressUtxos } = rebuildUtxoIndexes(
-                        thisSnapshot.genesis,
-                        thisSnapshot.blocks
-                    );
-                    thisSnapshot.allUtxos = allUtxos;
-                    thisSnapshot.consumedUtxos = consumedUtxos;
-                    thisSnapshot.addressUtxos = addressUtxos;
-
-                    console.log(`SnapshotCache: chain-loaded '${thisSnapshot.name}' (${thisSnapshot.blocks.length} blocks total)`);
-                } else {
-                    console.warn(`SnapshotCache: parent cache key ${serialized.parentCacheKey} not found, loading without parent`);
-                }
+            // Chain loading: concatenate parent blocks with incremental blocks (REQT-1.2.5.1)
             }
 
             // Verify snapshot integrity: computed block hash must match recorded snapshotHash (REQT-1.2.9.3.3)
@@ -513,8 +574,8 @@ export class SnapshotCache {
                 namedRecords: serialized.namedRecords,
                 parentSnapName: serialized.parentSnapName,
                 parentHash: serialized.parentHash,
-                parentCacheKey: serialized.parentCacheKey,
                 snapshotHash: serialized.snapshotHash,
+                path: snapshotDir,
             };
         } catch (e) {
             console.warn(`SnapshotCache: failed to read ${cachePath}:`, e);
@@ -523,17 +584,45 @@ export class SnapshotCache {
     }
 
     /**
-     * Stores a snapshot with the given cache key.
+     * Stores a snapshot using registered metadata to compute hierarchical path.
      * Only stores incremental blocks since parent (REQT-1.2.5.1).
-     * Extracts snapshot name from cachedSnapshot.snapshot.name.
-     * @param cacheKey - The cache key for this snapshot
-     * @param cachedSnapshot - The snapshot to store (must include parentCacheKey)
-     * @param parentBlockCount - Number of blocks in the parent snapshot (for incremental storage)
+     * @param snapshotName - The snapshot name (must be registered)
+     * @param cachedSnapshot - The snapshot to store
      */
-    async store(cacheKey: string, cachedSnapshot: CachedSnapshot, parentBlockCount: number = 0): Promise<void> {
-        const snapshotName = cachedSnapshot.snapshot.name;
-        const cachePath = this.getCachePath(cacheKey, snapshotName);
-        this.ensureCacheDir();
+    async store(snapshotName: string, cachedSnapshot: CachedSnapshot): Promise<void> {
+        const entry = this.getRegistryEntry(snapshotName);
+        if (!entry) {
+            throw new Error(`SnapshotCache: cannot store unregistered snapshot '${snapshotName}'`);
+        }
+
+        // Resolve parent to get path and block count
+        let parentPath: string | null = null;
+        let parentBlockCount = 0;
+
+        if (entry.parentSnapName !== "genesis") {
+            const parent = await this.find(entry.parentSnapName);
+            if (!parent) {
+                throw new Error(`SnapshotCache: parent '${entry.parentSnapName}' not found for '${snapshotName}'`);
+            }
+            parentPath = parent.path || null;
+            parentBlockCount = parent.snapshot.blocks.length;
+        }
+
+        // Compute cache key using resolver
+        let cacheKey: string;
+        if (entry.resolveScriptDependencies) {
+            const inputs = await entry.resolveScriptDependencies();
+            cacheKey = this.computeKey(cachedSnapshot.parentHash, inputs);
+        } else {
+            cacheKey = this.computeKey(cachedSnapshot.parentHash, { bundles: [] });
+        }
+
+        // Construct hierarchical path
+        const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath);
+        const cachePath = this.getSnapshotFilePath(snapshotDir);
+
+        // Ensure directory exists
+        mkdirSync(snapshotDir, { recursive: true });
 
         // Create a copy of the snapshot for incremental serialization (REQT-1.2.5.1)
         const incrementalSnapshot = { ...cachedSnapshot.snapshot };
@@ -548,7 +637,6 @@ export class SnapshotCache {
             namedRecords: cachedSnapshot.namedRecords,
             parentSnapName: cachedSnapshot.parentSnapName,
             parentHash: cachedSnapshot.parentHash,
-            parentCacheKey: cachedSnapshot.parentCacheKey,
             parentBlockCount,
             snapshotHash: cachedSnapshot.snapshotHash,
         };
@@ -556,26 +644,43 @@ export class SnapshotCache {
         const content = JSON.stringify(serialized, null, 2);
         writeFileSync(cachePath, content, "utf-8");
 
+        // Store path on the cachedSnapshot for caller's use
+        cachedSnapshot.path = snapshotDir;
+
         const totalBlocks = cachedSnapshot.snapshot.blocks.length;
         const storedBlocks = incrementalSnapshot.blocks.length;
         console.log(`SnapshotCache: stored '${snapshotName}' (${storedBlocks}/${totalBlocks} blocks) -> ${cachePath}`);
     }
 
     /**
-     * Checks if a cached snapshot exists for the given key and snapshot name.
+     * Checks if a cached snapshot exists for the given snapshot name.
+     * Uses registry to compute expected path.
      */
-    has(cacheKey: string, snapshotName: string): boolean {
-        return existsSync(this.getCachePath(cacheKey, snapshotName));
+    async has(snapshotName: string): Promise<boolean> {
+        const cached = await this.find(snapshotName);
+        return cached !== null;
     }
 
     /**
-     * Deletes a cached snapshot.
+     * Deletes a cached snapshot and all its children (REQT-1.2.9.4).
+     * Uses recursive directory deletion.
      */
-    delete(cacheKey: string, snapshotName: string): boolean {
-        const cachePath = this.getCachePath(cacheKey, snapshotName);
-        if (existsSync(cachePath)) {
-            const { unlinkSync } = require("fs");
-            unlinkSync(cachePath);
+    async delete(snapshotName: string): Promise<boolean> {
+        const entry = this.getRegistryEntry(snapshotName);
+        if (!entry) {
+            return false;
+        }
+
+        // Find the snapshot to get its path
+        const cached = await this.find(snapshotName);
+        if (!cached || !cached.path) {
+            return false;
+        }
+
+        // Recursively delete the snapshot directory and all children
+        if (existsSync(cached.path)) {
+            rmSync(cached.path, { recursive: true, force: true });
+            console.log(`SnapshotCache: deleted '${snapshotName}' and children at ${cached.path}`);
             return true;
         }
         return false;

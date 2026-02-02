@@ -40,6 +40,8 @@ export {
     SnapshotCache,
     type CacheKeyInputs,
     type CachedSnapshot,
+    type ParentSnapName,
+    type SnapshotRegistryEntry,
 } from "./emulator/SnapshotCache.js";
 
 export type {

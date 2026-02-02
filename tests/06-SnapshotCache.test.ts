@@ -5,7 +5,7 @@ import {
     beforeEach,
     afterEach,
 } from "vitest";
-import { existsSync, mkdirSync, rmSync, writeFileSync, statSync, utimesSync } from "fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync, statSync, utimesSync, readdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -14,6 +14,7 @@ import {
     type CacheKeyInputs,
     type CachedSnapshot,
     type NetworkSnapshot,
+    type ParentSnapName,
 } from "../src/testing";
 
 // Simple test context - no blockchain needed
@@ -24,8 +25,9 @@ const describe = descrWithContext<localTC>;
 
 /**
  * Creates a minimal NetworkSnapshot for testing.
+ * The snapshotHash must match the last blockHash for integrity checks.
  */
-function createMockSnapshot(name: string): NetworkSnapshot {
+function createMockSnapshot(name: string, blockHashes: string[] = ["genesis", "block1hash"]): NetworkSnapshot {
     return {
         seed: 12345,
         netNumber: 0,
@@ -33,23 +35,32 @@ function createMockSnapshot(name: string): NetworkSnapshot {
         slot: 100,
         genesis: [],
         blocks: [],
-        allUtxos: new Map(),
+        allUtxos: {},
         consumedUtxos: new Set(),
-        addressUtxos: new Map(),
-        blockHashes: ["genesis", "block1hash"],
+        addressUtxos: {},
+        blockHashes,
     };
 }
 
 /**
  * Creates a CachedSnapshot for testing.
+ * Note: snapshotHash must match blockHashes[-1] for integrity verification.
  */
-function createCachedSnapshot(name: string, parentName: string | null = null): CachedSnapshot {
+function createCachedSnapshot(
+    name: string,
+    parentSnapName: ParentSnapName = "genesis",
+    parentHash: string | null = null
+): CachedSnapshot {
+    // snapshotHash MUST match the last blockHash for integrity checks (REQT-1.2.9.3.3)
+    const blockHashes = ["genesis", `block_${name}`];
+    const snapshotHash = blockHashes[blockHashes.length - 1];
     return {
-        snapshot: createMockSnapshot(name),
+        snapshot: createMockSnapshot(name, blockHashes),
         namedRecords: { testRecord: "test-value-123" },
-        parentName,
-        parentHash: parentName ? "parent-hash-abc" : null,
-        snapshotHash: `hash-${name}`,
+        parentSnapName,
+        parentHash,
+        parentCacheKey: null, // deprecated with hierarchical directories
+        snapshotHash,
     };
 }
 
@@ -159,106 +170,127 @@ describe("SnapshotCache", () => {
     describe("store and find", () => {
         it("stores and retrieves snapshot correctly", async (context: localTC) => {
             const { cache } = context;
-            const cacheKey = "test-cache-key-001";
-            const original = createCachedSnapshot("test-snapshot");
+            const snapshotName = "test-snapshot";
+            const original = createCachedSnapshot(snapshotName);
 
-            await cache.store(cacheKey, original);
-            const retrieved = await cache.find(cacheKey);
+            // Register snapshot before store (registry-based API)
+            cache.register(snapshotName, { parentSnapName: "genesis" });
+
+            await cache.store(snapshotName, original);
+            const retrieved = await cache.find(snapshotName);
 
             expect(retrieved).not.toBeNull();
-            expect(retrieved!.snapshot.name).toBe("test-snapshot");
+            expect(retrieved!.snapshot.name).toBe(snapshotName);
             expect(retrieved!.snapshot.seed).toBe(12345);
             expect(retrieved!.snapshot.slot).toBe(100);
             expect(retrieved!.namedRecords.testRecord).toBe("test-value-123");
-            expect(retrieved!.parentName).toBeNull();
+            expect(retrieved!.parentSnapName).toBe("genesis");
             expect(retrieved!.parentHash).toBeNull();
-            expect(retrieved!.snapshotHash).toBe("hash-test-snapshot");
+            // snapshotHash matches blockHashes[-1]
+            expect(retrieved!.snapshotHash).toBe(`block_${snapshotName}`);
         });
 
         it("stores snapshot with parent linkage", async (context: localTC) => {
             const { cache } = context;
-            const cacheKey = "child-snapshot-key";
-            const original = createCachedSnapshot("child-snapshot", "parent-snapshot");
+            const parentSnapName = "parent-snapshot";
+            const childSnapName = "child-snapshot";
 
-            await cache.store(cacheKey, original);
-            const retrieved = await cache.find(cacheKey);
+            // Create and store parent snapshot first
+            cache.register(parentSnapName, { parentSnapName: "genesis" });
+            const parentSnapshot = createCachedSnapshot(parentSnapName);
+            await cache.store(parentSnapName, parentSnapshot);
 
-            expect(retrieved!.parentName).toBe("parent-snapshot");
-            expect(retrieved!.parentHash).toBe("parent-hash-abc");
+            // Create child with parent's hash
+            const parentHash = parentSnapshot.snapshotHash;
+            cache.register(childSnapName, { parentSnapName: parentSnapName as ParentSnapName });
+            const childSnapshot = createCachedSnapshot(childSnapName, parentSnapName as ParentSnapName, parentHash);
+
+            await cache.store(childSnapName, childSnapshot);
+            const retrieved = await cache.find(childSnapName);
+
+            expect(retrieved!.parentSnapName).toBe(parentSnapName);
+            expect(retrieved!.parentHash).toBe(parentHash);
         });
 
-        it("returns null for non-existent key", async (context: localTC) => {
+        it("returns null for non-existent snapshot", async (context: localTC) => {
             const { cache } = context;
-            const result = await cache.find("non-existent-key");
+            // Note: unregistered snapshots return null (with warning)
+            const result = await cache.find("non-existent-snapshot");
             expect(result).toBeNull();
         });
 
         it("preserves blockHashes in snapshot", async (context: localTC) => {
             const { cache } = context;
-            const cacheKey = "blockhash-test";
-            const original = createCachedSnapshot("blockhash-snapshot");
+            const snapshotName = "blockhash-snapshot";
+            const original = createCachedSnapshot(snapshotName);
 
-            await cache.store(cacheKey, original);
-            const retrieved = await cache.find(cacheKey);
+            cache.register(snapshotName, { parentSnapName: "genesis" });
+            await cache.store(snapshotName, original);
+            const retrieved = await cache.find(snapshotName);
 
-            expect(retrieved!.snapshot.blockHashes).toEqual(["genesis", "block1hash"]);
+            expect(retrieved!.snapshot.blockHashes).toEqual(["genesis", `block_${snapshotName}`]);
         });
 
         it("preserves snapshot metadata correctly", async (context: localTC) => {
             const { cache } = context;
-            const cacheKey = "metadata-test";
+            const snapshotName = "metadata-snapshot";
 
-            const original = createCachedSnapshot("metadata-snapshot", "parent-snapshot");
+            const original = createCachedSnapshot(snapshotName);
             original.namedRecords = { record1: "value1", record2: "value2" };
 
-            await cache.store(cacheKey, original);
-            const retrieved = await cache.find(cacheKey);
+            cache.register(snapshotName, { parentSnapName: "genesis" });
+            await cache.store(snapshotName, original);
+            const retrieved = await cache.find(snapshotName);
 
             expect(retrieved).not.toBeNull();
-            expect(retrieved!.snapshot.name).toBe("metadata-snapshot");
+            expect(retrieved!.snapshot.name).toBe(snapshotName);
             expect(retrieved!.snapshot.seed).toBe(12345);
             expect(retrieved!.snapshot.slot).toBe(100);
-            expect(retrieved!.parentName).toBe("parent-snapshot");
-            expect(retrieved!.parentHash).toBe("parent-hash-abc");
-            expect(retrieved!.snapshotHash).toBe("hash-metadata-snapshot");
+            expect(retrieved!.parentSnapName).toBe("genesis");
+            expect(retrieved!.parentHash).toBeNull();
+            expect(retrieved!.snapshotHash).toBe(`block_${snapshotName}`);
             expect(retrieved!.namedRecords).toEqual({ record1: "value1", record2: "value2" });
         });
     });
 
     describe("has", () => {
-        it("returns false for non-existent key", (context: localTC) => {
+        it("returns false for unregistered snapshot", async (context: localTC) => {
             const { cache } = context;
-            expect(cache.has("does-not-exist")).toBe(false);
+            // Unregistered snapshots return false
+            expect(await cache.has("does-not-exist")).toBe(false);
         });
 
         it("returns true after storing", async (context: localTC) => {
             const { cache } = context;
-            const cacheKey = "has-test-key";
+            const snapshotName = "has-test-snapshot";
 
-            expect(cache.has(cacheKey)).toBe(false);
-            await cache.store(cacheKey, createCachedSnapshot("test"));
-            expect(cache.has(cacheKey)).toBe(true);
+            cache.register(snapshotName, { parentSnapName: "genesis" });
+            expect(await cache.has(snapshotName)).toBe(false);
+
+            await cache.store(snapshotName, createCachedSnapshot(snapshotName));
+            expect(await cache.has(snapshotName)).toBe(true);
         });
     });
 
     describe("delete", () => {
-        it("returns false for non-existent key", (context: localTC) => {
+        it("returns false for unregistered snapshot", async (context: localTC) => {
             const { cache } = context;
-            expect(cache.delete("does-not-exist")).toBe(false);
+            expect(await cache.delete("does-not-exist")).toBe(false);
         });
 
-        it("deletes existing cache entry", async (context: localTC) => {
+        it("deletes existing cache entry and children (REQT-1.2.9.4)", async (context: localTC) => {
             const { cache } = context;
-            const cacheKey = "delete-test-key";
+            const snapshotName = "to-delete";
 
-            await cache.store(cacheKey, createCachedSnapshot("to-delete"));
-            expect(cache.has(cacheKey)).toBe(true);
+            cache.register(snapshotName, { parentSnapName: "genesis" });
+            await cache.store(snapshotName, createCachedSnapshot(snapshotName));
+            expect(await cache.has(snapshotName)).toBe(true);
 
-            const deleted = cache.delete(cacheKey);
+            const deleted = await cache.delete(snapshotName);
             expect(deleted).toBe(true);
-            expect(cache.has(cacheKey)).toBe(false);
+            expect(await cache.has(snapshotName)).toBe(false);
 
-            const result = await cache.find(cacheKey);
+            const result = await cache.find(snapshotName);
             expect(result).toBeNull();
         });
     });
@@ -266,7 +298,7 @@ describe("SnapshotCache", () => {
     describe("getCacheDir", () => {
         it("returns correct cache directory path", (context: localTC) => {
             const { cache, tempDir } = context;
-            const expected = join(tempDir, ".stellar", "emulator");
+            const expected = join(tempDir, ".stellar", "emu");
             expect(cache.getCacheDir()).toBe(expected);
         });
 
@@ -276,54 +308,127 @@ describe("SnapshotCache", () => {
         });
     });
 
-    describe("freshness management", () => {
-        it("touches file older than 1 day on read", async (context: localTC) => {
+    describe("freshness management (REQT-1.2.7.1)", () => {
+        it("touches directory older than 1 day on read", async (context: localTC) => {
             const { cache, tempDir } = context;
-            const cacheKey = "freshness-test";
+            const snapshotName = "freshness";
 
-            // Store a snapshot
-            await cache.store(cacheKey, createCachedSnapshot("freshness"));
+            cache.register(snapshotName, { parentSnapName: "genesis" });
+            await cache.store(snapshotName, createCachedSnapshot(snapshotName));
 
-            // Get the cache file path and set its mtime to 2 days ago
-            const cachePath = join(tempDir, ".stellar", "emulator", `${cacheKey}.json`);
+            // Find the snapshot directory (hierarchical format)
+            const cacheDir = cache.getCacheDir();
+            const entries = readdirSync(cacheDir);
+            const snapshotDir = entries.find(e => e.startsWith(`${snapshotName}-`));
+            expect(snapshotDir).toBeDefined();
+
+            const fullDirPath = join(cacheDir, snapshotDir!);
             const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-            utimesSync(cachePath, twoDaysAgo, twoDaysAgo);
+            utimesSync(fullDirPath, twoDaysAgo, twoDaysAgo);
 
-            const oldStats = statSync(cachePath);
+            const oldStats = statSync(fullDirPath);
             const oldMtime = oldStats.mtimeMs;
 
-            // Read the snapshot (should touch the file)
-            await cache.find(cacheKey);
+            // Read the snapshot (should touch the directory)
+            await cache.find(snapshotName);
 
-            const newStats = statSync(cachePath);
+            const newStats = statSync(fullDirPath);
             const newMtime = newStats.mtimeMs;
 
-            // File should have been touched (mtime should be newer)
+            // Directory should have been touched (mtime should be newer)
             expect(newMtime).toBeGreaterThan(oldMtime);
         });
 
-        it("does not touch recent files", async (context: localTC) => {
+        it("does not touch recent directories", async (context: localTC) => {
             const { cache, tempDir } = context;
-            const cacheKey = "recent-file-test";
+            const snapshotName = "recent";
 
-            // Store a snapshot (will have current mtime)
-            await cache.store(cacheKey, createCachedSnapshot("recent"));
+            cache.register(snapshotName, { parentSnapName: "genesis" });
+            await cache.store(snapshotName, createCachedSnapshot(snapshotName));
 
-            const cachePath = join(tempDir, ".stellar", "emulator", `${cacheKey}.json`);
-            const beforeStats = statSync(cachePath);
+            // Find the snapshot directory
+            const cacheDir = cache.getCacheDir();
+            const entries = readdirSync(cacheDir);
+            const snapshotDir = entries.find(e => e.startsWith(`${snapshotName}-`));
+            expect(snapshotDir).toBeDefined();
+
+            const fullDirPath = join(cacheDir, snapshotDir!);
+            const beforeStats = statSync(fullDirPath);
             const beforeMtime = beforeStats.mtimeMs;
 
             // Small delay to ensure any touch would be visible
             await new Promise((resolve) => setTimeout(resolve, 10));
 
             // Read the snapshot
-            await cache.find(cacheKey);
+            await cache.find(snapshotName);
 
-            const afterStats = statSync(cachePath);
+            const afterStats = statSync(fullDirPath);
             const afterMtime = afterStats.mtimeMs;
 
-            // File should NOT have been touched (mtime should be the same)
+            // Directory should NOT have been touched (mtime should be the same)
             expect(afterMtime).toBe(beforeMtime);
+        });
+    });
+
+    describe("hierarchical directory structure (REQT-1.2.9)", () => {
+        it("stores snapshots in hierarchical directories", async (context: localTC) => {
+            const { cache, tempDir } = context;
+            const parentName = "parent-snap";
+            const childName = "child-snap";
+
+            // Create parent
+            cache.register(parentName, { parentSnapName: "genesis" });
+            const parentSnapshot = createCachedSnapshot(parentName);
+            await cache.store(parentName, parentSnapshot);
+
+            // Create child
+            const parentHash = parentSnapshot.snapshotHash;
+            cache.register(childName, { parentSnapName: parentName as ParentSnapName });
+            const childSnapshot = createCachedSnapshot(childName, parentName as ParentSnapName, parentHash);
+            await cache.store(childName, childSnapshot);
+
+            // Verify hierarchical structure: parent-{key}/child-{key}/snapshot.json
+            const cacheDir = cache.getCacheDir();
+            const parentDirs = readdirSync(cacheDir);
+            const parentDir = parentDirs.find(d => d.startsWith(`${parentName}-`));
+            expect(parentDir).toBeDefined();
+
+            const parentPath = join(cacheDir, parentDir!);
+            const childDirs = readdirSync(parentPath).filter(f => f !== "snapshot.json");
+            const childDir = childDirs.find(d => d.startsWith(`${childName}-`));
+            expect(childDir).toBeDefined();
+
+            // Verify snapshot.json exists in child directory
+            const childPath = join(parentPath, childDir!);
+            expect(existsSync(join(childPath, "snapshot.json"))).toBe(true);
+        });
+
+        it("deleting parent removes child directories (subtree deletion)", async (context: localTC) => {
+            const { cache, tempDir } = context;
+            const parentName = "parent-to-delete";
+            const childName = "child-to-delete";
+
+            // Create parent and child
+            cache.register(parentName, { parentSnapName: "genesis" });
+            const parentSnapshot = createCachedSnapshot(parentName);
+            await cache.store(parentName, parentSnapshot);
+
+            cache.register(childName, { parentSnapName: parentName as ParentSnapName });
+            const childSnapshot = createCachedSnapshot(childName, parentName as ParentSnapName, parentSnapshot.snapshotHash);
+            await cache.store(childName, childSnapshot);
+
+            // Verify both exist
+            expect(await cache.has(parentName)).toBe(true);
+            expect(await cache.has(childName)).toBe(true);
+
+            // Delete parent (should also delete child)
+            const deleted = await cache.delete(parentName);
+            expect(deleted).toBe(true);
+
+            // Both should be gone
+            expect(await cache.has(parentName)).toBe(false);
+            // Child's cache key depends on parent, so find() will fail to resolve parent
+            expect(await cache.has(childName)).toBe(false);
         });
     });
 });

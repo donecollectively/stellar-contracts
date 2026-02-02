@@ -12,7 +12,7 @@ import type {
     CapoFeatureFlags,
     DelegateSetup,
 } from "@donecollectively/stellar-contracts";
-import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot } from "./emulator/SnapshotCache.js";
+import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSnapName, type SnapshotRegistryEntry } from "./emulator/SnapshotCache.js";
 import type { BundleCacheKeyInputs } from "../helios/scriptBundling/HeliosScriptBundle.js";
 import type { NetworkSnapshot } from "./emulator/StellarNetworkEmulator.js";
 
@@ -55,6 +55,8 @@ export type ScriptDependencyResolver = (helper: AnyCapoTestHelper) => Promise<Ca
  */
 export type SnapshotDecoratorOptions = {
     actor: string;
+    /** Parent snapshot name. Defaults to SNAP_DELEGATES if omitted. Use "genesis" for root snapshots. */
+    parentSnapName?: ParentSnapName;
     resolveScriptDependencies?: ScriptDependencyResolver;
 };
 
@@ -143,6 +145,33 @@ export abstract class CapoTestHelper<
                 this.featureFlags = featureFlags;
             }
         }
+
+        // Register the actors snapshot (doesn't need capo)
+        this.snapshotCache.register(SNAP_ACTORS, {
+            parentSnapName: "genesis",
+            resolveScriptDependencies: this.resolveActorsDependencies.bind(this),
+        });
+    }
+
+    /**
+     * Registers the capo-dependent snapshots. Called after capo is initialized.
+     * @internal
+     */
+    private registerCapoSnapshots(): void {
+        // Only register if not already registered
+        if (this.snapshotCache["registry"].has(SNAP_CAPO_INIT)) {
+            return;
+        }
+
+        this.snapshotCache.register(SNAP_CAPO_INIT, {
+            parentSnapName: SNAP_ACTORS as ParentSnapName,
+            resolveScriptDependencies: this.resolveCoreCapoDependencies.bind(this),
+        });
+
+        this.snapshotCache.register(SNAP_DELEGATES, {
+            parentSnapName: SNAP_CAPO_INIT as ParentSnapName,
+            resolveScriptDependencies: this.resolveEnabledDelegatesDependencies.bind(this),
+        });
     }
 
     /**
@@ -293,7 +322,7 @@ export abstract class CapoTestHelper<
         if (Object.keys(this.actors).length) {
             console.log("Skipping actor setup - already done");
         } else {
-            await this.setupActorsWithCache();
+            await this.snapToBootstrapWithActors();
         }
 
         this.state.mintedCharterToken = undefined;
@@ -320,6 +349,8 @@ export abstract class CapoTestHelper<
                 // stopwatch emoji: ⏱️
                 `  -- ⏱️ initialized Capo: ${ts2 - ts1}ms`,
             );
+            // Register capo-dependent snapshots now that capo exists
+            this.registerCapoSnapshots();
             console.log("checking delegate scripts...");
             return this.checkDelegateScripts(args).then(() => {
                 const ts3 = Date.now();
@@ -423,7 +454,7 @@ export abstract class CapoTestHelper<
         const opts: SnapshotDecoratorOptions = typeof options === "string"
             ? { actor: options }
             : options;
-        const { actor: actorName, resolveScriptDependencies } = opts;
+        const { actor: actorName, parentSnapName = SNAP_DELEGATES, resolveScriptDependencies } = opts;
 
         return function (
             target: any,
@@ -457,7 +488,15 @@ export abstract class CapoTestHelper<
             );
 
             async function SnapWrap(this: AnyCapoTestHelper, ...args: any[]) {
-                await this.reusableBootstrap();
+                // For genesis (root) snapshots, skip bootstrap - we ARE the root
+                // Register snapshot with the cache (resolver bound to this helper instance)
+                const boundResolver = resolveScriptDependencies
+                    ? async () => resolveScriptDependencies(this)
+                    : undefined;
+                this.snapshotCache.register(snapshotName, {
+                    parentSnapName,
+                    resolveScriptDependencies: boundResolver,
+                });
 
                 return this.findOrCreateSnapshot(
                     snapshotName,
@@ -483,9 +522,24 @@ export abstract class CapoTestHelper<
     }
 
     /**
+    /**
+     * Decorated wrapper for bootstrapWithActors.
+     * Uses @hasNamedSnapshot with parentSnapName: "genesis" for root snapshot.
+     * @public
+     */
+    @CapoTestHelper.hasNamedSnapshot(SNAP_ACTORS, {
+        actor: "default",
+        parentSnapName: "genesis",
+        resolveScriptDependencies: async (h) => {
+            // Ensure actors are set up so we can compute cache key
+            if (h.actorSetupInfo.length === 0) {
+                await h.setupActors();
+                // DON'T tick here - let the decorator handle tick after builder
+            }
+        },
+    /**
      * Sets up actors with disk cache support.
-     * If a cached actors snapshot exists, restores from it.
-     * Otherwise, creates actors and caches the snapshot.
+     * @deprecated Use snapToBootstrapWithActors() instead
      * @internal
      */
     async setupActorsWithCache(): Promise<void> {
@@ -573,58 +627,60 @@ export abstract class CapoTestHelper<
             return capo;
         }
 
-        // If we have a dependency resolver, try the disk cache
-        if (resolveScriptDependencies) {
-            const cacheKeyInputs = await resolveScriptDependencies(this);
-            const parentHash = this.network.lastBlockHash;
-            const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
+        // Try disk cache using registry-based API
+        const cached = await this.snapshotCache.find(snapshotName);
+        if (cached) {
+            console.log(`SnapshotCache: hit for ${snapshotName}`);
+            // Restore from disk cache
+            this.network.loadSnapshot(cached.snapshot);
+            Object.assign(this.helperState!.namedRecords, cached.namedRecords);
+            this.helperState!.snapshots[snapshotName] = cached.snapshot;
 
-            const cached = await this.snapshotCache.find(cacheKey, snapshotName);
-            if (cached) {
-                console.log(`SnapshotCache: hit for ${snapshotName} (key: ${cacheKey.slice(0, 8)}...)`);
-                // Restore from disk cache
-                this.network.loadSnapshot(cached.snapshot);
-                Object.assign(this.helperState!.namedRecords, cached.namedRecords);
-                this.helperState!.snapshots[snapshotName] = cached.snapshot;
-                await this.setActor(actorName);
-                return this.strella;
             }
             console.log(`SnapshotCache: miss for ${snapshotName} (key: ${cacheKey.slice(0, 8)}...)`);
+
+            await this.setActor(actorName);
+            return this.strella;
         }
+        console.log(`SnapshotCache: miss for ${snapshotName}`);
 
         // Build the snapshot
-        let result;
+        let succeeded = false;
         try {
-            result = await contentBuilder();
+            await contentBuilder();
+            succeeded = true;
             return this.strella;
         } catch (e) {
             throw e;
         } finally {
-            if (result) {
+            if (succeeded) {
                 this.snapshot(snapshotName);
 
-                // Store to disk cache if we have a dependency resolver
-                if (resolveScriptDependencies) {
-                    const cacheKeyInputs = await resolveScriptDependencies(this);
-                    const delegatesSnapshot = this.helperState!.snapshots[SNAP_DELEGATES];
-                    const parentHash = delegatesSnapshot?.blockHashes?.slice(-1)[0] || "genesis";
-                    const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
-                    const snapshot = this.helperState!.snapshots[snapshotName];
+                // Store to disk cache using registry-based API
+                const snapshot = this.helperState!.snapshots[snapshotName];
+                const entry = this.snapshotCache["registry"].get(snapshotName);
+                const parentSnapName = entry?.parentSnapName || "genesis";
+                const parentSnapshot = parentSnapName !== "genesis"
+                    ? this.helperState!.snapshots[parentSnapName]
+                    : null;
+                const parentHash = parentSnapshot?.blockHashes?.slice(-1)[0] || null;
 
                     const parentCacheKey = await this.getSnapshotCacheKey(SNAP_DELEGATES);
                     const parentBlockCount = delegatesSnapshot?.blocks?.length ?? 0;
+                // For genesis snapshots, store actorSetupInfo for regeneration on cache load
+                const namedRecords = { ...this.helperState!.namedRecords };
+                if (parentSnapName === "genesis" && this.actorSetupInfo.length > 0) {
 
-                    const cachedSnapshot: CachedSnapshot = {
-                        snapshot,
-                        namedRecords: { ...this.helperState!.namedRecords },
-                        parentSnapName: SNAP_DELEGATES,
-                        parentHash,
-                        parentCacheKey,
-                        snapshotHash: this.network.lastBlockHash,
-                    };
+                const cachedSnapshot: CachedSnapshot = {
+                    snapshot,
+                    namedRecords,
+                    parentSnapName,
+                    parentHash,
+                    parentCacheKey: null, // deprecated with hierarchical directories
+                    snapshotHash: this.network.lastBlockHash,
+                };
 
-                    await this.snapshotCache.store(cacheKey, cachedSnapshot, parentBlockCount);
-                }
+                await this.snapshotCache.store(snapshotName, cachedSnapshot);
             }
         }
     }
@@ -785,21 +841,17 @@ export abstract class CapoTestHelper<
             return false;
         }
 
-        const parentHash = actorsSnapshot.blockHashes?.slice(-1)[0] || "genesis";
-        const cacheKeyInputs = await this.resolveCoreCapoDependencies();
-        console.log(`  -- ⚗️ tryRestoreCapoInitialized: parentHash=${parentHash.slice(0, 8)}..., bundles=${JSON.stringify(cacheKeyInputs.bundles.map(b => ({name: b.name, hash: b.sourceHash.slice(0, 8)})))}`);
-        const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
-
-        const cached = await this.snapshotCache.find(cacheKey, SNAP_CAPO_INIT);
+        // Use registry-based find (cache key computed internally)
+        const cached = await this.snapshotCache.find(SNAP_CAPO_INIT);
         if (cached) {
-            console.log(`  -- ⚗️ capoInitialized snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
+            console.log(`  -- ⚗️ capoInitialized snapshot cache HIT`);
             this.network.loadSnapshot(cached.snapshot);
             this.helperState!.snapshots[SNAP_CAPO_INIT] = cached.snapshot;
             Object.assign(this.helperState!.namedRecords, cached.namedRecords);
             return true;
         }
 
-        console.log(`  -- ⚗️ capoInitialized snapshot cache MISS (key: ${cacheKey.slice(0, 8)}...)`);
+        console.log(`  -- ⚗️ capoInitialized snapshot cache MISS`);
         return false;
     }
 
@@ -809,26 +861,21 @@ export abstract class CapoTestHelper<
      */
     private async saveCapoInitializedSnapshot(): Promise<void> {
         const actorsSnapshot = this.helperState!.snapshots[SNAP_ACTORS];
-        const parentHash = actorsSnapshot?.blockHashes?.slice(-1)[0] || "genesis";
-        const cacheKeyInputs = await this.resolveCoreCapoDependencies();
-        const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
-        console.log(`  -- ⚗️ saveCapoInitializedSnapshot: key=${cacheKey.slice(0, 8)}..., parentHash=${parentHash.slice(0, 8)}..., bundles=${JSON.stringify(cacheKeyInputs.bundles.map(b => ({name: b.name, hash: b.sourceHash.slice(0, 8)})))}`);
+        const parentHash = actorsSnapshot?.blockHashes?.slice(-1)[0] || null;
 
         const snapshot = this.network.snapshot(SNAP_CAPO_INIT);
         this.helperState!.snapshots[SNAP_CAPO_INIT] = snapshot;
-
-        const parentCacheKey = await this.getSnapshotCacheKey(SNAP_ACTORS);
-        const parentBlockCount = actorsSnapshot?.blocks?.length ?? 0;
 
         const cachedSnapshot: CachedSnapshot = {
             snapshot,
             namedRecords: { ...this.helperState!.namedRecords },
             parentSnapName: SNAP_ACTORS,
             parentHash,
-            parentCacheKey,
+            parentCacheKey: null, // deprecated with hierarchical directories
             snapshotHash: this.network.lastBlockHash,
         };
-        await this.snapshotCache.store(cacheKey, cachedSnapshot, parentBlockCount);
+        // Use registry-based store (path computed internally)
+        await this.snapshotCache.store(SNAP_CAPO_INIT, cachedSnapshot);
     }
 
     /**
@@ -843,20 +890,17 @@ export abstract class CapoTestHelper<
             return false;
         }
 
-        const parentHash = capoInitSnapshot.blockHashes?.slice(-1)[0] || "genesis";
-        const cacheKeyInputs = await this.resolveEnabledDelegatesDependencies();
-        const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
-
-        const cached = await this.snapshotCache.find(cacheKey, SNAP_DELEGATES);
+        // Use registry-based find (cache key computed internally)
+        const cached = await this.snapshotCache.find(SNAP_DELEGATES);
         if (cached) {
-            console.log(`  -- 🔧 enabledDelegatesDeployed snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
+            console.log(`  -- 🔧 enabledDelegatesDeployed snapshot cache HIT`);
             this.network.loadSnapshot(cached.snapshot);
             this.helperState!.snapshots[SNAP_DELEGATES] = cached.snapshot;
             Object.assign(this.helperState!.namedRecords, cached.namedRecords);
             return true;
         }
 
-        console.log(`  -- 🔧 enabledDelegatesDeployed snapshot cache MISS (key: ${cacheKey.slice(0, 8)}...)`);
+        console.log(`  -- 🔧 enabledDelegatesDeployed snapshot cache MISS`);
         return false;
     }
 
@@ -866,25 +910,21 @@ export abstract class CapoTestHelper<
      */
     private async saveDelegatesDeployedSnapshot(): Promise<void> {
         const capoInitSnapshot = this.helperState!.snapshots[SNAP_CAPO_INIT];
-        const parentHash = capoInitSnapshot?.blockHashes?.slice(-1)[0] || "genesis";
-        const cacheKeyInputs = await this.resolveEnabledDelegatesDependencies();
-        const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
+        const parentHash = capoInitSnapshot?.blockHashes?.slice(-1)[0] || null;
 
         const snapshot = this.network.snapshot(SNAP_DELEGATES);
         this.helperState!.snapshots[SNAP_DELEGATES] = snapshot;
-
-        const parentCacheKey = await this.getSnapshotCacheKey(SNAP_CAPO_INIT);
-        const parentBlockCount = capoInitSnapshot?.blocks?.length ?? 0;
 
         const cachedSnapshot: CachedSnapshot = {
             snapshot,
             namedRecords: { ...this.helperState!.namedRecords },
             parentSnapName: SNAP_CAPO_INIT,
             parentHash,
-            parentCacheKey,
+            parentCacheKey: null, // deprecated with hierarchical directories
             snapshotHash: this.network.lastBlockHash,
         };
-        await this.snapshotCache.store(cacheKey, cachedSnapshot, parentBlockCount);
+        // Use registry-based store (path computed internally)
+        await this.snapshotCache.store(SNAP_DELEGATES, cachedSnapshot);
     }
 
     /**
