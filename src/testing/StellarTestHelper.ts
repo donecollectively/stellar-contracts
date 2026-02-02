@@ -664,6 +664,50 @@ export abstract class StellarTestHelper<
     }
 
     /**
+     * Creates a wallet using the network's PRNG without creating genesis UTxOs.
+     * Used when regenerating actors from a cached snapshot where UTxOs already exist.
+     * @internal
+     */
+    createWalletWithoutUtxo(): emulatedWallet {
+        return emulatedWallet.fromRootPrivateKey(
+            makeRootPrivateKey(generateBytes(this.network.mulberry32, 32)),
+            this.networkCtx,
+        );
+    }
+
+    /**
+     * Regenerates actor wallets from actorSetupInfo after loading a snapshot.
+     * The wallets are deterministically recreated from the network's seed.
+     * Does NOT create new UTxOs - they already exist in the snapshot.
+     * @internal
+     */
+    regenerateActorsFromSetupInfo(): void {
+        // Skip if no actor info or actors already exist
+        if (this.actorSetupInfo.length === 0 || Object.keys(this.actors).length > 0) {
+            console.log(`  -- Skipping actor regeneration: actorSetupInfo=${this.actorSetupInfo.length}, actors=${Object.keys(this.actors).length}`);
+            return;
+        }
+
+        console.log(`  -- Regenerating ${this.actorSetupInfo.length} actors from cache... (seed=${this.network["#seed"] || "unknown"})`);
+
+        for (const actorInfo of this.actorSetupInfo) {
+            // Create wallet without UTxO (UTxOs exist in snapshot)
+            const wallet = this.createWalletWithoutUtxo();
+
+            // Skip additional UTxOs - they're also already in snapshot
+            // Each additionalUtxo in the original setup called createWallet, which advanced the PRNG
+            for (let i = 0; i < actorInfo.additionalUtxos.length; i++) {
+                // Advance PRNG to match original sequence
+                this.createWalletWithoutUtxo();
+            }
+
+            this.actors[actorInfo.name] = wallet;
+            this.actorContext.others[actorInfo.name] = wallet;
+            console.log(`    + Regenerated actor: ${actorInfo.name}`);
+        }
+    }
+
+    /**
      * @public
      */
     async submitTx(tx: Tx, force?: "force"): Promise<TxId> {
