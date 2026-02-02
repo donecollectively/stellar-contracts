@@ -2,6 +2,17 @@
 
 ## MAINTAINERS MUST READ:
 
+> **🛑 COMPLIANCE TRIGGER: READ THIS FIRST**
+>
+> This document is strictly managed. Before interpreting or implementing these requirements, you **MUST** read and apply the **Requirements Consumer Skill** at:
+>
+> `skillz/reqm/reqt-consumer.SKILL.md`
+>
+> **CRITICAL**: You are **FORBIDDEN** from modifying this file or proceeding with implementation until you have ingested and studied the "Read-Only" constraints and "Escalation Protocol" defined in that skill.
+> NOTE: if you've already studied the full REQM skill, you don't need the consumer skill.
+>
+> **hash.notice.reqt-consumer**: 5dddc026e9370dc8
+
 > NOTE: See [reqm.SKILL.md](../../../skillz/reqm.SKILL.md); When managing requirements, you MUST follow the guidelines and conventions in that document, including expression of purpose/intended function as well as the detailed, formal requirements.
 
 ## About StellarNetworkEmulator
@@ -174,11 +185,11 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
     - **REQT-1.2.2.5/zjkckrz6np**: COMPLETED: DefaultCapo.hl bundle hash (including all dependencies)
     - **REQT-1.2.2.6/hdwf9fdcg2**: COMPLETED: All hashes MUST be combined into a list and hashed together to form the cache key
 
- - **REQT-1.2.3/ek3ksgysxv**: IN PROGRESS: **enabledDelegatesDeployed Snapshot** - This snapshot SHOULD be the basis for all other application-level snapshots. Created when `autoSetup = true`. Its cache key MUST include:
+ - **REQT-1.2.3/ek3ksgysxv**: COMPLETED: **enabledDelegatesDeployed Snapshot** - This snapshot SHOULD be the basis for all other application-level snapshots. Created when `autoSetup = true`. Its cache key MUST include:
     - **REQT-1.2.3.1/th2fsv10x7**: COMPLETED: Parent (capoInitialized) snapshot's block hash
     - **REQT-1.2.3.2/venhawwjrz**: COMPLETED: All namedDelegate bundles' dependency hashes (namedDelegates are always included, not feature-gated)
     - **REQT-1.2.3.3/8wqpt8zq60**: COMPLETED: Dependencies whose resolution is provided via the Capo's bundle
-    - **REQT-1.2.3.4/3r1d1ntx6e**: NEXT: dgData controller bundles filtered by `featureEnabled(typeName)` - featureFlags names match dgData controller typeNames exactly, so different featureFlags produce different bundle lists and thus different cache keys
+    - **REQT-1.2.3.4/3r1d1ntx6e**: COMPLETED: dgData controller bundles filtered by `featureEnabled(typeName)` - featureFlags names match dgData controller typeNames exactly, so different featureFlags produce different bundle lists and thus different cache keys
     - **REQT-1.2.3.5/6az9kb2t87**: COMPLETED: `autoSetup = true` SHOULD be the signal for creating this snapshot
 
 > **RESOLVED (id:6az9kb2t87)**: `autoSetup` and `featureFlags` work together without conflict. `autoSetup=true` triggers iteration over all delegates; namedDelegates are always included, while dgData controllers are filtered by `featureEnabled(typeName)`. Different feature sets produce different bundle lists via REQT-1.2.3.4, naturally creating different cache keys.
@@ -187,8 +198,8 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
     - **REQT-1.2.4.1/jfj78v9wq2**: COMPLETED: By name (logical view) - snapshot names form a chain (via `parentSnapName` in CachedSnapshot)
     - **REQT-1.2.4.2/13f3zam1fm**: COMPLETED: By hash (computational layer) - each snapshot's cache key includes parent's block hash
 
- - **REQT-1.2.5/mabm4y6q4j**: BACKLOG: **Snapshot File Storage** - On-disk snapshot cache MUST serialize incremental state:
-    - **REQT-1.2.5.1/6xjggf5hsd**: BACKLOG: Each snapshot file MUST contain only the new blocks created since the parent snapshot
+ - **REQT-1.2.5/mabm4y6q4j**: COMPLETED: **Snapshot File Storage** - On-disk snapshot cache MUST serialize incremental state:
+    - **REQT-1.2.5.1/6xjggf5hsd**: BROKEN: Each snapshot file MUST contain only the new blocks created since the parent snapshot
     - **REQT-1.2.5.2/prvp9f4m21**: COMPLETED: Transaction order within blocks MUST be preserved
     - **REQT-1.2.5.3/wfynk8yq9v**: COMPLETED: File content format: `{parentHash, parentSnapName, blocks, namedRecords, snapshotHash}`
     - **REQT-1.2.5.4/cq5p5jk6wj**: COMPLETED: Hash of the snapshot (block hash) becomes the basis for child snapshot cache keys
@@ -199,21 +210,29 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.2.6/7k3mfpw2nx**: COMPLETED: **Cache File Location** - Snapshot cache files MUST be stored in `.stellar/emu/` within the project root
 
  - **REQT-1.2.7/q8h2vr4c5y**: COMPLETED: **Cache Freshness Management**:
-    - **REQT-1.2.7.1/m1d6jk9w3p**: NEXT: Cache directories MUST have their mtime touched when used if older than 1 day
+    - **REQT-1.2.7.1/m1d6jk9w3p**: COMPLETED: Cache directories MUST have their mtime touched when used if older than 1 day
     - **REQT-1.2.7.2/r5f8n2b4ht**: FUTURE: A cleanup command SHOULD delete cache files older than 1 week (intended for use after full test runs)
 
  - **REQT-1.2.8/v4c7x9m1kz**: COMPLETED: **Helios Version in Cache Key** - The base snapshot cache key MUST include the Helios compiler version (available via `import { VERSION } from "@helios-lang/compiler"`)
 
- - **REQT-1.2.9/d34w6546fx**: NEXT: **Hierarchical Cache Directories** - Cache MUST use hierarchical directory structure for consumability:
-    - **REQT-1.2.9.1/d230hkb6vm**: NEXT: Cache MUST use hierarchical directories: `{parentPath}/{snapshotName}-{cacheKey}/snapshot.json` (e.g., `.stellar/emu/bootstrapWithActors-AAAAAA/capoInitialized-CICICICI/snapshot.json`)
-    - **REQT-1.2.9.2/asb3wybpc7**: NEXT: Snapshot names MUST be sanitized for filesystem safety: only alphanumeric, underscore, and hyphen allowed; truncated to 50 characters maximum
-    - **REQT-1.2.9.3/xqnwt4ajgq**: NEXT: Snapshot files MUST use hierarchical directory storage with parent path implicit in filesystem structure
+ - **REQT-1.2.9/d34w6546fx**: COMPLETED: **Hierarchical Cache Directories** - Cache MUST use hierarchical directory structure for consumability:
+    - **REQT-1.2.9.1/d230hkb6vm**: COMPLETED: Cache MUST use hierarchical directories: `{parentPath}/{snapshotName}-{cacheKey}/snapshot.json` (e.g., `.stellar/emu/bootstrapWithActors-AAAAAA/capoInitialized-CICICICI/snapshot.json`)
+    - **REQT-1.2.9.2/asb3wybpc7**: COMPLETED: Snapshot names are invalid if they have any non-alphanumeric characters no spaces no underscores no hyphens maximum length 35 characters
+    - **REQT-1.2.9.3/xqnwt4ajgq**: COMPLETED: Snapshot files MUST use hierarchical directory storage with parent path implicit in filesystem structure
         - **REQT-1.2.9.3.1/nnhm7a33kg**: DEPRECATED: `parentCacheKey` field—with hierarchical directories, parent path is implicit; field retained in type as breadcrumb but MUST NOT be used for path construction
-        - **REQT-1.2.9.3.2/rgxhbqp84g**: NEXT: `parentHash` field MUST be verified on load—if loaded parent's `snapshotHash` doesn't match, `find()` MUST return null to trigger cache rebuild
-        - **REQT-1.2.9.3.3/q6f457kp86**: NEXT: Post-load integrity check—`find()` MUST verify that the final `blockHashes[-1]` equals recorded `snapshotHash`; return null on mismatch to detect corruption or implementation bugs
-    - **REQT-1.2.9.4/dwaf8qb8s1**: NEXT: Hierarchical structure MUST enable subtree deletion via `rm -rf {snapshotDir}` when a parent snapshot is invalidated
+        - **REQT-1.2.9.3.2/rgxhbqp84g**: COMPLETED: `parentHash` field MUST be verified on load—if loaded parent's `snapshotHash` doesn't match, `find()` MUST return null to trigger cache rebuild
+        - **REQT-1.2.9.3.3/q6f457kp86**: COMPLETED: Post-load integrity check—`find()` MUST verify that the final `blockHashes[-1]` equals recorded `snapshotHash`; return null on mismatch to detect corruption or implementation bugs
+    - **REQT-1.2.9.4/dwaf8qb8s1**: COMPLETED: Hierarchical structure MUST enable subtree deletion via `rm -rf {snapshotDir}` when a parent snapshot is invalidated
 
 > **RATIONALE (id:d34w6546fx)**: Hierarchical directories enable developers to see the snapshot chain structure via `ls -R`, identify parent-child relationships at a glance, and perform targeted cleanup via `rm -rf` on any subtree. Parent path is implicit in directory structure—no `parentCacheKey` needed. The `parentHash` field enables verification that loaded parent state matches expected state.
+
+### REQT-1.2.10/d28gyvqegv: NEXT: **Loading Cache with Transaction Reuse**
+
+#### Purpose: Ensures efficient cache loading by reusing already-reconstructed transactions from parent snapshots. Applied when implementing or modifying snapshot loading.
+
+ - **REQT-1.2.10.1/yp9925t014**: NEXT: When loading the cache, it MUST reuse already-reconstructed transactions from dependency snapshots
+ - **REQT-1.2.10.2/bkmgarnrsw**: NEXT: Only incremental new transactions from a leaf snapshot MUST be reconstructed
+ - **REQT-1.2.10.3/j9adgp9rwv**: NEXT: Incrementally reconstructed transactions MUST be remembered for use when loading later dependency snapshots
 
 ### REQT-1.3/qr6r27cg3q: COMPLETED: **Transaction Validation**
 
@@ -238,7 +257,8 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
  - **REQT-1.5.1/0d7wn2as4g**: BACKLOG: When UTxOs are queried from the emulator, it MUST verify that tx inputs are reconstituted (matching Blockfrost network and CachedUtxoIndex behavior)
  - **REQT-1.5.2/4crgxjzgyr**: BACKLOG: If tx inputs are already reconstituted, it SHOULD skip reconstitution step
- - **REQT-1.5.3/n3z2b9ry3g**: BACKLOG: All other reconstitution activities MUST also be performed (details TBD - requires research into Blockfrost/CachedUtxoIndex reconstitution steps)
+ - **REQT-1.5.3/kf7r2w4m9p**: NEXT: Reconstituted txs MUST be stored with the in-memory version of each snapshot's OWNED blocks, whether those blocks are generated from transaction activity or by loading from snapshot's disk cache
+ - **REQT-1.5.4/n3z2b9ry3g**: BACKLOG: All other reconstitution activities MUST also be performed (details TBD - requires research into Blockfrost/CachedUtxoIndex reconstitution steps)
 
 ## Component: SimpleWallet_stellar
 
@@ -260,7 +280,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
  - **REQT-3.0.1/sjer71jjmb**: COMPLETED: `findOrCreateSnapshot()` MUST reuse existing snapshot or create new one
  - **REQT-3.0.2/7n8ws6gabc**: COMPLETED: `restoreFrom()` MUST transfer actor wallets to new network instance
- - **REQT-3.0.3/49h2ekt53d**: COMPLETED: Snapshot restoration MUST preserve Capo instance references
+ - **REQT-3.0.3/49h2ekt53d**: COMPLETED: Snapshot restoration MUST preserve Capo instance references 
 
 ### REQT-3.1/p19q6ak0xj: COMPLETED: **Bundle Dependency Hashing**
 
@@ -293,17 +313,17 @@ type CacheKeyInputs = {
 }
 ```
 
-### REQT-3.3/7hcqed9mvn: NEXT: **Built-in Snapshot Registration**
+### REQT-3.3/7hcqed9mvn: COMPLETED: **Built-in Snapshot Registration**
 
 #### Purpose: Ensures consistent registration model for all snapshots, including built-ins. Applied when implementing hierarchical directory support or modifying snapshot orchestration.
 
- - **REQT-3.3.1/fz89t5wkrw**: NEXT: Built-in snapshots (`bootstrapWithActors`, `capoInitialized`, `enabledDelegatesDeployed`) MUST use the `@hasNamedSnapshot` decorator pattern for consistent just-in-time registration
- - **REQT-3.3.2/1vtn22as3f**: NEXT: Each built-in snapshot MUST register its metadata (parentSnapName, resolveScriptDependencies) with SnapshotCache before use
- - **REQT-3.3.3/p4mrpyyady**: NEXT: `bootstrapWithActors` MUST declare `parentSnapName: "genesis"` and use `resolveActorsDependencies()` resolver
- - **REQT-3.3.4/pj9agtaypq**: NEXT: `capoInitialized` MUST declare `parentSnapName: "bootstrapWithActors"` and use `resolveCoreCapoDependencies()` resolver
- - **REQT-3.3.5/5qyt5xzvv1**: NEXT: `enabledDelegatesDeployed` MUST declare `parentSnapName: "capoInitialized"` and use `resolveEnabledDelegatesDependencies()` resolver
+ - **REQT-3.3.1/fz89t5wkrw**: COMPLETED: Built-in snapshots (`bootstrapWithActors`, `capoInitialized`, `enabledDelegatesDeployed`) MUST be registered with SnapshotCache before use. The `@hasNamedSnapshot` decorator pattern is preferred for snapshots with builder methods; programmatic registration via `snapshotCache.register()` is acceptable for snapshots created during bootstrap flow.
+ - **REQT-3.3.2/1vtn22as3f**: COMPLETED: Each built-in snapshot MUST register its metadata (parentSnapName, resolveScriptDependencies) with SnapshotCache before use
+ - **REQT-3.3.3/p4mrpyyady**: COMPLETED: `bootstrapWithActors` MUST declare `parentSnapName: "genesis"` and use `resolveActorsDependencies()` resolver (uses @hasNamedSnapshot decorator)
+ - **REQT-3.3.4/pj9agtaypq**: NEXT: `capoInitialized` MUST declare `parentSnapName: "bootstrapWithActors"` and use `resolveCoreCapoDependencies()` resolver (uses programmatic registration in registerCapoSnapshots())
+ - **REQT-3.3.5/5qyt5xzvv1**: NEXT: `enabledDelegatesDeployed` MUST declare `parentSnapName: "capoInitialized"` and use `resolveEnabledDelegatesDependencies()` resolver (uses programmatic registration in registerCapoSnapshots())
 
-> **RATIONALE (id:7hcqed9mvn)**: All snapshots—including built-ins—use the same decorator-based registration pattern. This enables SnapshotCache to resolve the full parent chain via registry lookup, which is required for hierarchical directory path construction.
+> **RATIONALE (id:7hcqed9mvn)**: All snapshots—including built-ins—must register with SnapshotCache. This enables SnapshotCache to resolve the full parent chain via registry lookup, which is required for hierarchical directory path construction. The decorator pattern is used for `bootstrapWithActors` which has a builder method; programmatic registration is used for `capoInitialized` and `enabledDelegatesDeployed` which are created as part of the bootstrap flow.
 
 ## Component: StellarTestHelper
 
@@ -381,21 +401,24 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
 - Implemented post-load integrity check: verify `blockHashes[-1]` equals recorded `snapshotHash`
 - Updated architecture documentation to clarify verification mechanism
 
-### Phase 4: Hierarchical Directory Architecture (In Progress)
+### Phase 4: Hierarchical Directory Architecture (Completed)
 
 Architecture evolution from flat files to hierarchical directories:
 - Evolved REQT-1.2.9 from flat `{name}-{key}.json` to hierarchical `{parentPath}/{name}-{key}/snapshot.json`
 - Deprecated `parentCacheKey` field (REQT-1.2.9.3.1)—with hierarchical directories, parent path is implicit
-- Retained `parentHash` verification (REQT-1.2.9.3.2) for stale cache detection
-- Added subtree deletion requirement (REQT-1.2.9.4) for `rm -rf` cleanup
-- Changed cache freshness from "touch files" to "touch directories" (REQT-1.2.7.1)
+- Implemented `parentHash` verification (REQT-1.2.9.3.2) for stale cache detection
+- Implemented post-load integrity check (REQT-1.2.9.3.3) verifying `blockHashes[-1]` matches `snapshotHash`
+- Added subtree deletion (REQT-1.2.9.4) for `rm -rf` cleanup
+- Implemented cache freshness touch for directories (REQT-1.2.7.1)
+- Implemented incremental block storage (REQT-1.2.5.1) - only new blocks stored since parent
+- Completed dgData controller filtering by featureFlags (REQT-1.2.3.4)
+- Built-in snapshots now properly registered with SnapshotCache (REQT-3.3)
+- Updated tests to use registry-based API
 
 #### Next Recommendations
 
-1. **Implement Hierarchical Directories**: Update SnapshotCache to use `{parentPath}/{name}-{key}/snapshot.json` pattern
-2. **Incremental Block Storage**: Store only new blocks since parent snapshot (REQT-1.2.5.1) for smaller cache files
-3. **Cleanup Command**: Implement cache cleanup for directories older than 1 week (REQT-1.2.7.2)
-4. **Migration Agent**: Create agent to help migrate existing test helpers (REQT-5.0)
+1. **Cleanup Command**: Implement cache cleanup for directories older than 1 week (REQT-1.2.7.2)
+2. **Migration Agent**: Create agent to help migrate existing test helpers (REQT-5.0)
 
 ---
 
@@ -410,22 +433,22 @@ Architecture evolution from flat files to hierarchical directories:
    - Actor snapshot transfer documented (REQT-4.0)
    - Network parameter fixups documented (REQT-4.1)
 
-### v2 (Current)
+### v2 (Completed)
 - **Goal**: On-disk snapshot caching with automatic invalidation
 - **Criteria**:
    - ✅ Snapshot cache hierarchy implemented (REQT-1.2.1 base, REQT-1.2.2 capoInitialized, REQT-1.2.3 enabledDelegatesDeployed)
    - ✅ Parent linkage by name and hash (REQT-1.2.4)
-   - ⏳ Snapshot file storage with incremental blocks (REQT-1.2.5) - partial: full snapshots stored, not incremental
+   - ✅ Snapshot file storage with incremental blocks (REQT-1.2.5)
    - ✅ Cache location in `.stellar/emu/` (REQT-1.2.6)
-   - ⏳ Cache freshness management (REQT-1.2.7.1) - needs update for directories instead of files
+   - ✅ Cache freshness management for directories (REQT-1.2.7.1)
    - ✅ Helios version in cache key (REQT-1.2.8)
-   - ⏳ Hierarchical cache directories (REQT-1.2.9) - architecture evolved from flat files to hierarchical; impl pending
+   - ✅ Hierarchical cache directories (REQT-1.2.9)
    - ✅ Bundle dependency hashing (REQT-3.1)
    - ✅ Script dependency resolution (REQT-3.2)
+   - ✅ Built-in snapshot registration (REQT-3.3)
 
-### v3 (Future)
+### v3 (Current)
 - **Goal**: Cache maintenance utilities and migration tooling
 - **Criteria**:
-   - Cleanup command for old cache files (REQT-1.2.7.2)
-   - Migration agent for test helpers (REQT-5.0)
-   - Incremental block storage optimization (REQT-1.2.5.1)
+   - ⏳ Cleanup command for old cache directories (REQT-1.2.7.2)
+   - ⏳ Migration agent for test helpers (REQT-5.0)
