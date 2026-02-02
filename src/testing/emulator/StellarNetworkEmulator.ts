@@ -869,6 +869,9 @@ ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
                 }
             });
         });
+
+        // State has diverged from any loaded snapshot
+        this.fromSnapshot = "";
     }
 }
 

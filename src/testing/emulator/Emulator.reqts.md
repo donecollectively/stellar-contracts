@@ -184,13 +184,13 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 > **RESOLVED (id:6az9kb2t87)**: `autoSetup` and `featureFlags` work together without conflict. `autoSetup=true` triggers iteration over all delegates; namedDelegates are always included, while dgData controllers are filtered by `featureEnabled(typeName)`. Different feature sets produce different bundle lists via REQT-1.2.3.4, naturally creating different cache keys.
 
  - **REQT-1.2.4/qt184d0cfz**: COMPLETED: **Snapshot Parent Linkage** - Every snapshot MUST be strongly linked to its parent snapshot:
-    - **REQT-1.2.4.1/jfj78v9wq2**: COMPLETED: By name (logical view) - snapshot names form a chain (via `parentName` in CachedSnapshot)
+    - **REQT-1.2.4.1/jfj78v9wq2**: COMPLETED: By name (logical view) - snapshot names form a chain (via `parentSnapName` in CachedSnapshot)
     - **REQT-1.2.4.2/13f3zam1fm**: COMPLETED: By hash (computational layer) - each snapshot's cache key includes parent's block hash
 
  - **REQT-1.2.5/mabm4y6q4j**: BACKLOG: **Snapshot File Storage** - On-disk snapshot cache MUST serialize incremental state:
     - **REQT-1.2.5.1/6xjggf5hsd**: BACKLOG: Each snapshot file MUST contain only the new blocks created since the parent snapshot
     - **REQT-1.2.5.2/prvp9f4m21**: COMPLETED: Transaction order within blocks MUST be preserved
-    - **REQT-1.2.5.3/wfynk8yq9v**: COMPLETED: File content format: `{parentHash, parentName, blocks, namedRecords, snapshotHash}`
+    - **REQT-1.2.5.3/wfynk8yq9v**: COMPLETED: File content format: `{parentHash, parentSnapName, blocks, namedRecords, snapshotHash}`
     - **REQT-1.2.5.4/cq5p5jk6wj**: COMPLETED: Hash of the snapshot (block hash) becomes the basis for child snapshot cache keys
     - **REQT-1.2.5.5/t8n3k6w2qp**: COMPLETED: Each snapshot file MUST include `namedRecords` captured during snapshot creation, so tests can reference records by name after restore
 
@@ -207,7 +207,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.2.9/d34w6546fx**: NEXT: **Human-Readable Cache Filenames** - Cache files MUST use human-readable naming for consumability:
     - **REQT-1.2.9.1/d230hkb6vm**: NEXT: Cache files MUST be named `{snapshotName}-{cacheKey}.json` (e.g., `bootstrapWithActors-a1b2c3d4.json`)
     - **REQT-1.2.9.2/asb3wybpc7**: NEXT: Snapshot names MUST be sanitized for filesystem safety: only alphanumeric, underscore, and hyphen allowed; truncated to 50 characters maximum
-    - **REQT-1.2.9.3/xqnwt4ajgq**: NEXT: Each snapshot file SHOULD include `parentCacheKey` to enable O(1) parent file lookup for incremental storage
+    - **REQT-1.2.9.3/xqnwt4ajgq**: NEXT: Snapshot files MUST be stored in nested directories where parent relationship is implicit via filesystem path (e.g., `.stellar/emu/bootstrapWithActors-{key}/capoInitialized-{key}/snapshot.json`)
 
 > **RATIONALE (id:d34w6546fx)**: Human-readable filenames enable developers to identify snapshot purpose at a glance (`ls bootstrapWithActors-*`), debug cache misses by seeing which named snapshots exist, and perform targeted cleanup (`rm capoInitialized-*.json`). The cache key suffix preserves uniqueness—multiple files with the same snapshot name but different hashes is expected when code changes.
 

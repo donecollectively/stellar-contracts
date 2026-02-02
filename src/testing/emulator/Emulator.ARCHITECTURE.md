@@ -43,6 +43,7 @@
 | namedRecords | artifact | CapoTestHelper | Persisted with snapshot, restored on load |
 | Actor wallets | resource | StellarTestHelper | CapoTestHelper |
 | PRNG seed | resource | StellarNetworkEmulator | SnapshotCache |
+| Snapshot provenance | artifact | StellarNetworkEmulator | Debugging/logging (cleared on pushBlock) |
 
 ---
 
@@ -58,10 +59,12 @@
 - Produce blocks from mempool
 - Validate transactions
 - Capture/restore in-memory snapshots
+- Track snapshot provenance (`fromSnapshot`, cleared on `pushBlock()`)
 
 **Concerns**:
 - Owns **Emulator state** (blocks, UTxOs, slot, consumed set)
 - Owns **PRNG seed** for deterministic continuation
+- Owns **Snapshot provenance** (`fromSnapshot` field for debugging/logging)
 
 ---
 
@@ -136,12 +139,14 @@
 - Orchestrate snapshot chains via `@hasNamedSnapshot` decorator
 - Manage namedRecords (capture and lookup)
 - Define `resolveScriptDependencies()` for cache key computation
+- Recompute cache keys on demand via `getSnapshotCacheKey()`
 - Own Capo instance
 
 **Concerns**:
 - Owns **namedRecords**
 - Depends on **Snapshot chain** via SnapshotCache
 - Depends on **Capo** for bundle hash resolution
+- Depends on **helperState.snapshots** for parent block hashes (used in cache key recomputation)
 
 ---
 
@@ -305,11 +310,11 @@ class SnapshotCache {
 }
 
 type CachedSnapshot = {
-  name: string;                    // snapshot name (e.g., "capoInitialized")
+  snapshot: NetworkSnapshot;       // the network snapshot data
+  namedRecords: Record<string, string>;
   parentSnapName: ParentSnapName;  // parent snapshot name ("genesis" for root)
   parentHash: string | null;       // parent's snapshotHash (for verification)
-  blocks: SerializedBlock[];       // incremental blocks since parent
-  namedRecords: Record<string, string>;
+  parentCacheKey: string | null;   // parent's cache key for O(1) chain loading
   snapshotHash: string;            // this snapshot's resulting block hash
 }
 ```
@@ -323,6 +328,84 @@ type CachedSnapshot = {
 - `find()`: Returns null on miss; touches file if mtime > 1 day
 - `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON
 - `computeKey()`: `hash(parentHash + JSON.stringify(inputs))`
+
+### Snapshot State Management
+
+#### Network Provenance Tracking
+
+The emulator tracks **where its current state came from** via `fromSnapshot` for debugging/logging. This is provenance metadata, not caching state.
+
+```typescript
+class StellarNetworkEmulator {
+  /** Name of snapshot this state was loaded from, or "" if fresh/diverged */
+  fromSnapshot: string = "";
+}
+```
+
+**Lifecycle Rules**:
+
+| Event | Action | Rationale |
+|-------|--------|-----------|
+| Constructor | `fromSnapshot = ""` | Fresh network, no snapshot provenance |
+| `loadSnapshot(snap)` | `fromSnapshot = snap.name` | State now matches a known snapshot |
+| `pushBlock(txs)` | `fromSnapshot = ""` | State has diverged—new blocks committed |
+| `tick()` with empty mempool | No change | Slot advanced but state unchanged |
+| `snapshot(name)` | No change | Captures state, doesn't modify it |
+
+#### Cache Key Recomputation
+
+**Design Decision**: Cache keys are **recomputed on demand**, not stored in a Map.
+
+**Rationale**:
+- Cache key computation is deterministic: `computeKey(parentHash, resolverInputs)`
+- All inputs are always available: `helperState.snapshots[parent].blockHashes[-1]` + resolver methods
+- Computation cost is negligible (JSON stringify + blake2b)
+- Eliminates state synchronization between Map and actual snapshots
+
+**Helper Function Pattern** (CapoTestHelper):
+
+```typescript
+async getSnapshotCacheKey(snapName: ParentSnapName): Promise<string | null> {
+  switch (snapName) {
+    case "genesis":
+      return null;
+    case SNAP_ACTORS:
+      return this.snapshotCache.computeKey(null, this.resolveActorsDependencies());
+    case SNAP_CAPO_INIT: {
+      const parentHash = this.getSnapshotBlockHash(SNAP_ACTORS);
+      return this.snapshotCache.computeKey(parentHash, await this.resolveCoreCapoDependencies());
+    }
+    case SNAP_DELEGATES:
+    case "bootstrapped": {
+      const parentHash = this.getSnapshotBlockHash(SNAP_CAPO_INIT);
+      return this.snapshotCache.computeKey(parentHash, await this.resolveEnabledDelegatesDependencies());
+    }
+    default:
+      // App snapshots build on SNAP_DELEGATES
+      return this.getSnapshotCacheKey(SNAP_DELEGATES);
+  }
+}
+
+private getSnapshotBlockHash(snapName: string): string {
+  return this.helperState?.snapshots[snapName]?.blockHashes?.slice(-1)[0] ?? "genesis";
+}
+```
+
+**When Saving Child Snapshots**:
+
+```typescript
+// Get parent's cache key via recomputation
+const parentCacheKey = await this.getSnapshotCacheKey(parentSnapName);
+
+const cachedSnapshot: CachedSnapshot = {
+  snapshot,
+  parentSnapName,
+  parentHash: this.getSnapshotBlockHash(parentSnapName),
+  parentCacheKey,  // For O(1) lookup during chain loading
+  snapshotHash: this.network.lastBlockHash,
+  namedRecords: {},
+};
+```
 
 ### Block Hash Computation
 
@@ -427,6 +510,8 @@ class StellarNetworkEmulator implements Emulator {
 | **autoSetup + featureFlags** | autoSetup triggers iteration; featureFlags filters which deploy |
 | **Human-readable filenames** `{name}-{key}.json` | Enables `ls bootstrapWithActors-*`, debugging, targeted cleanup |
 | **`parentCacheKey` in CachedSnapshot** | O(1) parent file lookup for incremental storage (vs scanning all files) |
+| **Cache key recomputation** | No Map needed—resolvers are deterministic, parent hashes stored in helperState |
+| **`fromSnapshot` cleared on pushBlock** | Provenance tracking; diverged state shouldn't claim snapshot identity |
 
 ---
 
@@ -451,6 +536,7 @@ class StellarNetworkEmulator implements Emulator {
 - [x] ~~Block hash computation~~ → Parallel `blockHashes[]` computed at tick(), maintains Helios interface compatibility
 - [x] ~~Project root detection~~ → Walk up to find package.json
 - [x] ~~Cleanup command~~ → `find .stellar/emulator -mtime +7 | xargs rm`
+- [x] ~~Parent cache key tracking~~ → Recompute via `getSnapshotCacheKey()`; no Map needed. See "Cache Key Recomputation" section.
 
 ---
 
