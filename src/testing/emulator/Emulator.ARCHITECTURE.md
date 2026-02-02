@@ -226,7 +226,8 @@ type SnapshotDecoratorOptions = {
   resolveScriptDependencies?: ScriptDependencyResolver;
 }
 
-type ScriptDependencyResolver = (helper: CapoTestHelper) => Promise<CacheKeyInputs>;
+// Resolver uses `this` binding - SnapWrap binds to helper instance at runtime
+type ScriptDependencyResolver = (this: CapoTestHelper) => Promise<CacheKeyInputs>;
 
 type CacheKeyInputs = {
   bundles: Array<{
@@ -290,21 +291,36 @@ App snapshots inherit from `enabledDelegatesDeployed` and typically don't add ne
 
 ### SnapshotCache API
 
-**Location**: `.stellar/emu/{snapshotName}-{cacheKey}.json`
+**Location**: Hierarchical under `.stellar/emu/` — `{parentPath}/{name}-{cacheKey}/snapshot.json`
 
 ```typescript
 class SnapshotCache {
-  // Look up cached snapshot by key and name
-  find(cacheKey: string, snapshotName: string): Promise<CachedSnapshot | null>
+  // Internal registry of snapshot metadata (populated via register())
+  private registry: Map<string, {
+    parentSnapName: ParentSnapName;
+    resolveScriptDependencies: () => Promise<CacheKeyInputs>;  // bound to helper
+  }>;
 
-  // Store snapshot with key (name extracted from snapshot.name)
-  store(cacheKey: string, snapshot: CachedSnapshot): Promise<void>
+  // Register snapshot metadata (called from @hasNamedSnapshot decorator)
+  // NOTE: resolveScriptDependencies must be bound to helper instance by SnapWrap
+  // before registration, since arrow functions in decorator options would bind
+  // to class definition context, not instance. SnapWrap does: resolver.bind(this)
+  register(snapshotName: string, metadata: {
+    parentSnapName: ParentSnapName;
+    resolveScriptDependencies?: () => Promise<CacheKeyInputs>;  // pre-bound by SnapWrap
+  }): void
+
+  // Find snapshot by name - resolves parent chain via registry
+  find(snapshotName: string): Promise<CachedSnapshot | null>
+
+  // Store snapshot by name - computes path via registry
+  store(snapshotName: string, snapshot: CachedSnapshot): Promise<void>
 
   // Check if cached snapshot exists
-  has(cacheKey: string, snapshotName: string): boolean
+  has(snapshotName: string): boolean
 
-  // Delete cached snapshot
-  delete(cacheKey: string, snapshotName: string): boolean
+  // Delete cached snapshot and all children (recursive directory delete)
+  delete(snapshotName: string): boolean
 
   // Compute cache key from inputs
   computeKey(parentHash: string | null, inputs: CacheKeyInputs): string
@@ -548,7 +564,7 @@ class StellarNetworkEmulator implements Emulator {
 - [x] ~~Parent cache key tracking~~ → Recompute via `getSnapshotCacheKey()`; no Map needed. See "Cache Key Recomputation" section.
 - [ ] **Pending**: Migrate built-in snapshots (actors, capoInit, delegates) to use `@hasNamedSnapshot` decorator for consistent registration model
 - [ ] **Pending**: Add reqts for built-in snapshot decorator migration
-- [ ] **Pending**: Finalize SnapshotCache.find() and store() interface signatures for hierarchical directories
+- [x] ~~Finalize SnapshotCache.find() and store() interface signatures~~ → Name-based: `find(snapshotName)`, `store(snapshotName, snapshot)`. Path computed via registry.
 - [ ] **Pending**: Update Emulator.reqts.md to reflect hierarchical directories, just-in-time registration, and touch directories (not files)
 
 ---
