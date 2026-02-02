@@ -519,6 +519,7 @@ export class SnapshotCache {
         // Compute cache key using resolver
         let cacheKey: string;
         if (entry.resolveScriptDependencies) {
+            const inputs = await entry.resolveScriptDependencies();
             cacheKey = this.computeKey(parentHash, inputs);
         } else {
             // No resolver - use parent hash only (for simple snapshots)
@@ -555,6 +556,20 @@ export class SnapshotCache {
             }
 
             // Chain loading: concatenate parent blocks with incremental blocks (REQT-1.2.5.1)
+            if (parent) {
+                thisSnapshot.blocks = [...parent.snapshot.blocks, ...thisSnapshot.blocks];
+                thisSnapshot.blockHashes = [...parent.snapshot.blockHashes, ...thisSnapshot.blockHashes];
+
+                // Rebuild UTxO indexes from the full chain
+                const { allUtxos, consumedUtxos, addressUtxos } = rebuildUtxoIndexes(
+                    thisSnapshot.genesis,
+                    thisSnapshot.blocks
+                );
+                thisSnapshot.allUtxos = allUtxos;
+                thisSnapshot.consumedUtxos = consumedUtxos;
+                thisSnapshot.addressUtxos = addressUtxos;
+
+                console.log(`SnapshotCache: chain-loaded '${thisSnapshot.name}' (${thisSnapshot.blocks.length} blocks total)`);
             }
 
             // Verify snapshot integrity: computed block hash must match recorded snapshotHash (REQT-1.2.9.3.3)
@@ -574,6 +589,7 @@ export class SnapshotCache {
                 namedRecords: serialized.namedRecords,
                 parentSnapName: serialized.parentSnapName,
                 parentHash: serialized.parentHash,
+                parentCacheKey: serialized.parentCacheKey, // Deprecated but retained
                 snapshotHash: serialized.snapshotHash,
                 path: snapshotDir,
             };
@@ -637,6 +653,7 @@ export class SnapshotCache {
             namedRecords: cachedSnapshot.namedRecords,
             parentSnapName: cachedSnapshot.parentSnapName,
             parentHash: cachedSnapshot.parentHash,
+            parentCacheKey: cachedSnapshot.parentCacheKey, // Deprecated but retained
             parentBlockCount,
             snapshotHash: cachedSnapshot.snapshotHash,
         };
