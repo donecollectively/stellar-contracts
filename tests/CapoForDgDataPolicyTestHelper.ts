@@ -87,7 +87,10 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return this.strella;
     }
 
-    @CapoTestHelper.hasNamedSnapshot("installingTestDataPolicy", "tina")
+    @CapoTestHelper.hasNamedSnapshot("installingTestDataPolicy", {
+        actor: "tina",
+        parentSnapName: "bootstrapped",
+    })
     async snapToInstallingTestDataPolicy() {
         console.log("never called");
         return this.installingTestDataPolicy();
@@ -102,7 +105,10 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return this.submitTxnWithBlock(tcx);
     }
 
-    @CapoTestHelper.hasNamedSnapshot("hasTestDataPolicyDgt", "tina")
+    @CapoTestHelper.hasNamedSnapshot("hasTestDataPolicyDgt", {
+        actor: "tina",
+        parentSnapName: "installingTestDataPolicy",
+    })
     async snapToInstalledTestDataPolicy() {
         console.log("never called");
         return this.installedTestDataPolicy();
@@ -115,7 +121,10 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return this.submitTxnWithBlock(tcx);
     }
 
-    @CapoTestHelper.hasNamedSnapshot("replacingTestDataPolicy", "tina")
+    @CapoTestHelper.hasNamedSnapshot("replacingTestDataPolicy", {
+        actor: "tina",
+        parentSnapName: "hasTestDataPolicyDgt",
+    })
     async snapToReplacingTestDataPolicy() {
         console.log("never called");
         return this.replacingTestDataPolicy();

@@ -31,7 +31,7 @@ export type ParentSnapName =
     | "capoInitialized"             // capo charter minted
     | "enabledDelegatesDeployed"    // delegates deployed
     | "bootstrapped"                // symbolic alias → "enabledDelegatesDeployed"
-    | (string & {});                // custom snapshot name
+    | (string & Record<never, never>);  // custom snapshot name (preserves autocomplete for literals above)
 
 /**
  * A snapshot stored in the cache, including metadata for chaining.
@@ -395,6 +395,12 @@ export class SnapshotCache {
 
     /** Registry of snapshot metadata for resolving parent chain and computing cache keys */
     private registry: Map<string, SnapshotRegistryEntry> = new Map();
+
+    /**
+     * Process-lifetime cache of loaded snapshots (REQT-1.2.10.3).
+     * Avoids redundant disk reads and tx reconstruction across tests.
+     */
+    private loadedSnapshots: Map<string, CachedSnapshot> = new Map();
 
     constructor(projectRoot?: string) {
         const root = projectRoot || this.findProjectRoot();

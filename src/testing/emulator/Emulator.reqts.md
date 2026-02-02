@@ -313,17 +313,17 @@ type CacheKeyInputs = {
 }
 ```
 
-### REQT-3.3/7hcqed9mvn: COMPLETED: **Built-in Snapshot Registration**
+### REQT-3.3/7hcqed9mvn: IN-PROGRESS: **Built-in Snapshot Registration**
 
 #### Purpose: Ensures consistent registration model for all snapshots, including built-ins. Applied when implementing hierarchical directory support or modifying snapshot orchestration.
 
- - **REQT-3.3.1/fz89t5wkrw**: COMPLETED: Built-in snapshots (`bootstrapWithActors`, `capoInitialized`, `enabledDelegatesDeployed`) MUST be registered with SnapshotCache before use. The `@hasNamedSnapshot` decorator pattern is preferred for snapshots with builder methods; programmatic registration via `snapshotCache.register()` is acceptable for snapshots created during bootstrap flow.
+ - **REQT-3.3.1/fz89t5wkrw**: IN-PROGRESS: Built-in snapshots (`bootstrapWithActors`, `capoInitialized`, `enabledDelegatesDeployed`) MUST be registered with SnapshotCache before use. All built-in snapshots MUST use the `@hasNamedSnapshot` decorator pattern for consistency and unified cache orchestration.
  - **REQT-3.3.2/1vtn22as3f**: COMPLETED: Each built-in snapshot MUST register its metadata (parentSnapName, resolveScriptDependencies) with SnapshotCache before use
- - **REQT-3.3.3/p4mrpyyady**: COMPLETED: `bootstrapWithActors` MUST declare `parentSnapName: "genesis"` and use `resolveActorsDependencies()` resolver (uses @hasNamedSnapshot decorator)
- - **REQT-3.3.4/pj9agtaypq**: NEXT: `capoInitialized` MUST declare `parentSnapName: "bootstrapWithActors"` and use `resolveCoreCapoDependencies()` resolver (uses programmatic registration in registerCapoSnapshots())
- - **REQT-3.3.5/5qyt5xzvv1**: NEXT: `enabledDelegatesDeployed` MUST declare `parentSnapName: "capoInitialized"` and use `resolveEnabledDelegatesDependencies()` resolver (uses programmatic registration in registerCapoSnapshots())
+ - **REQT-3.3.3/p4mrpyyady**: COMPLETED: `bootstrapWithActors` MUST use `@hasNamedSnapshot` decorator with `parentSnapName: "genesis"` and `resolveActorsDependencies()` resolver
+ - **REQT-3.3.4/pj9agtaypq**: NEXT: `capoInitialized` MUST use `@hasNamedSnapshot` decorator with `parentSnapName: "bootstrapWithActors"` and `resolveCoreCapoDependencies()` resolver
+ - **REQT-3.3.5/5qyt5xzvv1**: NEXT: `enabledDelegatesDeployed` MUST use `@hasNamedSnapshot` decorator with `parentSnapName: "capoInitialized"` and `resolveEnabledDelegatesDependencies()` resolver
 
-> **RATIONALE (id:7hcqed9mvn)**: All snapshots—including built-ins—must register with SnapshotCache. This enables SnapshotCache to resolve the full parent chain via registry lookup, which is required for hierarchical directory path construction. The decorator pattern is used for `bootstrapWithActors` which has a builder method; programmatic registration is used for `capoInitialized` and `enabledDelegatesDeployed` which are created as part of the bootstrap flow.
+> **RATIONALE (id:7hcqed9mvn)**: All snapshots—including built-ins—must register with SnapshotCache via `@hasNamedSnapshot` decorator. This enables unified cache orchestration, consistent parent chain resolution, and hierarchical directory path construction. The decorator pattern handles cache check, build-if-miss, and store automatically.
 
 ## Component: StellarTestHelper
 

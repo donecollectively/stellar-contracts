@@ -38,6 +38,7 @@
 | Emulator state | artifact | StellarNetworkEmulator | CapoTestHelper, SnapshotCache |
 | Snapshot chain | artifact | SnapshotCache | CapoTestHelper |
 | Cache files | artifact | SnapshotCache | - |
+| Loaded snapshots | resource | SnapshotCache | Process-lifetime cache for REQT-1.2.10 |
 | Bundle hashes | artifact | HeliosScriptBundle | SnapshotCache |
 | Compile cache | artifact | CachedHeliosProgram | HeliosScriptBundle |
 | namedRecords | artifact | CapoTestHelper | Persisted with snapshot, restored on load |
@@ -90,6 +91,8 @@
 - Track registered snapshot metadata (name → parentSnapName, resolver) via just-in-time registration
 - Persist snapshots to `.stellar/emu/` in hierarchical directory structure
 - Load snapshots from disk, recursively resolving parent chain
+- Cache loaded snapshots in memory for process lifetime (REQT-1.2.10.3)
+- Apply incremental blocks to parent UTxO state (REQT-1.2.10.1, 1.2.10.2)
 - Compute cache keys from bundle hashes + params
 - Manage freshness (touch directories > 1 day old on access)
 - Invalidate stale entries automatically via hash mismatch
@@ -97,6 +100,7 @@
 **Concerns**:
 - Owns **Cache files** (`.stellar/emu/`)
 - Owns **Snapshot chain** hierarchy (base → capoInitialized → enabledDelegatesDeployed → app)
+- Owns **Loaded snapshots** (`loadedSnapshots` Map, process-lifetime cache)
 - Depends on **Bundle hashes** for cache key computation
 - Depends on **namedRecords** (persists with snapshot)
 
@@ -301,6 +305,10 @@ class SnapshotCache {
     resolveScriptDependencies: () => Promise<CacheKeyInputs>;  // bound to helper
   }>;
 
+  // Process-lifetime cache of loaded snapshots (REQT-1.2.10.3)
+  // Key: snapshotName, Value: fully-loaded CachedSnapshot with accumulated UTxO state
+  private loadedSnapshots: Map<string, CachedSnapshot> = new Map();
+
   // Register snapshot metadata (called from @hasNamedSnapshot decorator)
   // NOTE: resolveScriptDependencies must be bound to helper instance by SnapWrap
   // before registration, since arrow functions in decorator options would bind
@@ -311,6 +319,8 @@ class SnapshotCache {
   }): void
 
   // Find snapshot by name - resolves parent chain via registry
+  // Returns from loadedSnapshots if present; otherwise loads from disk
+  // Uses incremental UTxO application (REQT-1.2.10.1, 1.2.10.2)
   find(snapshotName: string): Promise<CachedSnapshot | null>
 
   // Store snapshot by name - computes path via registry
@@ -325,6 +335,12 @@ class SnapshotCache {
   // Compute cache key from inputs
   computeKey(parentHash: string | null, inputs: CacheKeyInputs): string
 }
+
+// Internal helper for incremental UTxO state building (REQT-1.2.10.1)
+function applyIncrementalBlocks(
+  parentState: { allUtxos, consumedUtxos, addressUtxos },
+  incrementalBlocks: EmulatorTx[][]
+): { allUtxos, consumedUtxos, addressUtxos }
 
 type CachedSnapshot = {
   snapshot: NetworkSnapshot;       // the network snapshot data
@@ -344,7 +360,7 @@ type CachedSnapshot = {
 - Parent relationship implicit in directory structure; enables `rm -rf` for subtree deletion
 
 **Behavior**:
-- `find()`: Returns null on miss; touches directory if mtime > 1 day; recursively ensures parent chain via registered metadata; verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild)
+- `find()`: First checks `loadedSnapshots` Map (returns cached if present); on disk load: touches directory if mtime > 1 day; recursively ensures parent chain via registered metadata; applies incremental blocks to parent's UTxO state (not full rebuild); verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild); caches result in `loadedSnapshots` before returning
 - `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON with incremental blocks only
 - `computeKey()`: `hash(parentHash + JSON.stringify(inputs))`
 
@@ -477,22 +493,33 @@ class StellarNetworkEmulator implements Emulator {
 
 **ARCH-UUT**: ARCH-aydwtq95c3
 
+Bootstrap proceeds through three snapshot layers. Each layer uses `@hasNamedSnapshot` decorator which handles cache check, build-if-miss, and store automatically (per REQT-3.3):
+
 1. **Test Suite** calls `reusableBootstrap()` on **CapoTestHelper**
-2. **CapoTestHelper** calls `resolveScriptDependencies()` → cache key
-3. **CapoTestHelper** checks **SnapshotCache** for cache hit
-4. Cache miss → **CapoTestHelper** runs bootstrap via **Capo**
-5. **Capo** compiles contracts via **CachedHeliosProgram**
-6. **CapoTestHelper** captures snapshot from **StellarNetworkEmulator**
-7. **CapoTestHelper** stores snapshot + namedRecords in **SnapshotCache**
+2. **CapoTestHelper** calls `bootstrap()` which proceeds through layers:
+
+**Layer 1: `snapToBootstrapWithActors()`** → `@hasNamedSnapshot("bootstrapWithActors", {parentSnapName: "genesis"})`
+- `findOrCreateSnapshot()` checks cache, runs `bootstrapWithActors()` builder on miss
+
+**Layer 2: `snapToCapoInitialized()`** → `@hasNamedSnapshot("capoInitialized", {parentSnapName: "bootstrapWithActors"})`
+- `findOrCreateSnapshot()` checks cache, runs `capoInitialized()` builder on miss (mints charter via **Capo**)
+
+**Layer 3: `snapToEnabledDelegatesDeployed()`** → `@hasNamedSnapshot("enabledDelegatesDeployed", {parentSnapName: "capoInitialized"})`
+- `findOrCreateSnapshot()` checks cache, runs `enabledDelegatesDeployed()` builder on miss (deploys delegates)
 
 ```
-[Test] → [CapoTestHelper] → [SnapshotCache] → miss
-                ↓
-         [Capo] → [CachedHeliosProgram]
-                ↓
-    [StellarNetworkEmulator] → snapshot
-                ↓
-         [SnapshotCache] ← store
+[Test] → reusableBootstrap() → bootstrap()
+              │
+              ▼
+   snapToBootstrapWithActors() ──@hasNamedSnapshot──▶ findOrCreateSnapshot()
+              │                                              │
+              ▼                                        miss? → build → store
+   snapToCapoInitialized() ──────@hasNamedSnapshot──▶ findOrCreateSnapshot()
+              │                                              │
+              ▼                                        miss? → build → store
+   snapToEnabledDelegatesDeployed() ─@hasNamedSnapshot─▶ findOrCreateSnapshot()
+                                                             │
+                                                       miss? → build → store
 ```
 
 ### Workflow: Cached Bootstrap (cache hit)
@@ -511,6 +538,78 @@ class StellarNetworkEmulator implements Emulator {
                 ↓
       [StellarTestHelper] ← wallet transfer
 ```
+
+### Workflow: Disk Chain Load (cold cache, REQT-1.2.10)
+
+**ARCH-UUT**: ARCH-kqc3jng98y
+
+Efficient loading when all snapshots are on disk but not yet in memory. Uses incremental UTxO state application instead of full rebuild.
+
+1. **Test Suite** calls `snapToX("enabledDelegatesDeployed")`
+2. **SnapshotCache** checks `loadedSnapshots` Map → miss
+3. **SnapshotCache** looks up registry → `parentSnapName: "capoInitialized"`
+4. **Recursive**: `find("capoInitialized")` → `find("bootstrapWithActors")` → `find("genesis")`
+5. **At each level** (bottom-up):
+   - Check `loadedSnapshots` Map → miss (first load)
+   - Read JSON from disk (incremental blocks only)
+   - Deserialize blocks → `EmulatorTx[]`
+   - **Apply incremental blocks** to parent's UTxO state (NOT full rebuild)
+   - Cache result in `loadedSnapshots` Map
+   - Return `CachedSnapshot` with full accumulated state
+6. **CapoTestHelper** restores to **StellarNetworkEmulator**
+
+```
+[Test] → snapToX("enabledDelegatesDeployed")
+    ↓
+[SnapshotCache.find()] → loadedSnapshots miss
+    ↓
+[Recursive parent resolution]
+    genesis (empty state)
+        ↓ apply incremental blocks
+    bootstrapWithActors (actors UTxOs)
+        ↓ apply incremental blocks
+    capoInitialized (+ charter UTxO)
+        ↓ apply incremental blocks
+    enabledDelegatesDeployed (+ delegate UTxOs)
+    ↓
+[Cache each level in loadedSnapshots Map]
+    ↓
+[Emulator.loadSnapshot()] ← full accumulated state
+```
+
+**Key optimization**: `applyIncrementalBlocks(parentState, newBlocks)` instead of `rebuildUtxoIndexes(genesis, allBlocks)`. Reduces O(n²) to O(n) for chain depth n.
+
+### Workflow: Memory-Assisted Load (warm cache, REQT-1.2.10.3)
+
+**ARCH-UUT**: ARCH-tz34av7n63
+
+Efficient loading when parent snapshots are already in process memory from prior `snapToX()` calls.
+
+1. **Test Suite** calls `snapToX("appSnapshot")` (second test in file)
+2. **SnapshotCache** checks `loadedSnapshots` Map for `"enabledDelegatesDeployed"` → **hit**
+3. **SnapshotCache** reuses cached parent's full UTxO state
+4. **SnapshotCache** reads only `appSnapshot.json` from disk
+5. **SnapshotCache** deserializes incremental blocks
+6. **SnapshotCache** applies incremental blocks to cached parent state
+7. **CapoTestHelper** restores to **StellarNetworkEmulator**
+
+```
+[Test 2] → snapToX("appSnapshot")
+    ↓
+[SnapshotCache.find("appSnapshot")]
+    ↓
+[Registry] → parent: "enabledDelegatesDeployed"
+    ↓
+[loadedSnapshots.get("enabledDelegatesDeployed")] → HIT (from Test 1)
+    ↓
+[Read appSnapshot.json] → incremental blocks only
+    ↓
+[applyIncrementalBlocks(cachedParent.state, newBlocks)]
+    ↓
+[Emulator.loadSnapshot()]
+```
+
+**Session lifetime**: The `loadedSnapshots` Map persists for the test process lifetime. Within a test file (or across files in the same vitest run), parent snapshots loaded by earlier tests are reused by later tests.
 
 ### Workflow: Cache Invalidation
 
@@ -539,6 +638,8 @@ class StellarNetworkEmulator implements Emulator {
 | **`parentHash` verification** | Detects stale cache when parent was rebuilt with same inputs but different resulting state; returns null to trigger rebuild |
 | **Cache key recomputation** | No Map needed—resolvers are deterministic, parent hashes stored in helperState |
 | **`fromSnapshot` cleared on pushBlock** | Provenance tracking; diverged state shouldn't claim snapshot identity |
+| **`loadedSnapshots` Map** (REQT-1.2.10.3) | Process-lifetime cache avoids redundant disk reads and tx reconstruction across tests |
+| **Incremental UTxO application** (REQT-1.2.10.1) | `applyIncrementalBlocks()` instead of full `rebuildUtxoIndexes()` reduces O(n²) to O(n) for chain depth |
 
 ---
 

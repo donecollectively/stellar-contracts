@@ -100,7 +100,10 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         return this.strella;
     }
 
-    @CapoTestHelper.hasNamedSnapshot("firstReqt", "tina")
+    @CapoTestHelper.hasNamedSnapshot("firstReqt", {
+        actor: "tina",
+        parentSnapName: "bootstrapped",
+    })
     async snapToFirstReqt() {
         console.log("never called");
         return this.firstReqt();
@@ -117,7 +120,10 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         return this.createReqt(reqtsController.exampleData());
     }
 
-    @CapoTestHelper.hasNamedSnapshot("firstDependentReqt", "tina")
+    @CapoTestHelper.hasNamedSnapshot("firstDependentReqt", {
+        actor: "tina",
+        parentSnapName: "firstReqt",
+    })
     async snapToFirstDependentReqt() {
         console.log("never called");
         return this.firstDependentReqt();

@@ -45,9 +45,10 @@ export type AnyCapoTestHelper = CapoTestHelper<Capo<any>, Record<string, any>>;
 
 /**
  * Callback type for resolving script dependencies for cache key computation.
+ * Uses `this` binding - SnapWrap binds to helper instance at runtime.
  * @public
  */
-export type ScriptDependencyResolver = (helper: AnyCapoTestHelper) => Promise<CacheKeyInputs>;
+export type ScriptDependencyResolver = (this: AnyCapoTestHelper) => Promise<CacheKeyInputs>;
 
 /**
  * Options for the hasNamedSnapshot decorator.
@@ -55,8 +56,8 @@ export type ScriptDependencyResolver = (helper: AnyCapoTestHelper) => Promise<Ca
  */
 export type SnapshotDecoratorOptions = {
     actor: string;
-    /** Parent snapshot name. Defaults to SNAP_DELEGATES if omitted. Use "genesis" for root snapshots. */
-    parentSnapName?: ParentSnapName;
+    /** Parent snapshot name. Required. Use "genesis" for root snapshots, "bootstrapped" for typical app snapshots. */
+    parentSnapName: ParentSnapName;
     resolveScriptDependencies?: ScriptDependencyResolver;
 };
 
@@ -449,12 +450,15 @@ export abstract class CapoTestHelper<
      */
     static hasNamedSnapshot(
         snapshotName: string,
-        options: string | SnapshotDecoratorOptions,
+        options: SnapshotDecoratorOptions,
     ) {
-        const opts: SnapshotDecoratorOptions = typeof options === "string"
-            ? { actor: options }
-            : options;
-        const { actor: actorName, parentSnapName = SNAP_DELEGATES, resolveScriptDependencies } = opts;
+        const { actor: actorName, parentSnapName, resolveScriptDependencies } = options;
+        if (!parentSnapName) {
+            throw new Error(
+                `hasNamedSnapshot('${snapshotName}'): parentSnapName is required. ` +
+                `Use 'bootstrapped' for typical app snapshots, or 'genesis' for root snapshots.`
+            );
+        }
 
         return function (
             target: any,
@@ -496,8 +500,9 @@ export abstract class CapoTestHelper<
                 }
 
                 // Register snapshot with the cache (resolver bound to this helper instance)
+                // The resolver uses `this` binding, so we bind it to the current helper instance
                 const boundResolver = resolveScriptDependencies
-                    ? async () => resolveScriptDependencies(this)
+                    ? resolveScriptDependencies.bind(this)
                     : undefined;
                 this.snapshotCache.register(snapshotName, {
                     parentSnapName,
@@ -558,63 +563,18 @@ export abstract class CapoTestHelper<
     @CapoTestHelper.hasNamedSnapshot(SNAP_ACTORS, {
         actor: "default",
         parentSnapName: "genesis",
-        resolveScriptDependencies: async (h) => {
+        // Uses `this` binding - SnapWrap binds resolver to helper instance at runtime
+        async resolveScriptDependencies() {
             // Ensure actors are set up so we can compute cache key
-            if (h.actorSetupInfo.length === 0) {
-                await h.setupActors();
+            if (this.actorSetupInfo.length === 0) {
+                await this.setupActors();
                 // DON'T tick here - let the decorator handle tick after builder
             }
-            return h.resolveActorsDependencies();
+            return this.resolveActorsDependencies();
         },
     })
     async snapToBootstrapWithActors(): Promise<void> {
         // Decorator calls bootstrapWithActors() and handles caching
-    }
-
-    /**
-     * Sets up actors with disk cache support.
-     * @deprecated Use snapToBootstrapWithActors() instead
-     * @internal
-     */
-    async setupActorsWithCache(): Promise<void> {
-        console.log("  -- 🎭🎭🎭 actor setup...");
-
-        // Always run setupActors to populate actorSetupInfo
-        await this.setupActors();
-        this.network.tick(1);
-
-        // Ensure helperState exists for disk caching
-        this.ensureHelperState();
-
-        // Compute cache key based on actor setup info
-        const cacheKeyInputs = this.resolveActorsDependencies();
-        const cacheKey = this.snapshotCache.computeKey(null, cacheKeyInputs);
-
-        // Check disk cache
-        const cached = await this.snapshotCache.find(cacheKey, SNAP_ACTORS);
-        if (cached) {
-            console.log(`  -- 🎭 actors snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
-            // Restore network state from cache
-            this.network.loadSnapshot(cached.snapshot);
-            this.helperState.snapshots[SNAP_ACTORS] = cached.snapshot;
-        } else {
-            console.log(`  -- 🎭 actors snapshot cache MISS (key: ${cacheKey.slice(0, 8)}...)`);
-            // Create and save snapshot
-            const snapshot = this.network.snapshot(SNAP_ACTORS);
-            this.helperState.snapshots[SNAP_ACTORS] = snapshot;
-
-            const cachedSnapshot: CachedSnapshot = {
-                snapshot,
-                namedRecords: {},
-                parentSnapName: "genesis",
-                parentHash: null,
-                parentCacheKey: null,  // Root snapshot has no parent
-                snapshotHash: this.network.lastBlockHash,
-            };
-            await this.snapshotCache.store(cacheKey, cachedSnapshot, 0);
-        }
-
-        await this.setDefaultActor();
     }
 
     /**
@@ -653,6 +613,8 @@ export abstract class CapoTestHelper<
         actorName: string,
         contentBuilder: () => Promise<StellarTxnContext<any>>,
     ): Promise<SC> {
+        const startTime = performance.now();
+
         // Check registry to determine if this is a genesis (actors) snapshot
         const entry = this.snapshotCache["registry"].get(snapshotName);
         const isGenesisSnapshot = entry?.parentSnapName === "genesis";
@@ -660,43 +622,45 @@ export abstract class CapoTestHelper<
         // First check in-memory snapshots
         if (this.helperState!.snapshots[snapshotName]) {
             if (isGenesisSnapshot) {
-                console.log(`findOrCreateSnapshot: in-memory hit for genesis '${snapshotName}'`);
+                const t0 = performance.now();
                 // For genesis snapshots (actors), just restore network state
                 // No capo exists yet, so we can't use restoreFrom()
                 this.network.loadSnapshot(this.helperState!.snapshots[snapshotName]);
 
                 // Restore actorSetupInfo from namedRecords if available
                 const actorSetupInfoJson = this.helperState!.namedRecords["__actorSetupInfo__"];
-                console.log(`  actorSetupInfo from namedRecords: ${actorSetupInfoJson ? "found" : "NOT FOUND"}`);
                 if (actorSetupInfoJson && this.actorSetupInfo.length === 0) {
                     this.actorSetupInfo = JSON.parse(actorSetupInfoJson);
-                    console.log(`  parsed ${this.actorSetupInfo.length} actors from namedRecords`);
                 }
 
                 // Regenerate actors from PRNG using actorSetupInfo
-                console.log(`  actorSetupInfo=${this.actorSetupInfo.length}, actors=${Object.keys(this.actors).length}`);
                 if (this.actorSetupInfo.length > 0 && Object.keys(this.actors).length === 0) {
                     this.regenerateActorsFromSetupInfo();
                 }
 
                 // Set actor (might be "default" which calls setDefaultActor)
-                console.log(`  actors after regeneration: ${Object.keys(this.actors).join(", ") || "EMPTY"}`);
                 if (actorName === "default") {
                     await this.setDefaultActor();
                 } else if (this.actors[actorName]) {
                     await this.setActor(actorName);
                 }
+                const elapsed = (performance.now() - t0).toFixed(1);
+                console.log(`  ⚡ in-memory hit (genesis) '${snapshotName}': ${elapsed}ms`);
                 return this.strella; // May be undefined for actors, that's OK
             }
+            // In-memory hit for non-genesis snapshot
+            const t0 = performance.now();
             const capo = await this.restoreFrom(snapshotName);
             await this.setActor(actorName);
+            const elapsed = (performance.now() - t0).toFixed(1);
+            console.log(`  ⚡ in-memory hit '${snapshotName}': ${elapsed}ms`);
             return capo;
         }
 
         // Try disk cache using registry-based API
+        const diskStart = performance.now();
         const cached = await this.snapshotCache.find(snapshotName);
         if (cached) {
-            console.log(`SnapshotCache: hit for ${snapshotName}`);
             // Restore from disk cache
             this.network.loadSnapshot(cached.snapshot);
             Object.assign(this.helperState!.namedRecords, cached.namedRecords);
@@ -720,25 +684,33 @@ export abstract class CapoTestHelper<
                 } else if (this.actors[actorName]) {
                     await this.setActor(actorName);
                 }
+                const elapsed = (performance.now() - diskStart).toFixed(1);
+                console.log(`  💾 disk cache hit (genesis) '${snapshotName}': ${elapsed}ms`);
                 return this.strella; // May be undefined for actors, that's OK
             }
-            console.log(`SnapshotCache: miss for ${snapshotName} (key: ${cacheKey.slice(0, 8)}...)`);
 
+            // Disk cache hit for non-genesis snapshot
             await this.setActor(actorName);
+            const elapsed = (performance.now() - diskStart).toFixed(1);
+            console.log(`  💾 disk cache hit '${snapshotName}': ${elapsed}ms`);
             return this.strella;
         }
-        console.log(`SnapshotCache: miss for ${snapshotName}`);
+        console.log(`  📦 cache miss '${snapshotName}' - building...`);
 
         // Build the snapshot
+        const buildStart = performance.now();
         let succeeded = false;
         try {
             await contentBuilder();
             succeeded = true;
+            const buildElapsed = (performance.now() - buildStart).toFixed(1);
+            console.log(`  🐢 built '${snapshotName}': ${buildElapsed}ms`);
             return this.strella;
         } catch (e) {
             throw e;
         } finally {
             if (succeeded) {
+                const storeStart = performance.now();
                 this.snapshot(snapshotName);
 
                 // Store to disk cache using registry-based API
@@ -769,6 +741,8 @@ export abstract class CapoTestHelper<
                 };
 
                 await this.snapshotCache.store(snapshotName, cachedSnapshot);
+                const storeElapsed = (performance.now() - storeStart).toFixed(1);
+                console.log(`  💾 stored '${snapshotName}' to disk: ${storeElapsed}ms`);
             }
         }
     }
