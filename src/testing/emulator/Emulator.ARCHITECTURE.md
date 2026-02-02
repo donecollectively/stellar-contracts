@@ -194,7 +194,7 @@
 
 ## Interface Contracts (Deep Interview)
 
-### resolveScriptDependencies
+### SnapshotDecoratorOptions
 
 **Ownership**: Per-snapshot, declared in `@hasNamedSnapshot` decorator options
 
@@ -202,8 +202,25 @@
 ```typescript
 @hasNamedSnapshot("snapshotName", {
   actor: "actorName",
-  resolveScriptDependencies: (parent?: NetworkSnapshot) => CacheKeyInputs
+  parentSnapName: "parentSnapshotName",
+  resolveScriptDependencies: (helper) => CacheKeyInputs
 })
+
+type ParentSnapName =
+    | "genesis"                         // root level (no parent)
+    | "bootstrapWithActors"             // actors initialized
+    | "capoInitialized"                 // capo charter minted
+    | "enabledDelegatesDeployed"        // delegates deployed
+    | "bootstrapped"                    // symbolic alias → "enabledDelegatesDeployed"
+    | (string & {});                    // custom snapshot name
+
+type SnapshotDecoratorOptions = {
+  actor: string;                        // actor to set after loading
+  parentSnapName: ParentSnapName;       // explicit parent snapshot name
+  resolveScriptDependencies?: ScriptDependencyResolver;
+}
+
+type ScriptDependencyResolver = (helper: CapoTestHelper) => Promise<CacheKeyInputs>;
 
 type CacheKeyInputs = {
   bundles: Array<{
@@ -215,14 +232,24 @@ type CacheKeyInputs = {
 }
 ```
 
-**Flow**:
-1. `snapToX()` called
-2. Get/build parent snapshot → parent hash
-3. Call this snapshot's `resolveScriptDependencies(parent)` → cache key inputs
-4. Compute cache key: `hash(parentHash + inputs)`
-5. Check cache → hit: load; miss: run builder, store with namedRecords
+**Built-in Parent Relationships**:
+- `bootstrapWithActors` → parent: `"genesis"`
+- `capoInitialized` → parent: `"bootstrapWithActors"`
+- `enabledDelegatesDeployed` → parent: `"capoInitialized"`
+- App snapshots → typically parent: `"enabledDelegatesDeployed"`
 
-**Default**: Iterates Capo's enabled delegates via `delegateRoles`, calls each bundle's `getEffectiveModuleList()`, hashes `source.content` for each.
+**Resolution Flow**:
+1. `snapToX()` called
+2. Read `parentSnap` from decorator options
+3. Recursively ensure parent loaded: `ensureSnapshot(parentSnap)`
+4. Call `resolveScriptDependencies(helper)` → cache key inputs
+5. Compute cache key: `hash(parent.snapshotHash + inputs)`
+6. Build cache path: `parent.path + "{name}-{cacheKey}/"`
+7. Check cache → hit: load incremental; miss: run builder, store
+
+See `snapshot-resolution.md` for detailed recursive walk-through.
+
+**Default Resolver**: Iterates Capo's enabled delegates via `delegateRoles`, calls each bundle's `getEffectiveModuleList()`, hashes `source.content` for each.
 
 ### Built-in Resolvers (CapoTestHelper)
 
@@ -278,12 +305,12 @@ class SnapshotCache {
 }
 
 type CachedSnapshot = {
-  snapshot: NetworkSnapshot;
+  name: string;                    // snapshot name (e.g., "capoInitialized")
+  parentSnapName: ParentSnapName;  // parent snapshot name ("genesis" for root)
+  parentHash: string | null;       // parent's snapshotHash (for verification)
+  blocks: SerializedBlock[];       // incremental blocks since parent
   namedRecords: Record<string, string>;
-  parentName: string | null;       // logical parent name
-  parentHash: string | null;       // parent's block hash (for validation)
-  parentCacheKey: string | null;   // parent's cache key (for O(1) file lookup)
-  snapshotHash: string;            // this snapshot's block hash
+  snapshotHash: string;            // this snapshot's resulting block hash
 }
 ```
 
