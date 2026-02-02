@@ -293,6 +293,18 @@ type CacheKeyInputs = {
 }
 ```
 
+### REQT-3.3/7hcqed9mvn: NEXT: **Built-in Snapshot Registration**
+
+#### Purpose: Ensures consistent registration model for all snapshots, including built-ins. Applied when implementing hierarchical directory support or modifying snapshot orchestration.
+
+ - **REQT-3.3.1/fz89t5wkrw**: NEXT: Built-in snapshots (`bootstrapWithActors`, `capoInitialized`, `enabledDelegatesDeployed`) MUST use the `@hasNamedSnapshot` decorator pattern for consistent just-in-time registration
+ - **REQT-3.3.2/1vtn22as3f**: NEXT: Each built-in snapshot MUST register its metadata (parentSnapName, resolveScriptDependencies) with SnapshotCache before use
+ - **REQT-3.3.3/p4mrpyyady**: NEXT: `bootstrapWithActors` MUST declare `parentSnapName: "genesis"` and use `resolveActorsDependencies()` resolver
+ - **REQT-3.3.4/pj9agtaypq**: NEXT: `capoInitialized` MUST declare `parentSnapName: "bootstrapWithActors"` and use `resolveCoreCapoDependencies()` resolver
+ - **REQT-3.3.5/5qyt5xzvv1**: NEXT: `enabledDelegatesDeployed` MUST declare `parentSnapName: "capoInitialized"` and use `resolveEnabledDelegatesDependencies()` resolver
+
+> **RATIONALE (id:7hcqed9mvn)**: All snapshots—including built-ins—use the same decorator-based registration pattern. This enables SnapshotCache to resolve the full parent chain via registry lookup, which is required for hierarchical directory path construction.
+
 ## Component: StellarTestHelper
 
 ### REQT-4.0/473wtxxe8d: COMPLETED: **Actor Snapshot Transfer**

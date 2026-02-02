@@ -564,8 +564,8 @@ class StellarNetworkEmulator implements Emulator {
 - [x] ~~Project root detection~~ → Walk up to find package.json
 - [x] ~~Cleanup command~~ → `find .stellar/emu -mtime +7 -type d | xargs rm -rf` (directories, not files)
 - [x] ~~Parent cache key tracking~~ → Recompute via `getSnapshotCacheKey()`; no Map needed. See "Cache Key Recomputation" section.
-- [ ] **Pending**: Migrate built-in snapshots (actors, capoInit, delegates) to use `@hasNamedSnapshot` decorator for consistent registration model
-- [ ] **Pending**: Add reqts for built-in snapshot decorator migration
+- [x] ~~Migrate built-in snapshots (actors, capoInit, delegates) to use `@hasNamedSnapshot` decorator for consistent registration model~~ → Reqts added: REQT-3.3 (Built-in Snapshot Registration)
+- [x] ~~Add reqts for built-in snapshot decorator migration~~ → Done: REQT-3.3.1 through 3.3.5
 - [x] ~~Finalize SnapshotCache.find() and store() interface signatures~~ → Name-based: `find(snapshotName)`, `store(snapshotName, snapshot)`. Path computed via registry.
 - [x] ~~Update Emulator.reqts.md to reflect hierarchical directories, just-in-time registration, and touch directories (not files)~~ → Done: REQT-1.2.7.1, 1.2.9.x updated; parentCacheKey deprecated
 - [ ] **Cleanup after impl**: Remove deprecated `parentCacheKey` references from this doc (CachedSnapshot type, code examples) once hierarchical dirs are working

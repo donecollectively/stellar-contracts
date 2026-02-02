@@ -104,6 +104,8 @@ Standard deep-architect interview phases remain:
 - [x] File naming pattern: updated to `{parentPath}/{name}-{key}/snapshot.json`
 - [x] Interface payload: removed "cache key" from CapoTestHelper → SnapshotCache payload
 - [x] Key Decisions: "Touch files" → "Touch directories"
+- [x] Requirements (Emulator.reqts.md): updated REQT-1.2.7.1, 1.2.9.x for hierarchical directories; deprecated parentCacheKey
+- [x] Requirements: added REQT-3.3 (Built-in Snapshot Registration) for decorator-based registration of built-ins
 
 ## Key Decisions Made
 
@@ -184,7 +186,7 @@ After updating ARCHITECTURE.md, ensure JSONL records match:
 | CachedSnapshot type | DONE - parentCacheKey marked "DO NOT USE" |
 | File naming section | DONE - updated for hierarchical |
 | Behavior descriptions | PARTIAL - some updated, verify all |
-| Requirements (reqts.md) | NOT STARTED - still references flat files |
+| Requirements (reqts.md) | DONE - updated for hierarchical directories |
 | Key Design Decisions table | DONE - updated |
 | Resolution Flow section | CHECK - may need updates |
 | Cache Key Recomputation section | CHECK - may reference old patterns |
