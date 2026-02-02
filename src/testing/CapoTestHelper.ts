@@ -123,6 +123,7 @@ export abstract class CapoTestHelper<
 
     /** Disk cache for snapshots, enabling fast test restarts */
     snapshotCache: SnapshotCache = new SnapshotCache();
+
     constructor(
         config?: SC extends Capo<any, infer FF>
             ? ConfigFor<SC> & CapoConfig<FF>
@@ -502,7 +503,7 @@ export abstract class CapoTestHelper<
         const cacheKey = this.snapshotCache.computeKey(null, cacheKeyInputs);
 
         // Check disk cache
-        const cached = await this.snapshotCache.find(cacheKey);
+        const cached = await this.snapshotCache.find(cacheKey, SNAP_ACTORS);
         if (cached) {
             console.log(`  -- 🎭 actors snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
             // Restore network state from cache
@@ -519,9 +520,10 @@ export abstract class CapoTestHelper<
                 namedRecords: {},
                 parentSnapName: "genesis",
                 parentHash: null,
+                parentCacheKey: null,  // Root snapshot has no parent
                 snapshotHash: this.network.lastBlockHash,
             };
-            await this.snapshotCache.store(cacheKey, cachedSnapshot);
+            await this.snapshotCache.store(cacheKey, cachedSnapshot, 0);
         }
 
         await this.setDefaultActor();
@@ -577,7 +579,7 @@ export abstract class CapoTestHelper<
             const parentHash = this.network.lastBlockHash;
             const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
 
-            const cached = await this.snapshotCache.find(cacheKey);
+            const cached = await this.snapshotCache.find(cacheKey, snapshotName);
             if (cached) {
                 console.log(`SnapshotCache: hit for ${snapshotName} (key: ${cacheKey.slice(0, 8)}...)`);
                 // Restore from disk cache
@@ -604,20 +606,24 @@ export abstract class CapoTestHelper<
                 // Store to disk cache if we have a dependency resolver
                 if (resolveScriptDependencies) {
                     const cacheKeyInputs = await resolveScriptDependencies(this);
-                    const parentHash = this.helperState!.snapshots[SNAP_DELEGATES]?.blockHashes?.slice(-1)[0]
-                        || "genesis";
+                    const delegatesSnapshot = this.helperState!.snapshots[SNAP_DELEGATES];
+                    const parentHash = delegatesSnapshot?.blockHashes?.slice(-1)[0] || "genesis";
                     const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
                     const snapshot = this.helperState!.snapshots[snapshotName];
+
+                    const parentCacheKey = await this.getSnapshotCacheKey(SNAP_DELEGATES);
+                    const parentBlockCount = delegatesSnapshot?.blocks?.length ?? 0;
 
                     const cachedSnapshot: CachedSnapshot = {
                         snapshot,
                         namedRecords: { ...this.helperState!.namedRecords },
                         parentSnapName: SNAP_DELEGATES,
                         parentHash,
+                        parentCacheKey,
                         snapshotHash: this.network.lastBlockHash,
                     };
 
-                    await this.snapshotCache.store(cacheKey, cachedSnapshot);
+                    await this.snapshotCache.store(cacheKey, cachedSnapshot, parentBlockCount);
                 }
             }
         }
@@ -784,7 +790,7 @@ export abstract class CapoTestHelper<
         console.log(`  -- ⚗️ tryRestoreCapoInitialized: parentHash=${parentHash.slice(0, 8)}..., bundles=${JSON.stringify(cacheKeyInputs.bundles.map(b => ({name: b.name, hash: b.sourceHash.slice(0, 8)})))}`);
         const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
 
-        const cached = await this.snapshotCache.find(cacheKey);
+        const cached = await this.snapshotCache.find(cacheKey, SNAP_CAPO_INIT);
         if (cached) {
             console.log(`  -- ⚗️ capoInitialized snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
             this.network.loadSnapshot(cached.snapshot);
@@ -811,14 +817,18 @@ export abstract class CapoTestHelper<
         const snapshot = this.network.snapshot(SNAP_CAPO_INIT);
         this.helperState!.snapshots[SNAP_CAPO_INIT] = snapshot;
 
+        const parentCacheKey = await this.getSnapshotCacheKey(SNAP_ACTORS);
+        const parentBlockCount = actorsSnapshot?.blocks?.length ?? 0;
+
         const cachedSnapshot: CachedSnapshot = {
             snapshot,
             namedRecords: { ...this.helperState!.namedRecords },
             parentSnapName: SNAP_ACTORS,
             parentHash,
+            parentCacheKey,
             snapshotHash: this.network.lastBlockHash,
         };
-        await this.snapshotCache.store(cacheKey, cachedSnapshot);
+        await this.snapshotCache.store(cacheKey, cachedSnapshot, parentBlockCount);
     }
 
     /**
@@ -837,7 +847,7 @@ export abstract class CapoTestHelper<
         const cacheKeyInputs = await this.resolveEnabledDelegatesDependencies();
         const cacheKey = this.snapshotCache.computeKey(parentHash, cacheKeyInputs);
 
-        const cached = await this.snapshotCache.find(cacheKey);
+        const cached = await this.snapshotCache.find(cacheKey, SNAP_DELEGATES);
         if (cached) {
             console.log(`  -- 🔧 enabledDelegatesDeployed snapshot cache HIT (key: ${cacheKey.slice(0, 8)}...)`);
             this.network.loadSnapshot(cached.snapshot);
@@ -863,14 +873,18 @@ export abstract class CapoTestHelper<
         const snapshot = this.network.snapshot(SNAP_DELEGATES);
         this.helperState!.snapshots[SNAP_DELEGATES] = snapshot;
 
+        const parentCacheKey = await this.getSnapshotCacheKey(SNAP_CAPO_INIT);
+        const parentBlockCount = capoInitSnapshot?.blocks?.length ?? 0;
+
         const cachedSnapshot: CachedSnapshot = {
             snapshot,
             namedRecords: { ...this.helperState!.namedRecords },
             parentSnapName: SNAP_CAPO_INIT,
             parentHash,
+            parentCacheKey,
             snapshotHash: this.network.lastBlockHash,
         };
-        await this.snapshotCache.store(cacheKey, cachedSnapshot);
+        await this.snapshotCache.store(cacheKey, cachedSnapshot, parentBlockCount);
     }
 
     /**
@@ -974,6 +988,47 @@ export abstract class CapoTestHelper<
             hasBootstrappedCapoConfig &
             hasAddlTxns<any>
     >;
+
+    /**
+     * Gets the last block hash from a stored snapshot.
+     * @internal
+     */
+    private getSnapshotBlockHash(snapName: string): string {
+        return this.helperState?.snapshots[snapName]?.blockHashes?.slice(-1)[0] ?? "genesis";
+    }
+
+    /**
+     * Computes the cache key for a built-in snapshot by recomputation.
+     * No Map needed—resolvers are deterministic and parent hashes are in helperState.
+     * @public
+     */
+    async getSnapshotCacheKey(snapName: string): Promise<string | null> {
+        switch (snapName) {
+            case "genesis":
+                return null;
+
+            case SNAP_ACTORS:
+            case "bootstrapWithActors":
+                return this.snapshotCache.computeKey(null, this.resolveActorsDependencies());
+
+            case SNAP_CAPO_INIT:
+            case "capoInitialized": {
+                const parentHash = this.getSnapshotBlockHash(SNAP_ACTORS);
+                return this.snapshotCache.computeKey(parentHash, await this.resolveCoreCapoDependencies());
+            }
+
+            case SNAP_DELEGATES:
+            case "enabledDelegatesDeployed":
+            case "bootstrapped": {
+                const parentHash = this.getSnapshotBlockHash(SNAP_CAPO_INIT);
+                return this.snapshotCache.computeKey(parentHash, await this.resolveEnabledDelegatesDependencies());
+            }
+
+            default:
+                // App snapshots build on SNAP_DELEGATES; return its cache key as their parent
+                return this.getSnapshotCacheKey(SNAP_DELEGATES);
+        }
+    }
 
     /**
      * Resolves cache key inputs for the base actors snapshot.

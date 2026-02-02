@@ -44,9 +44,9 @@ export type CachedSnapshot = {
     namedRecords: Record<string, string>;
     /** Parent snapshot name ("genesis" for root) */
     parentSnapName: ParentSnapName;
-    /** Hash of the parent snapshot, or null for root */
+    /** Hash of the parent snapshot—verified on load to detect stale cache (REQT-1.2.9.3.2), null for root */
     parentHash: string | null;
-    /** Cache key of the parent snapshot for O(1) lookup (REQT-1.2.9.3), null for root */
+    /** Cache key of the parent snapshot for O(1 file lookup (REQT-1.2.9.3.1), null for root */
     parentCacheKey: string | null;
     /** Hash of this snapshot for use as parent in child snapshots */
     snapshotHash: string;
@@ -469,6 +469,11 @@ export class SnapshotCache {
             if (serialized.parentCacheKey && serialized.parentSnapName !== "genesis") {
                 const parent = await this.find(serialized.parentCacheKey, serialized.parentSnapName);
                 if (parent) {
+                    // Verify parent hash matches expected (REQT-1.2.9.3.2)
+                    if (serialized.parentHash && serialized.parentHash !== parent.snapshotHash) {
+                        console.warn(`SnapshotCache: parent hash mismatch for '${snapshotName}': expected ${serialized.parentHash}, got ${parent.snapshotHash}`);
+                        return null; // Cache invalid, trigger rebuild
+                    }
                     // Concatenate parent blocks with this snapshot's incremental blocks
                     // Parent genesis + this genesis should be the same (genesis is immutable)
                     // Parent blocks + this incremental blocks = full chain

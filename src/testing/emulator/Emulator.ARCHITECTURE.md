@@ -313,9 +313,9 @@ type CachedSnapshot = {
   snapshot: NetworkSnapshot;       // the network snapshot data
   namedRecords: Record<string, string>;
   parentSnapName: ParentSnapName;  // parent snapshot name ("genesis" for root)
-  parentHash: string | null;       // parent's snapshotHash (for verification)
-  parentCacheKey: string | null;   // parent's cache key for O(1) chain loading
-  snapshotHash: string;            // this snapshot's resulting block hash
+  parentHash: string | null;       // parent's snapshotHash - verified on load to detect stale cache
+  parentCacheKey: string | null;   // parent's cache key - enables O(1) file lookup for chain loading
+  snapshotHash: string;            // this snapshot's resulting block hash (becomes child's parentHash)
 }
 ```
 
@@ -325,9 +325,13 @@ type CachedSnapshot = {
 - Multiple files with same name but different hashes is expected (code changes produce new hashes)
 
 **Behavior**:
-- `find()`: Returns null on miss; touches file if mtime > 1 day
-- `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON
+- `find()`: Returns null on miss; touches file if mtime > 1 day; recursively loads parent chain via `parentCacheKey`; SHOULD verify `parentHash` matches loaded parent's `snapshotHash` (returns null on mismatch to trigger rebuild)
+- `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON with incremental blocks only
 - `computeKey()`: `hash(parentHash + JSON.stringify(inputs))`
+
+**Parent Chain Fields**:
+- `parentCacheKey`: Enables O(1) parent file lookup (`{parentSnapName}-{parentCacheKey}.json`) for incremental chain loading
+- `parentHash`: Enables verification that loaded parent state matches expected state; if mismatch, cache is stale and should be rebuilt
 
 ### Snapshot State Management
 
@@ -509,7 +513,8 @@ class StellarNetworkEmulator implements Emulator {
 | **Helios VERSION in cache key** | Compiler changes could affect output |
 | **autoSetup + featureFlags** | autoSetup triggers iteration; featureFlags filters which deploy |
 | **Human-readable filenames** `{name}-{key}.json` | Enables `ls bootstrapWithActors-*`, debugging, targeted cleanup |
-| **`parentCacheKey` in CachedSnapshot** | O(1) parent file lookup for incremental storage (vs scanning all files) |
+| **Flat files + `parentCacheKey`** | O(1) parent file lookup for chain loading; flat structure simplifies cache management vs nested directories |
+| **`parentHash` verification** | Detects stale cache when parent was rebuilt with same inputs but different resulting state; returns null to trigger rebuild |
 | **Cache key recomputation** | No Map needed—resolvers are deterministic, parent hashes stored in helperState |
 | **`fromSnapshot` cleared on pushBlock** | Provenance tracking; diverged state shouldn't claim snapshot identity |
 

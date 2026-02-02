@@ -207,9 +207,11 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.2.9/d34w6546fx**: NEXT: **Human-Readable Cache Filenames** - Cache files MUST use human-readable naming for consumability:
     - **REQT-1.2.9.1/d230hkb6vm**: NEXT: Cache files MUST be named `{snapshotName}-{cacheKey}.json` (e.g., `bootstrapWithActors-a1b2c3d4.json`)
     - **REQT-1.2.9.2/asb3wybpc7**: NEXT: Snapshot names MUST be sanitized for filesystem safety: only alphanumeric, underscore, and hyphen allowed; truncated to 50 characters maximum
-    - **REQT-1.2.9.3/xqnwt4ajgq**: NEXT: Snapshot files MUST be stored in nested directories where parent relationship is implicit via filesystem path (e.g., `.stellar/emu/bootstrapWithActors-{key}/capoInitialized-{key}/snapshot.json`)
+    - **REQT-1.2.9.3/xqnwt4ajgq**: COMPLETED: Snapshot files MUST use flat file storage with explicit parent linkage fields (evolved from nested directories approach)
+        - **REQT-1.2.9.3.1/nnhm7a33kg**: COMPLETED: `parentCacheKey` field MUST enable O(1) parent file lookup—construct path as `{parentSnapName}-{parentCacheKey}.json`
+        - **REQT-1.2.9.3.2/rgxhbqp84g**: COMPLETED: `parentHash` field MUST be verified on load—if loaded parent's `snapshotHash` doesn't match, `find()` MUST return null to trigger cache rebuild
 
-> **RATIONALE (id:d34w6546fx)**: Human-readable filenames enable developers to identify snapshot purpose at a glance (`ls bootstrapWithActors-*`), debug cache misses by seeing which named snapshots exist, and perform targeted cleanup (`rm capoInitialized-*.json`). The cache key suffix preserves uniqueness—multiple files with the same snapshot name but different hashes is expected when code changes.
+> **RATIONALE (id:d34w6546fx)**: Human-readable filenames enable developers to identify snapshot purpose at a glance (`ls bootstrapWithActors-*`), debug cache misses by seeing which named snapshots exist, and perform targeted cleanup (`rm capoInitialized-*.json`). The cache key suffix preserves uniqueness—multiple files with the same snapshot name but different hashes is expected when code changes. Flat file storage with explicit `parentCacheKey`/`parentHash` fields was chosen over nested directories for simpler cache management and atomic file operations.
 
 ### REQT-1.3/qr6r27cg3q: COMPLETED: **Transaction Validation**
 
@@ -357,6 +359,13 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
 - Included Helios VERSION in cache key computation
 - Added explicit logging for cache hits/misses and file writes
 
+### Phase 3: Parent Chain Verification (Completed)
+
+- Evolved REQT-1.2.9.3 from nested directories to flat files with explicit parent linkage
+- Implemented `parentCacheKey` for O(1) parent file lookup during chain loading
+- Implemented `parentHash` verification in `find()` to detect stale cache and trigger rebuild
+- Updated architecture documentation to clarify verification mechanism
+
 #### Next Recommendations
 
 1. **Incremental Block Storage**: Store only new blocks since parent snapshot (REQT-1.2.5.1) for smaller cache files
@@ -385,7 +394,7 @@ Meta-requirements: maintainers MUST NOT modify past details in the implementatio
    - ✅ Cache location in `.stellar/emulator/` (REQT-1.2.6)
    - ✅ Cache freshness management with touch-on-use (REQT-1.2.7.1)
    - ✅ Helios version in cache key (REQT-1.2.8)
-   - ⏳ Human-readable cache filenames (REQT-1.2.9) - NEXT
+   - ✅ Human-readable cache filenames (REQT-1.2.9) - flat files + parentCacheKey + parentHash verification complete
    - ✅ Bundle dependency hashing (REQT-3.1)
    - ✅ Script dependency resolution (REQT-3.2)
 
