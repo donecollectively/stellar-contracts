@@ -119,3 +119,7 @@ Stellar Contracts includes type-safe requirements tracking via `hasReqts()` and 
 
 Supports both Cardano testnet and mainnet via network context parameters passed to contract instances.
 
+## MUST LOAD Related skills index
+
+Before you do anything, you MUST ensure you loaded ./skillz/index.md and use
+this to load any of the mentioned skills just in time when needed.
