@@ -16,7 +16,7 @@ import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSna
 import type { BundleCacheKeyInputs } from "../helios/scriptBundling/HeliosScriptBundle.js";
 import type { NetworkSnapshot } from "./emulator/StellarNetworkEmulator.js";
 
-import { StellarTestHelper } from "./StellarTestHelper.js";
+import { StellarTestHelper, type ActorSetupInfo } from "./StellarTestHelper.js";
 import { addTestContext, type canHaveRandomSeed, type TestHelperState } from "./types.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
 import {
@@ -58,6 +58,8 @@ export type SnapshotDecoratorOptions = {
     actor: string;
     /** Parent snapshot name. Required. Use "genesis" for root snapshots, "bootstrapped" for typical app snapshots. */
     parentSnapName: ParentSnapName;
+    /** If true, skip reusableBootstrap() call. Use for snapshots that are part of the bootstrap() flow itself. */
+    internal?: boolean;
     resolveScriptDependencies?: ScriptDependencyResolver;
 };
 
@@ -452,7 +454,7 @@ export abstract class CapoTestHelper<
         snapshotName: string,
         options: SnapshotDecoratorOptions,
     ) {
-        const { actor: actorName, parentSnapName, resolveScriptDependencies } = options;
+        const { actor: actorName, parentSnapName, internal, resolveScriptDependencies } = options;
         if (!parentSnapName) {
             throw new Error(
                 `hasNamedSnapshot('${snapshotName}'): parentSnapName is required. ` +
@@ -495,6 +497,10 @@ export abstract class CapoTestHelper<
                 // For genesis (root) snapshots, skip bootstrap - we ARE the root
                 if (parentSnapName === "genesis") {
                     this.ensureHelperState();
+                } else if (internal) {
+                    // Internal snapshots are part of bootstrap() flow - don't call reusableBootstrap()
+                    // to avoid infinite loop (bootstrap → snapTo* → reusableBootstrap → bootstrap)
+                    this.ensureHelperState();
                 } else {
                     await this.reusableBootstrap();
                 }
@@ -514,7 +520,7 @@ export abstract class CapoTestHelper<
                     actorName,
                     () => {
                         return generateSnapshotFunc
-                            .apply(this, ...args)
+                            .apply(this, args)
                             .then((result: any) => {
                                 // "default" means accept whatever setDefaultActor() set (just verify one is set)
                                 if (actorName === "default") {
@@ -578,6 +584,42 @@ export abstract class CapoTestHelper<
     }
 
     /**
+     * Mints the charter token and initializes the Capo.
+     * Called by snapToCapoInitialized via @hasNamedSnapshot decorator.
+     * @internal
+     */
+    async capoInitialized(
+        args?: Partial<MinimalCharterDataArgs>,
+        options?: SubmitOptions,
+    ): Promise<void> {
+        await this.mintCharterToken(args, options);
+        console.log(
+            "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter",
+        );
+        // tick happens in decorator wrapper after this returns
+    }
+
+    /**
+     * Decorated wrapper for capoInitialized.
+     * Uses @hasNamedSnapshot with internal: true since this is part of bootstrap() flow.
+     * @public
+     */
+    @CapoTestHelper.hasNamedSnapshot(SNAP_CAPO_INIT, {
+        actor: "default",
+        parentSnapName: SNAP_ACTORS,
+        internal: true, // Part of bootstrap flow - don't call reusableBootstrap()
+        async resolveScriptDependencies() {
+            return this.resolveCoreCapoDependencies();
+        },
+    })
+    async snapToCapoInitialized(
+        args?: Partial<MinimalCharterDataArgs>,
+        options?: SubmitOptions,
+    ): Promise<void> {
+        // Decorator calls capoInitialized() and handles caching
+    }
+
+    /**
      * Ensures helperState exists, creating a default one if needed.
      * This enables disk caching for test helpers that don't use the @hasNamedSnapshot decorator.
      * @internal
@@ -628,15 +670,19 @@ export abstract class CapoTestHelper<
                 this.network.loadSnapshot(this.helperState!.snapshots[snapshotName]);
 
                 // Restore actorSetupInfo from namedRecords if available
-                const actorSetupInfoJson = this.helperState!.namedRecords["__actorSetupInfo__"];
+                const actorSetupInfoJson = this.helperState!.namedRecords?.["__actorSetupInfo__"];
+                console.log(`  [DEBUG] in-memory genesis: actorSetupInfoJson=${actorSetupInfoJson ? "present" : "missing"}, actorSetupInfo.len=${this.actorSetupInfo.length}`);
                 if (actorSetupInfoJson && this.actorSetupInfo.length === 0) {
-                    this.actorSetupInfo = JSON.parse(actorSetupInfoJson);
+                    this.actorSetupInfo = this.parseActorSetupInfo(actorSetupInfoJson);
+                    console.log(`  [DEBUG] parsed actorSetupInfo: ${this.actorSetupInfo.length} actors`);
                 }
 
                 // Regenerate actors from PRNG using actorSetupInfo
+                console.log(`  [DEBUG] pre-regenerate: actorSetupInfo.len=${this.actorSetupInfo.length}, actors=${Object.keys(this.actors).join(",")}`);
                 if (this.actorSetupInfo.length > 0 && Object.keys(this.actors).length === 0) {
                     this.regenerateActorsFromSetupInfo();
                 }
+                console.log(`  [DEBUG] post-regenerate: actors=${Object.keys(this.actors).join(",")}`);
 
                 // Set actor (might be "default" which calls setDefaultActor)
                 if (actorName === "default") {
@@ -668,9 +714,9 @@ export abstract class CapoTestHelper<
 
             if (isGenesisSnapshot) {
                 // Restore actorSetupInfo from namedRecords if available
-                const actorSetupInfoJson = cached.namedRecords["__actorSetupInfo__"];
+                const actorSetupInfoJson = cached.namedRecords?.["__actorSetupInfo__"];
                 if (actorSetupInfoJson && this.actorSetupInfo.length === 0) {
-                    this.actorSetupInfo = JSON.parse(actorSetupInfoJson);
+                    this.actorSetupInfo = this.parseActorSetupInfo(actorSetupInfoJson);
                 }
 
                 // Regenerate actors from PRNG using actorSetupInfo
@@ -723,9 +769,19 @@ export abstract class CapoTestHelper<
                 const parentHash = parentSnapshot?.blockHashes?.slice(-1)[0] || null;
 
                 // For genesis snapshots, store actorSetupInfo for regeneration on cache load
+                // Ensure namedRecords was initialized (should happen in defaultHelperState)
+                if (!this.helperState!.namedRecords) {
+                    throw new Error(
+                        `findOrCreateSnapshot('${snapshotName}'): helperState.namedRecords is undefined. ` +
+                        `Check that defaultHelperState includes namedRecords: {}`
+                    );
+                }
                 const namedRecords = { ...this.helperState!.namedRecords };
                 if (parentSnapName === "genesis" && this.actorSetupInfo.length > 0) {
-                    const actorSetupJson = JSON.stringify(this.actorSetupInfo);
+                    // Use replacer to handle BigInt serialization
+                    const bigIntReplacer = (_key: string, value: unknown) =>
+                        typeof value === "bigint" ? value.toString() : value;
+                    const actorSetupJson = JSON.stringify(this.actorSetupInfo, bigIntReplacer);
                     namedRecords["__actorSetupInfo__"] = actorSetupJson;
                     // Also store in helperState for in-memory cache
                     this.helperState!.namedRecords["__actorSetupInfo__"] = actorSetupJson;
@@ -864,19 +920,8 @@ export abstract class CapoTestHelper<
             },
         };
 
-        // Try to restore capoInitialized from cache
-        const capoInitRestored = await this.tryRestoreCapoInitialized();
-        if (!capoInitRestored) {
-            // Cache miss - need to mint charter
-            await this.mintCharterToken(args, options);
-            console.log(
-                "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter",
-            );
-            this.network.tick(1);
-
-            // Save capoInitialized snapshot
-            await this.saveCapoInitializedSnapshot();
-        }
+        // Mint charter token and create capoInitialized snapshot (handles caching)
+        await this.snapToCapoInitialized(args, options);
 
         // Try to restore enabledDelegatesDeployed from cache
         const delegatesRestored = await this.tryRestoreDelegatesDeployed();
@@ -889,55 +934,6 @@ export abstract class CapoTestHelper<
         }
 
         return strella;
-    }
-
-    /**
-     * Tries to restore capoInitialized snapshot from disk cache.
-     * Returns true if restored, false if cache miss.
-     * @internal
-     */
-    private async tryRestoreCapoInitialized(): Promise<boolean> {
-        const actorsSnapshot = this.helperState!.snapshots[SNAP_ACTORS];
-        if (!actorsSnapshot) {
-            console.log("  -- No actors snapshot to base capoInitialized on");
-            return false;
-        }
-
-        // Use registry-based find (cache key computed internally)
-        const cached = await this.snapshotCache.find(SNAP_CAPO_INIT);
-        if (cached) {
-            console.log(`  -- ⚗️ capoInitialized snapshot cache HIT`);
-            this.network.loadSnapshot(cached.snapshot);
-            this.helperState!.snapshots[SNAP_CAPO_INIT] = cached.snapshot;
-            Object.assign(this.helperState!.namedRecords, cached.namedRecords);
-            return true;
-        }
-
-        console.log(`  -- ⚗️ capoInitialized snapshot cache MISS`);
-        return false;
-    }
-
-    /**
-     * Saves capoInitialized snapshot to disk cache.
-     * @internal
-     */
-    private async saveCapoInitializedSnapshot(): Promise<void> {
-        const actorsSnapshot = this.helperState!.snapshots[SNAP_ACTORS];
-        const parentHash = actorsSnapshot?.blockHashes?.slice(-1)[0] || null;
-
-        const snapshot = this.network.snapshot(SNAP_CAPO_INIT);
-        this.helperState!.snapshots[SNAP_CAPO_INIT] = snapshot;
-
-        const cachedSnapshot: CachedSnapshot = {
-            snapshot,
-            namedRecords: { ...this.helperState!.namedRecords },
-            parentSnapName: SNAP_ACTORS,
-            parentHash,
-            parentCacheKey: null, // deprecated with hierarchical directories
-            snapshotHash: this.network.lastBlockHash,
-        };
-        // Use registry-based store (path computed internally)
-        await this.snapshotCache.store(SNAP_CAPO_INIT, cachedSnapshot);
     }
 
     /**
@@ -1153,6 +1149,23 @@ export abstract class CapoTestHelper<
                 heliosVersion: HELIOS_VERSION,
             },
         };
+    }
+
+    /**
+     * Parses actor setup info from JSON, converting BigInt strings back to BigInt.
+     * @internal
+     */
+    private parseActorSetupInfo(json: string): ActorSetupInfo[] {
+        const parsed = JSON.parse(json) as Array<{
+            name: string;
+            initialBalance: string;
+            additionalUtxos: string[];
+        }>;
+        return parsed.map((actor) => ({
+            name: actor.name,
+            initialBalance: BigInt(actor.initialBalance),
+            additionalUtxos: actor.additionalUtxos.map((u) => BigInt(u)),
+        }));
     }
 
     /**

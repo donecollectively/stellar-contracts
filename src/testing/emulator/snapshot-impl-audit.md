@@ -41,23 +41,54 @@
 | D3 | ARCHITECTURE.md:525-540 | Wallet transfer attributed to StellarTestHelper | Fixed to CapoTestHelper.restoreFrom() |
 | Q1 | Emulator.reqts.md:203 | REQT-1.2.5.1 marked BROKEN but impl is correct | Updated status to COMPLETED |
 | D4 | ARCHITECTURE.md:618-627 | Cleanup step described as implemented | Added FUTURE note for REQT-1.2.7.2 |
+| D5 | ARCHITECTURE.md:616, SnapshotCache.ts:480 | `loadedSnapshots` is instance-scoped but arch says "process lifetime" | Accepted as-is (safe enough) |
 
 ### Open
 
-| ID | Location | Finding | Severity |
-|----|----------|---------|----------|
-| D5 | ARCHITECTURE.md:616, SnapshotCache.ts:480 | `loadedSnapshots` is instance-scoped but arch says "process lifetime" | Design |
+*None*
 
 ## Work Units (from Requirements)
 
 | ID | Reqt | Target State | Status |
 |----|------|--------------|--------|
-| WU1 | REQT-3.3.4 | `capoInitialized` uses `@hasNamedSnapshot` decorator | pending |
-| WU2 | REQT-3.3.5 | `enabledDelegatesDeployed` uses `@hasNamedSnapshot` decorator | pending |
+| WU0 | REQT-3.3.6 | `@hasNamedSnapshot` supports `internal: true` option | **completed** |
+| WU1 | REQT-3.3.4 | `capoInitialized` uses `@hasNamedSnapshot` with `internal: true` | **completed** |
+| WU2 | REQT-3.3.5 | `enabledDelegatesDeployed` uses `@hasNamedSnapshot` with `internal: true` | pending |
+
+### WU0: Add `internal` option to @hasNamedSnapshot (REQT-3.3.6)
+
+**Prerequisite for WU1 and WU2**
+
+**Update `SnapshotDecoratorOptions` type** (CapoTestHelper.ts ~line 57):
+```typescript
+export type SnapshotDecoratorOptions = {
+    actor: string;
+    parentSnapName: ParentSnapName;
+    internal?: boolean;  // NEW: skip reusableBootstrap() for bootstrap-internal snapshots
+    resolveScriptDependencies?: ScriptDependencyResolver;
+};
+```
+
+**Update `SnapWrap`** (CapoTestHelper.ts ~line 494):
+```typescript
+async function SnapWrap(this: AnyCapoTestHelper, ...args: any[]) {
+    if (parentSnapName === "genesis") {
+        this.ensureHelperState();
+    } else if (internal) {
+        // Internal snapshots are part of bootstrap flow - don't call reusableBootstrap()
+        this.ensureHelperState();
+    } else {
+        await this.reusableBootstrap();
+    }
+    // ... rest unchanged
+}
+```
+
+---
 
 ### WU1: capoInitialized decorator (REQT-3.3.4)
 
-**Pattern to follow**: `snapToBootstrapWithActors()` + `bootstrapWithActors()` at lines 547-578
+**Depends on:** WU0
 
 **Create:**
 ```typescript
@@ -71,6 +102,7 @@ async capoInitialized(args?, options?): Promise<void> {
 @CapoTestHelper.hasNamedSnapshot(SNAP_CAPO_INIT, {
     actor: "default",
     parentSnapName: SNAP_ACTORS,
+    internal: true,  // Part of bootstrap flow
     async resolveScriptDependencies() {
         return this.resolveCoreCapoDependencies();
     },
@@ -88,6 +120,8 @@ async snapToCapoInitialized(): Promise<void> {
 
 ### WU2: enabledDelegatesDeployed decorator (REQT-3.3.5)
 
+**Depends on:** WU0
+
 **Create:**
 ```typescript
 // Builder method
@@ -100,6 +134,7 @@ async enabledDelegatesDeployed(args?, options?): Promise<void> {
 @CapoTestHelper.hasNamedSnapshot(SNAP_DELEGATES, {
     actor: "default",
     parentSnapName: SNAP_CAPO_INIT,
+    internal: true,  // Part of bootstrap flow
     async resolveScriptDependencies() {
         return this.resolveEnabledDelegatesDependencies();
     },
@@ -131,6 +166,9 @@ async snapToEnabledDelegatesDeployed(): Promise<void> {
 5. **Emulator.ARCHITECTURE.md**: Fixed Cached Bootstrap workflow - wallet transfer by CapoTestHelper not StellarTestHelper (D3)
 6. **Emulator.ARCHITECTURE.md**: Added FUTURE note to Cache Invalidation cleanup step (D4)
 7. **Emulator.reqts.md**: Updated REQT-1.2.5.1 from BROKEN to COMPLETED (Q1)
+8. **Emulator.ARCHITECTURE.md**: Clarified `loadedSnapshots` is instance-scoped not process-scoped (D5)
+9. **CapoTestHelper.ts**: Added `internal` option to decorator, implemented `snapToCapoInitialized()` (WU0, WU1)
+10. **Emulator.ARCHITECTURE.md**: Added `internal` option to SnapshotDecoratorOptions type and built-in relationships
 
 ## Next Steps
 
@@ -138,7 +176,8 @@ async snapToEnabledDelegatesDeployed(): Promise<void> {
 2. ~~**Process D3**: Clarify wallet transfer ownership~~ ✅ Done
 3. ~~**Process D4**: Update architecture to note cleanup is FUTURE~~ ✅ Done
 4. ~~**Process Q1**: Investigate REQT-1.2.5.1 BROKEN status~~ ✅ Fixed (was correct, updated to COMPLETED)
-5. **Resolve D5**: Decide if `loadedSnapshots` should be process-scoped (static) or instance-scoped
-6. **WU1**: Implement `snapToCapoInitialized()` with `@hasNamedSnapshot` decorator
-7. **WU2**: Implement `snapToEnabledDelegatesDeployed()` with `@hasNamedSnapshot` decorator
-8. Resume I3: @hasNamedSnapshot decorator audit
+5. ~~**Resolve D5**: `loadedSnapshots` scope~~ ✅ Accepted instance-scoped as safe enough
+6. ~~**WU0**: Add `internal: true` option to decorator~~ ✅ Done
+7. ~~**WU1**: Implement `snapToCapoInitialized()`~~ ✅ Done
+8. **WU2**: Implement `snapToEnabledDelegatesDeployed()` with `@hasNamedSnapshot` decorator
+9. Resume I3: @hasNamedSnapshot decorator audit

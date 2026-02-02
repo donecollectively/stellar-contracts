@@ -227,6 +227,7 @@ type ParentSnapName =
 type SnapshotDecoratorOptions = {
   actor: string;                        // actor to set after loading
   parentSnapName: ParentSnapName;       // explicit parent snapshot name
+  internal?: boolean;                   // skip reusableBootstrap() for bootstrap-internal snapshots
   resolveScriptDependencies?: ScriptDependencyResolver;
 }
 
@@ -244,9 +245,11 @@ type CacheKeyInputs = {
 ```
 
 **Built-in Parent Relationships**:
-- `bootstrapWithActors` → parent: `"genesis"`
-- `capoInitialized` → parent: `"bootstrapWithActors"`
-- `enabledDelegatesDeployed` → parent: `"capoInitialized"`
+- `bootstrapWithActors` → parent: `"genesis"` (root snapshot)
+- `capoInitialized` → parent: `"bootstrapWithActors"`, `internal: true`
+- `enabledDelegatesDeployed` → parent: `"capoInitialized"`, `internal: true`
+
+**Note**: `internal: true` is required for snapshots created during the `bootstrap()` flow to avoid infinite recursion (bootstrap → snapTo* → reusableBootstrap → bootstrap).
 - App snapshots → typically parent: `"enabledDelegatesDeployed"`
 
 **Resolution Flow**:
@@ -613,7 +616,7 @@ Efficient loading when parent snapshots are already in process memory from prior
 [Emulator.loadSnapshot()]
 ```
 
-**Session lifetime**: The `loadedSnapshots` Map persists for the test process lifetime. Within a test file (or across files in the same vitest run), parent snapshots loaded by earlier tests are reused by later tests.
+**Instance lifetime**: The `loadedSnapshots` Map persists for the SnapshotCache instance lifetime. Within tests sharing the same helper instance, parent snapshots loaded by earlier operations are reused.
 
 ### Workflow: Cache Invalidation
 

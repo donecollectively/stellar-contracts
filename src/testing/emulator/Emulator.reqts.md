@@ -320,8 +320,9 @@ type CacheKeyInputs = {
  - **REQT-3.3.1/fz89t5wkrw**: IN-PROGRESS: Built-in snapshots (`bootstrapWithActors`, `capoInitialized`, `enabledDelegatesDeployed`) MUST be registered with SnapshotCache before use. All built-in snapshots MUST use the `@hasNamedSnapshot` decorator pattern for consistency and unified cache orchestration.
  - **REQT-3.3.2/1vtn22as3f**: COMPLETED: Each built-in snapshot MUST register its metadata (parentSnapName, resolveScriptDependencies) with SnapshotCache before use
  - **REQT-3.3.3/p4mrpyyady**: COMPLETED: `bootstrapWithActors` MUST use `@hasNamedSnapshot` decorator with `parentSnapName: "genesis"` and `resolveActorsDependencies()` resolver
- - **REQT-3.3.4/pj9agtaypq**: NEXT: `capoInitialized` MUST use `@hasNamedSnapshot` decorator with `parentSnapName: "bootstrapWithActors"` and `resolveCoreCapoDependencies()` resolver
- - **REQT-3.3.5/5qyt5xzvv1**: NEXT: `enabledDelegatesDeployed` MUST use `@hasNamedSnapshot` decorator with `parentSnapName: "capoInitialized"` and `resolveEnabledDelegatesDependencies()` resolver
+ - **REQT-3.3.4/pj9agtaypq**: COMPLETED: `capoInitialized` MUST use `@hasNamedSnapshot` decorator with `parentSnapName: "bootstrapWithActors"`, `internal: true`, and `resolveCoreCapoDependencies()` resolver
+ - **REQT-3.3.5/5qyt5xzvv1**: NEXT: `enabledDelegatesDeployed` MUST use `@hasNamedSnapshot` decorator with `parentSnapName: "capoInitialized"`, `internal: true`, and `resolveEnabledDelegatesDependencies()` resolver
+ - **REQT-3.3.6/h4kp7wm2nx**: COMPLETED: `@hasNamedSnapshot` decorator MUST support `internal: true` option that skips `reusableBootstrap()` call in SnapWrap, for snapshots that are part of the bootstrap flow itself
 
 > **RATIONALE (id:7hcqed9mvn)**: All snapshots—including built-ins—must register with SnapshotCache via `@hasNamedSnapshot` decorator. This enables unified cache orchestration, consistent parent chain resolution, and hierarchical directory path construction. The decorator pattern handles cache check, build-if-miss, and store automatically.
 
