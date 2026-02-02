@@ -225,7 +225,9 @@ type ParentSnapName =
     | (string & {});                    // custom snapshot name
 
 type SnapshotDecoratorOptions = {
-  actor: string;                        // actor to set after loading
+  actor: string;                        // actor to set after loading:
+                                        //   "default" → setDefaultActor() (abstract)
+                                        //   other → setActor(name)
   parentSnapName: ParentSnapName;       // explicit parent snapshot name
   internal?: boolean;                   // skip reusableBootstrap() for bootstrap-internal snapshots
   resolveScriptDependencies?: ScriptDependencyResolver;

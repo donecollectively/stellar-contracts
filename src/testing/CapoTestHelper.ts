@@ -697,7 +697,11 @@ export abstract class CapoTestHelper<
             // In-memory hit for non-genesis snapshot
             const t0 = performance.now();
             const capo = await this.restoreFrom(snapshotName);
-            await this.setActor(actorName);
+            if (actorName === "default") {
+                await this.setDefaultActor();
+            } else {
+                await this.setActor(actorName);
+            }
             const elapsed = (performance.now() - t0).toFixed(1);
             console.log(`  ⚡ in-memory hit '${snapshotName}': ${elapsed}ms`);
             return capo;
@@ -736,7 +740,11 @@ export abstract class CapoTestHelper<
             }
 
             // Disk cache hit for non-genesis snapshot
-            await this.setActor(actorName);
+            if (actorName === "default") {
+                await this.setDefaultActor();
+            } else {
+                await this.setActor(actorName);
+            }
             const elapsed = (performance.now() - diskStart).toFixed(1);
             console.log(`  💾 disk cache hit '${snapshotName}': ${elapsed}ms`);
             return this.strella;

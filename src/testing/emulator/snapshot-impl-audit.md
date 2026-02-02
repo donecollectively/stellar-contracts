@@ -42,10 +42,17 @@
 | Q1 | Emulator.reqts.md:203 | REQT-1.2.5.1 marked BROKEN but impl is correct | Updated status to COMPLETED |
 | D4 | ARCHITECTURE.md:618-627 | Cleanup step described as implemented | Added FUTURE note for REQT-1.2.7.2 |
 | D5 | ARCHITECTURE.md:616, SnapshotCache.ts:480 | `loadedSnapshots` is instance-scoped but arch says "process lifetime" | Accepted as-is (safe enough) |
+| F6 | StellarNetworkEmulator.ts:571-612 | Snapshot restore sets `currentSlot` to snapshot time (past), but txn validity uses `Date.now()` causing `isValidSlot()` failures when drift > 180s | Fixed: `loadSnapshot()` now syncs to wall-clock via `netPHelper.timeToSlot(Date.now())` |
 
 ### Open
 
 *None*
+
+### Related Commits
+
+| Commit | Description | Actual Fix |
+|--------|-------------|------------|
+| 1d5bd4bd | "fix timestamp / tx validity problem" | Actor lookup: `setDefaultActor()` vs `setActor("default")` (misleading message) |
 
 ## Work Units (from Requirements)
 
@@ -169,6 +176,7 @@ async snapToEnabledDelegatesDeployed(): Promise<void> {
 8. **Emulator.ARCHITECTURE.md**: Clarified `loadedSnapshots` is instance-scoped not process-scoped (D5)
 9. **CapoTestHelper.ts**: Added `internal` option to decorator, implemented `snapToCapoInitialized()` (WU0, WU1)
 10. **Emulator.ARCHITECTURE.md**: Added `internal` option to SnapshotDecoratorOptions type and built-in relationships
+11. **StellarNetworkEmulator.ts**: `loadSnapshot()` syncs emulator to wall-clock time after restore (F6)
 
 ## Next Steps
 

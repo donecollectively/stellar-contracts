@@ -589,13 +589,13 @@ export class StellarNetworkEmulator implements Emulator {
         this.initHelper();
         console.log(
             `
-      .--.             .--.             .--.             .--.       
-    .'_\\/_'.         .'_\\/_'.         .'_\\/_'.         .'_\\/_'.     
-    '. /\\ .'         '. /\\ .'         '. /\\ .'         '. /\\ .'     
-      "||"             "||"             "||"             "||"       
-       || /\\            || /\\            || /\\            || /\\     
-    /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)    
-   (/\\\\||/          (/\\\\||/          (/\\\\||/          (/\\\\||/       
+      .--.             .--.             .--.             .--.
+    .'_\\/_'.         .'_\\/_'.         .'_\\/_'.         .'_\\/_'.
+    '. /\\ .'         '. /\\ .'         '. /\\ .'         '. /\\ .'
+      "||"             "||"             "||"             "||"
+       || /\\            || /\\            || /\\            || /\\
+    /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)
+   (/\\\\||/          (/\\\\||/          (/\\\\||/          (/\\\\||/
 ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
             🌺🌺🌺 ████████  # ${this.id}\n`,
             ` - restored snapshot '${snapshot.name}' from #${snapshot.netNumber} at slot `,
@@ -603,6 +603,13 @@ ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
             "height ",
             this.blocks.length
         );
+
+        // Catch up emulator time to wall-clock so new txns have valid validity windows
+        const realtimeSlot = this.netPHelper.timeToSlot(BigInt(Date.now()));
+        const slotsToAdvance = realtimeSlot - this.currentSlot;
+        if (slotsToAdvance > 0) {
+            this.tick(slotsToAdvance);
+        }
     }
 
     // /**
