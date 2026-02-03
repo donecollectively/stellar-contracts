@@ -1,4 +1,4 @@
-import { Capo, StellarTxnContext } from "@donecollectively/stellar-contracts";
+import { Capo, StellarTxnContext, parseCapoJSONConfig } from "@donecollectively/stellar-contracts";
 import { VERSION as HELIOS_VERSION } from "@helios-lang/compiler";
 import type {
     hasBootstrappedCapoConfig,
@@ -317,6 +317,14 @@ export abstract class CapoTestHelper<
             this.actors = {};
             this.actorSetupInfo = [];
             this._actorName = "";
+            // Clear cached state to force fresh build with new seed
+            if (this.helperState) {
+                this.helperState.offchainData = {};
+                this.helperState.snapshots = {};
+                this.helperState.bootstrappedStrella = undefined;
+                this.helperState.previousHelper = undefined as any;
+                this.helperState.bootstrapped = false;
+            }
         }
         await this.delay(1);
 
@@ -431,6 +439,8 @@ export abstract class CapoTestHelper<
         } else {
             capo = await this.bootstrap();
             helperState.bootstrappedStrella = capo;
+            // Store parsedConfig for cross-instance Capo reconstruction (REQT-3.5/vmq8qmv218)
+            helperState.parsedConfig = this.state.parsedConfig;
         }
         const { previousHelper } = helperState;
         if (previousHelper) {
@@ -736,7 +746,41 @@ export abstract class CapoTestHelper<
             }
             // In-memory hit for non-genesis snapshot
             const t0 = performance.now();
-            const capo = await this.restoreFrom(snapshotName);
+
+            // Check if we can use restoreFrom() (REQT-3.5.3/vmq8qmv218)
+            // restoreFrom() works when we have bootstrappedStrella and previousHelper
+            const { bootstrappedStrella, previousHelper } = this.helperState!;
+            const canUseRestoreFrom = bootstrappedStrella && previousHelper;
+            console.log(`  [DEBUG] in-memory non-genesis: bootstrappedStrella=${!!bootstrappedStrella}, previousHelper=${!!previousHelper}, canUseRestoreFrom=${canUseRestoreFrom}`);
+
+            if (canUseRestoreFrom) {
+                // Use restoreFrom() which reuses bootstrappedStrella and handles network swapping
+                await this.restoreFrom(snapshotName);
+            } else {
+                // Cross-process restoration - instantiate Capo fresh
+                this.network.loadSnapshot(this.helperState!.snapshots[snapshotName]);
+                // Read capoConfig from offchainData (stored during disk cache load) (REQT-3.5/vmq8qmv218)
+                const offchainData = this.helperState!.offchainData?.[snapshotName];
+                const rawConfig = offchainData?.capoConfig as Record<string, any> | undefined;
+                console.log(`  [DEBUG] in-memory cross-process: offchainData=${!!offchainData}, rawConfig=${!!rawConfig}, helperState.parsedConfig=${!!this.helperState!.parsedConfig}`);
+                const config = rawConfig ? parseCapoJSONConfig(rawConfig as any) : this.helperState!.parsedConfig;
+                console.log(`  [DEBUG] in-memory cross-process: config=${!!config}, config.rootCapoScriptHash=${!!(config as any)?.rootCapoScriptHash}`);
+                if (config) {
+                    // Store parsed config for subsequent operations
+                    this.helperState!.parsedConfig = config;
+                    this.state.parsedConfig = config;
+                    this.state.rawConfig = rawConfig;
+                    await this.initStellarClass(config);
+                } else {
+                    await this.initStellarClass();  // uses this.config default
+                }
+                this.helperState!.bootstrappedStrella = this.strella;
+                this.helperState!.previousHelper = this as any;
+                this.helperState!.bootstrapped = true;
+                // For non-genesis snapshots, charter was already minted
+                this.state.mintedCharterToken = true as any;
+            }
+
             if (actorName === "default") {
                 await this.setDefaultActor();
             } else {
@@ -744,7 +788,7 @@ export abstract class CapoTestHelper<
             }
             const elapsed = (performance.now() - t0).toFixed(1);
             console.log(`  ⚡ in-memory hit '${snapshotName}': ${elapsed}ms`);
-            return capo;
+            return this.strella;
         }
 
         // Try disk cache using registry-based API
@@ -786,7 +830,34 @@ export abstract class CapoTestHelper<
                 return this.strella; // May be undefined for actors, that's OK
             }
 
-            // Disk cache hit for non-genesis snapshot
+            // Disk cache hit for non-genesis snapshot (REQT-3.5/vmq8qmv218)
+            // Check if we can reuse existing bootstrappedStrella from helperState
+            const { bootstrappedStrella, previousHelper } = this.helperState!;
+            if (bootstrappedStrella && previousHelper) {
+                // Reuse existing Capo via restoreFrom() which handles network swap
+                await this.restoreFrom(snapshotName);
+            } else if (!this.strella) {
+                // True cross-process restoration - must instantiate Capo fresh
+                // Read capoConfig from offchainData and parse it (REQT-3.5/vmq8qmv218)
+                const rawConfig = cached.offchainData?.capoConfig as Record<string, any> | undefined;
+                const config = rawConfig ? parseCapoJSONConfig(rawConfig as any) : this.helperState!.parsedConfig;
+                if (config) {
+                    // Store parsed config for subsequent operations
+                    this.helperState!.parsedConfig = config;
+                    this.state.parsedConfig = config;
+                    this.state.rawConfig = rawConfig;
+                    await this.initStellarClass(config);
+                } else {
+                    await this.initStellarClass();  // uses this.config default
+                }
+                // Set up helperState for subsequent operations
+                this.helperState!.bootstrappedStrella = this.strella;
+                this.helperState!.previousHelper = this as any;
+                this.helperState!.bootstrapped = true;
+                // For non-genesis snapshots, charter was already minted
+                this.state.mintedCharterToken = true as any;
+            }
+
             if (actorName === "default") {
                 await this.setDefaultActor();
             } else {
@@ -838,6 +909,16 @@ export abstract class CapoTestHelper<
                     // Store actor wallet keys in offchainData (REQT-3.4.1/1p346cabct)
                     // Replaces __actorSetupInfo__ hack (REQT-3.4.4/3rexpys2q3)
                     offchainData = this.getActorWalletKeys();
+
+                    // Initialize helperState.offchainData if needed and store for in-memory cache
+                    if (!this.helperState!.offchainData) {
+                        this.helperState!.offchainData = {};
+                    }
+                    this.helperState!.offchainData[snapshotName] = offchainData;
+                } else if (this.state?.rawConfig) {
+                    // Store rawConfig in offchainData for non-genesis snapshots (REQT-3.5/vmq8qmv218)
+                    // This enables cross-process Capo reconstruction from disk cache
+                    offchainData = { capoConfig: this.state.rawConfig };
 
                     // Initialize helperState.offchainData if needed and store for in-memory cache
                     if (!this.helperState!.offchainData) {
@@ -1144,6 +1225,8 @@ export abstract class CapoTestHelper<
             initialBalance: actor.initialBalance.toString(),
             additionalUtxos: actor.additionalUtxos.map((u) => u.toString()),
         }));
+
+        console.log(`[DEBUG resolveActorsDependencies] randomSeed=${this.randomSeed}, actorCount=${actorData.length}`);
 
         return {
             bundles: [], // No script bundles for actors snapshot

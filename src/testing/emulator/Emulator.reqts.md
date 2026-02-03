@@ -354,6 +354,16 @@ type CacheKeyInputs = {
 
 > **RATIONALE (id:n93h9y5s85)**: PRNG-based wallet regeneration is slow (requires `makeRootPrivateKey()` derivation) and fragile (depends on exact PRNG sequence). Storing the derived keys directly enables instant restoration via `makeBip32PrivateKey()`.
 
+### REQT-3.5/vmq8qmv218: COMPLETED: **Cross-Process Capo Reconstruction**
+
+#### Purpose: Ensures Capo instance is properly instantiated when restoring non-genesis snapshots from disk cache in a new process (where no `bootstrappedStrella` exists).
+
+ - **REQT-3.5.1/vmq8qmv218**: COMPLETED: Disk cache hit for non-genesis snapshots MUST instantiate Capo via `initStellarClass()` when `this.strella` is undefined
+ - **REQT-3.5.2/vmq8qmv218**: COMPLETED: After cross-process Capo instantiation, `helperState.bootstrappedStrella`, `previousHelper`, and `bootstrapped` MUST be set for subsequent operations
+ - **REQT-3.5.3/vmq8qmv218**: COMPLETED: Same-process restoration (in-memory hit with existing `bootstrappedStrella`) MUST continue using `restoreFrom()` path
+
+> **RATIONALE (id:vmq8qmv218)**: Cross-process restoration differs from same-process: there's no `previousHelper` to transfer state from, and no `bootstrappedStrella` to reference. The Capo must be instantiated fresh from the restored network state.
+
 ## Component: StellarTestHelper
 
 ### REQT-4.0/473wtxxe8d: COMPLETED: **Actor Snapshot Transfer**

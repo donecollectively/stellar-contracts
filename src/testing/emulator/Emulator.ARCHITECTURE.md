@@ -38,7 +38,7 @@
 | Emulator state | artifact | StellarNetworkEmulator | CapoTestHelper, SnapshotCache |
 | Snapshot chain | artifact | SnapshotCache | CapoTestHelper |
 | Cache files | artifact | SnapshotCache | - |
-| Loaded snapshots | resource | SnapshotCache | Process-lifetime cache for REQT-1.2.10 |
+| Loaded snapshots | resource | SnapshotCache | Process-lifetime cache keyed by `{name}:{cacheKey}` (REQT-1.2.10) |
 | Bundle hashes | artifact | HeliosScriptBundle | SnapshotCache |
 | Compile cache | artifact | CachedHeliosProgram | HeliosScriptBundle |
 | namedRecords | artifact | CapoTestHelper | Persisted with snapshot, restored on load |
@@ -102,7 +102,7 @@
 **Concerns**:
 - Owns **Cache files** (`.stellar/emu/`)
 - Owns **Snapshot chain** hierarchy (base → capoInitialized → enabledDelegatesDeployed → app)
-- Owns **Loaded snapshots** (`loadedSnapshots` Map, process-lifetime cache)
+- Owns **Loaded snapshots** (`loadedSnapshots` Map keyed by `{name}:{cacheKey}`, process-lifetime cache)
 - Owns **Key inputs** (`key-inputs.json` per snapshot directory)
 - Owns **Offchain data** (`offchain.json` per snapshot directory, merged from parent chain)
 - Depends on **Bundle hashes** for cache key computation
@@ -315,7 +315,8 @@ class SnapshotCache {
   }>;
 
   // Process-lifetime cache of loaded snapshots (REQT-1.2.10.3)
-  // Key: snapshotName, Value: fully-loaded CachedSnapshot with accumulated UTxO state
+  // Key: `{snapshotName}:{cacheKey}`, Value: fully-loaded CachedSnapshot with accumulated UTxO state
+  // Composite key ensures different seeds/configs produce different cache entries
   private loadedSnapshots: Map<string, CachedSnapshot> = new Map();
 
   // Register snapshot metadata (called from @hasNamedSnapshot decorator)
@@ -371,7 +372,7 @@ type CachedSnapshot = {
 - Parent relationship implicit in directory structure; enables `rm -rf` for subtree deletion
 
 **Behavior**:
-- `find()`: First checks `loadedSnapshots` Map (returns cached if present); on disk load: touches directory if mtime > 1 day; recursively ensures parent chain via registered metadata; applies incremental blocks to parent's UTxO state (not full rebuild); verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild); caches result in `loadedSnapshots` before returning
+- `find()`: Resolves parent chain and computes cache key first; then checks `loadedSnapshots` Map with composite key `{name}:{cacheKey}` (returns cached if present); on disk load: touches directory if mtime > 1 day; applies incremental blocks to parent's UTxO state (not full rebuild); verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild); caches result in `loadedSnapshots` with composite key before returning
 - `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON with incremental blocks only
 - `computeKey()`: `hash(parentHash + JSON.stringify(inputs))`
 
@@ -622,24 +623,52 @@ Bootstrap proceeds through three snapshot layers. Each layer uses `@hasNamedSnap
 
 ### Workflow: Cached Bootstrap (cache hit)
 
-When snapshots are already in memory (from prior test in same run):
+Cache hits follow different paths depending on whether restoration is same-process or cross-process:
 
-1. **Test Suite** calls `reusableBootstrap()` on **CapoTestHelper**
-2. **CapoTestHelper** detects `helperState.bootstrapped = true`
+#### Same-Process Restoration (in-memory hit)
+
+When snapshots exist in `helperState.snapshots` from prior test in same run:
+
+1. **Test Suite** calls decorated method (e.g., `snapToEnabledDelegatesDeployed()`)
+2. **CapoTestHelper** `findOrCreateSnapshot()` finds in-memory snapshot
 3. **CapoTestHelper** calls `restoreFrom(snapshotName)`
-4. **SnapshotCache** returns cached snapshot (in-memory or disk)
-5. **CapoTestHelper** restores to **StellarNetworkEmulator**
-6. **CapoTestHelper** transfers actor wallets (in `restoreFrom()`)
+4. **restoreFrom()** uses `helperState.bootstrappedStrella` to restore Capo reference
+5. **StellarNetworkEmulator** loads snapshot state
+6. Actor wallets transferred via `previousHelper`
 
 ```
-[Test] → reusableBootstrap() → restoreFrom()
-                ↓
-         [SnapshotCache] → in-memory or disk
-                ↓
-         [StellarNetworkEmulator] ← restore
-                ↓
-         actor wallets transferred
+[Test] → findOrCreateSnapshot() → in-memory hit → restoreFrom()
+                                                       ↓
+                                           helperState.bootstrappedStrella
+                                                       ↓
+                                           [StellarNetworkEmulator] ← restore
 ```
+
+#### Cross-Process Restoration (disk cache hit)
+
+When snapshots exist on disk but not in memory (new process):
+
+1. **Test Suite** calls decorated method
+2. **CapoTestHelper** `findOrCreateSnapshot()` misses in-memory, hits disk cache
+3. **SnapshotCache** loads snapshot from disk (with parent chain)
+4. **CapoTestHelper** instantiates Capo via `initStellarClass()` (REQT-3.5)
+5. **CapoTestHelper** sets up `helperState` for subsequent operations
+6. **StellarNetworkEmulator** loads snapshot state
+7. Actors restored from `offchainData.actorWallets`
+
+```
+[Test] → findOrCreateSnapshot() → in-memory miss → disk hit
+                                                       ↓
+                                           [SnapshotCache] loads from disk
+                                                       ↓
+                                           initStellarClass() ← NEW Capo
+                                                       ↓
+                                           [StellarNetworkEmulator] ← restore
+                                                       ↓
+                                           actors from offchainData
+```
+
+**Key difference**: Cross-process has no `previousHelper` or `bootstrappedStrella`. The Capo must be instantiated fresh, and actors are restored from stored keys rather than transferred.
 
 ### Workflow: Disk Chain Load (cold cache, REQT-1.2.10)
 
@@ -711,7 +740,7 @@ Efficient loading when parent snapshots are already in process memory from prior
 [Emulator.loadSnapshot()]
 ```
 
-**Instance lifetime**: The `loadedSnapshots` Map persists for the SnapshotCache instance lifetime. Within tests sharing the same helper instance, parent snapshots loaded by earlier operations are reused.
+**Instance lifetime**: The `loadedSnapshots` Map persists for the SnapshotCache instance lifetime. Keyed by `{name}:{cacheKey}`, so different seeds/configs produce different entries. Within tests sharing the same helper instance, parent snapshots loaded by earlier operations are reused only if their cache key matches.
 
 ### Workflow: Cache Invalidation
 
@@ -742,7 +771,7 @@ Efficient loading when parent snapshots are already in process memory from prior
 | **`parentHash` verification** | Detects stale cache when parent was rebuilt with same inputs but different resulting state; returns null to trigger rebuild |
 | **Cache key recomputation** | No Map needed—resolvers are deterministic, parent hashes stored in helperState |
 | **`fromSnapshot` cleared on pushBlock** | Provenance tracking; diverged state shouldn't claim snapshot identity |
-| **`loadedSnapshots` Map** (REQT-1.2.10.3) | Process-lifetime cache avoids redundant disk reads and tx reconstruction across tests |
+| **`loadedSnapshots` Map** (REQT-1.2.10.3) | Process-lifetime cache keyed by `{name}:{cacheKey}` avoids redundant disk reads and tx reconstruction; composite key ensures different seeds don't collide |
 | **Incremental UTxO application** (REQT-1.2.10.1) | `applyIncrementalBlocks()` instead of full `rebuildUtxoIndexes()` reduces O(n²) to O(n) for chain depth |
 
 ---

@@ -478,6 +478,7 @@ export abstract class Capo<
         } = bundle;
 
         let expectedMph: MintingPolicyHash | undefined = undefined;
+        console.log(`[DEBUG Capo.init] configuredParams=${!!configuredParams}, configIn=${!!this.configIn}, bootstrapping=${this.configIn?.bootstrapping}, rootCapoScriptHash=${!!this.configIn?.rootCapoScriptHash}, mph=${this.configIn?.mph?.toHex()?.substring(0,12)}`);
         if (configuredParams) {
             seedTxn = configuredParams.seedTxn;
             seedIndex = configuredParams.seedIndex;
@@ -486,6 +487,19 @@ export abstract class Capo<
         } else if (this.configIn && !this.configIn.bootstrapping) {
             seedTxn = this.configIn.seedTxn;
             seedIndex = this.configIn.seedIndex;
+        }
+
+        // Use rootCapoScriptHash to set bundle's scriptHash (for cross-process restoration)
+        // This applies regardless of configuredParams - if we have a known script hash, use it
+        console.log(`[DEBUG Capo.init] rootCapoScriptHash=${!!this.configIn?.rootCapoScriptHash}, bundle.configuredScriptDetails=${!!bundle.configuredScriptDetails}, bundle.configuredScriptDetails?.scriptHash=${!!bundle.configuredScriptDetails?.scriptHash}`);
+        if (this.configIn?.rootCapoScriptHash && !bundle.configuredScriptDetails?.scriptHash) {
+            console.log(`[DEBUG Capo.init] Setting bundle.configuredScriptDetails.scriptHash from rootCapoScriptHash`);
+            bundle.configuredScriptDetails = {
+                ...bundle.configuredScriptDetails,
+                config: this.configIn,
+                scriptHash: this.configIn.rootCapoScriptHash.bytes,
+            };
+            console.log(`[DEBUG Capo.init] bundle.configuredScriptDetails.scriptHash=${bundle.configuredScriptDetails?.scriptHash?.length} bytes`);
         }
 
         if (seedTxn) {
@@ -1287,6 +1301,17 @@ export abstract class Capo<
         if (!expectedMph) {
             console.log(`${this.constructor.name}: seeding new minting policy - compiling script`);
             await minter.asyncCompiledScript();
+        } else if (this.configIn?.rootCapoScriptHash) {
+            // Cross-process restoration: set minter's scriptHash from expectedMph
+            // Only do this when rootCapoScriptHash is present (indicates restoration, not fresh bootstrap)
+            const minterBundle = await minter.getBundle();
+            if (!minterBundle.configuredScriptDetails?.scriptHash) {
+                minterBundle.configuredScriptDetails = {
+                    ...minterBundle.configuredScriptDetails,
+                    config: minter.configIn as any,
+                    scriptHash: expectedMph.bytes,
+                };
+            }
         }
         console.log("temp: skipping mintingCharter activity check");
         // minter.mustHaveActivity("mintingCharter");

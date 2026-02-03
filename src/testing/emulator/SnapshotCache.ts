@@ -582,21 +582,13 @@ export class SnapshotCache {
      * Verifies parentHash and snapshotHash for integrity (REQT-1.2.9.3.2, REQT-1.2.9.3.3).
      */
     async find(snapshotName: string): Promise<CachedSnapshot | null> {
-        // Check in-memory cache first (REQT-1.2.10.3)
-        // Within a single SnapshotCache instance, resolvers are deterministic,
-        // so snapshot name maps to exactly one cache key.
-        const cached = this.loadedSnapshots.get(snapshotName);
-        if (cached) {
-            return cached;
-        }
-
         const entry = this.getRegistryEntry(snapshotName);
         if (!entry) {
             console.warn(`SnapshotCache: no registry entry for '${snapshotName}'`);
             return null;
         }
 
-        // Resolve parent chain first
+        // Resolve parent chain first (needed for cache key computation)
         let parentPath: string | null = null;
         let parentHash: string | null = null;
         let parent: CachedSnapshot | null = null;
@@ -611,7 +603,8 @@ export class SnapshotCache {
             parentHash = parent.snapshotHash;
         }
 
-        // Compute cache key using resolver
+        // Compute cache key BEFORE checking in-memory cache
+        // Different seeds/configs produce different cache keys (REQT-1.2.10.3)
         let cacheKey: string;
         if (entry.resolveScriptDependencies) {
             const inputs = await entry.resolveScriptDependencies();
@@ -619,6 +612,14 @@ export class SnapshotCache {
         } else {
             // No resolver - use parent hash only (for simple snapshots)
             cacheKey = this.computeKey(parentHash, { bundles: [] });
+        }
+
+        // Check in-memory cache with composite key (REQT-1.2.10.3)
+        // Composite key ensures different seeds don't collide
+        const mapKey = `${snapshotName}:${cacheKey}`;
+        const cached = this.loadedSnapshots.get(mapKey);
+        if (cached) {
+            return cached;
         }
 
         // Construct hierarchical path
@@ -733,7 +734,8 @@ export class SnapshotCache {
                 offchainData: mergedOffchainData,
                 cacheKeyInputs,
             };
-            this.loadedSnapshots.set(snapshotName, result);
+            // Use composite key for in-memory cache (REQT-1.2.10.3)
+            this.loadedSnapshots.set(mapKey, result);
             return result;
         } catch (e) {
             console.warn(`SnapshotCache: failed to read ${cachePath}:`, e);
@@ -820,6 +822,10 @@ export class SnapshotCache {
         // Store path and cacheKeyInputs on the cachedSnapshot for caller's use
         cachedSnapshot.path = snapshotDir;
         cachedSnapshot.cacheKeyInputs = cacheKeyInputs;
+
+        // Cache in memory using composite key (REQT-1.2.10.3)
+        const mapKey = `${snapshotName}:${cacheKey}`;
+        this.loadedSnapshots.set(mapKey, cachedSnapshot);
 
         const totalBlocks = cachedSnapshot.snapshot.blocks.length;
         const storedBlocks = incrementalSnapshot.blocks.length;

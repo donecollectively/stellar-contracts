@@ -48,11 +48,61 @@
 | F8 | StellarTestHelper.ts:684-708 | Actor wallet regeneration uses PRNG replay instead of stored keys | Implemented `getActorWalletKeys()` and `restoreActorsFromStoredKeys()` using `makeBip32PrivateKey(hexToBytes())` fast path; removed `regenerateActorsFromSetupInfo()`, `createWalletWithoutUtxo()`, `parseActorSetupInfo()`, and `__actorSetupInfo__` hack |
 | F10 | SnapshotCache.ts | No mechanism for offchain data outside cache key | Implemented `offchainData` field in `CachedSnapshot`, `offchain.json` file storage, parent chain merging in `find()` |
 | F9 | SnapshotCache.ts | Cache key inputs not stored in snapshot directory | Implemented `cacheKeyInputs` field, `key-inputs.json` written on store, loaded on find with graceful fallback |
+| F11 | CapoTestHelper.ts:789-797,879 | Cross-process disk cache hit doesn't reconstruct Capo | Added Capo instantiation via `initStellarClass()` and helperState setup for non-genesis disk cache hits |
+| F12 | CapoTestHelper.ts:751-763 | In-memory non-genesis hit missing offchainData config lookup | Added offchainData config lookup in cross-process restoration path |
+| F13 | SnapshotCache.ts:584-744 | `loadedSnapshots` keyed by name only, not cache key | Use composite key `{name}:{cacheKey}`; compute cache key before in-memory lookup |
 
 ### Open
 
-| ID | UUT | Location | Finding | Work Unit |
-|----|-----|----------|---------|-----------|
+*No open findings.*
+
+### Resolved Details
+
+#### F12: In-memory non-genesis path missing offchainData config lookup
+
+**Symptom**: `compiledScript() must be called with asyncOk=true when the script is not already loaded` at line 759
+
+**Analysis**: Two code paths exist for non-genesis cross-process restoration:
+1. **Disk cache hit** (lines 821-834): Correctly reads `cached.offchainData?.capoConfig`
+2. **In-memory non-genesis hit** (lines 751-763): Only checks `helperState!.parsedConfig`, NOT `offchainData`
+
+**Flow causing failure**:
+1. First call: disk cache hit → loads to `helperState.snapshots`, `helperState.offchainData`
+2. Second call (same snapshot): in-memory hit → no `bootstrappedStrella` → enters else branch (line 751)
+3. Line 755: `const config = this.helperState!.parsedConfig` → undefined
+4. Line 759: `initStellarClass()` without config → script not loaded → error
+
+**Root cause**: The in-memory path at line 755 assumes `helperState.parsedConfig` is populated, but after disk cache hit it's only stored in `helperState.offchainData[snapshotName].capoConfig`.
+
+**Fix**: Mirror the disk cache hit logic - check `offchainData` for config.
+
+#### F13: initialize() with new seed reuses cached snapshot
+
+**Symptom**: Test "makes a different address" fails - second Capo with different seed gets same address as first Capo.
+
+**Analysis**: Multiple caching layers were returning stale data after `initialize()` with new seed:
+
+1. **`SnapshotCache.loadedSnapshots`** (line 588): Keyed by name only, not cache key. Different seeds produce same lookup key → returns old snapshot.
+
+2. **`helperState`**: Not fully cleared on reinitialize. Old `snapshots`, `bootstrappedStrella`, `parsedConfig` persisted.
+
+3. **`Capo.init()`**: Needs to use `rootCapoScriptHash` from config to set bundle's scriptHash for cross-process restoration.
+
+**Flow causing failure**:
+1. Test 1: Bootstrap Capo A with seed X → stored in `loadedSnapshots["capoInitialized"]`
+2. Test 2: `initialize({ randomSeed: 43 })` → seed changes
+3. Test 2: `bootstrap()` → `snapshotCache.find("capoInitialized")`
+4. `find()` checks `loadedSnapshots.get("capoInitialized")` → HIT (old snapshot!)
+5. Returns Capo A's snapshot with wrong `rootCapoScriptHash`
+
+**Root cause**: `loadedSnapshots` keyed by name only; cache key not considered.
+
+**Fix** (multi-part):
+1. **SnapshotCache**: Key `loadedSnapshots` by `{name}:{cacheKey}` - compute cache key before lookup
+2. **CapoTestHelper.initialize()**: Clear `helperState` (snapshots, offchainData, bootstrappedStrella, etc.)
+3. **Capo.init()**: Set `bundle.configuredScriptDetails.scriptHash` from `rootCapoScriptHash` when available
+
+**Architecture update**: Updated `loadedSnapshots` descriptions to reflect composite key.
 
 ### Related Commits
 
@@ -70,6 +120,7 @@
 | WU3 | REQT-3.4, F8 | Store actor wallet keys in offchain data; restore via `makeBip32PrivateKey` | **completed** |
 | WU4 | REQT-1.2.11, F9 | Store `key-inputs.json` in snapshot directory | **completed** |
 | WU5 | REQT-1.2.12, F10 | Add offchain data storage mechanism | **completed** |
+| WU6 | REQT-3.5, F11 | Cross-process Capo reconstruction on disk cache hit | **completed** |
 
 **Dependency chain**: WU5 ← WU3 (actor keys requires offchain data mechanism)
 
