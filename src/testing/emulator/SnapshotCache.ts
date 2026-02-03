@@ -857,10 +857,21 @@ export class SnapshotCache {
             return false;
         }
 
+        const deletedPath = cached.path;
+
         // Recursively delete the snapshot directory and all children
-        if (existsSync(cached.path)) {
-            rmSync(cached.path, { recursive: true, force: true });
-            console.log(`SnapshotCache: deleted '${snapshotName}' and children at ${cached.path}`);
+        if (existsSync(deletedPath)) {
+            rmSync(deletedPath, { recursive: true, force: true });
+
+            // Clear from in-memory cache: remove this snapshot and any children
+            // Children have paths that start with the deleted path
+            for (const [mapKey, cachedSnap] of this.loadedSnapshots.entries()) {
+                if (cachedSnap.path && cachedSnap.path.startsWith(deletedPath)) {
+                    this.loadedSnapshots.delete(mapKey);
+                }
+            }
+
+            console.log(`SnapshotCache: deleted '${snapshotName}' and children at ${deletedPath}`);
             return true;
         }
         return false;
