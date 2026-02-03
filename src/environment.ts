@@ -52,10 +52,18 @@ if (
 
 // console.log(process.env);
 console.log("env:", {DEBUG, CARDANO_NETWORK, NODE_ENV, BF_API_KEY, OPTIMIZE, cwd, });
+console.log("NODE_ENV sources:", {
+    "process.env.NODE_ENV": isNodeJS ? process.env.NODE_ENV : "(not node)",
+    "import.meta.env.MODE": (() => { try { //@ts-expect-error
+        return import.meta.env?.MODE ?? "(MODE undefined)"; } catch { return "(no import.meta.env)"; } })(),
+    "environment.NODE_ENV": NODE_ENV,
+});
 
 /**
  * @public
  */
+const isTest = isNodeJS && process.env.NODE_ENV === 'test';
+
 export const environment = {
     DEBUG,
     CARDANO_NETWORK,
@@ -63,4 +71,5 @@ export const environment = {
     NODE_ENV,
     OPTIMIZE,
     cwd,
+    isTest,
 };

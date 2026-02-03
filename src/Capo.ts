@@ -154,6 +154,7 @@ import { mkDgtStateKey } from "./CapoTypes.js";
 
 import type { PrecompiledProgramJSON } from "./helios/CachedHeliosProgram.js";
 import { placeholderSetupDetails } from "./helios/index.js";
+import { environment } from "./environment.js";
 
 type InstallPolicyDgtOptions<
     CAPO extends Capo<any>,
@@ -346,7 +347,8 @@ export abstract class Capo<
     }
 
     static async scriptBundleClass(): Promise<typeof CapoHeliosBundle> {
-        console.warn(
+        if (!environment.isTest) {
+            console.warn(
             `${this.name}: each Capo will need to provide a static scriptBundleClass() method.\n` +
                 `It should return an instance of a class defined in a *.hlb.ts file.  At minimum:\n\n` +
                 `    export default class MyAppCapoBundle extends CapoHeliosBundle {\n` +
@@ -361,7 +363,8 @@ export abstract class Capo<
                 `It's recommended to import your bundle asyncrhonously.` +
                 `Your static scriptBundleClass() method can \`module= await import("./MyAppCapoBundle.js"); return module.MyAppCapoBundle;\`\n\n` +
                 `We suggest naming your Capo bundle class with your application's name.\n`
-        );
+            );
+        }
         console.warn(
             "using a generic Capo bundle - just enough for getting started."
         );

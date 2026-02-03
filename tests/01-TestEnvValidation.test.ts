@@ -7,6 +7,7 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
+import { environment } from "../src/environment";
 
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
@@ -30,6 +31,20 @@ describe("Test environment", async () => {
     });
 
     describe("baseline test-env capabilities", () => {
+        it("environment has indicator of being in test", async () => {
+            console.log("process.env.NODE_ENV:", process.env.NODE_ENV);
+            //@ts-expect-error
+            console.log("import.meta.env.MODE:", import.meta.env.MODE);
+            //@ts-expect-error
+            console.log("import.meta.env.DEV:", import.meta.env.DEV);
+            //@ts-expect-error
+            console.log("import.meta.env.PROD:", import.meta.env.PROD);
+            console.log("environment.NODE_ENV:", environment.NODE_ENV);
+            console.log("environment.isTest:", environment.isTest);
+            console.log("===========================");
+            expect(environment.isTest).toBe(true);
+        });
+
         it("gets expected wallet balances for test-scenario actor", async (context: localTC) => {
             const {
                 h,

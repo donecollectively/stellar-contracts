@@ -27,6 +27,7 @@ import { dumpAny, utxosAsString } from "./diagnostics.js";
 import { UutName } from "./delegation/UutName.js";
 import type { SetupInfo, StellarContract } from "./StellarContract.js";
 import { textToBytes } from "./HeliosPromotedTypes.js";
+import { environment } from "./environment.js";
 
 export type utxoSortInfo = {
     u: TxInput;
@@ -1065,7 +1066,7 @@ export class UtxoHelper {
                 : await wallet!.utxos;
             console.log(
                 addrString,
-                wallet,
+                ...(environment.isTest ? [] : [{wallet}]),
                 addrs.map((a) => a?.toString())
             );
             for (const u of utxos2) {
