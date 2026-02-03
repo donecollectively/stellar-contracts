@@ -226,7 +226,6 @@ export abstract class StellarTestHelper<
      */
     static defaultHelperState: TestHelperState<any, any> = {
         namedRecords: {},
-        bootstrapped: false,
     } as any;
 
     constructor(

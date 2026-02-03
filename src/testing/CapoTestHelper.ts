@@ -204,7 +204,6 @@ export abstract class CapoTestHelper<
      */
     static defaultHelperState: TestHelperState<any, any> = {
         namedRecords: {},
-        bootstrapped: false,
     } as any;
 
     /**
@@ -343,7 +342,6 @@ export abstract class CapoTestHelper<
                 this.helperState.offchainData = {};
                 this.helperState.bootstrappedStrella = undefined;
                 this.helperState.previousHelper = undefined as any;
-                this.helperState.bootstrapped = false;
             }
         }
         await this.delay(1);
@@ -440,31 +438,30 @@ export abstract class CapoTestHelper<
     ) {
         let capo;
         const helperState = this.helperState!;
-        if (helperState.bootstrapped) {
+        const { bootstrappedStrella, previousHelper } = helperState;
+
+        // Check if we can restore from a prior bootstrap
+        // Requires: prior Capo exists AND snapshot exists in cache
+        const cached = bootstrappedStrella && previousHelper
+            ? await this.snapshotCache.find(snap, this)
+            : null;
+
+        if (cached && bootstrappedStrella && previousHelper) {
+            // Already bootstrapped in a prior call - restore from snapshot
             console.log("  ---  ⚗️🐞🐞 already bootstrapped");
-            if (!helperState.previousHelper) {
-                debugger;
-                throw new Error(
-                    `already bootstrapped, but no previousHelper : ( `,
-                );
-            }
+            console.log(
+                `changing helper from network ${previousHelper.network.id} to ${this.network.id}`,
+            );
             capo = await this.restoreFrom(snap);
         } else {
+            // Fresh bootstrap (no prior Capo, or snapshot not found)
             capo = await this.bootstrap();
             helperState.bootstrappedStrella = capo;
             // Store parsedConfig for cross-instance Capo reconstruction (REQT-3.5/vmq8qmv218)
             helperState.parsedConfig = this.state.parsedConfig;
         }
-        const { previousHelper } = helperState;
-        if (previousHelper) {
-            console.log(
-                `changing helper from network ${previousHelper.network.id} to ${this.network.id}`,
-            );
-        }
-        // SNAP_DELEGATES is already created in bootstrap() → saveDelegatesDeployedSnapshot()
-        helperState.bootstrapped = true;
-        helperState.previousHelper = this;
 
+        helperState.previousHelper = this;
         return capo;
     }
 
@@ -787,7 +784,6 @@ export abstract class CapoTestHelper<
         if (!this.helperState) {
             //@ts-expect-error - creating minimal helperState without previousHelper
             this.helperState = {
-                bootstrapped: false,
                 namedRecords: {},
             };
         } else {
@@ -878,7 +874,6 @@ export abstract class CapoTestHelper<
                 // Set up helperState for subsequent operations
                 this.helperState!.bootstrappedStrella = this.strella;
                 this.helperState!.previousHelper = this as any;
-                this.helperState!.bootstrapped = true;
             } else if (bootstrappedStrella && previousHelper) {
                 // Case c): Same chartered Capo - hot-swap network via restoreFrom()
                 console.log(`  -- Hot-swapping network for existing Capo`);
@@ -889,7 +884,6 @@ export abstract class CapoTestHelper<
                 console.log(`  -- Using existing Capo (no previousHelper)`);
                 this.helperState!.bootstrappedStrella = this.strella;
                 this.helperState!.previousHelper = this as any;
-                this.helperState!.bootstrapped = true;
             }
 
             if (actorName === "default") {

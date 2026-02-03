@@ -82,7 +82,6 @@ export type TestHelperState<
     SC extends StellarContract<any>,
     Special extends Record<string, any> = {[key: string]: never}
 > = {
-    bootstrapped: Boolean;
     bootstrappedStrella?: SC;
     namedRecords: Record<string, string>;
     /** Offchain data per snapshot - used for in-memory cache (REQT-3.4/n93h9y5s85) */
