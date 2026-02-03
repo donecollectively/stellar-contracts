@@ -620,6 +620,42 @@ export abstract class CapoTestHelper<
     }
 
     /**
+     * Deploys enabled delegates after Capo initialization.
+     * Called by snapToEnabledDelegatesDeployed via @hasNamedSnapshot decorator.
+     * @internal
+     */
+    async enabledDelegatesDeployed(
+        args?: Partial<MinimalCharterDataArgs>,
+        options?: SubmitOptions,
+    ): Promise<void> {
+        await this.extraBootstrapping(args, options);
+        console.log(
+            "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Delegates deployed",
+        );
+        // tick happens in decorator wrapper after this returns
+    }
+
+    /**
+     * Decorated wrapper for enabledDelegatesDeployed.
+     * Uses @hasNamedSnapshot with internal: true since this is part of bootstrap() flow.
+     * @public
+     */
+    @CapoTestHelper.hasNamedSnapshot(SNAP_DELEGATES, {
+        actor: "default",
+        parentSnapName: SNAP_CAPO_INIT,
+        internal: true, // Part of bootstrap flow - don't call reusableBootstrap()
+        async resolveScriptDependencies() {
+            return this.resolveEnabledDelegatesDependencies();
+        },
+    })
+    async snapToEnabledDelegatesDeployed(
+        args?: Partial<MinimalCharterDataArgs>,
+        options?: SubmitOptions,
+    ): Promise<void> {
+        // Decorator calls enabledDelegatesDeployed() and handles caching
+    }
+
+    /**
      * Ensures helperState exists, creating a default one if needed.
      * This enables disk caching for test helpers that don't use the @hasNamedSnapshot decorator.
      * @internal
@@ -939,66 +975,10 @@ export abstract class CapoTestHelper<
         // Mint charter token and create capoInitialized snapshot (handles caching)
         await this.snapToCapoInitialized(args, options);
 
-        // Try to restore enabledDelegatesDeployed from cache
-        const delegatesRestored = await this.tryRestoreDelegatesDeployed();
-        if (!delegatesRestored) {
-            // Cache miss - need to run extra bootstrapping
-            await this.extraBootstrapping(args, options);
-
-            // Save enabledDelegatesDeployed snapshot
-            await this.saveDelegatesDeployedSnapshot();
-        }
+        // Deploy delegates and create enabledDelegatesDeployed snapshot (handles caching)
+        await this.snapToEnabledDelegatesDeployed(args, options);
 
         return strella;
-    }
-
-    /**
-     * Tries to restore enabledDelegatesDeployed snapshot from disk cache.
-     * Returns true if restored, false if cache miss.
-     * @internal
-     */
-    private async tryRestoreDelegatesDeployed(): Promise<boolean> {
-        const capoInitSnapshot = this.helperState!.snapshots[SNAP_CAPO_INIT];
-        if (!capoInitSnapshot) {
-            console.log("  -- No capoInitialized snapshot to base delegates on");
-            return false;
-        }
-
-        // Use registry-based find (cache key computed internally)
-        const cached = await this.snapshotCache.find(SNAP_DELEGATES);
-        if (cached) {
-            console.log(`  -- 🔧 enabledDelegatesDeployed snapshot cache HIT`);
-            this.network.loadSnapshot(cached.snapshot);
-            this.helperState!.snapshots[SNAP_DELEGATES] = cached.snapshot;
-            Object.assign(this.helperState!.namedRecords, cached.namedRecords);
-            return true;
-        }
-
-        console.log(`  -- 🔧 enabledDelegatesDeployed snapshot cache MISS`);
-        return false;
-    }
-
-    /**
-     * Saves enabledDelegatesDeployed snapshot to disk cache.
-     * @internal
-     */
-    private async saveDelegatesDeployedSnapshot(): Promise<void> {
-        const capoInitSnapshot = this.helperState!.snapshots[SNAP_CAPO_INIT];
-        const parentHash = capoInitSnapshot?.blockHashes?.slice(-1)[0] || null;
-
-        const snapshot = this.network.snapshot(SNAP_DELEGATES);
-        this.helperState!.snapshots[SNAP_DELEGATES] = snapshot;
-
-        const cachedSnapshot: CachedSnapshot = {
-            snapshot,
-            namedRecords: { ...this.helperState!.namedRecords },
-            parentSnapName: SNAP_CAPO_INIT,
-            parentHash,
-            parentCacheKey: null, // deprecated with hierarchical directories
-            snapshotHash: this.network.lastBlockHash,
-        };
-        // Use registry-based store (path computed internally)
-        await this.snapshotCache.store(SNAP_DELEGATES, cachedSnapshot);
     }
 
     /**

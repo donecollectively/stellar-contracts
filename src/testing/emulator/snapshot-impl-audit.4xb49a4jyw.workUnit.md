@@ -66,7 +66,7 @@
 |----|------|--------------|--------|
 | WU0 | REQT-3.3.6 | `@hasNamedSnapshot` supports `internal: true` option | **completed** |
 | WU1 | REQT-3.3.4 | `capoInitialized` uses `@hasNamedSnapshot` with `internal: true` | **completed** |
-| WU2 | REQT-3.3.5 | `enabledDelegatesDeployed` uses `@hasNamedSnapshot` with `internal: true` | pending |
+| WU2 | REQT-3.3.5 | `enabledDelegatesDeployed` uses `@hasNamedSnapshot` with `internal: true` | **completed** |
 | WU3 | REQT-3.4, F8 | Store actor wallet keys in offchain data; restore via `makeBip32PrivateKey` | pending |
 | WU4 | REQT-1.2.11, F9 | Store `key-inputs.json` in snapshot directory | pending |
 | WU5 | REQT-1.2.12, F10 | Add offchain data storage mechanism | **completed** |
@@ -203,8 +203,8 @@ async snapToEnabledDelegatesDeployed(): Promise<void> {
 5. ~~**Resolve D5**: `loadedSnapshots` scope~~ ✅ Accepted instance-scoped as safe enough
 6. ~~**WU0**: Add `internal: true` option to decorator~~ ✅ Done
 7. ~~**WU1**: Implement `snapToCapoInitialized()`~~ ✅ Done
-8. **WU2**: Implement `snapToEnabledDelegatesDeployed()` with `@hasNamedSnapshot` decorator
-9. **WU5**: Implement offchain data storage mechanism (REQT-1.2.12) - see `snapshot-impl-audit.bfwzqy0sb6.workUnit.md`
+8. ~~**WU2**: Implement `snapToEnabledDelegatesDeployed()` with `@hasNamedSnapshot` decorator~~ ✅ Done
+9. ~~**WU5**: Implement offchain data storage mechanism (REQT-1.2.12)~~ ✅ Done
 10. **WU4**: Implement key-inputs storage (REQT-1.2.11) - see `snapshot-impl-audit.gyjxwjjt91.workUnit.md`
-11. **WU3**: Store actor wallet keys in offchain data (REQT-3.4) - see `snapshot-impl-audit.9h9cf9g8n8.workUnit.md` - depends on WU5
+11. **WU3**: Store actor wallet keys in offchain data (REQT-3.4) - see `snapshot-impl-audit.9h9cf9g8n8.workUnit.md` - depends on WU5 ✅
 12. Resume I3: @hasNamedSnapshot decorator audit
