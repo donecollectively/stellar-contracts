@@ -147,7 +147,7 @@ describe("Capo", async () => {
                 } = context;
 
                 debugger;
-                const treasury = await h.bootstrap();
+                const treasury = await h.initialize();
                 const tcx = await h.mintCharterToken();
 
                 const { capoGov } = tcx.state.uuts;
@@ -167,7 +167,7 @@ describe("Capo", async () => {
                     h,
                     h: { network, actors, delay, state },
                 } = context;
-                const capo = await h.bootstrap();
+                const capo = await h.initialize();
                 const tcx = await h.mintCharterToken();
                 const { mintDgt } = tcx.state.uuts;
 
