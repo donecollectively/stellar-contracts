@@ -45,6 +45,8 @@
 | Actor wallets | resource | StellarTestHelper | CapoTestHelper |
 | PRNG seed | resource | StellarNetworkEmulator | SnapshotCache |
 | Snapshot provenance | artifact | StellarNetworkEmulator | Debugging/logging (cleared on pushBlock) |
+| Key inputs | artifact | SnapshotCache | Debugging, actor list access (ARCH-ja63e3bh8p) |
+| Offchain data | artifact | SnapshotCache | Actor wallet keys, merged from parent chain (ARCH-75rh0ewd7a) |
 
 ---
 
@@ -101,6 +103,8 @@
 - Owns **Cache files** (`.stellar/emu/`)
 - Owns **Snapshot chain** hierarchy (base → capoInitialized → enabledDelegatesDeployed → app)
 - Owns **Loaded snapshots** (`loadedSnapshots` Map, process-lifetime cache)
+- Owns **Key inputs** (`key-inputs.json` per snapshot directory)
+- Owns **Offchain data** (`offchain.json` per snapshot directory, merged from parent chain)
 - Depends on **Bundle hashes** for cache key computation
 - Depends on **namedRecords** (persists with snapshot)
 
@@ -354,6 +358,8 @@ type CachedSnapshot = {
   parentHash: string | null;       // parent's snapshotHash - verified on load to detect stale cache
   parentCacheKey: string | null;   // DO NOT USE - probably obsolete: with hierarchical dirs, parent path is implicit
   snapshotHash: string;            // this snapshot's resulting block hash (becomes child's parentHash)
+  cacheKeyInputs?: CacheKeyInputs; // original inputs used to compute cache key (loaded from key-inputs.json)
+  offchainData?: Record<string, unknown>;  // offchain detail merged from parent chain (loaded from offchain.json)
 }
 ```
 
@@ -377,6 +383,28 @@ type CachedSnapshot = {
 - After chain loading, `find()` verifies `blockHashes[-1] === snapshotHash` to detect file corruption or implementation bugs
 
 ### Snapshot State Management
+
+#### ARCH-edky0aybv7: PRNG Seed and Determinism
+
+The emulator uses a single seed for deterministic wallet generation:
+
+```typescript
+type NetworkSnapshot = {
+  seed: number;        // Evolved PRNG state at snapshot time
+  slot: number;
+  // ... other fields
+}
+```
+
+**Seed lifecycle**:
+1. `StellarTestHelper.randomSeed` (default 42) passed to emulator on construction
+2. Emulator's `#seed` evolves with each PRNG call (wallet creation)
+3. Snapshot captures the **evolved** `#seed` value
+4. On restore, PRNG continues from where it left off
+
+**Why store evolved seed**: Enables PRNG continuity across snapshot restore. Child snapshots can generate new wallets without colliding with parent's wallet addresses.
+
+**Cache key uses starting seed**: `resolveActorsDependencies()` includes `randomSeed` (the stable starting value, not evolved) for cache key computation.
 
 #### Network Provenance Tracking
 
@@ -489,6 +517,71 @@ class StellarNetworkEmulator implements Emulator {
 - `blockHashes` tracked parallel to `blocks` for interface compatibility
 - Snapshot's `snapshotHash` = `lastBlockHash`
 - Snapshot/restore includes `blockHashes` alongside `blocks`
+
+#### ARCH-ja63e3bh8p: Key Inputs Storage
+
+Each snapshot directory stores the original `CacheKeyInputs` used to compute its cache key:
+
+**File**: `key-inputs.json` (alongside `snapshot.json`)
+
+```json
+{
+  "bundles": [
+    { "name": "DefaultCapoBundle", "sourceHash": "abc123...", "params": {...} }
+  ],
+  "extra": {
+    "actors": [{ "name": "tina", "initialBalance": "11000000000" }, ...],
+    "heliosVersion": "0.17.0"
+  }
+}
+```
+
+**Purpose**:
+- Debugging cache misses (see what differs)
+- Accessing actor list without parsing namedRecords
+- Fulfilling requirement: "loading a snapshot should make cache-key data available"
+
+**Behavior**:
+- Written by `store()` alongside `snapshot.json`
+- Loaded by `find()` and included in `CachedSnapshot.cacheKeyInputs`
+- Graceful fallback if file doesn't exist (for older snapshots)
+
+#### ARCH-75rh0ewd7a: Offchain Data Storage
+
+Offchain data stores test helper restoration detail that doesn't affect cache validity:
+
+**File**: `offchain.json` (alongside `snapshot.json`)
+
+```json
+{
+  "actorWallets": {
+    "tina": { "spendingKey": "abc123...", "stakingKey": "def456..." },
+    "tracy": { "spendingKey": "789...", "stakingKey": "012..." }
+  }
+}
+```
+
+**Distinction from cache key inputs**:
+| Data | Affects Cache? | Example |
+|------|----------------|---------|
+| Cache key inputs | Yes | Actor list (names, balances), bundle hashes |
+| Offchain data | No | Actor wallet private keys |
+
+**Merge semantics**: On `find()`, offchain data merges from parent chain (root → leaf). Child keys override parent keys:
+
+```
+genesis (no offchain)
+  └── actors (offchain: { actorWallets: {...} })
+        └── capoInit (no offchain)
+              └── delegates (no offchain)
+
+Loading "delegates" returns merged: { actorWallets: {...} }
+```
+
+**Purpose**:
+- Store actor wallet private keys for fast restoration (avoid PRNG replay)
+- Clean separation from namedRecords (application data) vs offchain (test helper data)
+- Enables `makeBip32PrivateKey(hexToBytes(key))` fast path
 
 ---
 

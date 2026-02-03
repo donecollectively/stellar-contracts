@@ -234,6 +234,23 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.2.10.2/bkmgarnrsw**: NEXT: Only incremental new transactions from a leaf snapshot MUST be reconstructed
  - **REQT-1.2.10.3/j9adgp9rwv**: NEXT: Incrementally reconstructed transactions MUST be remembered for use when loading later dependency snapshots
 
+### REQT-1.2.11/whp4cvpk9e: NEXT: **Key Inputs Storage**
+
+#### Purpose: Enables debugging cache misses and provides access to cache key data on snapshot load. Applied when storing or loading snapshots.
+
+ - **REQT-1.2.11.1/vn0drr8d8s**: NEXT: `store()` MUST write `key-inputs.json` alongside `snapshot.json` containing the original `CacheKeyInputs`
+ - **REQT-1.2.11.2/e79g49xyyj**: NEXT: `find()` MUST load `key-inputs.json` and include it in `CachedSnapshot.cacheKeyInputs`
+ - **REQT-1.2.11.3/hn8f6z92k0**: NEXT: Missing `key-inputs.json` MUST be handled gracefully (return undefined, for older snapshots)
+
+### REQT-1.2.12/mkap3784hw: NEXT: **Offchain Data Storage**
+
+#### Purpose: Enables storage and restoration of test helper data (e.g., actor wallet keys) that doesn't affect cache validity. Applied when storing or loading snapshots.
+
+ - **REQT-1.2.12.1/020mbw1gqw**: NEXT: `store()` MUST write `offchain.json` alongside `snapshot.json` when `offchainData` is provided
+ - **REQT-1.2.12.2/khqyf56m0g**: NEXT: `find()` MUST merge offchain data from parent chain (root → leaf, child keys override parent)
+ - **REQT-1.2.12.3/yd750dddgy**: NEXT: Empty offchain data MUST NOT create an empty file
+ - **REQT-1.2.12.4/0k6bnbbg95**: NEXT: `CachedSnapshot.offchainData` MUST contain the merged result from all ancestors
+
 ### REQT-1.3/qr6r27cg3q: COMPLETED: **Transaction Validation**
 
 #### Purpose: Ensures submitted transactions meet network requirements. Applied when modifying transaction submission logic.
@@ -326,6 +343,17 @@ type CacheKeyInputs = {
 
 > **RATIONALE (id:7hcqed9mvn)**: All snapshots—including built-ins—must register with SnapshotCache via `@hasNamedSnapshot` decorator. This enables unified cache orchestration, consistent parent chain resolution, and hierarchical directory path construction. The decorator pattern handles cache check, build-if-miss, and store automatically.
 
+### REQT-3.4/n93h9y5s85: NEXT: **Actor Wallet Key Storage**
+
+#### Purpose: Enables fast actor wallet restoration by storing private keys in offchain data instead of regenerating from PRNG. Applied when saving or restoring actor snapshots.
+
+ - **REQT-3.4.1/1p346cabct**: NEXT: Actor snapshot (`bootstrapWithActors`) MUST store wallet private keys (spending + staking) in `offchainData.actorWallets`
+ - **REQT-3.4.2/avwkcrnwqp**: NEXT: Actor restoration MUST use `makeBip32PrivateKey(hexToBytes(key))` fast path instead of PRNG regeneration
+ - **REQT-3.4.3/ncbfwtyr8h**: NEXT: `regenerateActorsFromSetupInfo()` MUST be replaced with `restoreActorsFromStoredKeys()`
+ - **REQT-3.4.4/3rexpys2q3**: NEXT: `__actorSetupInfo__` namedRecord hack MUST be removed after migration
+
+> **RATIONALE (id:n93h9y5s85)**: PRNG-based wallet regeneration is slow (requires `makeRootPrivateKey()` derivation) and fragile (depends on exact PRNG sequence). Storing the derived keys directly enables instant restoration via `makeBip32PrivateKey()`.
+
 ## Component: StellarTestHelper
 
 ### REQT-4.0/473wtxxe8d: COMPLETED: **Actor Snapshot Transfer**
@@ -415,6 +443,12 @@ Architecture evolution from flat files to hierarchical directories:
 - Completed dgData controller filtering by featureFlags (REQT-1.2.3.4)
 - Built-in snapshots now properly registered with SnapshotCache (REQT-3.3)
 - Updated tests to use registry-based API
+
+### Phase 5: Seed and Time Sync Fixes
+
+- Fixed PRNG seed initialization: `StellarTestHelper.randomSeed` now passed to emulator on construction (was passing `undefined`, defaulting to 0 instead of 42)
+- Fixed snapshot time drift: `loadSnapshot()` now syncs emulator to wall-clock time via `netPHelper.timeToSlot(Date.now())` to prevent transaction validity failures
+- Added architecture documentation for PRNG seed lifecycle (ARCH-edky0aybv7)
 
 #### Next Recommendations
 
