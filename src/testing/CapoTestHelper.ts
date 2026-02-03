@@ -44,10 +44,13 @@ export type AnyCapoTestHelper = CapoTestHelper<Capo<any>, Record<string, any>>;
 
 /**
  * Callback type for resolving script dependencies for cache key computation.
- * Uses `this` binding - SnapWrap binds to helper instance at runtime.
+ * Takes helper as explicit argument for correct lifetime handling (ARCH-8rqhpfy1ym).
+ * This ensures the resolver uses the CURRENT helper, not one from registration time.
+ * The helper is typed as `unknown` for compatibility with SnapshotCache; implementers
+ * should cast to the appropriate helper type (e.g., `helper as CapoTestHelper<any, any>`).
  * @public
  */
-export type ScriptDependencyResolver = (this: AnyCapoTestHelper) => Promise<CacheKeyInputs>;
+export type ScriptDependencyResolver = (helper: unknown) => Promise<CacheKeyInputs>;
 
 /**
  * Options for the hasNamedSnapshot decorator.
@@ -149,9 +152,10 @@ export abstract class CapoTestHelper<
         }
 
         // Register the actors snapshot (doesn't need capo)
+        // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym) - no binding
         this.snapshotCache.register(SNAP_ACTORS, {
             parentSnapName: "genesis",
-            resolveScriptDependencies: async () => this.resolveActorsDependencies(),
+            resolveScriptDependencies: async (helper) => (helper as this).resolveActorsDependencies(),
         });
     }
 
@@ -165,14 +169,15 @@ export abstract class CapoTestHelper<
             return;
         }
 
+        // Resolvers take helper as explicit argument (ARCH-8rqhpfy1ym) - no binding
         this.snapshotCache.register(SNAP_CAPO_INIT, {
             parentSnapName: SNAP_ACTORS as ParentSnapName,
-            resolveScriptDependencies: this.resolveCoreCapoDependencies.bind(this),
+            resolveScriptDependencies: async (helper) => (helper as this).resolveCoreCapoDependencies(),
         });
 
         this.snapshotCache.register(SNAP_DELEGATES, {
             parentSnapName: SNAP_CAPO_INIT as ParentSnapName,
-            resolveScriptDependencies: this.resolveEnabledDelegatesDependencies.bind(this),
+            resolveScriptDependencies: async (helper) => (helper as this).resolveEnabledDelegatesDependencies(),
         });
     }
 
@@ -507,14 +512,11 @@ export abstract class CapoTestHelper<
                     await this.reusableBootstrap();
                 }
 
-                // Register snapshot with the cache (resolver bound to this helper instance)
-                // The resolver uses `this` binding, so we bind it to the current helper instance
-                const boundResolver = resolveScriptDependencies
-                    ? resolveScriptDependencies.bind(this)
-                    : undefined;
+                // Register snapshot with the cache
+                // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym) - no binding needed
                 this.snapshotCache.register(snapshotName, {
                     parentSnapName,
-                    resolveScriptDependencies: boundResolver,
+                    resolveScriptDependencies,
                 });
 
                 return this.findOrCreateSnapshot(
@@ -571,14 +573,15 @@ export abstract class CapoTestHelper<
     @CapoTestHelper.hasNamedSnapshot(SNAP_ACTORS, {
         actor: "default",
         parentSnapName: "genesis",
-        // Uses `this` binding - SnapWrap binds resolver to helper instance at runtime
-        async resolveScriptDependencies() {
+        // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
+        async resolveScriptDependencies(helper) {
+            const h = helper as CapoTestHelper<any, any>;
             // Ensure actors are set up so we can compute cache key
-            if (this.actorSetupInfo.length === 0) {
-                await this.setupActors();
+            if (h.actorSetupInfo.length === 0) {
+                await h.setupActors();
                 // DON'T tick here - let the decorator handle tick after builder
             }
-            return this.resolveActorsDependencies();
+            return h.resolveActorsDependencies();
         },
     })
     async snapToBootstrapWithActors(): Promise<void> {
@@ -610,8 +613,9 @@ export abstract class CapoTestHelper<
         actor: "default",
         parentSnapName: SNAP_ACTORS,
         internal: true, // Part of bootstrap flow - don't call reusableBootstrap()
-        async resolveScriptDependencies() {
-            return this.resolveCoreCapoDependencies();
+        // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
+        async resolveScriptDependencies(helper) {
+            return (helper as CapoTestHelper<any, any>).resolveCoreCapoDependencies();
         },
     })
     async snapToCapoInitialized(
@@ -646,8 +650,9 @@ export abstract class CapoTestHelper<
         actor: "default",
         parentSnapName: SNAP_CAPO_INIT,
         internal: true, // Part of bootstrap flow - don't call reusableBootstrap()
-        async resolveScriptDependencies() {
-            return this.resolveEnabledDelegatesDependencies();
+        // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
+        async resolveScriptDependencies(helper) {
+            return (helper as CapoTestHelper<any, any>).resolveEnabledDelegatesDependencies();
         },
     })
     async snapToEnabledDelegatesDeployed(
@@ -690,7 +695,7 @@ export abstract class CapoTestHelper<
 
         // Try cache using registry-based API (snapshotCache.loadedSnapshots uses composite keys for proper isolation)
         const cacheStart = performance.now();
-        const cached = await this.snapshotCache.find(snapshotName);
+        const cached = await this.snapshotCache.find(snapshotName, this);
         if (cached) {
             // Restore from cache (may be in-memory via loadedSnapshots or from disk)
             this.network.loadSnapshot(cached.snapshot);
@@ -785,7 +790,7 @@ export abstract class CapoTestHelper<
 
                 // Get parent hash from snapshotCache (already loaded during parent resolution)
                 const parentCached = parentSnapName !== "genesis"
-                    ? await this.snapshotCache.find(parentSnapName)
+                    ? await this.snapshotCache.find(parentSnapName, this)
                     : null;
                 const parentHash = parentCached?.snapshotHash || null;
 
@@ -832,7 +837,7 @@ export abstract class CapoTestHelper<
                     offchainData,
                 };
 
-                await this.snapshotCache.store(snapshotName, cachedSnapshot);
+                await this.snapshotCache.store(snapshotName, cachedSnapshot, this);
                 const storeElapsed = (performance.now() - storeStart).toFixed(1);
                 console.log(`  💾 stored '${snapshotName}' to disk: ${storeElapsed}ms`);
             }
@@ -857,7 +862,7 @@ export abstract class CapoTestHelper<
             );
 
         // Get snapshot from cache (uses proper composite key)
-        const cached = await this.snapshotCache.find(snapshotName);
+        const cached = await this.snapshotCache.find(snapshotName, this);
         if (!cached) {
             throw new Error(`no snapshot named ${snapshotName} in snapshotCache`);
         }

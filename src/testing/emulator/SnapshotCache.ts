@@ -65,8 +65,8 @@ export type CachedSnapshot = {
 export type SnapshotRegistryEntry = {
     /** Parent snapshot name */
     parentSnapName: ParentSnapName;
-    /** Resolver function to compute cache key inputs (must be pre-bound to helper instance) */
-    resolveScriptDependencies?: () => Promise<CacheKeyInputs>;
+    /** Resolver function to compute cache key inputs. Takes helper as explicit argument for correct lifetime (ARCH-8rqhpfy1ym). */
+    resolveScriptDependencies?: (helper: unknown) => Promise<CacheKeyInputs>;
 };
 
 /**
@@ -580,8 +580,10 @@ export class SnapshotCache {
      * Returns null on cache miss.
      * Touches the directory if it's more than 1 day old (REQT-1.2.7.1).
      * Verifies parentHash and snapshotHash for integrity (REQT-1.2.9.3.2, REQT-1.2.9.3.3).
+     * @param snapshotName - The snapshot name to find
+     * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym, REQT-3.2.3/97qa2f7m25)
      */
-    async find(snapshotName: string): Promise<CachedSnapshot | null> {
+    async find(snapshotName: string, helper: unknown): Promise<CachedSnapshot | null> {
         const entry = this.getRegistryEntry(snapshotName);
         if (!entry) {
             console.warn(`SnapshotCache: no registry entry for '${snapshotName}'`);
@@ -594,7 +596,7 @@ export class SnapshotCache {
         let parent: CachedSnapshot | null = null;
 
         if (entry.parentSnapName !== "genesis") {
-            parent = await this.find(entry.parentSnapName);
+            parent = await this.find(entry.parentSnapName, helper);
             if (!parent) {
                 // Parent not in cache, can't resolve this snapshot
                 return null;
@@ -607,7 +609,7 @@ export class SnapshotCache {
         // Different seeds/configs produce different cache keys (REQT-1.2.10.3)
         let cacheKey: string;
         if (entry.resolveScriptDependencies) {
-            const inputs = await entry.resolveScriptDependencies();
+            const inputs = await entry.resolveScriptDependencies(helper);
             cacheKey = this.computeKey(parentHash, inputs);
         } else {
             // No resolver - use parent hash only (for simple snapshots)
@@ -748,8 +750,9 @@ export class SnapshotCache {
      * Only stores incremental blocks since parent (REQT-1.2.5.1).
      * @param snapshotName - The snapshot name (must be registered)
      * @param cachedSnapshot - The snapshot to store
+     * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym)
      */
-    async store(snapshotName: string, cachedSnapshot: CachedSnapshot): Promise<void> {
+    async store(snapshotName: string, cachedSnapshot: CachedSnapshot, helper: unknown): Promise<void> {
         const entry = this.getRegistryEntry(snapshotName);
         if (!entry) {
             throw new Error(`SnapshotCache: cannot store unregistered snapshot '${snapshotName}'`);
@@ -760,7 +763,7 @@ export class SnapshotCache {
         let parentBlockCount = 0;
 
         if (entry.parentSnapName !== "genesis") {
-            const parent = await this.find(entry.parentSnapName);
+            const parent = await this.find(entry.parentSnapName, helper);
             if (!parent) {
                 throw new Error(`SnapshotCache: parent '${entry.parentSnapName}' not found for '${snapshotName}'`);
             }
@@ -772,7 +775,7 @@ export class SnapshotCache {
         let cacheKey: string;
         let cacheKeyInputs: CacheKeyInputs;
         if (entry.resolveScriptDependencies) {
-            cacheKeyInputs = await entry.resolveScriptDependencies();
+            cacheKeyInputs = await entry.resolveScriptDependencies(helper);
             cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
         } else {
             cacheKeyInputs = { bundles: [] };
@@ -835,24 +838,28 @@ export class SnapshotCache {
     /**
      * Checks if a cached snapshot exists for the given snapshot name.
      * Uses registry to compute expected path.
+     * @param snapshotName - The snapshot name to check
+     * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym)
      */
-    async has(snapshotName: string): Promise<boolean> {
-        const cached = await this.find(snapshotName);
+    async has(snapshotName: string, helper: unknown): Promise<boolean> {
+        const cached = await this.find(snapshotName, helper);
         return cached !== null;
     }
 
     /**
      * Deletes a cached snapshot and all its children (REQT-1.2.9.4).
      * Uses recursive directory deletion.
+     * @param snapshotName - The snapshot name to delete
+     * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym)
      */
-    async delete(snapshotName: string): Promise<boolean> {
+    async delete(snapshotName: string, helper: unknown): Promise<boolean> {
         const entry = this.getRegistryEntry(snapshotName);
         if (!entry) {
             return false;
         }
 
         // Find the snapshot to get its path
-        const cached = await this.find(snapshotName);
+        const cached = await this.find(snapshotName, helper);
         if (!cached || !cached.path) {
             return false;
         }

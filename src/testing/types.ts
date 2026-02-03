@@ -90,6 +90,7 @@ export type TestHelperState<
     /** Parsed config for cross-instance Capo reconstruction (REQT-3.5/vmq8qmv218) */
     parsedConfig?: any;
     previousHelper: StellarTestHelper<any>;
+    snapCache: SnapshotCache;
 } & Special;
 
 /**

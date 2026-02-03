@@ -38,7 +38,7 @@
 | Emulator state | artifact | StellarNetworkEmulator | CapoTestHelper, SnapshotCache |
 | Snapshot chain | artifact | SnapshotCache | CapoTestHelper |
 | Cache files | artifact | SnapshotCache | - |
-| Loaded snapshots | resource | SnapshotCache | Process-lifetime cache keyed by `{name}:{cacheKey}` (REQT-1.2.10) |
+| Loaded snapshots | resource | SnapshotCache | helperState-scope cache keyed by `{name}:{cacheKey}` (REQT-1.2.10); shared via `helperState.snapCache` |
 | Bundle hashes | artifact | HeliosScriptBundle | SnapshotCache |
 | Compile cache | artifact | CachedHeliosProgram | HeliosScriptBundle |
 | namedRecords | artifact | CapoTestHelper | Persisted with snapshot, restored on load |
@@ -47,6 +47,17 @@
 | Snapshot provenance | artifact | StellarNetworkEmulator | Debugging/logging (cleared on pushBlock) |
 | Key inputs | artifact | SnapshotCache | Debugging, actor list access (ARCH-ja63e3bh8p) |
 | Offchain data | artifact | SnapshotCache | Actor wallet keys, merged from parent chain (ARCH-75rh0ewd7a) |
+
+### Instance Lifetimes
+
+| Object | Lifetime | Scope | Notes |
+|--------|----------|-------|-------|
+| CapoTestHelper | 1 per `it()` | Single test | Created in `beforeEach` via `addTestContext()` or `createTestContext()` wrapper |
+| helperState | 1 per test file | Describe block | Shared via static `defaultHelperState` or `createTestContext()` options |
+| SnapshotCache | 1 per helperState | Same as helperState | Stored on `helperState.snapCache`; contains `loadedSnapshots` Map |
+| StellarNetworkEmulator | 1 per helper | Single test | Fresh emulator per test; snapshot state restored from cache |
+
+**Sharing mechanism**: `createTestContext()` returns wrapped `describe`/`it` that pass the same `helperState` reference to each test's `beforeEach`. The SnapshotCache on `helperState.snapCache` persists across tests in that scope, enabling in-memory cache hits via `loadedSnapshots` Map.
 
 ---
 
@@ -93,7 +104,7 @@
 - Track registered snapshot metadata (name → parentSnapName, resolver) via just-in-time registration
 - Persist snapshots to `.stellar/emu/` in hierarchical directory structure
 - Load snapshots from disk, recursively resolving parent chain
-- Cache loaded snapshots in memory for process lifetime (REQT-1.2.10.3)
+- Cache loaded snapshots in memory for helperState scope (REQT-1.2.10.3); shared via `helperState.snapCache`
 - Apply incremental blocks to parent UTxO state (REQT-1.2.10.1, 1.2.10.2)
 - Compute cache keys from bundle hashes + params
 - Manage freshness (touch directories > 1 day old on access)
@@ -102,7 +113,7 @@
 **Concerns**:
 - Owns **Cache files** (`.stellar/emu/`)
 - Owns **Snapshot chain** hierarchy (base → capoInitialized → enabledDelegatesDeployed → app)
-- Owns **Loaded snapshots** (`loadedSnapshots` Map keyed by `{name}:{cacheKey}`, process-lifetime cache)
+- Owns **Loaded snapshots** (`loadedSnapshots` Map keyed by `{name}:{cacheKey}`, helperState-scope cache)
 - Owns **Key inputs** (`key-inputs.json` per snapshot directory)
 - Owns **Offchain data** (`offchain.json` per snapshot directory, merged from parent chain)
 - Depends on **Bundle hashes** for cache key computation
@@ -155,7 +166,7 @@
 - Owns **namedRecords**
 - Depends on **Snapshot chain** via SnapshotCache
 - Depends on **Capo** for bundle hash resolution
-- Depends on **helperState.snapshots** for parent block hashes (used in cache key recomputation)
+- Depends on **helperState.snapCache** for parent block hashes (retrieved via `snapshotCache.find(parent)`)
 
 ---
 
@@ -237,8 +248,9 @@ type SnapshotDecoratorOptions = {
   resolveScriptDependencies?: ScriptDependencyResolver;
 }
 
-// Resolver uses `this` binding - SnapWrap binds to helper instance at runtime
-type ScriptDependencyResolver = (this: CapoTestHelper) => Promise<CacheKeyInputs>;
+// Resolver takes helper as explicit argument (not bound) for correct lifetime handling
+// This ensures the resolver uses the CURRENT helper, not one from registration time
+type ScriptDependencyResolver = (helper: CapoTestHelper) => Promise<CacheKeyInputs>;
 
 type CacheKeyInputs = {
   bundles: Array<{
@@ -314,24 +326,25 @@ class SnapshotCache {
     resolveScriptDependencies: () => Promise<CacheKeyInputs>;  // bound to helper
   }>;
 
-  // Process-lifetime cache of loaded snapshots (REQT-1.2.10.3)
+  // helperState-scope cache of loaded snapshots (REQT-1.2.10.3)
   // Key: `{snapshotName}:{cacheKey}`, Value: fully-loaded CachedSnapshot with accumulated UTxO state
   // Composite key ensures different seeds/configs produce different cache entries
+  // SnapshotCache shared via helperState.snapCache, so this Map persists across tests
   private loadedSnapshots: Map<string, CachedSnapshot> = new Map();
 
   // Register snapshot metadata (called from @hasNamedSnapshot decorator)
-  // NOTE: resolveScriptDependencies must be bound to helper instance by SnapWrap
-  // before registration, since arrow functions in decorator options would bind
-  // to class definition context, not instance. SnapWrap does: resolver.bind(this)
+  // NOTE: resolveScriptDependencies takes helper as argument, NOT bound to any instance
+  // This ensures the resolver uses the CURRENT helper when called, not a stale one
   register(snapshotName: string, metadata: {
     parentSnapName: ParentSnapName;
-    resolveScriptDependencies?: () => Promise<CacheKeyInputs>;  // pre-bound by SnapWrap
+    resolveScriptDependencies?: ScriptDependencyResolver;  // (helper) => CacheKeyInputs
   }): void
 
   // Find snapshot by name - resolves parent chain via registry
   // Returns from loadedSnapshots if present; otherwise loads from disk
   // Uses incremental UTxO application (REQT-1.2.10.1, 1.2.10.2)
-  find(snapshotName: string): Promise<CachedSnapshot | null>
+  // NOTE: helper is passed to resolvers for cache key computation
+  find(snapshotName: string, helper: CapoTestHelper): Promise<CachedSnapshot | null>
 
   // Store snapshot by name - computes path via registry
   store(snapshotName: string, snapshot: CachedSnapshot): Promise<void>
@@ -434,7 +447,7 @@ class StellarNetworkEmulator {
 
 **Rationale**:
 - Cache key computation is deterministic: `computeKey(parentHash, resolverInputs)`
-- All inputs are always available: `helperState.snapshots[parent].blockHashes[-1]` + resolver methods
+- All inputs are always available: parent hash via `snapshotCache.find(parent).snapshotHash` + resolver methods
 - Computation cost is negligible (JSON stringify + blake2b)
 - Eliminates state synchronization between Map and actual snapshots
 
@@ -627,7 +640,7 @@ Cache hits follow different paths depending on whether restoration is same-proce
 
 #### Same-Process Restoration (in-memory hit)
 
-When snapshots exist in `helperState.snapshots` from prior test in same run:
+When snapshots exist in `helperState.snapCache.loadedSnapshots` from prior test in same run:
 
 1. **Test Suite** calls decorated method (e.g., `snapToEnabledDelegatesDeployed()`)
 2. **CapoTestHelper** `findOrCreateSnapshot()` finds in-memory snapshot
@@ -688,14 +701,19 @@ When `restoreFrom()` is called, actor transfer depends on helper identity:
 3. **Transfer always happens for different helpers**: When `this !== previousHelper`, actors must be transferred regardless of network IDs. The marker on `previousHelper` is irrelevant—it only guards against duplicate transfers within that helper.
 
 ```
-helperState (shared)
-├── snapshots: {...}           # Shared snapshot data
+helperState (shared via static defaultHelperState or createTestContext)
+├── namedRecords: {...}        # Application data from snapshots
 ├── previousHelper: Helper A   # Points to a helper instance
-└── bootstrappedStrella: Capo
+├── bootstrappedStrella: Capo  # Shared Capo reference
+├── parsedConfig: {...}        # For cross-process Capo reconstruction
+└── snapCache: SnapshotCache   # Shared SnapshotCache instance
+      ├── registry: Map<>      # Snapshot metadata (rebuilt per-helper via just-in-time registration)
+      └── loadedSnapshots: Map<>  # In-memory cache (persists within helperState scope)
 
 Helper A (instance)            Helper B (instance)
 ├── actors: {moved marker}     ├── actors: {}  ← needs transfer
-└── network: #7                └── network: #17
+├── network: #7                ├── network: #17
+└── snapshotCache → helperState.snapCache (shared reference)
 ```
 
 ### Workflow: Disk Chain Load (cold cache, REQT-1.2.10)
@@ -797,9 +815,9 @@ Efficient loading when parent snapshots are already in process memory from prior
 | **Hierarchical directories** `{parent}/{name}-{key}/snapshot.json` | Parent relationship implicit in path; easy subtree deletion via `rm -rf`; enables `ls` to see chain structure |
 | **Just-in-time registration** | Snapshots register metadata (parentSnapName, resolver) before use; SnapshotCache resolves parent chain recursively |
 | **`parentHash` verification** | Detects stale cache when parent was rebuilt with same inputs but different resulting state; returns null to trigger rebuild |
-| **Cache key recomputation** | No Map needed—resolvers are deterministic, parent hashes stored in helperState |
+| **Cache key recomputation** | No Map needed—resolvers are deterministic, parent hashes retrieved via `snapshotCache.find(parent)` |
 | **`fromSnapshot` cleared on pushBlock** | Provenance tracking; diverged state shouldn't claim snapshot identity |
-| **`loadedSnapshots` Map** (REQT-1.2.10.3) | Process-lifetime cache keyed by `{name}:{cacheKey}` avoids redundant disk reads and tx reconstruction; composite key ensures different seeds don't collide |
+| **`loadedSnapshots` Map** (REQT-1.2.10.3) | helperState-scope cache keyed by `{name}:{cacheKey}` avoids redundant disk reads and tx reconstruction; composite key ensures different seeds don't collide; shared via `helperState.snapCache` |
 | **Incremental UTxO application** (REQT-1.2.10.1) | `applyIncrementalBlocks()` instead of full `rebuildUtxoIndexes()` reduces O(n²) to O(n) for chain depth |
 
 ---
