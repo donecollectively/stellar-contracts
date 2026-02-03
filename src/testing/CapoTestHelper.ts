@@ -440,6 +440,14 @@ export abstract class CapoTestHelper<
         const helperState = this.helperState!;
         const { bootstrappedStrella, previousHelper } = helperState;
 
+        // If we're the same helper as previousHelper, we're in a nested call
+        // (e.g., from a @hasNamedSnapshot decorator during snapshot building).
+        // Just return the existing capo without restoring.
+        if (previousHelper === this && bootstrappedStrella) {
+            console.log("  ---  ⚗️🐞🐞 nested call - returning existing capo");
+            return bootstrappedStrella;
+        }
+
         // Check if we can restore from a prior bootstrap
         // Requires: prior Capo exists AND snapshot exists in cache
         const cached = bootstrappedStrella && previousHelper
