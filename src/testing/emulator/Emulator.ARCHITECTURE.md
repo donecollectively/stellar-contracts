@@ -430,6 +430,19 @@ type CachedSnapshot = {
 - Snapshot names sanitized: alphanumeric, underscore, hyphen only; max 50 chars
 - Parent relationship implicit in directory structure; enables `rm -rf` for subtree deletion
 
+**Genesis vs Blocks Separation**:
+
+| Snapshot | On Disk | After Load |
+|----------|---------|------------|
+| Root (`bootstrapWithActors`) | `genesis: [N], blocks: []` | genesis processed → 1 block → UTxOs |
+| Child snapshots | `genesis: [], blocks: [incremental]` | parent UTxOs + incremental blocks |
+
+- **Genesis transactions** = "free money" UTxO creation (no balanced tx required); used only for initial actor funding
+- **Genesis is a one-time bootstrap mechanism**: root snapshot stores genesis; on load, genesis is processed into block(s) which build UTxO state
+- **Children never see genesis**: they receive parent's UTxO state (which already processed genesis) and apply their incremental blocks
+- No genesis inheritance — genesis is consumed/converted at root load time
+- Charter minting (in `capoInitialized`) is the first incremental block after genesis
+
 **Behavior**:
 - `find()`: Resolves parent chain and computes cache key first; then checks `loadedSnapshots` Map with composite key `{name}:{cacheKey}` (returns cached if present); on disk load: touches directory if mtime > 1 day; applies incremental blocks to parent's UTxO state (not full rebuild); verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild); caches result in `loadedSnapshots` with composite key before returning
 - `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON with incremental blocks only
