@@ -434,11 +434,15 @@ type CachedSnapshot = {
 
 | Snapshot | On Disk | After Load |
 |----------|---------|------------|
-| Root (`bootstrapWithActors`) | `genesis: [N], blocks: []` | genesis processed → 1 block → UTxOs |
-| Child snapshots | `genesis: [], blocks: [incremental]` | parent UTxOs + incremental blocks |
+| Root (`bootstrapWithActors`) | `genesis: [N], blocks: [], blockHashes: [hash]` | genesis processed → 1 block → UTxOs |
+| Child snapshots | `genesis: [], blocks: [incremental], blockHashes: [incremental]` | parent UTxOs + incremental blocks |
 
 - **Genesis transactions** = "free money" UTxO creation (no balanced tx required); used only for initial actor funding
 - **Genesis is a one-time bootstrap mechanism**: root snapshot stores genesis; on load, genesis is processed into block(s) which build UTxO state
+- **Root blockHashes**: Even though `blocks: []` on disk, `blockHashes` contains the pre-computed hash of the genesis block. This enables:
+  - Children to reference `parentHash` for cache key computation
+  - Integrity verification (`blockHashes[-1] === snapshotHash`)
+  - On load, verify the processed genesis block matches the stored hash
 - **Children never see genesis**: they receive parent's UTxO state (which already processed genesis) and apply their incremental blocks
 - No genesis inheritance — genesis is consumed/converted at root load time
 - Charter minting (in `capoInitialized`) is the first incremental block after genesis
