@@ -270,10 +270,13 @@ export class DefaultCapoTestHelper<
         const { tina, tom, tracy } = this.actors;
 
         if (this.state.mintedCharterToken) {
-            console.warn(
-                "reusing minted charter from existing testing-context"
-            );
-            return this.state.mintedCharterToken as typeof tcx;
+            // Return cached tcx if available
+            if (typeof this.state.mintedCharterToken === 'object' && this.state.mintedCharterToken.state) {
+                console.warn(
+                    "reusing minted charter from existing testing-context"
+                );
+                return this.state.mintedCharterToken as typeof tcx;
+            }
         }
 
         if (!this.strella) await this.initialize();

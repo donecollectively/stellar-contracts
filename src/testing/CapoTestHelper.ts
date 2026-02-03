@@ -317,6 +317,8 @@ export abstract class CapoTestHelper<
             this.actors = {};
             this.actorSetupInfo = [];
             this._actorName = "";
+            // Clear actor context to force fresh setup
+            this.actorContext = { others: {} };
             // Clear cached state to force fresh build with new seed
             if (this.helperState) {
                 this.helperState.offchainData = {};
@@ -777,9 +779,11 @@ export abstract class CapoTestHelper<
                 this.helperState!.bootstrappedStrella = this.strella;
                 this.helperState!.previousHelper = this as any;
                 this.helperState!.bootstrapped = true;
-                // For non-genesis snapshots, charter was already minted
-                this.state.mintedCharterToken = true as any;
             }
+
+            console.log(`  [DEBUG findOrCreate after restore] this._actorName: "${this._actorName}"`);
+            console.log(`  [DEBUG findOrCreate after restore] this.actorContext.wallet: ${this.actorContext.wallet?.address?.toString().slice(0, 20) || 'undefined'}`);
+            console.log(`  [DEBUG findOrCreate after restore] Object.keys(this.actors): ${Object.keys(this.actors).join(', ')}`);
 
             if (actorName === "default") {
                 await this.setDefaultActor();
@@ -854,8 +858,6 @@ export abstract class CapoTestHelper<
                 this.helperState!.bootstrappedStrella = this.strella;
                 this.helperState!.previousHelper = this as any;
                 this.helperState!.bootstrapped = true;
-                // For non-genesis snapshots, charter was already minted
-                this.state.mintedCharterToken = true as any;
             }
 
             if (actorName === "default") {
@@ -979,51 +981,74 @@ export abstract class CapoTestHelper<
         const { network: newNet } = this.networkCtx;
         this.initSetup(previousSetup);
 
-        // hacky load of the indicator of already having restored details from the prievous helper
-        const otherNet: number = previousHelper.actors[
-            ACTORS_ALREADY_MOVED
-        ] as unknown as number;
-        if (otherNet) {
-            if (otherNet !== newNet.id) {
-                throw new Error(
-                    `actors already moved to network #${otherNet}; can't move to #${newNet.id} now.`,
-                );
-            }
-            console.log("  -- actors are already here");
-        } else {
-            if (this === previousHelper) {
-                console.log(
-                    "  -- helper already transferred; loading incremental snapshot",
-                );
-            } else {
-                Object.assign(this.actors, previousHelper.actors);
+        // Check if this is the same helper restoring to a different snapshot
+        console.log(`  [DEBUG restoreFrom] this===previousHelper: ${this === previousHelper}`);
+        console.log(`  [DEBUG restoreFrom] this._actorName: "${this._actorName}"`);
+        console.log(`  [DEBUG restoreFrom] this.actorContext.wallet: ${this.actorContext.wallet?.address?.toString().slice(0, 20) || 'undefined'}`);
+        console.log(`  [DEBUG restoreFrom] oldActorContext.wallet: ${(oldActorContext as any).wallet?.address?.toString().slice(0, 20) || (oldActorContext as any).wallet || 'undefined'}`);
+        console.log(`  [DEBUG restoreFrom] Object.keys(this.actors): ${Object.keys(this.actors).join(', ')}`);
+        console.log(`  [DEBUG restoreFrom] Object.keys(previousHelper.actors): ${Object.keys(previousHelper.actors).join(', ')}`);
 
-                // swaps out the previous helper's envelopes for network & actor
-                previousHelper.networkCtx = { network: previousNetwork };
-                previousHelper.actorContext = {
-                    wallet: "previous network retired" as any,
-                    others: previousHelper.actorContext.others,
-                };
+        // Check if this helper already has valid actors (not just the marker)
+        const thisHasRealActors = Object.keys(this.actors).some(k => k !== ACTORS_ALREADY_MOVED);
+        const previousHasRealActors = Object.keys(previousHelper.actors).some(k => k !== ACTORS_ALREADY_MOVED);
 
-                // uses the old envelope (that the Capo/etc classes used on the old network)
-                this.networkCtx = oldNetworkEnvelope;
-                this.actorContext = oldActorContext;
-                // ... but changes the referenced network
-                // ... to reflect the new snapshotted network
+        if (this === previousHelper || thisHasRealActors) {
+            console.log(
+                `  -- ${this === previousHelper ? 'same helper' : 'actors already present'} - loading snapshot only`,
+            );
+            console.log(`  [DEBUG restoreFrom] BEFORE: this.networkCtx.network.id=${(this.networkCtx.network as any).id}, newNet.id=${(newNet as any).id}`);
+            console.log(`  [DEBUG restoreFrom] BEFORE: bootstrappedStrella?.setup?.network?.id=${(bootstrappedStrella as any)?.setup?.network?.id}`);
+            // Actors are already in this.actors - just load the snapshot
+            newNet.loadSnapshot(snapshots[snapshotName]);
+            // Ensure helper's networkCtx points to the correct network
+            if (this.networkCtx.network !== newNet) {
+                console.log(`  [DEBUG restoreFrom] Swapping this.networkCtx.network from ${(this.networkCtx.network as any).id} to ${(newNet as any).id}`);
                 this.networkCtx.network = newNet;
-
-                this.state.mintedCharterToken =
-                    previousHelper.state.mintedCharterToken;
-                this.state.parsedConfig = parsedConfig;
-
-                //@ts-expect-error
-                previousHelper.actors = { [ACTORS_ALREADY_MOVED]: newNet.id };
-                console.log(
-                    `   -- moving ${
-                        Object.keys(this.actors).length
-                    } actors from network ${previousNetwork.id} to ${newNet.id}`,
-                );
             }
+            // Also ensure the Capo's setup.network points to the correct network
+            if (bootstrappedStrella?.setup?.network !== newNet) {
+                console.log(`  [DEBUG restoreFrom] Swapping bootstrappedStrella.setup.network from ${(bootstrappedStrella as any)?.setup?.network?.id} to ${(newNet as any).id}`);
+                (bootstrappedStrella as any).setup.network = newNet;
+            }
+            console.log(`  [DEBUG restoreFrom] AFTER: this.networkCtx.network.id=${(this.networkCtx.network as any).id}`);
+            console.log(`  [DEBUG restoreFrom] AFTER: bootstrappedStrella?.setup?.network?.id=${(bootstrappedStrella as any)?.setup?.network?.id}`);
+        } else if (!previousHasRealActors) {
+            // previousHelper was already retired - can't transfer from it
+            throw new Error(
+                `restoreFrom('${snapshotName}'): previousHelper has no actors to transfer (already retired). ` +
+                `This usually means helperState is stale from a previous test.`
+            );
+        } else {
+            // Different helper instance with no actors - transfer from previousHelper
+            Object.assign(this.actors, previousHelper.actors);
+
+            // swaps out the previous helper's envelopes for network & actor
+            previousHelper.networkCtx = { network: previousNetwork };
+            previousHelper.actorContext = {
+                wallet: "previous network retired" as any,
+                others: previousHelper.actorContext.others,
+            };
+
+            // uses the old envelope (that the Capo/etc classes used on the old network)
+            this.networkCtx = oldNetworkEnvelope;
+            this.actorContext = oldActorContext;
+            // ... but changes the referenced network
+            // ... to reflect the new snapshotted network
+            this.networkCtx.network = newNet;
+
+            this.state.mintedCharterToken =
+                previousHelper.state.mintedCharterToken;
+            this.state.parsedConfig = parsedConfig;
+
+            //@ts-expect-error
+            previousHelper.actors = { [ACTORS_ALREADY_MOVED]: newNet.id };
+            console.log(
+                `   -- moving ${
+                    Object.keys(this.actors).length
+                } actors from network ${previousNetwork.id} to ${newNet.id}`,
+            );
+
             newNet.loadSnapshot(snapshots[snapshotName]);
         }
         if (!this.actorName) {
@@ -1067,7 +1092,8 @@ export abstract class CapoTestHelper<
         // Deploy delegates and create enabledDelegatesDeployed snapshot (handles caching)
         await this.snapToEnabledDelegatesDeployed(args, options);
 
-        return strella;
+        // Return the updated strella (snapshot restore may have replaced it with configured one)
+        return this.strella;
     }
 
     /**
