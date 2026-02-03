@@ -586,7 +586,11 @@ export class StellarNetworkEmulator implements Emulator {
             ])
         );
 
-        this.initHelper();
+        // Note: netPHelper is NOT reinitialized here because:
+        // 1. Network params (this.params) are not restored from snapshot
+        // 2. The helper was already initialized when emulator was created
+        // 3. Slot changes don't affect the helper's configuration
+
         console.log(
             `
       .--.             .--.             .--.             .--.
