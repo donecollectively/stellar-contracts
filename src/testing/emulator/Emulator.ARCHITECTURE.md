@@ -670,6 +670,34 @@ When snapshots exist on disk but not in memory (new process):
 
 **Key difference**: Cross-process has no `previousHelper` or `bootstrappedStrella`. The Capo must be instantiated fresh, and actors are restored from stored keys rather than transferred.
 
+#### Actor Transfer Semantics
+
+When `restoreFrom()` is called, actor transfer depends on helper identity:
+
+| Condition | Behavior |
+|-----------|----------|
+| `this === previousHelper` | Same helper restoring again. Actors already on this helper—just load snapshot. |
+| `this !== previousHelper` | Different helper instance. Always transfer actors from `previousHelper` to `this`. |
+
+**Key concepts:**
+
+1. **`ACTORS_ALREADY_MOVED` marker**: Per-helper flag set after actors are transferred. Prevents the SAME helper from re-transferring, but doesn't affect different helpers.
+
+2. **`helperState` is shared**: Multiple helper instances share `helperState` for snapshot caching. But actors belong to specific helper instances, not to helperState.
+
+3. **Transfer always happens for different helpers**: When `this !== previousHelper`, actors must be transferred regardless of network IDs. The marker on `previousHelper` is irrelevant—it only guards against duplicate transfers within that helper.
+
+```
+helperState (shared)
+├── snapshots: {...}           # Shared snapshot data
+├── previousHelper: Helper A   # Points to a helper instance
+└── bootstrappedStrella: Capo
+
+Helper A (instance)            Helper B (instance)
+├── actors: {moved marker}     ├── actors: {}  ← needs transfer
+└── network: #7                └── network: #17
+```
+
 ### Workflow: Disk Chain Load (cold cache, REQT-1.2.10)
 
 **ARCH-UUT**: ARCH-kqc3jng98y
