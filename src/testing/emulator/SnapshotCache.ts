@@ -127,6 +127,18 @@ type SerializedCachedSnapshot = {
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * Resolves snapshot name aliases.
+ * "bootstrapped" is a symbolic alias for "enabledDelegatesDeployed".
+ * @internal
+ */
+function resolveSnapshotAlias(name: string): string {
+    if (name === "bootstrapped") {
+        return "enabledDelegatesDeployed";
+    }
+    return name;
+}
+
+/**
  * Sanitizes a snapshot name for use in filenames.
  * - Keeps only alphanumeric, underscore, and hyphen characters
  * - Truncates to max 50 characters
@@ -596,7 +608,9 @@ export class SnapshotCache {
         let parent: CachedSnapshot | null = null;
 
         if (entry.parentSnapName !== "genesis") {
-            parent = await this.find(entry.parentSnapName, helper);
+            // Resolve alias (e.g., "bootstrapped" → "enabledDelegatesDeployed")
+            const resolvedParentName = resolveSnapshotAlias(entry.parentSnapName);
+            parent = await this.find(resolvedParentName, helper);
             if (!parent) {
                 // Parent not in cache, can't resolve this snapshot
                 return null;
@@ -763,9 +777,11 @@ export class SnapshotCache {
         let parentBlockCount = 0;
 
         if (entry.parentSnapName !== "genesis") {
-            const parent = await this.find(entry.parentSnapName, helper);
+            // Resolve alias (e.g., "bootstrapped" → "enabledDelegatesDeployed")
+            const resolvedParentName = resolveSnapshotAlias(entry.parentSnapName);
+            const parent = await this.find(resolvedParentName, helper);
             if (!parent) {
-                throw new Error(`SnapshotCache: parent '${entry.parentSnapName}' not found for '${snapshotName}'`);
+                throw new Error(`SnapshotCache: parent '${resolvedParentName}' not found for '${snapshotName}'`);
             }
             parentPath = parent.path || null;
             parentBlockCount = parent.snapshot.blocks.length;
