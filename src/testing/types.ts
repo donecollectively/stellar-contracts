@@ -86,6 +86,8 @@ export type TestHelperState<
     bootstrappedStrella?: SC;
     snapshots: Record<string, NetworkSnapshot>;
     namedRecords: Record<string, string>;
+    /** Offchain data per snapshot - used for in-memory cache (REQT-3.4/n93h9y5s85) */
+    offchainData?: Record<string, Record<string, unknown>>;
     previousHelper: StellarTestHelper<any>;
 } & Special;
 

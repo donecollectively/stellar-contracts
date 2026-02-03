@@ -713,20 +713,16 @@ export abstract class CapoTestHelper<
                 // No capo exists yet, so we can't use restoreFrom()
                 this.network.loadSnapshot(this.helperState!.snapshots[snapshotName]);
 
-                // Restore actorSetupInfo from namedRecords if available
-                const actorSetupInfoJson = this.helperState!.namedRecords?.["__actorSetupInfo__"];
-                console.log(`  [DEBUG] in-memory genesis: actorSetupInfoJson=${actorSetupInfoJson ? "present" : "missing"}, actorSetupInfo.len=${this.actorSetupInfo.length}`);
-                if (actorSetupInfoJson && this.actorSetupInfo.length === 0) {
-                    this.actorSetupInfo = this.parseActorSetupInfo(actorSetupInfoJson);
-                    console.log(`  [DEBUG] parsed actorSetupInfo: ${this.actorSetupInfo.length} actors`);
+                // Restore actors from stored keys (REQT-3.4.2/avwkcrnwqp, REQT-3.4.4/3rexpys2q3)
+                if (Object.keys(this.actors).length === 0) {
+                    const offchainData = this.helperState!.offchainData?.[snapshotName];
+                    const actorWallets = offchainData?.actorWallets as Record<string, { spendingKey: string; stakingKey?: string }> | undefined;
+                    if (actorWallets) {
+                        this.restoreActorsFromStoredKeys({ actorWallets });
+                    } else {
+                        console.warn(`  ⚠️ No stored actor keys found for '${snapshotName}' - cache may need rebuild`);
+                    }
                 }
-
-                // Regenerate actors from PRNG using actorSetupInfo
-                console.log(`  [DEBUG] pre-regenerate: actorSetupInfo.len=${this.actorSetupInfo.length}, actors=${Object.keys(this.actors).join(",")}`);
-                if (this.actorSetupInfo.length > 0 && Object.keys(this.actors).length === 0) {
-                    this.regenerateActorsFromSetupInfo();
-                }
-                console.log(`  [DEBUG] post-regenerate: actors=${Object.keys(this.actors).join(",")}`);
 
                 // Set actor (might be "default" which calls setDefaultActor)
                 if (actorName === "default") {
@@ -760,16 +756,23 @@ export abstract class CapoTestHelper<
             Object.assign(this.helperState!.namedRecords, cached.namedRecords);
             this.helperState!.snapshots[snapshotName] = cached.snapshot;
 
-            if (isGenesisSnapshot) {
-                // Restore actorSetupInfo from namedRecords if available
-                const actorSetupInfoJson = cached.namedRecords?.["__actorSetupInfo__"];
-                if (actorSetupInfoJson && this.actorSetupInfo.length === 0) {
-                    this.actorSetupInfo = this.parseActorSetupInfo(actorSetupInfoJson);
+            // Store offchainData in helperState for in-memory cache (REQT-3.4/n93h9y5s85)
+            if (cached.offchainData) {
+                if (!this.helperState!.offchainData) {
+                    this.helperState!.offchainData = {};
                 }
+                this.helperState!.offchainData[snapshotName] = cached.offchainData;
+            }
 
-                // Regenerate actors from PRNG using actorSetupInfo
-                if (this.actorSetupInfo.length > 0 && Object.keys(this.actors).length === 0) {
-                    this.regenerateActorsFromSetupInfo();
+            if (isGenesisSnapshot) {
+                // Restore actors from stored keys (REQT-3.4.2/avwkcrnwqp, REQT-3.4.4/3rexpys2q3)
+                if (Object.keys(this.actors).length === 0) {
+                    const actorWallets = cached.offchainData?.actorWallets as Record<string, { spendingKey: string; stakingKey?: string }> | undefined;
+                    if (actorWallets) {
+                        this.restoreActorsFromStoredKeys({ actorWallets });
+                    } else {
+                        console.warn(`  ⚠️ No stored actor keys in disk cache for '${snapshotName}' - cache may need rebuild`);
+                    }
                 }
 
                 // Set actor
@@ -829,14 +832,18 @@ export abstract class CapoTestHelper<
                     );
                 }
                 const namedRecords = { ...this.helperState!.namedRecords };
-                if (parentSnapName === "genesis" && this.actorSetupInfo.length > 0) {
-                    // Use replacer to handle BigInt serialization
-                    const bigIntReplacer = (_key: string, value: unknown) =>
-                        typeof value === "bigint" ? value.toString() : value;
-                    const actorSetupJson = JSON.stringify(this.actorSetupInfo, bigIntReplacer);
-                    namedRecords["__actorSetupInfo__"] = actorSetupJson;
-                    // Also store in helperState for in-memory cache
-                    this.helperState!.namedRecords["__actorSetupInfo__"] = actorSetupJson;
+                let offchainData: Record<string, unknown> | undefined;
+
+                if (parentSnapName === "genesis" && Object.keys(this.actors).length > 0) {
+                    // Store actor wallet keys in offchainData (REQT-3.4.1/1p346cabct)
+                    // Replaces __actorSetupInfo__ hack (REQT-3.4.4/3rexpys2q3)
+                    offchainData = this.getActorWalletKeys();
+
+                    // Initialize helperState.offchainData if needed and store for in-memory cache
+                    if (!this.helperState!.offchainData) {
+                        this.helperState!.offchainData = {};
+                    }
+                    this.helperState!.offchainData[snapshotName] = offchainData;
                 }
 
                 const cachedSnapshot: CachedSnapshot = {
@@ -846,6 +853,7 @@ export abstract class CapoTestHelper<
                     parentHash,
                     parentCacheKey: null, // deprecated with hierarchical directories
                     snapshotHash: this.network.lastBlockHash,
+                    offchainData,
                 };
 
                 await this.snapshotCache.store(snapshotName, cachedSnapshot);
@@ -1145,23 +1153,6 @@ export abstract class CapoTestHelper<
                 heliosVersion: HELIOS_VERSION,
             },
         };
-    }
-
-    /**
-     * Parses actor setup info from JSON, converting BigInt strings back to BigInt.
-     * @internal
-     */
-    private parseActorSetupInfo(json: string): ActorSetupInfo[] {
-        const parsed = JSON.parse(json) as Array<{
-            name: string;
-            initialBalance: string;
-            additionalUtxos: string[];
-        }>;
-        return parsed.map((actor) => ({
-            name: actor.name,
-            initialBalance: BigInt(actor.initialBalance),
-            additionalUtxos: actor.additionalUtxos.map((u) => BigInt(u)),
-        }));
     }
 
     /**

@@ -45,14 +45,14 @@
 | D5 | ARCHITECTURE.md:616, SnapshotCache.ts:480 | `loadedSnapshots` is instance-scoped but arch says "process lifetime" | Accepted as-is (safe enough) |
 | F6 | StellarNetworkEmulator.ts:571-612 | Snapshot restore sets `currentSlot` to snapshot time (past), but txn validity uses `Date.now()` causing `isValidSlot()` failures when drift > 180s | Fixed: `loadSnapshot()` now syncs to wall-clock via `netPHelper.timeToSlot(Date.now())` |
 | F7 | StellarTestHelper.ts:231,240,872 | Emulator created with `undefined` seed before `randomSeed` was set; PRNG started at 0 instead of 42 | Fixed: moved `randomSeed` init before `mkNetwork()`, pass `this.randomSeed` to emulator |
+| F8 | StellarTestHelper.ts:684-708 | Actor wallet regeneration uses PRNG replay instead of stored keys | Implemented `getActorWalletKeys()` and `restoreActorsFromStoredKeys()` using `makeBip32PrivateKey(hexToBytes())` fast path; removed `regenerateActorsFromSetupInfo()`, `createWalletWithoutUtxo()`, `parseActorSetupInfo()`, and `__actorSetupInfo__` hack |
+| F10 | SnapshotCache.ts | No mechanism for offchain data outside cache key | Implemented `offchainData` field in `CachedSnapshot`, `offchain.json` file storage, parent chain merging in `find()` |
 
 ### Open
 
 | ID | UUT | Location | Finding | Work Unit |
 |----|-----|----------|---------|-----------|
-| F8 | `9h9cf9g8n8` | StellarTestHelper.ts:684-708 | Actor wallet regeneration uses PRNG replay instead of stored keys | WU3 |
 | F9 | `gyjxwjjt91` | SnapshotCache.ts | Cache key inputs not stored in snapshot directory | WU4 |
-| F10 | `bfwzqy0sb6` | SnapshotCache.ts | No mechanism for offchain data outside cache key | WU5 |
 
 ### Related Commits
 
@@ -67,7 +67,7 @@
 | WU0 | REQT-3.3.6 | `@hasNamedSnapshot` supports `internal: true` option | **completed** |
 | WU1 | REQT-3.3.4 | `capoInitialized` uses `@hasNamedSnapshot` with `internal: true` | **completed** |
 | WU2 | REQT-3.3.5 | `enabledDelegatesDeployed` uses `@hasNamedSnapshot` with `internal: true` | **completed** |
-| WU3 | REQT-3.4, F8 | Store actor wallet keys in offchain data; restore via `makeBip32PrivateKey` | pending |
+| WU3 | REQT-3.4, F8 | Store actor wallet keys in offchain data; restore via `makeBip32PrivateKey` | **completed** |
 | WU4 | REQT-1.2.11, F9 | Store `key-inputs.json` in snapshot directory | pending |
 | WU5 | REQT-1.2.12, F10 | Add offchain data storage mechanism | **completed** |
 
@@ -205,6 +205,6 @@ async snapToEnabledDelegatesDeployed(): Promise<void> {
 7. ~~**WU1**: Implement `snapToCapoInitialized()`~~ ✅ Done
 8. ~~**WU2**: Implement `snapToEnabledDelegatesDeployed()` with `@hasNamedSnapshot` decorator~~ ✅ Done
 9. ~~**WU5**: Implement offchain data storage mechanism (REQT-1.2.12)~~ ✅ Done
-10. **WU4**: Implement key-inputs storage (REQT-1.2.11) - see `snapshot-impl-audit.gyjxwjjt91.workUnit.md`
-11. **WU3**: Store actor wallet keys in offchain data (REQT-3.4) - see `snapshot-impl-audit.9h9cf9g8n8.workUnit.md` - depends on WU5 ✅
+10. **WU4**: Implement key-inputs storage (REQT-1.2.11) - see `emulator.gyjxwjjt91.workUnit.md`
+11. ~~**WU3**: Store actor wallet keys in offchain data (REQT-3.4)~~ ✅ Done - `getActorWalletKeys()` + `restoreActorsFromStoredKeys()` replaces PRNG regeneration
 12. Resume I3: @hasNamedSnapshot decorator audit

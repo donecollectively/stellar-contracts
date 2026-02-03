@@ -343,14 +343,14 @@ type CacheKeyInputs = {
 
 > **RATIONALE (id:7hcqed9mvn)**: All snapshots—including built-ins—must register with SnapshotCache via `@hasNamedSnapshot` decorator. This enables unified cache orchestration, consistent parent chain resolution, and hierarchical directory path construction. The decorator pattern handles cache check, build-if-miss, and store automatically.
 
-### REQT-3.4/n93h9y5s85: NEXT: **Actor Wallet Key Storage**
+### REQT-3.4/n93h9y5s85: COMPLETED: **Actor Wallet Key Storage**
 
 #### Purpose: Enables fast actor wallet restoration by storing private keys in offchain data instead of regenerating from PRNG. Applied when saving or restoring actor snapshots.
 
- - **REQT-3.4.1/1p346cabct**: NEXT: Actor snapshot (`bootstrapWithActors`) MUST store wallet private keys (spending + staking) in `offchainData.actorWallets`
- - **REQT-3.4.2/avwkcrnwqp**: NEXT: Actor restoration MUST use `makeBip32PrivateKey(hexToBytes(key))` fast path instead of PRNG regeneration
- - **REQT-3.4.3/ncbfwtyr8h**: NEXT: `regenerateActorsFromSetupInfo()` MUST be replaced with `restoreActorsFromStoredKeys()`
- - **REQT-3.4.4/3rexpys2q3**: NEXT: `__actorSetupInfo__` namedRecord hack MUST be removed after migration
+ - **REQT-3.4.1/1p346cabct**: COMPLETED: Actor snapshot (`bootstrapWithActors`) MUST store wallet private keys (spending + staking) in `offchainData.actorWallets`
+ - **REQT-3.4.2/avwkcrnwqp**: COMPLETED: Actor restoration MUST use `makeBip32PrivateKey(hexToBytes(key))` fast path instead of PRNG regeneration
+ - **REQT-3.4.3/ncbfwtyr8h**: COMPLETED: `regenerateActorsFromSetupInfo()` MUST be replaced with `restoreActorsFromStoredKeys()`
+ - **REQT-3.4.4/3rexpys2q3**: COMPLETED: `__actorSetupInfo__` namedRecord hack MUST be removed after migration
 
 > **RATIONALE (id:n93h9y5s85)**: PRNG-based wallet regeneration is slow (requires `makeRootPrivateKey()` derivation) and fragile (depends on exact PRNG sequence). Storing the derived keys directly enables instant restoration via `makeBip32PrivateKey()`.
 

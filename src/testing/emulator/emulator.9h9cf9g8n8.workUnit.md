@@ -136,7 +136,9 @@ restoreActorsFromStoredKeys(storedWallets: Record<string, StoredWalletKeys>): vo
 
 ## Verification
 
-- [ ] Actors snapshot stores wallet keys in additionalStoredData
-- [ ] Snapshot load restores actors without PRNG replay
-- [ ] No `__actorSetupInfo__` in namedRecords
-- [ ] Tests pass with cached snapshots
+- [x] Actors snapshot stores wallet keys in offchainData (REQT-3.4.1/1p346cabct)
+- [x] Snapshot load restores actors without PRNG replay (REQT-3.4.2/avwkcrnwqp)
+- [x] No `__actorSetupInfo__` written to namedRecords (REQT-3.4.4/3rexpys2q3)
+- [x] `regenerateActorsFromSetupInfo()` and `createWalletWithoutUtxo()` removed (REQT-3.4.3/ncbfwtyr8h)
+- [x] `parseActorSetupInfo()` removed
+- [ ] Tests pass with cached snapshots (pending: unrelated test failures need investigation)

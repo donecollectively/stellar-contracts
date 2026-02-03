@@ -48,13 +48,33 @@ export type ActorSetupInfo = {
     initialBalance: bigint;
     additionalUtxos: bigint[];
 };
+
+/**
+ * Stored wallet keys for fast actor restoration. REQT-3.4/n93h9y5s85
+ * @public
+ */
+export type StoredActorWalletKeys = {
+    /** Hex-encoded spending private key bytes */
+    spendingKey: string;
+    /** Hex-encoded staking private key bytes (optional) */
+    stakingKey?: string;
+};
+
+/**
+ * Map of actor names to stored wallet keys for offchainData.
+ * @public
+ */
+export type ActorWalletsOffchainData = {
+    actorWallets: Record<string, StoredActorWalletKeys>;
+};
 import type {
     TestHelperState,
     actorMap,
     canHaveRandomSeed,
     canSkipSetup,
 } from "./types.js";
-import { makeRootPrivateKey, type Wallet } from "@helios-lang/tx-utils";
+import { makeRootPrivateKey, makeBip32PrivateKey, type Wallet } from "@helios-lang/tx-utils";
+import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils";
 
 /**
  * @public
@@ -664,46 +684,56 @@ export abstract class StellarTestHelper<
     }
 
     /**
-     * Creates a wallet using the network's PRNG without creating genesis UTxOs.
-     * Used when regenerating actors from a cached snapshot where UTxOs already exist.
-     * @internal
+     * Extracts wallet private keys from current actors for storage in offchainData.
+     * Returns data suitable for storing in CachedSnapshot.offchainData. REQT-3.4.1/1p346cabct
+     * @public
      */
-    createWalletWithoutUtxo(): emulatedWallet {
-        return emulatedWallet.fromRootPrivateKey(
-            makeRootPrivateKey(generateBytes(this.network.mulberry32, 32)),
-            this.networkCtx,
-        );
+    getActorWalletKeys(): ActorWalletsOffchainData {
+        const actorWallets: Record<string, StoredActorWalletKeys> = {};
+
+        for (const [name, wallet] of Object.entries(this.actors)) {
+            const w = wallet as emulatedWallet;
+            actorWallets[name] = {
+                spendingKey: bytesToHex(w.spendingPrivateKey.bytes),
+                stakingKey: w.stakingPrivateKey ? bytesToHex(w.stakingPrivateKey.bytes) : undefined,
+            };
+        }
+
+        return { actorWallets };
     }
 
     /**
-     * Regenerates actor wallets from actorSetupInfo after loading a snapshot.
-     * The wallets are deterministically recreated from the network's seed.
-     * Does NOT create new UTxOs - they already exist in the snapshot.
+     * Restores actor wallets from stored private keys (fast path).
+     * Replaces PRNG-based regeneration. REQT-3.4.2/avwkcrnwqp, REQT-3.4.3/ncbfwtyr8h
+     * @param storedData - The offchainData containing actorWallets
      * @internal
      */
-    regenerateActorsFromSetupInfo(): void {
-        // Skip if no actor info or actors already exist
-        if (this.actorSetupInfo.length === 0 || Object.keys(this.actors).length > 0) {
-            console.log(`  -- Skipping actor regeneration: actorSetupInfo=${this.actorSetupInfo.length}, actors=${Object.keys(this.actors).length}`);
+    restoreActorsFromStoredKeys(storedData: ActorWalletsOffchainData): void {
+        // Skip if actors already exist
+        if (Object.keys(this.actors).length > 0) {
+            console.log(`  -- Skipping actor restoration: actors already exist (${Object.keys(this.actors).length})`);
             return;
         }
 
-        console.log(`  -- Regenerating ${this.actorSetupInfo.length} actors from cache... (seed=${this.network["#seed"] || "unknown"})`);
+        const { actorWallets } = storedData;
+        if (!actorWallets || Object.keys(actorWallets).length === 0) {
+            console.log(`  -- No stored actor wallets to restore`);
+            return;
+        }
 
-        for (const actorInfo of this.actorSetupInfo) {
-            // Create wallet without UTxO (UTxOs exist in snapshot)
-            const wallet = this.createWalletWithoutUtxo();
+        console.log(`  -- Restoring ${Object.keys(actorWallets).length} actors from stored keys...`);
 
-            // Skip additional UTxOs - they're also already in snapshot
-            // Each additionalUtxo in the original setup called createWallet, which advanced the PRNG
-            for (let i = 0; i < actorInfo.additionalUtxos.length; i++) {
-                // Advance PRNG to match original sequence
-                this.createWalletWithoutUtxo();
-            }
+        for (const [name, keys] of Object.entries(actorWallets)) {
+            const spendingKey = makeBip32PrivateKey(hexToBytes(keys.spendingKey));
+            const stakingKey = keys.stakingKey
+                ? makeBip32PrivateKey(hexToBytes(keys.stakingKey))
+                : undefined;
 
-            this.actors[actorInfo.name] = wallet;
-            this.actorContext.others[actorInfo.name] = wallet;
-            console.log(`    + Regenerated actor: ${actorInfo.name}`);
+            const wallet = new emulatedWallet(this.networkCtx, spendingKey, stakingKey);
+
+            this.actors[name] = wallet;
+            this.actorContext.others[name] = wallet;
+            console.log(`    + Restored actor: ${name}`);
         }
     }
 
