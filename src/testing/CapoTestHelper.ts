@@ -29,6 +29,16 @@ import {
 const ACTORS_ALREADY_MOVED =
     "NONE! all actors were moved from a different network via snapshot";
 
+/**
+ * Serialized seed UTxO for storage in offchainData.
+ * Used to break the chicken-and-egg dependency in disk cache lookup (REQT-3.6.1).
+ * @public
+ */
+export type PreSelectedSeedUtxo = {
+    txId: string;
+    utxoIdx: number;
+};
+
 export const SNAP_ACTORS = "bootstrapWithActors";
 export const SNAP_CAPO_INIT = "capoInitialized";
 export const SNAP_DELEGATES = "enabledDelegatesDeployed";
@@ -127,6 +137,12 @@ export abstract class CapoTestHelper<
         return this.strella;
     }
     featureFlags: CapoFeatureFlags | undefined = undefined;
+
+    /**
+     * Pre-selected seed UTxO for breaking chicken-and-egg dependency (REQT-3.6.1).
+     * Selected during bootstrapWithActors and stored in actors snapshot offchainData.
+     */
+    preSelectedSeedUtxo: PreSelectedSeedUtxo | undefined = undefined;
 
     /** Disk cache for snapshots, enabling fast test restarts */
     snapshotCache: SnapshotCache = new SnapshotCache();
@@ -549,6 +565,98 @@ export abstract class CapoTestHelper<
     }
 
     /**
+     * Determines whether a new Capo should be created based on current state vs loaded config.
+     * Implements the Capo reconstruction decision tree (REQT-3.6.5/vz0fc3s057).
+     *
+     * Returns true (create new) when:
+     * - a) No Capo exists at all
+     * - a) Capo exists but is unconfigured (egg)
+     * - b) Capo exists but has different mph than loaded config
+     *
+     * Returns false (hot-swap) when:
+     * - c) Capo exists and has same mph as loaded config
+     *
+     * @internal
+     */
+    private shouldCreateNewCapo(loadedConfig: CapoConfig | undefined): boolean {
+        // Case a): No Capo at all
+        if (!this.strella) {
+            console.log(`  [shouldCreateNewCapo] No Capo → create new`);
+            return true;
+        }
+
+        // Case a): Unconfigured egg (no mph)
+        if (!this.strella.configIn?.mph) {
+            console.log(`  [shouldCreateNewCapo] Egg (no mph) → create new`);
+            return true;
+        }
+
+        // If no loaded config, can't compare - keep existing
+        if (!loadedConfig?.mph) {
+            console.log(`  [shouldCreateNewCapo] No loaded config → keep existing`);
+            return false;
+        }
+
+        // Compare identity: different mph means different Capo
+        const currentMph = this.strella.mintingPolicyHash?.toHex();
+        const loadedMph = loadedConfig.mph.toHex();
+
+        if (currentMph !== loadedMph) {
+            console.log(`  [shouldCreateNewCapo] Different mph (${currentMph?.slice(0, 12)} vs ${loadedMph.slice(0, 12)}) → create new`);
+            return true;
+        }
+
+        // Case c): Same chartered Capo
+        console.log(`  [shouldCreateNewCapo] Same mph → hot-swap`);
+        return false;
+    }
+
+    /**
+     * Gets the pre-selected seed UTxO from the actors snapshot's offchainData.
+     * Used by resolvers for cache key computation (REQT-3.6.2).
+     * @internal
+     */
+    getPreSelectedSeedUtxo(): PreSelectedSeedUtxo | undefined {
+        // First check if we have it in memory (set during bootstrapWithActors)
+        if (this.preSelectedSeedUtxo) {
+            return this.preSelectedSeedUtxo;
+        }
+
+        // Otherwise, try to get it from the actors snapshot's offchainData
+        const actorsOffchainData = this.helperState?.offchainData?.[SNAP_ACTORS];
+        if (actorsOffchainData?.targetSeedUtxo) {
+            return actorsOffchainData.targetSeedUtxo as PreSelectedSeedUtxo;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Pre-selects a seed UTxO from the default actor's wallet (REQT-3.6.1).
+     * Must be called after setDefaultActor() so wallet is available.
+     * @internal
+     */
+    async preSelectSeedUtxo(): Promise<void> {
+        if (!this.wallet) {
+            throw new Error(`preSelectSeedUtxo: no wallet - call setDefaultActor() first`);
+        }
+
+        const utxos = await this.wallet.utxos;
+        if (utxos.length === 0) {
+            throw new Error(`preSelectSeedUtxo: default actor has no UTxOs`);
+        }
+
+        // Select the last UTxO (any will work - tx will make change when consumed)
+        const seedUtxo = utxos[utxos.length - 1];
+        this.preSelectedSeedUtxo = {
+            txId: seedUtxo.id.txId.toString(),
+            utxoIdx: seedUtxo.id.index,
+        };
+
+        console.log(`  -- Pre-selected seed UTxO: ${this.preSelectedSeedUtxo.txId.slice(0, 12)}...#${this.preSelectedSeedUtxo.utxoIdx}`);
+    }
+
+    /**
      * Creates test actors for the emulator.
      * Idempotent: only runs if actors haven't been set up yet.
      * Called by snapToBootstrapWithActors via @hasNamedSnapshot decorator.
@@ -562,6 +670,14 @@ export abstract class CapoTestHelper<
         }
         // Set the default actor so decorator's actor check passes
         await this.setDefaultActor();
+
+        // Commit actor UTxOs to a block so they're visible for seed UTxO selection
+        // (setupActors creates UTxOs in mempool via network.createUtxo)
+        this.network.tick(1);
+
+        // Pre-select seed UTxO for cache key computation (REQT-3.6.1)
+        await this.preSelectSeedUtxo();
+
         // tick happens in decorator wrapper after this returns
     }
 
@@ -720,6 +836,12 @@ export abstract class CapoTestHelper<
                     }
                 }
 
+                // Restore pre-selected seed UTxO from offchainData (REQT-3.6.1)
+                if (!this.preSelectedSeedUtxo && cached.offchainData?.targetSeedUtxo) {
+                    this.preSelectedSeedUtxo = cached.offchainData.targetSeedUtxo as PreSelectedSeedUtxo;
+                    console.log(`  -- Restored pre-selected seed UTxO from cache: ${this.preSelectedSeedUtxo.txId.slice(0, 12)}...#${this.preSelectedSeedUtxo.utxoIdx}`);
+                }
+
                 // Set actor
                 if (actorName === "default") {
                     await this.setDefaultActor();
@@ -731,27 +853,40 @@ export abstract class CapoTestHelper<
                 return this.strella; // May be undefined for actors, that's OK
             }
 
-            // Disk cache hit for non-genesis snapshot (REQT-3.5/vmq8qmv218)
-            // Check if we can reuse existing bootstrappedStrella from helperState
+            // Disk cache hit for non-genesis snapshot
+            // Implement Capo reconstruction decision tree (REQT-3.6.5/vz0fc3s057)
             const { bootstrappedStrella, previousHelper } = this.helperState!;
-            if (bootstrappedStrella && previousHelper) {
-                // Reuse existing Capo via restoreFrom() which handles network swap
-                await this.restoreFrom(snapshotName);
-            } else if (!this.strella) {
-                // True cross-process restoration - must instantiate Capo fresh
-                // Read capoConfig from offchainData and parse it (REQT-3.5/vmq8qmv218)
-                const rawConfig = cached.offchainData?.capoConfig as Record<string, any> | undefined;
-                const config = rawConfig ? parseCapoJSONConfig(rawConfig as any) : this.helperState!.parsedConfig;
+            const loadedRawConfig = cached.offchainData?.capoConfig as Record<string, any> | undefined;
+            const loadedConfig = loadedRawConfig ? parseCapoJSONConfig(loadedRawConfig as any) : undefined;
+
+            // Decision tree: should we create a new Capo?
+            const shouldCreateNew = this.shouldCreateNewCapo(loadedConfig);
+
+            if (shouldCreateNew) {
+                // Cases a) and b): Create new Capo with loaded config
+                console.log(`  -- Creating new Capo from loaded config (shouldCreateNew=${shouldCreateNew})`);
+                const config = loadedConfig || this.helperState!.parsedConfig;
                 if (config) {
                     // Store parsed config for subsequent operations
                     this.helperState!.parsedConfig = config;
                     this.state.parsedConfig = config;
-                    this.state.rawConfig = rawConfig;
+                    this.state.rawConfig = loadedRawConfig;
                     await this.initStellarClass(config);
                 } else {
                     await this.initStellarClass();  // uses this.config default
                 }
                 // Set up helperState for subsequent operations
+                this.helperState!.bootstrappedStrella = this.strella;
+                this.helperState!.previousHelper = this as any;
+                this.helperState!.bootstrapped = true;
+            } else if (bootstrappedStrella && previousHelper) {
+                // Case c): Same chartered Capo - hot-swap network via restoreFrom()
+                console.log(`  -- Hot-swapping network for existing Capo`);
+                await this.restoreFrom(snapshotName);
+            } else {
+                // Fallback: we have a matching Capo but no previousHelper
+                // This shouldn't happen normally, but handle gracefully
+                console.log(`  -- Using existing Capo (no previousHelper)`);
                 this.helperState!.bootstrappedStrella = this.strella;
                 this.helperState!.previousHelper = this as any;
                 this.helperState!.bootstrapped = true;
@@ -808,7 +943,11 @@ export abstract class CapoTestHelper<
                 if (parentSnapName === "genesis" && Object.keys(this.actors).length > 0) {
                     // Store actor wallet keys in offchainData (REQT-3.4.1/1p346cabct)
                     // Replaces __actorSetupInfo__ hack (REQT-3.4.4/3rexpys2q3)
-                    offchainData = this.getActorWalletKeys();
+                    offchainData = {
+                        ...this.getActorWalletKeys(),
+                        // Store pre-selected seed UTxO for cache key computation (REQT-3.6.1)
+                        targetSeedUtxo: this.preSelectedSeedUtxo,
+                    };
 
                     // Initialize helperState.offchainData if needed and store for in-memory cache
                     if (!this.helperState!.offchainData) {
@@ -1123,19 +1262,57 @@ export abstract class CapoTestHelper<
     }
 
     /**
+     * Ensures an egg (unconfigured Capo) exists for cache key computation (REQT-3.6.6).
+     * Creates one via initStrella() if this.strella is undefined or unconfigured.
+     * @internal
+     */
+    private async ensureEggForCacheKey(): Promise<void> {
+        // Check if we have a Capo (egg or chartered)
+        if (this.strella) {
+            return; // Already have a Capo (may be egg or chartered)
+        }
+
+        // Create an egg (unconfigured Capo) for cache key computation
+        console.log(`  -- Creating egg (unconfigured Capo) for cache key computation`);
+        const { featureFlags } = this;
+        if (featureFlags) {
+            this.strella = await this.initStrella(this.stellarClass, {
+                featureFlags,
+            } as any);
+        } else {
+            this.strella = await this.initStrella(this.stellarClass);
+        }
+    }
+
+    /**
      * Resolves cache key inputs for core Capo scripts (minter, mint delegate, spend delegate).
      * Used for snapshot cache key computation for the capoInitialized snapshot.
+     * Uses computeSourceHash() instead of getCacheKeyInputs() to work with egg Capo (REQT-3.6.2, REQT-3.6.3).
      * @public
      */
     async resolveCoreCapoDependencies(): Promise<CacheKeyInputs> {
-        const capoBundle = await this.capo.getBundle();
-        const bundles: BundleCacheKeyInputs[] = [capoBundle.getCacheKeyInputs()];
+        // Ensure we have a Capo (egg or chartered) for bundle access (REQT-3.6.6)
+        await this.ensureEggForCacheKey();
 
-        // Add core delegate bundles
+        // Get pre-selected seed UTxO from actors snapshot (REQT-3.6.2)
+        const seedUtxo = this.getPreSelectedSeedUtxo();
+
+        const capoBundle = await this.capo.getBundle();
+        const bundles: BundleCacheKeyInputs[] = [{
+            name: capoBundle.moduleName || capoBundle.constructor.name,
+            sourceHash: capoBundle.computeSourceHash(), // Works without config! (REQT-3.6.3)
+            params: { seedUtxo }, // Identity params only, NOT derived values like mph
+        }];
+
+        // Add core delegate bundles (also using computeSourceHash)
         try {
             const mintDelegate = await this.capo.getMintDelegate();
             const mintBundle = await mintDelegate.getBundle();
-            bundles.push(mintBundle.getCacheKeyInputs());
+            bundles.push({
+                name: mintBundle.moduleName || mintBundle.constructor.name,
+                sourceHash: mintBundle.computeSourceHash(),
+                params: {}, // No params needed - source hash captures the code
+            });
         } catch (e) {
             console.warn(`CapoTestHelper: skipping mint delegate for cache key: ${e}`);
         }
@@ -1143,7 +1320,11 @@ export abstract class CapoTestHelper<
         try {
             const spendDelegate = await this.capo.getSpendDelegate();
             const spendBundle = await spendDelegate.getBundle();
-            bundles.push(spendBundle.getCacheKeyInputs());
+            bundles.push({
+                name: spendBundle.moduleName || spendBundle.constructor.name,
+                sourceHash: spendBundle.computeSourceHash(),
+                params: {}, // No params needed - source hash captures the code
+            });
         } catch (e) {
             console.warn(`CapoTestHelper: skipping spend delegate for cache key: ${e}`);
         }
@@ -1160,6 +1341,7 @@ export abstract class CapoTestHelper<
      * Resolves cache key inputs for all enabled delegates.
      * Used for snapshot cache key computation for the enabledDelegatesDeployed snapshot.
      * Includes dgData controllers (filtered by featureFlags) per REQT-1.2.3.2 and REQT-1.2.3.4.
+     * Uses computeSourceHash() to work with egg Capo (REQT-3.6.2, REQT-3.6.3).
      * @public
      */
     async resolveEnabledDelegatesDependencies(): Promise<CacheKeyInputs> {
@@ -1196,7 +1378,12 @@ export abstract class CapoTestHelper<
                         continue;
                     }
                     const bundle = await delegate.getBundle();
-                    bundles.push(bundle.getCacheKeyInputs());
+                    // Use computeSourceHash() instead of getCacheKeyInputs() (REQT-3.6.3)
+                    bundles.push({
+                        name: bundle.moduleName || bundle.constructor.name,
+                        sourceHash: bundle.computeSourceHash(),
+                        params: {}, // No params needed - source hash captures the code
+                    });
                 } catch (e) {
                     console.warn(`CapoTestHelper: skipping dgData controller ${roleName} for cache key: ${e}`);
                 }
