@@ -362,7 +362,27 @@ type CacheKeyInputs = {
  - **REQT-3.5.2/vmq8qmv218**: COMPLETED: After cross-process Capo instantiation, `helperState.bootstrappedStrella`, `previousHelper`, and `bootstrapped` MUST be set for subsequent operations
  - **REQT-3.5.3/vmq8qmv218**: COMPLETED: Same-process restoration (in-memory hit with existing `bootstrappedStrella`) MUST continue using `restoreFrom()` path
 
-> **RATIONALE (id:vmq8qmv218)**: Cross-process restoration differs from same-process: there's no `previousHelper` to transfer state from, and no `bootstrappedStrella` to reference. The Capo must be instantiated fresh from the restored network state.
+> **RATIONALE (id:vmq8qmv218)**: When loading chartered Capo from disk (no in-memory state), there's no `previousHelper` to transfer state from, and no `bootstrappedStrella` to reference. The Capo must be instantiated fresh from the restored network state.
+
+### REQT-3.6/8cbwn9mwxx: NEXT: **Egg/Chicken Pattern for Disk Cache Lookup**
+
+#### Purpose: Enables cache key computation when loading chartered Capo from disk without requiring a fully configured Capo instance. Solves the chicken-and-egg problem where cache key needs `configuredParams` but those only exist after minting (which is what the snapshot captures).
+
+See `emulator-capo-chicken-egg.md` for full architectural details.
+
+ - **REQT-3.6.1/84f4k7nb6p**: NEXT: **Pre-selected Seed UTxO** - The `bootstrapWithActors` snapshot MUST pre-select and store the seed UTxO in `offchainData.targetSeedUtxo`. This moves seed UTxO selection earlier in the chain, breaking the chicken-and-egg dependency.
+
+ - **REQT-3.6.2/mvf88mnsez**: NEXT: **Egg-Compatible Resolvers** - `resolveCoreCapoDependencies()` MUST use `computeSourceHash()` (which needs no config) and retrieve `seedUtxo` from the actors snapshot's `offchainData`, NOT from `configuredParams`.
+
+ - **REQT-3.6.3/mexwd3p8mr**: NEXT: **Source Hash Separation** - Cache key computation MUST use only source hashes and identity params (seedUtxo), NOT derived values like `mph`. The `getCacheKeyInputs().params` SHOULD contain identity params only.
+
+ - **REQT-3.6.4/9rrhspdd3m**: NEXT: **Capo Config Storage** - The `capoInitialized` snapshot MUST store complete `capoConfig` in `offchainData` including: `mph`, `seedUtxo`, `rev`, `charterAddress`, and other fields needed for Capo reconstruction.
+
+ - **REQT-3.6.5/vz0fc3s057**: NEXT: **Capo Reconstruction Decision Tree** - When loading from disk, `findOrCreateSnapshot()` MUST implement the decision tree: a) no Capo or egg → create new with loaded config; b) different chartered Capo → create new; c) same chartered Capo → hot-swap network only.
+
+ - **REQT-3.6.6/dynnc9bq1v**: NEXT: **Egg Creation** - When no chartered Capo exists and disk lookup is needed, the system MUST create an egg via `createWith({ setup, partialConfig: {} })` to provide source hashes for cache key computation.
+
+> **RATIONALE (id:8cbwn9mwxx)**: The chicken-and-egg problem occurs when loading chartered Capo from disk: cache key needs `configuredParams` (including `mph`), but `mph` only exists after minting charter (which is what `capoInitialized` captures). Solution: use an "egg" (unconfigured Capo) for source hashes, pre-select `seedUtxo` in actors snapshot, and store `capoConfig` for reconstruction. See ARCH-8wby9gxrav, ARCH-sq123b1884, ARCH-4adwbk7ajp.
 
 ## Component: StellarTestHelper
 

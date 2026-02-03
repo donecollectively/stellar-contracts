@@ -647,20 +647,21 @@ Loading "delegates" returns merged: { actorWallets: {...} }
 
 ## Data Flow
 
-### Workflow: Fresh Bootstrap (cache miss)
+### Workflow: Bootstrap Chartered Capo (ARCH-w3xvf0hm5w)
 
-**ARCH-UUT**: ARCH-aydwtq95c3
-
-Bootstrap proceeds through three snapshot layers. Each layer uses `@hasNamedSnapshot` decorator which handles cache check, build-if-miss, and store automatically (per REQT-3.3):
+When no cache exists anywhere, build everything from scratch. Each layer uses `@hasNamedSnapshot` decorator which handles cache check, build-if-miss, and store automatically (per REQT-3.3):
 
 1. **Test Suite** calls `reusableBootstrap()` on **CapoTestHelper**
 2. **CapoTestHelper** calls `bootstrap()` which proceeds through layers:
 
 **Layer 1: `snapToBootstrapWithActors()`** → `@hasNamedSnapshot("bootstrapWithActors", {parentSnapName: "genesis"})`
 - `findOrCreateSnapshot()` checks cache, runs `bootstrapWithActors()` builder on miss
+- **Pre-selects seedUtxo** and stores in `offchainData.targetSeedUtxo` (ARCH-4adwbk7ajp)
 
 **Layer 2: `snapToCapoInitialized()`** → `@hasNamedSnapshot("capoInitialized", {parentSnapName: "bootstrapWithActors"})`
-- `findOrCreateSnapshot()` checks cache, runs `capoInitialized()` builder on miss (mints charter via **Capo**)
+- `findOrCreateSnapshot()` checks cache, runs `capoInitialized()` builder on miss
+- Mints charter using **pre-selected seedUtxo**
+- Stores `capoConfig` in `offchainData` for later reconstruction (ARCH-psqv6y39h5)
 
 **Layer 3: `snapToEnabledDelegatesDeployed()`** → `@hasNamedSnapshot("enabledDelegatesDeployed", {parentSnapName: "capoInitialized"})`
 - `findOrCreateSnapshot()` checks cache, runs `enabledDelegatesDeployed()` builder on miss (deploys delegates)
@@ -671,63 +672,71 @@ Bootstrap proceeds through three snapshot layers. Each layer uses `@hasNamedSnap
               ▼
    snapToBootstrapWithActors() ──@hasNamedSnapshot──▶ findOrCreateSnapshot()
               │                                              │
-              ▼                                        miss? → build → store
+              ▼                                        miss? → build + pre-select seedUtxo → store
    snapToCapoInitialized() ──────@hasNamedSnapshot──▶ findOrCreateSnapshot()
               │                                              │
-              ▼                                        miss? → build → store
+              ▼                                        miss? → mint charter + store capoConfig → store
    snapToEnabledDelegatesDeployed() ─@hasNamedSnapshot─▶ findOrCreateSnapshot()
                                                              │
-                                                       miss? → build → store
+                                                       miss? → deploy delegates → store
 ```
 
-### Workflow: Cached Bootstrap (cache hit)
+**Result**: Chartered Capo emerges naturally. Config stored in `offchainData.capoConfig` enables later reconstruction from disk.
 
-Cache hits follow different paths depending on whether restoration is same-process or cross-process:
+### Workflow: Load Chartered Capo from Memory (ARCH-x7v4h6xyx8)
 
-#### Same-Process Restoration (in-memory hit)
-
-When snapshots exist in `helperState.snapCache.loadedSnapshots` from prior test in same run:
+When a chartered Capo already exists in `helperState.bootstrappedStrella`:
 
 1. **Test Suite** calls decorated method (e.g., `snapToEnabledDelegatesDeployed()`)
 2. **CapoTestHelper** `findOrCreateSnapshot()` finds in-memory snapshot
 3. **CapoTestHelper** calls `restoreFrom(snapshotName)`
 4. **restoreFrom()** uses `helperState.bootstrappedStrella` to restore Capo reference
-5. **StellarNetworkEmulator** loads snapshot state
-6. Actor wallets transferred via `previousHelper`
+5. Compare mph/seedUtxo → same → hot-swap network only (Setup Envelope pattern)
+6. **StellarNetworkEmulator** loads snapshot state
+7. Actor wallets transferred via `previousHelper`
 
 ```
 [Test] → findOrCreateSnapshot() → in-memory hit → restoreFrom()
                                                        ↓
                                            helperState.bootstrappedStrella
                                                        ↓
+                                           hot-swap network (same Capo)
+                                                       ↓
                                            [StellarNetworkEmulator] ← restore
 ```
 
-#### Cross-Process Restoration (disk cache hit)
+### Workflow: Load Chartered Capo from Disk (ARCH-c1kttx6sp2)
 
-When snapshots exist on disk but not in memory (new process):
+When disk cache exists but no chartered Capo is in memory. Uses **egg/chicken pattern** — see `emulator-capo-chicken-egg.md` for full details.
 
 1. **Test Suite** calls decorated method
-2. **CapoTestHelper** `findOrCreateSnapshot()` misses in-memory, hits disk cache
-3. **SnapshotCache** loads snapshot from disk (with parent chain)
-4. **CapoTestHelper** instantiates Capo via `initStellarClass()` (REQT-3.5)
-5. **CapoTestHelper** sets up `helperState` for subsequent operations
-6. **StellarNetworkEmulator** loads snapshot state
-7. Actors restored from `offchainData.actorWallets`
+2. **CapoTestHelper** `findOrCreateSnapshot()` misses in-memory
+3. **Create egg**: `createWith({ setup, partialConfig: {} })` — unconfigured Capo
+4. **Compute cache key**: `egg.bundle.computeSourceHash()` + `seedUtxo` from actors snapshot + `parentHash`
+5. **SnapshotCache** loads snapshot from disk (with parent chain)
+6. **Extract** `capoConfig` from `offchainData`
+7. **Reconstruct**: Create new Capo with loaded config (or hot-swap if same mph)
+8. **Set** `helperState.bootstrappedStrella`
+9. **StellarNetworkEmulator** loads snapshot state
+10. Actors restored from `offchainData.actorWallets`
 
 ```
-[Test] → findOrCreateSnapshot() → in-memory miss → disk hit
-                                                       ↓
-                                           [SnapshotCache] loads from disk
-                                                       ↓
-                                           initStellarClass() ← NEW Capo
-                                                       ↓
-                                           [StellarNetworkEmulator] ← restore
-                                                       ↓
-                                           actors from offchainData
+[Test] → findOrCreateSnapshot() → in-memory miss
+                                         ↓
+                              Create egg (partialConfig: {})
+                                         ↓
+                              Compute cache key (sourceHash + seedUtxo)
+                                         ↓
+                              [SnapshotCache] loads from disk
+                                         ↓
+                              Extract capoConfig from offchainData
+                                         ↓
+                              Create new Capo with loaded config
+                                         ↓
+                              [StellarNetworkEmulator] ← restore
 ```
 
-**Key difference**: Cross-process has no `previousHelper` or `bootstrappedStrella`. The Capo must be instantiated fresh, and actors are restored from stored keys rather than transferred.
+**Key insight**: The egg provides source hashes for cache key computation without needing a chartered Capo. The `seedUtxo` comes from the actors snapshot's `offchainData.targetSeedUtxo`.
 
 #### Actor Transfer Semantics
 
@@ -922,6 +931,7 @@ Efficient loading when parent snapshots are already in process memory from prior
 ## Related Documents
 
 - `./Emulator.reqts.md` - Detailed requirements
+- `./emulator-capo-chicken-egg.md` - Egg/chicken pattern for loading chartered Capo from disk (ARCH-8wby9gxrav)
 - `./snapshot-impl-audit.4xb49a4jyw.workUnit.md` - Implementation audit (goal state alignment)
 - `../../reference/essential-stellar-testing.md` - Testing conventions
 - `../CapoTestHelper.ts` - Snapshot orchestration implementation
