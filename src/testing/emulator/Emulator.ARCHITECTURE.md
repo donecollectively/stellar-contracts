@@ -59,6 +59,52 @@
 
 **Sharing mechanism**: `createTestContext()` returns wrapped `describe`/`it` that pass the same `helperState` reference to each test's `beforeEach`. The SnapshotCache on `helperState.snapCache` persists across tests in that scope, enabling in-memory cache hits via `loadedSnapshots` Map.
 
+### Key Patterns
+
+#### Capo Identity Chain
+
+Capo is off-chain state with expensive bundle references. Its identity derives from a deterministic chain:
+
+```
+PRNG seed (e.g., 42)
+  → deterministic actor wallets (tina, tom, tracy)
+  → actor addresses
+  → seed-utxo selection from actor wallet
+  → Capo identity (mph, address)
+```
+
+**Same seed + same actors = same Capo identity**. Different seeds produce different Capos.
+
+#### Setup Envelope Pattern
+
+Capo's `setup` object is a mutable envelope that allows network hot-swapping:
+
+```typescript
+// StellarContract.ts (base class)
+get network() { return this.setup.chainBuilder || this.setup.network; }
+```
+
+During `restoreFrom()`, the network is hot-swapped:
+```typescript
+// CapoTestHelper.ts:906
+(bootstrappedStrella as any).setup.network = newNet;
+```
+
+This allows the shared Capo to work with each test's fresh emulator.
+
+#### helperState Lifecycle
+
+`helperState.bootstrappedStrella` tracks the current Capo:
+
+| Event | Action |
+|-------|--------|
+| First `reusableBootstrap()` | `bootstrappedStrella = Capo` after fresh bootstrap |
+| Subsequent tests | Reused (network hot-swapped) |
+| `initialize({randomSeed: X})` | Cleared (`= undefined`) to force fresh bootstrap |
+| Disk cache hit (no prior Capo) | Set after `initStellarClass()` |
+
+**Different seeds are sequential**, not coexisting. `initialize()` with new seed clears helperState, discarding the old Capo.
+
 ---
 
 ## Components
