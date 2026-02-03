@@ -13,9 +13,9 @@ import type { StellarTestHelper } from "./StellarTestHelper.js";
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
 import {
     SimpleWallet_stellar as emulatedWallet,
-    type NetworkSnapshot,
 } from "./emulator/StellarNetworkEmulator.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
+import { SnapshotCache } from "./emulator/SnapshotCache.js";
 // import type {
 //     StellarTestContext,
 //     StellarTestHelper,
@@ -84,7 +84,6 @@ export type TestHelperState<
 > = {
     bootstrapped: Boolean;
     bootstrappedStrella?: SC;
-    snapshots: Record<string, NetworkSnapshot>;
     namedRecords: Record<string, string>;
     /** Offchain data per snapshot - used for in-memory cache (REQT-3.4/n93h9y5s85) */
     offchainData?: Record<string, Record<string, unknown>>;

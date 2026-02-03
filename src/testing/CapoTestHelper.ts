@@ -14,7 +14,6 @@ import type {
 } from "@donecollectively/stellar-contracts";
 import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSnapName, type SnapshotRegistryEntry } from "./emulator/SnapshotCache.js";
 import type { BundleCacheKeyInputs } from "../helios/scriptBundling/HeliosScriptBundle.js";
-import type { NetworkSnapshot } from "./emulator/StellarNetworkEmulator.js";
 
 import { StellarTestHelper, type ActorSetupInfo } from "./StellarTestHelper.js";
 import { addTestContext, type canHaveRandomSeed, type TestHelperState } from "./types.js";
@@ -183,7 +182,6 @@ export abstract class CapoTestHelper<
      * @public
      */
     static defaultHelperState: TestHelperState<any, any> = {
-        snapshots: {},
         namedRecords: {},
         bootstrapped: false,
     } as any;
@@ -322,7 +320,6 @@ export abstract class CapoTestHelper<
             // Clear cached state to force fresh build with new seed
             if (this.helperState) {
                 this.helperState.offchainData = {};
-                this.helperState.snapshots = {};
                 this.helperState.bootstrappedStrella = undefined;
                 this.helperState.previousHelper = undefined as any;
                 this.helperState.bootstrapped = false;
@@ -415,13 +412,6 @@ export abstract class CapoTestHelper<
         const tcx = new StellarTxnContext(this.strella.setup);
         if (txnName) return tcx.withName(txnName) as any;
         return tcx as any;
-    }
-
-    loadSnapshot(snapName: string) {
-        const snap = this.helperState!.snapshots[snapName];
-        if (!snap) throw new Error(`no snapshot named ${snapName}`);
-
-        this.network.loadSnapshot(snap);
     }
 
     async reusableBootstrap(
@@ -677,33 +667,14 @@ export abstract class CapoTestHelper<
             //@ts-expect-error - creating minimal helperState without previousHelper
             this.helperState = {
                 bootstrapped: false,
-                snapshots: {},
                 namedRecords: {},
             };
         } else {
             // Ensure required properties exist even in custom/inherited helperState
-            if (!this.helperState.snapshots) {
-                this.helperState.snapshots = {};
-            }
             if (!this.helperState.namedRecords) {
                 this.helperState.namedRecords = {};
             }
         }
-    }
-
-    hasSnapshot(snapshotName: string) {
-        return !!this.helperState?.snapshots[snapshotName];
-    }
-
-    snapshot(snapshotName: string) {
-        if (!this.helperState) {
-            throw new Error(`can't snapshot without a helperState`);
-        }
-        if (this.hasSnapshot(snapshotName)) {
-            throw new Error(`snapshot ${snapshotName} already exists`);
-        }
-        this.helperState.snapshots[snapshotName] =
-            this.network.snapshot(snapshotName);
     }
 
     async findOrCreateSnapshot(
@@ -717,92 +688,13 @@ export abstract class CapoTestHelper<
         const entry = this.snapshotCache["registry"].get(snapshotName);
         const isGenesisSnapshot = entry?.parentSnapName === "genesis";
 
-        // First check in-memory snapshots
-        if (this.helperState!.snapshots[snapshotName]) {
-            if (isGenesisSnapshot) {
-                const t0 = performance.now();
-                // For genesis snapshots (actors), just restore network state
-                // No capo exists yet, so we can't use restoreFrom()
-                this.network.loadSnapshot(this.helperState!.snapshots[snapshotName]);
-
-                // Restore actors from stored keys (REQT-3.4.2/avwkcrnwqp, REQT-3.4.4/3rexpys2q3)
-                if (Object.keys(this.actors).length === 0) {
-                    const offchainData = this.helperState!.offchainData?.[snapshotName];
-                    const actorWallets = offchainData?.actorWallets as Record<string, { spendingKey: string; stakingKey?: string }> | undefined;
-                    if (actorWallets) {
-                        this.restoreActorsFromStoredKeys({ actorWallets });
-                    } else {
-                        console.warn(`  ⚠️ No stored actor keys found for '${snapshotName}' - cache may need rebuild`);
-                    }
-                }
-
-                // Set actor (might be "default" which calls setDefaultActor)
-                if (actorName === "default") {
-                    await this.setDefaultActor();
-                } else if (this.actors[actorName]) {
-                    await this.setActor(actorName);
-                }
-                const elapsed = (performance.now() - t0).toFixed(1);
-                console.log(`  ⚡ in-memory hit (genesis) '${snapshotName}': ${elapsed}ms`);
-                return this.strella; // May be undefined for actors, that's OK
-            }
-            // In-memory hit for non-genesis snapshot
-            const t0 = performance.now();
-
-            // Check if we can use restoreFrom() (REQT-3.5.3/vmq8qmv218)
-            // restoreFrom() works when we have bootstrappedStrella and previousHelper
-            const { bootstrappedStrella, previousHelper } = this.helperState!;
-            const canUseRestoreFrom = bootstrappedStrella && previousHelper;
-            console.log(`  [DEBUG] in-memory non-genesis: bootstrappedStrella=${!!bootstrappedStrella}, previousHelper=${!!previousHelper}, canUseRestoreFrom=${canUseRestoreFrom}`);
-
-            if (canUseRestoreFrom) {
-                // Use restoreFrom() which reuses bootstrappedStrella and handles network swapping
-                await this.restoreFrom(snapshotName);
-            } else {
-                // Cross-process restoration - instantiate Capo fresh
-                this.network.loadSnapshot(this.helperState!.snapshots[snapshotName]);
-                // Read capoConfig from offchainData (stored during disk cache load) (REQT-3.5/vmq8qmv218)
-                const offchainData = this.helperState!.offchainData?.[snapshotName];
-                const rawConfig = offchainData?.capoConfig as Record<string, any> | undefined;
-                console.log(`  [DEBUG] in-memory cross-process: offchainData=${!!offchainData}, rawConfig=${!!rawConfig}, helperState.parsedConfig=${!!this.helperState!.parsedConfig}`);
-                const config = rawConfig ? parseCapoJSONConfig(rawConfig as any) : this.helperState!.parsedConfig;
-                console.log(`  [DEBUG] in-memory cross-process: config=${!!config}, config.rootCapoScriptHash=${!!(config as any)?.rootCapoScriptHash}`);
-                if (config) {
-                    // Store parsed config for subsequent operations
-                    this.helperState!.parsedConfig = config;
-                    this.state.parsedConfig = config;
-                    this.state.rawConfig = rawConfig;
-                    await this.initStellarClass(config);
-                } else {
-                    await this.initStellarClass();  // uses this.config default
-                }
-                this.helperState!.bootstrappedStrella = this.strella;
-                this.helperState!.previousHelper = this as any;
-                this.helperState!.bootstrapped = true;
-            }
-
-            console.log(`  [DEBUG findOrCreate after restore] this._actorName: "${this._actorName}"`);
-            console.log(`  [DEBUG findOrCreate after restore] this.actorContext.wallet: ${this.actorContext.wallet?.address?.toString().slice(0, 20) || 'undefined'}`);
-            console.log(`  [DEBUG findOrCreate after restore] Object.keys(this.actors): ${Object.keys(this.actors).join(', ')}`);
-
-            if (actorName === "default") {
-                await this.setDefaultActor();
-            } else {
-                await this.setActor(actorName);
-            }
-            const elapsed = (performance.now() - t0).toFixed(1);
-            console.log(`  ⚡ in-memory hit '${snapshotName}': ${elapsed}ms`);
-            return this.strella;
-        }
-
-        // Try disk cache using registry-based API
-        const diskStart = performance.now();
+        // Try cache using registry-based API (snapshotCache.loadedSnapshots uses composite keys for proper isolation)
+        const cacheStart = performance.now();
         const cached = await this.snapshotCache.find(snapshotName);
         if (cached) {
-            // Restore from disk cache
+            // Restore from cache (may be in-memory via loadedSnapshots or from disk)
             this.network.loadSnapshot(cached.snapshot);
             Object.assign(this.helperState!.namedRecords, cached.namedRecords);
-            this.helperState!.snapshots[snapshotName] = cached.snapshot;
 
             // Store offchainData in helperState for in-memory cache (REQT-3.4/n93h9y5s85)
             if (cached.offchainData) {
@@ -829,8 +721,8 @@ export abstract class CapoTestHelper<
                 } else if (this.actors[actorName]) {
                     await this.setActor(actorName);
                 }
-                const elapsed = (performance.now() - diskStart).toFixed(1);
-                console.log(`  💾 disk cache hit (genesis) '${snapshotName}': ${elapsed}ms`);
+                const elapsed = (performance.now() - cacheStart).toFixed(1);
+                console.log(`  ⚡ cache hit (genesis) '${snapshotName}': ${elapsed}ms`);
                 return this.strella; // May be undefined for actors, that's OK
             }
 
@@ -865,8 +757,8 @@ export abstract class CapoTestHelper<
             } else {
                 await this.setActor(actorName);
             }
-            const elapsed = (performance.now() - diskStart).toFixed(1);
-            console.log(`  💾 disk cache hit '${snapshotName}': ${elapsed}ms`);
+            const elapsed = (performance.now() - cacheStart).toFixed(1);
+            console.log(`  ⚡ cache hit '${snapshotName}': ${elapsed}ms`);
             return this.strella;
         }
         console.log(`  📦 cache miss '${snapshotName}' - building...`);
@@ -885,16 +777,17 @@ export abstract class CapoTestHelper<
         } finally {
             if (succeeded) {
                 const storeStart = performance.now();
-                this.snapshot(snapshotName);
 
-                // Store to disk cache using registry-based API
-                const snapshot = this.helperState!.snapshots[snapshotName];
+                // Capture network snapshot and store to cache
+                const snapshot = this.network.snapshot(snapshotName);
                 const entry = this.snapshotCache["registry"].get(snapshotName);
                 const parentSnapName = entry?.parentSnapName || "genesis";
-                const parentSnapshot = parentSnapName !== "genesis"
-                    ? this.helperState!.snapshots[parentSnapName]
+
+                // Get parent hash from snapshotCache (already loaded during parent resolution)
+                const parentCached = parentSnapName !== "genesis"
+                    ? await this.snapshotCache.find(parentSnapName)
                     : null;
-                const parentHash = parentSnapshot?.blockHashes?.slice(-1)[0] || null;
+                const parentHash = parentCached?.snapshotHash || null;
 
                 // For genesis snapshots, store actorSetupInfo for regeneration on cache load
                 // Defensive check: namedRecords should be guaranteed by ensureHelperState()
@@ -950,7 +843,6 @@ export abstract class CapoTestHelper<
         const {
             helperState,
             helperState: {
-                snapshots,
                 previousHelper,
                 bootstrappedStrella,
             } = {},
@@ -964,8 +856,10 @@ export abstract class CapoTestHelper<
                 `can't restore from a previous helper without a bootstrappedStrella`,
             );
 
-        if (!snapshots || !snapshots[snapshotName]) {
-            throw new Error(`no snapshot named ${snapshotName} in helperState`);
+        // Get snapshot from cache (uses proper composite key)
+        const cached = await this.snapshotCache.find(snapshotName);
+        if (!cached) {
+            throw new Error(`no snapshot named ${snapshotName} in snapshotCache`);
         }
         if (!previousHelper) {
             throw new Error(`no previousHelper in helperState`);
@@ -1000,7 +894,7 @@ export abstract class CapoTestHelper<
             console.log(`  [DEBUG restoreFrom] BEFORE: this.networkCtx.network.id=${(this.networkCtx.network as any).id}, newNet.id=${(newNet as any).id}`);
             console.log(`  [DEBUG restoreFrom] BEFORE: bootstrappedStrella?.setup?.network?.id=${(bootstrappedStrella as any)?.setup?.network?.id}`);
             // Actors are already in this.actors - just load the snapshot
-            newNet.loadSnapshot(snapshots[snapshotName]);
+            newNet.loadSnapshot(cached.snapshot);
             // Ensure helper's networkCtx points to the correct network
             if (this.networkCtx.network !== newNet) {
                 console.log(`  [DEBUG restoreFrom] Swapping this.networkCtx.network from ${(this.networkCtx.network as any).id} to ${(newNet as any).id}`);
@@ -1049,7 +943,7 @@ export abstract class CapoTestHelper<
                 } actors from network ${previousNetwork.id} to ${newNet.id}`,
             );
 
-            newNet.loadSnapshot(snapshots[snapshotName]);
+            newNet.loadSnapshot(cached.snapshot);
         }
         if (!this.actorName) {
             await this.setDefaultActor();
@@ -1197,47 +1091,6 @@ export abstract class CapoTestHelper<
             hasBootstrappedCapoConfig &
             hasAddlTxns<any>
     >;
-
-    /**
-     * Gets the last block hash from a stored snapshot.
-     * @internal
-     */
-    private getSnapshotBlockHash(snapName: string): string {
-        return this.helperState?.snapshots[snapName]?.blockHashes?.slice(-1)[0] ?? "genesis";
-    }
-
-    /**
-     * Computes the cache key for a built-in snapshot by recomputation.
-     * No Map needed—resolvers are deterministic and parent hashes are in helperState.
-     * @public
-     */
-    async getSnapshotCacheKey(snapName: string): Promise<string | null> {
-        switch (snapName) {
-            case "genesis":
-                return null;
-
-            case SNAP_ACTORS:
-            case "bootstrapWithActors":
-                return this.snapshotCache.computeKey(null, this.resolveActorsDependencies());
-
-            case SNAP_CAPO_INIT:
-            case "capoInitialized": {
-                const parentHash = this.getSnapshotBlockHash(SNAP_ACTORS);
-                return this.snapshotCache.computeKey(parentHash, await this.resolveCoreCapoDependencies());
-            }
-
-            case SNAP_DELEGATES:
-            case "enabledDelegatesDeployed":
-            case "bootstrapped": {
-                const parentHash = this.getSnapshotBlockHash(SNAP_CAPO_INIT);
-                return this.snapshotCache.computeKey(parentHash, await this.resolveEnabledDelegatesDependencies());
-            }
-
-            default:
-                // App snapshots build on SNAP_DELEGATES; return its cache key as their parent
-                return this.getSnapshotCacheKey(SNAP_DELEGATES);
-        }
-    }
 
     /**
      * Resolves cache key inputs for the base actors snapshot.

@@ -214,7 +214,7 @@ export abstract class StellarTestHelper<
     }
 
     /**
-     * Helper state for snapshots and named records.
+     * Helper state for named records and bootstrap tracking.
      * Always initialized from the class's static defaultHelperState.
      */
     helperState: TestHelperState<SC, SpecialState>;
@@ -225,7 +225,6 @@ export abstract class StellarTestHelper<
      * @public
      */
     static defaultHelperState: TestHelperState<any, any> = {
-        snapshots: {},
         namedRecords: {},
         bootstrapped: false,
     } as any;
