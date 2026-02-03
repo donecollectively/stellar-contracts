@@ -412,7 +412,8 @@ describe("Capo", () => {
                 const createdDelegate =
                     await t.connectDelegateWithOnchainRDLink(
                         "mintDelegate",
-                        t.mkOnchainRelativeDelegateLink(mintDelegateLink)
+                        t.mkOnchainRelativeDelegateLink(mintDelegateLink),
+                        { onchain: true }
                     );
 
                 expect(createdDelegate.address.toString()).toBeTruthy();

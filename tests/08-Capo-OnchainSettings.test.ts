@@ -162,6 +162,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
             
             const settingsController = (await capo.getSettingsController({
                 charterData,
+                onchain: true,
             })) as BadSettingsController;
 
             const update = await settingsController.mkTxnUpdateRecord(
@@ -202,7 +203,7 @@ describe("supports a Settings structure stored as a type of DelegatedDatum", asy
                 capoUtxos,
             });
             const settingsController =
-                (await capo.getSettingsController()) as BadSettingsController;
+                (await capo.getSettingsController({onchain:true})) as BadSettingsController;
 
             const update = await settingsController.mkTxnUpdateRecord(
                 settingsInfo,

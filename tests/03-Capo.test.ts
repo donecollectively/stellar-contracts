@@ -175,7 +175,7 @@ describe("Capo", async () => {
                 const mintDelegate =
                     await capo.connectDelegateWithOnchainRDLink(
                         "mintDelegate",
-                        datum.mintDelegateLink
+                        datum.mintDelegateLink, {onchain:true}
                     );
 
                 expect(
