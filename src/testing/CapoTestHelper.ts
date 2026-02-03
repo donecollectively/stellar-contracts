@@ -632,6 +632,14 @@ export abstract class CapoTestHelper<
                 snapshots: {},
                 namedRecords: {},
             };
+        } else {
+            // Ensure required properties exist even in custom/inherited helperState
+            if (!this.helperState.snapshots) {
+                this.helperState.snapshots = {};
+            }
+            if (!this.helperState.namedRecords) {
+                this.helperState.namedRecords = {};
+            }
         }
     }
 
@@ -777,11 +785,11 @@ export abstract class CapoTestHelper<
                 const parentHash = parentSnapshot?.blockHashes?.slice(-1)[0] || null;
 
                 // For genesis snapshots, store actorSetupInfo for regeneration on cache load
-                // Ensure namedRecords was initialized (should happen in defaultHelperState)
+                // Defensive check: namedRecords should be guaranteed by ensureHelperState()
                 if (!this.helperState!.namedRecords) {
                     throw new Error(
                         `findOrCreateSnapshot('${snapshotName}'): helperState.namedRecords is undefined. ` +
-                        `Check that defaultHelperState includes namedRecords: {}`
+                        `This should not happen - ensureHelperState() should have initialized it.`
                     );
                 }
                 const namedRecords = { ...this.helperState!.namedRecords };
