@@ -157,9 +157,11 @@ WU4 (key-inputs) - independent
 
 ## Verification
 
-- [ ] `offchainData` field added to `CachedSnapshot` type
-- [ ] `offchain.json` written when offchainData provided to `store()`
-- [ ] `find()` merges offchainData from parent chain
-- [ ] Child keys override parent keys in merge
-- [ ] Missing `offchain.json` handled gracefully (returns undefined)
-- [ ] Empty offchainData not written (no empty file)
+- [x] `offchainData` field added to `CachedSnapshot` type
+- [x] `offchain.json` written when offchainData provided to `store()`
+- [x] `find()` merges offchainData from parent chain
+- [x] Child keys override parent keys in merge
+- [x] Missing `offchain.json` handled gracefully (returns undefined)
+- [x] Empty offchainData not written (no empty file)
+
+**Audited**: 2026-02-02 - All requirements satisfied.

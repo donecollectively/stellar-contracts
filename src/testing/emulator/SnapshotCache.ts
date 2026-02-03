@@ -52,6 +52,8 @@ export type CachedSnapshot = {
     snapshotHash: string;
     /** Directory path where this snapshot is stored (set after find() or store()) */
     path?: string;
+    /** Offchain data merged from parent chain - NOT included in cache key (e.g., actor wallet keys). REQT-1.2.12/mkap3784hw */
+    offchainData?: Record<string, unknown>;
 };
 
 /**
@@ -685,6 +687,26 @@ export class SnapshotCache {
 
             console.log(`SnapshotCache: loaded '${thisSnapshot.name}' from ${cachePath} (integrity check: ${verifyMs}ms)`);
 
+            // Load and merge offchain data from parent chain (REQT-1.2.12.2/khqyf56m0g, REQT-1.2.12.4/0k6bnbbg95)
+            let mergedOffchainData: Record<string, unknown> | undefined;
+
+            // Start with parent's merged offchainData (if any)
+            if (parent?.offchainData) {
+                mergedOffchainData = { ...parent.offchainData };
+            }
+
+            // Load this snapshot's offchain.json if it exists (child keys override parent)
+            const offchainPath = join(snapshotDir, "offchain.json");
+            if (existsSync(offchainPath)) {
+                try {
+                    const offchainContent = readFileSync(offchainPath, "utf-8");
+                    const thisOffchainData = JSON.parse(offchainContent) as Record<string, unknown>;
+                    mergedOffchainData = { ...mergedOffchainData, ...thisOffchainData };
+                } catch (offchainErr) {
+                    console.warn(`SnapshotCache: failed to read offchain.json for '${snapshotName}':`, offchainErr);
+                }
+            }
+
             // Build result and cache before returning (REQT-1.2.10.3)
             const result: CachedSnapshot = {
                 snapshot: thisSnapshot,
@@ -694,6 +716,7 @@ export class SnapshotCache {
                 parentCacheKey: serialized.parentCacheKey, // Deprecated but retained
                 snapshotHash: serialized.snapshotHash,
                 path: snapshotDir,
+                offchainData: mergedOffchainData,
             };
             this.loadedSnapshots.set(snapshotName, result);
             return result;
@@ -764,6 +787,12 @@ export class SnapshotCache {
 
         const content = JSON.stringify(serialized, null, 2);
         writeFileSync(cachePath, content, "utf-8");
+
+        // Write offchain.json if offchainData is provided and non-empty (REQT-1.2.12.1/020mbw1gqw, REQT-1.2.12.3/yd750dddgy)
+        if (cachedSnapshot.offchainData && Object.keys(cachedSnapshot.offchainData).length > 0) {
+            const offchainPath = join(snapshotDir, "offchain.json");
+            writeFileSync(offchainPath, JSON.stringify(cachedSnapshot.offchainData, null, 2), "utf-8");
+        }
 
         // Store path on the cachedSnapshot for caller's use
         cachedSnapshot.path = snapshotDir;

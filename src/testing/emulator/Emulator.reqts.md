@@ -242,14 +242,14 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.2.11.2/e79g49xyyj**: NEXT: `find()` MUST load `key-inputs.json` and include it in `CachedSnapshot.cacheKeyInputs`
  - **REQT-1.2.11.3/hn8f6z92k0**: NEXT: Missing `key-inputs.json` MUST be handled gracefully (return undefined, for older snapshots)
 
-### REQT-1.2.12/mkap3784hw: NEXT: **Offchain Data Storage**
+### REQT-1.2.12/mkap3784hw: COMPLETED: **Offchain Data Storage**
 
 #### Purpose: Enables storage and restoration of test helper data (e.g., actor wallet keys) that doesn't affect cache validity. Applied when storing or loading snapshots.
 
- - **REQT-1.2.12.1/020mbw1gqw**: NEXT: `store()` MUST write `offchain.json` alongside `snapshot.json` when `offchainData` is provided
- - **REQT-1.2.12.2/khqyf56m0g**: NEXT: `find()` MUST merge offchain data from parent chain (root → leaf, child keys override parent)
- - **REQT-1.2.12.3/yd750dddgy**: NEXT: Empty offchain data MUST NOT create an empty file
- - **REQT-1.2.12.4/0k6bnbbg95**: NEXT: `CachedSnapshot.offchainData` MUST contain the merged result from all ancestors
+ - **REQT-1.2.12.1/020mbw1gqw**: COMPLETED: `store()` MUST write `offchain.json` alongside `snapshot.json` when `offchainData` is provided
+ - **REQT-1.2.12.2/khqyf56m0g**: COMPLETED: `find()` MUST merge offchain data from parent chain (root → leaf, child keys override parent)
+ - **REQT-1.2.12.3/yd750dddgy**: COMPLETED: Empty offchain data MUST NOT create an empty file
+ - **REQT-1.2.12.4/0k6bnbbg95**: COMPLETED: `CachedSnapshot.offchainData` MUST contain the merged result from all ancestors
 
 ### REQT-1.3/qr6r27cg3q: COMPLETED: **Transaction Validation**
 

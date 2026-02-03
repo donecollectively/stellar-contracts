@@ -228,6 +228,8 @@ export abstract class StellarTestHelper<
             this.config = config;
         }
 
+        this.randomSeed = config?.randomSeed || 42;
+
         const t = this.mkNetwork(this.fixupParams(DEFAULT_NETWORK_PARAMS()));
         const theNetwork: StellarNetworkEmulator = t[0];
         const netParamsHelper: NetworkParamsHelper = t[1];
@@ -236,8 +238,6 @@ export abstract class StellarTestHelper<
         this.networkCtx = {
             network: theNetwork,
         };
-
-        this.randomSeed = config?.randomSeed || 42;
         this.actors = {};
         this.actorSetupInfo = [];
         const now = new Date();
@@ -869,7 +869,7 @@ export abstract class StellarTestHelper<
     mkNetwork(
         params: NetworkParams,
     ): [StellarNetworkEmulator, NetworkParamsHelper] {
-        const theNetwork = new StellarNetworkEmulator(undefined, { params });
+        const theNetwork = new StellarNetworkEmulator(this.randomSeed, { params });
         const emuParams = theNetwork.initHelper();
 
         // const wrappedNetwork = makeTxChainBuilder(theNetwork);
