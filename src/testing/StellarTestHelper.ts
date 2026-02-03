@@ -13,6 +13,7 @@ import { generateBytes, mulberry32 } from "@helios-lang/crypto";
 
 import {
     SimpleWallet_stellar as emulatedWallet,
+    SimpleWallet_stellar,
     StellarNetworkEmulator,
 } from "./emulator/StellarNetworkEmulator.js";
 
@@ -831,6 +832,9 @@ export abstract class StellarTestHelper<
      *
      * @public
      **/
+    /** When true, suppresses actor creation logging (used during cache key computation) */
+    protected _silentActorSetup = false;
+
     addActor(
         roleName: string,
         walletBalance: bigint,
@@ -849,16 +853,9 @@ export abstract class StellarTestHelper<
         //! it instantiates a wallet with the indicated balance pre-set
         // console.log(new Error(`add actor ${roleName}`).stack);
         const a = this.createWallet(walletBalance);
-        const addr = a.address.toString();
-        console.log(
-            `+🎭 Actor: ${roleName}: ${addr.slice(0, 12)}…${addr.slice(
-                -4,
-            )} ${lovelaceToAda(walletBalance)} (🔑#${(
-                a.address as ShelleyAddress
-            ).spendingCredential
-                ?.toHex()
-                .substring(0, 8)}…)`,
-        );
+        if (!this._silentActorSetup) {
+            this.logActor(roleName, a, walletBalance);
+        }
 
         this.actorContext.others[roleName] = a;
 
@@ -877,6 +874,37 @@ export abstract class StellarTestHelper<
 
         this.actors[roleName] = a;
         return a;
+    }
+
+    /**
+     * Logs detailed info for a single actor.
+     * @internal
+     */
+    private logActor(name: string, wallet: SimpleWallet_stellar, balance: bigint): void {
+        const addr = wallet.address.toString();
+        console.log(
+            `+🎭 Actor: ${name}: ${addr.slice(0, 12)}…${addr.slice(
+                -4,
+            )} ${lovelaceToAda(balance)} (🔑#${(
+                wallet.address as ShelleyAddress
+            ).spendingCredential
+                ?.toHex()
+                .substring(0, 8)}…)`,
+        );
+    }
+
+    /**
+     * Logs detailed actor information. Used when actors were created silently
+     * during cache key computation but we want to show them on cache miss.
+     * @internal
+     */
+    logActorDetails(): void {
+        for (const info of this.actorSetupInfo) {
+            const actor = this.actors[info.name];
+            if (actor) {
+                this.logActor(info.name, actor, info.initialBalance);
+            }
+        }
     }
 
     //todo use this for enabling prettier diagnostics with clear labels for

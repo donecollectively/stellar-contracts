@@ -664,6 +664,9 @@ export abstract class CapoTestHelper<
         // (resolver may have already called setupActors to get actorSetupInfo)
         if (this.actorSetupInfo.length === 0) {
             await this.setupActors();
+        } else {
+            // Resolver already created actors silently - log them now for visibility on cache miss
+            this.logActorDetails();
         }
         // Set the default actor so decorator's actor check passes
         await this.setDefaultActor();
@@ -690,8 +693,15 @@ export abstract class CapoTestHelper<
         async resolveScriptDependencies(helper) {
             const h = helper as CapoTestHelper<any, any>;
             // Ensure actors are set up so we can compute cache key
+            // Use silent mode since this is just for cache key computation,
+            // not the actual snapshot build (logging would be noisy on cache hits)
             if (h.actorSetupInfo.length === 0) {
-                await h.setupActors();
+                h._silentActorSetup = true;
+                try {
+                    await h.setupActors();
+                } finally {
+                    h._silentActorSetup = false;
+                }
                 // DON'T tick here - let the decorator handle tick after builder
             }
             return h.resolveActorsDependencies();
