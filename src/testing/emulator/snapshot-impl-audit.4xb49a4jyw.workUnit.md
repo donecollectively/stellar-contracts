@@ -47,12 +47,12 @@
 | F7 | StellarTestHelper.ts:231,240,872 | Emulator created with `undefined` seed before `randomSeed` was set; PRNG started at 0 instead of 42 | Fixed: moved `randomSeed` init before `mkNetwork()`, pass `this.randomSeed` to emulator |
 | F8 | StellarTestHelper.ts:684-708 | Actor wallet regeneration uses PRNG replay instead of stored keys | Implemented `getActorWalletKeys()` and `restoreActorsFromStoredKeys()` using `makeBip32PrivateKey(hexToBytes())` fast path; removed `regenerateActorsFromSetupInfo()`, `createWalletWithoutUtxo()`, `parseActorSetupInfo()`, and `__actorSetupInfo__` hack |
 | F10 | SnapshotCache.ts | No mechanism for offchain data outside cache key | Implemented `offchainData` field in `CachedSnapshot`, `offchain.json` file storage, parent chain merging in `find()` |
+| F9 | SnapshotCache.ts | Cache key inputs not stored in snapshot directory | Implemented `cacheKeyInputs` field, `key-inputs.json` written on store, loaded on find with graceful fallback |
 
 ### Open
 
 | ID | UUT | Location | Finding | Work Unit |
 |----|-----|----------|---------|-----------|
-| F9 | `gyjxwjjt91` | SnapshotCache.ts | Cache key inputs not stored in snapshot directory | WU4 |
 
 ### Related Commits
 
@@ -68,7 +68,7 @@
 | WU1 | REQT-3.3.4 | `capoInitialized` uses `@hasNamedSnapshot` with `internal: true` | **completed** |
 | WU2 | REQT-3.3.5 | `enabledDelegatesDeployed` uses `@hasNamedSnapshot` with `internal: true` | **completed** |
 | WU3 | REQT-3.4, F8 | Store actor wallet keys in offchain data; restore via `makeBip32PrivateKey` | **completed** |
-| WU4 | REQT-1.2.11, F9 | Store `key-inputs.json` in snapshot directory | pending |
+| WU4 | REQT-1.2.11, F9 | Store `key-inputs.json` in snapshot directory | **completed** |
 | WU5 | REQT-1.2.12, F10 | Add offchain data storage mechanism | **completed** |
 
 **Dependency chain**: WU5 ← WU3 (actor keys requires offchain data mechanism)

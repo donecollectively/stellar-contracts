@@ -129,7 +129,7 @@ const result: CachedSnapshot = {
 
 ## Verification
 
-- [ ] `key-inputs.json` written on `store()`
-- [ ] `cacheKeyInputs` available in `CachedSnapshot` after `find()`
-- [ ] Actor list accessible via `cached.cacheKeyInputs?.extra?.actors`
-- [ ] Existing snapshots without inputs file still load (graceful fallback)
+- [x] `key-inputs.json` written on `store()` (REQT-1.2.11.1/vn0drr8d8s)
+- [x] `cacheKeyInputs` available in `CachedSnapshot` after `find()` (REQT-1.2.11.2/e79g49xyyj)
+- [x] Actor list accessible via `cached.cacheKeyInputs?.extra?.actors`
+- [x] Existing snapshots without inputs file still load (graceful fallback) (REQT-1.2.11.3/hn8f6z92k0)

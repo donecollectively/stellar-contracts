@@ -234,13 +234,13 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.2.10.2/bkmgarnrsw**: NEXT: Only incremental new transactions from a leaf snapshot MUST be reconstructed
  - **REQT-1.2.10.3/j9adgp9rwv**: NEXT: Incrementally reconstructed transactions MUST be remembered for use when loading later dependency snapshots
 
-### REQT-1.2.11/whp4cvpk9e: NEXT: **Key Inputs Storage**
+### REQT-1.2.11/whp4cvpk9e: COMPLETED: **Key Inputs Storage**
 
 #### Purpose: Enables debugging cache misses and provides access to cache key data on snapshot load. Applied when storing or loading snapshots.
 
- - **REQT-1.2.11.1/vn0drr8d8s**: NEXT: `store()` MUST write `key-inputs.json` alongside `snapshot.json` containing the original `CacheKeyInputs`
- - **REQT-1.2.11.2/e79g49xyyj**: NEXT: `find()` MUST load `key-inputs.json` and include it in `CachedSnapshot.cacheKeyInputs`
- - **REQT-1.2.11.3/hn8f6z92k0**: NEXT: Missing `key-inputs.json` MUST be handled gracefully (return undefined, for older snapshots)
+ - **REQT-1.2.11.1/vn0drr8d8s**: COMPLETED: `store()` MUST write `key-inputs.json` alongside `snapshot.json` containing the original `CacheKeyInputs`
+ - **REQT-1.2.11.2/e79g49xyyj**: COMPLETED: `find()` MUST load `key-inputs.json` and include it in `CachedSnapshot.cacheKeyInputs`
+ - **REQT-1.2.11.3/hn8f6z92k0**: COMPLETED: Missing `key-inputs.json` MUST be handled gracefully (return undefined, for older snapshots)
 
 ### REQT-1.2.12/mkap3784hw: COMPLETED: **Offchain Data Storage**
 

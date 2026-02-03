@@ -54,6 +54,8 @@ export type CachedSnapshot = {
     path?: string;
     /** Offchain data merged from parent chain - NOT included in cache key (e.g., actor wallet keys). REQT-1.2.12/mkap3784hw */
     offchainData?: Record<string, unknown>;
+    /** Cache key inputs for debugging cache misses. REQT-1.2.11/whp4cvpk9e */
+    cacheKeyInputs?: CacheKeyInputs;
 };
 
 /**
@@ -707,6 +709,18 @@ export class SnapshotCache {
                 }
             }
 
+            // Load key-inputs.json if it exists (REQT-1.2.11.2/e79g49xyyj, REQT-1.2.11.3/hn8f6z92k0)
+            let cacheKeyInputs: CacheKeyInputs | undefined;
+            const keyInputsPath = join(snapshotDir, "key-inputs.json");
+            if (existsSync(keyInputsPath)) {
+                try {
+                    const keyInputsContent = readFileSync(keyInputsPath, "utf-8");
+                    cacheKeyInputs = JSON.parse(keyInputsContent) as CacheKeyInputs;
+                } catch (keyInputsErr) {
+                    console.warn(`SnapshotCache: failed to read key-inputs.json for '${snapshotName}':`, keyInputsErr);
+                }
+            }
+
             // Build result and cache before returning (REQT-1.2.10.3)
             const result: CachedSnapshot = {
                 snapshot: thisSnapshot,
@@ -717,6 +731,7 @@ export class SnapshotCache {
                 snapshotHash: serialized.snapshotHash,
                 path: snapshotDir,
                 offchainData: mergedOffchainData,
+                cacheKeyInputs,
             };
             this.loadedSnapshots.set(snapshotName, result);
             return result;
@@ -753,11 +768,13 @@ export class SnapshotCache {
 
         // Compute cache key using resolver
         let cacheKey: string;
+        let cacheKeyInputs: CacheKeyInputs;
         if (entry.resolveScriptDependencies) {
-            const inputs = await entry.resolveScriptDependencies();
-            cacheKey = this.computeKey(cachedSnapshot.parentHash, inputs);
+            cacheKeyInputs = await entry.resolveScriptDependencies();
+            cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
         } else {
-            cacheKey = this.computeKey(cachedSnapshot.parentHash, { bundles: [] });
+            cacheKeyInputs = { bundles: [] };
+            cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
         }
 
         // Construct hierarchical path
@@ -794,8 +811,15 @@ export class SnapshotCache {
             writeFileSync(offchainPath, JSON.stringify(cachedSnapshot.offchainData, null, 2), "utf-8");
         }
 
-        // Store path on the cachedSnapshot for caller's use
+        // Write key-inputs.json for debugging cache misses (REQT-1.2.11.1/vn0drr8d8s)
+        const keyInputsPath = join(snapshotDir, "key-inputs.json");
+        const bigIntReplacer = (_key: string, value: unknown) =>
+            typeof value === "bigint" ? value.toString() : value;
+        writeFileSync(keyInputsPath, JSON.stringify(cacheKeyInputs, bigIntReplacer, 2), "utf-8");
+
+        // Store path and cacheKeyInputs on the cachedSnapshot for caller's use
         cachedSnapshot.path = snapshotDir;
+        cachedSnapshot.cacheKeyInputs = cacheKeyInputs;
 
         const totalBlocks = cachedSnapshot.snapshot.blocks.length;
         const storedBlocks = incrementalSnapshot.blocks.length;
