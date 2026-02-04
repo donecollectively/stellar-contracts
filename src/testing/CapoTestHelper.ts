@@ -912,6 +912,12 @@ export abstract class CapoTestHelper<
                 this.state.config = loadedRawConfig;
             }
 
+            // Mark charter as already minted for cache restore paths
+            // Prevents mintCharterToken() from trying to re-mint when called by updateCharter()
+            if (loadedRawConfig && !this.state.mintedCharterToken) {
+                this.state.mintedCharterToken = { restored: true } as any;
+            }
+
             if (actorName === "default") {
                 await this.setDefaultActor();
             } else {
@@ -1112,6 +1118,8 @@ export abstract class CapoTestHelper<
             if (this !== previousHelper) {
                 this.state.config = previousHelper.state.config;
                 this.state.parsedConfig = parsedConfig;
+                this.state.mintedCharterToken =
+                    previousHelper.state.mintedCharterToken;
             }
             // Actors are already in this.actors - just load the snapshot
             newNet.loadSnapshot(cached.snapshot);

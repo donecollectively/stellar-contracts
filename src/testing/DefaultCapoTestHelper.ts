@@ -277,6 +277,10 @@ export class DefaultCapoTestHelper<
                 );
                 return this.state.mintedCharterToken as typeof tcx;
             }
+            // Charter already minted but tcx not available (restored from cache)
+            // Return undefined to prevent re-minting
+            console.log("  -- charter already minted (restored from cache)");
+            return;
         }
 
         if (!this.strella) await this.initialize();
