@@ -912,6 +912,42 @@ export abstract class CapoTestHelper<
             } else {
                 await this.setActor(actorName);
             }
+
+            // Diagnostic: compare stored snapshot state with current Capo state
+            const storedDiag = cached.offchainData?._diag as {
+                capoAddr?: string;
+                validatorHash?: string;
+                utxoCountAtCapoAddr?: number;
+                addressUtxoKeys?: string[];
+            } | undefined;
+            if (storedDiag) {
+                const currentCapoAddr = this.strella?.address?.toString();
+                const currentValidatorHash = this.strella?.validatorHash?.hex;
+                const currentUtxoCount = currentCapoAddr
+                    ? (this.network as any)._addressUtxos[currentCapoAddr]?.length || 0
+                    : 0;
+                const currentAddressKeys = Object.keys((this.network as any)._addressUtxos);
+
+                console.log(`  [DIAG] Snapshot restore comparison for '${snapshotName}':`);
+                console.log(`    storedCapoAddr:   ${storedDiag.capoAddr}`);
+                console.log(`    currentCapoAddr:  ${currentCapoAddr}`);
+                console.log(`    addrMatch: ${storedDiag.capoAddr === currentCapoAddr}`);
+                console.log(`    storedValidatorHash:  ${storedDiag.validatorHash}`);
+                console.log(`    currentValidatorHash: ${currentValidatorHash}`);
+                console.log(`    vhMatch: ${storedDiag.validatorHash === currentValidatorHash}`);
+                console.log(`    storedUtxoCount:  ${storedDiag.utxoCountAtCapoAddr}`);
+                console.log(`    currentUtxoCount: ${currentUtxoCount}`);
+                console.log(`    storedAddressKeys (${storedDiag.addressUtxoKeys?.length}): ${storedDiag.addressUtxoKeys?.slice(0, 5).join(', ')}${(storedDiag.addressUtxoKeys?.length || 0) > 5 ? '...' : ''}`);
+                console.log(`    currentAddressKeys (${currentAddressKeys.length}): ${currentAddressKeys.slice(0, 5).join(', ')}${currentAddressKeys.length > 5 ? '...' : ''}`);
+
+                if (storedDiag.capoAddr !== currentCapoAddr) {
+                    console.warn(`    ⚠️ ADDRESS MISMATCH - this is likely the bug!`);
+                }
+                if (currentUtxoCount === 0 && (storedDiag.utxoCountAtCapoAddr || 0) > 0) {
+                    console.warn(`    ⚠️ UTxO COUNT DROPPED TO ZERO - snapshot may not have loaded correctly`);
+                }
+            }
+
             const elapsed = (performance.now() - cacheStart).toFixed(1);
             console.log(`  ⚡ cache hit '${snapshotName}': ${elapsed}ms`);
             return this.strella;
@@ -972,7 +1008,22 @@ export abstract class CapoTestHelper<
                 } else if (this.state?.rawConfig) {
                     // Store rawConfig in offchainData for non-genesis snapshots (REQT-3.5/vmq8qmv218)
                     // This enables cross-process Capo reconstruction from disk cache
-                    offchainData = { capoConfig: this.state.rawConfig };
+                    const capoAddr = this.strella?.address?.toString();
+                    const validatorHash = this.strella?.validatorHash?.hex;
+                    const utxoCountAtCapoAddr = capoAddr
+                        ? (this.network as any)._addressUtxos[capoAddr]?.length || 0
+                        : 0;
+
+                    offchainData = {
+                        capoConfig: this.state.rawConfig,
+                        // Diagnostics for debugging snapshot restore issues
+                        _diag: {
+                            capoAddr,
+                            validatorHash,
+                            utxoCountAtCapoAddr,
+                            addressUtxoKeys: Object.keys((this.network as any)._addressUtxos),
+                        }
+                    };
 
                     // Initialize helperState.offchainData if needed and store for in-memory cache
                     if (!this.helperState!.offchainData) {

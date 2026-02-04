@@ -280,6 +280,24 @@ function deserializeBlocks(serializedBlocks: SerializedBlock[]): EmulatorTx[][] 
 }
 
 /**
+ * Gets the transaction body from an EmulatorTx.
+ * EmulatorRegularTxImpl wraps the Tx in _tx property, so body is at _tx.body.
+ * @internal
+ */
+function getTxBody(tx: EmulatorTx): { inputs: TxInput[]; outputs: any[] } | null {
+    // EmulatorRegularTxImpl stores tx in _tx property
+    const innerTx = (tx as any)._tx;
+    if (innerTx?.body) {
+        return innerTx.body;
+    }
+    // Fallback for direct body access (shouldn't happen with current implementation)
+    if ((tx as any).body) {
+        return (tx as any).body;
+    }
+    return null;
+}
+
+/**
  * Rebuilds UTxO indexes from genesis and block transactions.
  * @internal
  */
@@ -339,18 +357,19 @@ function rebuildUtxoIndexes(
     for (const block of blocks) {
         for (const tx of block) {
             // Genesis transactions don't have body, skip them
-            if (!("body" in tx) || !(tx as any).body) {
+            const body = getTxBody(tx);
+            if (!body) {
                 continue;
             }
 
             // Mark inputs as consumed
-            for (const input of (tx as any).body.inputs) {
+            for (const input of body.inputs) {
                 consumeUtxo(input.id.toString());
             }
 
             // Add new outputs as UTxOs
             const txId = tx.id();
-            const outputs = (tx as any).body.outputs;
+            const outputs = body.outputs;
             for (let i = 0; i < outputs.length; i++) {
                 const output = outputs[i];
                 const utxo = makeTxInput(makeTxOutputId(txId, i), output);
@@ -413,28 +432,36 @@ function applyIncrementalBlocks(
     };
 
     // Process only the incremental blocks
+    let processedTxCount = 0;
+    let skippedTxCount = 0;
+    let addedUtxoCount = 0;
     for (const block of incrementalBlocks) {
         for (const tx of block) {
             // Genesis transactions don't have body, skip them
-            if (!("body" in tx) || !(tx as any).body) {
+            const body = getTxBody(tx);
+            if (!body) {
+                skippedTxCount++;
                 continue;
             }
 
+            processedTxCount++;
             // Mark inputs as consumed
-            for (const input of (tx as any).body.inputs) {
+            for (const input of body.inputs) {
                 consumeUtxo(input.id.toString());
             }
 
             // Add new outputs as UTxOs
             const txId = tx.id();
-            const outputs = (tx as any).body.outputs;
+            const outputs = body.outputs;
             for (let i = 0; i < outputs.length; i++) {
                 const output = outputs[i];
                 const utxo = makeTxInput(makeTxOutputId(txId, i), output);
                 addUtxo(utxo);
+                addedUtxoCount++;
             }
         }
     }
+    console.log(`  [DIAG applyIncremental] processed ${processedTxCount} txs, skipped ${skippedTxCount}, added ${addedUtxoCount} UTxOs`);
 
     return { allUtxos, consumedUtxos, addressUtxos };
 }
@@ -695,6 +722,10 @@ export class SnapshotCache {
                 // Save incremental blocks before concatenation
                 const incrementalBlocks = thisSnapshot.blocks;
                 const incrementalBlockCount = incrementalBlocks.length;
+                const incrementalTxCount = incrementalBlocks.reduce((sum, block) => sum + block.length, 0);
+
+                console.log(`  [DIAG chain-load] '${snapshotName}': ${incrementalBlockCount} incremental blocks, ${incrementalTxCount} txs`);
+                console.log(`  [DIAG chain-load] parent '${parent.snapshot.name}' addressUtxos keys: ${Object.keys(parent.snapshot.addressUtxos).length}`);
 
                 // Inherit genesis from parent (child snapshots store genesis: [] on disk)
                 thisSnapshot.genesis = parent.snapshot.genesis;
@@ -715,6 +746,9 @@ export class SnapshotCache {
                 thisSnapshot.allUtxos = allUtxos;
                 thisSnapshot.consumedUtxos = consumedUtxos;
                 thisSnapshot.addressUtxos = addressUtxos;
+
+                console.log(`  [DIAG chain-load] AFTER applyIncrementalBlocks: addressUtxos keys: ${Object.keys(addressUtxos).length}`);
+                console.log(`  [DIAG chain-load] addressUtxos keys: ${Object.keys(addressUtxos).slice(0, 5).join(', ')}`);
 
                 console.log(`SnapshotCache: chain-loaded '${thisSnapshot.name}' (${thisSnapshot.blocks.length} total, ${incrementalBlockCount} incremental)`);
             } else if (thisSnapshot.genesis.length > 0 && thisSnapshot.blocks.length === 0) {
