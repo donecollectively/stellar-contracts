@@ -1452,8 +1452,10 @@ export abstract class CapoTestHelper<
             // For dgDataPolicy: check featureEnabled via this.featureFlags
             // (this.capo.featureEnabled has generic constraint keyof featureFlags which
             // resolves to 'never' when featureFlags defaults to {})
+            // EXCEPTION: "settings" role is always deployed when present (doesn't use featureFlags)
             if (delegateType === "dgDataPolicy") {
-                if (!this.featureFlags?.[roleName]) {
+                const isSettingsRole = roleName === "settings";
+                if (!isSettingsRole && !this.featureFlags?.[roleName]) {
                     continue;
                 }
 
