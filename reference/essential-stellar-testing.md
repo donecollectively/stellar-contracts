@@ -11,15 +11,15 @@ For dApp teams who already write basic Typescript, this guide shows how to test 
 
 ## Core test harness pieces
 - `vitest` with typed contexts: `describe`/`it` are parameterized with your test context type (`StellarTestContext<T extends TestHelper>`).
-- `addTestContext(context, HelperClass, options?, helperState?)`: boots a helper + mock network and attaches it to each test’s `context.h`.
+- **`YourHelper.createTestContext()`**: exports pre-wired `describe`/`it` that auto-inject the helper - no `beforeEach` boilerplate needed.
 - Helpers expose wallets (`context.h.actors`), a Capo instance, `network`, `mkTcx()` for transaction contexts, and scenario helpers (e.g., `initialize`, `bootstrap`, `setActor`, `submitTx`, `network.tick`).
 - Common helpers:
   - `DefaultCapoTestHelper` (stellar-contracts): fast local net with tina/tom/tracy wallets, Capo bootstrap, UUT utilities.
-  - `YourCapoTestHelper` (app-specific on-chain flows): add scenario shortcuts like “propose first record”, “adopt first record”, “find first adopted record.”
+  - `YourCapoTestHelper` (app-specific on-chain flows): add scenario shortcuts like "propose first record", "adopt first record", "find first adopted record."
 - Use `vi.spyOn` to intercept delegate/controller methods for negative-path tests (see examples in boilerplate/).
 
 ## Helper conventions you should mirror (from production helpers)
-- **Snapshot decorator pattern:** annotate snapshot entrypoints with `@CapoTestHelper.hasNamedSnapshot("snapName", "actorName")`. The decorated method should be a thin wrapper that immediately delegates to the underlying builder (and often throws if called directly); snapshot reuse is handled via helper state.
+- **Snapshot decorator pattern:** annotate snapshot entrypoints with `@CapoTestHelper.hasNamedSnapshot("snapName", { actor, parentSnapName, resolveScriptDependencies? })`. The decorated method should be a thin wrapper that throws and references the builder; snapshot reuse is handled via helper state. See `reference/essential-stellar-testing-snapshots.md` for full details.
 - **Snapshot naming:** `snapToX` for entrypoints that may be reused; corresponding builders are imperative verbs like `proposeX`, `adoptX`, `changingX`, etc. Chain snapshots in order of dependency (e.g., `snapToFirstOrderPending` calls `snapToFirstRegisteredCustomer`).
 - **Snapshot builder method naming**: the builder method MUST ALWAYS be based on the snapToFoo method name, without `snapTo` prefix.  For example, the builder method for `snapToFirstOrderPending` MUST be `proposeFirstOrder()` or it WILL NOT WORK.  
  - **Snapshot method body**: The body of the snapToFoo method will never be called.  Always implement it with a helpful error message and an unreachable call to the method that actually gets called automatically by the decorator.      
@@ -45,27 +45,106 @@ For dApp teams who already write basic Typescript, this guide shows how to test 
 
 ## Testing off-chain classes
 Create your own test-helper derived from DefaultCapoTestHelper and build transactions with the same code paths your UI would call.
-1) Arrange: set up context in `beforeEach` with `addTestContext(context, DefaultCapoTestHelper)`.
-2) Initialize: `const capo = await h.initialize()` (or `await h.bootstrap()` to mint charter + UUTs).
-    - alternatively, access h.capo after the helper is initialized via `initalize()` or` reusableBootstrap()` or `snapTo...`.
-3) Interact: switch actors (`await h.setActor("tom")`), build tx with `h.mkTcx()`, mint/use helpers (`capo.utxoHelper.mustFindActorUtxo(...)`, `capo.tokenAsValue(...)`), and submit with `h.submitTx(tx, "force")`.
-4) Assert: check balances/utxos (`await wallet.utxos`), mph/token names, or rejected promises (`await expect(fn).rejects.toThrow(/pattern/)`).
+
+```typescript
+// In YourCapoTestHelper.ts:
+import { describe, it } from "./YourCapoTestHelper.js";
+
+describe("Your Feature", () => {
+    it("works", async ({ h }) => {
+        await h.reusableBootstrap();
+        // h.capo is ready, actors available
+    });
+});
+```
+
+1) Initialize: `await h.reusableBootstrap()` (or `h.initialize()` for off-chain-only tests).
+2) Interact: switch actors (`await h.setActor("tom")`), build tx with `h.mkTcx()`, mint/use helpers (`capo.utxoHelper.mustFindActorUtxo(...)`, `capo.tokenAsValue(...)`), and submit with `h.submitTxnWithBlock(tcx)`.
+3) Assert: check balances/utxos (`await wallet.utxos`), mph/token names, or rejected promises (`await expect(fn).rejects.toThrow(/pattern/)`).
 
 ## Create your own test helper
-- Derive from `DefaultCapoTestHelper` to embed your Capo subclass and any app-specific controllers.
-- Provide scenario shortcuts that leave the chain in a ready state (e.g., “bootstrap + propose first record”), so tests stay short and expressive. 
-- Create snapshots, named actor rosters, and named records fitting needed scenarios.
-- Consult local content-map.md files for lightweight access to details in the test helper.
-- Reuse fixtures such as `exampleData()` from your controllers to compare against adopted datums.  If you need to check other scenarios, you can use YourPolicyDataLike type (same type as exampleData() returns) to define other policy-specific fixtures, or you can patch exampleData() to return the desired data for the test.
+
+```typescript
+// YourCapoTestHelper.ts
+import { DefaultCapoTestHelper, CapoTestHelper, StellarTestContext } from "@donecollectively/stellar-contracts/testing";
+import { YourCapo } from "./YourCapo.js";
+
+export type YourCapo_TC = StellarTestContext<YourCapoTestHelper>;
+
+export class YourCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(YourCapo) {
+    get stellarClass() { return YourCapo; }
+
+    // Add scenario shortcuts, e.g.:
+    async proposeFirstRecord() { /* ... */ }
+
+    // Snapshot entry point - decorator replaces method body entirely
+    @CapoTestHelper.hasNamedSnapshot("firstRecordProposed", {
+        actor: "tina",
+        parentSnapName: "bootstrapped",  // or "enabledDelegatesDeployed", or a custom parent
+    })
+    async snapToFirstRecordProposed() {
+        throw new Error("never called; see firstRecordProposed()");
+        return this.firstRecordProposed();
+    }
+
+    // Snapshot builder - called by decorator (name = snapTo* minus "snapTo" prefix)
+    async firstRecordProposed() {
+        this.setActor("tina");
+        return this.proposeFirstRecord();
+    }
+}
+
+// Export pre-wired describe/it - tests import these instead of from vitest
+export const { describe, it, fit, xit } = YourCapoTestHelper.createTestContext();
+```
+
+**Key points:**
+- Derive from `DefaultCapoTestHelper.forCapoClass(YourCapo)` to embed your Capo subclass.
+- Export `describe`/`it` from `createTestContext()` - tests use these instead of vitest's.
+- Provide scenario shortcuts that leave the chain in a ready state.
+- Create snapshots for reusable test states.
+- Reuse fixtures such as `exampleData()` from your controllers.
+
+**For helpers needing custom state fields** (beyond `snapshots`, `namedRecords`, `bootstrapped`):
+```typescript
+export class YourCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(
+    YourCapo,
+    { customField: [], anotherField: {} }  // merged into defaultHelperState
+) { /* ... */ }
+```
 
 
 ## Testing on-chain policy scripts
 These are integration-style tests that drive the same off-chain controllers but assert on policy outcomes and delegated data. Use your app-specific helper (e.g., `YourCapoTestHelper`).
-1) Context: `beforeEach` uses `addTestContext(context, YourCapoTestHelper, undefined, helperState)`.
-2) Scenario helpers set chain state fast: include flows like “propose first record,” “adopt first record,” “mock member token,” or “participant self-registers.”
-3) Build & submit via helper methods (e.g., `h.adoptFirstRecord()`, `h.adoptRecordUpdate(...)`, `h.proposeFirstDomain({...})`).
-4) Assert: locate records via helpers, inspect datums (e.g., `details.ChangePendingV1`), and expect failures when missing authority tokens or approvals.
-5) Negative-paths: spy on controller/delegate methods to simulate problem cases by bypassing the normal setup (`vi.spyOn(controller, "mkTxnUpdateRecord")`) and assert thrown errors - usually, in the on-chain transactions that don't comply with the policy's rules.
+
+```typescript
+// YourPolicy.test.ts
+import { describe, it } from "./YourCapoTestHelper.js";  // NOT from vitest!
+import { vi, expect } from "vitest";
+
+describe("Your Policy", () => {
+    it("adopts a record with consent", async ({ h }) => {
+        await h.snapToFirstRecordProposed();
+        await h.adoptFirstRecord();
+        const record = await h.findFirstAdoptedRecord();
+        expect(record).toBeDefined();
+    });
+
+    it("rejects adoption without consent", async ({ h }) => {
+        await h.snapToFirstRecordProposed();
+        vi.spyOn(h.capo, "txnAddGovAuthority").mockImplementation((tcx) => tcx as any);
+        await expect(h.adoptFirstRecord({ expectError: true }))
+            .rejects.toThrow(/missing required.*capoGov-/);
+    });
+});
+```
+
+1) Scenario helpers to trigger more detailed api calls with lighter
+interface and automatic {expectError} and tx submission handling: “proposeFirstRecord,“adoptFirstRecord,” “mockMemberToken,” or “participantSelfRegisters”
+2) Build & submit via helper methods (e.g., `h.adoptFirstRecord()`, `h.proposeFirstDomain({...})`).
+3) Assert: locate records via helpers, inspect datums, expect failures when missing authority.
+4) Negative-paths: spy on controller/delegate methods to simulate problem cases by bypassing the normal setup (`vi.spyOn(controller, "mkTxnUpdateRecord")`) and assert thrown errors - usually, in the on-chain transactions that don't comply with the policy's rules.
+   beware: don't use snapshots for cases needing spies and negative tests!
 
 Key example patterns to mirror in your app:
 - Use state machines (in an on-chain enum) to control workflow and lifecycle of a policy-controlled record (e.g. Pending → Active → Retired).
@@ -93,16 +172,30 @@ Key example patterns to mirror in your app:
 ## Tips and pitfalls
 - Prefer using a snapshot (`h.snapTo...`) or `await h.reusableBootstrap()` when you need to test onchain functionality.  `initialize()` is faster and good for testing off-chain-only code, but it can't check any onchain policies.
 - For one-off transaction execution, use submitTxnWithBlock() directly for one-off cases of submitting a txn built directly from a controller mkTxn* method.  Can use mocking.
-- To DRY up tests, create helper methods that have options?: { submit?: boolean; expectError?: true; } and call through to submitTxnWithBlock().  mock-compatible if it doesn't use snapshots.  
- - Use await expect(... expectError: true ... ).rejects.toThrow(/pattern/) to assert on the specific error thrown by the policy, while hinting to the txn executor that a failure is good.
-- For mocking, you MUST NOT call to a snapshot or a helper method that calls a snapshot after the mock has been set.  Instead, load an earlier snapshot before setting the mock, then non-snapshot method(s) to build (with mocking) and submit the txn.  
-- Prefer to use an approropriate existing helper method that has {submit,expectError} options, instead of calling a controller's mkTxn* method directly
+- To DRY up tests, create helper methods that have options?: { submit?: boolean; expectError?: true; } and call through to submitTxnWithBlock().  mock-compatible if it doesn't use snapshots.
+- **Asserting on-chain errors:** On-chain policy errors only occur at **submit time**, not when building with `mkTxn*`. Use helper methods that combine build+submit:
+    ```typescript
+    // BEST: helper method handles build+submit internally
+    await expect(
+        h.adoptFirstRecord({ expectError: true })
+    ).rejects.toThrow(/missing required.*capoGov-/);
+
+    // If no helper exists, build then submit separately:
+    const tcx = await controller.mkTxnAdoptRecord(...);
+    await expect(
+        h.submitTxnWithBlock(tcx, { expectError: true })
+    ).rejects.toThrow(/policy error pattern/);
+    ```
+    The `expectError: true` hints to the tx executor that failure is expected (suppresses confusing logs); the `rejects.toThrow()` asserts on the specific policy error message. Prefer creating helper methods with `{ submit?, expectError? }` options to avoid the verbose build+submit pattern.
+- For mocking, you MUST NOT call to a snapshot or a helper method that calls a snapshot after the mock has been set.  Instead, load an earlier snapshot before setting the mock, then non-snapshot method(s) to build (with mocking) and submit the txn.
+- Prefer to use an appropriate existing helper method that has {submit,expectError} options, instead of calling a controller's mkTxn* method directly
 - Use `h.setActor("<name>")` to impersonate wallets; `findSufficientActorUtxos` and `mustFindActorUtxo` handle tcx exclusions for you.
 - For rejection cases, assert on the specific regex the policy emits; many helpers throw descriptive errors (e.g., “missing required…capoGov-”).
 - When debugging, `dumpAny` is available; `h.network.tick(n)` advances slots when the timing of transactions is important for your smart-contract policies.
 
 
 ## Where to look next
+- **Snapshot system deep-dive**: `reference/essential-stellar-testing-snapshots.md` - decorator options, cache keys, hierarchical caching
 - Off-chain design: `reference/essential-stellar-offchain.md`
 - On-chain helpers and policy layout: `reference/essential-stellar-onchain.md` and `reference/essential-stellar-internals.md`
 - Architecture overview + kickstart: `reference/essential-stellar-dapp-architecture.md`, `reference/essential-stellar-dapp-kickstart.md`
