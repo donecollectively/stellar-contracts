@@ -1,29 +1,17 @@
 import {
-    describe as descrWithContext,
     expect,
-    it as itWithContext,
-    beforeEach,
     vi,
     assertType,
     expectTypeOf,
 } from "vitest";
 
-import { ADA, StellarTestContext, addTestContext } from "../src/testing";
+import { StellarTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 
 import { expectTxnError } from "../src/testing/StellarTestHelper";
 import { CapoCanHaveBadSettings } from "./customizing/BadSettingsCapo";
 import { textToBytes } from "../src/HeliosPromotedTypes";
 import { BadSettingsController } from "./customizing/BadSettingsController";
-// import { RoleDefs } from "../src/RolesAndDelegates";
-
-const it = itWithContext<localTC>;
-const fit = it.only;
-const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTestingContext>
-//!!! until then, we need to use if(0) it(...) : (
-// ... or something we make up that's nicer
-
-const describe = descrWithContext<localTC>;
 
 // Will test all of these things:
 // "has a 'SettingsData' datum variant & utxo in the contract",
@@ -40,11 +28,14 @@ class BadSettingsTestHelper extends DefaultCapoTestHelper.forCapoClass(
 
 type localTC = StellarTestContext<BadSettingsTestHelper>;
 
-describe("supports a Settings structure stored as a type of DelegatedDatum", async () => {
-    beforeEach<localTC>(async (context) => {
-        await new Promise((res) => setTimeout(res, 10));
-        await addTestContext(context, BadSettingsTestHelper);
-    });
+const { it, fit, xit, describe } = BadSettingsTestHelper.createTestContext<
+    BadSettingsTestHelper,
+    CapoCanHaveBadSettings,
+    {},
+    localTC
+>();
+
+describe("supports a Settings structure stored as a type of DelegatedDatum", () => {
 
     it("can create a dgDataPolicy in the pendingChanges queue to be adopted by the Capo", async (context: localTC) => {
         const {

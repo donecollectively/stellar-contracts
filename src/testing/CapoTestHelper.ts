@@ -278,7 +278,7 @@ export abstract class CapoTestHelper<
                             await addTestContext(
                                 context,
                                 HelperClass as any,
-                                config as Parameters<typeof addTestContext>[2],
+                                config as any,
                                 helperState
                             );
                         });

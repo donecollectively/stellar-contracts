@@ -16,6 +16,7 @@ import {
 } from "./emulator/StellarNetworkEmulator.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
 import { SnapshotCache } from "./emulator/SnapshotCache.js";
+import { CapoTestHelper } from "./CapoTestHelper.js";
 // import type {
 //     StellarTestContext,
 //     StellarTestHelper,
@@ -45,18 +46,27 @@ export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
 //         };
 
 /**
+ * Type for classes returned by DefaultCapoTestHelper.forCapoClass().
+ * Includes both the constructor signature and inherited static members.
  * @public
  */
 export type DefaultCapoTestHelperClass<
     SC extends Capo<any>,
     SpecialState extends Record<string, any> = {}
-> = new (
-    config?: canHaveRandomSeed & SC extends Capo<any, infer FF>
-        ? ConfigFor<SC> & CapoConfig<FF>
-        : ConfigFor<SC>,
-    helperState?: TestHelperState<SC, SpecialState>
-) => // StellarTestHelper<SC> &
-DefaultCapoTestHelper<SC, SpecialState>;
+> = {
+    // Constructor signature
+    new (
+        config?: canHaveRandomSeed & (SC extends Capo<any, infer FF>
+            ? ConfigFor<SC> & CapoConfig<FF>
+            : ConfigFor<SC>),
+        helperState?: TestHelperState<SC, SpecialState>
+    ): DefaultCapoTestHelper<SC, SpecialState>;
+
+    // Static members inherited from CapoTestHelper
+    createTestContext: typeof CapoTestHelper.createTestContext;
+    defaultHelperState: TestHelperState<SC, SpecialState>;
+    hasNamedSnapshot: typeof CapoTestHelper.hasNamedSnapshot;
+};
 
 /**
  * @public
