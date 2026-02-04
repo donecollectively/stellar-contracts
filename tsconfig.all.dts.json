@@ -10,7 +10,8 @@
             "@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI": ["./src/helios/HeliosProgramWithMockCacheAPI.ts"],
             "@donecollectively/stellar-contracts/ui": ["./src/ui/index.ts"],
             "@donecollectively/stellar-contracts/testing": ["./src/testing/index.ts"],
-            "@donecollectively/stellar-contracts/rollup-plugins": ["./rollup-plugins.ts"]
+            "@donecollectively/stellar-contracts/rollup-plugins": ["./rollup-plugins.ts"],
+            "@donecollectively/stellar-contracts/logger": ["./src/loggers/stellog.ts"]
             // "*": ["src/*", "../src/*"]
         },
         "typeRoots": ["./node_modules/@types", "./src/@types"]
@@ -23,7 +24,8 @@
         "./rollup-plugins.ts",
         "./src/@types/heliosModule.d.ts",
         "./src/helios/HeliosProgramWithMockCacheAPI.ts",
-        "./src/@types/svg.d.ts"
+        "./src/@types/svg.d.ts",
+        "./src/loggers/stellog.ts"
     ],
     "exclude": [
         "dist/**/*",

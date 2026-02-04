@@ -84,7 +84,8 @@ const dualPlatformEntryPoints = {
 };
 const nodeOnlyEntryPoints = {
     // "ContractBasedDelegate": "./src/delegation/ContractBasedDelegate.ts",
-   "testing": "./src/testing/index.ts",
+    "testing": "./src/testing/index.ts",
+    "stellog-cli": "./src/loggers/stellog-cli.ts",
 }
 const browserOnlyEntryPoints = {
 }
@@ -98,6 +99,7 @@ const platformIndependentEntryPoints = {
     "StellarContract": "./src/StellarContract.ts",
     "stellar-contracts": "./index.ts",
     "ui": "./src/ui/index.ts",
+    "logger": "./src/loggers/stellog.ts",
 };
 
 // !restore the codeBundle() call below for this when needed
