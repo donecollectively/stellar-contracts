@@ -58,145 +58,6 @@ import {
 } from "@donecollectively/stellar-contracts";
 import { expectDefined } from "@helios-lang/type-utils";
 
-// class GenesisTx implements EmulatorGenesisTx {
-//     #id: number;
-//     #address: Address;
-//     #lovelace: bigint;
-//     #assets: Assets;
-
-//     constructor(
-//         id: number,
-//         address: Address,
-//         lovelace: bigint,
-//         assets: Assets
-//     ) {
-//         this.#id = id;
-//         this.#address = address;
-//         this.#lovelace = lovelace;
-//         this.#assets = assets;
-//     }
-
-//     /**
-//      * Simple incremental txId for genesis transactions.
-//      * It's very unlikely that regular transactions have the same hash.
-//      */
-//     id() {
-//         let bytes = encodeIntBE(BigInt(this.#id));
-
-//         if (bytes.length < 32) {
-//             bytes = new Array(32 - bytes.length).fill(0).concat(bytes);
-//         }
-
-//         return makeTxId(bytes);
-//     }
-
-//     consumes(utxo) {
-//         return false;
-//     }
-
-//     collectUtxos(address, utxos) {
-//         if (equalsBytes(this.#address.bytes, address.bytes)) {
-//             utxos = utxos.slice();
-
-//             utxos.push(
-//                 makeTxInput(
-//                     makeTxOutputId(this.id(), 0),
-//                     makeTxOutput(
-//                         this.#address,
-//                         makeValue(this.#lovelace, this.#assets)
-//                     )
-//                 )
-//             );
-
-//             return utxos;
-//         } else {
-//             return utxos;
-//         }
-//     }
-
-//     getUtxo(id: TxOutputId) {
-//         if (!(this.id().isEqual(id.txId) && id.index == 0)) {
-//             return null;
-//         }
-
-//         return makeTxInput(
-//             makeTxOutputId(this.id(), 0),
-//             makeTxOutput(this.#address, makeValue(this.#lovelace, this.#assets))
-//         );
-//     }
-
-//     dump() {
-//         console.log("GENESIS TX");
-//         console.log(
-//             `id: ${this.#id.toString()},\naddress: ${this.#address.toString() // same as .toBech32()
-//                 },\nlovelace: ${this.#lovelace.toString()},\nassets: ${JSON.stringify(
-//                 this.#assets.dump(),
-//                 undefined,
-//                 "    "
-//             )}`
-//         );
-//     }
-// }
-
-// class RegularTx implements EmulatorRegularTx {
-//     #tx: Tx;
-
-//     kind = "Regular" as const
-//     constructor(tx: Tx) {
-//         this.#tx = tx;
-//     }
-
-//     #txId: TxId | null = null;
-//     id() {
-//         if (this.#txId) return this.#txId;
-//         return (this.#txId = this.#tx.id());
-//     }
-
-//     consumes(utxo) {
-//         const txInputs = this.#tx.body.inputs;
-
-//         return txInputs.some((txInput) => txInput.isEqual(utxo));
-//     }
-
-//     collectUtxos(address, utxos) {
-//         utxos = utxos.filter((utxo) => !this.consumes(utxo));
-
-//         const txOutputs = this.#tx.body.outputs;
-//         const txId = this.id();
-//         txOutputs.forEach((txOutput, utxoId) => {
-//             if (equalsBytes(txOutput.address.bytes, address.bytes)) {
-//                 utxos.push(makeTxInput(makeTxOutputId(txId, utxoId), txOutput));
-//             }
-//         });
-
-//         return utxos;
-//     }
-
-//     getUtxo(id: TxOutputId) : TxInput | undefined{
-//         if (!id.txId.isEqual(this.id())) {
-//             return undefined;
-//         }
-
-//         /**
-//          * @type {null | TxInput}
-//          */
-//         let utxo: TxInput | undefined;
-
-//         this.#tx.body.outputs.forEach((output, i) => {
-//             if (i == id.index) {
-//                 utxo = makeTxInput(id, output);
-//             }
-//         });
-
-//         return utxo;
-//     }
-
-//     dump() {
-//         console.log("REGULAR TX");
-//         console.log(JSON.stringify(this.#tx.dump(), undefined, "  "));
-//     }
-// }
-
 /**
  * This wallet only has a single private/public key, which isn't rotated.
  * Staking is not yet supported.
@@ -569,6 +430,9 @@ export class StellarNetworkEmulator implements Emulator {
 
     fromSnapshot = "";
     loadSnapshot(snapshot: NetworkSnapshot) {
+        // Clear mempool to prevent stale txs from being processed by tick() below
+        this.mempool = [];
+
         this.#seed = snapshot.seed;
         this.currentSlot = snapshot.slot;
         this.genesis = [...snapshot.genesis];
@@ -616,28 +480,12 @@ ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
         }
     }
 
-    // /**
-    //  * Creates a new `NetworkParams` instance that has access to current slot
-    //  * (so that the `Tx` validity range can be set automatically during `Tx.finalize()`).
-    //  */
-    // initNetworkParams(networkParams): NetworkParams {
-    //     const raw = Object.assign({}, networkParams.raw);
-
-    //     // raw.latestTip = {
-    //     //     epoch: 0,
-    //     //     hash: "",
-    //     //     slot: 0,
-    //     //     time: 0,
-    //     // };
-
-    //     return (this.#netParams = new NetworkParams(raw, () => {
-    //         return this.currentSlot;
-    //     }));
-    // }
-
     /**
      * Creates a new SimpleWallet and populates it with a given lovelace quantity and assets.
      * Special genesis transactions are added to the emulated chain in order to create these assets.
+     * 
+     * This is kept only to ensure compliance with Helios Emulator interface.
+     * 
      * @deprecated - use TestHelper.createWallet instead, enabling wallets to be transported to
      *     different networks (e.g. ones that have loaded snapshots from the original network).
      */

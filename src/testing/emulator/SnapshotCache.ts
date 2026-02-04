@@ -677,6 +677,9 @@ export class SnapshotCache {
                 const incrementalBlocks = thisSnapshot.blocks;
                 const incrementalBlockCount = incrementalBlocks.length;
 
+                // Inherit genesis from parent (child snapshots store genesis: [] on disk)
+                thisSnapshot.genesis = parent.snapshot.genesis;
+
                 // Concatenate block arrays for final snapshot
                 thisSnapshot.blocks = [...parent.snapshot.blocks, ...incrementalBlocks];
                 thisSnapshot.blockHashes = [...parent.snapshot.blockHashes, ...thisSnapshot.blockHashes];

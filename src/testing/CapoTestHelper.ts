@@ -12,7 +12,7 @@ import type {
     CapoFeatureFlags,
     DelegateSetup,
 } from "@donecollectively/stellar-contracts";
-import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSnapName, type SnapshotRegistryEntry } from "./emulator/SnapshotCache.js";
+import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSnapName } from "./emulator/SnapshotCache.js";
 import type { BundleCacheKeyInputs } from "../helios/scriptBundling/HeliosScriptBundle.js";
 
 import { StellarTestHelper, type ActorSetupInfo } from "./StellarTestHelper.js";
@@ -42,8 +42,6 @@ export type PreSelectedSeedUtxo = {
 export const SNAP_ACTORS = "bootstrapWithActors";
 export const SNAP_CAPO_INIT = "capoInitialized";
 export const SNAP_DELEGATES = "enabledDelegatesDeployed";
-// Legacy name for compatibility
-export const SNAP_INIT = "initialized";
 
 /**
  * Base type for CapoTestHelper that can be used in callbacks where the exact
@@ -144,8 +142,8 @@ export abstract class CapoTestHelper<
      */
     preSelectedSeedUtxo: PreSelectedSeedUtxo | undefined = undefined;
 
-    /** Disk cache for snapshots, enabling fast test restarts */
-    snapshotCache: SnapshotCache = new SnapshotCache();
+    /** Disk cache for snapshots, shared via helperState for cross-test reuse */
+    snapshotCache!: SnapshotCache;
 
     constructor(
         config?: SC extends Capo<any, infer FF>
@@ -164,6 +162,16 @@ export abstract class CapoTestHelper<
             }
             if (featureFlags) {
                 this.featureFlags = featureFlags;
+            }
+        }
+
+        // Use shared SnapshotCache from helperState, or create new one (ARCH-1d82vckcae)
+        if (this.helperState?.snapCache) {
+            this.snapshotCache = this.helperState.snapCache;
+        } else {
+            this.snapshotCache = new SnapshotCache();
+            if (this.helperState) {
+                this.helperState.snapCache = this.snapshotCache;
             }
         }
 
@@ -204,6 +212,7 @@ export abstract class CapoTestHelper<
      */
     static defaultHelperState: TestHelperState<any, any> = {
         namedRecords: {},
+        snapCache: new SnapshotCache(),
     } as any;
 
     /**

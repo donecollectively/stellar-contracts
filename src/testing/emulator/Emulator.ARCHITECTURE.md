@@ -443,8 +443,8 @@ type CachedSnapshot = {
   - Children to reference `parentHash` for cache key computation
   - Integrity verification (`blockHashes[-1] === snapshotHash`)
   - On load, verify the processed genesis block matches the stored hash
-- **Children never see genesis**: they receive parent's UTxO state (which already processed genesis) and apply their incremental blocks
-- No genesis inheritance — genesis is consumed/converted at root load time
+- **Children inherit genesis from parent**: `find()` copies `parent.snapshot.genesis` to child snapshot so `loadSnapshot()` receives complete data
+- **On disk**: children store `genesis: []` (empty); inheritance happens at load time in `find()`
 - Charter minting (in `capoInitialized`) is the first incremental block after genesis
 
 **Behavior**:
@@ -670,8 +670,11 @@ When no cache exists anywhere, build everything from scratch. Each layer uses `@
 
 1. **Test Suite** calls `reusableBootstrap()` on **CapoTestHelper**
 2. **CapoTestHelper** calls `bootstrap()` which proceeds through layers:
+   - `bootstrap()` calls `initialize()` for actor setup (Layer 1)
+   - `initialize()` calls `snapToBootstrapWithActors()`
+   - `bootstrap()` then continues with Capo-specific layers (Layers 2-3)
 
-**Layer 1: `snapToBootstrapWithActors()`** → `@hasNamedSnapshot("bootstrapWithActors", {parentSnapName: "genesis"})`
+**Layer 1: `snapToBootstrapWithActors()`** (via `initialize()`) → `@hasNamedSnapshot("bootstrapWithActors", {parentSnapName: "genesis"})`
 - `findOrCreateSnapshot()` checks cache, runs `bootstrapWithActors()` builder on miss
 - **Pre-selects seedUtxo** and stores in `offchainData.targetSeedUtxo` (ARCH-4adwbk7ajp)
 
@@ -685,6 +688,9 @@ When no cache exists anywhere, build everything from scratch. Each layer uses `@
 
 ```
 [Test] → reusableBootstrap() → bootstrap()
+              │
+              ▼
+         initialize()  [if no strella - handles actor setup]
               │
               ▼
    snapToBootstrapWithActors() ──@hasNamedSnapshot──▶ findOrCreateSnapshot()
