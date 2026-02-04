@@ -1,70 +1,35 @@
 // @ts-nocheck
-import {
-    describe as descrWithContext,
-    it as itWithContext,
-    expect,
-    beforeEach,
-} from "vitest";
+import { vi, expect } from "vitest";
 
+// Import pre-wired describe/it from your test helper - NOT from vitest!
+// This auto-injects the helper instance as `h` in the test context.
+// fit = focused test (only runs this one), xit = skipped test
 import {
-    addTestContext,
-    StellarTestContext,
-} from "@donecollectively/stellar-contracts/testing";
-
-import {
-    PizzaCapoTestHelper,
+    describe,
+    it,
+    fit,
+    xit,
     type PizzaCapo_TC,
-    helperState,
 } from "../testHelper.js";
 
-type TC = StellarTestContext<PizzaTestHelper>;
-const describe = descrWithContext<TC>;
-const it = itWithContext<TC>;
-
 describe("pizza: basic off-chain transaction-building flow with snapshots", () => {
-    beforeEach<PizzaCapo_TC>(async (context) => {
-        await addTestContext(
-            context,
-            PizzaCapoTestHelper,
-            undefined,
-            helperState
-        );
-    });
-
-    it("shows how the helper state evolves when snapshots are used", async (context: PizzaCapo_TC) => {
-        const {
-            h,
-            h: { network, actors, delay, state },
-        } = context;
-        await h.reusableBootstrap();
+    it("shows how named records are captured during snapshots", async ({ h }: PizzaCapo_TC) => {
         await h.snapToFirstRegisteredCustomer();
 
-        expect(h.helperState.snapshots["firstRegisteredCustomer"]).toBe(true);
-        expect(h.helperState.namedRecords["firstRegisteredCustomer"]).toMatch(
+        // captureRecordId stores IDs in helperState.namedRecords
+        expect(h.helperState!.namedRecords["firstRegisteredCustomer"]).toMatch(
             /cust-/
         );
     });
 
-    it("registers the first customer via decorated snapshot", async (context: PizzaCapo_TC) => {
-        const {
-            h,
-            h: { network, actors, delay, state },
-        } = context;
-
-        // the first test is not fast.
+    it("registers the first customer via decorated snapshot", async ({ h }: PizzaCapo_TC) => {
         await h.snapToFirstRegisteredCustomer();
 
         const carla = await h.findFirstCustomer();
         expect(carla.data.name).toBe("carla");
     });
 
-    it("rejects orders without a credit card", async (context: PizzaCapo_TC) => {
-        const {
-            h,
-            h: { network, actors, delay, state },
-        } = context;
-
-        // the second test quickly gets to the "registered customer" snapshot
+    it("rejects orders without a credit card", async ({ h }: PizzaCapo_TC) => {
         await h.snapToFirstRegisteredCustomer();
         await h.setActor("carla"); // the customer
         const orderController = await h.getOrderController();
@@ -82,30 +47,17 @@ describe("pizza: basic off-chain transaction-building flow with snapshots", () =
         ).rejects.toThrow(/missing credit card/);
     });
 
-    it("chains pending order after customer registration", async (context: PizzaCapo_TC) => {
-        const {
-            h,
-            h: { network, actors, delay, state },
-        } = context;
-
-        // the third test quickly gets to the "registered customer" snapshot,
-        // then takes a few more moments to build the pending order.
-        // this time, it's successful
+    it("chains pending order after customer registration", async ({ h }: PizzaCapo_TC) => {
+        // snapToFirstPendingOrder automatically loads its parent (firstRegisteredCustomer)
+        // via parentSnapName - no manual chaining needed
         await h.snapToFirstPendingOrder();
 
-        expect(h.helperState.snapshots["firstRegisteredCustomer"]).toBe(true);
-        expect(h.helperState.snapshots["firstOrderPending"]).toBe(true);
-        expect(h.helperState.namedRecords["firstPendingOrder"]).toMatch(
-            /order-/
-        );
+        // Both records are captured in namedRecords
+        expect(h.helperState!.namedRecords["firstRegisteredCustomer"]).toMatch(/cust-/);
+        expect(h.helperState!.namedRecords["firstPendingOrder"]).toMatch(/order-/);
     });
 
-    it("rejects orders with multiple coupons", async (context: PizzaCapo_TC) => {
-        const {
-            h,
-            h: { network, actors, delay, state },
-        } = context;
-
+    it("rejects orders with multiple coupons", async ({ h }: PizzaCapo_TC) => {
         await h.snapToFirstRegisteredCustomer();
         const orderController = await h.getOrderController();
         vi.spyOn(orderController, "addCoupon").mockImplementation((tcx) => {
@@ -123,16 +75,11 @@ describe("pizza: basic off-chain transaction-building flow with snapshots", () =
         ).rejects.toThrow(/multiple coupons/);
     });
 
-    it("bakes the first order and captures the baked id", async (context: PizzaCapo_TC) => {
-        const {
-            h,
-            h: { network, actors, delay, state },
-        } = context;
-
+    it("bakes the first order and captures the baked id", async ({ h }: PizzaCapo_TC) => {
         await h.snapToFirstOrderBaked();
         const firstOrder = await h.findFirstOrder();
         expect(firstOrder.data.status).toBe("readyForDelivery");
-        
+
         // other test logic here...
     });
 });

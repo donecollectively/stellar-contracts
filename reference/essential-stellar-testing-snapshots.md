@@ -130,7 +130,7 @@ For app snapshots inheriting from `"bootstrapped"`, the default resolver include
 
 ```typescript
 // YourFeature.test.ts
-import { describe, it, type YourCapo_TC } from "./YourCapoTestHelper.js";  // NOT from vitest!
+import { describe, it, fit, xit, type YourCapo_TC } from "./YourCapoTestHelper.js";  // NOT from vitest!
 import { vi, expect } from "vitest";  // Other vitest exports are fine
 
 describe("Your Feature", () => {
@@ -225,24 +225,47 @@ export const { describe, it, fit, xit } = YourCapoTestHelper.createTestContext()
 
 ## Chaining Snapshots
 
-Snapshots can depend on other custom snapshots:
+Snapshots can depend on other custom snapshots via `parentSnapName`:
 
 ```typescript
 @CapoTestHelper.hasNamedSnapshot("firstOrderShipped", {
     actor: "tracy",
-    parentSnapName: "firstOrderCreated",  // Your custom snapshot
+    parentSnapName: "firstOrderCreated",  // Your custom snapshot as parent
 })
 async snapToFirstOrderShipped() {
     throw new Error("never called; see firstOrderShipped()");
     return this.firstOrderShipped();
 }
 
+// Builder only contains INCREMENTAL work - parent is loaded automatically
 async firstOrderShipped() {
-    await this.snapToFirstOrderCreated();  // Load parent
     this.setActor("tracy");
-    // ... ship the order
+    // ... ship the order (parent state already loaded)
 }
 ```
+
+**Important**: Do NOT call `snapTo<parent>()` in the builder. The decorator loads the parent automatically based on `parentSnapName`. The builder should only contain the incremental work for this snapshot.
+
+### Migrating from old pattern
+
+If your builders currently call `snapTo<parent>()`:
+
+```typescript
+// OLD PATTERN (remove this)
+async firstOrderShipped() {
+    await this.snapToFirstOrderCreated();  // ❌ Remove - redundant
+    this.setActor("tracy");
+    // ...
+}
+
+// NEW PATTERN
+async firstOrderShipped() {
+    this.setActor("tracy");  // ✓ Just the incremental work
+    // ...
+}
+```
+
+Move the parent dependency into the decorator's `parentSnapName` option instead.
 
 ---
 
@@ -276,6 +299,6 @@ await h.proposeFirstRecord();  // Non-snapshot method, uses mock
 
 If you see `SnapshotCache: parent 'X' not found for 'Y'`, verify that:
 
-1. **Parent's `snapTo*` is called in builder**: The builder function must call `await this.snapToParentName()` to ensure the parent is loaded
-2. **Chain is complete**: The parent snapshot must be registered before the child is looked up
+1. **`parentSnapName` is correct**: Check for typos in the parent snapshot name
+2. **Parent snapshot exists**: The parent must be defined with its own `@hasNamedSnapshot` decorator (or be a built-in like `"bootstrapped"`)
 3. **Correct parent for `autoSetup = false`**: If your Capo has `autoSetup = false`, use `"capoInitialized"` instead of `"bootstrapped"` as the parent

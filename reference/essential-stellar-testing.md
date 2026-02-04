@@ -11,7 +11,7 @@ For dApp teams who already write basic Typescript, this guide shows how to test 
 
 ## Core test harness pieces
 - `vitest` with typed contexts: `describe`/`it` are parameterized with your test context type (`StellarTestContext<T extends TestHelper>`).
-- **`YourHelper.createTestContext()`**: exports pre-wired `describe`/`it` that auto-inject the helper - no `beforeEach` boilerplate needed.
+- **`YourHelper.createTestContext()`**: exports pre-wired `describe`/`it` that auto-inject the helper - no `beforeEach` boilerplate needed. Tests access the helper instance as `{ h }` in the context. See `reference/essential-stellar-testing-snapshots.md` § "How `createTestContext()` Works" for details on the injection mechanism.
 - Helpers expose wallets (`context.h.actors`), a Capo instance, `network`, `mkTcx()` for transaction contexts, and scenario helpers (e.g., `initialize`, `bootstrap`, `setActor`, `submitTx`, `network.tick`).
 - Common helpers:
   - `DefaultCapoTestHelper` (stellar-contracts): fast local net with tina/tom/tracy wallets, Capo bootstrap, UUT utilities.
@@ -19,22 +19,22 @@ For dApp teams who already write basic Typescript, this guide shows how to test 
 - Use `vi.spyOn` to intercept delegate/controller methods for negative-path tests (see examples in boilerplate/).
 
 ## Helper conventions you should mirror (from production helpers)
-- **Snapshot decorator pattern:** annotate snapshot entrypoints with `@CapoTestHelper.hasNamedSnapshot("snapName", { actor, parentSnapName, resolveScriptDependencies? })`. The decorated method should be a thin wrapper that throws and references the builder; snapshot reuse is handled via helper state. See `reference/essential-stellar-testing-snapshots.md` for full details.
-- **Snapshot naming:** `snapToX` for entrypoints that may be reused; corresponding builders are imperative verbs like `proposeX`, `adoptX`, `changingX`, etc. Chain snapshots in order of dependency (e.g., `snapToFirstOrderPending` calls `snapToFirstRegisteredCustomer`).
- - **Snapshot method body**: The body of the snapToFoo method will never be called.  Always implement it with a helpful error message and an unreachable call to the method that actually gets called automatically by the decorator.      
-- **Snapshot builder method naming**: the builder method MUST ALWAYS be based on the snapToFoo method name, without `snapTo` prefix.  For example, the builder method for `snapToFirstOrderPending` MUST be `proposeFirstOrder()` or it WILL NOT WORK.  Place the builder method immediately after the snapToFoo method.
+- **Snapshot decorator pattern:** annotate snapshot entrypoints with `@CapoTestHelper.hasNamedSnapshot("snapName", { actor, parentSnapName, ... })`. The decorated method should be a thin wrapper that throws and references the builder; snapshot reuse is handled via helper state. **Required reading**: see `reference/essential-stellar-testing-snapshots.md` for decorator options (especially required `parentSnapName`) and cache key behavior.
+- **Snapshot naming:** `snapToX` for entrypoints that may be reused; corresponding builders are imperative verbs like `proposeX`, `adoptX`, `changingX`, etc. Chain snapshots via `parentSnapName` (e.g., `snapToFirstOrderPending` has `parentSnapName: "firstRegisteredCustomer"`).
+- **Snapshot builder method naming**: the builder method MUST match the `snapToX` method name with `snapTo` prefix removed and first letter lowercased. For example, `snapToFirstOrderPending` → `firstOrderPending()`. The decorator automatically calls the builder.
+ - **Snapshot method body**: The body of the `snapToX` method is never executed (the decorator replaces it). Include a throw + unreachable return for documentation:
     ```typescript
-    @CapoTestHelper.hasNamedSnapshot("fooIsReady", { actor, "someParentSnapName", resolveScriptDependencies? })
-    async snapToFoo() {
-        throw new Error("never called; see foo()");
-        return this.firstMember();
+    @CapoTestHelper.hasNamedSnapshot("fooIsReady", { actor: "tina", parentSnapName: "bootstrapped" })
+    async snapToFooIsReady() {
+        throw new Error("never called; see fooIsReady()");
+        return this.fooIsReady();
     }
-    async foo() {
+    async fooIsReady() {
         // ... transaction building & submission
     }
     ```
 
-- **Helper state:** keep `helperState.snapshots` and `helperState.namedRecords` (string ids captured from tx contexts). Use predictable record keys like `"firstRegisteredCustomer"`, `"firstPendingOrder"`, etc.
+- **Helper state:** use `helperState.namedRecords` to store captured record IDs from `captureRecordId()`. Use predictable record keys like `"firstRegisteredCustomer"`, `"firstPendingOrder"`, etc.
 - **Capture ids:** centralize record-id capture when needed for a snapshot, as `captureRecordId({recordName, submit?, expectError?, uutName?}, tcxPromise)` which reads `tcx.state.uuts[uutName]`, stores it in `helperState.namedRecords[recordName]`, and optionally submits via `submitTxnWithBlock()`.
     - DO NOT use captureRecordId() unless you need to reference the id's as part of a snapshot;
     - Don't use captureRecordId() when you don't need to record the id's.  Instead, call `submitTxnWithBlock()` directly.
@@ -52,13 +52,17 @@ Create your own test-helper derived from DefaultCapoTestHelper and build transac
 
 ```typescript
 // In YourCapoTestHelper.ts:
-import { describe, it } from "./YourCapoTestHelper.js";
+// Import pre-wired test functions - NOT from vitest!
+import { describe, it, fit, xit } from "./YourCapoTestHelper.js";
 
 describe("Your Feature", () => {
     it("works", async ({ h }) => {
         await h.reusableBootstrap();
         // h.capo is ready, actors available
     });
+
+    // fit("focused test", ...) - runs only this test
+    // xit("skipped test", ...) - skips this test
 });
 ```
 
@@ -104,12 +108,16 @@ export const { describe, it, fit, xit } = YourCapoTestHelper.createTestContext()
 
 **Key points:**
 - Derive from `DefaultCapoTestHelper.forCapoClass(YourCapo)` to embed your Capo subclass.
-- Export `describe`/`it` from `createTestContext()` - tests use these instead of vitest's.
+- **Export pre-wired test functions** at the bottom of your helper file:
+  ```typescript
+  export const { describe, it, fit, xit } = YourCapoTestHelper.createTestContext();
+  ```
+  Tests import these instead of from vitest. This auto-injects the helper as `{ h }` in the context.
 - Provide scenario shortcuts that leave the chain in a ready state.
 - Create snapshots for reusable test states.
 - Reuse fixtures such as `exampleData()` from your controllers.
 
-**For helpers needing custom state fields** (beyond `snapshots`, `namedRecords`, `bootstrapped`):
+**For helpers needing custom state fields** (beyond the built-in `namedRecords`):
 ```typescript
 export class YourCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(
     YourCapo,
@@ -123,7 +131,7 @@ These are integration-style tests that drive the same off-chain controllers but 
 
 ```typescript
 // YourPolicy.test.ts
-import { describe, it } from "./YourCapoTestHelper.js";  // NOT from vitest!
+import { describe, it, fit, xit } from "./YourCapoTestHelper.js";  // NOT from vitest!
 import { vi, expect } from "vitest";
 
 describe("Your Policy", () => {
