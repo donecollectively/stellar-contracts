@@ -106,7 +106,7 @@ Stellar Contracts includes type-safe requirements tracking via `hasReqts()` and 
 
 **Type Safety**: Heavy use of TypeScript conditional types and branded types to ensure transaction builders have required context (e.g., `hasSeedUtxo`, `hasCharterRef`)
 
-**Testing**: Uses Vitest with emulated blockchain for positive and negative test scenarios. Tests verify both correct behavior and proper failure modes.  Test-specific Capos are used to construct isolated contract-execution environments.
+**Testing**: Uses Vitest with emulated blockchain for positive and negative test scenarios. Tests verify both correct behavior and proper failure modes.  Test-specific Capos are used to construct isolated contract-execution environments.  MOST TESTS ARE FULL INTEGRATION WITH EMULATED CHAIN and take non-trivial time.  NEVER start multiple instances of the test at the same time; instead, redirect ONE test process output to a file and work with that file.  STRONGLY prefer running a specific test case with `pnpm test ‹one-filename› -t "one test unique string"` instead of running an entire test file.
 
 ## Build System Notes
 
