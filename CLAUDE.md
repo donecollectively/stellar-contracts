@@ -15,7 +15,11 @@ Stellar Contracts is a TypeScript library for building sophisticated Cardano sma
 
 Always use `pnpm`.  Never use `npx` or `pnpx` if a direct `pnpm` command will do.
 
-When types are changed, `pnpm dev` will not regenerate the types; `pnpm build` is needed in that case.
+When types are changed, `pnpm dev` will NOT regenerate the types; `pnpm build` is needed in that case.
+
+Note that tests import some packages built into dist/ - any changes to those packages will NOT be reflected in the tests until you run `pnpm build`.
+
+To check types in the project, you MUST use `pnpm build`, not `tsc`.
 
 ### Testing
 - `pnpm test` - Run all tests once
