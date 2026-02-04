@@ -750,13 +750,21 @@ export class SnapshotCache {
                 console.log(`  [DIAG chain-load] AFTER applyIncrementalBlocks: addressUtxos keys: ${Object.keys(addressUtxos).length}`);
                 console.log(`  [DIAG chain-load] addressUtxos keys: ${Object.keys(addressUtxos).slice(0, 5).join(', ')}`);
 
-                console.log(`SnapshotCache: chain-loaded '${thisSnapshot.name}' (${thisSnapshot.blocks.length} total, ${incrementalBlockCount} incremental)`);
+                // Visual summary: [parent blocks/txns] + █ per tx (space between blocks)  # total
+                const parentBlockCount = parent.snapshot.blocks.length;
+                const parentTxCount = parent.snapshot.blocks.reduce((sum, block) => sum + block.length, 0);
+                const incrementalViz = incrementalBlocks.map(block => "🌺" + "█".repeat(block.length)).join(" ");
+                const totalBlockCount = thisSnapshot.blocks.length;
+                // Pass parentBlockCount to emulator for display purposes
+                thisSnapshot.parentBlockCount = parentBlockCount;
+                console.log(`SnapshotCache: chain-loaded '${snapshotName}' [${parentBlockCount} blocks/${parentTxCount} txns] + ${incrementalViz || "(none)"}  # ${totalBlockCount}`);
             } else if (thisSnapshot.genesis.length > 0 && thisSnapshot.blocks.length === 0) {
                 // Root snapshot: create genesis block from genesis txs (work unit 9gnevpjmpt)
                 // UTxOs already built by rebuildUtxoIndexes(genesis, [])
                 // blockHashes already loaded from disk - integrity check below will verify
                 thisSnapshot.blocks = [thisSnapshot.genesis as EmulatorTx[]];
-                console.log(`SnapshotCache: root-loaded '${thisSnapshot.name}' (genesis → 1 block, ${thisSnapshot.genesis.length} txs)`);
+                const genesisViz = "🌒".repeat(thisSnapshot.genesis.length);
+                console.log(`SnapshotCache: root-loaded '${snapshotName}' ${genesisViz}  # 1`);
             }
 
             // Verify snapshot integrity: computed block hash must match recorded snapshotHash (REQT-1.2.9.3.3)

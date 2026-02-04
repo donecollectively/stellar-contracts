@@ -250,6 +250,8 @@ export type NetworkSnapshot = {
     allUtxos: Record<string, TxInput>;
     consumedUtxos: Set<string>;
     addressUtxos: Record<string, TxInput[]>;
+    /** Number of blocks inherited from parent snapshot (for display purposes) */
+    parentBlockCount?: number;
 };
 
 let i = 1;
@@ -455,6 +457,19 @@ export class StellarNetworkEmulator implements Emulator {
         // 2. The helper was already initialized when emulator was created
         // 3. Slot changes don't affect the helper's configuration
 
+        // Compute block visualization: separate inherited vs incremental
+        const parentBlockCount = snapshot.parentBlockCount ?? 0;
+        const parentBlocks = this.blocks.slice(0, parentBlockCount);
+        const incrementalBlocks = this.blocks.slice(parentBlockCount);
+
+        const totalBlocks = parentBlockCount;
+        const totalTxs = parentBlocks.reduce((sum, block) => sum + block.length, 0);        
+        const newBlocks = incrementalBlocks.length;
+        const newTxns = incrementalBlocks.reduce((sum, block) => sum + block.length, 0);
+        const prevTxnCount = totalTxs;
+        const blockViz = incrementalBlocks.map(block => "🌺" + "█".repeat(block.length)).join(" ");
+        const inheritedPart = parentBlockCount === 0 ? "[genesis]" : `[ ${parentBlockCount} blocks/${prevTxnCount} txs ]`;
+
         console.log(
             `
       .--.             .--.             .--.             .--.
@@ -465,7 +480,7 @@ export class StellarNetworkEmulator implements Emulator {
     /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)
    (/\\\\||/          (/\\\\||/          (/\\\\||/          (/\\\\||/
 ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
-            🌺🌺🌺 ████████  # ${this.id}\n`,
+${inheritedPart} + ${newBlocks}b/${newTxns}t ${blockViz} \n`,
             ` - restored snapshot '${snapshot.name}' from #${snapshot.netNumber} at slot `,
             this.currentSlot.toString(),
             "height ",
