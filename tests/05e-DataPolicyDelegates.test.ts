@@ -19,6 +19,7 @@ import {
 } from "./CapoForDgDataPolicyTestHelper.js";
 
 import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
+import { DelegatedDatumTesterBundle } from "../src/testing/DelegatedDatumTester.hlb.js";
 import { bytesToText, environment } from "@donecollectively/stellar-contracts";
 import { makeValidatorHash } from "@helios-lang/ledger";
 import type { ErgoCapoManifestEntry } from "../src/testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
@@ -168,9 +169,25 @@ describe("Capo", () => {
             await tcxCommit.submitAll();
             network.tick(1);
 
-            // Step 2: Now set up the mock for rev 2 BEFORE getting the controller
+            // Step 2: Get the on-chain controller first (establishes rev 1 on-chain)
             charterData = await capo.findCharterData();
+            const rev1Controller = (await capo.getDgDataController(
+                "testData",
+                { charterData, onchain: true }
+            )) as DelegatedDatumTester;
 
+            if (!rev1Controller)
+                throw new Error("rev1Controller not found");
+
+            // Step 3: Mock currentRev on DelegatedDatumTesterBundle class
+            // This simulates a code upgrade - fresh bundles will compile with rev 2
+            vi.spyOn(DelegatedDatumTesterBundle as any, "currentRev", "get").mockReturnValue(2n);
+
+            // Clear cache to forget the rev 1 controller
+            capo._delegateCache["testData"] = {};
+
+            // Step 4: Get fresh controller which will compile with rev 2
+            // and detect hash mismatch with on-chain rev 1, setting previousOnchainScript
             const testDataController = (await capo.getDgDataController(
                 "testData",
                 { charterData, onchain: true }
@@ -179,14 +196,13 @@ describe("Capo", () => {
             if (!testDataController)
                 throw new Error("testDataController not found");
 
-            // Set currentRev on the bundle constructor (like the passing test does)
-            (testDataController._bundle!.constructor as any).currentRev = 2n;
-
-            // Clear caches to force re-evaluation
-            capo._delegateCache["testData"] = {};
-
-            // Step 3: Use mkTxnUpgradeIfNeeded which detects rev changes
-            const tcx2 = await capo.mkTxnUpgradeIfNeeded(charterData);
+            // Step 5: Use mkTxnInstallingPolicyDelegate which queues but doesn't commit
+            // This allows us to verify the Replace action in pendingChanges
+            const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
+                idPrefix: "tData",
+                typeName: "testData",
+                charterData,
+            });
 
             const submitting = tcx2.submitAll({
                 expectError: true,
