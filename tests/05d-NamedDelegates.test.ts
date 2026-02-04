@@ -124,6 +124,8 @@ export class TestNamedDelegate extends ContractBasedDelegate {
 
 type localTC = StellarTestContext<DefaultCapoTestHelper<NamedDelegateTestCapo>>;
 
+//!!! todo: use decorated it, fit, xit, describe and skip the beforeEach boilerplate
+//!!! also do this in other tests where it makes sense to do.
 const it = itWithContext<localTC>;
 const fit = it.only;
 const xit = it.skip; //!!! todo: update this when vitest can hgave skip<HeliosTestingContext>

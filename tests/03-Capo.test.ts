@@ -26,6 +26,7 @@ import type {
     ErgoCapoManifestEntry,
     ErgoRelativeDelegateLink,
 } from "../src/helios/scriptBundling/CapoHeliosBundle.typeInfo.js";
+import { equalsBytes } from "@helios-lang/codec-utils";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -393,14 +394,17 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const capo = await h.bootstrap();
-            const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
-                h.state.mintedCharterToken;
-            const minter = capo.minter;
-            // console.log("             ---------- ", mintDelegate.compiledScript.toString());
-            const refScriptTxD: TxDescription<any, "submitted"> = tcx.state
-                .addlTxns.refScriptMinter as any;
+            // Use initialize() + mintCharterToken() to get fresh transaction context
+            // (bootstrap() uses caching and may not actually run mintCharterToken)
+            const capo = await h.initialize();
+            const tcx = await h.mintCharterToken();
 
+            // Verify refScript transaction was created during charter minting
+            const refScriptTxD = tcx.state.addlTxns?.refScriptMinter;
+            expect(refScriptTxD).toBeTruthy();
+
+            // Verify the refScript exists on-chain
+            const minter = capo.minter;
             const utxos = await capo.findCapoUtxos();
             const script = (await minter.asyncCompiledScript())!;
             const refScriptUtxo = await capo.findRefScriptUtxo(
@@ -414,7 +418,8 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const capo = await h.bootstrap();
+            const capo = await h.initialize();
+            await h.snapToCapoInitialized();
             const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
                 h.state.mintedCharterToken;
 
@@ -431,7 +436,8 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const capo = await h.bootstrap();
+            const capo = await h.initialize();
+            await h.snapToCapoInitialized();
             const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
                 h.state.mintedCharterToken;
             const mintDelegate = await capo.getMintDelegate();
@@ -450,7 +456,9 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const capo = await h.bootstrap();
+            const capo = await h.initialize();
+            await h.snapToCapoInitialized();
+
             const capoUtxos = await capo.findCapoUtxos();
             const refScripts = await capo.findScriptReferences(capoUtxos);
             expect(refScripts.length).toBe(3);
@@ -460,23 +468,26 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const capo = await h.bootstrap();
+            const capo = await h.initialize();
+            await h.snapToCapoInitialized();
             const tcx = capo.mkTcx("uses scriptRefs");
             console.log("----------------------------------------------");
             const script = (await capo.asyncCompiledScript())!;
             const tcx2 = await capo.txnAttachScriptOrRefScript(tcx, script);
             const minterScript = (await capo.minter.asyncCompiledScript())!;
-            expect(tcx2.txRefInputs[0].output.refScript?.toString()).toEqual(
-                script.toString()
-            );
+            expect(equalsBytes(
+                tcx2.txRefInputs[0].output.refScript!.hash()!, 
+                script.hash()!
+            )).toBe(true);
 
             const tcx3 = await capo.txnAttachScriptOrRefScript(
                 tcx,
                 minterScript
             );
-            expect(tcx3.txRefInputs[1].output.refScript?.toString()).toEqual(
-                minterScript.toString()
-            );
+            expect(equalsBytes(
+                tcx3.txRefInputs[1].output.refScript!.hash()!, 
+                minterScript.hash()!
+            )).toBe(true);
 
             const { tx } = await tcx3.build();
             expect(tx.witnesses.v2RefScripts.length).toBe(2);

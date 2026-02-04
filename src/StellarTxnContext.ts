@@ -521,18 +521,17 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     `   ... otherwise, add txn details first or set isFacade to false`,
             );
         }
-        // if (thisWithMoreType.state.addlTxns?.[txnName]) {
-        //     debugger
-        //     throw new Error(
-        //         `addlTxns['${txnName}'] already included in this transaction:\n` +
-        //             Object.keys(thisWithMoreType.state.addlTxns).map(
-        //                 (k) => ` • ${k}`
-        //             ).join("\n")
-        //     );
-        // }
+        if (thisWithMoreType.state.addlTxns?.[txnName]) {
+            throw new Error(
+                `addlTxns['${txnName}'] already included in this transaction:\n` +
+                    Object.keys(thisWithMoreType.state.addlTxns).map(
+                        (k) => ` • ${k}`
+                    ).join("\n")
+            );
+        }
         thisWithMoreType.state.addlTxns = {
             ...(thisWithMoreType.state.addlTxns || {}),
-            [txInfo.id]: txInfo,
+            [txnName]: txInfo,
         };
         return thisWithMoreType;
     }
