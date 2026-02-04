@@ -12,7 +12,7 @@ import type {
     CapoFeatureFlags,
     DelegateSetup,
 } from "@donecollectively/stellar-contracts";
-import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSnapName } from "./emulator/SnapshotCache.js";
+import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSnapName, type DirLabelResolver } from "./emulator/SnapshotCache.js";
 import type { BundleCacheKeyInputs } from "../helios/scriptBundling/HeliosScriptBundle.js";
 
 import { StellarTestHelper, type ActorSetupInfo } from "./StellarTestHelper.js";
@@ -71,6 +71,8 @@ export type SnapshotDecoratorOptions = {
     /** If true, skip reusableBootstrap() call. Use for snapshots that are part of the bootstrap() flow itself. */
     internal?: boolean;
     resolveScriptDependencies?: ScriptDependencyResolver;
+    /** Optional label resolver for human-readable directory names (ARCH-jj5swg0hfk). Default returns empty string. */
+    computeDirLabel?: DirLabelResolver;
 };
 
 /**
@@ -180,6 +182,8 @@ export abstract class CapoTestHelper<
         this.snapshotCache.register(SNAP_ACTORS, {
             parentSnapName: "genesis",
             resolveScriptDependencies: async (helper) => (helper as this).resolveActorsDependencies(),
+            // Label includes seed for easier debugging (ARCH-jj5swg0hfk)
+            computeDirLabel: (inputs) => `seed${inputs.extra?.randomSeed ?? ''}`,
         });
     }
 
@@ -485,7 +489,7 @@ export abstract class CapoTestHelper<
         snapshotName: string,
         options: SnapshotDecoratorOptions,
     ) {
-        const { actor: actorName, parentSnapName, internal, resolveScriptDependencies } = options;
+        const { actor: actorName, parentSnapName, internal, resolveScriptDependencies, computeDirLabel } = options;
         if (!parentSnapName) {
             throw new Error(
                 `hasNamedSnapshot('${snapshotName}'): parentSnapName is required. ` +
@@ -541,6 +545,7 @@ export abstract class CapoTestHelper<
                 this.snapshotCache.register(snapshotName, {
                     parentSnapName,
                     resolveScriptDependencies,
+                    computeDirLabel,
                 });
 
                 return this.findOrCreateSnapshot(
@@ -717,6 +722,8 @@ export abstract class CapoTestHelper<
             }
             return h.resolveActorsDependencies();
         },
+        // Label includes seed for easier debugging (ARCH-jj5swg0hfk)
+        computeDirLabel: (inputs) => `seed${inputs.extra?.randomSeed ?? ''}`,
     })
     async snapToBootstrapWithActors(): Promise<void> {
         // Decorator calls bootstrapWithActors() and handles caching

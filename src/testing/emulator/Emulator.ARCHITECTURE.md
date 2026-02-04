@@ -292,7 +292,12 @@ type SnapshotDecoratorOptions = {
   parentSnapName: ParentSnapName;       // explicit parent snapshot name
   internal?: boolean;                   // skip reusableBootstrap() for bootstrap-internal snapshots
   resolveScriptDependencies?: ScriptDependencyResolver;
+  computeDirLabel?: DirLabelResolver;   // optional label for directory name (default: empty string)
 }
+
+// Pure function of cache key inputs, returns short human-readable label for directory name
+// Example: for actors snapshot, returns `seed${randomSeed}` → directory `bootstrapWithActors-seed42-7f3a2b1c9d8e`
+type DirLabelResolver = (inputs: CacheKeyInputs) => string;
 
 // Resolver takes helper as explicit argument (not bound) for correct lifetime handling
 // This ensures the resolver uses the CURRENT helper, not one from registration time
@@ -427,6 +432,7 @@ class SnapshotCache {
   register(snapshotName: string, metadata: {
     parentSnapName: ParentSnapName;
     resolveScriptDependencies?: ScriptDependencyResolver;  // (helper) => CacheKeyInputs
+    computeDirLabel?: DirLabelResolver;  // (inputs) => string, default returns ""
   }): void
 
   // Find snapshot by name - resolves parent chain via registry
@@ -467,10 +473,13 @@ type CachedSnapshot = {
 ```
 
 **File Naming** (Hierarchical Directories):
-- Path pattern: `{parentPath}/{snapshotName}-{cacheKey}/snapshot.json`
-- Root snapshots: `.stellar/emu/{name}-{key}/snapshot.json`
-- Nested example: `.stellar/emu/bootstrapWithActors-AAAAAA/capoInitialized-CICICICI/snapshot.json`
-- Snapshot names sanitized: alphanumeric, underscore, hyphen only; max 50 chars
+- Path pattern: `{parentPath}/{snapshotName}-{dirLabel}-{hash6}/snapshot.json`
+- `dirLabel` = optional human-readable clue from `computeDirLabel(inputs)`, default empty string
+- `hash6` = last 6 chars of bech32-encoded blake2b hash (~1B combinations, sufficient for uniqueness)
+- Root snapshots: `.stellar/emu/{name}-{label}-{hash6}/snapshot.json`
+- Nested example: `.stellar/emu/bootstrapWithActors-seed42-q3m7k2/capoInitialized--a5n9p4/snapshot.json`
+- Note: empty `dirLabel` produces double-dash (`--`) which is visually distinct and valid
+- Snapshot names and labels sanitized: alphanumeric, underscore, hyphen only; max 50 chars each
 - Parent relationship implicit in directory structure; enables `rm -rf` for subtree deletion
 
 **Genesis vs Blocks Separation**:
@@ -493,7 +502,7 @@ type CachedSnapshot = {
 **Behavior**:
 - `find()`: Resolves parent chain and computes cache key first; then checks `loadedSnapshots` Map with composite key `{name}:{cacheKey}` (returns cached if present); on disk load: touches directory if mtime > 1 day; applies incremental blocks to parent's UTxO state (not full rebuild); verifies `parentHash` matches loaded parent's `snapshotHash`; verifies final `blockHashes[-1]` equals `snapshotHash` (returns null on any mismatch to trigger rebuild); caches result in `loadedSnapshots` with composite key before returning
 - `store()`: Extracts name from `snapshot.snapshot.name`; writes JSON with incremental blocks only
-- `computeKey()`: `hash(parentHash + JSON.stringify(inputs))`
+- `computeKey()`: `bech32(blake2b(parentHash + JSON.stringify(inputs))).slice(-6)` — returns last 6 bech32 chars
 
 **Parent Chain Verification**:
 - `parentHash`: Verifies loaded parent state matches expected state; if mismatch, cache is stale and `find()` returns null to trigger rebuild

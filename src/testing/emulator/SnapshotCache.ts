@@ -1,4 +1,4 @@
-import { blake2b } from "@helios-lang/crypto";
+import { blake2b, encodeBech32 } from "@helios-lang/crypto";
 import { bytesToHex, encodeUtf8, hexToBytes } from "@helios-lang/codec-utils";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, utimesSync, statSync, rmSync } from "fs";
 import { dirname, join } from "path";
@@ -20,6 +20,16 @@ export type CacheKeyInputs = {
     bundles: BundleCacheKeyInputs[];
     extra?: Record<string, unknown>;
 };
+
+/**
+ * Pure function of cache key inputs returning a short human-readable label
+ * for the snapshot directory name. Default returns empty string.
+ *
+ * Example: for actors snapshot with randomSeed in extra:
+ *   (inputs) => `seed${inputs.extra?.randomSeed ?? ''}`
+ * @public
+ */
+export type DirLabelResolver = (inputs: CacheKeyInputs) => string;
 
 /**
  * Parent snapshot name - identifies which snapshot is the parent.
@@ -69,6 +79,8 @@ export type SnapshotRegistryEntry = {
     parentSnapName: ParentSnapName;
     /** Resolver function to compute cache key inputs. Takes helper as explicit argument for correct lifetime (ARCH-8rqhpfy1ym). */
     resolveScriptDependencies?: (helper: unknown) => Promise<CacheKeyInputs>;
+    /** Optional label resolver for human-readable directory names. Default returns empty string. (ARCH-jj5swg0hfk) */
+    computeDirLabel?: DirLabelResolver;
 };
 
 /**
@@ -579,6 +591,8 @@ export class SnapshotCache {
 
     /**
      * Computes a cache key from parent hash and cache key inputs.
+     * Returns 6 bech32 characters (~1 billion combinations, sufficient for uniqueness).
+     * (ARCH-14zt4f9rtg)
      */
     computeKey(parentHash: string | null, inputs: CacheKeyInputs): string {
         // Use replacer to handle BigInt in params
@@ -589,20 +603,27 @@ export class SnapshotCache {
             bundles: inputs.bundles,
             extra: inputs.extra,
         }, replacer);
-        return bytesToHex(blake2b(encodeUtf8(data))).slice(0, 32); // Use first 32 chars for reasonable filename length
+        const hashBytes = blake2b(encodeUtf8(data));
+        // Use bech32 encoding with a dummy HRP, then take last 6 chars
+        // bech32 alphabet: a-z, 2-7 (32 chars) → 6 chars = 32^6 ≈ 1 billion
+        const bech32Str = encodeBech32("snap", hashBytes);
+        return bech32Str.slice(-6);
     }
 
     /**
      * Gets the directory path for a snapshot.
-     * Format: {parentPath}/{snapshotName}-{cacheKey}/ (REQT-1.2.9.1)
-     * @param cacheKey - The cache key for this snapshot
+     * Format: {parentPath}/{snapshotName}-{dirLabel}-{cacheKey}/ (REQT-1.2.9.1)
+     * Note: Empty label produces double-dash (--) which is valid and visually distinct.
+     * @param cacheKey - The cache key for this snapshot (6 bech32 chars)
      * @param snapshotName - The snapshot name
      * @param parentPath - Parent directory path, or null for root snapshots
+     * @param dirLabel - Optional human-readable label from computeDirLabel (default: "")
      * @internal
      */
-    private getSnapshotDir(cacheKey: string, snapshotName: string, parentPath: string | null): string {
+    private getSnapshotDir(cacheKey: string, snapshotName: string, parentPath: string | null, dirLabel: string = ""): string {
         const sanitizedName = sanitizeSnapshotName(snapshotName);
-        const dirName = `${sanitizedName}-${cacheKey}`;
+        const sanitizedLabel = sanitizeSnapshotName(dirLabel);
+        const dirName = `${sanitizedName}-${sanitizedLabel}-${cacheKey}`;
         if (parentPath) {
             return join(parentPath, dirName);
         }
@@ -672,6 +693,9 @@ export class SnapshotCache {
             console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (no resolver, parent-only)`);
         }
 
+        // Compute directory label for human-readable path (ARCH-jj5swg0hfk)
+        const dirLabel = entry.computeDirLabel ? entry.computeDirLabel(inputs) : "";
+
         // Check in-memory cache with composite key (REQT-1.2.10.3)
         // Composite key ensures different seeds don't collide
         const mapKey = `${snapshotName}:${cacheKey}`;
@@ -683,7 +707,7 @@ export class SnapshotCache {
         console.log(`  [find:${snapshotName}] not in memory, checking disk...`);
 
         // Construct hierarchical path
-        const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath);
+        const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath, dirLabel);
         const cachePath = this.getSnapshotFilePath(snapshotDir);
 
         if (!existsSync(cachePath)) {
@@ -879,8 +903,11 @@ export class SnapshotCache {
             console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, no resolver)`);
         }
 
+        // Compute directory label for human-readable path (ARCH-jj5swg0hfk)
+        const dirLabel = entry.computeDirLabel ? entry.computeDirLabel(cacheKeyInputs) : "";
+
         // Construct hierarchical path
-        const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath);
+        const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath, dirLabel);
         const cachePath = this.getSnapshotFilePath(snapshotDir);
 
         // Check if we're overwriting an existing snapshot

@@ -132,8 +132,8 @@ describeNoCapo("SnapshotCache", () => {
             const key2 = cache.computeKey(null, inputs);
 
             expect(key1).toBe(key2);
-            expect(key1.length).toBe(32); // First 32 chars of hex hash
-            expect(/^[0-9a-f]+$/.test(key1)).toBe(true); // Valid hex
+            expect(key1.length).toBe(6); // Last 6 chars of bech32 hash (ARCH-14zt4f9rtg)
+            expect(/^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+$/.test(key1)).toBe(true); // Valid bech32 chars
         });
 
         vitestIt("produces different keys for different parent hashes", (context: SimpleTC) => {
