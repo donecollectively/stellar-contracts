@@ -1,19 +1,21 @@
 import {
-    describe as descrWithContext,
-    expect,
-    it as itWithContext,
     beforeEach,
+    expect,
     vi,
     assertType,
     expectTypeOf,
 } from "vitest";
 
-import { ADA, addTestContext, TestHelperState } from "../src/testing/types";
+import { ADA, TestHelperState } from "../src/testing/types";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 import {
     CapoForDgDataPolicy_testHelper,
     helperState,
     TestContext_CapoForDgData,
+    describe,
+    it,
+    fit,
+    xit,
 } from "./CapoForDgDataPolicyTestHelper.js";
 
 import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
@@ -21,38 +23,16 @@ import { bytesToText, environment } from "@donecollectively/stellar-contracts";
 import { makeValidatorHash } from "@helios-lang/ledger";
 import type { ErgoCapoManifestEntry } from "../src/testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
 
-const it = itWithContext<localTC>;
+type localTC = TestContext_CapoForDgData;
+
 function TEST_REQT(s: string) {
     return it.todo(`TEST: ${s}`, { todo: true });
 }
 function TODO_REQT(s: string) {
     return it.todo(`TODO: ${s}`, { todo: true });
 }
-const fit = it.only;
-const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTestingContext>
-//!!! until then, we need to use if(0) it(...) : (
-// ... or something we make up that's nicer
 
-const describe = descrWithContext<localTC>;
-
-type localTC = TestContext_CapoForDgData;
-// let helperState: TestHelperState<CapoCanMintGenericUuts> = {
-//     snapshots: {},
-// } as any;
-
-// console.log("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞")
-
-describe("Capo", async () => {
-    beforeEach<localTC>(async (context) => {
-        await new Promise((res) => setTimeout(res, 10));
-        await addTestContext(
-            context,
-            CapoForDgDataPolicy_testHelper,
-            undefined,
-            helperState
-        );
-    });
-
+describe("Capo", () => {
     describe("Creating data-policy delegate", () => {
         let capo: CapoCanMintGenericUuts;
         beforeEach<localTC>(async (context) => {

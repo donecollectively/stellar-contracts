@@ -160,3 +160,11 @@ export type TestContext_CapoForDgData =
             this: TestContext_CapoForDgData
         ): Promise<CapoWithoutSettings>;
     };
+
+export const { describe, it, fit, xit } =
+    CapoForDgDataPolicy_testHelper.createTestContext<
+        CapoForDgDataPolicy_testHelper,
+        CapoCanMintGenericUuts,
+        {},
+        TestContext_CapoForDgData
+    >({ helperState });

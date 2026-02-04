@@ -258,8 +258,8 @@ export abstract class CapoTestHelper<
             config
         } = options ?? {};
 
-        // Track nesting depth to only add beforeEach at top level of each describe tree
-        let nestingDepth = 0;
+        // Track if beforeEach has been registered for this createTestContext instance
+        let beforeEachRegistered = false;
 
         /**
          * Wraps a vitest describe function to auto-inject beforeEach at top level
@@ -269,10 +269,8 @@ export abstract class CapoTestHelper<
         ) => {
             return (name: string, fn: () => void): void => {
                 vitestFn(name, () => {
-                    const isTopLevel = nestingDepth === 0;
-                    nestingDepth++;
-
-                    if (isTopLevel) {
+                    if (!beforeEachRegistered) {
+                        beforeEachRegistered = true;
                         beforeEach<TC>(async (context) => {
                             // Config type is structurally identical to what addTestContext expects,
                             // but TypeScript can't unify conditional types with unresolved generics.
@@ -286,11 +284,7 @@ export abstract class CapoTestHelper<
                         });
                     }
 
-                    try {
-                        fn();
-                    } finally {
-                        nestingDepth--;
-                    }
+                    fn();
                 });
             };
         };
