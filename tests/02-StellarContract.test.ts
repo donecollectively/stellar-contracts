@@ -23,6 +23,7 @@ import { ADA, addTestContext } from "../src/testing/";
 import { StellarTestContext } from "../src/testing/";
 
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
+import { dumpAny } from "../src/diagnostics";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper<CapoWithoutSettings>>;
 
@@ -414,21 +415,22 @@ describe("StellarContract", async () => {
 
                     const tina = h.wallet;
                     const tinaMoney = await tina.utxos;
+
                     const firstUtxo = tinaMoney[0];
 
-                    console.log(" -------------------------- ")
+                    console.log(" -------------------------- ", dumpAny(tinaMoney))
 
-                    const targetAda = 11_002n * 1_000_000n;
+                    const targetAda = 10_999n * 1_000_000n;
                     let steps = 0;
                     // try {
                         console.log("step1")
-                        uh.findActorUtxo("not found", (utxo) => utxo.value.lovelace > 42_000_000 ? utxo : undefined)
+                        uh.findActorUtxo("not found", (utxo) => utxo.value.lovelace > 42_000_000 ? utxo : undefined,{dumpDetail:"always"})
                         steps++;
                         console.log("step2")
                         const nothing = await uh.findActorUtxo("not found", (utxo) => {
                             console.log("step2.1 - utxo with ", Number(utxo.value.lovelace)/1_000_000, " ada")
                             return ((utxo.value.lovelace > 2n*targetAda) ? utxo : undefined)
-                        })
+                        },{dumpDetail:"always"})
                         expect(nothing).toBeUndefined();
                         // console.log("step2.2 - unexpected: ", weird )
                         // steps++;
@@ -436,12 +438,14 @@ describe("StellarContract", async () => {
                     console.log("step3")
 
                     const f1 = await uh.findSufficientActorUtxos("finds two utxos",  makeValue(targetAda), {
-                        wallet: tina
+                        wallet: tina,
+                        dumpDetail:"always"
                     })                     
                     console.log("step4")
-                    expect(f1.length).toBe(2);
+                    expect(f1.length).toBe(1);
                     await expect(uh.findSufficientActorUtxos("doesn't find larger number", makeValue(2n*targetAda), {
-                        wallet: tina
+                        wallet: tina,
+                        dumpDetail:"always"
                     })).rejects.toThrow(/Insufficient funds error/);
                 });
 

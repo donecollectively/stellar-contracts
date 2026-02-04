@@ -56,6 +56,8 @@ export type CachedSnapshot = {
     offchainData?: Record<string, unknown>;
     /** Cache key inputs for debugging cache misses. REQT-1.2.11/whp4cvpk9e */
     cacheKeyInputs?: CacheKeyInputs;
+    /** Original block count at capture time - used by children to correctly slice incremental blocks */
+    capturedBlockCount?: number;
 };
 
 /**
@@ -122,6 +124,8 @@ type SerializedCachedSnapshot = {
     /** Number of blocks in parent snapshot, for incremental storage (REQT-1.2.5.1) */
     parentBlockCount: number;
     snapshotHash: string;
+    /** Original block count at capture time - used by children to correctly slice incremental blocks */
+    capturedBlockCount: number;
 };
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -691,6 +695,12 @@ export class SnapshotCache {
                 thisSnapshot.addressUtxos = addressUtxos;
 
                 console.log(`SnapshotCache: chain-loaded '${thisSnapshot.name}' (${thisSnapshot.blocks.length} total, ${incrementalBlockCount} incremental)`);
+            } else if (thisSnapshot.genesis.length > 0 && thisSnapshot.blocks.length === 0) {
+                // Root snapshot: create genesis block from genesis txs (work unit 9gnevpjmpt)
+                // UTxOs already built by rebuildUtxoIndexes(genesis, [])
+                // blockHashes already loaded from disk - integrity check below will verify
+                thisSnapshot.blocks = [thisSnapshot.genesis as EmulatorTx[]];
+                console.log(`SnapshotCache: root-loaded '${thisSnapshot.name}' (genesis → 1 block, ${thisSnapshot.genesis.length} txs)`);
             }
 
             // Verify snapshot integrity: computed block hash must match recorded snapshotHash (REQT-1.2.9.3.3)
@@ -749,6 +759,7 @@ export class SnapshotCache {
                 path: snapshotDir,
                 offchainData: mergedOffchainData,
                 cacheKeyInputs,
+                capturedBlockCount: serialized.capturedBlockCount,
             };
             // Use composite key for in-memory cache (REQT-1.2.10.3)
             this.loadedSnapshots.set(mapKey, result);
@@ -784,7 +795,9 @@ export class SnapshotCache {
                 throw new Error(`SnapshotCache: parent '${resolvedParentName}' not found for '${snapshotName}'`);
             }
             parentPath = parent.path || null;
-            parentBlockCount = parent.snapshot.blocks.length;
+            // Use capturedBlockCount if available (original live block count at parent's capture time)
+            // This ensures we slice from the correct position in the live network
+            parentBlockCount = parent.capturedBlockCount ?? parent.snapshot.blocks.length;
         }
 
         // Compute cache key using resolver
@@ -808,9 +821,31 @@ export class SnapshotCache {
         // Create a copy of the snapshot for incremental serialization (REQT-1.2.5.1)
         const incrementalSnapshot = { ...cachedSnapshot.snapshot };
 
-        // Slice to only include blocks since the parent (REQT-1.2.5.1, REQT-1.2.5.2)
-        incrementalSnapshot.blocks = cachedSnapshot.snapshot.blocks.slice(parentBlockCount);
-        incrementalSnapshot.blockHashes = cachedSnapshot.snapshot.blockHashes.slice(parentBlockCount);
+        // Record the original live block count BEFORE modifying (for children to use)
+        const capturedBlockCount = cachedSnapshot.snapshot.blocks.length;
+
+        if (entry.parentSnapName === "genesis") {
+            // Root snapshot: store genesis only, no blocks (work unit 9gnevpjmpt)
+            // Keep only the genesis block hash (blockHashes[0])
+            const genesisBlockHash = cachedSnapshot.snapshot.blockHashes[0];
+            if (!genesisBlockHash) {
+                throw new Error(`Root snapshot '${snapshotName}' has no blockHashes - was tick() called after creating genesis UTxOs?`);
+            }
+            incrementalSnapshot.blocks = [];
+            incrementalSnapshot.blockHashes = [genesisBlockHash];
+            // Update snapshotHash to match the genesis block hash
+            cachedSnapshot.snapshotHash = genesisBlockHash;
+            // Update cachedSnapshot to reflect reconstituted state for in-memory cache
+            // Children will use this to compute parentBlockCount correctly
+            cachedSnapshot.snapshot.blocks = [cachedSnapshot.snapshot.genesis as EmulatorTx[]];
+            cachedSnapshot.snapshot.blockHashes = [genesisBlockHash];
+        } else {
+            // Child snapshot: don't store genesis (inherited from root via parent chain)
+            incrementalSnapshot.genesis = [];
+            // Store only incremental blocks since parent (REQT-1.2.5.1, REQT-1.2.5.2)
+            incrementalSnapshot.blocks = cachedSnapshot.snapshot.blocks.slice(parentBlockCount);
+            incrementalSnapshot.blockHashes = cachedSnapshot.snapshot.blockHashes.slice(parentBlockCount);
+        }
 
         // Serialize the incremental snapshot (stores only new transactions, not UTxO indexes)
         const serialized: SerializedCachedSnapshot = {
@@ -821,6 +856,7 @@ export class SnapshotCache {
             parentCacheKey: cachedSnapshot.parentCacheKey, // Deprecated but retained
             parentBlockCount,
             snapshotHash: cachedSnapshot.snapshotHash,
+            capturedBlockCount,
         };
 
         const content = JSON.stringify(serialized, null, 2);
@@ -838,9 +874,10 @@ export class SnapshotCache {
             typeof value === "bigint" ? value.toString() : value;
         writeFileSync(keyInputsPath, JSON.stringify(cacheKeyInputs, bigIntReplacer, 2), "utf-8");
 
-        // Store path and cacheKeyInputs on the cachedSnapshot for caller's use
+        // Store path, cacheKeyInputs, and capturedBlockCount on the cachedSnapshot for caller's use
         cachedSnapshot.path = snapshotDir;
         cachedSnapshot.cacheKeyInputs = cacheKeyInputs;
+        cachedSnapshot.capturedBlockCount = capturedBlockCount;
 
         // Cache in memory using composite key (REQT-1.2.10.3)
         const mapKey = `${snapshotName}:${cacheKey}`;

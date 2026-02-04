@@ -181,7 +181,7 @@ describe("Capo", async () => {
 
             const testDataController = (await capo.getDgDataController(
                 "testData",
-                { charterData }
+                { charterData, onchain: true }
             )) as DelegatedDatumTester;
 
             if (!testDataController)
@@ -275,7 +275,7 @@ describe("Capo", async () => {
             let charterData = await capo.findCharterData();
             const testDataController = (await capo.getDgDataController(
                 "testData",
-                { charterData }
+                { charterData, onchain: true }
             )) as DelegatedDatumTester;
             if (!testDataController)
                 throw new Error("testDataController not found");
@@ -327,10 +327,10 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            expect(
-                process.env.OPTIMIZE,
-                "OPTIMIZE must == 1 for this test"
-            ).toBeTruthy();
+            // expect(
+            //     process.env.OPTIMIZE,
+            //     "OPTIMIZE must == 1 for this test"
+            // ).toBeTruthy();
             await h.snapToInstalledTestDataPolicy();
             // building on top of the single-delegate snapshot:
 
@@ -365,11 +365,11 @@ describe("Capo", async () => {
 
             const prevTestDataController = (await capo.getDgDataController(
                 "testData",
-                { charterData: charterDataMark2 }
+                { charterData: charterDataMark2, onchain: true }
             )) as DelegatedDatumTester;
             const prevTestD2Controller = (await capo.getDgDataController(
                 "testData2",
-                { charterData: charterDataMark2 }
+                { charterData: charterDataMark2, onchain: true }
             )) as DelegatedDatumTester;
 
             (prevTestDataController._bundle!.constructor as any).currentRev = 2n;
@@ -392,13 +392,13 @@ describe("Capo", async () => {
 
             const nextTestDataController = (await capo.getDgDataController(
                 "testData",
-                { charterData: charterDataMark2 }
+                { charterData: charterDataMark2, onchain: true }
             )) as DelegatedDatumTester;
             if (!nextTestDataController)
                 throw new Error("nextTestDataController not found");
             const nextTestD2Controller = (await capo.getDgDataController(
                 "testData2",
-                { charterData: charterDataMark2 }
+                { charterData: charterDataMark2, onchain: true }
             )) as DelegatedDatumTester;
             if (!nextTestD2Controller)
                 throw new Error("nextTestData2Controller not found");

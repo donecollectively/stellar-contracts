@@ -77,7 +77,7 @@ function logProgress(tsm: TxSubmitMgr) {
         }
         lastStatus = tsm.$$statusSummary;
         
-        console.log("Updated tx submit status:", diff);
+        // console.log("Updated tx submit status:", diff);
     });
 }
 
