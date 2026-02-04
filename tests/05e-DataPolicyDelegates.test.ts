@@ -149,15 +149,27 @@ describe("Capo", () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            await h.snapToInstalledTestDataPolicy();
+            // Load earlier snapshot, then manually install policy, then mock
+            // (per "Mocking and Snapshots Don't Mix" guidance)
+            await h.reusableBootstrap();
             const capo = h.capo;
 
-            const charterData = await capo.findCharterData();
+            // Step 1: Install the policy at rev 1
+            let charterData = await capo.findCharterData();
+            const tcxInstall = await capo.mkTxnInstallingPolicyDelegate({
+                typeName: "testData",
+                idPrefix: "tData",
+                charterData,
+            });
+            await tcxInstall.submitAll();
+            network.tick(1);
 
-            // allows the txn-builder to get past its guard for a pending change:
-            // vi.spyOn(capo, "findPendingChange").mockImplementation(
-            //     () => undefined
-            // );
+            const tcxCommit = await capo.mkTxnCommittingPendingChanges();
+            await tcxCommit.submitAll();
+            network.tick(1);
+
+            // Step 2: Now set up the mock for rev 2 BEFORE getting the controller
+            charterData = await capo.findCharterData();
 
             const testDataController = (await capo.getDgDataController(
                 "testData",
@@ -167,27 +179,14 @@ describe("Capo", () => {
             if (!testDataController)
                 throw new Error("testDataController not found");
 
+            // Set currentRev on the bundle constructor (like the passing test does)
+            (testDataController._bundle!.constructor as any).currentRev = 2n;
+
+            // Clear caches to force re-evaluation
             capo._delegateCache["testData"] = {};
-            testDataController._bundle = undefined;
-            //@ts-expect-error
-            testDataController.constructor.debugDelegateCreation = true;
 
-            const bundle = await testDataController.getBundle();
-
-            vi.spyOn(
-                bundle.constructor as any,
-                "currentRev",
-                "get"
-            ).mockImplementation(() => {
-                return 2n;
-            });
-
-
-            const tcx2 = await capo.mkTxnInstallingPolicyDelegate({
-                idPrefix: "tData",
-                typeName: "testData",
-                charterData,
-            });
+            // Step 3: Use mkTxnUpgradeIfNeeded which detects rev changes
+            const tcx2 = await capo.mkTxnUpgradeIfNeeded(charterData);
 
             const submitting = tcx2.submitAll({
                 expectError: true,

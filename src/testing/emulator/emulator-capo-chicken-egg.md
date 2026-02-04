@@ -255,32 +255,52 @@ This enables loading chartered Capo from disk without re-minting.
 
 ```typescript
 async resolveCoreCapoDependencies(): Promise<CacheKeyInputs> {
-    const capoBundle = await this.capo.getBundle();  // NEEDS chartered Capo!
-    return {
-        bundles: [capoBundle.getCacheKeyInputs()],  // includes configuredParams
-        // ...
-    };
+    // BROKEN: tries to use getMintDelegate()/getSpendDelegate() which need charter
+    const mintDelegate = await this.capo.getMintDelegate();  // FAILS with egg!
+    const spendDelegate = await this.capo.getSpendDelegate();  // FAILS with egg!
+    // Results in inconsistent cache keys between find() and store()
 }
 ```
 
-### New (egg-compatible)
+### Fixed (egg-compatible)
+
+**Key insight**: Delegate source code does NOT depend on mph or charter data. Access delegate bundles via `delegateRoles.delegateClass.scriptBundleClass()` instead of `getMintDelegate()`/`getSpendDelegate()`.
 
 ```typescript
 async resolveCoreCapoDependencies(): Promise<CacheKeyInputs> {
-    // Egg or chartered - either works for source hashes
-    const capoBundle = await this.capo.getBundle();
+    await this.ensureEggForCacheKey();  // Ensure we have at least an egg
     const seedUtxo = this.getPreSelectedSeedUtxo();  // From actors snapshot
 
-    return {
-        bundles: [{
-            name: capoBundle.moduleName,
-            sourceHash: capoBundle.computeSourceHash(),  // No config needed!
-            params: { seedUtxo }  // Identity params only, NOT derived values
-        }],
-        extra: { heliosVersion: VERSION }
-    };
+    const capoBundle = await this.capo.getBundle();
+    const bundles: BundleCacheKeyInputs[] = [{
+        name: capoBundle.moduleName,
+        sourceHash: capoBundle.computeSourceHash(),  // No config needed!
+        params: { seedUtxo },
+    }];
+
+    // Access delegate bundles via delegateRoles, NOT getMintDelegate()
+    const { delegateRoles } = this.capo;
+    const capoBundleClass = capoBundle.constructor;
+
+    for (const roleName of ['mintDelegate', 'spendDelegate']) {
+        const role = delegateRoles[roleName];
+        if (role?.delegateClass) {
+            const BundleClass = await role.delegateClass.scriptBundleClass();
+            const boundBundleClass = BundleClass.usingCapoBundleClass(capoBundleClass);
+            const bundle = new boundBundleClass();
+            bundles.push({
+                name: bundle.moduleName || roleName,
+                sourceHash: bundle.computeSourceHash(),
+                params: {},
+            });
+        }
+    }
+
+    return { bundles, extra: { heliosVersion: VERSION } };
 }
 ```
+
+**Why this works**: `delegateRoles` entries have `delegateClass` property which is the delegate class itself. That class has `static scriptBundleClass()` returning the bundle class. Instantiate with capoBundle reference, call `computeSourceHash()`. No charter data needed anywhere in this flow.
 
 ---
 
@@ -291,17 +311,23 @@ async resolveCoreCapoDependencies(): Promise<CacheKeyInputs> {
 | Component | Change | Requirement |
 |-----------|--------|-------------|
 | `bootstrapWithActors` | Pre-select and store `targetSeedUtxo` in offchainData | REQT-3.6.1 |
-| `resolveCoreCapoDependencies()` | Use `computeSourceHash()` only; get seedUtxo from actors snapshot | REQT-3.6.2 |
-| `getCacheKeyInputs()` | Separate source hash from derived params | REQT-3.6.3 |
+| `resolveCoreCapoDependencies()` | Access delegates via `delegateRoles.delegateClass.scriptBundleClass()`, use `computeSourceHash()` | REQT-3.6.2 |
 | `capoInitialized` snapshot | Store full `capoConfig` in offchainData | REQT-3.6.4 |
 | `findOrCreateSnapshot()` | Implement Capo reconstruction decision tree | REQT-3.6.5 |
+
+### Key Insight
+
+Access delegate source hashes via the **egg Capo's `delegateRoles`**. The `delegateRoles` property exists on any Capo (egg or chartered) and provides `delegateClass` references. These classes have `static scriptBundleClass()` that returns bundle classes—no charter data needed.
+
+The previous implementation used `getMintDelegate()`/`getSpendDelegate()` which require charter data, causing try/catch fallbacks and inconsistent cache keys.
 
 ### Verification
 
 After implementation:
-1. Fresh process with disk cache should find `capoInitialized` using egg
-2. Loaded Capo should have correct `mph` matching stored config
-3. Same-config tests should hot-swap, different-config should create new Capo
+1. Cache key should be IDENTICAL between `find()` and `store()` calls
+2. Fresh process with disk cache should find `capoInitialized`
+3. Loaded Capo should have correct `mph` matching stored config
+4. Same-config tests should hot-swap, different-config should create new Capo
 
 ---
 

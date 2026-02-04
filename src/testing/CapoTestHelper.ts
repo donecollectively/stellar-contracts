@@ -1313,41 +1313,50 @@ export abstract class CapoTestHelper<
         const seedUtxo = this.getPreSelectedSeedUtxo();
 
         const capoBundle = await this.capo.getBundle();
+        const capoBundleClass = capoBundle.constructor as any;
+
         const bundles: BundleCacheKeyInputs[] = [{
             name: capoBundle.moduleName || capoBundle.constructor.name,
             sourceHash: capoBundle.computeSourceHash(), // Works without config! (REQT-3.6.3)
             params: { seedUtxo }, // Identity params only, NOT derived values like mph
         }];
 
-        // Add core delegate bundles (also using computeSourceHash)
-        try {
-            const mintDelegate = await this.capo.getMintDelegate();
-            const mintBundle = await mintDelegate.getBundle();
+        // Add delegate bundles using egg-compatible approach (REQT-3.6.2):
+        // Get bundle classes directly from delegateRoles, not via getMintDelegate()/getSpendDelegate()
+        // which require the charter to exist.
+        const { delegateRoles } = this.capo;
+
+        // Mint delegate bundle
+        if (delegateRoles.mintDelegate) {
+            const mintDelegateClass = delegateRoles.mintDelegate.delegateClass as any;
+            const mintBundleClass = await mintDelegateClass.scriptBundleClass();
+            const boundMintBundleClass = mintBundleClass.usingCapoBundleClass(capoBundleClass);
+            const mintBundle = new boundMintBundleClass();
             bundles.push({
                 name: mintBundle.moduleName || mintBundle.constructor.name,
                 sourceHash: mintBundle.computeSourceHash(),
-                params: {}, // No params needed - source hash captures the code
+                params: {},
             });
-        } catch (e) {
-            console.warn(`CapoTestHelper: skipping mint delegate for cache key: ${e}`);
         }
 
-        try {
-            const spendDelegate = await this.capo.getSpendDelegate();
-            const spendBundle = await spendDelegate.getBundle();
+        // Spend delegate bundle
+        if (delegateRoles.spendDelegate) {
+            const spendDelegateClass = delegateRoles.spendDelegate.delegateClass as any;
+            const spendBundleClass = await spendDelegateClass.scriptBundleClass();
+            const boundSpendBundleClass = spendBundleClass.usingCapoBundleClass(capoBundleClass);
+            const spendBundle = new boundSpendBundleClass();
             bundles.push({
                 name: spendBundle.moduleName || spendBundle.constructor.name,
                 sourceHash: spendBundle.computeSourceHash(),
-                params: {}, // No params needed - source hash captures the code
+                params: {},
             });
-        } catch (e) {
-            console.warn(`CapoTestHelper: skipping spend delegate for cache key: ${e}`);
         }
 
         return {
             bundles,
             extra: {
-                heliosVersion: HELIOS_VERSION,
+                // heliosVersion is in genesis (actors) snapshot only - no need to repeat here
+                // heliosVersion: HELIOS_VERSION,
             },
         };
     }
@@ -1362,6 +1371,10 @@ export abstract class CapoTestHelper<
     async resolveEnabledDelegatesDependencies(): Promise<CacheKeyInputs> {
         const coreInputs = await this.resolveCoreCapoDependencies();
         const bundles = [...coreInputs.bundles];
+
+        // Get Capo bundle class for binding delegate bundles (egg-compatible)
+        const capoBundle = await this.capo.getBundle();
+        const capoBundleClass = capoBundle.constructor as any;
 
         // Iterate delegateRoles for dgData controllers
         const { delegateRoles } = this.capo;
@@ -1382,33 +1395,25 @@ export abstract class CapoTestHelper<
                     continue;
                 }
 
-                // Get bundle from an instantiated delegate
-                try {
-                    const delegate = await (this.capo as Capo<any>).getDgDataController(
-                        roleName as string & keyof Capo<any>["_delegateRoles"],
-                        { onchain: false }
-                    );
-                    if (!delegate) {
-                        console.warn(`CapoTestHelper: dgData controller ${roleName} returned undefined`);
-                        continue;
-                    }
-                    const bundle = await delegate.getBundle();
-                    // Use computeSourceHash() instead of getCacheKeyInputs() (REQT-3.6.3)
-                    bundles.push({
-                        name: bundle.moduleName || bundle.constructor.name,
-                        sourceHash: bundle.computeSourceHash(),
-                        params: {}, // No params needed - source hash captures the code
-                    });
-                } catch (e) {
-                    console.warn(`CapoTestHelper: skipping dgData controller ${roleName} for cache key: ${e}`);
-                }
+                // Get bundle class directly from delegateClass (egg-compatible, REQT-3.6.2)
+                // This avoids getDgDataController() which may require charter data
+                const dgDelegateClass = delegateClass as any;
+                const dgBundleClass = await dgDelegateClass.scriptBundleClass();
+                const boundDgBundleClass = dgBundleClass.usingCapoBundleClass(capoBundleClass);
+                const dgBundle = new boundDgBundleClass();
+                bundles.push({
+                    name: dgBundle.moduleName || dgBundle.constructor.name,
+                    sourceHash: dgBundle.computeSourceHash(),
+                    params: {},
+                });
             }
         }
 
         return {
             bundles,
             extra: {
-                ...coreInputs.extra,
+                // heliosVersion is in genesis (actors) snapshot only - no need to repeat here
+                // ...coreInputs.extra,
                 featureFlags: this.featureFlags || {},
             },
         };

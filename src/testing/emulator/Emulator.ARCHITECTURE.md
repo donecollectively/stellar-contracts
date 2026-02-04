@@ -331,32 +331,75 @@ See `snapshot-resolution.md` for detailed recursive walk-through.
 
 ### Built-in Resolvers (CapoTestHelper)
 
+**Key design**: Resolvers use `computeSourceHash()` (not `getCacheKeyInputs()`) and access delegate bundles via `delegateRoles` class references (not `getMintDelegate()`/`getSpendDelegate()` which require charter data). This enables consistent cache keys whether using an egg or chartered Capo.
+
 ```typescript
 // For capoInitialized snapshot
-resolveCoreCapoDependencies(): CacheKeyInputs {
-  return {
-    bundles: [
-      this.capo.minterBundle.getCacheKeyInputs(),
-      this.capo.mintDelegateBundle.getCacheKeyInputs(),
-      this.capo.spendDelegateBundle.getCacheKeyInputs(),
-    ],
-    extra: { heliosVersion: VERSION }
-  };
+async resolveCoreCapoDependencies(): Promise<CacheKeyInputs> {
+  await this.ensureEggForCacheKey();  // Ensure we have at least an egg
+  const seedUtxo = this.getPreSelectedSeedUtxo();  // From actors snapshot
+
+  const capoBundle = await this.capo.getBundle();
+  const bundles: BundleCacheKeyInputs[] = [{
+    name: capoBundle.moduleName,
+    sourceHash: capoBundle.computeSourceHash(),  // Works without config!
+    params: { seedUtxo },
+  }];
+
+  // Access delegate bundles via delegateRoles, NOT getMintDelegate()
+  // delegateRoles entries have delegateClass with static scriptBundleClass()
+  const { delegateRoles } = this.capo;
+  const capoBundleClass = capoBundle.constructor;
+
+  for (const roleName of ['mintDelegate', 'spendDelegate']) {
+    const role = delegateRoles[roleName];
+    if (role?.delegateClass) {
+      const BundleClass = await role.delegateClass.scriptBundleClass();
+      const boundBundleClass = BundleClass.usingCapoBundleClass(capoBundleClass);
+      const bundle = new boundBundleClass();
+      bundles.push({
+        name: bundle.moduleName || roleName,
+        sourceHash: bundle.computeSourceHash(),
+        params: {},
+      });
+    }
+  }
+
+  return { bundles, extra: { heliosVersion: VERSION } };
 }
 
 // For enabledDelegatesDeployed snapshot
-resolveEnabledDelegatesDependencies(): CacheKeyInputs {
-  const coreBundles = this.resolveCoreCapoDependencies().bundles;
-  const delegateBundles = Object.values(this.capo.delegateRoles)
-    .filter(d => this.capo.featureEnabled(d.typeName))
-    .map(d => d.bundle.getCacheKeyInputs());
+async resolveEnabledDelegatesDependencies(): Promise<CacheKeyInputs> {
+  const coreInputs = await this.resolveCoreCapoDependencies();
+  const bundles = [...coreInputs.bundles];
 
-  return {
-    bundles: [...coreBundles, ...delegateBundles],
-    extra: { heliosVersion: VERSION }
-  };
+  const capoBundle = await this.capo.getBundle();
+  const capoBundleClass = capoBundle.constructor;
+
+  // Iterate delegateRoles for dgData controllers (filtered by featureFlags)
+  for (const [roleName, role] of Object.entries(this.capo.delegateRoles)) {
+    const { delegateType, delegateClass } = role;
+    if (['mintDgt', 'spendDgt', 'authority'].includes(delegateType)) continue;
+
+    if (delegateType === 'dgDataPolicy') {
+      if (!this.featureFlags?.[roleName]) continue;
+
+      const BundleClass = await delegateClass.scriptBundleClass();
+      const boundBundleClass = BundleClass.usingCapoBundleClass(capoBundleClass);
+      const bundle = new boundBundleClass();
+      bundles.push({
+        name: bundle.moduleName || roleName,
+        sourceHash: bundle.computeSourceHash(),
+        params: {},
+      });
+    }
+  }
+
+  return { bundles, extra: { featureFlags: this.featureFlags || {} } };
 }
 ```
+
+**Why this works**: Delegate source code does NOT depend on mph or charter data. The `delegateClass.scriptBundleClass()` returns the bundle class, which can be instantiated with just the capoBundle reference. `computeSourceHash()` only reads source content—no configuration needed.
 
 App snapshots inherit from `enabledDelegatesDeployed` and typically don't add new scripts.
 

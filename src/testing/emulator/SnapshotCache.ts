@@ -617,21 +617,32 @@ export class SnapshotCache {
             parent = await this.find(resolvedParentName, helper);
             if (!parent) {
                 // Parent not in cache, can't resolve this snapshot
+                console.log(`  [find:${snapshotName}] ❌ MISS: parent '${resolvedParentName}' not found`);
                 return null;
             }
             parentPath = parent.path || null;
             parentHash = parent.snapshotHash;
+            console.log(`  [find:${snapshotName}] parent '${resolvedParentName}' → hash=${parentHash?.slice(0, 12)}...`);
+        } else {
+            console.log(`  [find:${snapshotName}] genesis snapshot (no parent)`);
         }
 
         // Compute cache key BEFORE checking in-memory cache
         // Different seeds/configs produce different cache keys (REQT-1.2.10.3)
         let cacheKey: string;
+        let inputs: CacheKeyInputs;
         if (entry.resolveScriptDependencies) {
-            const inputs = await entry.resolveScriptDependencies(helper);
+            inputs = await entry.resolveScriptDependencies(helper);
             cacheKey = this.computeKey(parentHash, inputs);
+            // Log key inputs for debugging
+            const bundleNames = inputs.bundles.map(b => `${b.name}:${b.sourceHash?.slice(0, 8)}`).join(', ');
+            const extraKeys = inputs.extra ? Object.keys(inputs.extra).join(',') : '';
+            console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (bundles=[${bundleNames}], extra=[${extraKeys}])`);
         } else {
             // No resolver - use parent hash only (for simple snapshots)
-            cacheKey = this.computeKey(parentHash, { bundles: [] });
+            inputs = { bundles: [] };
+            cacheKey = this.computeKey(parentHash, inputs);
+            console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (no resolver, parent-only)`);
         }
 
         // Check in-memory cache with composite key (REQT-1.2.10.3)
@@ -639,16 +650,20 @@ export class SnapshotCache {
         const mapKey = `${snapshotName}:${cacheKey}`;
         const cached = this.loadedSnapshots.get(mapKey);
         if (cached) {
+            console.log(`  [find:${snapshotName}] ✅ HIT (in-memory)`);
             return cached;
         }
+        console.log(`  [find:${snapshotName}] not in memory, checking disk...`);
 
         // Construct hierarchical path
         const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath);
         const cachePath = this.getSnapshotFilePath(snapshotDir);
 
         if (!existsSync(cachePath)) {
+            console.log(`  [find:${snapshotName}] ❌ MISS: path not found: ${snapshotDir}`);
             return null;
         }
+        console.log(`  [find:${snapshotName}] found on disk: ${snapshotDir}`)
 
         try {
             // Touch directory if older than 1 day to keep it fresh for cleanup (REQT-1.2.7.1)
@@ -666,9 +681,13 @@ export class SnapshotCache {
             const thisSnapshot = deserializeSnapshot(serialized.snapshot);
 
             // Verify parent hash matches expected (REQT-1.2.9.3.2)
-            if (parent && serialized.parentHash && serialized.parentHash !== parent.snapshotHash) {
-                console.warn(`SnapshotCache: parent hash mismatch for '${snapshotName}': expected ${serialized.parentHash}, got ${parent.snapshotHash}`);
-                return null; // Cache invalid, trigger rebuild
+            if (parent && serialized.parentHash) {
+                console.log(`  [find:${snapshotName}] parentHash check: stored=${serialized.parentHash.slice(0, 12)}... vs parent.snapshotHash=${parent.snapshotHash.slice(0, 12)}...`);
+                if (serialized.parentHash !== parent.snapshotHash) {
+                    console.warn(`  [find:${snapshotName}] ❌ INVALID: parent hash mismatch - stored expects ${serialized.parentHash}, but parent has ${parent.snapshotHash}`);
+                    return null; // Cache invalid, trigger rebuild
+                }
+                console.log(`  [find:${snapshotName}] ✅ parentHash matches`);
             }
 
             // Chain loading: apply incremental blocks to parent state (REQT-1.2.10.1, 1.2.10.2)
@@ -711,13 +730,14 @@ export class SnapshotCache {
             const computedHash = thisSnapshot.blockHashes.length > 0
                 ? thisSnapshot.blockHashes[thisSnapshot.blockHashes.length - 1]
                 : "genesis";
+            console.log(`  [find:${snapshotName}] integrity check: computed=${computedHash.slice(0, 12)}... vs stored=${serialized.snapshotHash.slice(0, 12)}...`);
             if (computedHash !== serialized.snapshotHash) {
-                console.warn(`SnapshotCache: snapshot hash mismatch for '${snapshotName}': computed ${computedHash}, recorded ${serialized.snapshotHash}`);
+                console.warn(`  [find:${snapshotName}] ❌ INVALID: snapshot hash mismatch - computed ${computedHash}, recorded ${serialized.snapshotHash}`);
                 return null; // Corruption or implementation bug, trigger rebuild
             }
             const verifyMs = (performance.now() - verifyStart).toFixed(2);
 
-            console.log(`SnapshotCache: loaded '${thisSnapshot.name}' from ${cachePath} (integrity check: ${verifyMs}ms)`);
+            console.log(`  [find:${snapshotName}] ✅ LOADED from ${cachePath} (${verifyMs}ms)`);
 
             // Load and merge offchain data from parent chain (REQT-1.2.12.2/khqyf56m0g, REQT-1.2.12.4/0k6bnbbg95)
             let mergedOffchainData: Record<string, unknown> | undefined;
@@ -809,14 +829,36 @@ export class SnapshotCache {
         if (entry.resolveScriptDependencies) {
             cacheKeyInputs = await entry.resolveScriptDependencies(helper);
             cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
+            const bundleNames = cacheKeyInputs.bundles.map(b => `${b.name}:${b.sourceHash?.slice(0, 8)}`).join(', ');
+            console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, bundles=[${bundleNames}])`);
         } else {
             cacheKeyInputs = { bundles: [] };
             cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
+            console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, no resolver)`);
         }
 
         // Construct hierarchical path
         const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath);
         const cachePath = this.getSnapshotFilePath(snapshotDir);
+
+        // Check if we're overwriting an existing snapshot
+        if (existsSync(cachePath)) {
+            try {
+                const existing = JSON.parse(readFileSync(cachePath, "utf-8")) as SerializedCachedSnapshot;
+                console.log(`  [store:${snapshotName}] ⚠️ OVERWRITING existing snapshot!`);
+                console.log(`    old snapshotHash: ${existing.snapshotHash}`);
+                console.log(`    new snapshotHash: ${cachedSnapshot.snapshotHash}`);
+                console.log(`    old parentHash: ${existing.parentHash}`);
+                console.log(`    new parentHash: ${cachedSnapshot.parentHash}`);
+                if (existing.snapshotHash !== cachedSnapshot.snapshotHash) {
+                    console.log(`    ❌ snapshotHash CHANGED - children with old parentHash will be orphaned!`);
+                }
+            } catch (e) {
+                console.log(`  [store:${snapshotName}] ⚠️ OVERWRITING (couldn't read old): ${e}`);
+            }
+        } else {
+            console.log(`  [store:${snapshotName}] creating new snapshot at ${snapshotDir}`);
+        }
 
         // Ensure directory exists
         mkdirSync(snapshotDir, { recursive: true });
@@ -888,7 +930,7 @@ export class SnapshotCache {
 
         const totalBlocks = cachedSnapshot.snapshot.blocks.length;
         const storedBlocks = incrementalSnapshot.blocks.length;
-        console.log(`SnapshotCache: stored '${snapshotName}' (${storedBlocks}/${totalBlocks} blocks) -> ${cachePath}`);
+        console.log(`  [store:${snapshotName}] ✅ stored (${storedBlocks}/${totalBlocks} blocks, snapshotHash=${cachedSnapshot.snapshotHash.slice(0, 12)}...) -> ${snapshotDir.split('/').slice(-2).join('/')}/`);
     }
 
     /**
