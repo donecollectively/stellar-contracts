@@ -1934,10 +1934,20 @@ export abstract class Capo<
             })();
 
             if (previousOnchainScript) {
+                // Get actual effective config from the bundle (includes real rev from currentRev)
+                const actualNextConfig = {
+                    ...effectiveConfig,
+                    rev: delegate._bundle?.rev?.toString() ?? effectiveConfig.rev,
+                };
+                const serializedActualNextConfig = JSON.stringify(
+                    actualNextConfig,
+                    delegateLinkSerializer,
+                    4
+                );
                 console.warn(
                     `Delegate configuration for role '${role}' requires upgrade\n` +
                         `  Previous config: ${serializedCfg2}\n` +
-                        `  Next config: ${serializedCfg1}\n`
+                        `  Next config: ${serializedActualNextConfig}\n`
                 );
                 delegate._bundle!.previousOnchainScript = previousOnchainScript;
                 this.needsCoreDelegateUpdates = true;

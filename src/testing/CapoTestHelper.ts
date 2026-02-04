@@ -887,7 +887,7 @@ export abstract class CapoTestHelper<
                     // Store parsed config for subsequent operations
                     this.helperState!.parsedConfig = config;
                     this.state.parsedConfig = config;
-                    this.state.rawConfig = loadedRawConfig;
+                    this.state.config = loadedRawConfig;
                     await this.initStellarClass(config);
                 } else {
                     await this.initStellarClass();  // uses this.config default
@@ -905,6 +905,11 @@ export abstract class CapoTestHelper<
                 console.log(`  -- Using existing Capo (no previousHelper)`);
                 this.helperState!.bootstrappedStrella = this.strella;
                 this.helperState!.previousHelper = this as any;
+            }
+
+            // Ensure state.config is set for all non-genesis cache restore paths
+            if (loadedRawConfig && !this.state.config) {
+                this.state.config = loadedRawConfig;
             }
 
             if (actorName === "default") {
@@ -1005,8 +1010,8 @@ export abstract class CapoTestHelper<
                         this.helperState!.offchainData = {};
                     }
                     this.helperState!.offchainData[snapshotName] = offchainData;
-                } else if (this.state?.rawConfig) {
-                    // Store rawConfig in offchainData for non-genesis snapshots (REQT-3.5/vmq8qmv218)
+                } else if (this.state?.config) {
+                    // Store config in offchainData for non-genesis snapshots (REQT-3.5/vmq8qmv218)
                     // This enables cross-process Capo reconstruction from disk cache
                     const capoAddr = this.strella?.address?.toString();
                     const validatorHash = this.strella?.validatorHash!.toHex();
@@ -1015,7 +1020,7 @@ export abstract class CapoTestHelper<
                         : 0;
 
                     offchainData = {
-                        capoConfig: this.state.rawConfig,
+                        capoConfig: this.state.config,
                         // Diagnostics for debugging snapshot restore issues
                         _diag: {
                             capoAddr,
@@ -1103,6 +1108,11 @@ export abstract class CapoTestHelper<
             );
             console.log(`  [DEBUG restoreFrom] BEFORE: this.networkCtx.network.id=${(this.networkCtx.network as any).id}, newNet.id=${(newNet as any).id}`);
             console.log(`  [DEBUG restoreFrom] BEFORE: bootstrappedStrella?.setup?.network?.id=${(bootstrappedStrella as any)?.setup?.network?.id}`);
+            // Copy state from previousHelper if this is a different instance
+            if (this !== previousHelper) {
+                this.state.config = previousHelper.state.config;
+                this.state.parsedConfig = parsedConfig;
+            }
             // Actors are already in this.actors - just load the snapshot
             newNet.loadSnapshot(cached.snapshot);
             // Ensure helper's networkCtx points to the correct network
@@ -1144,6 +1154,7 @@ export abstract class CapoTestHelper<
             this.state.mintedCharterToken =
                 previousHelper.state.mintedCharterToken;
             this.state.parsedConfig = parsedConfig;
+            this.state.config = previousHelper.state.config;
 
             //@ts-expect-error
             previousHelper.actors = { [ACTORS_ALREADY_MOVED]: newNet.id };

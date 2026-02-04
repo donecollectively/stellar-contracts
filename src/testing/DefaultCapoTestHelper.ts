@@ -287,12 +287,9 @@ export class DefaultCapoTestHelper<
         } as MinimalCharterDataArgs;
 
         const tcx = await capo.mkTxnMintCharterToken(goodArgs);
-        const rawConfig =
-            (this.state.rawConfig =
-            this.state.config =
-                tcx.state.bootstrappedConfig);
+        const config = (this.state.config = tcx.state.bootstrappedConfig);
 
-        this.state.parsedConfig = parseCapoJSONConfig(rawConfig);
+        this.state.parsedConfig = parseCapoJSONConfig(config);
 
         expect(capo.network).toBe(this.network);
 
