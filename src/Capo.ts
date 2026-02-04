@@ -237,11 +237,9 @@ export abstract class Capo<
      * @remarks
      *
      * This is a flag that can be set to true to enable auto-setup for delegates in the Capo contract.
-     * It is currently false by default, meaning that the Capo contract will not automatically setup any delegates.
-     *
-     * We'll change that to true real soon now.
+     * When true (the default), the Capo contract will automatically setup delegates during bootstrap.
      */
-    autoSetup = false;
+    autoSetup = true;
     isChartered: boolean = false;
     dataBridgeClass = CapoDataBridge;
     needsCoreDelegateUpdates = false;

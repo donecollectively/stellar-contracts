@@ -15,6 +15,7 @@ import type { CapoDatum$Ergo$CharterData } from "../src/helios/scriptBundling/Ca
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     static useExtraModel = false;
+    autoSetup = false;
 
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
         return super.getMintDelegate() as any;
@@ -32,16 +33,18 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     }
 
     /**
-     * Finds and instantiates the controller for S3 Driver records
+     * Finds and instantiates the controller for testData records
      */
     async getTestDataController(
-        charterData?: CapoDatum$Ergo$CharterData
+        charterData?: CapoDatum$Ergo$CharterData,
+        { onchain = true }: { onchain?: boolean } = {}
     ): Promise<DelegatedDatumTester> {
         if (!charterData) {
             charterData = await this.findCharterData();
         }
         return this.getDgDataController("testData", {
             charterData: charterData as CapoDatum$Ergo$CharterData,
+            onchain,
         }) as Promise<DelegatedDatumTester>;
     }
 
