@@ -722,21 +722,6 @@ export abstract class CapoTestHelper<
         // Decorator calls bootstrapWithActors() and handles caching
     }
 
-    /**
-     * Mints the charter token and initializes the Capo.
-     * Called by snapToCapoInitialized via @hasNamedSnapshot decorator.
-     * @internal
-     */
-    async capoInitialized(
-        args?: Partial<MinimalCharterDataArgs>,
-        options?: SubmitOptions,
-    ): Promise<void> {
-        await this.mintCharterToken(args, options);
-        console.log(
-            "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter",
-        );
-        // tick happens in decorator wrapper after this returns
-    }
 
     /**
      * Decorated wrapper for capoInitialized.
@@ -757,6 +742,21 @@ export abstract class CapoTestHelper<
         options?: SubmitOptions,
     ): Promise<void> {
         // Decorator calls capoInitialized() and handles caching
+    }
+    /**
+     * Mints the charter token and initializes the Capo.
+     * Called by snapToCapoInitialized via @hasNamedSnapshot decorator.
+     * @internal
+     */
+    async capoInitialized(
+        args?: Partial<MinimalCharterDataArgs>,
+        options?: SubmitOptions,
+    ): Promise<void> {
+        await this.mintCharterToken(args, options);
+        console.log(
+            "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter",
+        );
+        // tick happens in decorator wrapper after this returns
     }
 
     /**
@@ -922,7 +922,7 @@ export abstract class CapoTestHelper<
             } | undefined;
             if (storedDiag) {
                 const currentCapoAddr = this.strella?.address?.toString();
-                const currentValidatorHash = this.strella?.validatorHash?.hex;
+                const currentValidatorHash = this.strella?.validatorHash!.toHex();
                 const currentUtxoCount = currentCapoAddr
                     ? (this.network as any)._addressUtxos[currentCapoAddr]?.length || 0
                     : 0;
@@ -1009,7 +1009,7 @@ export abstract class CapoTestHelper<
                     // Store rawConfig in offchainData for non-genesis snapshots (REQT-3.5/vmq8qmv218)
                     // This enables cross-process Capo reconstruction from disk cache
                     const capoAddr = this.strella?.address?.toString();
-                    const validatorHash = this.strella?.validatorHash?.hex;
+                    const validatorHash = this.strella?.validatorHash!.toHex();
                     const utxoCountAtCapoAddr = capoAddr
                         ? (this.network as any)._addressUtxos[capoAddr]?.length || 0
                         : 0;

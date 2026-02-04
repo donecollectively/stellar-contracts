@@ -21,12 +21,16 @@ For dApp teams who already write basic Typescript, this guide shows how to test 
 ## Helper conventions you should mirror (from production helpers)
 - **Snapshot decorator pattern:** annotate snapshot entrypoints with `@CapoTestHelper.hasNamedSnapshot("snapName", { actor, parentSnapName, resolveScriptDependencies? })`. The decorated method should be a thin wrapper that throws and references the builder; snapshot reuse is handled via helper state. See `reference/essential-stellar-testing-snapshots.md` for full details.
 - **Snapshot naming:** `snapToX` for entrypoints that may be reused; corresponding builders are imperative verbs like `proposeX`, `adoptX`, `changingX`, etc. Chain snapshots in order of dependency (e.g., `snapToFirstOrderPending` calls `snapToFirstRegisteredCustomer`).
-- **Snapshot builder method naming**: the builder method MUST ALWAYS be based on the snapToFoo method name, without `snapTo` prefix.  For example, the builder method for `snapToFirstOrderPending` MUST be `proposeFirstOrder()` or it WILL NOT WORK.  
  - **Snapshot method body**: The body of the snapToFoo method will never be called.  Always implement it with a helpful error message and an unreachable call to the method that actually gets called automatically by the decorator.      
+- **Snapshot builder method naming**: the builder method MUST ALWAYS be based on the snapToFoo method name, without `snapTo` prefix.  For example, the builder method for `snapToFirstOrderPending` MUST be `proposeFirstOrder()` or it WILL NOT WORK.  Place the builder method immediately after the snapToFoo method.
     ```typescript
+    @CapoTestHelper.hasNamedSnapshot("fooIsReady", { actor, "someParentSnapName", resolveScriptDependencies? })
     async snapToFoo() {
         throw new Error("never called; see foo()");
         return this.firstMember();
+    }
+    async foo() {
+        // ... transaction building & submission
     }
     ```
 
