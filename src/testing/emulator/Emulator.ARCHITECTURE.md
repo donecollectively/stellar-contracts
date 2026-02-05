@@ -207,9 +207,11 @@ This allows the shared Capo to work with each test's fresh emulator.
 - Define `resolveScriptDependencies()` for cache key computation
 - Recompute cache keys on demand via `getSnapshotCacheKey()`
 - Own Capo instance
+- **Single chokepoint snapshot resolution** via `ensureSnapshotCached()` + `loadCachedSnapshot()` (ARCH-d52nrfd96z)
 
 **Concerns**:
 - Owns **namedRecords**
+- Owns **Single chokepoint snapshot resolution** (ARCH-d52nrfd96z) - recursive parent resolution via stored `snapMethod` references
 - Depends on **Snapshot chain** via SnapshotCache
 - Depends on **Capo** for bundle hash resolution
 - Depends on **helperState.snapCache** for parent block hashes (retrieved via `snapshotCache.find(parent)`)
