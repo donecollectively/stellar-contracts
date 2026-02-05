@@ -25,7 +25,8 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(Pizz
     // The decorator replaces the method body entirely. Include throw + return for documentation.
     // parentSnapName declares the parent - do NOT call snapTo<parent>() in the builder.
 
-    @CapoTestHelper.hasNamedSnapshot("firstRegisteredCustomer", {
+    // Snapshot name "firstRegisteredCustomer" derived from method name
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "wally",
         parentSnapName: "bootstrapped",
     })
@@ -54,7 +55,7 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(Pizz
         );
     }
 
-    @CapoTestHelper.hasNamedSnapshot("firstPendingOrder", {
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "firstRegisteredCustomer",
     })
@@ -87,7 +88,7 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(Pizz
         );
     }
 
-    @CapoTestHelper.hasNamedSnapshot("firstOrderBaked", {
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "baker",
         parentSnapName: "firstPendingOrder",
     })

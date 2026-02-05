@@ -13,17 +13,17 @@ The snapshot system provides disk-cached blockchain states that dramatically spe
 
 ## The `@hasNamedSnapshot` Decorator
 
-Declare snapshots using the decorator with explicit options:
+Declare snapshots using the decorator. The snapshot name is **derived from the method name** (`snapToX` → `"x"`):
 
 ```typescript
 import { CapoTestHelper } from "@donecollectively/stellar-contracts/testing";
 
-@CapoTestHelper.hasNamedSnapshot("firstRecordProposed", {
+@CapoTestHelper.hasNamedSnapshot({
     actor: "tina",                        // Required: actor after snapshot loads
     parentSnapName: "bootstrapped",       // Required: parent snapshot name
     resolveScriptDependencies?: async (helper) => {...}  // Optional: custom cache key
 })
-async snapToFirstRecordProposed() {
+async snapToFirstRecordProposed() {  // → snapshot name "firstRecordProposed"
     throw new Error("never called; see firstRecordProposed()");
     return this.firstRecordProposed();
 }
@@ -43,12 +43,21 @@ async snapToFirstRecordProposed() {
 
 The decorator **requires** a specific naming pattern:
 
-1. **Entry point**: `snapToX()` - decorated method that tests call
-2. **Builder**: `X()` - method without `snapTo` prefix that builds the snapshot
+1. **Entry point**: `snapTo<SnapshotName>()` - decorated method that tests call
+2. **Builder**: `<snapshotName>()` - the snapshot name IS the builder function name
+3. **Snapshot name**: `~~snapTo~~<snapshotName>` (entry point with `snapTo` prefix removed, first letter lowercased)
+
+**Example**: For snapshot `"firstOrder"`:
+- Entry point: `snapToFirstOrder()`
+- Builder: `firstOrder()`
+- Snapshot name: `"firstOrder"`
+
+**There is no way to specify a different snapshot name.** The builder function name IS the snapshot name.
 
 ```typescript
 // Entry point - the decorator replaces this method body entirely
-@CapoTestHelper.hasNamedSnapshot("firstOrder", {
+// Snapshot name "firstOrder" derived from method name
+@CapoTestHelper.hasNamedSnapshot({
     actor: "tina",
     parentSnapName: "bootstrapped",
 })
@@ -103,7 +112,7 @@ Cache keys determine when snapshots need rebuilding. They're computed from:
 For app snapshots inheriting from `"bootstrapped"`, the default resolver includes all enabled delegate bundles. Override with `resolveScriptDependencies` for custom logic:
 
 ```typescript
-@CapoTestHelper.hasNamedSnapshot("customSnapshot", {
+@CapoTestHelper.hasNamedSnapshot({
     actor: "tina",
     parentSnapName: "bootstrapped",
     resolveScriptDependencies: async (helper) => {
@@ -194,8 +203,8 @@ export class YourCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(YourC
         return this.captureRecordId({ recordName: "firstRecord", submit: true }, tcx);
     }
 
-    // Snapshot entry point
-    @CapoTestHelper.hasNamedSnapshot("firstRecordCreated", {
+    // Snapshot entry point - name "firstRecordCreated" derived from method
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "bootstrapped",
     })
@@ -228,11 +237,11 @@ export const { describe, it, fit, xit } = YourCapoTestHelper.createTestContext()
 Snapshots can depend on other custom snapshots via `parentSnapName`:
 
 ```typescript
-@CapoTestHelper.hasNamedSnapshot("firstOrderShipped", {
+@CapoTestHelper.hasNamedSnapshot({
     actor: "tracy",
     parentSnapName: "firstOrderCreated",  // Your custom snapshot as parent
 })
-async snapToFirstOrderShipped() {
+async snapToFirstOrderShipped() {  // → snapshot name "firstOrderShipped"
     throw new Error("never called; see firstOrderShipped()");
     return this.firstOrderShipped();
 }
@@ -300,5 +309,29 @@ await h.proposeFirstRecord();  // Non-snapshot method, uses mock
 If you see `SnapshotCache: parent 'X' not found for 'Y'`, verify that:
 
 1. **`parentSnapName` is correct**: Check for typos in the parent snapshot name
-2. **Parent snapshot exists**: The parent must be defined with its own `@hasNamedSnapshot` decorator (or be a built-in like `"bootstrapped"`)
-3. **Correct parent for `autoSetup = false`**: If your Capo has `autoSetup = false`, use `"capoInitialized"` instead of `"bootstrapped"` as the parent
+2. **Parent method name matches**: The parent's snapshot name is derived from its method name. If `parentSnapName: "firstMember"`, the parent must have method `snapToFirstMember()` (not `snapToFirstMemberRegistered()` or similar)
+3. **Parent snapshot exists**: The parent must be defined with its own `@hasNamedSnapshot` decorator (or be a built-in like `"bootstrapped"`)
+4. **Correct parent for `autoSetup = false`**: If your Capo has `autoSetup = false`, use `"capoInitialized"` instead of `"bootstrapped"` as the parent
+
+### Method name doesn't match expected snapshot name
+
+**Common mistake**: Naming the entry point `snapToSomethingLongAndDescriptive()` but expecting snapshot name `"something"`.
+
+Remember: **snapshot name = builder function name = ~~snapTo~~entryPointName**
+
+```typescript
+// WRONG - builder is "proposeFirstDomainAgreement", not "proposeFirstAgreement"
+@CapoTestHelper.hasNamedSnapshot({ actor: "tina", parentSnapName: "bootstrapped" })
+async snapToProposeFirstDomainAgreement() { ... }
+async proposeFirstDomainAgreement() { ... }  // ← snapshot name is "proposeFirstDomainAgreement"
+
+// If parent references "proposeFirstAgreement", it won't be found!
+@CapoTestHelper.hasNamedSnapshot({
+    actor: "tracy",
+    parentSnapName: "proposeFirstAgreement"  // ❌ No such snapshot - builder is "proposeFirstDomainAgreement"
+})
+```
+
+**Fix**: The builder function name IS the snapshot name. Either:
+- Rename to `snapToProposeFirstAgreement()` + `proposeFirstAgreement()` if you want snapshot `"proposeFirstAgreement"`
+- Or use `parentSnapName: "proposeFirstDomainAgreement"` to reference the actual name

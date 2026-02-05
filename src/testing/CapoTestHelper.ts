@@ -481,18 +481,30 @@ export abstract class CapoTestHelper<
     }
 
     /**
+     * Static registry of snapshot metadata, populated at class definition time.
+     * Maps snapshot name → registration metadata.
+     * @internal
+     */
+    static _snapshotRegistrations: Map<string, {
+        parentSnapName: ParentSnapName;
+        resolveScriptDependencies?: ScriptDependencyResolver;
+        computeDirLabel?: DirLabelResolver;
+        actor: string;
+        internal?: boolean;
+    }> = new Map();
+
+    /**
      * A decorator for test-helper functions that generate named snapshots.
-     * @param snapshotName - The name of the snapshot
-     * @param options - Either an actor name (string) or an options object with actor and optional resolveScriptDependencies
+     * Snapshot name is derived from method name: snapToFoo → "foo"
+     * @param options - Options object with actor, parentSnapName, and optional resolveScriptDependencies
      */
     static hasNamedSnapshot(
-        snapshotName: string,
         options: SnapshotDecoratorOptions,
     ) {
         const { actor: actorName, parentSnapName, internal, resolveScriptDependencies, computeDirLabel } = options;
         if (!parentSnapName) {
             throw new Error(
-                `hasNamedSnapshot('${snapshotName}'): parentSnapName is required. ` +
+                `hasNamedSnapshot(): parentSnapName is required. ` +
                 `Use 'bootstrapped' for typical app snapshots, or 'genesis' for root snapshots.`
             );
         }
@@ -505,6 +517,7 @@ export abstract class CapoTestHelper<
             const originalMethod = descriptor.value;
             descriptor.value = SnapWrap;
 
+            // Derive snapshot name from method name: snapToFoo → "foo"
             const [_, WithCapMethodName] =
                 propertyKey.match(/^snapTo(.*)/) || [];
             if (!WithCapMethodName) {
@@ -512,23 +525,38 @@ export abstract class CapoTestHelper<
                     `hasNamedSnapshot(): ${propertyKey}(): expected method name to start with 'snapTo'`,
                 );
             }
-            const methodName =
+            const snapshotName =
                 WithCapMethodName[0].toLowerCase() + WithCapMethodName.slice(1);
-            const generateSnapshotFunc = target[methodName];
+            const generateSnapshotFunc = target[snapshotName];
             if (!generateSnapshotFunc) {
                 throw new Error(
-                    `hasNamedSnapshot(): ${propertyKey}: expected method ${methodName} to exist`,
+                    `hasNamedSnapshot(): ${propertyKey}: expected builder method '${snapshotName}' to exist`,
                 );
             }
 
+            // Register at class definition time (not method invocation time)
+            // Use the class constructor's registry (inheritance-aware)
+            const ctor = target.constructor;
+            if (!ctor.hasOwnProperty('_snapshotRegistrations')) {
+                // Create own registry for this class (don't mutate parent's)
+                ctor._snapshotRegistrations = new Map(ctor._snapshotRegistrations || []);
+            }
+            ctor._snapshotRegistrations.set(snapshotName, {
+                parentSnapName,
+                resolveScriptDependencies,
+                computeDirLabel,
+                actor: actorName,
+                internal,
+            });
+
             console.log(
-                "hasNamedSnapshot(): ",
-                propertyKey,
-                " -> ",
-                methodName,
+                `hasNamedSnapshot(): ${propertyKey} → "${snapshotName}" (parent: "${parentSnapName}")`,
             );
 
             async function SnapWrap(this: AnyCapoTestHelper, ...args: any[]) {
+                // Ensure all class-level registrations are copied to snapshotCache
+                this.ensureSnapshotRegistrations();
+
                 // For genesis (root) snapshots, skip bootstrap - we ARE the root
                 if (parentSnapName === "genesis") {
                     this.ensureHelperState();
@@ -539,14 +567,6 @@ export abstract class CapoTestHelper<
                 } else {
                     await this.reusableBootstrap();
                 }
-
-                // Register snapshot with the cache
-                // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym) - no binding needed
-                this.snapshotCache.register(snapshotName, {
-                    parentSnapName,
-                    resolveScriptDependencies,
-                    computeDirLabel,
-                });
 
                 return this.findOrCreateSnapshot(
                     snapshotName,
@@ -575,6 +595,36 @@ export abstract class CapoTestHelper<
             }
             return descriptor;
         };
+    }
+
+    /**
+     * Copies all snapshot registrations from the class hierarchy to the snapshotCache.
+     * Called once per helper instance to ensure all metadata is available.
+     * @internal
+     */
+    private _registrationsCopied = false;
+    ensureSnapshotRegistrations(): void {
+        if (this._registrationsCopied) return;
+        this._registrationsCopied = true;
+
+        // Walk up the prototype chain to collect all registrations
+        let ctor = this.constructor as any;
+        while (ctor) {
+            const registrations = ctor._snapshotRegistrations as Map<string, any> | undefined;
+            if (registrations) {
+                for (const [snapshotName, meta] of registrations) {
+                    // Only register if not already in snapshotCache
+                    if (!this.snapshotCache["registry"].has(snapshotName)) {
+                        this.snapshotCache.register(snapshotName, {
+                            parentSnapName: meta.parentSnapName,
+                            resolveScriptDependencies: meta.resolveScriptDependencies,
+                            computeDirLabel: meta.computeDirLabel,
+                        });
+                    }
+                }
+            }
+            ctor = Object.getPrototypeOf(ctor);
+        }
     }
 
     /**
@@ -702,7 +752,7 @@ export abstract class CapoTestHelper<
      * Uses @hasNamedSnapshot with parentSnapName: "genesis" for root snapshot.
      * @public
      */
-    @CapoTestHelper.hasNamedSnapshot(SNAP_ACTORS, {
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "default",
         parentSnapName: "genesis",
         // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
@@ -735,7 +785,7 @@ export abstract class CapoTestHelper<
      * Uses @hasNamedSnapshot with internal: true since this is part of bootstrap() flow.
      * @public
      */
-    @CapoTestHelper.hasNamedSnapshot(SNAP_CAPO_INIT, {
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "default",
         parentSnapName: SNAP_ACTORS,
         internal: true, // Part of bootstrap flow - don't call reusableBootstrap()
@@ -787,7 +837,7 @@ export abstract class CapoTestHelper<
      * Uses @hasNamedSnapshot with internal: true since this is part of bootstrap() flow.
      * @public
      */
-    @CapoTestHelper.hasNamedSnapshot(SNAP_DELEGATES, {
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "default",
         parentSnapName: SNAP_CAPO_INIT,
         internal: true, // Part of bootstrap flow - don't call reusableBootstrap()
@@ -971,6 +1021,19 @@ export abstract class CapoTestHelper<
             return this.strella;
         }
         console.log(`  📦 cache miss '${snapshotName}' - building...`);
+
+        // Load parent snapshot state before building (ARCH-rmegyaj58k)
+        // For app snapshots, reusableBootstrap() has already configured the Capo.
+        // We just need network state + namedRecords to build upon.
+        const parentSnapName = entry?.parentSnapName;
+        if (parentSnapName && parentSnapName !== "genesis") {
+            const parentCached = await this.snapshotCache.find(parentSnapName, this);
+            if (parentCached) {
+                console.log(`  📦 loading parent '${parentSnapName}' before building '${snapshotName}'...`);
+                this.network.loadSnapshot(parentCached.snapshot);
+                Object.assign(this.helperState!.namedRecords, parentCached.namedRecords);
+            }
+        }
 
         // Build the snapshot
         const buildStart = performance.now();
@@ -1323,9 +1386,10 @@ export abstract class CapoTestHelper<
         args?: Partial<MinimalCharterDataArgs>,
         submitOptions?: SubmitOptions,
     ): Promise<
-        hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> &
+        | (hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> &
             hasBootstrappedCapoConfig &
-            hasAddlTxns<any>
+            hasAddlTxns<any>)
+        | undefined  // Returns undefined when charter already minted (cache restore path)
     >;
 
     /**

@@ -19,12 +19,12 @@ For dApp teams who already write basic Typescript, this guide shows how to test 
 - Use `vi.spyOn` to intercept delegate/controller methods for negative-path tests (see examples in boilerplate/).
 
 ## Helper conventions you should mirror (from production helpers)
-- **Snapshot decorator pattern:** annotate snapshot entrypoints with `@CapoTestHelper.hasNamedSnapshot("snapName", { actor, parentSnapName, ... })`. The decorated method should be a thin wrapper that throws and references the builder; snapshot reuse is handled via helper state. **Required reading**: see `reference/essential-stellar-testing-snapshots.md` for decorator options (especially required `parentSnapName`) and cache key behavior.
-- **Snapshot naming:** `snapToX` for entrypoints that may be reused; corresponding builders are imperative verbs like `proposeX`, `adoptX`, `changingX`, etc. Chain snapshots via `parentSnapName` (e.g., `snapToFirstOrderPending` has `parentSnapName: "firstRegisteredCustomer"`).
-- **Snapshot builder method naming**: the builder method MUST match the `snapToX` method name with `snapTo` prefix removed and first letter lowercased. For example, `snapToFirstOrderPending` → `firstOrderPending()`. The decorator automatically calls the builder.
+- **Snapshot decorator pattern:** annotate snapshot entrypoints with `@CapoTestHelper.hasNamedSnapshot({ actor, parentSnapName, ... })`. The snapshot name is derived from the method name (`snapToFoo` → `"foo"`). The decorated method should be a thin wrapper that throws and references the builder; snapshot reuse is handled via helper state. **Required reading**: see `reference/essential-stellar-testing-snapshots.md` for decorator options (especially required `parentSnapName`) and cache key behavior.
+- **Snapshot naming:** The snapshot name IS the builder function name: `~~snapTo~~<snapshotName>`. For `snapToFirstOrder`, the snapshot name is `"firstOrder"` and the builder is `firstOrder()`.
+- **Snapshot builder method naming**: the builder method name IS the snapshot name. `snapToFirstOrderPending` requires builder `firstOrderPending()`, and the snapshot name is `"firstOrderPending"`. Chain via `parentSnapName` using the builder name (e.g., `parentSnapName: "firstRegisteredCustomer"`).
  - **Snapshot method body**: The body of the `snapToX` method is never executed (the decorator replaces it). Include a throw + unreachable return for documentation:
     ```typescript
-    @CapoTestHelper.hasNamedSnapshot("fooIsReady", { actor: "tina", parentSnapName: "bootstrapped" })
+    @CapoTestHelper.hasNamedSnapshot({ actor: "tina", parentSnapName: "bootstrapped" })
     async snapToFooIsReady() {
         throw new Error("never called; see fooIsReady()");
         return this.fooIsReady();
@@ -86,7 +86,8 @@ export class YourCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(YourC
     async proposeFirstRecord() { /* ... */ }
 
     // Snapshot entry point - decorator replaces method body entirely
-    @CapoTestHelper.hasNamedSnapshot("firstRecordProposed", {
+    // Snapshot name "firstRecordProposed" derived from method name
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "bootstrapped",  // or "enabledDelegatesDeployed", or a custom parent
     })

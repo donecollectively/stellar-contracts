@@ -271,7 +271,7 @@ This allows the shared Capo to work with each test's fresh emulator.
 
 **Signature**:
 ```typescript
-@hasNamedSnapshot("snapshotName", {
+@hasNamedSnapshot({  // snapshot name derived from method: snapToX → "x"
   actor: "actorName",
   parentSnapName: "parentSnapshotName",
   resolveScriptDependencies: (helper) => CacheKeyInputs
@@ -328,7 +328,9 @@ type CacheKeyInputs = {
 4. Call `resolveScriptDependencies(helper)` → cache key inputs
 5. Compute cache key: `hash(parent.snapshotHash + inputs)`
 6. Build cache path: `parent.path + "{name}-{cacheKey}/"`
-7. Check cache → hit: load incremental; miss: run builder, store
+7. Check cache:
+   - **hit**: load snapshot, apply incremental blocks to parent state
+   - **miss**: load parent snapshot into emulator (see ARCH-rmegyaj58k), run builder, store
 
 See `snapshot-resolution.md` for detailed recursive walk-through.
 
@@ -726,16 +728,16 @@ When no cache exists anywhere, build everything from scratch. Each layer uses `@
    - `initialize()` calls `snapToBootstrapWithActors()`
    - `bootstrap()` then continues with Capo-specific layers (Layers 2-3)
 
-**Layer 1: `snapToBootstrapWithActors()`** (via `initialize()`) → `@hasNamedSnapshot("bootstrapWithActors", {parentSnapName: "genesis"})`
+**Layer 1: `snapToBootstrapWithActors()`** (via `initialize()`) → `@hasNamedSnapshot({parentSnapName: "genesis"})`
 - `findOrCreateSnapshot()` checks cache, runs `bootstrapWithActors()` builder on miss
 - **Pre-selects seedUtxo** and stores in `offchainData.targetSeedUtxo` (ARCH-4adwbk7ajp)
 
-**Layer 2: `snapToCapoInitialized()`** → `@hasNamedSnapshot("capoInitialized", {parentSnapName: "bootstrapWithActors"})`
+**Layer 2: `snapToCapoInitialized()`** → `@hasNamedSnapshot({parentSnapName: "bootstrapWithActors"})`
 - `findOrCreateSnapshot()` checks cache, runs `capoInitialized()` builder on miss
 - Mints charter using **pre-selected seedUtxo**
 - Stores `capoConfig` in `offchainData` for later reconstruction (ARCH-psqv6y39h5)
 
-**Layer 3: `snapToEnabledDelegatesDeployed()`** → `@hasNamedSnapshot("enabledDelegatesDeployed", {parentSnapName: "capoInitialized"})`
+**Layer 3: `snapToEnabledDelegatesDeployed()`** → `@hasNamedSnapshot({parentSnapName: "capoInitialized"})`
 - `findOrCreateSnapshot()` checks cache, runs `enabledDelegatesDeployed()` builder on miss (deploys delegates)
 
 ```
@@ -917,6 +919,74 @@ Efficient loading when parent snapshots are already in process memory from prior
 ```
 
 **Instance lifetime**: The `loadedSnapshots` Map persists for the SnapshotCache instance lifetime. Keyed by `{name}:{cacheKey}`, so different seeds/configs produce different entries. Within tests sharing the same helper instance, parent snapshots loaded by earlier operations are reused only if their cache key matches.
+
+### Workflow: Build App Snapshot with Cached Parent (ARCH-rmegyaj58k)
+
+When building a NEW app snapshot where the parent exists in cache but the child does not. This differs from bootstrap flow (where layers build sequentially) and from disk chain load (where child already exists).
+
+**Scenario**: Test defines custom snapshots `firstMember` → `proposeFirstAgreement`. On first run of `snapToProposeFirstAgreement()`:
+- `reusableBootstrap()` loads Capo at `enabledDelegatesDeployed` level
+- Parent `firstMember` may exist in cache (from prior test)
+- Child `proposeFirstAgreement` does not exist yet
+
+**Flow**:
+
+1. **Test Suite** calls decorated method `snapToProposeFirstAgreement()`
+2. **CapoTestHelper** `findOrCreateSnapshot()` checks cache for `"proposeFirstAgreement"` → **miss**
+3. **Read parent from decorator options**: `parentSnapName: "firstMember"`
+4. **Load parent snapshot** into emulator (if cached):
+   - `snapshotCache.find("firstMember")` → returns cached parent
+   - `network.loadSnapshot(parentCached.snapshot)` → emulator now has parent state
+   - Merge `parentCached.namedRecords` into `helperState.namedRecords`
+   - Restore `offchainData` from parent (for Capo config if needed)
+   - Set actor per decorator options
+5. **Run builder**: `contentBuilder()` executes with parent state loaded
+6. **Capture snapshot**: `network.snapshot("proposeFirstAgreement")`
+7. **Store**: `snapshotCache.store()` with incremental blocks since parent
+
+```
+[Test] → snapToProposeFirstAgreement()
+    ↓
+[findOrCreateSnapshot("proposeFirstAgreement")] → cache miss
+    ↓
+[Read decorator] → parent: "firstMember"
+    ↓
+[snapshotCache.find("firstMember")] → cache hit
+    ↓
+[network.loadSnapshot(parent)] → emulator has parent state
+    ↓
+[Merge namedRecords, restore offchainData, set actor]
+    ↓
+[contentBuilder()] → builds on parent state
+    ↓
+[network.snapshot()] → capture new state
+    ↓
+[snapshotCache.store()] → persist with incremental blocks
+```
+
+**Key distinction from other workflows**:
+- **Bootstrap flow** (ARCH-w3xvf0hm5w): Layers build in sequence during `bootstrap()`, so parent state is naturally present
+- **Disk chain load** (ARCH-kqc3jng98y): Child EXISTS on disk, loads incrementally from parent
+- **This workflow**: Child does NOT exist, parent state must be explicitly loaded before builder runs
+
+**Parent not cached case**: If parent is also missing, recursive resolution triggers parent's builder first (ensureSnapshot pattern from Resolution Flow step 3).
+
+**Implementation Note**: This is minimal compared to cache HIT path because `reusableBootstrap()` has already configured the Capo. We only need network state + namedRecords to build upon:
+
+```typescript
+// In findOrCreateSnapshot(), on cache miss before contentBuilder():
+const parentSnapName = entry?.parentSnapName;
+if (parentSnapName && parentSnapName !== "genesis") {
+    const resolvedParentName = resolveSnapshotAlias(parentSnapName);
+    const parentCached = await this.snapshotCache.find(resolvedParentName, this);
+    if (parentCached) {
+        this.network.loadSnapshot(parentCached.snapshot);
+        Object.assign(this.helperState!.namedRecords, parentCached.namedRecords);
+    }
+}
+```
+
+Full offchainData/capoConfig restoration is unnecessary—that's handled by the bootstrap flow.
 
 ### Workflow: Cache Invalidation
 
