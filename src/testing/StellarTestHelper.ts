@@ -268,17 +268,19 @@ export abstract class StellarTestHelper<
     }
 
     /**
+     * Adjusts network params for test environment flexibility.
+     * Implements REQT/6rdjgebzyx (Network Parameter Fixups).
      * @public
      */
     fixupParams(preProdParams: NetworkParams): NetworkParams {
         //@ts-expect-error on our synthetic property
         if (preProdParams.isFixedUp) return preProdParams;
 
+        // REQT/pejg3twvpv (Increased maxTxSize)
         const origMaxTxSize = preProdParams.maxTxSize;
         //@ts-expect-error on our synthetic property
         preProdParams.origMaxTxSize = origMaxTxSize;
         const maxTxSize = Math.floor(origMaxTxSize * 6.5);
-        //        const maxTxSize = Math.floor(origMaxTxSize * 5.0);
         console.log(
             "test env: 🔧🔧🔧 fixup max tx size",
             origMaxTxSize,
@@ -287,10 +289,10 @@ export abstract class StellarTestHelper<
         );
         preProdParams.maxTxSize = maxTxSize;
 
+        // REQT/qq84z25jk7 (Increased maxTxExMem)
         const origMaxMem = preProdParams.maxTxExMem;
         //@ts-expect-error on our synthetic property
         preProdParams.origMaxTxExMem = origMaxMem;
-
         const maxMem = Math.floor(origMaxMem * 9);
         console.log(
             "test env: 🔧🔧🔧 fixup max memory",
@@ -300,10 +302,10 @@ export abstract class StellarTestHelper<
         );
         preProdParams.maxTxExMem = maxMem;
 
+        // REQT/3286vdzwyk (Increased maxTxExCpu)
         const origMaxCpu = preProdParams.maxTxExCpu;
         //@ts-expect-error on our synthetic property
         preProdParams.origMaxTxExCpu = origMaxCpu;
-
         const maxCpu = Math.floor(origMaxCpu * 3.4);
         console.log(
             "test env: 🔧🔧🔧 fixup max cpu",
@@ -313,10 +315,10 @@ export abstract class StellarTestHelper<
         );
         preProdParams.maxTxExCpu = maxCpu;
 
+        // REQT/8ahvzanppd (Decreased refScriptsFeePerByte)
         const origRefScriptsFeePerByte = preProdParams.refScriptsFeePerByte;
         //@ts-expect-error on our synthetic property
         preProdParams.origRefScriptsFeePerByte = origRefScriptsFeePerByte;
-
         const refScriptsFeePerByte = Math.floor(origRefScriptsFeePerByte / 4);
         console.log(
             "test env: 🔧🔧🔧 fixup refScripts fee per byte",

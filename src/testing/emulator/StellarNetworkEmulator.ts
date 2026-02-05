@@ -61,6 +61,7 @@ import { expectDefined } from "@helios-lang/type-utils";
 /**
  * This wallet only has a single private/public key, which isn't rotated.
  * Staking is not yet supported.
+ * Implements REQT/2tgwpmrkxh (Wallet Implementation).
  * @public
  */
 export class SimpleWallet_stellar implements Wallet {
@@ -85,6 +86,7 @@ export class SimpleWallet_stellar implements Wallet {
             networkCtx
         );
     }
+    // REQT/fppjhaq32f (Derive spending key from root private key)
     static fromRootPrivateKey(
         key: RootPrivateKey,
         networkCtx: NetworkContext
@@ -96,6 +98,7 @@ export class SimpleWallet_stellar implements Wallet {
         );
     }
 
+    // REQT/zhas8edv7d (Support optional staking key derivation)
     constructor(
         networkCtx: NetworkContext,
         spendingPrivateKey: Bip32PrivateKey,
@@ -173,6 +176,7 @@ export class SimpleWallet_stellar implements Wallet {
         });
     }
 
+    // REQT/2a0ffb3cd3 (Query UTxOs from associated network context)
     get utxos(): Promise<TxInput<PubKeyHash>[]> {
         return new Promise((resolve, _) => {
             resolve(this.cardanoClient.getUtxos(this.address) as any);
@@ -225,6 +229,7 @@ export class SimpleWallet_stellar implements Wallet {
 
     /**
      * Simply assumed the tx needs to by signed by this wallet without checking.
+     * REQT/9cvn4evfpn (Sign transactions with spending private key)
      */
     async signTx(tx: Tx): Promise<Signature[]> {
         return [this.spendingPrivateKey.sign(tx.body.hash())];
@@ -259,31 +264,38 @@ let i = 1;
  * A simple emulated Network.
  * This can be used to do integration tests of whole dApps.
  * Staking is not yet supported.
+ * Implements REQT/7n8ws6gabc (Network State Management), REQT/egfb0jds34 (Snapshot Support),
+ * REQT/qr6r27cg3q (Transaction Validation), REQT/3286vdzwyk (Block Production).
  * @public
  */
 export class StellarNetworkEmulator implements Emulator {
+    /** REQT/p19q6ak0xj (Track current slot number) */
     declare currentSlot: number;
     #seed: number;
     #random: NumberGenerator;
     genesis: EmulatorGenesisTx[];
     mempool: EmulatorTx[];
+    /** REQT/9ted2tk8a3 (Store blocks as array of transaction arrays) */
     blocks: EmulatorTx[][];
     blockHashes: string[];
 
     /**
-     * Cached map of all UTxOs ever created
+     * Cached map of all UTxOs ever created.
+     * Implements REQT/49h2ekt53d (O(1) UTxO lookup by ID).
      * @internal
      */
     _allUtxos: Record<string, TxInput>;
 
     /**
-     * Cached set of all UTxOs ever consumed
+     * Cached set of all UTxOs ever consumed.
+     * Implements REQT/f9va8cpejn (Track consumed UTxOs).
      * @internal
      */
     _consumedUtxos: Set<string>;
 
     /**
-     * Cached map of UTxOs at addresses
+     * Cached map of UTxOs at addresses.
+     * Implements REQT/8cp2p83gdn (Address-based queries).
      * @internal
      */
     _addressUtxos: Record<string, TxInput[]>;
@@ -388,7 +400,12 @@ export class StellarNetworkEmulator implements Emulator {
     }
 
 
+    /**
+     * Captures network state for later restoration.
+     * Implements REQT/egfb0jds34 (Snapshot Support).
+     */
     snapshot(snapName: string): NetworkSnapshot {
+        // REQT/h3g5k4grkv (Reject if mempool non-empty)
         if (this.mempool.length > 0) {
             throw new Error(`can't snapshot with pending txns`);
         }
@@ -410,6 +427,8 @@ export class StellarNetworkEmulator implements Emulator {
             this.blocks.length
         );
 
+        // REQT/x5mdtcjm26 (Capture seed, slot, genesis, blocks, UTxOs)
+        // REQT/xyc2vfhz76 (Include PRNG seed for deterministic continuation)
         return {
             name: snapName,
             seed: this.#seed,
@@ -431,10 +450,16 @@ export class StellarNetworkEmulator implements Emulator {
 
 
     fromSnapshot = "";
+    /**
+     * Restores network state from a snapshot.
+     * Implements REQT/473wtxxe8d (Fully restore all captured state).
+     */
     loadSnapshot(snapshot: NetworkSnapshot) {
         // Clear mempool to prevent stale txs from being processed by tick() below
         this.mempool = [];
 
+        // REQT/473wtxxe8d (Fully restore all captured state)
+        // REQT/xyc2vfhz76 (Restore PRNG seed for deterministic behavior)
         this.#seed = snapshot.seed;
         this.currentSlot = snapshot.slot;
         this.genesis = [...snapshot.genesis];
@@ -444,7 +469,6 @@ export class StellarNetworkEmulator implements Emulator {
 
         this._allUtxos = { ...snapshot.allUtxos };
         this._consumedUtxos = new Set(snapshot.consumedUtxos);
-        // this._addressUtxos = { ...snapshot.addressUtxos };
         this._addressUtxos = Object.fromEntries(
             Object.entries(snapshot.addressUtxos).map(([addr, utxoList]) => [
                 addr,
@@ -615,9 +639,14 @@ ${inheritedPart} + ${newBlocks}b/${newTxns}t ${blockViz} \n`,
         );
     }
 
+    /**
+     * Validates and submits a transaction to the mempool.
+     * Implements REQT/qr6r27cg3q (Transaction Validation).
+     */
     async submitTx(tx: Tx) {
         this.warnMempool();
 
+        // REQT/brdgk1ddfj (Reject if slot out of range)
         if (!tx.isValidSlot(BigInt(this.currentSlot))) {
             debugger
             throw new Error(
@@ -629,7 +658,7 @@ ${inheritedPart} + ${newBlocks}b/${newTxns}t ${blockViz} \n`,
             );
         }
 
-        // make sure that each input exists
+        // REQT/6rdjgebzyx (Reject if inputs don't exist)
         if (
             !tx.body.inputs.every(
                 (input) => input.id.toString() in this._allUtxos
@@ -638,7 +667,7 @@ ${inheritedPart} + ${newBlocks}b/${newTxns}t ${blockViz} \n`,
             throw new Error("some inputs don't exist");
         }
 
-        // make sure that each ref input exists
+        // REQT/pejg3twvpv (Reject if ref inputs don't exist)
         if (
             !tx.body.refInputs.every(
                 (input) => input.id.toString() in this._allUtxos
@@ -647,7 +676,7 @@ ${inheritedPart} + ${newBlocks}b/${newTxns}t ${blockViz} \n`,
             throw new Error("some ref inputs don't exist");
         }
 
-        // make sure that none of the inputs have been consumed before
+        // REQT/qq84z25jk7 (Reject if spending consumed UTxOs)
         for (const input of tx.body.inputs) {
             if (this.isConsumed(input)) {
                 throw new Error(
@@ -665,6 +694,7 @@ ${inheritedPart} + ${newBlocks}b/${newTxns}t ${blockViz} \n`,
 
     /**
      * Mint a block with the current mempool, and advance the slot by a number of slots.
+     * Implements REQT/3286vdzwyk (Block Production).
      */
     tick(nSlots: IntLike) {
         const n = BigInt(nSlots);
@@ -672,11 +702,13 @@ ${inheritedPart} + ${newBlocks}b/${newTxns}t ${blockViz} \n`,
 
         const count = this.mempool.length;
 
+        // REQT/s5zq3ezdng (Advance slot by n)
         this.currentSlot += Number(n);
         const time = new Date(
             Number(this.netPHelper.slotToTime(this.currentSlot))
         );
 
+        // REQT/c9dyh7hkz6 (Move all mempool txs into new block)
         if (this.mempool.length > 0) {
             const txIds = this.mempool.map((tx) => {
                 const t = tx.id().toString();
@@ -705,6 +737,9 @@ ${inheritedPart} + ${newBlocks}b/${newTxns}t ${blockViz} \n`,
 
 
     /**
+     * Adds a block to the chain and updates UTxO state.
+     * Implements REQT/5cwn151ybf (Update UTxO indices - create new, mark consumed),
+     * REQT/9ted2tk8a3 (Store blocks as array of transaction arrays).
      * @internal
      */
     pushBlock(txs: EmulatorTx[]) {

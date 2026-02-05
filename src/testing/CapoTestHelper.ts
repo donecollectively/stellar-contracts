@@ -440,6 +440,10 @@ export abstract class CapoTestHelper<
         return tcx as any;
     }
 
+    /**
+     * Reuses existing bootstrap or creates fresh one.
+     * Implements REQT/trjb6qtjt6 (Snapshot Orchestration).
+     */
     async reusableBootstrap(
         snap = SNAP_DELEGATES,
     ) {
@@ -496,7 +500,8 @@ export abstract class CapoTestHelper<
 
     /**
      * A decorator for test-helper functions that generate named snapshots.
-     * Snapshot name is derived from method name: snapToFoo → "foo"
+     * Snapshot name is derived from method name: snapToFoo → "foo".
+     * Implements REQT/7hcqed9mvn (Built-in Snapshot Registration).
      * @param options - Options object with actor, parentSnapName, and optional resolveScriptDependencies
      */
     static hasNamedSnapshot(
@@ -755,6 +760,7 @@ export abstract class CapoTestHelper<
      * Uses @hasNamedSnapshot with parentSnapName: "genesis" for root snapshot.
      * @public
      */
+    // REQT/p4mrpyyady (bootstrapWithActors uses @hasNamedSnapshot with genesis parent)
     @CapoTestHelper.hasNamedSnapshot({
         actor: "default",
         parentSnapName: "genesis",
@@ -788,10 +794,11 @@ export abstract class CapoTestHelper<
      * Uses @hasNamedSnapshot with internal: true since this is part of bootstrap() flow.
      * @public
      */
+    // REQT/pj9agtaypq (capoInitialized uses @hasNamedSnapshot with bootstrapWithActors parent, internal: true)
     @CapoTestHelper.hasNamedSnapshot({
         actor: "default",
         parentSnapName: SNAP_ACTORS,
-        internal: true, // Part of bootstrap flow - don't call reusableBootstrap()
+        internal: true, // REQT/h4kp7wm2nx (internal: true skips reusableBootstrap)
         // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
         async resolveScriptDependencies(helper) {
             return (helper as CapoTestHelper<any, any>).resolveCoreCapoDependencies();
@@ -840,10 +847,11 @@ export abstract class CapoTestHelper<
      * Uses @hasNamedSnapshot with internal: true since this is part of bootstrap() flow.
      * @public
      */
+    // REQT/5qyt5xzvv1 (enabledDelegatesDeployed uses @hasNamedSnapshot with capoInitialized parent)
     @CapoTestHelper.hasNamedSnapshot({
         actor: "default",
         parentSnapName: SNAP_CAPO_INIT,
-        internal: true, // Part of bootstrap flow - don't call reusableBootstrap()
+        internal: true, // REQT/h4kp7wm2nx (internal: true skips reusableBootstrap)
         // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
         async resolveScriptDependencies(helper) {
             return (helper as CapoTestHelper<any, any>).resolveEnabledDelegatesDependencies();
@@ -1204,6 +1212,7 @@ export abstract class CapoTestHelper<
      * Finds or creates a snapshot, using the single chokepoint pattern (ARCH-7jcyqx1mg8).
      * 1. ensureSnapshotCached() handles recursive parent resolution and caching
      * 2. loadCachedSnapshot() provides uniform loading for both cache hits and freshly-built
+     * Implements REQT/sjer71jjmb (Reuse existing or create new snapshot).
      */
     async findOrCreateSnapshot(
         snapshotName: string,
@@ -1224,6 +1233,10 @@ export abstract class CapoTestHelper<
         return this.strella;
     }
 
+    /**
+     * Restores helper state from a named snapshot.
+     * Implements REQT/7n8ws6gabc (Actor Wallet Transfer).
+     */
     async restoreFrom(snapshotName: string): Promise<SC> {
         const {
             helperState,
@@ -1488,11 +1501,10 @@ export abstract class CapoTestHelper<
 
     /**
      * Resolves cache key inputs for the base actors snapshot.
-     * Cache key includes: actor names, order, initial amounts, additional UTxO amounts.
      * @public
      */
     resolveActorsDependencies(): CacheKeyInputs {
-        // Convert actor setup info to a deterministic format for hashing
+        // REQT/1wdfec5p4c (actor names, order, initial amounts, additional UTxO amounts)
         const actorData = this.actorSetupInfo.map((actor) => ({
             name: actor.name,
             initialBalance: actor.initialBalance.toString(),
@@ -1505,8 +1517,8 @@ export abstract class CapoTestHelper<
             bundles: [], // No script bundles for actors snapshot
             extra: {
                 actors: actorData,
-                randomSeed: this.randomSeed,
-                heliosVersion: HELIOS_VERSION,
+                randomSeed: this.randomSeed, // REQT/xh612fhw3c
+                heliosVersion: HELIOS_VERSION, // REQT/v4c7x9m1kz
             },
         };
     }
@@ -1537,7 +1549,7 @@ export abstract class CapoTestHelper<
     /**
      * Resolves cache key inputs for core Capo scripts (minter, mint delegate, spend delegate).
      * Used for snapshot cache key computation for the capoInitialized snapshot.
-     * Uses computeSourceHash() instead of getCacheKeyInputs() to work with egg Capo (REQT/mvf88mnsez, REQT/mexwd3p8mr).
+     * Implements REQT/p19q6ak0xj (Bundle Dependency Hashing).
      * @public
      */
     async resolveCoreCapoDependencies(): Promise<CacheKeyInputs> {

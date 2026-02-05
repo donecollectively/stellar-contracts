@@ -523,19 +523,21 @@ function deserializeSnapshot(data: SerializedSnapshot): NetworkSnapshot {
  * @public
  */
 export class SnapshotCache {
+    /** REQT/7k3mfpw2nx (Cache files stored in .stellar/emu/) */
     private cacheDir: string;
 
     /** Registry of snapshot metadata for resolving parent chain and computing cache keys */
     private registry: Map<string, SnapshotRegistryEntry> = new Map();
 
     /**
-     * Process-lifetime cache of loaded snapshots (REQT/j9adgp9rwv).
-     * Avoids redundant disk reads and tx reconstruction across tests.
+     * helperState-scope cache of loaded snapshots (REQT/j9adgp9rwv).
+     * Avoids redundant disk reads and tx reconstruction across tests sharing the same SnapshotCache.
      */
     private loadedSnapshots: Map<string, CachedSnapshot> = new Map();
 
     constructor(projectRoot?: string) {
         const root = projectRoot || this.findProjectRoot();
+        // REQT/7k3mfpw2nx (Cache File Location)
         this.cacheDir = join(root, ".stellar", "emu");
         this.ensureCacheDir();
     }
