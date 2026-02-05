@@ -94,9 +94,9 @@ export type TestHelperState<
 > = {
     bootstrappedStrella?: SC;
     namedRecords: Record<string, string>;
-    /** Offchain data per snapshot - used for in-memory cache (REQT-3.4/n93h9y5s85) */
+    /** Offchain data per snapshot - used for in-memory cache (REQT/n93h9y5s85) */
     offchainData?: Record<string, Record<string, unknown>>;
-    /** Parsed config for cross-instance Capo reconstruction (REQT-3.5/vmq8qmv218) */
+    /** Parsed config for cross-instance Capo reconstruction (REQT/vmq8qmv218) */
     parsedConfig?: any;
     previousHelper: StellarTestHelper<any>;
     snapCache: SnapshotCache;

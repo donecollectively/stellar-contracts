@@ -54,15 +54,15 @@ export type CachedSnapshot = {
     namedRecords: Record<string, string>;
     /** Parent snapshot name ("genesis" for root) */
     parentSnapName: ParentSnapName;
-    /** Hash of the parent snapshot—verified on load to detect stale cache (REQT-1.2.9.3.2), null for root */
+    /** Hash of the parent snapshot—verified on load to detect stale cache (REQT/rgxhbqp84g), null for root */
     parentHash: string | null;
     /** Hash of this snapshot for use as parent in child snapshots */
     snapshotHash: string;
     /** Directory path where this snapshot is stored (set after find() or store()) */
     path?: string;
-    /** Offchain data merged from parent chain - NOT included in cache key (e.g., actor wallet keys). REQT-1.2.12/mkap3784hw */
+    /** Offchain data merged from parent chain - NOT included in cache key (e.g., actor wallet keys). REQT/mkap3784hw */
     offchainData?: Record<string, unknown>;
-    /** Cache key inputs for debugging cache misses. REQT-1.2.11/whp4cvpk9e */
+    /** Cache key inputs for debugging cache misses. REQT/whp4cvpk9e */
     cacheKeyInputs?: CacheKeyInputs;
     /** Original block count at capture time - used by children to correctly slice incremental blocks */
     capturedBlockCount?: number;
@@ -129,7 +129,7 @@ type SerializedCachedSnapshot = {
     namedRecords: Record<string, string>;
     parentSnapName: ParentSnapName;
     parentHash: string | null;
-    /** Number of blocks in parent snapshot, for incremental storage (REQT-1.2.5.1) */
+    /** Number of blocks in parent snapshot, for incremental storage (REQT/6xjggf5hsd) */
     parentBlockCount: number;
     snapshotHash: string;
     /** Original block count at capture time - used by children to correctly slice incremental blocks */
@@ -391,7 +391,7 @@ function rebuildUtxoIndexes(
 
 /**
  * Applies incremental blocks to existing UTxO state without rebuilding from genesis.
- * Used for efficient chain loading where parent state is already computed (REQT-1.2.10.1).
+ * Used for efficient chain loading where parent state is already computed (REQT/yp9925t014).
  * @internal
  */
 function applyIncrementalBlocks(
@@ -529,7 +529,7 @@ export class SnapshotCache {
     private registry: Map<string, SnapshotRegistryEntry> = new Map();
 
     /**
-     * Process-lifetime cache of loaded snapshots (REQT-1.2.10.3).
+     * Process-lifetime cache of loaded snapshots (REQT/j9adgp9rwv).
      * Avoids redundant disk reads and tx reconstruction across tests.
      */
     private loadedSnapshots: Map<string, CachedSnapshot> = new Map();
@@ -608,7 +608,7 @@ export class SnapshotCache {
 
     /**
      * Gets the directory path for a snapshot.
-     * Format: {parentPath}/{snapshotName}-{dirLabel}-{cacheKey}/ (REQT-1.2.9.1)
+     * Format: {parentPath}/{snapshotName}-{dirLabel}-{cacheKey}/ (REQT/d230hkb6vm)
      * Note: Empty label produces double-dash (--) which is valid and visually distinct.
      * @param cacheKey - The cache key for this snapshot (6 bech32 chars)
      * @param snapshotName - The snapshot name
@@ -638,10 +638,10 @@ export class SnapshotCache {
      * Looks up a cached snapshot by name using registered metadata.
      * Resolves parent chain via registry, computes cache key, loads from hierarchical path.
      * Returns null on cache miss.
-     * Touches the directory if it's more than 1 day old (REQT-1.2.7.1).
-     * Verifies parentHash and snapshotHash for integrity (REQT-1.2.9.3.2, REQT-1.2.9.3.3).
+     * Touches the directory if it's more than 1 day old (REQT/m1d6jk9w3p).
+     * Verifies parentHash and snapshotHash for integrity (REQT/rgxhbqp84g, REQT/q6f457kp86).
      * @param snapshotName - The snapshot name to find
-     * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym, REQT-3.2.3/97qa2f7m25)
+     * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym, REQT/97qa2f7m25)
      */
     async find(snapshotName: string, helper: unknown): Promise<CachedSnapshot | null> {
         const entry = this.getRegistryEntry(snapshotName);
@@ -672,7 +672,7 @@ export class SnapshotCache {
         }
 
         // Compute cache key BEFORE checking in-memory cache
-        // Different seeds/configs produce different cache keys (REQT-1.2.10.3)
+        // Different seeds/configs produce different cache keys (REQT/j9adgp9rwv)
         let cacheKey: string;
         let inputs: CacheKeyInputs;
         if (entry.resolveScriptDependencies) {
@@ -692,7 +692,7 @@ export class SnapshotCache {
         // Compute directory label for human-readable path (ARCH-jj5swg0hfk)
         const dirLabel = entry.computeDirLabel ? entry.computeDirLabel(inputs) : "";
 
-        // Check in-memory cache with composite key (REQT-1.2.10.3)
+        // Check in-memory cache with composite key (REQT/j9adgp9rwv)
         // Composite key ensures different seeds don't collide
         const mapKey = `${snapshotName}:${cacheKey}`;
         const cached = this.loadedSnapshots.get(mapKey);
@@ -713,7 +713,7 @@ export class SnapshotCache {
         console.log(`  [find:${snapshotName}] found on disk: ${snapshotDir}`)
 
         try {
-            // Touch directory if older than 1 day to keep it fresh for cleanup (REQT-1.2.7.1)
+            // Touch directory if older than 1 day to keep it fresh for cleanup (REQT/m1d6jk9w3p)
             const stats = statSync(snapshotDir);
             const age = Date.now() - stats.mtimeMs;
             if (age > ONE_DAY_MS) {
@@ -727,7 +727,7 @@ export class SnapshotCache {
             // Deserialize the snapshot blocks stored in this file
             const thisSnapshot = deserializeSnapshot(serialized.snapshot);
 
-            // Verify parent hash matches expected (REQT-1.2.9.3.2)
+            // Verify parent hash matches expected (REQT/rgxhbqp84g)
             if (parent && serialized.parentHash) {
                 console.log(`  [find:${snapshotName}] parentHash check: stored=${serialized.parentHash.slice(0, 12)}... vs parent.snapshotHash=${parent.snapshotHash.slice(0, 12)}...`);
                 if (serialized.parentHash !== parent.snapshotHash) {
@@ -737,7 +737,7 @@ export class SnapshotCache {
                 console.log(`  [find:${snapshotName}] ✅ parentHash matches`);
             }
 
-            // Chain loading: apply incremental blocks to parent state (REQT-1.2.10.1, 1.2.10.2)
+            // Chain loading: apply incremental blocks to parent state (REQT/yp9925t014, REQT/bkmgarnrsw)
             if (parent) {
                 // Save incremental blocks before concatenation
                 const incrementalBlocks = thisSnapshot.blocks;
@@ -787,7 +787,7 @@ export class SnapshotCache {
                 console.log(`SnapshotCache: root-loaded '${snapshotName}' ${genesisViz}  # 1`);
             }
 
-            // Verify snapshot integrity: computed block hash must match recorded snapshotHash (REQT-1.2.9.3.3)
+            // Verify snapshot integrity: computed block hash must match recorded snapshotHash (REQT/q6f457kp86)
             const verifyStart = performance.now();
             const computedHash = thisSnapshot.blockHashes.length > 0
                 ? thisSnapshot.blockHashes[thisSnapshot.blockHashes.length - 1]
@@ -801,7 +801,7 @@ export class SnapshotCache {
 
             console.log(`  [find:${snapshotName}] ✅ LOADED from ${cachePath} (${verifyMs}ms)`);
 
-            // Load and merge offchain data from parent chain (REQT-1.2.12.2/khqyf56m0g, REQT-1.2.12.4/0k6bnbbg95)
+            // Load and merge offchain data from parent chain (REQT/khqyf56m0g, REQT/0k6bnbbg95)
             let mergedOffchainData: Record<string, unknown> | undefined;
 
             // Start with parent's merged offchainData (if any)
@@ -821,7 +821,7 @@ export class SnapshotCache {
                 }
             }
 
-            // Load key-inputs.json if it exists (REQT-1.2.11.2/e79g49xyyj, REQT-1.2.11.3/hn8f6z92k0)
+            // Load key-inputs.json if it exists (REQT/e79g49xyyj, REQT/hn8f6z92k0)
             let cacheKeyInputs: CacheKeyInputs | undefined;
             const keyInputsPath = join(snapshotDir, "key-inputs.json");
             if (existsSync(keyInputsPath)) {
@@ -833,7 +833,7 @@ export class SnapshotCache {
                 }
             }
 
-            // Build result and cache before returning (REQT-1.2.10.3)
+            // Build result and cache before returning (REQT/j9adgp9rwv)
             const result: CachedSnapshot = {
                 snapshot: thisSnapshot,
                 namedRecords: serialized.namedRecords,
@@ -845,7 +845,7 @@ export class SnapshotCache {
                 cacheKeyInputs,
                 capturedBlockCount: serialized.capturedBlockCount,
             };
-            // Use composite key for in-memory cache (REQT-1.2.10.3)
+            // Use composite key for in-memory cache (REQT/j9adgp9rwv)
             this.loadedSnapshots.set(mapKey, result);
             return result;
         } catch (e) {
@@ -856,7 +856,7 @@ export class SnapshotCache {
 
     /**
      * Stores a snapshot using registered metadata to compute hierarchical path.
-     * Only stores incremental blocks since parent (REQT-1.2.5.1).
+     * Only stores incremental blocks since parent (REQT/6xjggf5hsd).
      * @param snapshotName - The snapshot name (must be registered)
      * @param cachedSnapshot - The snapshot to store
      * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym)
@@ -927,7 +927,7 @@ export class SnapshotCache {
         // Ensure directory exists
         mkdirSync(snapshotDir, { recursive: true });
 
-        // Create a copy of the snapshot for incremental serialization (REQT-1.2.5.1)
+        // Create a copy of the snapshot for incremental serialization (REQT/6xjggf5hsd)
         const incrementalSnapshot = { ...cachedSnapshot.snapshot };
 
         // Record the original live block count BEFORE modifying (for children to use)
@@ -951,7 +951,7 @@ export class SnapshotCache {
         } else {
             // Child snapshot: don't store genesis (inherited from root via parent chain)
             incrementalSnapshot.genesis = [];
-            // Store only incremental blocks since parent (REQT-1.2.5.1, REQT-1.2.5.2)
+            // Store only incremental blocks since parent (REQT/6xjggf5hsd, REQT/prvp9f4m21)
             incrementalSnapshot.blocks = cachedSnapshot.snapshot.blocks.slice(parentBlockCount);
             incrementalSnapshot.blockHashes = cachedSnapshot.snapshot.blockHashes.slice(parentBlockCount);
         }
@@ -970,13 +970,13 @@ export class SnapshotCache {
         const content = JSON.stringify(serialized, null, 2);
         writeFileSync(cachePath, content, "utf-8");
 
-        // Write offchain.json if offchainData is provided and non-empty (REQT-1.2.12.1/020mbw1gqw, REQT-1.2.12.3/yd750dddgy)
+        // Write offchain.json if offchainData is provided and non-empty (REQT/020mbw1gqw, REQT/yd750dddgy)
         if (cachedSnapshot.offchainData && Object.keys(cachedSnapshot.offchainData).length > 0) {
             const offchainPath = join(snapshotDir, "offchain.json");
             writeFileSync(offchainPath, JSON.stringify(cachedSnapshot.offchainData, null, 2), "utf-8");
         }
 
-        // Write key-inputs.json for debugging cache misses (REQT-1.2.11.1/vn0drr8d8s)
+        // Write key-inputs.json for debugging cache misses (REQT/vn0drr8d8s)
         const keyInputsPath = join(snapshotDir, "key-inputs.json");
         const bigIntReplacer = (_key: string, value: unknown) =>
             typeof value === "bigint" ? value.toString() : value;
@@ -987,7 +987,7 @@ export class SnapshotCache {
         cachedSnapshot.cacheKeyInputs = cacheKeyInputs;
         cachedSnapshot.capturedBlockCount = capturedBlockCount;
 
-        // Cache in memory using composite key (REQT-1.2.10.3)
+        // Cache in memory using composite key (REQT/j9adgp9rwv)
         const mapKey = `${snapshotName}:${cacheKey}`;
         this.loadedSnapshots.set(mapKey, cachedSnapshot);
 
@@ -1008,7 +1008,7 @@ export class SnapshotCache {
     }
 
     /**
-     * Deletes a cached snapshot and all its children (REQT-1.2.9.4).
+     * Deletes a cached snapshot and all its children (REQT/dwaf8qb8s1).
      * Uses recursive directory deletion.
      * @param snapshotName - The snapshot name to delete
      * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym)

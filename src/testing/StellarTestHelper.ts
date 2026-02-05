@@ -51,7 +51,7 @@ export type ActorSetupInfo = {
 };
 
 /**
- * Stored wallet keys for fast actor restoration. REQT-3.4/n93h9y5s85
+ * Stored wallet keys for fast actor restoration. REQT/n93h9y5s85
  * @public
  */
 export type StoredActorWalletKeys = {
@@ -684,7 +684,7 @@ export abstract class StellarTestHelper<
 
     /**
      * Extracts wallet private keys from current actors for storage in offchainData.
-     * Returns data suitable for storing in CachedSnapshot.offchainData. REQT-3.4.1/1p346cabct
+     * Returns data suitable for storing in CachedSnapshot.offchainData. REQT/1p346cabct
      * @public
      */
     getActorWalletKeys(): ActorWalletsOffchainData {
@@ -703,7 +703,7 @@ export abstract class StellarTestHelper<
 
     /**
      * Restores actor wallets from stored private keys (fast path).
-     * Replaces PRNG-based regeneration. REQT-3.4.2/avwkcrnwqp, REQT-3.4.3/ncbfwtyr8h
+     * Replaces PRNG-based regeneration. REQT/avwkcrnwqp, REQT/ncbfwtyr8h
      * @param storedData - The offchainData containing actorWallets
      * @internal
      */

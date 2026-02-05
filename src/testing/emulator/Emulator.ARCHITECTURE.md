@@ -38,7 +38,7 @@
 | Emulator state | artifact | StellarNetworkEmulator | CapoTestHelper, SnapshotCache |
 | Snapshot chain | artifact | SnapshotCache | CapoTestHelper |
 | Cache files | artifact | SnapshotCache | - |
-| Loaded snapshots | resource | SnapshotCache | helperState-scope cache keyed by `{name}:{cacheKey}` (REQT-1.2.10); shared via `helperState.snapCache` |
+| Loaded snapshots | resource | SnapshotCache | helperState-scope cache keyed by `{name}:{cacheKey}` (REQT/d28gyvqegv); shared via `helperState.snapCache` |
 | Bundle hashes | artifact | HeliosScriptBundle | SnapshotCache |
 | Compile cache | artifact | CachedHeliosProgram | HeliosScriptBundle |
 | namedRecords | artifact | CapoTestHelper | Persisted with snapshot, restored on load |
@@ -181,8 +181,8 @@ See `emulator.7jcyqx1mg8.workUnit.md` for implementation details and concern map
 - Track registered snapshot metadata (name → parentSnapName, resolver) via just-in-time registration
 - Persist snapshots to `.stellar/emu/` in hierarchical directory structure
 - Load snapshots from disk, recursively resolving parent chain
-- Cache loaded snapshots in memory for helperState scope (REQT-1.2.10.3); shared via `helperState.snapCache`
-- Apply incremental blocks to parent UTxO state (REQT-1.2.10.1, 1.2.10.2)
+- Cache loaded snapshots in memory for helperState scope (REQT/j9adgp9rwv); shared via `helperState.snapCache`
+- Apply incremental blocks to parent UTxO state (REQT/yp9925t014, REQT/bkmgarnrsw)
 - Compute cache keys from bundle hashes + params
 - Manage freshness (touch directories > 1 day old on access)
 - Invalidate stale entries automatically via hash mismatch
@@ -455,7 +455,7 @@ class SnapshotCache {
     resolveScriptDependencies: () => Promise<CacheKeyInputs>;  // bound to helper
   }>;
 
-  // helperState-scope cache of loaded snapshots (REQT-1.2.10.3)
+  // helperState-scope cache of loaded snapshots (REQT/j9adgp9rwv)
   // Key: `{snapshotName}:{cacheKey}`, Value: fully-loaded CachedSnapshot with accumulated UTxO state
   // Composite key ensures different seeds/configs produce different cache entries
   // SnapshotCache shared via helperState.snapCache, so this Map persists across tests
@@ -472,7 +472,7 @@ class SnapshotCache {
 
   // Find snapshot by name - resolves parent chain via registry
   // Returns from loadedSnapshots if present; otherwise loads from disk
-  // Uses incremental UTxO application (REQT-1.2.10.1, 1.2.10.2)
+  // Uses incremental UTxO application (REQT/yp9925t014, REQT/bkmgarnrsw)
   // NOTE: helper is passed to resolvers for cache key computation
   find(snapshotName: string, helper: CapoTestHelper): Promise<CachedSnapshot | null>
 
@@ -489,7 +489,7 @@ class SnapshotCache {
   computeKey(parentHash: string | null, inputs: CacheKeyInputs): string
 }
 
-// Internal helper for incremental UTxO state building (REQT-1.2.10.1)
+// Internal helper for incremental UTxO state building (REQT/yp9925t014)
 function applyIncrementalBlocks(
   parentState: { allUtxos, consumedUtxos, addressUtxos },
   incrementalBlocks: EmulatorTx[][]
@@ -748,7 +748,7 @@ Loading "delegates" returns merged: { actorWallets: {...} }
 
 ### Workflow: Bootstrap Chartered Capo (ARCH-w3xvf0hm5w)
 
-When no cache exists anywhere, build everything from scratch. Each layer uses `@hasNamedSnapshot` decorator which handles cache check, build-if-miss, and store automatically (per REQT-3.3):
+When no cache exists anywhere, build everything from scratch. Each layer uses `@hasNamedSnapshot` decorator which handles cache check, build-if-miss, and store automatically (per REQT/7hcqed9mvn):
 
 1. **Test Suite** calls `reusableBootstrap()` on **CapoTestHelper**
 2. **CapoTestHelper** calls `bootstrap()` which proceeds through layers:
@@ -876,7 +876,7 @@ Helper A (instance)            Helper B (instance)
 └── snapshotCache → helperState.snapCache (shared reference)
 ```
 
-### Workflow: Disk Chain Load (cold cache, REQT-1.2.10)
+### Workflow: Disk Chain Load (cold cache, REQT/d28gyvqegv)
 
 **ARCH-UUT**: ARCH-kqc3jng98y
 
@@ -916,7 +916,7 @@ Efficient loading when all snapshots are on disk but not yet in memory. Uses inc
 
 **Key optimization**: `applyIncrementalBlocks(parentState, newBlocks)` instead of `rebuildUtxoIndexes(genesis, allBlocks)`. Reduces O(n²) to O(n) for chain depth n.
 
-### Workflow: Memory-Assisted Load (warm cache, REQT-1.2.10.3)
+### Workflow: Memory-Assisted Load (warm cache, REQT/j9adgp9rwv)
 
 **ARCH-UUT**: ARCH-tz34av7n63
 
@@ -1023,9 +1023,9 @@ Full offchainData/capoConfig restoration is unnecessary—that's handled by the 
 1. Source file changes → bundle hash changes (via `getCacheKeyInputs()`)
 2. Next test run computes new cache key (via `resolveScriptDependencies()`)
 3. New cache key not found → cache miss → rebuild and store under new key
-4. *(FUTURE: REQT-1.2.7.2)* Old cache directories age out (> 1 week) and get cleaned up
+4. *(FUTURE: REQT/r5f8n2b4ht)* Old cache directories age out (> 1 week) and get cleaned up
 
-**Note**: Touch mechanism (REQT-1.2.7.1) keeps active directories fresh; cleanup command not yet implemented.
+**Note**: Touch mechanism (REQT/m1d6jk9w3p) keeps active directories fresh; cleanup command not yet implemented.
 
 ---
 
@@ -1047,8 +1047,8 @@ Full offchainData/capoConfig restoration is unnecessary—that's handled by the 
 | **`parentHash` verification** | Detects stale cache when parent was rebuilt with same inputs but different resulting state; returns null to trigger rebuild |
 | **Cache key recomputation** | No Map needed—resolvers are deterministic, parent hashes retrieved via `snapshotCache.find(parent)` |
 | **`fromSnapshot` cleared on pushBlock** | Provenance tracking; diverged state shouldn't claim snapshot identity |
-| **`loadedSnapshots` Map** (REQT-1.2.10.3) | helperState-scope cache keyed by `{name}:{cacheKey}` avoids redundant disk reads and tx reconstruction; composite key ensures different seeds don't collide; shared via `helperState.snapCache` |
-| **Incremental UTxO application** (REQT-1.2.10.1) | `applyIncrementalBlocks()` instead of full `rebuildUtxoIndexes()` reduces O(n²) to O(n) for chain depth |
+| **`loadedSnapshots` Map** (REQT/j9adgp9rwv) | helperState-scope cache keyed by `{name}:{cacheKey}` avoids redundant disk reads and tx reconstruction; composite key ensures different seeds don't collide; shared via `helperState.snapCache` |
+| **Incremental UTxO application** (REQT/yp9925t014) | `applyIncrementalBlocks()` instead of full `rebuildUtxoIndexes()` reduces O(n²) to O(n) for chain depth |
 
 ---
 
@@ -1074,10 +1074,10 @@ Full offchainData/capoConfig restoration is unnecessary—that's handled by the 
 - [x] ~~Project root detection~~ → Walk up to find package.json
 - [x] ~~Cleanup command~~ → `find .stellar/emu -mtime +7 -type d | xargs rm -rf` (directories, not files)
 - [x] ~~Parent cache key tracking~~ → Recompute via `getSnapshotCacheKey()`; no Map needed. See "Cache Key Recomputation" section.
-- [x] ~~Migrate built-in snapshots (actors, capoInit, delegates) to use `@hasNamedSnapshot` decorator for consistent registration model~~ → Reqts added: REQT-3.3 (Built-in Snapshot Registration)
-- [x] ~~Add reqts for built-in snapshot decorator migration~~ → Done: REQT-3.3.1 through 3.3.5
+- [x] ~~Migrate built-in snapshots (actors, capoInit, delegates) to use `@hasNamedSnapshot` decorator for consistent registration model~~ → Reqts added: REQT/7hcqed9mvn (Built-in Snapshot Registration)
+- [x] ~~Add reqts for built-in snapshot decorator migration~~ → Done: REQT/fz89t5wkrw, REQT/1vtn22as3f, REQT/p4mrpyyady, REQT/pj9agtaypq, REQT/5qyt5xzvv1
 - [x] ~~Finalize SnapshotCache.find() and store() interface signatures~~ → Name-based: `find(snapshotName)`, `store(snapshotName, snapshot)`. Path computed via registry.
-- [x] ~~Update Emulator.reqts.md to reflect hierarchical directories, just-in-time registration, and touch directories (not files)~~ → Done: REQT-1.2.7.1, 1.2.9.x updated; parentCacheKey deprecated
+- [x] ~~Update Emulator.reqts.md to reflect hierarchical directories, just-in-time registration, and touch directories (not files)~~ → Done: REQT/m1d6jk9w3p, REQT/d34w6546fx updated; parentCacheKey deprecated
 - [x] ~~**Cleanup after impl**: Remove deprecated `parentCacheKey` references from this doc (CachedSnapshot type, code examples) once hierarchical dirs are working~~ → Done: removed from CachedSnapshot type and code examples
 
 ---

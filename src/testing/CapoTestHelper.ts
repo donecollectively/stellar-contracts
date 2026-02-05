@@ -31,7 +31,7 @@ const ACTORS_ALREADY_MOVED =
 
 /**
  * Serialized seed UTxO for storage in offchainData.
- * Used to break the chicken-and-egg dependency in disk cache lookup (REQT-3.6.1).
+ * Used to break the chicken-and-egg dependency in disk cache lookup (REQT/84f4k7nb6p).
  * @public
  */
 export type PreSelectedSeedUtxo = {
@@ -139,7 +139,7 @@ export abstract class CapoTestHelper<
     featureFlags: CapoFeatureFlags | undefined = undefined;
 
     /**
-     * Pre-selected seed UTxO for breaking chicken-and-egg dependency (REQT-3.6.1).
+     * Pre-selected seed UTxO for breaking chicken-and-egg dependency (REQT/84f4k7nb6p).
      * Selected during bootstrapWithActors and stored in actors snapshot offchainData.
      */
     preSelectedSeedUtxo: PreSelectedSeedUtxo | undefined = undefined;
@@ -472,7 +472,7 @@ export abstract class CapoTestHelper<
             // Fresh bootstrap (no prior Capo, or snapshot not found)
             capo = await this.bootstrap();
             helperState.bootstrappedStrella = capo;
-            // Store parsedConfig for cross-instance Capo reconstruction (REQT-3.5/vmq8qmv218)
+            // Store parsedConfig for cross-instance Capo reconstruction (REQT/vmq8qmv218)
             helperState.parsedConfig = this.state.parsedConfig;
         }
 
@@ -632,7 +632,7 @@ export abstract class CapoTestHelper<
 
     /**
      * Determines whether a new Capo should be created based on current state vs loaded config.
-     * Implements the Capo reconstruction decision tree (REQT-3.6.5/vz0fc3s057).
+     * Implements the Capo reconstruction decision tree (REQT/vz0fc3s057).
      *
      * Returns true (create new) when:
      * - a) No Capo exists at all
@@ -679,7 +679,7 @@ export abstract class CapoTestHelper<
 
     /**
      * Gets the pre-selected seed UTxO from the actors snapshot's offchainData.
-     * Used by resolvers for cache key computation (REQT-3.6.2).
+     * Used by resolvers for cache key computation (REQT/mvf88mnsez).
      * @internal
      */
     getPreSelectedSeedUtxo(): PreSelectedSeedUtxo | undefined {
@@ -698,7 +698,7 @@ export abstract class CapoTestHelper<
     }
 
     /**
-     * Pre-selects a seed UTxO from the default actor's wallet (REQT-3.6.1).
+     * Pre-selects a seed UTxO from the default actor's wallet (REQT/84f4k7nb6p).
      * Must be called after setDefaultActor() so wallet is available.
      * @internal
      */
@@ -744,7 +744,7 @@ export abstract class CapoTestHelper<
         // (setupActors creates UTxOs in mempool via network.createUtxo)
         this.network.tick(1);
 
-        // Pre-select seed UTxO for cache key computation (REQT-3.6.1)
+        // Pre-select seed UTxO for cache key computation (REQT/84f4k7nb6p)
         await this.preSelectSeedUtxo();
 
         // tick happens in decorator wrapper after this returns
@@ -909,7 +909,7 @@ export abstract class CapoTestHelper<
             };
         }
 
-        // Populate helperState.offchainData for in-memory cache access (REQT-3.4/n93h9y5s85)
+        // Populate helperState.offchainData for in-memory cache access (REQT/n93h9y5s85)
         if (offchainData) {
             if (!this.helperState!.offchainData) {
                 this.helperState!.offchainData = {};
@@ -967,7 +967,7 @@ export abstract class CapoTestHelper<
 
     /**
      * Handles Capo reconstruction when loading a non-genesis snapshot.
-     * Implements the decision tree from REQT-3.6.5.
+     * Implements the decision tree from REQT/vz0fc3s057.
      * @internal
      */
     private async handleCapoReconstruction(
@@ -1512,7 +1512,7 @@ export abstract class CapoTestHelper<
     }
 
     /**
-     * Ensures an egg (unconfigured Capo) exists for cache key computation (REQT-3.6.6).
+     * Ensures an egg (unconfigured Capo) exists for cache key computation (REQT/dynnc9bq1v).
      * Creates one via initStrella() if this.strella is undefined or unconfigured.
      * @internal
      */
@@ -1537,14 +1537,14 @@ export abstract class CapoTestHelper<
     /**
      * Resolves cache key inputs for core Capo scripts (minter, mint delegate, spend delegate).
      * Used for snapshot cache key computation for the capoInitialized snapshot.
-     * Uses computeSourceHash() instead of getCacheKeyInputs() to work with egg Capo (REQT-3.6.2, REQT-3.6.3).
+     * Uses computeSourceHash() instead of getCacheKeyInputs() to work with egg Capo (REQT/mvf88mnsez, REQT/mexwd3p8mr).
      * @public
      */
     async resolveCoreCapoDependencies(): Promise<CacheKeyInputs> {
-        // Ensure we have a Capo (egg or chartered) for bundle access (REQT-3.6.6)
+        // Ensure we have a Capo (egg or chartered) for bundle access (REQT/dynnc9bq1v)
         await this.ensureEggForCacheKey();
 
-        // Get pre-selected seed UTxO from actors snapshot (REQT-3.6.2)
+        // Get pre-selected seed UTxO from actors snapshot (REQT/mvf88mnsez)
         const seedUtxo = this.getPreSelectedSeedUtxo();
 
         const capoBundle = await this.capo.getBundle();
@@ -1552,11 +1552,11 @@ export abstract class CapoTestHelper<
 
         const bundles: BundleCacheKeyInputs[] = [{
             name: capoBundle.moduleName || capoBundle.constructor.name,
-            sourceHash: capoBundle.computeSourceHash(), // Works without config! (REQT-3.6.3)
+            sourceHash: capoBundle.computeSourceHash(), // Works without config! (REQT/mexwd3p8mr)
             params: { seedUtxo }, // Identity params only, NOT derived values like mph
         }];
 
-        // Add delegate bundles using egg-compatible approach (REQT-3.6.2):
+        // Add delegate bundles using egg-compatible approach (REQT/mvf88mnsez):
         // Get bundle classes directly from delegateRoles, not via getMintDelegate()/getSpendDelegate()
         // which require the charter to exist.
         const { delegateRoles } = this.capo;
@@ -1599,8 +1599,8 @@ export abstract class CapoTestHelper<
     /**
      * Resolves cache key inputs for all enabled delegates.
      * Used for snapshot cache key computation for the enabledDelegatesDeployed snapshot.
-     * Includes dgData controllers (filtered by featureFlags) per REQT-1.2.3.2 and REQT-1.2.3.4.
-     * Uses computeSourceHash() to work with egg Capo (REQT-3.6.2, REQT-3.6.3).
+     * Includes dgData controllers (filtered by featureFlags) per REQT/venhawwjrz and REQT/3r1d1ntx6e.
+     * Uses computeSourceHash() to work with egg Capo (REQT/mvf88mnsez, REQT/mexwd3p8mr).
      * @public
      */
     async resolveEnabledDelegatesDependencies(): Promise<CacheKeyInputs> {
@@ -1632,7 +1632,7 @@ export abstract class CapoTestHelper<
                     continue;
                 }
 
-                // Get bundle class directly from delegateClass (egg-compatible, REQT-3.6.2)
+                // Get bundle class directly from delegateClass (egg-compatible, REQT/mvf88mnsez)
                 // This avoids getDgDataController() which may require charter data
                 const dgDelegateClass = delegateClass as any;
                 const dgBundleClass = await dgDelegateClass.scriptBundleClass();
