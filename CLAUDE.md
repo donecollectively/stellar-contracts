@@ -21,6 +21,8 @@ Note that tests import some packages built into dist/ - any changes to those pac
 
 To check types in the project, you MUST use `pnpm build`, not `tsc`.
 
+NEVER START TWO BUILDS OR TESTS with `| head` and `| tail` because this creates unnecessary overhead.  Run a command and send its output to a file; inspect that output file.
+
 ### Testing
 - `pnpm test` - Run all tests once
 - `pnpm testing` - Run tests in watch mode
@@ -125,5 +127,5 @@ Supports both Cardano testnet and mainnet via network context parameters passed 
 
 ## MUST LOAD Related skills index
 
-Before you do anything, you MUST ensure you loaded ./skillz/index.md and use
+Before you do anything, you MUST ensure you loaded ../skillz/index.md and use
 this to load any of the mentioned skills just in time when needed.
