@@ -12,7 +12,7 @@ import type {
     CapoFeatureFlags,
     DelegateSetup,
 } from "@donecollectively/stellar-contracts";
-import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSnapName, type DirLabelResolver } from "./emulator/SnapshotCache.js";
+import { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSnapName, type DirLabelResolver, type SnapshotRegistryEntry } from "./emulator/SnapshotCache.js";
 import type { BundleCacheKeyInputs } from "../helios/scriptBundling/HeliosScriptBundle.js";
 
 import { StellarTestHelper, type ActorSetupInfo } from "./StellarTestHelper.js";
@@ -875,6 +875,337 @@ export abstract class CapoTestHelper<
         }
     }
 
+    /**
+     * Builds offchainData for a snapshot being stored.
+     * Also populates helperState.offchainData for in-memory cache access.
+     * @internal
+     */
+    private buildOffchainData(
+        snapshotName: string,
+        entry: SnapshotRegistryEntry | undefined,
+    ): Record<string, unknown> | undefined {
+        const parentSnapName = entry?.parentSnapName || "genesis";
+        let offchainData: Record<string, unknown> | undefined;
+
+        if (parentSnapName === "genesis" && Object.keys(this.actors).length > 0) {
+            // Genesis snapshot: store actor wallet keys and seed UTxO
+            offchainData = {
+                ...this.getActorWalletKeys(),
+                targetSeedUtxo: this.preSelectedSeedUtxo,
+            };
+        } else if (this.state.config) {
+            // Non-genesis: store capoConfig with diagnostics
+            const capoAddr = this.strella?.address?.toString();
+            offchainData = {
+                capoConfig: this.state.config,
+                _diag: {
+                    capoAddr,
+                    validatorHash: this.strella?.validatorHash?.toHex(),
+                    utxoCountAtCapoAddr: capoAddr
+                        ? (this.network as any)._addressUtxos[capoAddr]?.length || 0
+                        : 0,
+                    addressUtxoKeys: Object.keys((this.network as any)._addressUtxos),
+                },
+            };
+        }
+
+        // Populate helperState.offchainData for in-memory cache access (REQT-3.4/n93h9y5s85)
+        if (offchainData) {
+            if (!this.helperState!.offchainData) {
+                this.helperState!.offchainData = {};
+            }
+            this.helperState!.offchainData[snapshotName] = offchainData;
+        }
+
+        return offchainData;
+    }
+
+    /**
+     * Logs diagnostic comparison between stored and current Capo state.
+     * Essential for debugging address mismatches and UTxO loading issues.
+     * @internal
+     */
+    private logSnapshotRestoreDiagnostics(
+        cached: CachedSnapshot,
+        snapshotName: string,
+    ): void {
+        const storedDiag = cached.offchainData?._diag as {
+            capoAddr?: string;
+            validatorHash?: string;
+            utxoCountAtCapoAddr?: number;
+            addressUtxoKeys?: string[];
+        } | undefined;
+
+        if (!storedDiag) return;
+
+        const currentCapoAddr = this.strella?.address?.toString();
+        const currentValidatorHash = this.strella?.validatorHash?.toHex();
+        const currentUtxoCount = currentCapoAddr
+            ? (this.network as any)._addressUtxos[currentCapoAddr]?.length || 0
+            : 0;
+        const currentAddressKeys = Object.keys((this.network as any)._addressUtxos);
+
+        console.log(`  [DIAG] Snapshot restore comparison for '${snapshotName}':`);
+        console.log(`    storedCapoAddr:   ${storedDiag.capoAddr}`);
+        console.log(`    currentCapoAddr:  ${currentCapoAddr}`);
+        console.log(`    addrMatch: ${storedDiag.capoAddr === currentCapoAddr}`);
+        console.log(`    storedValidatorHash:  ${storedDiag.validatorHash}`);
+        console.log(`    currentValidatorHash: ${currentValidatorHash}`);
+        console.log(`    vhMatch: ${storedDiag.validatorHash === currentValidatorHash}`);
+        console.log(`    storedUtxoCount:  ${storedDiag.utxoCountAtCapoAddr}`);
+        console.log(`    currentUtxoCount: ${currentUtxoCount}`);
+        console.log(`    storedAddressKeys (${storedDiag.addressUtxoKeys?.length}): ${storedDiag.addressUtxoKeys?.slice(0, 5).join(', ')}${(storedDiag.addressUtxoKeys?.length || 0) > 5 ? '...' : ''}`);
+        console.log(`    currentAddressKeys (${currentAddressKeys.length}): ${currentAddressKeys.slice(0, 5).join(', ')}${currentAddressKeys.length > 5 ? '...' : ''}`);
+
+        if (storedDiag.capoAddr !== currentCapoAddr) {
+            console.warn(`    ⚠️ ADDRESS MISMATCH - this is likely the bug!`);
+        }
+        if (currentUtxoCount === 0 && (storedDiag.utxoCountAtCapoAddr || 0) > 0) {
+            console.warn(`    ⚠️ UTxO COUNT DROPPED TO ZERO - snapshot may not have loaded correctly`);
+        }
+    }
+
+    /**
+     * Handles Capo reconstruction when loading a non-genesis snapshot.
+     * Implements the decision tree from REQT-3.6.5.
+     * @internal
+     */
+    private async handleCapoReconstruction(
+        cached: CachedSnapshot,
+        snapshotName: string,
+    ): Promise<void> {
+        const { bootstrappedStrella } = this.helperState!;
+        const loadedRawConfig = cached.offchainData?.capoConfig as Record<string, any> | undefined;
+        const loadedConfig = loadedRawConfig ? parseCapoJSONConfig(loadedRawConfig as any) : undefined;
+
+        const shouldCreateNew = this.shouldCreateNewCapo(loadedConfig);
+
+        if (shouldCreateNew) {
+            // Cases a) and b): Create new Capo with loaded config
+            console.log(`  -- Creating new Capo from loaded config (shouldCreateNew=${shouldCreateNew})`);
+            const config = loadedConfig || this.helperState!.parsedConfig;
+            if (config) {
+                this.helperState!.parsedConfig = config;
+                this.state.parsedConfig = config;
+                this.state.config = loadedRawConfig;
+                await this.initStellarClass(config);
+            } else {
+                await this.initStellarClass();
+            }
+            this.helperState!.bootstrappedStrella = this.strella;
+            this.helperState!.previousHelper = this as any;
+        } else if (bootstrappedStrella && this.helperState!.previousHelper) {
+            // Case c): Same chartered Capo - hot-swap network
+            console.log(`  -- Hot-swapping network for existing Capo`);
+            await this.restoreFrom(snapshotName);
+        } else {
+            // Fallback: we have a matching Capo but no previousHelper
+            console.log(`  -- Using existing Capo (no previousHelper)`);
+            this.helperState!.bootstrappedStrella = this.strella;
+            this.helperState!.previousHelper = this as any;
+        }
+
+        // Ensure state.config is set
+        if (loadedRawConfig && !this.state.config) {
+            this.state.config = loadedRawConfig;
+        }
+
+        // Mark charter as already minted
+        if (loadedRawConfig && !this.state.mintedCharterToken) {
+            this.state.mintedCharterToken = { restored: true } as any;
+        }
+    }
+
+    /**
+     * Loads a cached snapshot into the emulator and sets up helper state.
+     * This is called for BOTH cache hits AND freshly-built snapshots.
+     * @internal
+     */
+    private async loadCachedSnapshot(
+        cached: CachedSnapshot,
+        snapshotName: string,
+        actorName: string,
+    ): Promise<void> {
+        // 1. Load snapshot into network
+        this.network.loadSnapshot(cached.snapshot);
+
+        // 2. Merge namedRecords
+        Object.assign(this.helperState!.namedRecords, cached.namedRecords);
+
+        // 3. Handle offchainData
+        if (cached.offchainData) {
+            if (!this.helperState!.offchainData) {
+                this.helperState!.offchainData = {};
+            }
+            this.helperState!.offchainData[snapshotName] = cached.offchainData;
+        }
+
+        // 4. Check if this is a genesis (actors) snapshot
+        const entry = this.snapshotCache["registry"].get(snapshotName);
+        const isGenesisSnapshot = entry?.parentSnapName === "genesis";
+
+        if (isGenesisSnapshot) {
+            // Restore actors from stored keys if needed
+            if (Object.keys(this.actors).length === 0) {
+                const actorWallets = cached.offchainData?.actorWallets as
+                    Record<string, { spendingKey: string; stakingKey?: string }> | undefined;
+                if (actorWallets) {
+                    this.restoreActorsFromStoredKeys({ actorWallets });
+                } else {
+                    console.warn(`  ⚠️ No stored actor keys in disk cache for '${snapshotName}' - cache may need rebuild`);
+                }
+            }
+
+            // Restore pre-selected seed UTxO
+            if (!this.preSelectedSeedUtxo && cached.offchainData?.targetSeedUtxo) {
+                this.preSelectedSeedUtxo = cached.offchainData.targetSeedUtxo as PreSelectedSeedUtxo;
+                console.log(`  -- Restored pre-selected seed UTxO from cache: ${this.preSelectedSeedUtxo.txId.slice(0, 12)}...#${this.preSelectedSeedUtxo.utxoIdx}`);
+            }
+        } else {
+            // Non-genesis snapshot: handle Capo reconstruction if needed
+            await this.handleCapoReconstruction(cached, snapshotName);
+
+            // Diagnostic: compare stored snapshot state with current Capo state
+            this.logSnapshotRestoreDiagnostics(cached, snapshotName);
+        }
+
+        // 5. Set actor
+        if (actorName === "default") {
+            await this.setDefaultActor();
+        } else {
+            await this.setActor(actorName);
+        }
+    }
+
+    /**
+     * Resolves snapshot name aliases.
+     * "bootstrapped" is a symbolic alias for "enabledDelegatesDeployed".
+     * @internal
+     */
+    private resolveSnapshotAlias(name: string): string {
+        if (name === "bootstrapped") {
+            return "enabledDelegatesDeployed";
+        }
+        return name;
+    }
+
+    /**
+     * Ensures a snapshot is in cache (memory or disk), building recursively if needed.
+     * This is the single chokepoint for snapshot resolution.
+     * @internal
+     */
+    private async ensureSnapshotCached(
+        snapshotName: string,
+        contentBuilder: () => Promise<any>,
+    ): Promise<CachedSnapshot> {
+        // 1. Check cache first (memory, then disk via snapshotCache.find)
+        const cacheStart = performance.now();
+        let cached = await this.snapshotCache.find(snapshotName, this);
+        if (cached) {
+            const entry = this.snapshotCache["registry"].get(snapshotName);
+            const isGenesis = entry?.parentSnapName === "genesis";
+            const cacheElapsed = (performance.now() - cacheStart).toFixed(1);
+            console.log(`  ⚡ cache hit${isGenesis ? ' (genesis)' : ''} '${snapshotName}': ${cacheElapsed}ms`);
+            return cached;
+        }
+        console.log(`  📦 cache miss '${snapshotName}' - building...`);
+
+        // 2. Cache miss - ensure parent is ready first (recursive)
+        const entry = this.snapshotCache["registry"].get(snapshotName);
+        const parentSnapName = entry?.parentSnapName;
+
+        if (parentSnapName && parentSnapName !== "genesis") {
+            // Resolve alias (e.g., "bootstrapped" → "enabledDelegatesDeployed") for snapMethod lookup
+            const resolvedParentName = this.resolveSnapshotAlias(parentSnapName);
+
+            // Check if parent is already cached BEFORE calling snapMethod (efficiency)
+            // This avoids running the full SnapWrap chain (reusableBootstrap, loadCachedSnapshot)
+            // when parent is already available
+            let parentCached = await this.snapshotCache.find(parentSnapName, this);
+
+            if (!parentCached) {
+                // Parent not cached - call its snap* method to build it
+                // Use resolved name for _snapshotRegistrations lookup (aliases don't have their own snapMethod)
+                const parentReg = (this.constructor as any)._snapshotRegistrations?.get(resolvedParentName);
+
+                if (parentReg?.snapMethod) {
+                    const aliasNote = resolvedParentName !== parentSnapName ? ` (alias for '${resolvedParentName}')` : '';
+                    console.log(`  📦 building parent '${parentSnapName}'${aliasNote} first...`);
+                    // RECURSIVE: This calls the parent's SnapWrap, which calls findOrCreateSnapshot,
+                    // which calls ensureSnapshotCached for the parent, and so on up the chain
+                    await parentReg.snapMethod.call(this);
+                    // Re-fetch after build (use original parentSnapName - snapshotCache handles alias resolution)
+                    parentCached = await this.snapshotCache.find(parentSnapName, this);
+                } else {
+                    throw new Error(
+                        `Parent snapshot '${parentSnapName}' has no snapMethod registered. ` +
+                        `Ensure snapTo${resolvedParentName[0].toUpperCase()}${resolvedParentName.slice(1)}() ` +
+                        `exists with @hasNamedSnapshot decorator.`
+                    );
+                }
+            }
+
+            if (!parentCached) {
+                throw new Error(
+                    `Parent '${parentSnapName}' should be cached after snapMethod call, but wasn't found.`
+                );
+            }
+
+            console.log(`  📦 loading parent '${parentSnapName}' state for building '${snapshotName}'...`);
+            this.network.loadSnapshot(parentCached.snapshot);
+            Object.assign(this.helperState!.namedRecords, parentCached.namedRecords);
+        }
+
+        // 3. Build the snapshot
+        console.log(`  🔨 building '${snapshotName}'...`);
+        const buildStart = performance.now();
+        await contentBuilder();
+        const buildElapsed = (performance.now() - buildStart).toFixed(1);
+        console.log(`  🐢 built '${snapshotName}': ${buildElapsed}ms`);
+
+        // 4. Capture and store
+        const storeStart = performance.now();
+        const snapshot = this.network.snapshot(snapshotName);
+
+        // Get parent hash for cache key
+        const parentCached = parentSnapName && parentSnapName !== "genesis"
+            ? await this.snapshotCache.find(parentSnapName, this)
+            : null;
+        const parentHash = parentCached?.snapshotHash || null;
+
+        // Defensive check: namedRecords should be guaranteed by ensureHelperState()
+        if (!this.helperState!.namedRecords) {
+            throw new Error(
+                `ensureSnapshotCached('${snapshotName}'): helperState.namedRecords is undefined. ` +
+                `This should not happen - ensureHelperState() should have initialized it.`
+            );
+        }
+
+        // Build offchainData (same logic as current code)
+        const offchainData = this.buildOffchainData(snapshotName, entry);
+
+        const cachedSnapshot: CachedSnapshot = {
+            snapshot,
+            namedRecords: { ...this.helperState!.namedRecords },
+            parentSnapName: parentSnapName || "genesis",
+            parentHash,
+            parentCacheKey: null, // deprecated with hierarchical directories (REQT-1.2.9.3.1)
+            snapshotHash: this.network.lastBlockHash,
+            offchainData,
+        };
+
+        await this.snapshotCache.store(snapshotName, cachedSnapshot, this);
+        const storeElapsed = (performance.now() - storeStart).toFixed(1);
+        console.log(`  💾 stored '${snapshotName}': ${storeElapsed}ms`);
+
+        return cachedSnapshot;
+    }
+
+    /**
+     * Finds or creates a snapshot, using the single chokepoint pattern (ARCH-7jcyqx1mg8).
+     * 1. ensureSnapshotCached() handles recursive parent resolution and caching
+     * 2. loadCachedSnapshot() provides uniform loading for both cache hits and freshly-built
+     */
     async findOrCreateSnapshot(
         snapshotName: string,
         actorName: string,
@@ -882,268 +1213,16 @@ export abstract class CapoTestHelper<
     ): Promise<SC> {
         const startTime = performance.now();
 
-        // Check registry to determine if this is a genesis (actors) snapshot
-        const entry = this.snapshotCache["registry"].get(snapshotName);
-        const isGenesisSnapshot = entry?.parentSnapName === "genesis";
+        // 1. Ensure snapshot is in cache (recursive, handles parents)
+        const cached = await this.ensureSnapshotCached(snapshotName, contentBuilder);
 
-        // Try cache using registry-based API (snapshotCache.loadedSnapshots uses composite keys for proper isolation)
-        const cacheStart = performance.now();
-        const cached = await this.snapshotCache.find(snapshotName, this);
-        if (cached) {
-            // Restore from cache (may be in-memory via loadedSnapshots or from disk)
-            this.network.loadSnapshot(cached.snapshot);
-            Object.assign(this.helperState!.namedRecords, cached.namedRecords);
+        // 2. Load from cache (uniform path for hit or freshly-built)
+        await this.loadCachedSnapshot(cached, snapshotName, actorName);
 
-            // Store offchainData in helperState for in-memory cache (REQT-3.4/n93h9y5s85)
-            if (cached.offchainData) {
-                if (!this.helperState!.offchainData) {
-                    this.helperState!.offchainData = {};
-                }
-                this.helperState!.offchainData[snapshotName] = cached.offchainData;
-            }
+        const elapsed = (performance.now() - startTime).toFixed(1);
+        console.log(`  ✅ '${snapshotName}' ready: ${elapsed}ms`);
 
-            if (isGenesisSnapshot) {
-                // Restore actors from stored keys (REQT-3.4.2/avwkcrnwqp, REQT-3.4.4/3rexpys2q3)
-                if (Object.keys(this.actors).length === 0) {
-                    const actorWallets = cached.offchainData?.actorWallets as Record<string, { spendingKey: string; stakingKey?: string }> | undefined;
-                    if (actorWallets) {
-                        this.restoreActorsFromStoredKeys({ actorWallets });
-                    } else {
-                        console.warn(`  ⚠️ No stored actor keys in disk cache for '${snapshotName}' - cache may need rebuild`);
-                    }
-                }
-
-                // Restore pre-selected seed UTxO from offchainData (REQT-3.6.1)
-                if (!this.preSelectedSeedUtxo && cached.offchainData?.targetSeedUtxo) {
-                    this.preSelectedSeedUtxo = cached.offchainData.targetSeedUtxo as PreSelectedSeedUtxo;
-                    console.log(`  -- Restored pre-selected seed UTxO from cache: ${this.preSelectedSeedUtxo.txId.slice(0, 12)}...#${this.preSelectedSeedUtxo.utxoIdx}`);
-                }
-
-                // Set actor
-                if (actorName === "default") {
-                    await this.setDefaultActor();
-                } else if (this.actors[actorName]) {
-                    await this.setActor(actorName);
-                }
-                const elapsed = (performance.now() - cacheStart).toFixed(1);
-                console.log(`  ⚡ cache hit (genesis) '${snapshotName}': ${elapsed}ms`);
-                return this.strella; // May be undefined for actors, that's OK
-            }
-
-            // Disk cache hit for non-genesis snapshot
-            // Implement Capo reconstruction decision tree (REQT-3.6.5/vz0fc3s057)
-            const { bootstrappedStrella, previousHelper } = this.helperState!;
-            const loadedRawConfig = cached.offchainData?.capoConfig as Record<string, any> | undefined;
-            const loadedConfig = loadedRawConfig ? parseCapoJSONConfig(loadedRawConfig as any) : undefined;
-
-            // Decision tree: should we create a new Capo?
-            const shouldCreateNew = this.shouldCreateNewCapo(loadedConfig);
-
-            if (shouldCreateNew) {
-                // Cases a) and b): Create new Capo with loaded config
-                console.log(`  -- Creating new Capo from loaded config (shouldCreateNew=${shouldCreateNew})`);
-                const config = loadedConfig || this.helperState!.parsedConfig;
-                if (config) {
-                    // Store parsed config for subsequent operations
-                    this.helperState!.parsedConfig = config;
-                    this.state.parsedConfig = config;
-                    this.state.config = loadedRawConfig;
-                    await this.initStellarClass(config);
-                } else {
-                    await this.initStellarClass();  // uses this.config default
-                }
-                // Set up helperState for subsequent operations
-                this.helperState!.bootstrappedStrella = this.strella;
-                this.helperState!.previousHelper = this as any;
-            } else if (bootstrappedStrella && previousHelper) {
-                // Case c): Same chartered Capo - hot-swap network via restoreFrom()
-                console.log(`  -- Hot-swapping network for existing Capo`);
-                await this.restoreFrom(snapshotName);
-            } else {
-                // Fallback: we have a matching Capo but no previousHelper
-                // This shouldn't happen normally, but handle gracefully
-                console.log(`  -- Using existing Capo (no previousHelper)`);
-                this.helperState!.bootstrappedStrella = this.strella;
-                this.helperState!.previousHelper = this as any;
-            }
-
-            // Ensure state.config is set for all non-genesis cache restore paths
-            if (loadedRawConfig && !this.state.config) {
-                this.state.config = loadedRawConfig;
-            }
-
-            // Mark charter as already minted for cache restore paths
-            // Prevents mintCharterToken() from trying to re-mint when called by updateCharter()
-            if (loadedRawConfig && !this.state.mintedCharterToken) {
-                this.state.mintedCharterToken = { restored: true } as any;
-            }
-
-            if (actorName === "default") {
-                await this.setDefaultActor();
-            } else {
-                await this.setActor(actorName);
-            }
-
-            // Diagnostic: compare stored snapshot state with current Capo state
-            const storedDiag = cached.offchainData?._diag as {
-                capoAddr?: string;
-                validatorHash?: string;
-                utxoCountAtCapoAddr?: number;
-                addressUtxoKeys?: string[];
-            } | undefined;
-            if (storedDiag) {
-                const currentCapoAddr = this.strella?.address?.toString();
-                const currentValidatorHash = this.strella?.validatorHash!.toHex();
-                const currentUtxoCount = currentCapoAddr
-                    ? (this.network as any)._addressUtxos[currentCapoAddr]?.length || 0
-                    : 0;
-                const currentAddressKeys = Object.keys((this.network as any)._addressUtxos);
-
-                console.log(`  [DIAG] Snapshot restore comparison for '${snapshotName}':`);
-                console.log(`    storedCapoAddr:   ${storedDiag.capoAddr}`);
-                console.log(`    currentCapoAddr:  ${currentCapoAddr}`);
-                console.log(`    addrMatch: ${storedDiag.capoAddr === currentCapoAddr}`);
-                console.log(`    storedValidatorHash:  ${storedDiag.validatorHash}`);
-                console.log(`    currentValidatorHash: ${currentValidatorHash}`);
-                console.log(`    vhMatch: ${storedDiag.validatorHash === currentValidatorHash}`);
-                console.log(`    storedUtxoCount:  ${storedDiag.utxoCountAtCapoAddr}`);
-                console.log(`    currentUtxoCount: ${currentUtxoCount}`);
-                console.log(`    storedAddressKeys (${storedDiag.addressUtxoKeys?.length}): ${storedDiag.addressUtxoKeys?.slice(0, 5).join(', ')}${(storedDiag.addressUtxoKeys?.length || 0) > 5 ? '...' : ''}`);
-                console.log(`    currentAddressKeys (${currentAddressKeys.length}): ${currentAddressKeys.slice(0, 5).join(', ')}${currentAddressKeys.length > 5 ? '...' : ''}`);
-
-                if (storedDiag.capoAddr !== currentCapoAddr) {
-                    console.warn(`    ⚠️ ADDRESS MISMATCH - this is likely the bug!`);
-                }
-                if (currentUtxoCount === 0 && (storedDiag.utxoCountAtCapoAddr || 0) > 0) {
-                    console.warn(`    ⚠️ UTxO COUNT DROPPED TO ZERO - snapshot may not have loaded correctly`);
-                }
-            }
-
-            const elapsed = (performance.now() - cacheStart).toFixed(1);
-            console.log(`  ⚡ cache hit '${snapshotName}': ${elapsed}ms`);
-            return this.strella;
-        }
-        console.log(`  📦 cache miss '${snapshotName}' - building...`);
-
-        // Ensure parent snapshot is ready before building (ARCH-rmegyaj58k)
-        // Uses the stored snapMethod reference for direct invocation (no string construction)
-        const parentSnapName = entry?.parentSnapName;
-        if (parentSnapName && parentSnapName !== "genesis") {
-            let parentCached = await this.snapshotCache.find(parentSnapName, this);
-            if (!parentCached) {
-                // Parent not in cache - call its snap* method to build it
-                const parentReg = (this.constructor as any)._snapshotRegistrations?.get(parentSnapName);
-                if (parentReg?.snapMethod) {
-                    console.log(`  📦 building parent '${parentSnapName}' first...`);
-                    await parentReg.snapMethod.call(this);
-                    parentCached = await this.snapshotCache.find(parentSnapName, this);
-                } else {
-                    throw new Error(
-                        `Parent snapshot '${parentSnapName}' not in cache and no snap method registered. ` +
-                        `Ensure snapTo${parentSnapName[0].toUpperCase()}${parentSnapName.slice(1)}() exists with @hasNamedSnapshot decorator.`
-                    );
-                }
-            }
-            if (parentCached) {
-                console.log(`  📦 loading parent '${parentSnapName}' before building '${snapshotName}'...`);
-                this.network.loadSnapshot(parentCached.snapshot);
-                Object.assign(this.helperState!.namedRecords, parentCached.namedRecords);
-            }
-        }
-
-        // Build the snapshot
-        const buildStart = performance.now();
-        let succeeded = false;
-        try {
-            await contentBuilder();
-            succeeded = true;
-            const buildElapsed = (performance.now() - buildStart).toFixed(1);
-            console.log(`  🐢 built '${snapshotName}': ${buildElapsed}ms`);
-            return this.strella;
-        } catch (e) {
-            throw e;
-        } finally {
-            if (succeeded) {
-                const storeStart = performance.now();
-
-                // Capture network snapshot and store to cache
-                const snapshot = this.network.snapshot(snapshotName);
-                const entry = this.snapshotCache["registry"].get(snapshotName);
-                const parentSnapName = entry?.parentSnapName || "genesis";
-
-                // Get parent hash from snapshotCache (already loaded during parent resolution)
-                const parentCached = parentSnapName !== "genesis"
-                    ? await this.snapshotCache.find(parentSnapName, this)
-                    : null;
-                const parentHash = parentCached?.snapshotHash || null;
-
-                // For genesis snapshots, store actorSetupInfo for regeneration on cache load
-                // Defensive check: namedRecords should be guaranteed by ensureHelperState()
-                if (!this.helperState!.namedRecords) {
-                    throw new Error(
-                        `findOrCreateSnapshot('${snapshotName}'): helperState.namedRecords is undefined. ` +
-                        `This should not happen - ensureHelperState() should have initialized it.`
-                    );
-                }
-                const namedRecords = { ...this.helperState!.namedRecords };
-                let offchainData: Record<string, unknown> | undefined;
-
-                if (parentSnapName === "genesis" && Object.keys(this.actors).length > 0) {
-                    // Store actor wallet keys in offchainData (REQT-3.4.1/1p346cabct)
-                    // Replaces __actorSetupInfo__ hack (REQT-3.4.4/3rexpys2q3)
-                    offchainData = {
-                        ...this.getActorWalletKeys(),
-                        // Store pre-selected seed UTxO for cache key computation (REQT-3.6.1)
-                        targetSeedUtxo: this.preSelectedSeedUtxo,
-                    };
-
-                    // Initialize helperState.offchainData if needed and store for in-memory cache
-                    if (!this.helperState!.offchainData) {
-                        this.helperState!.offchainData = {};
-                    }
-                    this.helperState!.offchainData[snapshotName] = offchainData;
-                } else if (this.state?.config) {
-                    // Store config in offchainData for non-genesis snapshots (REQT-3.5/vmq8qmv218)
-                    // This enables cross-process Capo reconstruction from disk cache
-                    const capoAddr = this.strella?.address?.toString();
-                    const validatorHash = this.strella?.validatorHash!.toHex();
-                    const utxoCountAtCapoAddr = capoAddr
-                        ? (this.network as any)._addressUtxos[capoAddr]?.length || 0
-                        : 0;
-
-                    offchainData = {
-                        capoConfig: this.state.config,
-                        // Diagnostics for debugging snapshot restore issues
-                        _diag: {
-                            capoAddr,
-                            validatorHash,
-                            utxoCountAtCapoAddr,
-                            addressUtxoKeys: Object.keys((this.network as any)._addressUtxos),
-                        }
-                    };
-
-                    // Initialize helperState.offchainData if needed and store for in-memory cache
-                    if (!this.helperState!.offchainData) {
-                        this.helperState!.offchainData = {};
-                    }
-                    this.helperState!.offchainData[snapshotName] = offchainData;
-                }
-
-                const cachedSnapshot: CachedSnapshot = {
-                    snapshot,
-                    namedRecords,
-                    parentSnapName,
-                    parentHash,
-                    parentCacheKey: null, // deprecated with hierarchical directories
-                    snapshotHash: this.network.lastBlockHash,
-                    offchainData,
-                };
-
-                await this.snapshotCache.store(snapshotName, cachedSnapshot, this);
-                const storeElapsed = (performance.now() - storeStart).toFixed(1);
-                console.log(`  💾 stored '${snapshotName}' to disk: ${storeElapsed}ms`);
-            }
-        }
+        return this.strella;
     }
 
     async restoreFrom(snapshotName: string): Promise<SC> {

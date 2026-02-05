@@ -1,8 +1,23 @@
 # WU: Refactor Snapshot Resolution to Single Chokepoint
 
 **ARCH-UUT**: ARCH-7jcyqx1mg8
-**Status**: draft
+**Status**: completed
 **Relates to**: ARCH-rmegyaj58k (Build App Snapshot with Cached Parent), ARCH-1d82vckcae (SnapshotCache)
+
+**Required Skills**:
+- TypeScript off-chain development
+- Testing framework (Vitest, emulator snapshot system)
+- Familiarity with CapoTestHelper and SnapshotCache classes
+
+**In Scope (ARCH)**:
+- ARCH-rw8jqbj00a (CapoTestHelper) — primary modification target
+- ARCH-1d82vckcae (SnapshotCache) — interface consumer, no changes needed
+- ARCH-rmegyaj58k (Build App Snapshot with Cached Parent) — workflow being fixed
+
+**In Scope (REQT)**:
+- REQT-3.4 (Offchain Data Storage) — helperState.offchainData population
+- REQT-3.6.5 (Capo Reconstruction Decision Tree) — handleCapoReconstruction()
+- REQT-1.2.10.3 (In-Memory Cache) — loadedSnapshots Map usage
 
 ## Problem Statement
 
@@ -722,3 +737,48 @@ If this becomes a problem in practice, wrap the build+store section in try/final
 ### Verified: Parent Re-find After Build
 
 The proposed code already handles this correctly at lines 156-161: after calling `parentReg.snapMethod.call(this)`, it re-fetches the parent from cache and throws if not found. This matches the current code's behavior at line 1039.
+
+---
+
+## Coder Report
+
+- **Completed**: 2026-02-05
+- **Commit**: (pending)
+
+### Summary
+Refactored `findOrCreateSnapshot()` into a single chokepoint pattern with extracted helper methods: `ensureSnapshotCached()`, `loadCachedSnapshot()`, `handleCapoReconstruction()`, `buildOffchainData()`, and `logSnapshotRestoreDiagnostics()`. All 39 snapshot cache tests pass, plus broader test 02 suite (57 tests).
+
+### Clarifications
+| Question | Resolution |
+|----------|------------|
+| `SnapshotRegistryEntry` type location | Imported from `SnapshotCache.ts` where it's already defined |
+| `parentCacheKey` field requirement | Added to `CachedSnapshot` object with `null` value (deprecated but still required by type) |
+
+#### Tasks Added
+- None
+
+### Requirements Addressed
+| REQT ID | Label | Status |
+|---------|-------|--------|
+| REQT-3.4 | Offchain Data Storage | Implemented via `buildOffchainData()` + `loadCachedSnapshot()` |
+| REQT-3.6.5 | Capo Reconstruction Decision Tree | Implemented via `handleCapoReconstruction()` |
+| REQT-1.2.10.3 | In-Memory Cache | Maintained via `loadedSnapshots` Map usage |
+
+### Files Changed
+- `src/testing/CapoTestHelper.ts` — Refactored `findOrCreateSnapshot()` and added 5 helper methods (+292/-230 lines)
+
+### Architectural Alignment
+- ARCH-7jcyqx1mg8: Single chokepoint pattern implemented as specified
+- ARCH-rmegyaj58k: Parent chain resolution now recursive and guaranteed
+- ARCH-1d82vckcae: SnapshotCache interface unchanged, consumer refactored
+
+### Blockers & Stubs
+| Issue | Location | Suggested Resolution |
+|-------|----------|---------------------|
+| None | - | - |
+
+### Out-of-Scope Observations
+- The `try/finally` pattern was intentionally omitted per audit findings (acceptable tradeoff for cleaner code)
+
+### Questions Raised
+- None
