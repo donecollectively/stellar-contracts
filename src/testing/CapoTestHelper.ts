@@ -482,7 +482,7 @@ export abstract class CapoTestHelper<
 
     /**
      * Static registry of snapshot metadata, populated at class definition time.
-     * Maps snapshot name → registration metadata.
+     * Maps snapshot name → registration metadata including the snap* method reference.
      * @internal
      */
     static _snapshotRegistrations: Map<string, {
@@ -491,6 +491,7 @@ export abstract class CapoTestHelper<
         computeDirLabel?: DirLabelResolver;
         actor: string;
         internal?: boolean;
+        snapMethod?: (...args: any[]) => Promise<any>;  // The decorated snap* method
     }> = new Map();
 
     /**
@@ -534,25 +535,6 @@ export abstract class CapoTestHelper<
                 );
             }
 
-            // Register at class definition time (not method invocation time)
-            // Use the class constructor's registry (inheritance-aware)
-            const ctor = target.constructor;
-            if (!ctor.hasOwnProperty('_snapshotRegistrations')) {
-                // Create own registry for this class (don't mutate parent's)
-                ctor._snapshotRegistrations = new Map(ctor._snapshotRegistrations || []);
-            }
-            ctor._snapshotRegistrations.set(snapshotName, {
-                parentSnapName,
-                resolveScriptDependencies,
-                computeDirLabel,
-                actor: actorName,
-                internal,
-            });
-
-            console.log(
-                `hasNamedSnapshot(): ${propertyKey} → "${snapshotName}" (parent: "${parentSnapName}")`,
-            );
-
             async function SnapWrap(this: AnyCapoTestHelper, ...args: any[]) {
                 // Ensure all class-level registrations are copied to snapshotCache
                 this.ensureSnapshotRegistrations();
@@ -593,6 +575,27 @@ export abstract class CapoTestHelper<
                     },
                 );
             }
+
+            // Register at class definition time (not method invocation time)
+            // Use the class constructor's registry (inheritance-aware)
+            const ctor = target.constructor;
+            if (!ctor.hasOwnProperty('_snapshotRegistrations')) {
+                // Create own registry for this class (don't mutate parent's)
+                ctor._snapshotRegistrations = new Map(ctor._snapshotRegistrations || []);
+            }
+            ctor._snapshotRegistrations.set(snapshotName, {
+                parentSnapName,
+                resolveScriptDependencies,
+                computeDirLabel,
+                actor: actorName,
+                internal,
+                snapMethod: SnapWrap,  // Store the decorated method for parent resolution
+            });
+
+            console.log(
+                `hasNamedSnapshot(): ${propertyKey} → "${snapshotName}" (parent: "${parentSnapName}")`,
+            );
+
             return descriptor;
         };
     }
@@ -1022,12 +1025,25 @@ export abstract class CapoTestHelper<
         }
         console.log(`  📦 cache miss '${snapshotName}' - building...`);
 
-        // Load parent snapshot state before building (ARCH-rmegyaj58k)
-        // For app snapshots, reusableBootstrap() has already configured the Capo.
-        // We just need network state + namedRecords to build upon.
+        // Ensure parent snapshot is ready before building (ARCH-rmegyaj58k)
+        // Uses the stored snapMethod reference for direct invocation (no string construction)
         const parentSnapName = entry?.parentSnapName;
         if (parentSnapName && parentSnapName !== "genesis") {
-            const parentCached = await this.snapshotCache.find(parentSnapName, this);
+            let parentCached = await this.snapshotCache.find(parentSnapName, this);
+            if (!parentCached) {
+                // Parent not in cache - call its snap* method to build it
+                const parentReg = (this.constructor as any)._snapshotRegistrations?.get(parentSnapName);
+                if (parentReg?.snapMethod) {
+                    console.log(`  📦 building parent '${parentSnapName}' first...`);
+                    await parentReg.snapMethod.call(this);
+                    parentCached = await this.snapshotCache.find(parentSnapName, this);
+                } else {
+                    throw new Error(
+                        `Parent snapshot '${parentSnapName}' not in cache and no snap method registered. ` +
+                        `Ensure snapTo${parentSnapName[0].toUpperCase()}${parentSnapName.slice(1)}() exists with @hasNamedSnapshot decorator.`
+                    );
+                }
+            }
             if (parentCached) {
                 console.log(`  📦 loading parent '${parentSnapName}' before building '${snapshotName}'...`);
                 this.network.loadSnapshot(parentCached.snapshot);
