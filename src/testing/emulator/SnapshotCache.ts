@@ -56,8 +56,6 @@ export type CachedSnapshot = {
     parentSnapName: ParentSnapName;
     /** Hash of the parent snapshot—verified on load to detect stale cache (REQT-1.2.9.3.2), null for root */
     parentHash: string | null;
-    /** @deprecated With hierarchical directories, parent path is implicit. Retained as breadcrumb but MUST NOT be used for path construction (REQT-1.2.9.3.1) */
-    parentCacheKey: string | null;
     /** Hash of this snapshot for use as parent in child snapshots */
     snapshotHash: string;
     /** Directory path where this snapshot is stored (set after find() or store()) */
@@ -131,8 +129,6 @@ type SerializedCachedSnapshot = {
     namedRecords: Record<string, string>;
     parentSnapName: ParentSnapName;
     parentHash: string | null;
-    /** Cache key of the parent snapshot for chain loading (REQT-1.2.9.3) */
-    parentCacheKey: string | null;
     /** Number of blocks in parent snapshot, for incremental storage (REQT-1.2.5.1) */
     parentBlockCount: number;
     snapshotHash: string;
@@ -843,7 +839,6 @@ export class SnapshotCache {
                 namedRecords: serialized.namedRecords,
                 parentSnapName: serialized.parentSnapName,
                 parentHash: serialized.parentHash,
-                parentCacheKey: serialized.parentCacheKey, // Deprecated but retained
                 snapshotHash: serialized.snapshotHash,
                 path: snapshotDir,
                 offchainData: mergedOffchainData,
@@ -967,7 +962,6 @@ export class SnapshotCache {
             namedRecords: cachedSnapshot.namedRecords,
             parentSnapName: cachedSnapshot.parentSnapName,
             parentHash: cachedSnapshot.parentHash,
-            parentCacheKey: cachedSnapshot.parentCacheKey, // Deprecated but retained
             parentBlockCount,
             snapshotHash: cachedSnapshot.snapshotHash,
             capturedBlockCount,

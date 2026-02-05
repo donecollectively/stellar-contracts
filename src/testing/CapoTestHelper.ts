@@ -1189,7 +1189,6 @@ export abstract class CapoTestHelper<
             namedRecords: { ...this.helperState!.namedRecords },
             parentSnapName: parentSnapName || "genesis",
             parentHash,
-            parentCacheKey: null, // deprecated with hierarchical directories (REQT-1.2.9.3.1)
             snapshotHash: this.network.lastBlockHash,
             offchainData,
         };

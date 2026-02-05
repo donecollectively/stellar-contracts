@@ -752,7 +752,7 @@ Refactored `findOrCreateSnapshot()` into a single chokepoint pattern with extrac
 | Question | Resolution |
 |----------|------------|
 | `SnapshotRegistryEntry` type location | Imported from `SnapshotCache.ts` where it's already defined |
-| `parentCacheKey` field requirement | Added to `CachedSnapshot` object with `null` value (deprecated but still required by type) |
+| `parentCacheKey` field | Removed from `CachedSnapshot` type and all code (was deprecated, now deleted) |
 
 #### Tasks Added
 - None

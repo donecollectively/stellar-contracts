@@ -500,7 +500,6 @@ type CachedSnapshot = {
   namedRecords: Record<string, string>;
   parentSnapName: ParentSnapName;  // parent snapshot name ("genesis" for root)
   parentHash: string | null;       // parent's snapshotHash - verified on load to detect stale cache
-  parentCacheKey: string | null;   // DO NOT USE - probably obsolete: with hierarchical dirs, parent path is implicit
   snapshotHash: string;            // this snapshot's resulting block hash (becomes child's parentHash)
   cacheKeyInputs?: CacheKeyInputs; // original inputs used to compute cache key (loaded from key-inputs.json)
   offchainData?: Record<string, unknown>;  // offchain detail merged from parent chain (loaded from offchain.json)
@@ -541,7 +540,7 @@ type CachedSnapshot = {
 
 **Parent Chain Verification**:
 - `parentHash`: Verifies loaded parent state matches expected state; if mismatch, cache is stale and `find()` returns null to trigger rebuild
-- Parent path is implicit in directory structure (no `parentCacheKey` needed—we find() parent first, then construct child path from `parent.path + "{name}-{cacheKey}/"`)
+- Parent path is implicit in directory structure—we find() parent first, then construct child path from `parent.path + "{name}-{cacheKey}/"`
 
 **Integrity Verification**:
 - After chain loading, `find()` verifies `blockHashes[-1] === snapshotHash` to detect file corruption or implementation bugs
@@ -633,14 +632,10 @@ private getSnapshotBlockHash(snapName: string): string {
 **When Saving Child Snapshots**:
 
 ```typescript
-// // deprecated: Get parent's cache key via recomputation
-// const parentCacheKey = await this.getSnapshotCacheKey(parentSnapName);
-
 const cachedSnapshot: CachedSnapshot = {
   snapshot,
   parentSnapName,
   parentHash: this.getSnapshotBlockHash(parentSnapName),
-  // parentCacheKey,  // deprecated: with hierarchical dirs, parent path is implicit
   snapshotHash: this.network.lastBlockHash,
   namedRecords: {},
 };
@@ -1083,7 +1078,7 @@ Full offchainData/capoConfig restoration is unnecessary—that's handled by the 
 - [x] ~~Add reqts for built-in snapshot decorator migration~~ → Done: REQT-3.3.1 through 3.3.5
 - [x] ~~Finalize SnapshotCache.find() and store() interface signatures~~ → Name-based: `find(snapshotName)`, `store(snapshotName, snapshot)`. Path computed via registry.
 - [x] ~~Update Emulator.reqts.md to reflect hierarchical directories, just-in-time registration, and touch directories (not files)~~ → Done: REQT-1.2.7.1, 1.2.9.x updated; parentCacheKey deprecated
-- [ ] **Cleanup after impl**: Remove deprecated `parentCacheKey` references from this doc (CachedSnapshot type, code examples) once hierarchical dirs are working
+- [x] ~~**Cleanup after impl**: Remove deprecated `parentCacheKey` references from this doc (CachedSnapshot type, code examples) once hierarchical dirs are working~~ → Done: removed from CachedSnapshot type and code examples
 
 ---
 

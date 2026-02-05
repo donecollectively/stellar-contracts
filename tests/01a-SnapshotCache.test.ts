@@ -94,7 +94,6 @@ function createCachedSnapshot(
         namedRecords: { testRecord: "test-value-123" },
         parentSnapName,
         parentHash,
-        parentCacheKey: null, // deprecated with hierarchical directories
         snapshotHash,
     };
 }
