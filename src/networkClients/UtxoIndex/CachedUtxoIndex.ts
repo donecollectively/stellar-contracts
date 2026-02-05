@@ -313,7 +313,7 @@ export class CachedUtxoIndex {
 
         await this.store.log("yz58q", `Found ${capoUtxos.length} capo UTXOs`);
 
-        // REQT-1.3.1: Store all capo UTXOs in the index
+        // REQT/vk2bywdycn: Store all capo UTXOs in the index
         for (const utxo of capoUtxos) {
             const entry = this.txInputToIndexEntry(utxo);
             await this.store.saveUtxo(entry);
@@ -362,7 +362,7 @@ export class CachedUtxoIndex {
      * Checks for new transactions at the capo address and indexes new UTXOs.
      * Supports pagination with configurable page size and max pages.
      *
-     * REQT-1.3.2 (checkForNewTxns)
+     * REQT/fh56sce22g (checkForNewTxns)
      */
     async checkForNewTxns(fromBlockHeight?: number): Promise<void> {
         this.events.emit("syncing");
@@ -581,7 +581,7 @@ export class CachedUtxoIndex {
     /**
      * Processes a transaction to identify and index new UTXOs.
      *
-     * REQT-1.3.3 (processTransactionForNewUtxos)
+     * REQT/0vrkpk6a6h (processTransactionForNewUtxos)
      */
     private async processTransactionForNewUtxos(
         txHash: string,
@@ -604,10 +604,10 @@ export class CachedUtxoIndex {
                 continue;
             }
 
-            // REQT-1.3.3: Index ALL outputs, not just UUT-containing ones
+            // REQT/0vrkpk6a6h: Index ALL outputs, not just UUT-containing ones
             await this.indexUtxoFromOutput(txHash, outputIndex, output);
 
-            // REQT-1.2.2: Check if charter token is present (indicates charter change)
+            // REQT/xrdj6qpgnj: Check if charter token is present (indicates charter change)
             const tokenNames = output.value.assets.getPolicyTokenNames(mph);
             for (const tokenNameBytes of tokenNames) {
                 try {
@@ -641,7 +641,7 @@ export class CachedUtxoIndex {
             }
         }
 
-        // REQT-1.2.2: Re-catalog delegates if charter changed
+        // REQT/xrdj6qpgnj: Re-catalog delegates if charter changed
         if (charterChanged) {
             await this.store.log(
                 "ch4rt",
@@ -951,7 +951,7 @@ export class CachedUtxoIndex {
      * Catalogs delegate UUTs mentioned in the charter.
      * Uses delegate links directly with Blockfrost queries (decoupled from Capo).
      *
-     * REQT-1.2.1 (catalogDelegateUuts)
+     * REQT/k0mnv27tz4 (catalogDelegateUuts)
      */
     private async catalogDelegateUuts(charterData: CharterData): Promise<void> {
         await this.store.log("z5h89", `Cataloging delegate UUTs`);
