@@ -47,6 +47,7 @@
 | Snapshot provenance | artifact | StellarNetworkEmulator | Debugging/logging (cleared on pushBlock) |
 | Key inputs | artifact | SnapshotCache | Debugging, actor list access (ARCH-ja63e3bh8p) |
 | Offchain data | artifact | SnapshotCache | Actor wallet keys, merged from parent chain (ARCH-75rh0ewd7a) |
+| Single chokepoint resolution | resource | CapoTestHelper | Recursive parent resolution via `snapMethod`; uniform `loadCachedSnapshot()` path (ARCH-d52nrfd96z) |
 
 ### Instance Lifetimes
 
@@ -104,6 +105,36 @@ This allows the shared Capo to work with each test's fresh emulator.
 | Disk cache hit (no prior Capo) | Set after `initStellarClass()` |
 
 **Different seeds are sequential**, not coexisting. `initialize()` with new seed clears helperState, discarding the old Capo.
+
+#### Single Chokepoint Snapshot Resolution (ARCH-d52nrfd96z)
+
+All snapshot resolution flows through a single recursive chokepoint to eliminate scattered branching:
+
+```
+findOrCreateSnapshot(snapshotName, actorName, contentBuilder)
+    │
+    ├─ ensureSnapshotCached(snapshotName, contentBuilder)
+    │   ├─ Check cache (memory → disk) → return if hit
+    │   ├─ RECURSIVE: parentReg.snapMethod.call(this) for parent
+    │   ├─ Load parent state into emulator
+    │   ├─ Build via contentBuilder()
+    │   └─ Store to cache, return
+    │
+    └─ loadCachedSnapshot(cached, snapshotName, actorName)
+        ├─ network.loadSnapshot()
+        ├─ Merge namedRecords
+        ├─ Handle offchainData
+        ├─ Capo reconstruction (if needed)
+        └─ Set actor
+```
+
+**Key properties:**
+- `ensureSnapshotCached()` is the single recursive path for "make sure it's cached"
+- `loadCachedSnapshot()` is the uniform loading path (same for cache hit or freshly built)
+- Parent resolution via `snapMethod.call(this)` stored in `_snapshotRegistrations` at class definition time
+- No scattered "if cached / if parent / if build" branches
+
+See `emulator.7jcyqx1mg8.workUnit.md` for implementation details and concern mapping.
 
 ---
 
@@ -924,6 +955,8 @@ Efficient loading when parent snapshots are already in process memory from prior
 
 ### Workflow: Build App Snapshot with Cached Parent (ARCH-rmegyaj58k)
 
+> **Note**: This workflow is superseded by the Single Chokepoint pattern (ARCH-d52nrfd96z). The original workflow only handled the case where parent was already cached. The new pattern uses recursive `snapMethod.call()` to build uncached parents automatically. See `emulator.7jcyqx1mg8.workUnit.md`.
+
 When building a NEW app snapshot where the parent exists in cache but the child does not. This differs from bootstrap flow (where layers build sequentially) and from disk chain load (where child already exists).
 
 **Scenario**: Test defines custom snapshots `firstMember` → `proposeFirstAgreement`. On first run of `snapToProposeFirstAgreement()`:
@@ -1080,6 +1113,7 @@ Full offchainData/capoConfig restoration is unnecessary—that's handled by the 
 - `./Emulator.reqts.md` - Detailed requirements
 - `./emulator-capo-chicken-egg.md` - Egg/chicken pattern for loading chartered Capo from disk (ARCH-8wby9gxrav)
 - `./snapshot-impl-audit.4xb49a4jyw.workUnit.md` - Implementation audit (goal state alignment)
+- `./emulator.7jcyqx1mg8.workUnit.md` - Single chokepoint refactoring (ARCH-d52nrfd96z)
 - `../../reference/essential-stellar-testing.md` - Testing conventions
 - `../CapoTestHelper.ts` - Snapshot orchestration implementation
 - `../../helios/CachedHeliosProgram.ts` - Compilation cache pattern

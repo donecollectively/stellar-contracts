@@ -81,10 +81,15 @@ findOrCreateSnapshot(snapshotName, actorName, contentBuilder)
 │   ├─ snapshotCache.find(snapshotName) → cached?
 │   │   └─ IF cached: return cached (EARLY EXIT)
 │   │
-│   ├─ RECURSIVE: ensure parent is cached
-│   │   ├─ get parentSnapName from registry
-│   │   ├─ get parent's snapMethod from _snapshotRegistrations
-│   │   ├─ await parentReg.snapMethod.call(this)  ← RECURSIVE!
+│   ├─ ENSURE PARENT (if not genesis):
+│   │   ├─ snapshotCache.find(parentSnapName) → parentCached?
+│   │   │   └─ IF parentCached: skip snapMethod call (efficiency)
+│   │   │
+│   │   ├─ IF NOT parentCached:
+│   │   │   ├─ get parent's snapMethod from _snapshotRegistrations
+│   │   │   ├─ await parentReg.snapMethod.call(this)  ← RECURSIVE!
+│   │   │   └─ re-fetch: snapshotCache.find(parentSnapName)
+│   │   │
 │   │   └─ load parent state into emulator for building
 │   │
 │   ├─ BUILD: await contentBuilder()
@@ -97,8 +102,9 @@ findOrCreateSnapshot(snapshotName, actorName, contentBuilder)
     │
     ├─ network.loadSnapshot(cached.snapshot)
     ├─ merge namedRecords
-    ├─ handle offchainData
+    ├─ handle offchainData (store in helperState)
     ├─ handle Capo reconstruction (if needed)
+    ├─ log diagnostics (if non-genesis)
     ├─ set actor
     └─ return this.strella
 ```
@@ -126,39 +132,53 @@ private async ensureSnapshotCached(
     contentBuilder: () => Promise<any>,
 ): Promise<CachedSnapshot> {
     // 1. Check cache first (memory, then disk via snapshotCache.find)
+    const cacheStart = performance.now();
     let cached = await this.snapshotCache.find(snapshotName, this);
     if (cached) {
+        const entry = this.snapshotCache["registry"].get(snapshotName);
+        const isGenesis = entry?.parentSnapName === "genesis";
+        const cacheElapsed = (performance.now() - cacheStart).toFixed(1);
+        console.log(`  ⚡ cache hit${isGenesis ? ' (genesis)' : ''} '${snapshotName}': ${cacheElapsed}ms`);
         return cached;
     }
+    console.log(`  📦 cache miss '${snapshotName}' - building...`);
 
     // 2. Cache miss - ensure parent is ready first (recursive)
     const entry = this.snapshotCache["registry"].get(snapshotName);
     const parentSnapName = entry?.parentSnapName;
 
     if (parentSnapName && parentSnapName !== "genesis") {
-        // Get parent's snapMethod from static registrations
-        const parentReg = (this.constructor as any)._snapshotRegistrations?.get(parentSnapName);
+        // Check if parent is already cached BEFORE calling snapMethod (efficiency)
+        // This avoids running the full SnapWrap chain (reusableBootstrap, loadCachedSnapshot)
+        // when parent is already available
+        let parentCached = await this.snapshotCache.find(parentSnapName, this);
 
-        if (parentReg?.snapMethod) {
-            console.log(`  📦 ensuring parent '${parentSnapName}' is ready...`);
-            // RECURSIVE: This calls the parent's SnapWrap, which calls findOrCreateSnapshot,
-            // which calls ensureSnapshotCached for the parent, and so on up the chain
-            await parentReg.snapMethod.call(this);
-        } else {
-            throw new Error(
-                `Parent snapshot '${parentSnapName}' has no snapMethod registered. ` +
-                `Ensure snapTo${parentSnapName[0].toUpperCase()}${parentSnapName.slice(1)}() ` +
-                `exists with @hasNamedSnapshot decorator.`
-            );
+        if (!parentCached) {
+            // Parent not cached - call its snap* method to build it
+            const parentReg = (this.constructor as any)._snapshotRegistrations?.get(parentSnapName);
+
+            if (parentReg?.snapMethod) {
+                console.log(`  📦 building parent '${parentSnapName}' first...`);
+                // RECURSIVE: This calls the parent's SnapWrap, which calls findOrCreateSnapshot,
+                // which calls ensureSnapshotCached for the parent, and so on up the chain
+                await parentReg.snapMethod.call(this);
+                // Re-fetch after build
+                parentCached = await this.snapshotCache.find(parentSnapName, this);
+            } else {
+                throw new Error(
+                    `Parent snapshot '${parentSnapName}' has no snapMethod registered. ` +
+                    `Ensure snapTo${parentSnapName[0].toUpperCase()}${parentSnapName.slice(1)}() ` +
+                    `exists with @hasNamedSnapshot decorator.`
+                );
+            }
         }
 
-        // Load parent state into emulator for building child
-        const parentCached = await this.snapshotCache.find(parentSnapName, this);
         if (!parentCached) {
             throw new Error(
                 `Parent '${parentSnapName}' should be cached after snapMethod call, but wasn't found.`
             );
         }
+
         console.log(`  📦 loading parent '${parentSnapName}' state for building '${snapshotName}'...`);
         this.network.loadSnapshot(parentCached.snapshot);
         Object.assign(this.helperState!.namedRecords, parentCached.namedRecords);
@@ -180,6 +200,14 @@ private async ensureSnapshotCached(
         ? await this.snapshotCache.find(parentSnapName, this)
         : null;
     const parentHash = parentCached?.snapshotHash || null;
+
+    // Defensive check: namedRecords should be guaranteed by ensureHelperState()
+    if (!this.helperState!.namedRecords) {
+        throw new Error(
+            `ensureSnapshotCached('${snapshotName}'): helperState.namedRecords is undefined. ` +
+            `This should not happen - ensureHelperState() should have initialized it.`
+        );
+    }
 
     // Build offchainData (same logic as current code)
     const offchainData = this.buildOffchainData(snapshotName, entry);
@@ -241,16 +269,22 @@ private async loadCachedSnapshot(
                 Record<string, { spendingKey: string; stakingKey?: string }> | undefined;
             if (actorWallets) {
                 this.restoreActorsFromStoredKeys({ actorWallets });
+            } else {
+                console.warn(`  ⚠️ No stored actor keys in disk cache for '${snapshotName}' - cache may need rebuild`);
             }
         }
 
         // Restore pre-selected seed UTxO
         if (!this.preSelectedSeedUtxo && cached.offchainData?.targetSeedUtxo) {
             this.preSelectedSeedUtxo = cached.offchainData.targetSeedUtxo as PreSelectedSeedUtxo;
+            console.log(`  -- Restored pre-selected seed UTxO from cache: ${this.preSelectedSeedUtxo.txId.slice(0, 12)}...#${this.preSelectedSeedUtxo.utxoIdx}`);
         }
     } else {
         // Non-genesis snapshot: handle Capo reconstruction if needed
         await this.handleCapoReconstruction(cached, snapshotName);
+
+        // Diagnostic: compare stored snapshot state with current Capo state
+        this.logSnapshotRestoreDiagnostics(cached, snapshotName);
     }
 
     // 5. Set actor
@@ -284,6 +318,7 @@ private async handleCapoReconstruction(
 
     if (shouldCreateNew) {
         // Cases a) and b): Create new Capo with loaded config
+        console.log(`  -- Creating new Capo from loaded config (shouldCreateNew=${shouldCreateNew})`);
         const config = loadedConfig || this.helperState!.parsedConfig;
         if (config) {
             this.helperState!.parsedConfig = config;
@@ -297,9 +332,11 @@ private async handleCapoReconstruction(
         this.helperState!.previousHelper = this as any;
     } else if (bootstrappedStrella && this.helperState!.previousHelper) {
         // Case c): Same chartered Capo - hot-swap network
+        console.log(`  -- Hot-swapping network for existing Capo`);
         await this.restoreFrom(snapshotName);
     } else {
-        // Fallback
+        // Fallback: we have a matching Capo but no previousHelper
+        console.log(`  -- Using existing Capo (no previousHelper)`);
         this.helperState!.bootstrappedStrella = this.strella;
         this.helperState!.previousHelper = this as any;
     }
@@ -323,6 +360,7 @@ Move offchainData construction to its own method:
 ```typescript
 /**
  * Builds offchainData for a snapshot being stored.
+ * Also populates helperState.offchainData for in-memory cache access.
  * @internal
  */
 private buildOffchainData(
@@ -330,27 +368,90 @@ private buildOffchainData(
     entry: SnapshotRegistryEntry | undefined,
 ): Record<string, unknown> | undefined {
     const parentSnapName = entry?.parentSnapName || "genesis";
+    let offchainData: Record<string, unknown> | undefined;
 
     if (parentSnapName === "genesis" && Object.keys(this.actors).length > 0) {
         // Genesis snapshot: store actor wallet keys and seed UTxO
-        return {
+        offchainData = {
             ...this.getActorWalletKeys(),
             targetSeedUtxo: this.preSelectedSeedUtxo,
         };
-    }
-
-    // Non-genesis: store capoConfig if available
-    if (this.state.config) {
-        return {
+    } else if (this.state.config) {
+        // Non-genesis: store capoConfig with diagnostics
+        const capoAddr = this.strella?.address?.toString();
+        offchainData = {
             capoConfig: this.state.config,
             _diag: {
-                capoAddr: this.strella?.address?.toString(),
+                capoAddr,
                 validatorHash: this.strella?.validatorHash?.toHex(),
+                utxoCountAtCapoAddr: capoAddr
+                    ? (this.network as any)._addressUtxos[capoAddr]?.length || 0
+                    : 0,
+                addressUtxoKeys: Object.keys((this.network as any)._addressUtxos),
             },
         };
     }
 
-    return undefined;
+    // Populate helperState.offchainData for in-memory cache access (REQT-3.4/n93h9y5s85)
+    if (offchainData) {
+        if (!this.helperState!.offchainData) {
+            this.helperState!.offchainData = {};
+        }
+        this.helperState!.offchainData[snapshotName] = offchainData;
+    }
+
+    return offchainData;
+}
+```
+
+### Step 4b: Extract `logSnapshotRestoreDiagnostics()` Method
+
+Diagnostic comparison for debugging snapshot restore issues:
+
+```typescript
+/**
+ * Logs diagnostic comparison between stored and current Capo state.
+ * Essential for debugging address mismatches and UTxO loading issues.
+ * @internal
+ */
+private logSnapshotRestoreDiagnostics(
+    cached: CachedSnapshot,
+    snapshotName: string,
+): void {
+    const storedDiag = cached.offchainData?._diag as {
+        capoAddr?: string;
+        validatorHash?: string;
+        utxoCountAtCapoAddr?: number;
+        addressUtxoKeys?: string[];
+    } | undefined;
+
+    if (!storedDiag) return;
+
+    const currentCapoAddr = this.strella?.address?.toString();
+    const currentValidatorHash = this.strella?.validatorHash!.toHex();
+    const currentUtxoCount = currentCapoAddr
+        ? (this.network as any)._addressUtxos[currentCapoAddr]?.length || 0
+        : 0;
+    const currentAddressKeys = Object.keys((this.network as any)._addressUtxos);
+
+    console.log(`  [DIAG] Snapshot restore comparison for '${snapshotName}':`);
+    console.log(`    storedCapoAddr:   ${storedDiag.capoAddr}`);
+    console.log(`    currentCapoAddr:  ${currentCapoAddr}`);
+    console.log(`    addrMatch: ${storedDiag.capoAddr === currentCapoAddr}`);
+    console.log(`    storedValidatorHash:  ${storedDiag.validatorHash}`);
+    console.log(`    currentValidatorHash: ${currentValidatorHash}`);
+    console.log(`    vhMatch: ${storedDiag.validatorHash === currentValidatorHash}`);
+    console.log(`    storedUtxoCount:  ${storedDiag.utxoCountAtCapoAddr}`);
+    console.log(`    currentUtxoCount: ${currentUtxoCount}`);
+    console.log(`    storedAddressKeys (${storedDiag.addressUtxoKeys?.length}): ${storedDiag.addressUtxoKeys?.slice(0, 5).join(', ')}${(storedDiag.addressUtxoKeys?.length || 0) > 5 ? '...' : ''}`);
+    console.log(`    currentAddressKeys (${currentAddressKeys.length}): ${currentAddressKeys.slice(0, 5).join(', ')}${currentAddressKeys.length > 5 ? '...' : ''}`);
+
+    if (storedDiag.capoAddr !== currentCapoAddr) {
+        console.warn(`    ⚠️ ADDRESS MISMATCH - this is likely the bug!`);
+    }
+    if (currentUtxoCount === 0 && (storedDiag.utxoCountAtCapoAddr || 0) > 0) {
+        console.warn(`    ⚠️ UTxO COUNT DROPPED TO ZERO - snapshot may not have loaded correctly`);
+    }
 }
 ```
 
@@ -399,11 +500,17 @@ Ensure logging clearly shows the recursive resolution:
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/testing/CapoTestHelper.ts` | Refactor `findOrCreateSnapshot()`, extract helper methods |
+`src/testing/CapoTestHelper.ts`:
+- Refactor `findOrCreateSnapshot()` to use new methods
+- Extract `ensureSnapshotCached()` — recursive cache resolution
+- Extract `loadCachedSnapshot()` — uniform loading for hits and freshly-built
+- Extract `handleCapoReconstruction()` — Capo decision tree
+- Extract `buildOffchainData()` — offchain data construction + helperState population
+- Extract `logSnapshotRestoreDiagnostics()` — diagnostic comparison logging
 
 ## Testing
+
+### Manual Verification
 
 1. **Fresh build test**: Delete `.stellar/emu/`, run a test that needs `proposeFirstAgreement` with parent `firstMember`. Verify entire chain builds correctly.
 
@@ -412,6 +519,105 @@ Ensure logging clearly shows the recursive resolution:
 3. **Full cache test**: Have both cached. Verify fast load without rebuilding.
 
 4. **Deep chain test**: Test with 3+ levels of custom snapshots (e.g., `a` → `b` → `c`). Verify recursive resolution works.
+
+### New Test Cases for 01a-SnapshotCache.test.ts
+
+Add these tests to verify the refactored code handles the uniform load path correctly:
+
+```typescript
+describe("Uniform Load Path (Single Chokepoint)", () => {
+    beforeEach<CapoTC>(async (context) => {
+        await new Promise((res) => setTimeout(res, 10));
+        await addTestContext(context, DefaultCapoTestHelper);
+    });
+
+    describe("helperState.offchainData population on build", () => {
+        it("populates helperState.offchainData when building actors snapshot", async ({ h }: CapoTC) => {
+            // Clear any existing offchainData
+            if (h.helperState) {
+                h.helperState.offchainData = undefined;
+            }
+
+            // Build actors snapshot (not from cache)
+            await h.snapToBootstrapWithActors();
+
+            // Verify offchainData is populated in helperState (not just on disk)
+            expect(h.helperState?.offchainData).toBeDefined();
+            expect(h.helperState?.offchainData?.[SNAP_ACTORS]).toBeDefined();
+            expect(h.helperState?.offchainData?.[SNAP_ACTORS]?.actorWallets).toBeDefined();
+            expect(h.helperState?.offchainData?.[SNAP_ACTORS]?.targetSeedUtxo).toBeDefined();
+        });
+
+        it("populates helperState.offchainData when building non-genesis snapshot", async ({ h }: CapoTC) => {
+            // Full bootstrap
+            await h.reusableBootstrap();
+
+            // Verify offchainData is populated for capoInit
+            expect(h.helperState?.offchainData).toBeDefined();
+            expect(h.helperState?.offchainData?.[SNAP_CAPO_INIT]).toBeDefined();
+            expect(h.helperState?.offchainData?.[SNAP_CAPO_INIT]?.capoConfig).toBeDefined();
+        });
+    });
+
+    describe("Actor setting after build", () => {
+        it("sets actor correctly after building actors snapshot", async ({ h }: CapoTC) => {
+            await h.snapToBootstrapWithActors();
+
+            // Actor should be set after build (not undefined)
+            expect(h.actorName).toBeDefined();
+            expect(h.currentActor()).toBeDefined();
+        });
+
+        it("sets actor correctly after building non-genesis snapshot", async ({ h }: CapoTC) => {
+            await h.reusableBootstrap();
+
+            // Actor should be set to default actor after bootstrap
+            expect(h.actorName).toBeDefined();
+            expect(h.currentActor()).toBeDefined();
+        });
+
+        it("sets specified actor when decorator specifies non-default actor", async ({ h }: CapoTC) => {
+            // This test requires a custom snapshot with a specific actor
+            // For now, verify that after bootstrap, we can set a specific actor
+            await h.reusableBootstrap();
+
+            await h.setActor("tracy");
+            expect(h.actorName).toBe("tracy");
+        });
+    });
+
+    describe("Uniform load path for freshly-built vs cached", () => {
+        it("freshly-built snapshot has same helperState setup as cache hit", async ({ h }: CapoTC) => {
+            // First run - builds from scratch
+            await h.reusableBootstrap();
+
+            // Capture state after fresh build
+            const freshOffchainData = { ...h.helperState?.offchainData };
+            const freshActorName = h.actorName;
+            const freshCapo = h.strella;
+
+            // Verify we have the expected state
+            expect(freshOffchainData[SNAP_CAPO_INIT]?.capoConfig).toBeDefined();
+            expect(freshActorName).toBeDefined();
+            expect(freshCapo).toBeDefined();
+            expect(freshCapo.mintingPolicyHash).toBeDefined();
+
+            // Clear in-memory cache to force disk load on next access
+            (h.snapshotCache as any).loadedSnapshots.clear();
+            h.helperState!.offchainData = undefined;
+
+            // Create new helper to simulate cache hit scenario
+            // (In practice, this would be a new test in the same file)
+            // For this test, we just verify the state was set correctly on build
+        });
+    });
+});
+```
+
+**Note**: The "uniform load path" test is hard to fully verify in a single test because it requires comparing build vs cache-hit behavior. The key verification is that:
+1. `helperState.offchainData[snapshotName]` is populated after build (not just on cache hit)
+2. Actor is set after build (not just on cache hit)
+3. Capo reconstruction runs after build (implicitly verified by having a working Capo)
 
 ## Rollback Plan
 
@@ -422,12 +628,30 @@ The refactoring is internal to `findOrCreateSnapshot()`. If issues arise:
 
 ## Success Criteria
 
-- [ ] `proposeFirstAgreement` with uncached parent `firstMember` builds correctly
-- [ ] Recursive parent resolution works for arbitrary depth
-- [ ] Cache hits still work (no regression)
-- [ ] Logging clearly shows the resolution path
-- [ ] No scattered branching - single path through `ensureSnapshotCached()` → `loadCachedSnapshot()`
-- [ ] All concerns from old code paths are preserved in new code paths (see mapping below)
+### Functional
+- [ ] Uncached child with uncached parent builds entire chain (recursive resolution)
+- [ ] Uncached child with cached parent loads parent state before building child
+- [ ] Cache hits load without rebuilding (no regression)
+- [ ] Freshly-built snapshots go through same `loadCachedSnapshot()` path as cache hits
+
+### Data Integrity
+- [ ] `helperState.offchainData[snapshotName]` is populated for both freshly-built and cached snapshots
+- [ ] `helperState.namedRecords` defensive check throws if missing
+- [ ] Actor wallets restored from genesis snapshot's offchainData
+- [ ] Pre-selected seedUtxo restored from genesis snapshot's offchainData
+- [ ] Capo reconstruction decision tree produces same results as before
+
+### Diagnostics
+- [ ] `logSnapshotRestoreDiagnostics()` compares stored vs current Capo state on every non-genesis load
+- [ ] Address mismatch warnings appear when storedCapoAddr !== currentCapoAddr
+- [ ] UTxO count drop warnings appear when current count is 0 but stored was > 0
+- [ ] `_diag` in offchainData includes `utxoCountAtCapoAddr` and `addressUtxoKeys`
+
+### Structure
+- [ ] Single recursive chokepoint in `ensureSnapshotCached()`
+- [ ] Uniform loading in `loadCachedSnapshot()` for all paths
+- [ ] `handleCapoReconstruction()` encapsulates the decision tree
+- [ ] `buildOffchainData()` encapsulates offchain data construction
 
 ## Concern Mapping: Old → New
 
@@ -446,11 +670,11 @@ Every detail handled in the old scattered code must map to the new unified struc
 | Non-genesis: Capo reconstruction | HIT: lines 881-926 | `handleCapoReconstruction()` called from `loadCachedSnapshot()` |
 | Set actor | HIT: lines 928-932, MISS: not done! | `loadCachedSnapshot()` - uniform |
 | Mark charter as minted | HIT: lines 922-926 | `handleCapoReconstruction()` |
-| Diagnostics logging | HIT: lines 934-967 | `loadCachedSnapshot()` or `handleCapoReconstruction()` |
+| Diagnostics logging | HIT: lines 934-967 | `logSnapshotRestoreDiagnostics()` called from `loadCachedSnapshot()` |
 | Build via contentBuilder | MISS: line 1058 | `ensureSnapshotCached()` |
 | Capture snapshot | MISS: lines 1070-1071 | `ensureSnapshotCached()` |
 | Compute parentHash | MISS: lines 1075-1078 | `ensureSnapshotCached()` |
-| Build offchainData for storage | MISS: lines 1080-1105 | `buildOffchainData()` called from `ensureSnapshotCached()` |
+| Build offchainData for storage | MISS: lines 1080-1130 | `buildOffchainData()` (also populates `helperState.offchainData`) |
 | Store to cache | MISS: line 1127 | `ensureSnapshotCached()` |
 | Tick network after build | contentBuilder wrapper in SnapWrap | Unchanged (stays in SnapWrap) |
 
@@ -459,3 +683,42 @@ Every detail handled in the old scattered code must map to the new unified struc
 2. "Set actor" - old MISS path didn't do this after build!
 3. "Merge namedRecords" - old MISS path did this for parent, but not uniformly after build
 4. Parent resolution - old code only loaded parent if already cached; new code builds parent recursively
+
+---
+
+## Audit Findings (2026-02-05)
+
+Comparison of proposed code against current implementation (`CapoTestHelper.ts` lines 878-1147) to ensure all concerns are preserved.
+
+### Critical Issues (Fixed Above)
+
+**helperState.offchainData not populated during build**: The current code (lines 1100-1104, 1125-1129) sets `helperState.offchainData[snapshotName] = offchainData` after building. This is essential for in-memory cache access within the same test run. The original proposed `buildOffchainData()` returned the data but didn't populate helperState. Fixed in Step 4 above.
+
+**Defensive namedRecords check missing**: Current code (lines 1082-1087) throws an explicit error if `helperState.namedRecords` is undefined before building the CachedSnapshot. This catches silent failures from `ensureHelperState()`. Added to `ensureSnapshotCached()` above.
+
+**Diagnostic logging completely absent**: Current code has 33 lines (987-1020) comparing stored vs current Capo state after every non-genesis cache restore. This is essential for debugging address mismatches, validator hash differences, and UTxO loading failures. Added as `logSnapshotRestoreDiagnostics()` in Step 4b above.
+
+**Incomplete _diag fields**: Current code stores `utxoCountAtCapoAddr` and `addressUtxoKeys` in the `_diag` object. These are critical for diagnosing snapshot restore issues. Added to `buildOffchainData()` above.
+
+### Important Issues (Fixed Above)
+
+**Warning log for missing actorWallets**: Current code (line 912) warns when no actor wallet keys are found in cache, indicating the cache may need rebuild. Added to `loadCachedSnapshot()` genesis branch.
+
+**Seed UTxO restoration log**: Current code (line 919) logs when the pre-selected seed UTxO is restored, confirming the restoration worked. Added to `loadCachedSnapshot()` genesis branch.
+
+**Console logs for reconstruction branches**: Current code (lines 944, 960, 965) logs which Capo reconstruction path was taken. Added to `handleCapoReconstruction()` above.
+
+### Structural Note: try/finally Pattern
+
+Current code uses a `try/finally` pattern with a `succeeded` flag to ensure the snapshot is stored even if code after `contentBuilder()` throws. The proposed code doesn't use this pattern—if something throws between build and store, the built snapshot is lost.
+
+This is acceptable for now because:
+1. Nothing currently throws between build and store
+2. The failure mode (having to rebuild) is annoying but not catastrophic
+3. Adding try/finally complicates the cleaner flow
+
+If this becomes a problem in practice, wrap the build+store section in try/finally.
+
+### Verified: Parent Re-find After Build
+
+The proposed code already handles this correctly at lines 156-161: after calling `parentReg.snapMethod.call(this)`, it re-fetches the parent from cache and throws if not found. This matches the current code's behavior at line 1039.
