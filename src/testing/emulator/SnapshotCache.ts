@@ -555,10 +555,12 @@ export class SnapshotCache {
 
     /**
      * Gets registered metadata for a snapshot name.
+     * Resolves aliases (e.g., "bootstrapped" → "enabledDelegatesDeployed") before lookup.
      * @internal
      */
     private getRegistryEntry(snapshotName: string): SnapshotRegistryEntry | undefined {
-        return this.registry.get(snapshotName);
+        const resolvedName = resolveSnapshotAlias(snapshotName);
+        return this.registry.get(resolvedName);
     }
 
     /**
@@ -646,6 +648,14 @@ export class SnapshotCache {
      * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym, REQT/97qa2f7m25)
      */
     async find(snapshotName: string, helper: unknown): Promise<CachedSnapshot | null> {
+        // Resolve alias at the start - use resolved name throughout
+        // e.g., "bootstrapped" → "enabledDelegatesDeployed"
+        const resolvedName = resolveSnapshotAlias(snapshotName);
+        if (resolvedName !== snapshotName) {
+            console.log(`  [find] alias '${snapshotName}' → '${resolvedName}'`);
+        }
+        snapshotName = resolvedName;
+
         const entry = this.getRegistryEntry(snapshotName);
         if (!entry) {
             console.warn(`SnapshotCache: no registry entry for '${snapshotName}'`);
@@ -864,6 +874,10 @@ export class SnapshotCache {
      * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym)
      */
     async store(snapshotName: string, cachedSnapshot: CachedSnapshot, helper: unknown): Promise<void> {
+        // Resolve alias at the start - use resolved name throughout
+        const resolvedName = resolveSnapshotAlias(snapshotName);
+        snapshotName = resolvedName;
+
         const entry = this.getRegistryEntry(snapshotName);
         if (!entry) {
             throw new Error(`SnapshotCache: cannot store unregistered snapshot '${snapshotName}'`);
