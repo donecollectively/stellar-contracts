@@ -8,6 +8,7 @@ import type {
     CapoFeatureFlags,
     rootCapoConfig,
     CapoConfig,
+    ActorContext,
 } from "@donecollectively/stellar-contracts";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
@@ -100,6 +101,8 @@ export type TestHelperState<
     parsedConfig?: any;
     previousHelper: StellarTestHelper<any>;
     snapCache: SnapshotCache;
+    /** Shared actorContext envelope - singleton across all helpers (REQT/ch01gxgm4g) */
+    actorContext: ActorContext<any>;
 } & Special;
 
 /**

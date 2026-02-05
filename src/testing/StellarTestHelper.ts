@@ -144,12 +144,20 @@ export abstract class StellarTestHelper<
     }
 
     /**
+     * Shared actorContext envelope - singleton across all helpers via helperState (REQT/ch01gxgm4g).
+     * All helpers and the Capo share this same object so setActor() updates are visible everywhere.
+     * Update contents (actorContext.wallet, actorContext.others) - never replace the envelope.
      * @public
      */
-    actorContext: ActorContext<emulatedWallet> = {
-        others: {},
-        wallet: undefined,
-    };
+    get actorContext(): ActorContext<emulatedWallet> {
+        return this.helperState.actorContext as ActorContext<emulatedWallet>;
+    }
+    set actorContext(_value: ActorContext<emulatedWallet>) {
+        throw new Error(
+            "actorContext is a shared singleton envelope (REQT/ch01gxgm4g). " +
+            "Update its contents (actorContext.wallet, actorContext.others) instead of replacing it."
+        );
+    }
 
     /**
      * @public
@@ -227,6 +235,7 @@ export abstract class StellarTestHelper<
      */
     static defaultHelperState: TestHelperState<any, any> = {
         namedRecords: {},
+        actorContext: { others: {}, wallet: undefined },
     } as any;
 
     constructor(

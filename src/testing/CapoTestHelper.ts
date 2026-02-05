@@ -217,6 +217,7 @@ export abstract class CapoTestHelper<
     static defaultHelperState: TestHelperState<any, any> = {
         namedRecords: {},
         snapCache: new SnapshotCache(),
+        actorContext: { others: {}, wallet: undefined },
     } as any;
 
     /**
@@ -342,8 +343,9 @@ export abstract class CapoTestHelper<
             this.actors = {};
             this.actorSetupInfo = [];
             this._actorName = "";
-            // Clear actor context to force fresh setup
-            this.actorContext = { others: {} };
+            // Clear actor context contents for fresh setup (preserve envelope per REQT/ch01gxgm4g)
+            this.actorContext.wallet = undefined;
+            this.actorContext.others = {};
             // Clear cached state to force fresh build with new seed
             if (this.helperState) {
                 this.helperState.offchainData = {};
@@ -1322,19 +1324,12 @@ export abstract class CapoTestHelper<
             // Different helper instance with no actors - transfer from previousHelper
             Object.assign(this.actors, previousHelper.actors);
 
-            // swaps out the previous helper's envelopes for network & actor
+            // Swap network envelope: previousHelper gets a retired envelope, this helper adopts the old one
             previousHelper.networkCtx = { network: previousNetwork };
-            previousHelper.actorContext = {
-                wallet: "previous network retired" as any,
-                others: previousHelper.actorContext.others,
-            };
-
-            // uses the old envelope (that the Capo/etc classes used on the old network)
             this.networkCtx = oldNetworkEnvelope;
-            this.actorContext = oldActorContext;
-            // ... but changes the referenced network
-            // ... to reflect the new snapshotted network
+            // Update the adopted envelope to point to the new network
             this.networkCtx.network = newNet;
+            // Note: actorContext is a shared singleton on helperState - no need to swap it
 
             this.state.mintedCharterToken =
                 previousHelper.state.mintedCharterToken;

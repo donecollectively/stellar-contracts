@@ -48,6 +48,7 @@
 | Key inputs | artifact | SnapshotCache | Debugging, actor list access (ARCH-ja63e3bh8p) |
 | Offchain data | artifact | SnapshotCache | Actor wallet keys, merged from parent chain (ARCH-75rh0ewd7a) |
 | Single chokepoint resolution | resource | CapoTestHelper | Recursive parent resolution via `snapMethod`; uniform `loadCachedSnapshot()` path (ARCH-d52nrfd96z) |
+| Stable actorContext envelope | resource | helperState | Singleton shared by all helpers and Capo; update contents not reference (ARCH-y70gqh4nwn, REQT/ch01gxgm4g) |
 
 ### Instance Lifetimes
 
@@ -135,6 +136,30 @@ findOrCreateSnapshot(snapshotName, actorName, contentBuilder)
 - No scattered "if cached / if parent / if build" branches
 
 See `emulator.7jcyqx1mg8.workUnit.md` for implementation details and concern mapping.
+
+#### Stable Envelope Pattern (ARCH-y70gqh4nwn)
+
+`actorContext` and `networkCtx` are "envelope" objects shared across all test helpers and the Capo. Update their **contents**, never replace the envelope itself:
+
+```typescript
+// CORRECT: Update envelope contents
+this.actorContext.wallet = newWallet;
+this.networkCtx.network = newNetwork;
+
+// WRONG: Replacing envelope breaks shared references
+this.actorContext = { wallet: newWallet, others: {} };  // Throws!
+```
+
+**Implementation**:
+- `actorContext` is a singleton on `helperState`, accessed via getter
+- Setter throws to prevent accidental replacement
+- All helpers in a test file share the same `actorContext` via shared `helperState`
+- Capo's `setup.actorContext` points to the same object
+- When `setActor()` updates `actorContext.wallet`, Capo sees it immediately
+
+**Why this matters**: Each test creates a new helper instance, but they share a Capo via `helperState.bootstrappedStrella`. Without the stable envelope, the Capo's `setup.actorContext` would point to the first helper's actorContext, and subsequent helpers' `setActor()` calls would update a different object.
+
+See REQT/ch01gxgm4g for requirements.
 
 ---
 

@@ -403,6 +403,17 @@ Allows loading unoptimized contracts with large scripts having lots of diagnosti
  - **REQT-4.1.3/3286vdzwyk**: COMPLETED: `fixupParams()` MUST have increased maxTxExCpu
  - **REQT-4.1.4/8ahvzanppd**: COMPLETED: `fixupParams()` MUST have decreased refScriptsFeePerByte (divided by 4) to support txns with large refScripts
 
+### REQT-4.2/ch01gxgm4g: COMPLETED: **Stable Envelope Pattern for Shared State**
+
+#### Purpose: Ensures that `actorContext` and `networkCtx` are stable "envelope" objects shared across all test helpers and the Capo, so that updates to their contents are visible everywhere without needing to update references.
+
+ - **REQT-4.2.1/ch01gxgm4g**: COMPLETED: `actorContext` MUST be a singleton stored on `helperState`, shared by all helper instances via getter. The setter MUST throw to prevent accidental replacement.
+ - **REQT-4.2.2/ch01gxgm4g**: COMPLETED: When switching actors via `setActor()`, code MUST update `actorContext.wallet` (the contents), NOT replace the `actorContext` object itself.
+ - **REQT-4.2.3/ch01gxgm4g**: COMPLETED: All code that previously assigned `this.actorContext = {...}` MUST be changed to update the envelope's contents (`actorContext.wallet = ...`, `actorContext.others = ...`).
+ - **REQT-4.2.4/ch01gxgm4g**: COMPLETED: `networkCtx` follows a similar envelope pattern but is swapped during `restoreFrom()` - the test helper adopts the previous helper's networkCtx envelope and updates its `.network` property.
+
+> **RATIONALE (id:ch01gxgm4g)**: Each test creates a new helper instance, but they share a Capo via `helperState.bootstrappedStrella`. The Capo's `setup.actorContext` must be the same object that `setActor()` updates, otherwise the Capo won't see actor changes. The singleton pattern on `helperState` ensures all helpers and the Capo reference the same envelope.
+
 ## Component: Migration Tooling
 
 ### REQT-5.0/n37jr3sgcw: FUTURE: **Test Helper Migration Agent**
