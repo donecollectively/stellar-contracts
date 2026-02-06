@@ -1128,6 +1128,48 @@ Full offchainData/capoConfig restoration is unnecessary—that's handled by the 
 
 ---
 
+## Collaboration Stubs
+
+### ARCH-zeqd0vqvyg: Test Logging Integration (Stub)
+
+**Target Architecture**: `../../loggers/testLogging.architecture.md`
+
+**Collaboration Pattern**: Test Logging provides a `TestLoggerContext` hot-swap wrapper that threads through the test helper hierarchy.
+
+**This Architecture (Emulator/Test Helper) NEEDS from Test Logging**:
+
+| Component | NEEDS | From Test Logging |
+|-----------|-------|-------------------|
+| `StellarTestHelper` | ARCH-28b90zs38k | TestLoggerContext hot-swap wrapper |
+| `CapoTestHelper` | ARCH-gy5126n88c | DecoratedIt for wrapped `it()` with logger injection |
+| `createTestContext()` | ARCH-e81gt3ks9t | TestFileLogger for automatic per-file logs |
+
+**Test Logging Architecture EXPECTS from This Architecture** (behavioral):
+
+| This Architecture Component | Test Logging EXPECTS |
+|-----------------------------|----------------------|
+| `StellarTestHelper` | MUST accept `loggerContext` in constructor, thread to setup |
+| `StellarTestHelper` | MUST replace console.log with structured logging |
+| `CapoTestHelper` | MUST thread `loggerContext` through snapshot operations |
+| `Capo` | MUST accept `loggerContext` in setup, thread to delegates/txn |
+| All consumers | MUST NOT cache `loggerContext.logger` or `logger.child()` |
+
+**Integration Points**:
+- `StellarTestHelper.loggerContext` — hot-swap wrapper injected via beforeEach
+- `Capo.setup.loggerContext` — threaded from test helper
+- `StellarTxnContext.loggerContext` — threaded from Capo
+- `CapoTestHelper.createTestContext()` — returns DecoratedIt for slug-based logging
+
+**Migration Requirements** (on this architecture's components):
+- `StellarTestHelper` MUST accept `loggerContext` in constructor or via setter
+- `StellarTestHelper` MUST replace ~30+ `console.log` calls with `this.loggerContext.logger.*`
+- `CapoTestHelper` MUST thread `loggerContext` through snapshot operations
+- `CapoTestHelper.createTestContext()` MUST use DecoratedIt for wrapped `it()`
+
+**Status**: Pending implementation — see Test Logging architecture for component details.
+
+---
+
 ## Related Documents
 
 - `./Emulator.reqts.md` - Detailed requirements
@@ -1137,3 +1179,4 @@ Full offchainData/capoConfig restoration is unnecessary—that's handled by the 
 - `../../reference/essential-stellar-testing.md` - Testing conventions
 - `../CapoTestHelper.ts` - Snapshot orchestration implementation
 - `../../helios/CachedHeliosProgram.ts` - Compilation cache pattern
+- `../../loggers/testLogging.architecture.md` - Per-test structured logging architecture
