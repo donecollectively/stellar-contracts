@@ -167,6 +167,58 @@ Key example patterns to mirror in your app:
 - NEVER have multiple happy-path tests that run the same setup and test different results unless there's an important reaon.  Instead, make a single test with the happy setup, and check all the desired results, with failure messages indicating any unexpected results.
 - Make tests for your data-controller/policy right next to its code, making them easily found and portable when refactoring.
 
+## Testing DelegatedDataContract lifecycle hooks
+
+`DelegatedDataContract` provides lifecycle hooks that fire during transaction building. These are extension points your data controllers can override, and they should be tested.
+
+### Available hooks
+
+| Hook | When it fires | What it receives | Returns |
+|------|--------------|-----------------|---------|
+| `beforeCreate(record, context)` | After merging defaults + id + type + caller data, before datum construction | Merged record (`TLike`), `{ activity }` | Patched record (`TLike`) |
+| `beforeUpdate(record, context)` | After merging existing record + updated fields, before datum construction | Merged record (`TLike`), `{ original, activity }` | Patched record (`TLike`) |
+
+Both are synchronous transforms. The base class implementations are passthroughs. Override them in your data controller subclass to normalize records for on-chain policy compliance (e.g., computing derived fields, setting timestamps, adjusting status values the policy enforces).
+
+### Testing your hook implementations
+
+Test that your override produces the correct output by spying on it:
+
+```typescript
+it("beforeCreate sets computed fields", async ({ h }) => {
+    await h.reusableBootstrap();
+    const controller = await h.capo.getDgDataController("myRecordType");
+    const spy = vi.spyOn(controller, "beforeCreate");
+
+    await h.createFirstRecord();
+
+    expect(spy).toHaveBeenCalled();
+    const returnedRecord = spy.results[0].value;
+    expect(returnedRecord.computedField).toBe(expectedValue);
+});
+```
+
+### Testing that before-hooks satisfy policy constraints
+
+If your on-chain policy enforces a field that `beforeCreate` or `beforeUpdate` is responsible for setting, write a negative test that bypasses the hook:
+
+```typescript
+it("policy rejects record without computed field", async ({ h }) => {
+    await h.reusableBootstrap();
+    const controller = await h.capo.getDgDataController("myRecordType");
+    // bypass the hook so the required field is missing
+    vi.spyOn(controller, "beforeCreate").mockImplementation((r) => r);
+
+    await expect(
+        h.createFirstRecord({ expectError: true })
+    ).rejects.toThrow(/missing required field/);
+});
+```
+
+This confirms the hook isn't just cosmetic — the policy actually needs what it provides.
+
+**Reminder**: Don't use snapshots for cases needing spies — load an earlier snapshot before setting the spy, then use non-snapshot helper methods.
+
 ## Boilerplate you can copy
 - `boilerplate/testing/basic-offchain.test.ts`: starter Vitest file wired to `DefaultCapoTestHelper` with one passing check; remove `describe.skip` when ready.
 - `boilerplate/testing/policy-flow.test.ts`: skeleton for a delegated-data/policy-flow test showing how to stub controller validation and assert failures before enabling the happy path.

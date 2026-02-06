@@ -211,6 +211,53 @@ Script compilation is required for:
 - Validating that bundled scripts match on-chain scripts
 - Detecting when delegates need upgrades
 
+## DelegatedDataContract Lifecycle Hooks
+
+`DelegatedDataContract` provides lifecycle hooks that fire during transaction building for create and update operations. These hooks allow subclasses to transform or augment record data at well-defined points in the transaction-building pipeline.
+
+### Hook Inventory
+
+| Hook | Fires During | Receives | Returns | Purpose |
+|------|-------------|----------|---------|---------|
+| `beforeCreate(record, context)` | `txnCreatingRecord()` | Merged record (defaults + id + type + caller data), `{ activity }` | Patched `TLike` | Normalize/augment record before on-chain datum is built |
+| `beforeUpdate(record, context)` | `txnUpdatingRecord()` | Merged record (existing + updated fields), `{ original, activity }` | Patched `TLike` | Normalize/augment record before on-chain datum is built |
+| `afterCreate` | — | — | — | **Not yet implemented** — planned for post-submission side effects |
+| `afterUpdate` | — | — | — | **Not yet implemented** — planned for post-submission side effects |
+
+### Before-Hooks: Data Transform Pattern
+
+Both `beforeCreate` and `beforeUpdate` are **synchronous data transforms** — they receive a record and must return a (possibly modified) record. The base class implementations are passthroughs (`return record`).
+
+**When they fire in the pipeline**:
+
+```
+mkTxnCreateRecord()
+  ├─> merge defaults + id + type + caller data
+  ├─> beforeCreate(mergedRecord, { activity })     ◄── hook fires here
+  └─> txnCreatingRecord() builds datum from returned record
+
+mkTxnUpdateRecord()
+  └─> txnUpdatingRecord()
+        ├─> merge existing record + updated fields
+        ├─> beforeUpdate(mergedRecord, { original, activity })  ◄── hook fires here
+        └─> builds updated datum from returned record
+```
+
+**Typical use cases**:
+- Conforming submitted data to on-chain schema requirements (e.g., computing derived fields the policy enforces)
+- Setting timestamps or status fields that the policy expects
+- Normalizing data representations (e.g., converting string formats)
+
+**Context types** (`src/delegation/DelegatedDataContract.ts`):
+- `createContext<TLike>`: `{ activity: isActivity }`
+- `updateContext<T>`: `{ original: T, activity: isActivity }`
+
+The `original` field in `updateContext` provides access to the pre-update on-chain record (typed as `T`, the on-chain type), enabling delta-aware transforms.
+
+### After-Hooks: Planned
+
+`afterCreate` and `afterUpdate` hooks are planned but not yet implemented. Unlike the before-hooks (which are synchronous data transforms), after-hooks would fire after successful transaction submission and serve as side-effect points (e.g., cache invalidation, notifications, logging). Architecture and requirements for these hooks are being developed.
+
 ## Accessing Precompiled Bundle Config
 
 ### Static scriptBundleClass()
