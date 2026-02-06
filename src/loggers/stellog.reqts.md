@@ -117,90 +117,133 @@ Configure build and exports.
 
 ## 1. Custom Log Levels
 
-### REQT-1.0/b93t3qkg5t: NEXT: Custom Log Levels [Phase 1]
+### REQT-1.0/b93t3qkg5t: COMPLETED: Custom Log Levels [Phase 1]
 #### Purpose: Establishes the custom log level system. Applied when creating loggers or understanding level hierarchy.
 
- - **REQT-1.0.1**/zv8yz6n2yg: NEXT: MUST define `progress` level at value 25 (fixed across environments)
- - **REQT-1.0.2**/9cyvmdarrk: NEXT: MUST define `userError` level at value 32 (production/test) or 42 (development)
- - **REQT-1.0.3**/gzgq10szt6: NEXT: MUST define `ops` level at value 45 (production) or 28 (development/test)
- - **REQT-1.0.4**/a1frv7pye2: NEXT: Environment detection MUST use `NODE_ENV` to determine level values
+ - **REQT-1.0.1**/zv8yz6n2yg: COMPLETED: MUST define `progress` level at value 25 (fixed across environments)
+ - **REQT-1.0.2**/9cyvmdarrk: COMPLETED: MUST define `userError` level at value 32 (production/test) or 42 (development)
+ - **REQT-1.0.3**/gzgq10szt6: COMPLETED: MUST define `ops` level at value 45 (production) or 28 (development/test)
+ - **REQT-1.0.4**/a1frv7pye2: COMPLETED: Environment detection MUST use `NODE_ENV` to determine level values
 
 ## 2. Configuration
 
-### REQT-2.0/gw20nphceh: NEXT: LOGGING Configuration [Phase 1]
+### REQT-2.0/gw20nphceh: COMPLETED: LOGGING Configuration [Phase 1]
 #### Purpose: Governs how log levels are configured per-facility. Applied when setting up logging or debugging level issues.
 
- - **REQT-2.0.1**/f743wmrjft: NEXT: MUST read configuration from `process.env.LOGGING` (Node) or `localStorage.getItem('LOGGING')` (browser)
- - **REQT-2.0.2**/60er7efmvt: NEXT: MUST parse format `facility:level,facility:level,...` with colons allowed in facility names
- - **REQT-2.0.3**/x2v7kys2z8: NEXT: MUST support `default` key for fallback level
- - **REQT-2.0.4**/xn5wtc42pe: NEXT: MUST NOT allow suppression below `warn` level (throw error if attempted)
+ - **REQT-2.0.1**/f743wmrjft: COMPLETED: MUST read configuration from `process.env.LOGGING` (Node) or `localStorage.getItem('LOGGING')` (browser)
+ - **REQT-2.0.2**/60er7efmvt: COMPLETED: MUST parse format `facility:level,facility:level,...` with colons allowed in facility names
+ - **REQT-2.0.3**/x2v7kys2z8: COMPLETED: MUST support `default` key for fallback level
+ - **REQT-2.0.4**/xn5wtc42pe: COMPLETED: MUST NOT allow suppression below `warn` level (throw error if attempted)
 
 ## 3. Node Pretty-Print
 
-### REQT-3.0/w70e2gdm3g: NEXT: stellog CLI Command [Phase 3]
+### REQT-3.0/w70e2gdm3g: COMPLETED: stellog CLI Command [Phase 3]
 #### Purpose: Provides human-readable Node output during development. Applied when piping log output for dev visibility.
 
- - **REQT-3.0.1**/knte8w7f4k: NEXT: MUST provide a `stellog` CLI command that pipes stdin through pino-pretty
- - **REQT-3.0.2**/ysq61zx5h8: NEXT: MUST include packaged pino-pretty recipe with custom level colors for `progress`, `userError`, `ops`
+ - **REQT-3.0.1**/knte8w7f4k: COMPLETED: MUST provide a `stellog` CLI command that pipes stdin through pino-pretty
+ - **REQT-3.0.2**/ysq61zx5h8: COMPLETED: MUST include packaged pino-pretty recipe with custom level colors for `progress`, `userError`, `ops`
 
 ## 4. Browser Support
 
-### REQT-4.0/swyee13sxe: NEXT: Browser Colorizing [Phase 3]
+### REQT-4.0/swyee13sxe: COMPLETED: Browser Colorizing [Phase 3]
 #### Purpose: Ensures readable, styled output in browser console. Applied when implementing browser write functions.
 
- - **REQT-4.0.1**/az79z9phf4: NEXT: MUST use Pino's `browser.write` configuration for custom formatting
- - **REQT-4.0.2**/1f16cw74nn: NEXT: MUST provide distinct styling per log level using CSS `%c` formatting
+ - **REQT-4.0.1**/az79z9phf4: COMPLETED: MUST use Pino's `browser.write` configuration for custom formatting
+ - **REQT-4.0.2**/1f16cw74nn: COMPLETED: MUST provide distinct styling per log level using CSS `%c` formatting
 
 ## 5. Factory Function
 
-### REQT-5.0/7jg247f7k4: NEXT: stellog Factory [Phase 1]
+### REQT-5.0/7jg247f7k4: COMPLETED: stellog Factory [Phase 1]
 #### Purpose: Defines the main entry point for creating loggers. Applied when initializing logging in a module.
 
- - **REQT-5.0.1**/w2zasbggrx: NEXT: MUST export `stellog(name: string, options?: PinoOptions): Logger` as factory function
- - **REQT-5.0.2**/pnsym9rhzt: NEXT: Options MUST be Pino options pass-through (no custom options wrapper)
- - **REQT-5.0.3**/jtag50wfxe: NEXT: MUST re-export Pino's options type as `PinoOptions`
- - **REQT-5.0.4**/8xw3djzw2q: NEXT: MUST export `StellarLogger` type for the decorated logger with custom levels
+ - **REQT-5.0.1**/w2zasbggrx: COMPLETED: MUST export `stellog(name: string, options?: PinoOptions): Logger` as factory function
+ - **REQT-5.0.2**/pnsym9rhzt: COMPLETED: Options MUST be Pino options pass-through (no custom options wrapper)
+ - **REQT-5.0.3**/jtag50wfxe: COMPLETED: MUST re-export Pino's options type as `PinoOptions`
+ - **REQT-5.0.4**/8xw3djzw2q: COMPLETED: MUST export `StellarLogger` type for the decorated logger with custom levels
 
 ## 6. Package Structure
 
-### REQT-6.0/vr2cpzr41z: NEXT: Entry Point [Phase 4]
+### REQT-6.0/vr2cpzr41z: COMPLETED: Entry Point [Phase 4]
 #### Purpose: Defines how consumers import the logger. Applied when configuring build/exports.
 
- - **REQT-6.0.1**/ym9mc8s54y: NEXT: MUST be importable as `stellar-contracts/logger`
+ - **REQT-6.0.1**/ym9mc8s54y: COMPLETED: MUST be importable as `stellar-contracts/logger`
 
 ## 7. Child Loggers
 
-### REQT-7.0/6svp7fx0az: NEXT: Child Logger Facade [Phase 2]
+### REQT-7.0/6svp7fx0az: COMPLETED: Child Logger Facade [Phase 2]
 #### Purpose: Defines how child loggers are created with facility-based level routing. Applied when creating scoped loggers.
 
- - **REQT-7.0.1**/jh8v254e1e: NEXT: MUST support `child(name: string, props?: object)` form — creates child with LOGGING level lookup for `name`
- - **REQT-7.0.2**/xj4g9treze: NEXT: MUST support `child(props: object)` form — if `props.name` exists, does LOGGING level lookup for that name
- - **REQT-7.0.3**/bmjpcth17t: NEXT: When `child({...})` has no `name`, MUST inherit parent's level (no LOGGING lookup)
+ - **REQT-7.0.1**/jh8v254e1e: COMPLETED: MUST support `child(name: string, props?: object)` form — creates child with LOGGING level lookup for `name`
+ - **REQT-7.0.2**/xj4g9treze: COMPLETED: MUST support `child(props: object)` form — if `props.name` exists, does LOGGING level lookup for that name
+ - **REQT-7.0.3**/bmjpcth17t: COMPLETED: When `child({...})` has no `name`, MUST inherit parent's level (no LOGGING lookup)
 
 ---
 
 ## Files
 
-1. `./stellog.ts` (to be created)
-2. `./stellog.architecture.md`
-3. `./stellog-architecture.jsonl`
-4. `./pino-background.md`
+1. `./stellog.ts` — Main module with factory function
+2. `./stellog-cli.ts` — CLI binary for pino-pretty piping
+3. `./stellog.architecture.md`
+4. `./stellog-architecture.jsonl`
+5. `./pino-background.md`
 
 ---
 
 ## Implementation Log
 
-*No implementation yet*
+Meta-requirements: maintainers MUST NOT modify past details in the
+implementation log (e.g. in response to architectural changes). Instead,
+future changes should be appended to the implementation log to show the
+progression of the implementation and architecture.
+
+### Phase 1: Foundation (Completed)
+ - Implemented `stellog(name, options?)` factory function returning decorated Pino logger
+ - Defined custom levels: `progress` (25), `userError` (32/42), `ops` (45/28) with environment-based values
+ - Implemented LOGGING config parsing from `process.env.LOGGING` (Node) or `localStorage` (browser)
+ - Implemented facility-based level lookup with `default` fallback
+ - Enforced warn-minimum restriction (throws if config attempts to suppress below warn)
+
+### Phase 2: Child Loggers (Completed)
+ - Decorated `.child()` method on StellarLogger for facility-based routing
+ - Implemented string-name form: `child('name')` with LOGGING lookup
+ - Implemented object-with-name form: `child({name})` with LOGGING lookup
+ - Implemented object-without-name form: `child({})` inheriting parent level
+
+### Phase 3: Platform Output (Completed)
+ - Implemented browser `browser.write` config with CSS styling per level
+ - Created `stellog-cli.ts` binary that pipes stdin through pino-pretty
+ - Configured custom level colors: ops (magenta), userError (yellow), progress (cyan)
+
+### Phase 4: Integration (Completed)
+ - Added `stellar-contracts/logger` export to package.json exports
+ - Configured rollup to build `dist/logger.mjs` entry point
+ - Added `bin.stellog` pointing to `dist/stellog-cli-node.mjs`
+ - Type declarations at `dist/types/src/loggers/stellog.d.ts`
+
+#### Next Recommendations
+All v1 requirements are complete. Potential future enhancements:
+
+1. **Structured context binding**: Convenience methods for common context patterns
+2. **Log rotation**: Optional file transport for production Node environments
+3. **Sampling**: Rate limiting for high-frequency logs in production
 
 ---
 
 ## Release Management Plan
 
-### v1 (Planned)
+### v1 (Current - Complete)
 - **Goal**: Core logger with full feature set
 - **Work Unit**: `stellog.ppxks5emx5.workUnit.md`
+- **Status**: All phases complete
 - **Phases**:
-  - Phase 1: Foundation (REQT-1.0, REQT-2.0, REQT-5.0)
-  - Phase 2: Child Loggers (REQT-7.0)
-  - Phase 3: Platform Output (REQT-3.0, REQT-4.0)
-  - Phase 4: Integration (REQT-6.0)
+  - Phase 1: Foundation (REQT-1.0, REQT-2.0, REQT-5.0) ✓
+  - Phase 2: Child Loggers (REQT-7.0) ✓
+  - Phase 3: Platform Output (REQT-3.0, REQT-4.0) ✓
+  - Phase 4: Integration (REQT-6.0) ✓
+
+### v2 (Future)
+- **Goal**: Extended features for production use
+- **Criteria**:
+  - Structured context binding patterns
+  - Optional file transport
+  - Log sampling/rate limiting
