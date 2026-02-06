@@ -288,7 +288,9 @@ Documents planned features and performance improvements not yet implemented. App
  - **REQT-1.5.2**/zzsg63b2fb: COMPLETED: **Automated Periodic Refresh** - Must implement timer-based refresh using defined intervals (`refreshInterval` 60 seconds for transaction monitoring). Must trigger `checkForNewTxns()` on refresh interval.
  - **REQT-1.5.3**/0aewmbbfct: BACKLOG: **Pagination for High-Volume Activity** - Must handle cases where `addresses/{address}/transactions` endpoint returns 100+ results in single monitoring cycle. Must implement pagination strategy to fetch additional pages when response count equals limit.
  - **REQT-1.5.4**/50zkk5xgrx: COMPLETED: **Query API Methods** - Must provide public query interface for indexed UTXOs. Must implement `findUtxoId(id)`, `findUtxoByUUT(uutId)`, and queries by asset (mph, tokenName). Must support filtering and pagination options.
- - **REQT-1.5.5**/70sncha8f2: BACKLOG: **Ogmios Backend for Multi-Address Monitoring** - Must support Ogmios as alternative backend for scanning transactions in new blocks. Enables efficient monitoring of both Capo and wallet addresses by processing block-level transaction data rather than per-address polling.
+ - **REQT-1.5.5**/70sncha8f2: BACKLOG: **Ogmios Backend for Multi-Address Monitoring** - Must support Ogmios as alternative backend for scanning transactions in new blocks via the Ogmios mini-protocol (`@cardano-ogmios` TypeScript module). Same essential low-level queries as Blockfrost, but connecting to any Cardano node via JSON-RPC. Enables efficient monitoring of both Capo and wallet addresses by processing block-level transaction data rather than per-address polling.
+ - **REQT-1.5.6**/q83ztd3kkv: BACKLOG: **Server-Side Storage Backends (CouchDB/PostgreSQL)** - Must support CouchDB or PostgreSQL as alternative storage backends for server-layer deployment. Enables an API service layer providing low-latency access to subsets of UTxOs from a Capo that may hold millions of UTxOs, where client applications query only the subset they need.
+ - **REQT-1.5.7**/v9h5pez7bh: BACKLOG: **Server-Mediated Client Sync** - Must support a sync mode where the client connects to a filtering server rather than directly to Blockfrost/Ogmios. The server provides: (a) client-specific filtering so the client doesn't need to process all historical Capo transactions, and (b) filtered incremental blocks/UTxOs for a lightweight operational profile. Critical for mobile applications where processing all Capo history is prohibitive.
 
 ### REQT-1.6/rc7km2x8hp: COMPLETED: **ReadonlyCardanoClient Interface Conformance**
 
@@ -560,7 +562,10 @@ Extends indexer to cache UTXOs from connected wallet addresses:
     - Wallet address indexing (REQT/ngn9agx52a)
 
 ### v3 (Future)
- - **Goal**: Multi-Backend Storage Support
+ - **Goal**: Multi-Backend Storage & Provider Support
  - **Criteria**:
     - Memory store implementation (REQT/pd0vdphpmp)
     - Dred store implementation (REQT/7h35vgvw4a)
+    - Ogmios backend (REQT/70sncha8f2)
+    - Server-side storage backends — CouchDB/PostgreSQL (REQT/q83ztd3kkv)
+    - Server-mediated client sync for mobile-friendly lightweight operation (REQT/v9h5pez7bh)

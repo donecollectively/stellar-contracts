@@ -641,9 +641,20 @@ Isolated databases are cleaned up after each test; the shared database is cleane
 
 ## Future work
 
+### Alternative Network Provider (Ogmios)
+- Decouple from Blockfrost; support Ogmios mini-protocol via `@cardano-ogmios` TypeScript module
+- Same essential queries, connecting to any Cardano node via JSON-RPC (REQT/70sncha8f2)
+
 ### Alternative Storage Backends
-- Memory store implementation for testing
-- Dred store for realtime state-sharing and multi-user coordination
+- Memory store implementation for testing (REQT/pd0vdphpmp)
+- Dred store for realtime state-sharing and multi-user coordination (REQT/7h35vgvw4a)
+- CouchDB or PostgreSQL for server-layer deployment — enables API service providing low-latency access to subsets of UTxOs from Capos holding millions of records (REQT/q83ztd3kkv)
+
+### Server-Mediated Client Sync
+- Client syncs to a filtering server rather than directly to chain
+- Server provides client-specific filtering (no need to process all historical Capo transactions)
+- Filtered incremental blocks/UTxOs for lightweight operational profile
+- Critical for mobile applications (REQT/v9h5pez7bh)
 
 ### Expose details for Health Monitoring UI
 - Support Dashboard showing address sync status
@@ -654,5 +665,5 @@ Isolated databases are cleaned up after each test; the shared database is cleane
 
 ---
 
-**Document Version**: 1.7
-**Last Updated**: 2026-01-19 - Added getTxInfo() method documentation; updated transaction restoration pattern (REQT/qc7qgsqphv)
+**Document Version**: 1.8
+**Last Updated**: 2026-02-05 - Added Ogmios provider, server-side storage, and server-mediated sync backlog items
