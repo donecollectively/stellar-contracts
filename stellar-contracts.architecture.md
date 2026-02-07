@@ -627,134 +627,37 @@ The mint delegate and spend delegate are **often the same script** but are trigg
 
 **ARCH-UUT**: ARCH-yym47r9csh
 
-Querying on-chain data without building transactions. Uses `readOnly: true` to skip compilation.
+Querying on-chain data without building transactions. Capo fetches UTxOs, resolves the data controller for the requested type with `readOnly: true` (skipping compilation), and uses pre-generated data bridge casts to return typed TypeScript objects. Fast — no script compilation needed.
 
-1. **Application/UI** calls `capo.findDelegatedDataUtxos({ type, readOnly: true })`
-2. **Capo** calls `findCapoUtxos()` — fetches UTxOs via one of:
-   - Prefetched `capoUtxos` parameter (if caller passes known-current set — avoids deserialization cost)
-   - Network interface (hot-swap envelope → emulator, CachedUtxoIndex, or Blockfrost)
-3. **Capo** calls `findCharterData()` — parses charter datum from charter UTxO
-4. **Capo** iterates matching UTxOs, calling `getDgDataController(type, { readOnly: true })`
-5. **Capo** → **Delegate System**: `connectDelegateWithOnchainRDLink(..., { readOnly: true })`
-   - `mustGetDelegate()` → `init()` — creates bundle, sets `configuredScriptDetails` (cheap)
-   - Skips `asyncCompiledScript()` — no compilation
-   - Skips upgrade detection — no `delegateValidatorHash` needed
-6. **Delegate System** → **Data Bridge**: `controller.newReadDatum(datum.data)`
-   - Uses pre-generated cast functions (no compilation needed)
-   - Returns typed TypeScript object
-
-```
-[App/UI] ---(query)---> [Capo] ---(findUtxos)---> [Network/Cache]
-                           |
-                           +---(readOnly connect)---> [Delegate]
-                           |                              |
-                           +---(cast datum)----------> [DataBridge]
-                           |                              |
-                           <------(typed TS object)-------+
-```
-
-**Performance**: Fast — no script compilation. Data bridges use build-time-generated casts.
+**Detailed walkthrough**: See `src/offchainRuntime.ARCHITECTURE.md` § "Read Path"
 
 ### Workflow: Write Path (Transaction Building)
 
 **ARCH-UUT**: ARCH-1h501psrnt
 
-Building and submitting a transaction to create, update, or delete data.
+Building and submitting a transaction to create, update, or delete data. Application calls a `mkTxn*` method → Capo/DelegatedDataContract creates a `StellarTxnContext` → delegate connected with full compilation → transaction built via `txn*` helpers → submitted via `TxBatcher` → `BatchSubmitController` state machine.
 
-**Transaction method naming convention**:
-- `mkTxn*` methods — primary entry points; construct a tcx if none provided (`initialTcx` parameter)
-- `txn*` methods — partial helpers; require a tcx, MUST NOT create a new one
+**Transaction method naming convention**: `mkTxn*` creates a tcx (primary entry point); `txn*` requires a tcx (partial helper, MUST NOT create one).
 
-1. **Application** calls a `mkTxn*` method (e.g., `mkTxnCreateRecord()`)
-2. **Capo/DelegatedDataContract** creates `StellarTxnContext` via `mkTcx()` (unless `initialTcx` provided)
-3. **Capo** → **Delegate System**: `getDgDataController(type)` — `readOnly: false` (default)
-4. **Delegate System**: `connectDelegateWithOnchainRDLink()` — full connection:
-   - `mustGetDelegate()` → `init()` — creates bundle (cheap)
-   - `asyncCompiledScript()` — **compiles Helios to UPLC** (expensive, 100-500ms)
-   - Upgrade detection — compares `delegateValidatorHash` against on-chain
-5. **Delegate** builds transaction via `StellarTxnContext` — adds inputs, outputs, redeemers
-   - `txn*` partial helpers may be called to compose sub-operations
-6. **StellarTxnContext** → **Network Clients**: `TxBatcher` coordinates signing and submission
-7. **BatchSubmitController** manages per-batch state machine → wallet signs → network submission
-
-```
-[App] ---(mkTxn* method)---> [Capo/DataController] ---(connect)---> [Delegate]
-                                    |                                     |
-                                    +----(compile)---------------------> [ScriptBundle]
-                                    |                                     |
-                                    +----(build tx via txn* helpers)---> [StellarTxnContext]
-                                    |                                          |
-                                    +----(submit)----------------------------> [NetworkClients]
-                                                                                |
-                                                                          [Cardano Network]
-```
-
-**Performance**: Compilation required for validator hashes and upgrade detection.
+**Detailed walkthrough**: See `src/offchainRuntime.ARCHITECTURE.md` § "Write Path"
 
 ### Workflow: Multi-Transaction Groups
 
-Three patterns for coordinating multiple transactions that must be submitted together. All three share a critical mechanism: **later transactions use an `mkTcx` callback** executed in a context where the network has been swapped with a TxChainBuilder facade exposing virtual UTxOs — outputs from prior transactions that don't exist on-chain yet but will exist once those earlier transactions are submitted. The callback must be deferred so the facade has the generated UTxOs available before downstream queries begin.
+Three patterns for coordinating multiple transactions submitted together. All share a critical mechanism: **later transactions use an `mkTcx` callback** with a TxChainBuilder facade exposing virtual UTxOs from prior transactions.
 
-#### ARCH-c90jkf1z4j: Transaction Chaining (forward)
+- **ARCH-c90jkf1z4j: Transaction Chaining (forward)** — primary tx generates follow-on transactions via `addlTxns`. Use case: bootstrap.
+- **ARCH-w0n4p5naav: Conditional Facade (evaluative)** — facade created, situation evaluated, transactions conditionally added. Use case: operations that may or may not need on-chain action.
+- **ARCH-ddtxts6bx0: Preparatory Facade (inverse chaining)** — prep transactions added first, then target tx sees their virtual UTxOs. Use case: UTxO reorganization before main operation.
 
-The primary transaction generates a chain of follow-on transactions.
-
-```
-[mkTxn main] ---(addlTxns)---> [mkTcx callback → txn A] ---> [mkTcx callback → txn B]
-                                       ↑                              ↑
-                                TxChainBuilder facade:         sees virtual UTxOs
-                                sees main tx outputs           from main + A
-```
-
-**Use case**: Bootstrap — charter minting followed by delegate installation and ref-script creation.
-
-#### ARCH-w0n4p5naav: Conditional Facade (evaluative)
-
-Don't know upfront if transactions are needed. Create a transaction facade, evaluate, conditionally add transactions.
-
-```
-[create facade] ---(evaluate situation)---> [conditionally add txns to facade]
-                                                      ↑
-                                               mkTcx callbacks with
-                                               TxChainBuilder facade
-```
-
-**Use case**: Operations that may or may not require on-chain action depending on current state.
-
-#### ARCH-ddtxts6bx0: Preparatory Facade (inverse chaining)
-
-Know the main transaction needs prep work. Start with a facade, add preparatory transactions, then add the target.
-
-```
-[create facade] ---(evaluate for preps)---> [add prep tx A] ---> [add prep tx B] ---> [add target tx]
-                                                                                             ↑
-                                                                                    sees virtual UTxOs
-                                                                                    from preps A + B
-```
-
-**Use case**: A transaction that requires UTxOs to be created or reorganized before it can execute.
+**Detailed walkthrough with diagrams**: See `src/offchainRuntime.ARCHITECTURE.md` § "Multi-Transaction Groups"
 
 ### Workflow: Delegate Authority Inclusion
 
 **ARCH-UUT**: ARCH-dp0606pj9t
 
-Internal workflow within a transaction being built. When a specific delegate's enforcement is needed, the transaction must prove authority by spending and returning the delegate's UUT.
+Internal transaction-building workflow: when a delegate's enforcement is needed, the transaction spends the delegate's UUT as input and returns it as output. StellarTxnContext's type `S` is refined to prove authority presence, enabling downstream `txn*` methods to enforce required authorities at compile time.
 
-1. **Transaction builder** determines a delegate's authority is needed
-2. **Capo/Delegate System** locates the delegate's UUT at its script address
-3. **StellarTxnContext** adds the UUT as a transaction input (spending it)
-4. **StellarTxnContext** adds an output returning the UUT to its home script address
-5. **StellarTxnContext type `S`** is refined to indicate the delegate's authority is present — downstream `txn*` methods can require this in their type signatures
-
-```
-[locate UUT at delegate addr] ---(spend UUT)---> [add as tx input]
-                                                       |
-                                                  [add output: UUT back to home addr]
-                                                       |
-                                                  [S type refined: authority present]
-```
-
-**Why this matters**: This is how the chain of custody manifests at the individual transaction level. Authority is proven by spending + returning the UUT. The TypeScript type system tracks its presence, so partial transaction methods can enforce that required authorities are included before they execute.
+**Detailed walkthrough**: See `src/offchainRuntime.ARCHITECTURE.md` § "Delegate Authority Inclusion"
 
 ### Workflow: Semantic Data Query
 
@@ -875,7 +778,7 @@ Compile-time generation of bridges, types, and bundles.
 
 ## Open Questions
 
-- [ ] Should the offchain runtime architecture (`src/offchainRuntime.ARCHITECTURE.md`) be migrated into this document or remain as a detailed sub-component reference?
+- [x] ~~Should the offchain runtime architecture (`src/offchainRuntime.ARCHITECTURE.md`) be migrated into this document or remain as a detailed sub-component reference?~~ → Resolved: Remains as a sub-component reference with its own JSONL file (`src/offchainRuntime-architecture.jsonl`). Expanded for architect template compliance. System-level doc retains workflow summaries; offchain runtime doc owns implementation detail.
 - [x] ~~What is the intended boundary between `UtxoHelper` and `CachedUtxoIndex`?~~ → Resolved: UtxoHelper is a predicate-based search/filter utility owned by StellarContract, exposed to all subclasses via setup. CachedUtxoIndex is a separate persistent cache component. They don't overlap — UtxoHelper consumes UTxOs that CachedUtxoIndex (or emulator, or network) provides.
 - [ ] The `StateMachine.ts` component (19KB) — is this used across multiple components, or is it specific to transaction/batch submission?
 - [ ] Authority policy hierarchy (`AuthorityPolicy`, `AnyAddressAuthorityPolicy`) — should this be documented as a separate component or remain internal to the Delegate System?
