@@ -31,6 +31,7 @@ import type {
     minimalAnyData,
 } from "./UnspecializedDelegate.typeInfo.js";
 import { textToBytes, type InlineDatum } from "../HeliosPromotedTypes.js";
+import { deepCloneRecord, deepFreezeRecord } from "../util/deepCloneRecord.js";
 import type {
     CapoHeliosBundle,
     CapoHeliosBundleClass,
@@ -83,19 +84,32 @@ export type DelegatedDatumIdPrefix<
 
 /**
  * Context object passed to {@link DelegatedDataContract.beforeCreate | beforeCreate()} callback
+ *
+ * @remarks
+ * - `activity`: The activity being triggered for this creation
+ * - `tcx`: The transaction context — fully mutable. Hooks MAY mutate it
+ *   (e.g., `tcx.validFor(duration)` to fix the validity window before reading `tcx.txnEndTime`)
  * @public
  */
 export type createContext<TLike> = {
     activity: isActivity;
+    tcx: StellarTxnContext;
 };
 
 /**
  * Context object passed to {@link DelegatedDataContract.beforeUpdate | beforeUpdate()} callback
+ *
+ * @remarks
+ * - `original`: Frozen deep clone of the pre-update on-chain record. Safe to read for comparison; cannot be mutated.
+ * - `activity`: The activity being triggered for this update
+ * - `tcx`: The transaction context — fully mutable. Hooks MAY mutate it
+ *   (e.g., `tcx.validFor(duration)` to fix the validity window before reading `tcx.txnEndTime`)
  * @public
  */
 export type updateContext<T> = {
     original: T;
     activity: isActivity;
+    tcx: StellarTxnContext;
 };
 
 /**
@@ -393,20 +407,23 @@ export abstract class DelegatedDataContract<
 
     /**
      * Hook method called before creating a record, allowing the delegate to augment or normalize the record data.
-     * 
-     * @param record - The record being created (TLike - off-chain type)
-     * @param context - Context object containing the activity being triggered
-     * @returns The augmented/normalized record to be saved (TLike - off-chain type)
-     * 
+     *
+     * @param record - Frozen deep clone of the merged record (TLike). MUST NOT be mutated —
+     *   return a new object with modifications. The framework uses only the return value for datum construction.
+     * @param context - Context containing `activity` and `tcx` (mutable transaction context)
+     * @returns The augmented/normalized record to be saved (TLike)
+     *
      * @remarks
-     * The delegate MAY provide a {@link beforeCreate | beforeCreate()} method to augment the record before it is created.
-     * This is called after merging defaults, id, and type, but before saving.
-     * 
+     * Called after merging defaults, id, and type, but before saving.
+     *
      * Typically these fixups are required to conform the submitted record to the on-chain
      * policy's enforced requirements.
-     * 
-
-     * Implementers MUST return a patched record containing any modifications needed
+     *
+     * The record input is a Helios-aware deep clone, frozen to enforce the return-value contract.
+     * The `tcx` is passed by direct reference — hooks MAY mutate it (e.g., calling
+     * `tcx.validFor()` to fix the validity window before reading `tcx.txnEndTime`).
+     *
+     * Implementers MUST return a patched record containing any modifications needed.
      */
     beforeCreate(
         record: TLike, context: createContext<TLike>): TLike {
@@ -415,20 +432,24 @@ export abstract class DelegatedDataContract<
 
     /**
      * Hook method called before updating a record, allowing the delegate to augment or normalize the record data.
-     * 
-     * @param existingRecord - The original record before updates (T - on-chain type)
-     * @param record - The merged record containing existing data plus updates (TLike - off-chain type)
-     * @param context - Context object containing the original record and the activity being triggered
-     * @returns The augmented/normalized record to be saved (TLike - off-chain type)
-     * 
+     *
+     * @param record - Frozen deep clone of the merged record (TLike). MUST NOT be mutated —
+     *   return a new object with modifications. The framework uses only the return value for datum construction.
+     * @param context - Context containing `original` (frozen deep clone of pre-update record),
+     *   `activity`, and `tcx` (mutable transaction context)
+     * @returns The augmented/normalized record to be saved (TLike)
+     *
      * @remarks
-     * The delegate MAY provide a {@link beforeUpdate | beforeUpdate()} method to augment the record before it is updated.
-     * This is called after merging the existing record with the updated fields, but before saving.
-     * 
+     * Called after merging the existing record with the updated fields, but before saving.
+     *
      * Typically these fixups are required to conform the submitted record to the on-chain
      * policy's enforced requirements.
-     * 
-     * Implementers MUST return a patched record containing any modifications needed
+     *
+     * The record input and `original` are both Helios-aware deep clones, frozen to enforce
+     * the return-value contract. The `tcx` is passed by direct reference — hooks MAY mutate it
+     * (e.g., calling `tcx.validFor()` to fix the validity window before reading `tcx.txnEndTime`).
+     *
+     * Implementers MUST return a patched record containing any modifications needed.
      */
     beforeUpdate(record: TLike, context: updateContext<T>): TLike {
         return record;
@@ -488,14 +509,14 @@ export abstract class DelegatedDataContract<
 
         const defaults = this.creationDefaultDetails() || {};
         const fullRecord = this.beforeCreate(
-            {
+            deepFreezeRecord(deepCloneRecord({
                 // the type-name itself is sometimes const and fully type-safe, but sometimes is just stringy - but it's there
                 id: textToBytes(uut.toString()),
                 type: newType,
                 ...defaults,
                 ...newRecord,
-            } as DgDataTypeLike<this>,
-            { activity }
+            } as DgDataTypeLike<this>)),
+            { activity, tcx }
         );
 
         const newDatum = this.mkDatum.capoStoredData({
@@ -644,14 +665,15 @@ export abstract class DelegatedDataContract<
 
         const existingRecord = item.data as T;
         const updatedRecordLike = {
-            ... item.data as TLike, 
+            ... item.data as TLike,
             ...updatedRecord
-        } 
+        }
         const fullUpdatedRecord: TLike = this.beforeUpdate(
-            updatedRecordLike,
+            deepFreezeRecord(deepCloneRecord(updatedRecordLike)),
             {
-                original: existingRecord,
+                original: deepFreezeRecord(deepCloneRecord(existingRecord)),
                 activity,
+                tcx,
             }
         );
 

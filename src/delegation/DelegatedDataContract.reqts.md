@@ -160,9 +160,10 @@ Conditional inclusion of the Capo's governance authority token in transactions w
 #### Purpose: Governs the beforeCreate hook's behavior and contract. Applied when implementing or modifying data creation in a DelegatedDataContract subclass, or when reviewing how records are prepared before on-chain datum construction.
 
  - 3.2.1: REQT-80gk8ja8bw: **COMPLETED**/draft: **Hook Invocation Point** - MUST call `beforeCreate(record, context)` after merging `creationDefaultDetails()`, `id`, `type`, and caller-supplied data, but before constructing the on-chain datum via the data bridge.
- - 3.2.2: REQT-a30n3rbmkp: **COMPLETED**/draft: **Hook Context** - MUST pass a `createContext<TLike>` containing `{ activity: isActivity }` as the context parameter.
+ - 3.2.2: REQT-a30n3rbmkp: **NEXT**/draft: **Hook Context** - MUST pass a `createContext<TLike>` containing `{ activity: isActivity, tcx: StellarTxnContext }` as the context parameter. The `tcx` is passed by direct reference — hooks MAY mutate it (e.g., calling `tcx.validFor()` to fix the validity window before reading `tcx.txnEndTime`).
  - 3.2.3: REQT-zx1w72nxen: **COMPLETED**/draft: **Base Class Passthrough** - The base class implementation MUST be a passthrough that returns the record unmodified.
  - 3.2.4: REQT-pj4jv8zq0v: **COMPLETED**/draft: **Synchronous Contract** - MUST be synchronous (returns `TLike`, not `Promise<TLike>`).
+ - 3.2.5: REQT-51vkbcm2vf: **NEXT**/draft: **Record Input Protection** - The record passed to `beforeCreate()` MUST be a deep clone of the merged record, frozen recursively before the hook receives it. The clone MUST be Helios-aware: calling `.copy()` on mutable Helios types (Address, Value, Assets), sharing immutable Helios types by reference (PubKeyHash, UplcData variants), and recursing into plain objects and arrays. The freeze MUST be recursive but MUST NOT freeze Helios type instances — only plain objects and arrays. This protects caller data from accidental mutation and enforces the return-value contract.
 
 ### **REQT-3.3.0/6t6hk8zk1w**: **COMPLETED**/draft: **Creation Transaction Output**
 #### Purpose: Governs how the creation transaction outputs the new record to the chain. Applied when reviewing datum construction, value composition, or the authority flow during record creation.
@@ -190,9 +191,12 @@ Conditional inclusion of the Capo's governance authority token in transactions w
 #### Purpose: Governs the beforeUpdate hook's behavior and contract. Applied when implementing or modifying data updates in a DelegatedDataContract subclass, or when reviewing how updated records are prepared before on-chain datum construction.
 
  - 4.2.1: REQT-hx6knbqcve: **COMPLETED**/draft: **Hook Invocation Point** - MUST call `beforeUpdate(record, context)` after merging the existing on-chain record with the updated fields, but before constructing the updated on-chain datum.
- - 4.2.2: REQT-76xh3h4fsk: **COMPLETED**/draft: **Hook Context** - MUST pass an `updateContext<T>` containing `{ original: T, activity: isActivity }` where `original` is the pre-update on-chain record typed as the on-chain type `T`.
+ - 4.2.2: REQT-76xh3h4fsk: **NEXT**/draft: **Hook Context** - MUST pass an `updateContext<T>` containing `{ original: T, activity: isActivity, tcx: StellarTxnContext }` where `original` is the pre-update on-chain record typed as the on-chain type `T`, provided as a deep-cloned, frozen copy. The `tcx` is passed by direct reference — hooks MAY mutate it (e.g., calling `tcx.validFor()` to fix the validity window before reading `tcx.txnEndTime`).
  - 4.2.3: REQT-t9qqwr26db: **COMPLETED**/draft: **Base Class Passthrough** - The base class implementation MUST be a passthrough that returns the record unmodified.
  - 4.2.4: REQT-4sfsjy0t0p: **COMPLETED**/draft: **Synchronous Contract** - MUST be synchronous (returns `TLike`, not `Promise<TLike>`).
+ - 4.2.5: REQT-v538zt7mkh: **NEXT**/draft: **Record Input Protection** - The merged record passed to `beforeUpdate()` MUST be a deep clone of the merged record, frozen recursively before the hook receives it. The clone MUST be Helios-aware: calling `.copy()` on mutable Helios types (Address, Value, Assets), sharing immutable Helios types by reference (PubKeyHash, UplcData variants), and recursing into plain objects and arrays. The freeze MUST be recursive but MUST NOT freeze Helios type instances — only plain objects and arrays.
+ - 4.2.6: REQT-fyc6n4e6rt: **NEXT**/draft: **Original Record Protection** - The `original` record in the `updateContext` MUST be a deep clone of the pre-update on-chain record, frozen recursively before the hook receives it. This follows the same Helios-aware cloning strategy as the record input. The hook can safely read `original` for comparison without risk of mutating the source UTxO data.
+ - 4.2.7: REQT-tsg5f4mz07: **NEXT**/draft: **Return Value Contract** - The framework MUST use only the return value of `beforeUpdate()` as the record data for datum construction. The frozen input enforces that hooks return a new object with modifications rather than mutating the input in place.
 
 ### **REQT-4.3.0/03vrnvz9kw**: **COMPLETED**/draft: **Update Transaction Output**
 #### Purpose: Governs how the update transaction outputs the modified record back to the chain. Applied when reviewing datum reconstruction, value composition, or the return address for updated records.
@@ -263,6 +267,7 @@ Conditional inclusion of the Capo's governance authority token in transactions w
 ### Version 1.0
 
  - **added**: Initial v3 requirements document covering full CRUD surface, migrated from v2 lifecycle-hooks-only scope — 9 functional areas, 44 requirements. Migrated beforeCreate (REQT-5xcxm119jz), beforeUpdate (REQT-5rsshp821f), afterCreate (REQT-1q0vd26stf) with original UUTs preserved. Added Record Type Identity, Reading, Creation pipeline, Update pipeline, Deletion (BACKLOG), Validation, Data Serialization, Policy Setup, and Gov Authority Integration.
+ - **updated**: Hook context enrichment and input protection — per Code Whisperer pre-coding advisory (work unit k7m2x9p4w6). Updated REQT-a30n3rbmkp and REQT-76xh3h4fsk to add tcx to hook contexts (status COMPLETED→NEXT). Added 4 new requirements: REQT-51vkbcm2vf (beforeCreate record input protection), REQT-v538zt7mkh (beforeUpdate record input protection), REQT-fyc6n4e6rt (original record protection), REQT-tsg5f4mz07 (return value contract). All new reqts status NEXT. Total requirements now 48.
 
 
 # Release Management Plan
