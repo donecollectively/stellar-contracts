@@ -20,5 +20,6 @@ export interface UtxoIndexEntry {
     inlineDatum: string | null;
     referenceScriptHash: string | null;
     uutIds: string[];
+    spentInTx: string | null;
 }
 //# sourceMappingURL=UtxoIndexEntry.d.ts.map

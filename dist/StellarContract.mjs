@@ -8,7 +8,7 @@ import '@helios-lang/crypto';
 import '@helios-lang/tx-utils';
 import 'nanoid';
 import '@helios-lang/uplc';
+import './environment.mjs';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import '@helios-lang/compiler';
-import './environment.mjs';
 //# sourceMappingURL=StellarContract.mjs.map

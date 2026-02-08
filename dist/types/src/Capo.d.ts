@@ -101,9 +101,7 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      * @remarks
      *
      * This is a flag that can be set to true to enable auto-setup for delegates in the Capo contract.
-     * It is currently false by default, meaning that the Capo contract will not automatically setup any delegates.
-     *
-     * We'll change that to true real soon now.
+     * When true (the default), the Capo contract will automatically setup delegates during bootstrap.
      */
     autoSetup: boolean;
     isChartered: boolean;
@@ -458,7 +456,13 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
             };
         };
     };
-    connectDelegateWithOnchainRDLink<RN extends string & keyof SELF["_delegateRoles"], DT extends StellarDelegate = ContractBasedDelegate>(role: RN, delegateLink: RelativeDelegateLinkLike): Promise<DT>;
+    connectDelegateWithOnchainRDLink<RN extends string & keyof SELF["_delegateRoles"], DT extends StellarDelegate = ContractBasedDelegate>(role: RN, delegateLink: RelativeDelegateLinkLike, // | OffchainRelativeDelegateLink |
+    options: {
+        /** Whether this delegate will be used for on-chain operations (transactions).
+         *  true = compile script for transaction building
+         *  false = skip compilation, only reading data */
+        onchain: boolean;
+    }): Promise<DT>;
     showDelegateLink(delegateLink: RelativeDelegateLinkLike): string;
     /**
      * Given a role name and configuration details,
@@ -518,10 +522,16 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      **/
     verifyCoreDelegates(): Promise<[BasicMintDelegate, AuthorityPolicy, ContractBasedDelegate] | undefined>;
     mkDatumScriptReference(): import("@helios-lang/ledger").InlineTxOutputDatum;
-    findGovDelegate(charterData?: CharterData): Promise<ContractBasedDelegate>;
+    findGovDelegate(charterData?: CharterData, options?: {
+        onchain: boolean;
+    }): Promise<ContractBasedDelegate>;
     txnAddGovAuthority<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX & hasGovAuthority>;
-    getMintDelegate(charterData?: CharterData): Promise<BasicMintDelegate>;
-    getSpendDelegate(charterData?: CharterData): Promise<BasicMintDelegate>;
+    getMintDelegate(charterData?: CharterData, options?: {
+        onchain: boolean;
+    }): Promise<BasicMintDelegate>;
+    getSpendDelegate(charterData?: CharterData, options?: {
+        onchain: boolean;
+    }): Promise<BasicMintDelegate>;
     getSettingsController(this: SELF, options: FindableViaCharterData): Promise<DelegatedDataContract<any, any> | undefined>;
     /**
      * Finds the delegated-data controller for a given typeName.
@@ -530,7 +540,7 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      * and that the off-chain Capo delegateMap provides an off-chain controller
      * for that typeName.
      */
-    getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(this: SELF, recordTypeName: RN, options?: FindableViaCharterData): Promise<undefined | DelegatedDataContract<any, any>>;
+    getDgDataController<RN extends string & keyof SELF["_delegateRoles"]>(this: SELF, recordTypeName: RN, options: FindableViaCharterData): Promise<undefined | DelegatedDataContract<any, any>>;
     /**
      * @deprecated - use getOtherNamedDelegate() or getDgDataController() instead
      */
@@ -540,8 +550,12 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      * @remarks
      * @public
      **/
-    getOtherNamedDelegate(delegateName: string, charterData?: CharterData): Promise<ContractBasedDelegate>;
-    getNamedDelegates(charterData?: CharterData): Promise<{
+    getOtherNamedDelegate(delegateName: string, charterData?: CharterData, options?: {
+        onchain: boolean;
+    }): Promise<ContractBasedDelegate>;
+    getNamedDelegates(charterData?: CharterData, options?: {
+        onchain: boolean;
+    }): Promise<{
         [k: string]: ContractBasedDelegate;
     }>;
     getGovDelegate(charterData?: CharterData): Promise<void>;
@@ -637,7 +651,7 @@ export declare abstract class Capo<SELF extends Capo<any>, featureFlags extends 
      * Returns a single item from a list, throwing an error if it has multiple items
      *
      */
-    singleItem<T>(xs: Array<T>): T;
+    singleItem<T extends FoundDatumUtxo<any, any>>(xs: Array<T>): T;
     /**
      * Queries a chain-index to find utxos having a specific type of delegated datum
      * @remarks

@@ -93,6 +93,7 @@ class CachedHeliosProgram extends Program {
         );
       } else {
         const { version } = value;
+        console.error("-> initCacheFromBundle -> programFromCacheEntry", new Error().stack);
         if (version !== "PlutusV2" && version !== "PlutusV3") {
           console.log(
             `\u{1F422}${this.id}: unknown version '${version}'' in compiler cache entry: ${key}; skipping`
@@ -271,7 +272,7 @@ class CachedHeliosProgram extends Program {
     const cacheKey = this.getCacheKey(options);
     const fromCache = await this.getFromCache(cacheKey);
     if (fromCache) {
-      console.log(`\u{1F422}${this.id}: ${cacheKey}: from cache`);
+      console.canDebug?.(`\u{1F422}${this.id}: ${cacheKey}: from cache`);
       const end1 = Date.now();
       this.compileTime = {
         fetchedCache: end1 - start
@@ -716,8 +717,7 @@ class HeliosScriptBundle {
     } = setupDetails;
     if (this.scriptParamsSource !== scriptParamsSource) {
       console.warn(
-        `   -- ${this.constructor.name}: overrides scriptParamsSource (originator '${specialOriginatorLabel || "\u2039unknown\u203A"}')    '
-        was ${this.scriptParamsSource}, now ${scriptParamsSource}`
+        `   -- ${this.constructor.name}: overrides scriptParamsSource (originator '${specialOriginatorLabel || "\u2039unknown\u203A"}') - was ${this.scriptParamsSource}, now ${scriptParamsSource}`
       );
       this.scriptParamsSource = scriptParamsSource;
     }
@@ -734,7 +734,7 @@ class HeliosScriptBundle {
             `${this.constructor.name}: scriptParamsSource=config, but no program bundle, no script params`
           );
         }
-        console.log(
+        console.canDebug?.(
           `special originator '${specialOriginatorLabel}' initializing with basic config`
         );
       }
@@ -779,7 +779,7 @@ class HeliosScriptBundle {
   get scriptHash() {
     const hash = this.previousOnchainScript?.uplcProgram.hash() || this.configuredScriptDetails?.scriptHash || this.alreadyCompiledScript?.hash();
     if (!hash) {
-      console.log(
+      console.warn(
         "scriptHash called before program is loaded.  Call loadProgram() first (expensive!) if this is intentional"
       );
       const script = this.compiledScript();
@@ -1130,6 +1130,29 @@ class HeliosScriptBundle {
     }
     return [...this.resolveCapoIncludedModules(), ...this.modules];
   }
+  /**
+   * Computes a hash of all source content in this bundle.
+   * Used for snapshot cache key computation.
+   * @public
+   */
+  computeSourceHash() {
+    const allSources = [this.main, ...this.getEffectiveModuleList()];
+    const allContent = allSources.map((s) => `${s.moduleName || s.name}:
+${s.content}`).join("\n---\n");
+    return bytesToHex(blake2b(encodeUtf8(allContent)));
+  }
+  /**
+   * Returns cache key inputs for this bundle.
+   * Used by CapoTestHelper for snapshot cache key computation.
+   * @public
+   */
+  getCacheKeyInputs() {
+    return {
+      name: this.moduleName || this.constructor.name,
+      sourceHash: this.computeSourceHash(),
+      params: this.configuredParams || {}
+    };
+  }
   resolveCapoIncludedModules() {
     const includeList = [
       ...this.implicitIncludedCapoModules(),
@@ -1332,7 +1355,7 @@ ${this.modules.map(moduleDetails).join("\n")}`
     }).then((uplcProgram) => {
       this.alreadyCompiledScript = uplcProgram;
       const scriptHash = bytesToHex(uplcProgram.hash());
-      console.log(
+      console.canDebug?.(
         "timing (ms):",
         program.compileTime || `compiled: ${(/* @__PURE__ */ new Date()).getTime() - t}ms`,
         `-> ${scriptHash}`
@@ -1409,6 +1432,8 @@ ${this.modules.map(moduleDetails).join("\n")}`
     return this._program;
   }
   loadProgram() {
+    const bundleName = this.constructor.name;
+    const perfLabel = `loadProgram:${bundleName}`;
     if (this._program) {
       if (this.isPrecompiled != this._progIsPrecompiled || this.setup?.isMainnet !== this.isMainnet) {
         throw new Error("unused code path? program cache busting");
@@ -1416,6 +1441,7 @@ ${this.modules.map(moduleDetails).join("\n")}`
         return this._program;
       }
     }
+    performance.mark(`${perfLabel}:start`);
     const isMainnet = this.setup?.isMainnet ?? false;
     const isTestnet = !isMainnet;
     const ts1 = Date.now();
@@ -1428,7 +1454,7 @@ ${this.modules.map(moduleDetails).join("\n")}`
       debugger;
     }
     try {
-      console.warn(`${this.constructor.name}: loading program`);
+      console.canDebug?.(`${bundleName}: loading program`);
       const p = new HeliosProgramWithCacheAPI(this.main, {
         isTestnet,
         moduleSources,
@@ -1438,12 +1464,17 @@ ${this.modules.map(moduleDetails).join("\n")}`
       this._program = p;
       this.initProgramDetails();
       this._progIsPrecompiled = this.isPrecompiled;
+      performance.mark(`${perfLabel}:end`);
+      performance.measure(perfLabel, `${perfLabel}:start`, `${perfLabel}:end`);
+      const loadTime = Date.now() - ts1;
       console.log(
-        `\u{1F4E6} ${mName}: loaded & parsed ${this.isPrecompiled ? "w/ pre-compiled program" : "for type-gen"}: ${Date.now() - ts1}ms`
+        `\u{1F4E6} ${mName}: loaded & parsed ${this.isPrecompiled ? "w/ pre-compiled program" : "for type-gen"}: ${loadTime}ms`
         // new Error(`stack`).stack
       );
       return p;
     } catch (e) {
+      performance.mark(`${perfLabel}:error`);
+      performance.measure(`${perfLabel}:error`, `${perfLabel}:start`, `${perfLabel}:error`);
       if (e.message.match(/invalid parameter name/)) {
         debugger;
         throw new Error(

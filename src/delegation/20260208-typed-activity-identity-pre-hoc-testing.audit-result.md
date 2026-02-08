@@ -94,12 +94,50 @@ Tests 1 and 3 both need a bootstrapped chain with an installed test data policy.
 
 **a0jke4wtxv**: The `activityArgs` threading through `EnumBridge.mkUplcData` is the most uncertain part of the plan. The Coder should write test case 2 (bridge-level identity check) EARLY — before wiring up the hook contexts. If `mkUplcData` doesn't have access to the pre-serialization args, the test will surface this quickly and prevent wasted effort on downstream plumbing.
 
+## Findings Review
+
+### a0jke4wtxv (Suggestion): Write bridge-level test early as feasibility probe
+
+**Stellar Testing**: Write test case 2 (`bridge-activity-identity`) early — before wiring up hook contexts. Call `controller.activity.MintingActivities.CreatingTData(tcx)` directly and inspect the returned `isActivity` for `variantName`, `activityArgs`, and `details`. If `EnumBridge.mkUplcData` doesn't have access to the pre-serialization args, this surfaces the problem before downstream plumbing work.
+
+**Architect**: Agree. This is the highest-uncertainty part of the plan — the `value` parameter to `mkUplcData` may or may not be the pre-serialization args. A focused test on that method immediately de-risks everything downstream. Good sequencing advice.
+
+**Code Whisperer**: Agree. Exactly the kind of fast-feedback probe that prevents scattered rework. No structural concern.
+
+**Stakeholder**: Accepted.
+
+---
+
+### skd46xwsp5 (Suggestion): Consider createTestRecord() helper method
+
+**Stellar Testing**: Consider adding a `createTestRecord()` helper method to `CapoForDgDataPolicyTestHelper` for reuse across hook tests. Both the create-path test (case 1) and update-path test (case 3) need a created record on chain.
+
+**Architect**: Premature. Per the `helper-extraction-threshold` pattern: extract when setup appears in 2+ tests. We have exactly 2 tests that need it. If the Coder writes the same setup twice, extract then — not before.
+
+**Code Whisperer**: Agree with Architect. Don't pre-build abstractions for two uses. The Coder can judge in the moment.
+
+**Stakeholder**: Accepted — leave to Coder's judgment.
+
+---
+
+### r0wz2vkjh7 (Suggestion): Update DelegatedDatumTester generics
+
+**Stellar Testing**: Update `DelegatedDatumTester`'s class signature to thread `MintingActivity`/`SpendingActivity` generics — needed for the type-narrowing test (case 4) to compile.
+
+**Architect**: This isn't really a finding — it's inherent to the implementation. `DelegatedDatumTester` is the canonical example controller. Threading the generics there is part of proving the design works end-to-end. The Coder would do this regardless.
+
+**Code Whisperer**: Agree. No advisory value beyond what the plan already states.
+
+**Stakeholder**: Accepted — inherent to the work.
+
+---
+
 ## Findings Summary
 
-| ID | Severity | Finding |
-|----|----------|---------|
-| a0jke4wtxv | Suggestion | Write bridge-level test (case 2) early as a feasibility probe for `activityArgs` threading through `EnumBridge.mkUplcData` |
-| skd46xwsp5 | Suggestion | Consider a `createTestRecord()` helper method in `CapoForDgDataPolicyTestHelper` for reuse across hook tests |
-| r0wz2vkjh7 | Suggestion | Update `DelegatedDatumTester` class signature to thread `MintingActivity`/`SpendingActivity` generics as part of the implementation (needed for type-narrowing test to compile) |
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| a0jke4wtxv | Suggestion | Write bridge-level test early as feasibility probe | Accepted |
+| skd46xwsp5 | Suggestion | Consider `createTestRecord()` helper — defer to Coder judgment | Accepted |
+| r0wz2vkjh7 | Suggestion | Thread generics in DelegatedDatumTester — inherent to implementation | Accepted |
 
-No Objections or Concerns. The testing approach is straightforward given the existing infrastructure.
+No Objections or Concerns. All suggestions accepted. The testing approach is straightforward given the existing infrastructure.

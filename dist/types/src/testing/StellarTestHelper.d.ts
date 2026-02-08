@@ -1,9 +1,34 @@
 import { type Address, type NetworkParams, type NetworkParamsHelper, type Tx, type TxId } from "@helios-lang/ledger";
-import { SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
+import { SimpleWallet_stellar as emulatedWallet, StellarNetworkEmulator } from "./emulator/StellarNetworkEmulator.js";
 import { StellarContract } from "@donecollectively/stellar-contracts";
 import type { stellarSubclass, ConfigFor, ActorContext, NetworkContext, SetupInfo, StellarTxnContext, SubmitOptions } from "@donecollectively/stellar-contracts";
+/**
+ * Records the setup info for an actor, used for snapshot cache key computation.
+ * @public
+ */
+export type ActorSetupInfo = {
+    name: string;
+    initialBalance: bigint;
+    additionalUtxos: bigint[];
+};
+/**
+ * Stored wallet keys for fast actor restoration. REQT/n93h9y5s85
+ * @public
+ */
+export type StoredActorWalletKeys = {
+    /** Hex-encoded spending private key bytes */
+    spendingKey: string;
+    /** Hex-encoded staking private key bytes (optional) */
+    stakingKey?: string;
+};
+/**
+ * Map of actor names to stored wallet keys for offchainData.
+ * @public
+ */
+export type ActorWalletsOffchainData = {
+    actorWallets: Record<string, StoredActorWalletKeys>;
+};
 import type { TestHelperState, actorMap, canHaveRandomSeed, canSkipSetup } from "./types.js";
-import { SimpleWallet_stellar, StellarNetworkEmulator } from "./StellarNetworkEmulator.js";
 import { type Wallet } from "@helios-lang/tx-utils";
 /**
  * @public
@@ -30,6 +55,8 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>,
     defaultActor?: string;
     strella: SC;
     actors: actorMap;
+    /** Records actor setup info for cache key computation */
+    actorSetupInfo: ActorSetupInfo[];
     optimize: boolean;
     netPHelper: NetworkParamsHelper;
     networkCtx: NetworkContext<StellarNetworkEmulator>;
@@ -49,9 +76,13 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>,
      **/
     get wallet(): emulatedWallet;
     /**
+     * Shared actorContext envelope - singleton across all helpers via helperState (REQT/ch01gxgm4g).
+     * All helpers and the Capo share this same object so setActor() updates are visible everywhere.
+     * Update contents (actorContext.wallet, actorContext.others) - never replace the envelope.
      * @public
      */
-    actorContext: ActorContext<emulatedWallet>;
+    get actorContext(): ActorContext<emulatedWallet>;
+    set actorContext(_value: ActorContext<emulatedWallet>);
     /**
      * @public
      */
@@ -66,9 +97,21 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>,
      * @public
      */
     setDefaultActor(): Promise<void>;
-    helperState?: TestHelperState<SC, SpecialState>;
+    /**
+     * Helper state for named records and bootstrap tracking.
+     * Always initialized from the class's static defaultHelperState.
+     */
+    helperState: TestHelperState<SC, SpecialState>;
+    /**
+     * Default helperState shared across all instances of this helper class.
+     * Subclasses can override this to provide custom default state.
+     * @public
+     */
+    static defaultHelperState: TestHelperState<any, any>;
     constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup, helperState?: TestHelperState<SC, SpecialState>);
     /**
+     * Adjusts network params for test environment flexibility.
+     * Implements REQT/6rdjgebzyx (Network Parameter Fixups).
      * @public
      */
     fixupParams(preProdParams: NetworkParams): NetworkParams;
@@ -109,7 +152,20 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>,
      * Special genesis transactions are added to the emulated chain in order to create these assets.
      * @public
      */
-    createWallet(lovelace?: bigint, assets?: import("@helios-lang/ledger").Assets): SimpleWallet_stellar;
+    createWallet(lovelace?: bigint, assets?: import("@helios-lang/ledger").Assets): emulatedWallet;
+    /**
+     * Extracts wallet private keys from current actors for storage in offchainData.
+     * Returns data suitable for storing in CachedSnapshot.offchainData. REQT/1p346cabct
+     * @public
+     */
+    getActorWalletKeys(): ActorWalletsOffchainData;
+    /**
+     * Restores actor wallets from stored private keys (fast path).
+     * Replaces PRNG-based regeneration. REQT/avwkcrnwqp, REQT/ncbfwtyr8h
+     * @param storedData - The offchainData containing actorWallets
+     * @internal
+     */
+    restoreActorsFromStoredKeys(storedData: ActorWalletsOffchainData): void;
     /**
      * @public
      */
@@ -148,7 +204,20 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>,
      *
      * @public
      **/
+    /** When true, suppresses actor creation logging (used during cache key computation) */
+    protected _silentActorSetup: boolean;
     addActor(roleName: string, walletBalance: bigint, ...moreUtxos: bigint[]): Wallet;
+    /**
+     * Logs detailed info for a single actor.
+     * @internal
+     */
+    private logActor;
+    /**
+     * Logs detailed actor information. Used when actors were created silently
+     * during cache key computation but we want to show them on cache miss.
+     * @internal
+     */
+    logActorDetails(): void;
     addrRegistry: Record<string, string>;
     /**
      * @public

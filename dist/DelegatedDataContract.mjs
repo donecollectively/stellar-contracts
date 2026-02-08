@@ -6,12 +6,57 @@ import { encodeUtf8 } from '@helios-lang/codec-utils';
 import '@helios-lang/tx-utils';
 import './StellarContract2.mjs';
 import '@helios-lang/crypto';
+import './environment.mjs';
 import './HeliosBundle.mjs';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import '@helios-lang/compiler';
 import '@helios-lang/contract-utils';
-import './environment.mjs';
 import 'nanoid';
+
+function deepCloneRecord(obj) {
+  if (obj === null || typeof obj !== "object") {
+    return obj;
+  }
+  if (typeof obj.copy === "function") {
+    return obj.copy();
+  }
+  if (typeof obj.toCbor === "function") {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => deepCloneRecord(item));
+  }
+  const result = {};
+  for (const key of Object.keys(obj)) {
+    result[key] = deepCloneRecord(
+      obj[key]
+    );
+  }
+  return result;
+}
+function deepFreezeRecord(obj) {
+  if (obj === null || typeof obj !== "object") {
+    return obj;
+  }
+  const proto = Object.getPrototypeOf(obj);
+  const isPlainObject = proto === Object.prototype || proto === null;
+  const isArray = Array.isArray(obj);
+  if (isPlainObject || isArray) {
+    Object.freeze(obj);
+    if (isArray) {
+      for (const item of obj) {
+        deepFreezeRecord(item);
+      }
+    } else {
+      for (const value of Object.values(
+        obj
+      )) {
+        deepFreezeRecord(value);
+      }
+    }
+  }
+  return obj;
+}
 
 class DelegatedDataContract extends ContractBasedDelegate {
   static isDgDataPolicy = true;
@@ -197,41 +242,48 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
     return {};
   }
   /**
-       * Hook method called before creating a record, allowing the delegate to augment or normalize the record data.
-       * 
-       * @param record - The record being created (TLike - off-chain type)
-       * @param context - Context object containing the activity being triggered
-       * @returns The augmented/normalized record to be saved (TLike - off-chain type)
-       * 
-       * @remarks
-       * The delegate MAY provide a {@link beforeCreate | beforeCreate()} method to augment the record before it is created.
-       * This is called after merging defaults, id, and type, but before saving.
-       * 
-       * Typically these fixups are required to conform the submitted record to the on-chain
-       * policy's enforced requirements.
-       * 
-  
-       * Implementers MUST return a patched record containing any modifications needed
-       */
+   * Hook method called before creating a record, allowing the delegate to augment or normalize the record data.
+   *
+   * @param record - Frozen deep clone of the merged record (TLike). MUST NOT be mutated —
+   *   return a new object with modifications. The framework uses only the return value for datum construction.
+   * @param context - Context containing `activity` and `tcx` (mutable transaction context)
+   * @returns The augmented/normalized record to be saved (TLike)
+   *
+   * @remarks
+   * Called after merging defaults, id, and type, but before saving.
+   *
+   * Typically these fixups are required to conform the submitted record to the on-chain
+   * policy's enforced requirements.
+   *
+   * The record input is a Helios-aware deep clone, frozen to enforce the return-value contract.
+   * The `tcx` is passed by direct reference — hooks MAY mutate it (e.g., calling
+   * `tcx.validFor()` to fix the validity window before reading `tcx.txnEndTime`).
+   *
+   * Implementers MUST return a patched record containing any modifications needed.
+   */
   beforeCreate(record, context) {
     return record;
   }
   /**
    * Hook method called before updating a record, allowing the delegate to augment or normalize the record data.
-   * 
-   * @param existingRecord - The original record before updates (T - on-chain type)
-   * @param record - The merged record containing existing data plus updates (TLike - off-chain type)
-   * @param context - Context object containing the original record and the activity being triggered
-   * @returns The augmented/normalized record to be saved (TLike - off-chain type)
-   * 
+   *
+   * @param record - Frozen deep clone of the merged record (TLike). MUST NOT be mutated —
+   *   return a new object with modifications. The framework uses only the return value for datum construction.
+   * @param context - Context containing `original` (frozen deep clone of pre-update record),
+   *   `activity`, and `tcx` (mutable transaction context)
+   * @returns The augmented/normalized record to be saved (TLike)
+   *
    * @remarks
-   * The delegate MAY provide a {@link beforeUpdate | beforeUpdate()} method to augment the record before it is updated.
-   * This is called after merging the existing record with the updated fields, but before saving.
-   * 
+   * Called after merging the existing record with the updated fields, but before saving.
+   *
    * Typically these fixups are required to conform the submitted record to the on-chain
    * policy's enforced requirements.
-   * 
-   * Implementers MUST return a patched record containing any modifications needed
+   *
+   * The record input and `original` are both Helios-aware deep clones, frozen to enforce
+   * the return-value contract. The `tcx` is passed by direct reference — hooks MAY mutate it
+   * (e.g., calling `tcx.validFor()` to fix the validity window before reading `tcx.txnEndTime`).
+   *
+   * Implementers MUST return a patched record containing any modifications needed.
    */
   beforeUpdate(record, context) {
     return record;
@@ -266,14 +318,14 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
     let newRecord = typedData;
     const defaults = this.creationDefaultDetails() || {};
     const fullRecord = this.beforeCreate(
-      {
+      deepFreezeRecord(deepCloneRecord({
         // the type-name itself is sometimes const and fully type-safe, but sometimes is just stringy - but it's there
         id: encodeUtf8(uut.toString()),
         type: newType,
         ...defaults,
         ...newRecord
-      },
-      { activity }
+      })),
+      { activity, tcx }
     );
     const newDatum = this.mkDatum.capoStoredData({
       // data: new Map(Object.entries(beforeSave(fullRecord) as any)),
@@ -383,10 +435,11 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
       ...updatedRecord
     };
     const fullUpdatedRecord = this.beforeUpdate(
-      updatedRecordLike,
+      deepFreezeRecord(deepCloneRecord(updatedRecordLike)),
       {
-        original: existingRecord,
-        activity
+        original: deepFreezeRecord(deepCloneRecord(existingRecord)),
+        activity,
+        tcx
       }
     );
     console.log(
@@ -466,7 +519,9 @@ have access via import {...} to any helios modules provided by that Capo's .hlb.
       recordTypeName,
       {
         charterData,
-        optional: true
+        optional: true,
+        onchain: false
+        // Just checking existence
       }
     );
     const action = existing ? "update" : "create";

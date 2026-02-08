@@ -319,6 +319,12 @@ export declare class CapoDAppProvider<CapoType extends Capo<any>, UserActions ex
      * @returns The created CachedUtxoIndex instance
      */
     enableUtxoCache(capo: CapoType): Promise<CachedUtxoIndex>;
+    /**
+     * Creates CachedUtxoIndex using the bundle's precompiled config.
+     * Called before wallet connection to ensure SimpleWallet uses the cache.
+     * @internal
+     */
+    initUtxoIndexFromBundleConfig(): Promise<CachedUtxoIndex | undefined>;
     mkDefaultCharterArgs(): Promise<MinimalCharterDataArgs>;
     bootstrapCapo(): Promise<any>;
     /**

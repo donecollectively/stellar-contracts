@@ -10,6 +10,8 @@ export declare class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
         govAuthority: import("./delegation/RolesAndDelegates.js").DelegateSetup<"authority", import("./delegation/StellarDelegate.js").StellarDelegate, any>;
         mintDelegate: import("./delegation/RolesAndDelegates.js").DelegateSetup<"mintDgt", import("./minting/BasicMintDelegate.js").BasicMintDelegate, any>;
     };
-    reqtsController(): Promise<ReqtsController>;
+    reqtsController(options?: {
+        onchain: boolean;
+    }): Promise<ReqtsController>;
 }
 //# sourceMappingURL=CapoWithoutSettings.d.ts.map

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import React__default, { useState, useMemo, useEffect, useCallback, Component, Fragment } from 'react';
 import clsx from 'clsx';
-import { makeBlockfrostV0Client, makeRandomRootPrivateKey, makeRootPrivateKey, makeHydraClient, makeSimpleWallet, makeCip30Wallet, makeWalletHelper } from '@helios-lang/tx-utils';
+import { makeBlockfrostV0Client, makeBip32PrivateKey, makeRandomRootPrivateKey, makeRootPrivateKey, makeHydraClient, makeSimpleWallet, makeCip30Wallet, makeWalletHelper } from '@helios-lang/tx-utils';
 import { decodeTx, makeAddress, makeShelleyAddress } from '@helios-lang/ledger';
 import '@cardano-ogmios/client';
 import { U as nanoid } from './DataBridge.mjs';
@@ -9,16 +9,14 @@ import { d as debugBox, b as CachedUtxoIndex, C as CapoDataBridge } from './Cach
 import { dumpAny, OgmiosTxSubmitter, GenericSigner, TxBatcher, uplcDataSerializer, bytesToText, abbrevAddress } from '@donecollectively/stellar-contracts';
 import { createPortal } from 'react-dom';
 import { e as environment } from './environment.mjs';
-import { bytesToHex, hexToBytes } from '@helios-lang/codec-utils';
+import { hexToBytes, bytesToHex } from '@helios-lang/codec-utils';
 import { useCapoDappProvider as useCapoDappProvider$1 } from '@donecollectively/stellar-contracts/ui';
 import '@helios-lang/contract-utils';
 import '@helios-lang/crypto';
 import 'nanoid';
 import '@helios-lang/uplc';
-import 'arktype';
 import 'eventemitter3';
 import 'dexie';
-import '@ark/json-schema';
 
 const styles = {
   primary: {
@@ -1323,7 +1321,7 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
     );
     const progressLabel = "string" == typeof progressBar ? progressBar : "";
     const { utxoIndex, isIndexSyncing } = this.state;
-    const rateMeterElement = /* @__PURE__ */ React__default.createElement("div", { className: "fixed bottom-4 right-4 z-50 bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg p-2" }, /* @__PURE__ */ React__default.createElement(RateMeterGauge, { events: utxoIndex?.events, size: 120 }), isIndexSyncing && /* @__PURE__ */ React__default.createElement("div", { className: "text-center text-xs text-gray-600 dark:text-gray-300 mt-1" }, "Syncing..."));
+    const rateMeterElement = isIndexSyncing ? /* @__PURE__ */ React__default.createElement("div", { className: "fixed bottom-20 right-4 z-50 bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg p-2" }, /* @__PURE__ */ React__default.createElement(RateMeterGauge, { events: utxoIndex?.events, size: 100 }), /* @__PURE__ */ React__default.createElement("div", { className: "text-center text-xs text-gray-600 dark:text-gray-300 mt-1" }, "Syncing...")) : null;
     const renderedStatus = message && /* @__PURE__ */ React__default.createElement(
       InPortal,
       {
@@ -1458,7 +1456,7 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
         role: "alert",
         key: "errorStatus"
       },
-      /* @__PURE__ */ React__default.createElement("div", { className: "" }, /* @__PURE__ */ React__default.createElement("strong", { className: "font-bold" }, "Whoops! \xA0\xA0"), /* @__PURE__ */ React__default.createElement("span", { key: "status-err", className: "block sm:inline" }, message.split("\n").map((line, i) => /* @__PURE__ */ React__default.createElement(React__default.Fragment, { key: `line-${i}` }, line, /* @__PURE__ */ React__default.createElement("br", null)))), /* @__PURE__ */ React__default.createElement("div", { className: "text-sm italic" }, moreInstructions)),
+      /* @__PURE__ */ React__default.createElement("div", { className: "max-h-[calc(100vh-100px)] overflow-y-auto" }, /* @__PURE__ */ React__default.createElement("strong", { className: "font-bold" }, "Whoops! \xA0\xA0"), /* @__PURE__ */ React__default.createElement("span", { key: "status-err", className: "block sm:inline" }, message.split("\n").map((line, i) => /* @__PURE__ */ React__default.createElement(React__default.Fragment, { key: `line-${i}` }, line, /* @__PURE__ */ React__default.createElement("br", null)))), /* @__PURE__ */ React__default.createElement("div", { className: "text-sm italic" }, moreInstructions)),
       /* @__PURE__ */ React__default.createElement("div", { className: "mr-2 flex-grow text-nowrap" }, this.renderNextAction())
     );
   }
@@ -1664,6 +1662,9 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
     const id = nanoid(4);
     const location = new Error("um?").stack.split("\n").slice(2).join("\n");
     debugBox(`${id}: doInitialize ${location}`);
+    if (this.props.useCachedIndex !== false && !this.state.utxoIndex) {
+      await this.initUtxoIndexFromBundleConfig();
+    }
     if ("undefined" != typeof window) {
       const autoWallet = window.localStorage.getItem(
         "capoAutoConnectWalletName"
@@ -1863,14 +1864,52 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
     let simpleWallet;
     let walletHandle;
     if (selectedWallet === "zwallet") {
-      let privKeyHex = window.localStorage.getItem("zwk");
-      if (!privKeyHex) {
-        const entropy = makeRandomRootPrivateKey().entropy;
-        privKeyHex = bytesToHex(entropy);
-        window.localStorage.setItem("zwk", privKeyHex);
-      }
-      const privKey = makeRootPrivateKey(hexToBytes(privKeyHex));
+      const ZWALLET_KEY = "zWallet";
+      const ZWALLET_LEGACY_KEY = "zwk";
       const isMainnet = this.props.targetNetwork === "mainnet";
+      let spendingKey;
+      let stakingKey;
+      let needsSave = false;
+      let walletData = null;
+      const storedData = window.localStorage.getItem(ZWALLET_KEY);
+      if (storedData) {
+        try {
+          walletData = JSON.parse(storedData);
+          if (walletData.spendingKey && walletData.stakingKey) {
+            spendingKey = makeBip32PrivateKey(hexToBytes(walletData.spendingKey));
+            stakingKey = makeBip32PrivateKey(hexToBytes(walletData.stakingKey));
+            console.log("zWallet: loaded from cache (fast path)");
+          } else {
+            walletData = null;
+          }
+        } catch (e) {
+          console.warn("zWallet: invalid stored data, will recreate", e);
+          walletData = null;
+        }
+      }
+      if (!walletData) {
+        let entropyHex = window.localStorage.getItem(ZWALLET_LEGACY_KEY);
+        if (entropyHex) {
+          console.log("zWallet: migrating from legacy format...");
+        } else {
+          console.log("zWallet: creating new wallet...");
+          const entropy = makeRandomRootPrivateKey().entropy;
+          entropyHex = bytesToHex(entropy);
+        }
+        console.log("zWallet: deriving keys (one-time operation)...");
+        const rootKey = makeRootPrivateKey(hexToBytes(entropyHex));
+        spendingKey = rootKey.deriveSpendingKey();
+        stakingKey = rootKey.deriveStakingKey();
+        walletData = {
+          entropy: entropyHex,
+          spendingKey: bytesToHex(spendingKey.bytes),
+          stakingKey: bytesToHex(stakingKey.bytes),
+          pubKey: bytesToHex(spendingKey.derivePubKey().bytes),
+          address: ""
+          // Will be filled after wallet creation
+        };
+        needsSave = true;
+      }
       const useHydra = !!this.props.hydra;
       const hydraOptions = useHydra ? {
         ...this.props.hydra === true ? {} : this.props.hydra,
@@ -1883,7 +1922,12 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
         isForMainnet: isMainnet,
         ...hydraOptions
       }) : this.state.utxoIndex || this.bf;
-      simpleWallet = makeSimpleWallet(privKey, networkClient);
+      simpleWallet = makeSimpleWallet(spendingKey, stakingKey, networkClient);
+      if (needsSave && walletData) {
+        walletData.address = simpleWallet.address.toString();
+        window.localStorage.setItem(ZWALLET_KEY, JSON.stringify(walletData));
+        console.log("zWallet: cached for fast future loading");
+      }
       if (this.capo && !this.state.utxoIndex) {
         this.capo.setup.network = networkClient;
       }
@@ -2053,6 +2097,9 @@ Note: in development mode, this SHOULD NOT happen except in a hot-reload cycle`
       newState
     );
     if (this.capo) this.capo.actorContext.wallet = wallet;
+    if (this.state.utxoIndex && addrString) {
+      await this.state.utxoIndex.addWalletAddress(addrString);
+    }
     await walletHelper.utxos.then((walletUtxos) => {
       return this.updateStatus(
         void 0,
@@ -2187,51 +2234,14 @@ ${new Error().stack.split("\n").slice(2).join("\n")}`);
       };
       txBatcher = new TxBatcher(batcherOptions);
     }
-    let network = this.bf;
-    let utxoIndex;
-    const bundleClass = await this.capoClass.scriptBundleClass();
-    const bundleConfig = bundleClass.precompiledScriptDetails?.capo?.config;
-    const localParsedConfig = "config" in config ? config.config : void 0;
-    const parsedConfig = bundleConfig || localParsedConfig;
-    console.log("CachedUtxoIndex condition check:", {
-      useCachedIndex: this.props.useCachedIndex,
-      hasMph: !!parsedConfig?.mph,
-      hasRootCapoScriptHash: !!parsedConfig?.rootCapoScriptHash,
-      configSource: bundleConfig ? "bundle" : localParsedConfig ? "localStorage" : "none"
-    });
-    if (this.props.useCachedIndex !== false && parsedConfig?.mph && parsedConfig?.rootCapoScriptHash) {
-      await this.updateStatus(
-        "initializing UTXO cache...",
-        {
-          progressBar: true,
-          developerGuidance: "caching UTXOs for faster lookups"
-        },
-        `//${id}: enabling utxo cache early`
-      );
-      const options = typeof this.props.useCachedIndex === "object" ? this.props.useCachedIndex : {};
-      const capoAddress = makeAddress(this.isMainnet(), parsedConfig.rootCapoScriptHash);
-      utxoIndex = new CachedUtxoIndex({
-        address: capoAddress.toBech32(),
-        mph: parsedConfig.mph.toHex(),
-        isMainnet: this.isMainnet(),
-        network: this.bf,
-        // original BlockfrostV0Client as fallback
-        bridge: new CapoDataBridge(this.isMainnet()),
-        blockfrostKey: this.props.blockfrostKey,
-        ...options
-      });
-      utxoIndex.events.on("syncStart", () => {
-        this.setState({ isIndexSyncing: true });
-      });
-      utxoIndex.events.on("syncComplete", () => {
-        this.setState({ isIndexSyncing: false });
-      });
-      utxoIndex.events.on("rateLimitMetrics", (metrics) => {
-        this.setState({ rateMetrics: metrics });
-      });
-      await new Promise((resolve) => {
-        this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
-      });
+    let network = this.state.utxoIndex || this.bf;
+    let utxoIndex = this.state.utxoIndex;
+    if (!utxoIndex && this.props.useCachedIndex !== false) {
+      utxoIndex = await this.initUtxoIndexFromBundleConfig();
+      if (utxoIndex) {
+        network = utxoIndex;
+      }
+    } else if (utxoIndex) {
       network = utxoIndex;
     }
     if (this.state.userInfo.wallet?.cardanoClient) {
@@ -2394,6 +2404,44 @@ ${new Error().stack.split("\n").slice(2).join("\n")}`);
     });
     capo.setup.network = utxoIndex;
     utxoIndex.startPeriodicRefresh();
+    await new Promise((resolve) => {
+      this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
+    });
+    return utxoIndex;
+  }
+  /**
+   * Creates CachedUtxoIndex using the bundle's precompiled config.
+   * Called before wallet connection to ensure SimpleWallet uses the cache.
+   * @internal
+   */
+  async initUtxoIndexFromBundleConfig() {
+    const bundleClass = await this.capoClass.scriptBundleClass();
+    const bundleConfig = bundleClass.precompiledScriptDetails?.capo?.config;
+    if (!bundleConfig?.mph || !bundleConfig?.rootCapoScriptHash) {
+      console.log("initUtxoIndexFromBundleConfig: no precompiled config, deferring to initCapo");
+      return void 0;
+    }
+    console.log("initUtxoIndexFromBundleConfig: creating CachedUtxoIndex");
+    const options = typeof this.props.useCachedIndex === "object" ? this.props.useCachedIndex : {};
+    const capoAddress = makeAddress(this.isMainnet(), bundleConfig.rootCapoScriptHash);
+    const utxoIndex = new CachedUtxoIndex({
+      address: capoAddress.toBech32(),
+      mph: bundleConfig.mph.toHex(),
+      isMainnet: this.isMainnet(),
+      network: this.bf,
+      bridge: new CapoDataBridge(this.isMainnet()),
+      blockfrostKey: this.props.blockfrostKey,
+      ...options
+    });
+    utxoIndex.events.on("syncStart", () => {
+      this.setState({ isIndexSyncing: true });
+    });
+    utxoIndex.events.on("syncComplete", () => {
+      this.setState({ isIndexSyncing: false });
+    });
+    utxoIndex.events.on("rateLimitMetrics", (metrics) => {
+      this.setState({ rateMetrics: metrics });
+    });
     await new Promise((resolve) => {
       this.setState({ utxoIndex, isIndexSyncing: true }, resolve);
     });
@@ -2838,7 +2886,8 @@ function CharterHighlights({
       ]) {
         if (entryInfo.entryType.DgDataPolicy) {
           const dgt = await capo.getDgDataController(entryName, {
-            charterData
+            charterData,
+            onchain: true
           });
           await dgt?.getBundle();
           dataControllers2[entryName] = dgt;
@@ -2926,7 +2975,7 @@ function DelegatedDataPolicyItem({
       title: roleName,
       footer: /* @__PURE__ */ React.createElement(React.Fragment, null, "Governs all", " ", /* @__PURE__ */ React.createElement(Lowlight, { as: "span" }, /* @__PURE__ */ React.createElement("b", null, delegate?.recordTypeName)), " ", "records")
     },
-    /* @__PURE__ */ React.createElement("div", { className: "flex flex-row justify-between w-full" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Softlight, null, "Delegated data policy", /* @__PURE__ */ React.createElement("div", { className: "text-xs" }, "\xA0\xA0\xA0", bytesToText(foundRole.tokenName)))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-end" }, /* @__PURE__ */ React.createElement(Lowlight, { className: "text-xs" }, "for type"), /* @__PURE__ */ React.createElement(Highlight, { as: "span", className: "whitespace-nowrap" }, foundRole.entryType.DgDataPolicy?.idPrefix, "-*"))),
+    /* @__PURE__ */ React.createElement("div", { className: "flex flex-row justify-between w-full" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Softlight, null, "Delegated data policy", /* @__PURE__ */ React.createElement("div", { key: "thing1", className: "text-xs" }, "\xA0\xA0\xA0", bytesToText(foundRole.tokenName)), /* @__PURE__ */ React.createElement("div", { key: "thing2", className: "text-xs" }, "policy ", delegate?.validatorHash.toHex()))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-end" }, /* @__PURE__ */ React.createElement(Lowlight, { className: "text-xs" }, "for type"), /* @__PURE__ */ React.createElement(Highlight, { as: "span", className: "whitespace-nowrap" }, foundRole.entryType.DgDataPolicy?.idPrefix, "-*"))),
     delegate?.preloadedBundle.previousOnchainScript ? /* @__PURE__ */ React.createElement("div", { className: "text-xs mt-2 w-full text-right" }, /* @__PURE__ */ React.createElement(Highlight, { as: "span" }, "update needed "), /* @__PURE__ */ React.createElement(Softlight, { className: "italic" }, "to apply pending code changes to on-chain policy")) : ""
   );
 }

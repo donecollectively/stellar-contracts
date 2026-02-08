@@ -107,6 +107,7 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
         );
       } else {
         const { version } = value;
+        console.error("-> initCacheFromBundle -> programFromCacheEntry", new Error().stack);
         if (version !== "PlutusV2" && version !== "PlutusV3") {
           console.log(
             `\u{1F422}${this.id}: unknown version '${version}'' in compiler cache entry: ${key}; skipping`
@@ -285,7 +286,7 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
     const cacheKey = this.getCacheKey(options);
     const fromCache = await this.getFromCache(cacheKey);
     if (fromCache) {
-      console.log(`\u{1F422}${this.id}: ${cacheKey}: from cache`);
+      console.canDebug?.(`\u{1F422}${this.id}: ${cacheKey}: from cache`);
       const end1 = Date.now();
       this.compileTime = {
         fetchedCache: end1 - start

@@ -1,6 +1,3 @@
-/**
- * @public
- */
 export declare const environment: {
     DEBUG: number;
     CARDANO_NETWORK: string;
@@ -8,5 +5,6 @@ export declare const environment: {
     NODE_ENV: string;
     OPTIMIZE: number;
     cwd: string;
+    isTest: boolean;
 };
 //# sourceMappingURL=environment.d.ts.map

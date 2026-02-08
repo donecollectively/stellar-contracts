@@ -13,6 +13,15 @@ import type { DeployedScriptDetails } from "../../configuration/DeployedScriptCo
  */
 export declare const defaultNoDefinedModuleName = "\u2039default-needs-override\u203A";
 /**
+ * Cache key inputs for a single bundle, used for snapshot cache key computation.
+ * @public
+ */
+export type BundleCacheKeyInputs = {
+    name: string;
+    sourceHash: string;
+    params: Record<string, unknown>;
+};
+/**
  * @public
  */
 export declare const placeholderSetupDetails: StellarBundleSetupDetails<any>;
@@ -170,6 +179,18 @@ export declare abstract class HeliosScriptBundle {
      * @public
      */
     getEffectiveModuleList(): Source[];
+    /**
+     * Computes a hash of all source content in this bundle.
+     * Used for snapshot cache key computation.
+     * @public
+     */
+    computeSourceHash(): string;
+    /**
+     * Returns cache key inputs for this bundle.
+     * Used by CapoTestHelper for snapshot cache key computation.
+     * @public
+     */
+    getCacheKeyInputs(): BundleCacheKeyInputs;
     resolveCapoIncludedModules(): Source[];
     logModuleDetails(): void;
     /**

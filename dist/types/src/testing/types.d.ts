@@ -1,9 +1,11 @@
 import type { NetworkParams } from "@helios-lang/ledger";
-import type { Capo, StellarContract, ConfigFor, configBase, CapoConfig } from "@donecollectively/stellar-contracts";
+import type { Capo, StellarContract, ConfigFor, configBase, CapoConfig, ActorContext } from "@donecollectively/stellar-contracts";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
-import { SimpleWallet_stellar as emulatedWallet, type NetworkSnapshot } from "./StellarNetworkEmulator.js";
+import { SimpleWallet_stellar as emulatedWallet } from "./emulator/StellarNetworkEmulator.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
+import { SnapshotCache } from "./emulator/SnapshotCache.js";
+import { CapoTestHelper } from "./CapoTestHelper.js";
 /**
  * @public
  */
@@ -15,9 +17,16 @@ export type enhancedNetworkParams = NetworkParams & {
  */
 export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (stConfig: ConfigFor<SC> & canHaveRandomSeed, helperState?: TestHelperState<SC>) => StellarTestHelper<SC>;
 /**
+ * Type for classes returned by DefaultCapoTestHelper.forCapoClass().
+ * Includes both the constructor signature and inherited static members.
  * @public
  */
-export type DefaultCapoTestHelperClass<SC extends Capo<any>, SpecialState extends Record<string, any> = {}> = new (config?: canHaveRandomSeed & SC extends Capo<any, infer FF> ? ConfigFor<SC> & CapoConfig<FF> : ConfigFor<SC>, helperState?: TestHelperState<SC, SpecialState>) => DefaultCapoTestHelper<SC, SpecialState>;
+export type DefaultCapoTestHelperClass<SC extends Capo<any>, SpecialState extends Record<string, any> = {}> = {
+    new (config?: canHaveRandomSeed & (SC extends Capo<any, infer FF> ? ConfigFor<SC> & CapoConfig<FF> : ConfigFor<SC>), helperState?: TestHelperState<SC, SpecialState>): DefaultCapoTestHelper<SC, SpecialState>;
+    createTestContext: typeof CapoTestHelper.createTestContext;
+    defaultHelperState: TestHelperState<SC, SpecialState>;
+    hasNamedSnapshot: typeof CapoTestHelper.hasNamedSnapshot;
+};
 /**
  * @public
  */
@@ -40,10 +49,16 @@ export type canSkipSetup = {
 export type TestHelperState<SC extends StellarContract<any>, Special extends Record<string, any> = {
     [key: string]: never;
 }> = {
-    bootstrapped: Boolean;
     bootstrappedStrella?: SC;
-    snapshots: Record<string, NetworkSnapshot>;
+    namedRecords: Record<string, string>;
+    /** Offchain data per snapshot - used for in-memory cache (REQT/n93h9y5s85) */
+    offchainData?: Record<string, Record<string, unknown>>;
+    /** Parsed config for cross-instance Capo reconstruction (REQT/vmq8qmv218) */
+    parsedConfig?: any;
     previousHelper: StellarTestHelper<any>;
+    snapCache: SnapshotCache;
+    /** Shared actorContext envelope - singleton across all helpers (REQT/ch01gxgm4g) */
+    actorContext: ActorContext<any>;
 } & Special;
 /**
  * Adds a test helper class to a `vitest` testing context.

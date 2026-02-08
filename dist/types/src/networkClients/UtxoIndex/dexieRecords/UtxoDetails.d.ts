@@ -20,5 +20,6 @@ export declare class dexieUtxoDetails extends Entity<DexieUtxoStore> implements 
     inlineDatum: string | null;
     referenceScriptHash: string | null;
     uutIds: string[];
+    spentInTx: string | null;
 }
 //# sourceMappingURL=UtxoDetails.d.ts.map

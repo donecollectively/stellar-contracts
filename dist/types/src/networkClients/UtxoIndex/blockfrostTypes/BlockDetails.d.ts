@@ -1,4 +1,4 @@
-export declare const BlockDetailsFactory: import("arktype/internal/variants/object.ts").ObjectType<{
+export interface BlockDetailsType {
     time: number;
     height: number;
     hash: string;
@@ -16,6 +16,5 @@ export declare const BlockDetailsFactory: import("arktype/internal/variants/obje
     previous_block: string | null;
     next_block: string | null;
     confirmations: number;
-}, {}>;
-export type BlockDetailsType = typeof BlockDetailsFactory.infer;
+}
 //# sourceMappingURL=BlockDetails.d.ts.map

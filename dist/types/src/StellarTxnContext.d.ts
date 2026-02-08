@@ -185,6 +185,10 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
     kind: "StellarTxnContext";
     id: string;
     inputs: TxInput[];
+    /** Maps input ID (as string) to the stack trace where it was added */
+    inputStackTraces: Map<string, string>;
+    /** Maps reference input ID (as string) to the stack trace where it was added (REQT/acczfb1bd6) */
+    refInputStackTraces: Map<string, string>;
     collateral?: TxInput;
     outputs: TxOutput[];
     feeLimit?: bigint;

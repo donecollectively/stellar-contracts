@@ -33,6 +33,7 @@ export declare class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     getLatestBlock(): Promise<BlockIndexEntry | undefined>;
     findUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined>;
     saveUtxo(entry: UtxoIndexEntry): Promise<void>;
+    markUtxoSpent(utxoId: string, spentInTx: string): Promise<void>;
     findUtxoByUUT(uutId: string): Promise<UtxoIndexEntry | undefined>;
     findTxId(txId: string): Promise<TxIndexEntry | undefined>;
     saveTx(tx: TxIndexEntry): Promise<void>;

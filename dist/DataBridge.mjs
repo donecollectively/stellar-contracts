@@ -1101,6 +1101,10 @@ class StellarTxnContext {
   kind = "StellarTxnContext";
   id = nanoid(5);
   inputs = [];
+  /** Maps input ID (as string) to the stack trace where it was added */
+  inputStackTraces = /* @__PURE__ */ new Map();
+  /** Maps reference input ID (as string) to the stack trace where it was added (REQT/acczfb1bd6) */
+  refInputStackTraces = /* @__PURE__ */ new Map();
   collateral;
   outputs = [];
   feeLimit;
@@ -1255,9 +1259,17 @@ class StellarTxnContext {
    ... otherwise, add txn details first or set isFacade to false`
       );
     }
+    if (thisWithMoreType.state.addlTxns?.[txnName]) {
+      throw new Error(
+        `addlTxns['${txnName}'] already included in this transaction:
+` + Object.keys(thisWithMoreType.state.addlTxns).map(
+          (k) => ` \u2022 ${k}`
+        ).join("\n")
+      );
+    }
     thisWithMoreType.state.addlTxns = {
       ...thisWithMoreType.state.addlTxns || {},
-      [txInfo.id]: txInfo
+      [txnName]: txInfo
     };
     return thisWithMoreType;
   }
@@ -1437,7 +1449,8 @@ class StellarTxnContext {
     this.noFacade("validFor");
     const startMoment = this.txnTime.getTime();
     this._validityPeriodSet = true;
-    this.txb.validFromTime(new Date(startMoment)).validToTime(new Date(startMoment + durationMs));
+    this._txnEndTime = new Date(startMoment + durationMs);
+    this.txb.validFromTime(new Date(startMoment)).validToTime(this._txnEndTime);
     return this;
   }
   _validityPeriodSet = false;
@@ -1453,6 +1466,8 @@ class StellarTxnContext {
   addRefInput(input, refScript) {
     this.noFacade("addRefInput");
     if (!input) throw new Error(`missing required input for addRefInput()`);
+    const currentStack = new Error().stack || "(stack unavailable)";
+    const inputIdKey = input.id.toString();
     if (this.txRefInputs.find((v) => v.id.isEqual(input.id))) {
       console.warn("suppressing second add of refInput");
       return this;
@@ -1463,6 +1478,7 @@ class StellarTxnContext {
       );
       return this;
     }
+    this.refInputStackTraces.set(inputIdKey, currentStack);
     this.txRefInputs.push(input);
     const v2sBefore = this.txb.v2Scripts;
     if (refScript) {
@@ -1491,6 +1507,22 @@ class StellarTxnContext {
         // JSON.stringify(r, delegateLinkSerializer)
       );
     }
+    const currentStack = new Error().stack || "(stack unavailable)";
+    const inputIdKey = input.id.toString();
+    const existingStack = this.inputStackTraces.get(inputIdKey);
+    if (existingStack) {
+      const originalStackSummary = existingStack.split("\n").slice(1, 6).join("\n");
+      throw new Error(
+        `Duplicate input detected: ${inputIdKey}
+
+Original input was added at:
+${originalStackSummary}
+
+Duplicate addition attempted at:
+${currentStack}`
+      );
+    }
+    this.inputStackTraces.set(inputIdKey, currentStack);
     if (input.address.pubKeyHash)
       this.allNeededWitnesses.push(input.address);
     this.inputs.push(input);

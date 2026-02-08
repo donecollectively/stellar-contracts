@@ -6,10 +6,10 @@ import '@helios-lang/codec-utils';
 import '@helios-lang/crypto';
 import '@helios-lang/tx-utils';
 import './HeliosBundle.mjs';
+import './environment.mjs';
 import '@helios-lang/contract-utils';
 import 'nanoid';
 import '@helios-lang/uplc';
 import '@donecollectively/stellar-contracts/HeliosProgramWithCacheAPI';
 import '@helios-lang/compiler';
-import './environment.mjs';
 //# sourceMappingURL=ContractBasedDelegate.mjs.map

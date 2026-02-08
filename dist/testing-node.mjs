@@ -1,48 +1,666 @@
-import { dumpAny as dumpAny$1, TxBatcher, GenericSigner, UtxoHelper, txAsString as txAsString$1, lovelaceToAda as lovelaceToAda$1, StellarTxnContext as StellarTxnContext$1, CapoWithoutSettings, parseCapoJSONConfig } from '@donecollectively/stellar-contracts';
-import { makeNetworkParamsHelper, makeAddress, makeAssets, DEFAULT_NETWORK_PARAMS, makeTxOutputId, makeStakingAddress } from '@helios-lang/ledger';
-import { encodeBech32, generateBytes, mulberry32 } from '@helios-lang/crypto';
-import { bytesToHex, decodeUtf8, encodeUtf8, isValidUtf8 } from '@helios-lang/codec-utils';
-import { makeTxBuilder, makeTxChainBuilder, makeWalletHelper, SECOND, makeEmulatorGenesisTx, makeEmulatorRegularTx, BIP39_DICT_EN, restoreRootPrivateKey, signCip30CoseData, makeRootPrivateKey } from '@helios-lang/tx-utils';
+import { dumpAny as dumpAny$1, TxBatcher, GenericSigner, UtxoHelper, txAsString as txAsString$1, lovelaceToAda as lovelaceToAda$1, StellarTxnContext as StellarTxnContext$1, parseCapoJSONConfig, CapoWithoutSettings } from '@donecollectively/stellar-contracts';
+import { VERSION } from '@helios-lang/compiler';
+import { blake2b, encodeBech32, generateBytes, mulberry32 } from '@helios-lang/crypto';
+import { encodeUtf8, hexToBytes, bytesToHex, decodeUtf8, isValidUtf8 } from '@helios-lang/codec-utils';
+import { existsSync, mkdirSync, statSync, utimesSync, readFileSync, writeFileSync, rmSync } from 'fs';
+import { join, dirname } from 'path';
+import { makeEmulatorGenesisTx, makeEmulatorRegularTx, makeTxBuilder, makeTxChainBuilder, makeWalletHelper, BIP39_DICT_EN, restoreRootPrivateKey, signCip30CoseData, SECOND, makeRootPrivateKey, makeBip32PrivateKey } from '@helios-lang/tx-utils';
+import { makeTxInput, makeTxOutputId, makeMintingPolicyHash, makeAssets, makeAddress, decodeTx, makeTxOutput, makeValue, makeTxId, makeNetworkParamsHelper, makeStakingAddress, DEFAULT_NETWORK_PARAMS } from '@helios-lang/ledger';
 import { customAlphabet } from 'nanoid';
 import { makeByteArrayData } from '@helios-lang/uplc';
 import { expectDefined } from '@helios-lang/type-utils';
+import { describe, it, beforeEach } from 'vitest';
 
-async function addTestContext(context, TestHelperClass, stConfig, helperState) {
-  console.log(" ======== ======== ======== +test context");
-  Object.defineProperty(context, "strella", {
-    get: function() {
-      return this.h.strella;
-    }
-  });
-  context.initHelper = async (stConfig2, helperState2) => {
-    const helper = new TestHelperClass(stConfig2, helperState2);
-    if (context.h) {
-      if (!stConfig2.skipSetup)
-        throw new Error(
-          `re-initializing shouldn't be necessary without skipSetup`
-        );
-      console.log(
-        "   ............. reinitializing test helper without setup"
-      );
-    }
-    context.h = helper;
-    return helper;
-  };
-  try {
-    await context.initHelper(stConfig, helperState);
-  } catch (e) {
-    if (!stConfig) {
-      console.error(
-        `${TestHelperClass.name}: error during initialization; does this test helper require initialization with explicit params?`
-      );
-      throw e;
-    } else {
-      console.error("urgh");
-      throw e;
+const ONE_DAY_MS = 24 * 60 * 60 * 1e3;
+function resolveSnapshotAlias(name) {
+  if (name === "bootstrapped") {
+    return "enabledDelegatesDeployed";
+  }
+  return name;
+}
+function sanitizeSnapshotName(name) {
+  const sanitized = name.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return sanitized.slice(0, 50);
+}
+function getProp(obj, name) {
+  const value = obj[name];
+  if (typeof value === "function") {
+    return value.call(obj);
+  }
+  if (value !== void 0) return value;
+  return obj[`_${name}`];
+}
+function serializeGenesisTx(tx) {
+  const txAny = tx;
+  const id = txAny._id;
+  const address = getProp(tx, "address");
+  const lovelace = getProp(tx, "lovelace");
+  const txAssets = getProp(tx, "assets");
+  if (!address) {
+    throw new Error(`Genesis tx ${id} has no address. Keys: ${Object.keys(tx).join(", ")}`);
+  }
+  const assets = [];
+  if (txAssets && !txAssets.isZero()) {
+    for (const mph of txAssets.getPolicies()) {
+      const tokenList = [];
+      for (const [tokenName, qty] of txAssets.getPolicyTokens(mph)) {
+        tokenList.push([bytesToHex(tokenName), qty.toString()]);
+      }
+      assets.push([mph.toHex(), tokenList]);
     }
   }
+  return {
+    id,
+    address: address.toBech32(),
+    lovelace: lovelace.toString(),
+    assets
+  };
 }
-const ADA = 1000000n;
+function deserializeGenesisTx(data) {
+  const assetsArray = data.assets.map(
+    ([mphHex, tokens]) => [
+      makeMintingPolicyHash(mphHex),
+      tokens.map(([nameHex, qtyStr]) => [
+        [...hexToBytes(nameHex)],
+        BigInt(qtyStr)
+      ])
+    ]
+  );
+  const assets = makeAssets(assetsArray);
+  return makeEmulatorGenesisTx(
+    data.id,
+    makeAddress(data.address),
+    BigInt(data.lovelace),
+    assets
+  );
+}
+function isGenesisTx(tx) {
+  const txAny = tx;
+  return "_address" in txAny || "_lovelace" in txAny;
+}
+function serializeBlocks(blocks) {
+  return blocks.map(
+    (block) => block.map((tx) => {
+      if (isGenesisTx(tx)) {
+        return { type: "genesis", data: serializeGenesisTx(tx) };
+      } else {
+        const innerTx = tx._tx;
+        if (!innerTx) {
+          throw new Error(`EmulatorRegularTx missing internal _tx property`);
+        }
+        return { type: "regular", cbor: bytesToHex(innerTx.toCbor()) };
+      }
+    })
+  );
+}
+function deserializeBlocks(serializedBlocks) {
+  return serializedBlocks.map(
+    (block) => block.map((serializedTx) => {
+      if (serializedTx.type === "genesis") {
+        return deserializeGenesisTx(serializedTx.data);
+      } else {
+        return makeEmulatorRegularTx(decodeTx(hexToBytes(serializedTx.cbor)));
+      }
+    })
+  );
+}
+function getTxBody(tx) {
+  const innerTx = tx._tx;
+  if (innerTx?.body) {
+    return innerTx.body;
+  }
+  if (tx.body) {
+    return tx.body;
+  }
+  return null;
+}
+function rebuildUtxoIndexes(genesis, blocks) {
+  const allUtxos = {};
+  const consumedUtxos = /* @__PURE__ */ new Set();
+  const addressUtxos = {};
+  const addUtxo = (utxo) => {
+    const id = utxo.id.toString();
+    allUtxos[id] = utxo;
+    const addr = utxo.address.toString();
+    if (!addressUtxos[addr]) {
+      addressUtxos[addr] = [];
+    }
+    addressUtxos[addr].push(utxo);
+  };
+  const consumeUtxo = (id) => {
+    consumedUtxos.add(id);
+    const utxo = allUtxos[id];
+    if (utxo) {
+      const addr = utxo.address.toString();
+      if (addressUtxos[addr]) {
+        addressUtxos[addr] = addressUtxos[addr].filter((u) => u.id.toString() !== id);
+      }
+    }
+  };
+  const genesisAlwaysSingleOutputIndex = 0;
+  for (const tx of genesis) {
+    const txId = getProp(tx, "id");
+    const address = getProp(tx, "address");
+    const lovelace = getProp(tx, "lovelace");
+    const txAssets = getProp(tx, "assets");
+    const output = makeTxOutput(address, makeValue(lovelace, txAssets));
+    const outputId = typeof tx.id === "function" ? makeTxOutputId(tx.id(), genesisAlwaysSingleOutputIndex) : makeTxOutputId(makeTxId(`${"0".repeat(64 - String(txId).length)}${txId}`), genesisAlwaysSingleOutputIndex);
+    const utxo = makeTxInput(outputId, output);
+    addUtxo(utxo);
+  }
+  for (const block of blocks) {
+    for (const tx of block) {
+      const body = getTxBody(tx);
+      if (!body) {
+        continue;
+      }
+      for (const input of body.inputs) {
+        consumeUtxo(input.id.toString());
+      }
+      const txId = tx.id();
+      const outputs = body.outputs;
+      for (let i = 0; i < outputs.length; i++) {
+        const output = outputs[i];
+        const utxo = makeTxInput(makeTxOutputId(txId, i), output);
+        addUtxo(utxo);
+      }
+    }
+  }
+  return { allUtxos, consumedUtxos, addressUtxos };
+}
+function applyIncrementalBlocks(parentState, incrementalBlocks) {
+  const allUtxos = { ...parentState.allUtxos };
+  const consumedUtxos = new Set(parentState.consumedUtxos);
+  const addressUtxos = {};
+  for (const [addr, utxos] of Object.entries(parentState.addressUtxos)) {
+    addressUtxos[addr] = [...utxos];
+  }
+  const addUtxo = (utxo) => {
+    const id = utxo.id.toString();
+    allUtxos[id] = utxo;
+    const addr = utxo.address.toString();
+    if (!addressUtxos[addr]) {
+      addressUtxos[addr] = [];
+    }
+    addressUtxos[addr].push(utxo);
+  };
+  const consumeUtxo = (id) => {
+    consumedUtxos.add(id);
+    const utxo = allUtxos[id];
+    if (utxo) {
+      const addr = utxo.address.toString();
+      if (addressUtxos[addr]) {
+        addressUtxos[addr] = addressUtxos[addr].filter((u) => u.id.toString() !== id);
+      }
+    }
+  };
+  let processedTxCount = 0;
+  let skippedTxCount = 0;
+  let addedUtxoCount = 0;
+  for (const block of incrementalBlocks) {
+    for (const tx of block) {
+      const body = getTxBody(tx);
+      if (!body) {
+        skippedTxCount++;
+        continue;
+      }
+      processedTxCount++;
+      for (const input of body.inputs) {
+        consumeUtxo(input.id.toString());
+      }
+      const txId = tx.id();
+      const outputs = body.outputs;
+      for (let i = 0; i < outputs.length; i++) {
+        const output = outputs[i];
+        const utxo = makeTxInput(makeTxOutputId(txId, i), output);
+        addUtxo(utxo);
+        addedUtxoCount++;
+      }
+    }
+  }
+  console.log(`  [DIAG applyIncremental] processed ${processedTxCount} txs, skipped ${skippedTxCount}, added ${addedUtxoCount} UTxOs`);
+  return { allUtxos, consumedUtxos, addressUtxos };
+}
+function serializeSnapshot(snapshot) {
+  return {
+    seed: snapshot.seed,
+    netNumber: snapshot.netNumber,
+    name: snapshot.name,
+    slot: snapshot.slot,
+    blockHashes: snapshot.blockHashes,
+    genesis: snapshot.genesis.map(serializeGenesisTx),
+    blocks: serializeBlocks(snapshot.blocks)
+  };
+}
+function deserializeSnapshot(data) {
+  const genesis = data.genesis.map(deserializeGenesisTx);
+  const blocks = deserializeBlocks(data.blocks);
+  const { allUtxos, consumedUtxos, addressUtxos } = rebuildUtxoIndexes(genesis, blocks);
+  return {
+    seed: data.seed,
+    netNumber: data.netNumber,
+    name: data.name,
+    slot: data.slot,
+    blockHashes: data.blockHashes,
+    genesis,
+    blocks,
+    allUtxos,
+    consumedUtxos,
+    addressUtxos
+  };
+}
+class SnapshotCache {
+  /** REQT/7k3mfpw2nx (Cache files stored in .stellar/emu/) */
+  cacheDir;
+  /** Registry of snapshot metadata for resolving parent chain and computing cache keys */
+  registry = /* @__PURE__ */ new Map();
+  /**
+   * helperState-scope cache of loaded snapshots (REQT/j9adgp9rwv).
+   * Avoids redundant disk reads and tx reconstruction across tests sharing the same SnapshotCache.
+   */
+  loadedSnapshots = /* @__PURE__ */ new Map();
+  constructor(projectRoot) {
+    const root = projectRoot || this.findProjectRoot();
+    this.cacheDir = join(root, ".stellar", "emu");
+    this.ensureCacheDir();
+  }
+  /**
+   * Registers snapshot metadata for cache key computation and parent chain resolution.
+   * NOTE: resolveScriptDependencies must be pre-bound to helper instance before registration.
+   * @param snapshotName - The snapshot name to register
+   * @param metadata - Parent snapshot name and optional resolver function
+   * @public
+   */
+  register(snapshotName, metadata) {
+    this.registry.set(snapshotName, metadata);
+  }
+  /**
+   * Gets registered metadata for a snapshot name.
+   * Resolves aliases (e.g., "bootstrapped" → "enabledDelegatesDeployed") before lookup.
+   * @internal
+   */
+  getRegistryEntry(snapshotName) {
+    const resolvedName = resolveSnapshotAlias(snapshotName);
+    return this.registry.get(resolvedName);
+  }
+  /**
+   * Walks up the directory tree to find package.json.
+   * @internal
+   */
+  findProjectRoot() {
+    let dir = process.cwd();
+    while (dir !== "/") {
+      if (existsSync(join(dir, "package.json"))) {
+        return dir;
+      }
+      dir = dirname(dir);
+    }
+    return process.cwd();
+  }
+  /**
+   * Ensures the cache directory exists.
+   * @internal
+   */
+  ensureCacheDir() {
+    if (!existsSync(this.cacheDir)) {
+      mkdirSync(this.cacheDir, { recursive: true });
+    }
+  }
+  /**
+   * Computes a cache key from parent hash and cache key inputs.
+   * Returns 6 bech32 characters (~1 billion combinations, sufficient for uniqueness).
+   * (ARCH-14zt4f9rtg)
+   */
+  computeKey(parentHash, inputs) {
+    const replacer = (_key, value) => typeof value === "bigint" ? value.toString() : value;
+    const data = JSON.stringify({
+      parent: parentHash,
+      bundles: inputs.bundles,
+      extra: inputs.extra
+    }, replacer);
+    const hashBytes = blake2b(encodeUtf8(data));
+    const bech32Str = encodeBech32("snap", hashBytes);
+    return bech32Str.slice(-6);
+  }
+  /**
+   * Gets the directory path for a snapshot.
+   * Format: {parentPath}/{snapshotName}-{dirLabel}-{cacheKey}/ (REQT/d230hkb6vm)
+   * Note: Empty label produces double-dash (--) which is valid and visually distinct.
+   * @param cacheKey - The cache key for this snapshot (6 bech32 chars)
+   * @param snapshotName - The snapshot name
+   * @param parentPath - Parent directory path, or null for root snapshots
+   * @param dirLabel - Optional human-readable label from computeDirLabel (default: "")
+   * @internal
+   */
+  getSnapshotDir(cacheKey, snapshotName, parentPath, dirLabel = "") {
+    const sanitizedName = sanitizeSnapshotName(snapshotName);
+    const sanitizedLabel = sanitizeSnapshotName(dirLabel);
+    const dirName = `${sanitizedName}-${sanitizedLabel}-${cacheKey}`;
+    if (parentPath) {
+      return join(parentPath, dirName);
+    }
+    return join(this.cacheDir, dirName);
+  }
+  /**
+   * Gets the snapshot.json file path within a snapshot directory.
+   * @internal
+   */
+  getSnapshotFilePath(snapshotDir) {
+    return join(snapshotDir, "snapshot.json");
+  }
+  /**
+   * Looks up a cached snapshot by name using registered metadata.
+   * Resolves parent chain via registry, computes cache key, loads from hierarchical path.
+   * Returns null on cache miss.
+   * Touches the directory if it's more than 1 day old (REQT/m1d6jk9w3p).
+   * Verifies parentHash and snapshotHash for integrity (REQT/rgxhbqp84g, REQT/q6f457kp86).
+   * @param snapshotName - The snapshot name to find
+   * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym, REQT/97qa2f7m25)
+   */
+  async find(snapshotName, helper) {
+    const resolvedName = resolveSnapshotAlias(snapshotName);
+    if (resolvedName !== snapshotName) {
+      console.log(`  [find] alias '${snapshotName}' \u2192 '${resolvedName}'`);
+    }
+    snapshotName = resolvedName;
+    const entry = this.getRegistryEntry(snapshotName);
+    if (!entry) {
+      console.warn(`SnapshotCache: no registry entry for '${snapshotName}'`);
+      return null;
+    }
+    let parentPath = null;
+    let parentHash = null;
+    let parent = null;
+    if (entry.parentSnapName !== "genesis") {
+      const resolvedParentName = resolveSnapshotAlias(entry.parentSnapName);
+      parent = await this.find(resolvedParentName, helper);
+      if (!parent) {
+        console.log(`  [find:${snapshotName}] \u274C MISS: parent '${resolvedParentName}' not found`);
+        return null;
+      }
+      parentPath = parent.path || null;
+      parentHash = parent.snapshotHash;
+      console.log(`  [find:${snapshotName}] parent '${resolvedParentName}' \u2192 hash=${parentHash?.slice(0, 12)}...`);
+    } else {
+      console.log(`  [find:${snapshotName}] genesis snapshot (no parent)`);
+    }
+    let cacheKey;
+    let inputs;
+    if (entry.resolveScriptDependencies) {
+      inputs = await entry.resolveScriptDependencies(helper);
+      cacheKey = this.computeKey(parentHash, inputs);
+      const bundleNames = inputs.bundles.map((b) => `${b.name}:${b.sourceHash?.slice(0, 8)}`).join(", ");
+      const extraKeys = inputs.extra ? Object.keys(inputs.extra).join(",") : "";
+      console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (bundles=[${bundleNames}], extra=[${extraKeys}])`);
+    } else {
+      inputs = { bundles: [] };
+      cacheKey = this.computeKey(parentHash, inputs);
+      console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (no resolver, parent-only)`);
+    }
+    const dirLabel = entry.computeDirLabel ? entry.computeDirLabel(inputs) : "";
+    const mapKey = `${snapshotName}:${cacheKey}`;
+    const cached = this.loadedSnapshots.get(mapKey);
+    if (cached) {
+      console.log(`  [find:${snapshotName}] \u2705 HIT (in-memory)`);
+      return cached;
+    }
+    console.log(`  [find:${snapshotName}] not in memory, checking disk...`);
+    const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath, dirLabel);
+    const cachePath = this.getSnapshotFilePath(snapshotDir);
+    if (!existsSync(cachePath)) {
+      console.log(`  [find:${snapshotName}] \u274C MISS: path not found: ${snapshotDir}`);
+      return null;
+    }
+    console.log(`  [find:${snapshotName}] found on disk: ${snapshotDir}`);
+    try {
+      const stats = statSync(snapshotDir);
+      const age = Date.now() - stats.mtimeMs;
+      if (age > ONE_DAY_MS) {
+        const now = /* @__PURE__ */ new Date();
+        utimesSync(snapshotDir, now, now);
+      }
+      const content = readFileSync(cachePath, "utf-8");
+      const serialized = JSON.parse(content);
+      const thisSnapshot = deserializeSnapshot(serialized.snapshot);
+      if (parent && serialized.parentHash) {
+        console.log(`  [find:${snapshotName}] parentHash check: stored=${serialized.parentHash.slice(0, 12)}... vs parent.snapshotHash=${parent.snapshotHash.slice(0, 12)}...`);
+        if (serialized.parentHash !== parent.snapshotHash) {
+          console.warn(`  [find:${snapshotName}] \u274C INVALID: parent hash mismatch - stored expects ${serialized.parentHash}, but parent has ${parent.snapshotHash}`);
+          return null;
+        }
+        console.log(`  [find:${snapshotName}] \u2705 parentHash matches`);
+      }
+      if (parent) {
+        const incrementalBlocks = thisSnapshot.blocks;
+        const incrementalBlockCount = incrementalBlocks.length;
+        const incrementalTxCount = incrementalBlocks.reduce((sum, block) => sum + block.length, 0);
+        console.log(`  [DIAG chain-load] '${snapshotName}': ${incrementalBlockCount} incremental blocks, ${incrementalTxCount} txs`);
+        console.log(`  [DIAG chain-load] parent '${parent.snapshot.name}' addressUtxos keys: ${Object.keys(parent.snapshot.addressUtxos).length}`);
+        thisSnapshot.genesis = parent.snapshot.genesis;
+        thisSnapshot.blocks = [...parent.snapshot.blocks, ...incrementalBlocks];
+        thisSnapshot.blockHashes = [...parent.snapshot.blockHashes, ...thisSnapshot.blockHashes];
+        const { allUtxos, consumedUtxos, addressUtxos } = applyIncrementalBlocks(
+          {
+            allUtxos: parent.snapshot.allUtxos,
+            consumedUtxos: parent.snapshot.consumedUtxos,
+            addressUtxos: parent.snapshot.addressUtxos
+          },
+          incrementalBlocks
+        );
+        thisSnapshot.allUtxos = allUtxos;
+        thisSnapshot.consumedUtxos = consumedUtxos;
+        thisSnapshot.addressUtxos = addressUtxos;
+        console.log(`  [DIAG chain-load] AFTER applyIncrementalBlocks: addressUtxos keys: ${Object.keys(addressUtxos).length}`);
+        console.log(`  [DIAG chain-load] addressUtxos keys: ${Object.keys(addressUtxos).slice(0, 5).join(", ")}`);
+        const parentBlockCount = parent.snapshot.blocks.length;
+        const parentTxCount = parent.snapshot.blocks.reduce((sum, block) => sum + block.length, 0);
+        const incrementalViz = incrementalBlocks.map((block) => "\u{1F33A}" + "\u2588".repeat(block.length)).join(" ");
+        const totalBlockCount = thisSnapshot.blocks.length;
+        thisSnapshot.parentBlockCount = parentBlockCount;
+        console.log(`SnapshotCache: chain-loaded '${snapshotName}' [${parentBlockCount} blocks/${parentTxCount} txns] + ${incrementalViz || "(none)"}  # ${totalBlockCount}`);
+      } else if (thisSnapshot.genesis.length > 0 && thisSnapshot.blocks.length === 0) {
+        thisSnapshot.blocks = [thisSnapshot.genesis];
+        const genesisViz = "\u{1F312}".repeat(thisSnapshot.genesis.length);
+        console.log(`SnapshotCache: root-loaded '${snapshotName}' ${genesisViz}  # 1`);
+      }
+      const verifyStart = performance.now();
+      const computedHash = thisSnapshot.blockHashes.length > 0 ? thisSnapshot.blockHashes[thisSnapshot.blockHashes.length - 1] : "genesis";
+      console.log(`  [find:${snapshotName}] integrity check: computed=${computedHash.slice(0, 12)}... vs stored=${serialized.snapshotHash.slice(0, 12)}...`);
+      if (computedHash !== serialized.snapshotHash) {
+        console.warn(`  [find:${snapshotName}] \u274C INVALID: snapshot hash mismatch - computed ${computedHash}, recorded ${serialized.snapshotHash}`);
+        return null;
+      }
+      const verifyMs = (performance.now() - verifyStart).toFixed(2);
+      console.log(`  [find:${snapshotName}] \u2705 LOADED from ${cachePath} (${verifyMs}ms)`);
+      let mergedOffchainData;
+      if (parent?.offchainData) {
+        mergedOffchainData = { ...parent.offchainData };
+      }
+      const offchainPath = join(snapshotDir, "offchain.json");
+      if (existsSync(offchainPath)) {
+        try {
+          const offchainContent = readFileSync(offchainPath, "utf-8");
+          const thisOffchainData = JSON.parse(offchainContent);
+          mergedOffchainData = { ...mergedOffchainData, ...thisOffchainData };
+        } catch (offchainErr) {
+          console.warn(`SnapshotCache: failed to read offchain.json for '${snapshotName}':`, offchainErr);
+        }
+      }
+      let cacheKeyInputs;
+      const keyInputsPath = join(snapshotDir, "key-inputs.json");
+      if (existsSync(keyInputsPath)) {
+        try {
+          const keyInputsContent = readFileSync(keyInputsPath, "utf-8");
+          cacheKeyInputs = JSON.parse(keyInputsContent);
+        } catch (keyInputsErr) {
+          console.warn(`SnapshotCache: failed to read key-inputs.json for '${snapshotName}':`, keyInputsErr);
+        }
+      }
+      const result = {
+        snapshot: thisSnapshot,
+        namedRecords: serialized.namedRecords,
+        parentSnapName: serialized.parentSnapName,
+        parentHash: serialized.parentHash,
+        snapshotHash: serialized.snapshotHash,
+        path: snapshotDir,
+        offchainData: mergedOffchainData,
+        cacheKeyInputs,
+        capturedBlockCount: serialized.capturedBlockCount
+      };
+      this.loadedSnapshots.set(mapKey, result);
+      return result;
+    } catch (e) {
+      console.warn(`SnapshotCache: failed to read ${cachePath}:`, e);
+      return null;
+    }
+  }
+  /**
+   * Stores a snapshot using registered metadata to compute hierarchical path.
+   * Only stores incremental blocks since parent (REQT/6xjggf5hsd).
+   * @param snapshotName - The snapshot name (must be registered)
+   * @param cachedSnapshot - The snapshot to store
+   * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym)
+   */
+  async store(snapshotName, cachedSnapshot, helper) {
+    const resolvedName = resolveSnapshotAlias(snapshotName);
+    snapshotName = resolvedName;
+    const entry = this.getRegistryEntry(snapshotName);
+    if (!entry) {
+      throw new Error(`SnapshotCache: cannot store unregistered snapshot '${snapshotName}'`);
+    }
+    let parentPath = null;
+    let parentBlockCount = 0;
+    if (entry.parentSnapName !== "genesis") {
+      const resolvedParentName = resolveSnapshotAlias(entry.parentSnapName);
+      const parent = await this.find(resolvedParentName, helper);
+      if (!parent) {
+        throw new Error(`SnapshotCache: parent '${resolvedParentName}' not found for '${snapshotName}'`);
+      }
+      parentPath = parent.path || null;
+      parentBlockCount = parent.capturedBlockCount ?? parent.snapshot.blocks.length;
+    }
+    let cacheKey;
+    let cacheKeyInputs;
+    if (entry.resolveScriptDependencies) {
+      cacheKeyInputs = await entry.resolveScriptDependencies(helper);
+      cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
+      const bundleNames = cacheKeyInputs.bundles.map((b) => `${b.name}:${b.sourceHash?.slice(0, 8)}`).join(", ");
+      console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, bundles=[${bundleNames}])`);
+    } else {
+      cacheKeyInputs = { bundles: [] };
+      cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
+      console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, no resolver)`);
+    }
+    const dirLabel = entry.computeDirLabel ? entry.computeDirLabel(cacheKeyInputs) : "";
+    const snapshotDir = this.getSnapshotDir(cacheKey, snapshotName, parentPath, dirLabel);
+    const cachePath = this.getSnapshotFilePath(snapshotDir);
+    if (existsSync(cachePath)) {
+      try {
+        const existing = JSON.parse(readFileSync(cachePath, "utf-8"));
+        console.log(`  [store:${snapshotName}] \u26A0\uFE0F OVERWRITING existing snapshot!`);
+        console.log(`    old snapshotHash: ${existing.snapshotHash}`);
+        console.log(`    new snapshotHash: ${cachedSnapshot.snapshotHash}`);
+        console.log(`    old parentHash: ${existing.parentHash}`);
+        console.log(`    new parentHash: ${cachedSnapshot.parentHash}`);
+        if (existing.snapshotHash !== cachedSnapshot.snapshotHash) {
+          console.log(`    \u274C snapshotHash CHANGED - children with old parentHash will be orphaned!`);
+        }
+      } catch (e) {
+        console.log(`  [store:${snapshotName}] \u26A0\uFE0F OVERWRITING (couldn't read old): ${e}`);
+      }
+    } else {
+      console.log(`  [store:${snapshotName}] creating new snapshot at ${snapshotDir}`);
+    }
+    mkdirSync(snapshotDir, { recursive: true });
+    const incrementalSnapshot = { ...cachedSnapshot.snapshot };
+    const capturedBlockCount = cachedSnapshot.snapshot.blocks.length;
+    if (entry.parentSnapName === "genesis") {
+      const genesisBlockHash = cachedSnapshot.snapshot.blockHashes[0];
+      if (!genesisBlockHash) {
+        throw new Error(`Root snapshot '${snapshotName}' has no blockHashes - was tick() called after creating genesis UTxOs?`);
+      }
+      incrementalSnapshot.blocks = [];
+      incrementalSnapshot.blockHashes = [genesisBlockHash];
+      cachedSnapshot.snapshotHash = genesisBlockHash;
+      cachedSnapshot.snapshot.blocks = [cachedSnapshot.snapshot.genesis];
+      cachedSnapshot.snapshot.blockHashes = [genesisBlockHash];
+    } else {
+      incrementalSnapshot.genesis = [];
+      incrementalSnapshot.blocks = cachedSnapshot.snapshot.blocks.slice(parentBlockCount);
+      incrementalSnapshot.blockHashes = cachedSnapshot.snapshot.blockHashes.slice(parentBlockCount);
+    }
+    const serialized = {
+      snapshot: serializeSnapshot(incrementalSnapshot),
+      namedRecords: cachedSnapshot.namedRecords,
+      parentSnapName: cachedSnapshot.parentSnapName,
+      parentHash: cachedSnapshot.parentHash,
+      parentBlockCount,
+      snapshotHash: cachedSnapshot.snapshotHash,
+      capturedBlockCount
+    };
+    const content = JSON.stringify(serialized, null, 2);
+    writeFileSync(cachePath, content, "utf-8");
+    if (cachedSnapshot.offchainData && Object.keys(cachedSnapshot.offchainData).length > 0) {
+      const offchainPath = join(snapshotDir, "offchain.json");
+      writeFileSync(offchainPath, JSON.stringify(cachedSnapshot.offchainData, null, 2), "utf-8");
+    }
+    const keyInputsPath = join(snapshotDir, "key-inputs.json");
+    const bigIntReplacer = (_key, value) => typeof value === "bigint" ? value.toString() : value;
+    writeFileSync(keyInputsPath, JSON.stringify(cacheKeyInputs, bigIntReplacer, 2), "utf-8");
+    cachedSnapshot.path = snapshotDir;
+    cachedSnapshot.cacheKeyInputs = cacheKeyInputs;
+    cachedSnapshot.capturedBlockCount = capturedBlockCount;
+    const mapKey = `${snapshotName}:${cacheKey}`;
+    this.loadedSnapshots.set(mapKey, cachedSnapshot);
+    const totalBlocks = cachedSnapshot.snapshot.blocks.length;
+    const storedBlocks = incrementalSnapshot.blocks.length;
+    console.log(`  [store:${snapshotName}] \u2705 stored (${storedBlocks}/${totalBlocks} blocks, snapshotHash=${cachedSnapshot.snapshotHash.slice(0, 12)}...) -> ${snapshotDir.split("/").slice(-2).join("/")}/`);
+  }
+  /**
+   * Checks if a cached snapshot exists for the given snapshot name.
+   * Uses registry to compute expected path.
+   * @param snapshotName - The snapshot name to check
+   * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym)
+   */
+  async has(snapshotName, helper) {
+    const cached = await this.find(snapshotName, helper);
+    return cached !== null;
+  }
+  /**
+   * Deletes a cached snapshot and all its children (REQT/dwaf8qb8s1).
+   * Uses recursive directory deletion.
+   * @param snapshotName - The snapshot name to delete
+   * @param helper - The current helper instance, passed to resolvers for correct lifetime (ARCH-8rqhpfy1ym)
+   */
+  async delete(snapshotName, helper) {
+    const entry = this.getRegistryEntry(snapshotName);
+    if (!entry) {
+      return false;
+    }
+    const cached = await this.find(snapshotName, helper);
+    if (!cached || !cached.path) {
+      return false;
+    }
+    const deletedPath = cached.path;
+    if (existsSync(deletedPath)) {
+      rmSync(deletedPath, { recursive: true, force: true });
+      for (const [mapKey, cachedSnap] of this.loadedSnapshots.entries()) {
+        if (cachedSnap.path && cachedSnap.path.startsWith(deletedPath)) {
+          this.loadedSnapshots.delete(mapKey);
+        }
+      }
+      console.log(`SnapshotCache: deleted '${snapshotName}' and children at ${deletedPath}`);
+      return true;
+    }
+    return false;
+  }
+  /**
+   * Returns the cache directory path.
+   */
+  getCacheDir() {
+    return this.cacheDir;
+  }
+}
 
 function uplcDataSerializer(key, value, depth = 0) {
   const indent = "    ".repeat(depth);
@@ -943,6 +1561,10 @@ class StellarTxnContext {
   kind = "StellarTxnContext";
   id = nanoid(5);
   inputs = [];
+  /** Maps input ID (as string) to the stack trace where it was added */
+  inputStackTraces = /* @__PURE__ */ new Map();
+  /** Maps reference input ID (as string) to the stack trace where it was added (REQT/acczfb1bd6) */
+  refInputStackTraces = /* @__PURE__ */ new Map();
   collateral;
   outputs = [];
   feeLimit;
@@ -1097,9 +1719,17 @@ class StellarTxnContext {
    ... otherwise, add txn details first or set isFacade to false`
       );
     }
+    if (thisWithMoreType.state.addlTxns?.[txnName]) {
+      throw new Error(
+        `addlTxns['${txnName}'] already included in this transaction:
+` + Object.keys(thisWithMoreType.state.addlTxns).map(
+          (k) => ` \u2022 ${k}`
+        ).join("\n")
+      );
+    }
     thisWithMoreType.state.addlTxns = {
       ...thisWithMoreType.state.addlTxns || {},
-      [txInfo.id]: txInfo
+      [txnName]: txInfo
     };
     return thisWithMoreType;
   }
@@ -1279,7 +1909,8 @@ class StellarTxnContext {
     this.noFacade("validFor");
     const startMoment = this.txnTime.getTime();
     this._validityPeriodSet = true;
-    this.txb.validFromTime(new Date(startMoment)).validToTime(new Date(startMoment + durationMs));
+    this._txnEndTime = new Date(startMoment + durationMs);
+    this.txb.validFromTime(new Date(startMoment)).validToTime(this._txnEndTime);
     return this;
   }
   _validityPeriodSet = false;
@@ -1295,6 +1926,8 @@ class StellarTxnContext {
   addRefInput(input, refScript) {
     this.noFacade("addRefInput");
     if (!input) throw new Error(`missing required input for addRefInput()`);
+    const currentStack = new Error().stack || "(stack unavailable)";
+    const inputIdKey = input.id.toString();
     if (this.txRefInputs.find((v) => v.id.isEqual(input.id))) {
       console.warn("suppressing second add of refInput");
       return this;
@@ -1305,6 +1938,7 @@ class StellarTxnContext {
       );
       return this;
     }
+    this.refInputStackTraces.set(inputIdKey, currentStack);
     this.txRefInputs.push(input);
     const v2sBefore = this.txb.v2Scripts;
     if (refScript) {
@@ -1333,6 +1967,22 @@ class StellarTxnContext {
         // JSON.stringify(r, delegateLinkSerializer)
       );
     }
+    const currentStack = new Error().stack || "(stack unavailable)";
+    const inputIdKey = input.id.toString();
+    const existingStack = this.inputStackTraces.get(inputIdKey);
+    if (existingStack) {
+      const originalStackSummary = existingStack.split("\n").slice(1, 6).join("\n");
+      throw new Error(
+        `Duplicate input detected: ${inputIdKey}
+
+Original input was added at:
+${originalStackSummary}
+
+Duplicate addition attempted at:
+${currentStack}`
+      );
+    }
+    this.inputStackTraces.set(inputIdKey, currentStack);
     if (input.address.pubKeyHash)
       this.allNeededWitnesses.push(input.address);
     this.inputs.push(input);
@@ -2295,6 +2945,7 @@ class SimpleWallet_stellar {
       networkCtx
     );
   }
+  // REQT/fppjhaq32f (Derive spending key from root private key)
   static fromRootPrivateKey(key, networkCtx) {
     return new SimpleWallet_stellar(
       networkCtx,
@@ -2302,6 +2953,7 @@ class SimpleWallet_stellar {
       key.deriveStakingKey()
     );
   }
+  // REQT/zhas8edv7d (Support optional staking key derivation)
   constructor(networkCtx, spendingPrivateKey, stakingPrivateKey = void 0) {
     this.networkCtx = networkCtx;
     this.spendingPrivateKey = spendingPrivateKey;
@@ -2360,6 +3012,7 @@ class SimpleWallet_stellar {
       resolve([]);
     });
   }
+  // REQT/2a0ffb3cd3 (Query UTxOs from associated network context)
   get utxos() {
     return new Promise((resolve, _) => {
       resolve(this.cardanoClient.getUtxos(this.address));
@@ -2403,6 +3056,7 @@ class SimpleWallet_stellar {
   }
   /**
    * Simply assumed the tx needs to by signed by this wallet without checking.
+   * REQT/9cvn4evfpn (Sign transactions with spending private key)
    */
   async signTx(tx) {
     return [this.spendingPrivateKey.sign(tx.body.hash())];
@@ -2417,19 +3071,24 @@ class StellarNetworkEmulator {
   #random;
   genesis;
   mempool;
+  /** REQT/9ted2tk8a3 (Store blocks as array of transaction arrays) */
   blocks;
+  blockHashes;
   /**
-   * Cached map of all UTxOs ever created
+   * Cached map of all UTxOs ever created.
+   * Implements REQT/49h2ekt53d (O(1) UTxO lookup by ID).
    * @internal
    */
   _allUtxos;
   /**
-   * Cached set of all UTxOs ever consumed
+   * Cached set of all UTxOs ever consumed.
+   * Implements REQT/f9va8cpejn (Track consumed UTxOs).
    * @internal
    */
   _consumedUtxos;
   /**
-   * Cached map of UTxOs at addresses
+   * Cached map of UTxOs at addresses.
+   * Implements REQT/8cp2p83gdn (Address-based queries).
    * @internal
    */
   _addressUtxos;
@@ -2450,6 +3109,7 @@ class StellarNetworkEmulator {
     this.genesis = [];
     this.mempool = [];
     this.blocks = [];
+    this.blockHashes = [];
     this._allUtxos = {};
     this._consumedUtxos = /* @__PURE__ */ new Set();
     this._addressUtxos = {};
@@ -2493,6 +3153,13 @@ class StellarNetworkEmulator {
     return this.netPHelper;
   }
   /**
+   * Returns the hash of the last committed block, or "genesis" if no blocks.
+   * Used for snapshot cache key computation.
+   */
+  get lastBlockHash() {
+    return this.blockHashes.length > 0 ? this.blockHashes[this.blockHashes.length - 1] : "genesis";
+  }
+  /**
    * Ignores the genesis txs
    */
   get txIds() {
@@ -2506,6 +3173,10 @@ class StellarNetworkEmulator {
     }
     return res;
   }
+  /**
+   * Captures network state for later restoration.
+   * Implements REQT/egfb0jds34 (Snapshot Support).
+   */
   snapshot(snapName) {
     if (this.mempool.length > 0) {
       throw new Error(`can't snapshot with pending txns`);
@@ -2534,6 +3205,7 @@ class StellarNetworkEmulator {
       slot: this.currentSlot,
       genesis: [...this.genesis],
       blocks: [...this.blocks],
+      blockHashes: [...this.blockHashes],
       allUtxos: { ...this._allUtxos },
       consumedUtxos: new Set(this._consumedUtxos),
       addressUtxos: Object.fromEntries(
@@ -2545,11 +3217,17 @@ class StellarNetworkEmulator {
     };
   }
   fromSnapshot = "";
+  /**
+   * Restores network state from a snapshot.
+   * Implements REQT/473wtxxe8d (Fully restore all captured state).
+   */
   loadSnapshot(snapshot) {
+    this.mempool = [];
     this.#seed = snapshot.seed;
     this.currentSlot = snapshot.slot;
     this.genesis = [...snapshot.genesis];
     this.blocks = [...snapshot.blocks];
+    this.blockHashes = [...snapshot.blockHashes || []];
     this.fromSnapshot = snapshot.name;
     this._allUtxos = { ...snapshot.allUtxos };
     this._consumedUtxos = new Set(snapshot.consumedUtxos);
@@ -2559,44 +3237,44 @@ class StellarNetworkEmulator {
         [...utxoList]
       ])
     );
-    this.initHelper();
+    const parentBlockCount = snapshot.parentBlockCount ?? 0;
+    const parentBlocks = this.blocks.slice(0, parentBlockCount);
+    const incrementalBlocks = this.blocks.slice(parentBlockCount);
+    const totalTxs = parentBlocks.reduce((sum, block) => sum + block.length, 0);
+    const newBlocks = incrementalBlocks.length;
+    const newTxns = incrementalBlocks.reduce((sum, block) => sum + block.length, 0);
+    const prevTxnCount = totalTxs;
+    const blockViz = incrementalBlocks.map((block) => "\u{1F33A}" + "\u2588".repeat(block.length)).join(" ");
+    const inheritedPart = parentBlockCount === 0 ? "[genesis]" : `[ ${parentBlockCount} blocks/${prevTxnCount} txs ]`;
     console.log(
       `
-      .--.             .--.             .--.             .--.       
-    .'_\\/_'.         .'_\\/_'.         .'_\\/_'.         .'_\\/_'.     
-    '. /\\ .'         '. /\\ .'         '. /\\ .'         '. /\\ .'     
-      "||"             "||"             "||"             "||"       
-       || /\\            || /\\            || /\\            || /\\     
-    /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)    
-   (/\\\\||/          (/\\\\||/          (/\\\\||/          (/\\\\||/       
+      .--.             .--.             .--.             .--.
+    .'_\\/_'.         .'_\\/_'.         .'_\\/_'.         .'_\\/_'.
+    '. /\\ .'         '. /\\ .'         '. /\\ .'         '. /\\ .'
+      "||"             "||"             "||"             "||"
+       || /\\            || /\\            || /\\            || /\\
+    /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)        /\\ ||//\\)
+   (/\\\\||/          (/\\\\||/          (/\\\\||/          (/\\\\||/
 ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
-            \u{1F33A}\u{1F33A}\u{1F33A} \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  # ${this.id}
+${inheritedPart} + ${newBlocks}b/${newTxns}t ${blockViz} 
 `,
       ` - restored snapshot '${snapshot.name}' from #${snapshot.netNumber} at slot `,
       this.currentSlot.toString(),
       "height ",
       this.blocks.length
     );
+    const realtimeSlot = this.netPHelper.timeToSlot(BigInt(Date.now()));
+    const slotsToAdvance = realtimeSlot - this.currentSlot;
+    if (slotsToAdvance > 0) {
+      this.tick(slotsToAdvance);
+    }
   }
-  // /**
-  //  * Creates a new `NetworkParams` instance that has access to current slot
-  //  * (so that the `Tx` validity range can be set automatically during `Tx.finalize()`).
-  //  */
-  // initNetworkParams(networkParams): NetworkParams {
-  //     const raw = Object.assign({}, networkParams.raw);
-  //     // raw.latestTip = {
-  //     //     epoch: 0,
-  //     //     hash: "",
-  //     //     slot: 0,
-  //     //     time: 0,
-  //     // };
-  //     return (this.#netParams = new NetworkParams(raw, () => {
-  //         return this.currentSlot;
-  //     }));
-  // }
   /**
    * Creates a new SimpleWallet and populates it with a given lovelace quantity and assets.
    * Special genesis transactions are added to the emulated chain in order to create these assets.
+   * 
+   * This is kept only to ensure compliance with Helios Emulator interface.
+   * 
    * @deprecated - use TestHelper.createWallet instead, enabling wallets to be transported to
    *     different networks (e.g. ones that have loaded snapshots from the original network).
    */
@@ -2688,6 +3366,10 @@ ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
       return tx.consumes(utxo);
     });
   }
+  /**
+   * Validates and submits a transaction to the mempool.
+   * Implements REQT/qr6r27cg3q (Transaction Validation).
+   */
   async submitTx(tx) {
     this.warnMempool();
     if (!tx.isValidSlot(BigInt(this.currentSlot))) {
@@ -2721,6 +3403,7 @@ ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
   }
   /**
    * Mint a block with the current mempool, and advance the slot by a number of slots.
+   * Implements REQT/3286vdzwyk (Block Production).
    */
   tick(nSlots) {
     const n = BigInt(nSlots);
@@ -2754,9 +3437,16 @@ ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
     }
   }
   /**
+   * Adds a block to the chain and updates UTxO state.
+   * Implements REQT/5cwn151ybf (Update UTxO indices - create new, mark consumed),
+   * REQT/9ted2tk8a3 (Store blocks as array of transaction arrays).
    * @internal
    */
   pushBlock(txs) {
+    const prevHash = this.lastBlockHash;
+    const txHashes = txs.map((tx) => tx.id().toString());
+    const blockHash = bytesToHex(blake2b(encodeUtf8([prevHash, ...txHashes].join("\n"))));
+    this.blockHashes.push(blockHash);
     this.blocks.push(txs);
     txs.forEach((tx) => {
       tx.newUtxos().forEach((utxo) => {
@@ -2779,6 +3469,7 @@ ______\\||/_____________\\||/_____________\\||/_____________\\||/_______
         }
       });
     });
+    this.fromSnapshot = "";
   }
 }
 function formatDate(date) {
@@ -2791,12 +3482,51 @@ function formatDate(date) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+async function addTestContext(context, TestHelperClass, stConfig, helperState) {
+  console.log(" ======== ======== ======== +test context");
+  Object.defineProperty(context, "strella", {
+    get: function() {
+      return this.h.strella;
+    }
+  });
+  context.initHelper = async (stConfig2, helperState2) => {
+    const helper = new TestHelperClass(stConfig2, helperState2);
+    if (context.h) {
+      if (!stConfig2.skipSetup)
+        throw new Error(
+          `re-initializing shouldn't be necessary without skipSetup`
+        );
+      console.log(
+        "   ............. reinitializing test helper without setup"
+      );
+    }
+    context.h = helper;
+    return helper;
+  };
+  try {
+    await context.initHelper(stConfig, helperState);
+  } catch (e) {
+    if (!stConfig) {
+      console.error(
+        `${TestHelperClass.name}: error during initialization; does this test helper require initialization with explicit params?`
+      );
+      throw e;
+    } else {
+      console.error("urgh");
+      throw e;
+    }
+  }
+}
+const ADA = 1000000n;
+
 class StellarTestHelper {
   state;
   config;
   defaultActor;
   strella;
   actors;
+  /** Records actor setup info for cache key computation */
+  actorSetupInfo = [];
   optimize = false;
   netPHelper;
   networkCtx;
@@ -2826,12 +3556,19 @@ class StellarTestHelper {
     return wallet;
   }
   /**
+   * Shared actorContext envelope - singleton across all helpers via helperState (REQT/ch01gxgm4g).
+   * All helpers and the Capo share this same object so setActor() updates are visible everywhere.
+   * Update contents (actorContext.wallet, actorContext.others) - never replace the envelope.
    * @public
    */
-  actorContext = {
-    others: {},
-    wallet: void 0
-  };
+  get actorContext() {
+    return this.helperState.actorContext;
+  }
+  set actorContext(_value) {
+    throw new Error(
+      "actorContext is a shared singleton envelope (REQT/ch01gxgm4g). Update its contents (actorContext.wallet, actorContext.others) instead of replacing it."
+    );
+  }
   /**
    * @public
    */
@@ -2886,67 +3623,23 @@ class StellarTestHelper {
   setDefaultActor() {
     return this.setActor("hiro");
   }
+  /**
+   * Helper state for named records and bootstrap tracking.
+   * Always initialized from the class's static defaultHelperState.
+   */
   helperState;
+  /**
+   * Default helperState shared across all instances of this helper class.
+   * Subclasses can override this to provide custom default state.
+   * @public
+   */
+  static defaultHelperState = {
+    namedRecords: {},
+    actorContext: { others: {}, wallet: void 0 }
+  };
   constructor(config, helperState) {
     this.state = {};
-    if (!helperState) {
-      console.warn(
-        // warning emoji: "⚠️"
-        // info emoji: "ℹ️"
-        `\u26A0\uFE0F \u26A0\uFE0F \u26A0\uFE0F Note: this test helper doesn't have a helperState, so it won't be able to use test-chain snapshots
-\u2139\uFE0F \u2139\uFE0F \u2139\uFE0F ... to add helper state, follow this pattern:
-
-    // in your test helper:
-
-    @CapoTestHelper.hasNamedSnapshot("yourSnapshot", "tina")
-    snapTo\u2039YourSnapshot\u203A() {
-        // never called
-    }
-    async \u2039yourSnapshot\u203A() {
-        this.setActor("tina");
-
-        // ... your good sequence of transaction(s) here
-        const tcx = this.capo.mkTxn\u2039...\u203A(...)
-        return this.submitTxnWithBlock(tcx);
-    }
-
-    // in your test setup:
-
-    type localTC = StellarTestContext<YourCapo>;
-    let helperState: TestHelperState<YourCapo> = {
-        snapshots: {},
-    } as any;
-
-    beforeEach<localTC>(async (context) => {
-        await addTestContext(context,
-            YourCapoTestHelper,
-            undefined,
-            helperState
-        )
-    }
-
-    // in your tests:
-
-    describe("your thing", async () => {
-        it("your test", async (context: localTC) => {
-            // prettier-ignore
-            const {h, h:{network, actors, delay, state} } = context;
-            await h.reusableBootstrap();
-
-            await h.snapTo\u2039yourSnapshot\u203A()
-        });
-        it("your other test", async (context: localTC) => {
-            // prettier-ignore
-            const {h, h:{network, actors, delay, state} } = context;
-            // this one will use the snapshot generated earlier
-            await h.snapTo\u2039yourSnapshot\u203A()
-        });
-    })
-
-... happy (and snappy) testing!`
-      );
-    }
-    this.helperState = helperState;
+    this.helperState = helperState ?? this.constructor.defaultHelperState;
     const cfg = config || {};
     if (Object.keys(cfg).length) {
       console.log(
@@ -2955,6 +3648,7 @@ class StellarTestHelper {
       );
       this.config = config;
     }
+    this.randomSeed = config?.randomSeed || 42;
     const t = this.mkNetwork(this.fixupParams(DEFAULT_NETWORK_PARAMS()));
     const theNetwork = t[0];
     const netParamsHelper = t[1];
@@ -2962,13 +3656,15 @@ class StellarTestHelper {
     this.networkCtx = {
       network: theNetwork
     };
-    this.randomSeed = config?.randomSeed || 42;
     this.actors = {};
+    this.actorSetupInfo = [];
     const now = /* @__PURE__ */ new Date();
     this.waitUntil(now);
     console.log(" + StellarTestHelper");
   }
   /**
+   * Adjusts network params for test environment flexibility.
+   * Implements REQT/6rdjgebzyx (Network Parameter Fixups).
    * @public
    */
   fixupParams(preProdParams) {
@@ -2985,7 +3681,7 @@ class StellarTestHelper {
     preProdParams.maxTxSize = maxTxSize;
     const origMaxMem = preProdParams.maxTxExMem;
     preProdParams.origMaxTxExMem = origMaxMem;
-    const maxMem = Math.floor(origMaxMem * 8);
+    const maxMem = Math.floor(origMaxMem * 9);
     console.log(
       "test env: \u{1F527}\u{1F527}\u{1F527} fixup max memory",
       origMaxMem,
@@ -3003,6 +3699,16 @@ class StellarTestHelper {
       maxCpu
     );
     preProdParams.maxTxExCpu = maxCpu;
+    const origRefScriptsFeePerByte = preProdParams.refScriptsFeePerByte;
+    preProdParams.origRefScriptsFeePerByte = origRefScriptsFeePerByte;
+    const refScriptsFeePerByte = Math.floor(origRefScriptsFeePerByte / 4);
+    console.log(
+      "test env: \u{1F527}\u{1F527}\u{1F527} fixup refScripts fee per byte",
+      origRefScriptsFeePerByte,
+      " -> \u{1F527}",
+      refScriptsFeePerByte
+    );
+    preProdParams.refScriptsFeePerByte = refScriptsFeePerByte;
     preProdParams.isFixedUp = true;
     return preProdParams;
   }
@@ -3161,6 +3867,7 @@ class StellarTestHelper {
       this.rand = void 0;
       this.randomSeed = randomSeed;
       this.actors = {};
+      this.actorSetupInfo = [];
     } else {
       console.log(
         "???????????????????????? Test helper initializing without this.strella"
@@ -3280,6 +3987,48 @@ class StellarTestHelper {
     return wallet;
   }
   /**
+   * Extracts wallet private keys from current actors for storage in offchainData.
+   * Returns data suitable for storing in CachedSnapshot.offchainData. REQT/1p346cabct
+   * @public
+   */
+  getActorWalletKeys() {
+    const actorWallets = {};
+    for (const [name, wallet] of Object.entries(this.actors)) {
+      const w = wallet;
+      actorWallets[name] = {
+        spendingKey: bytesToHex(w.spendingPrivateKey.bytes),
+        stakingKey: w.stakingPrivateKey ? bytesToHex(w.stakingPrivateKey.bytes) : void 0
+      };
+    }
+    return { actorWallets };
+  }
+  /**
+   * Restores actor wallets from stored private keys (fast path).
+   * Replaces PRNG-based regeneration. REQT/avwkcrnwqp, REQT/ncbfwtyr8h
+   * @param storedData - The offchainData containing actorWallets
+   * @internal
+   */
+  restoreActorsFromStoredKeys(storedData) {
+    if (Object.keys(this.actors).length > 0) {
+      console.log(`  -- Skipping actor restoration: actors already exist (${Object.keys(this.actors).length})`);
+      return;
+    }
+    const { actorWallets } = storedData;
+    if (!actorWallets || Object.keys(actorWallets).length === 0) {
+      console.log(`  -- No stored actor wallets to restore`);
+      return;
+    }
+    console.log(`  -- Restoring ${Object.keys(actorWallets).length} actors from stored keys...`);
+    for (const [name, keys] of Object.entries(actorWallets)) {
+      const spendingKey = makeBip32PrivateKey(hexToBytes(keys.spendingKey));
+      const stakingKey = keys.stakingKey ? makeBip32PrivateKey(hexToBytes(keys.stakingKey)) : void 0;
+      const wallet = new SimpleWallet_stellar(this.networkCtx, spendingKey, stakingKey);
+      this.actors[name] = wallet;
+      this.actorContext.others[name] = wallet;
+      console.log(`    + Restored actor: ${name}`);
+    }
+  }
+  /**
    * @public
    */
   async submitTx(tx, force) {
@@ -3355,17 +4104,21 @@ class StellarTestHelper {
    *
    * @public
    **/
+  /** When true, suppresses actor creation logging (used during cache key computation) */
+  _silentActorSetup = false;
   addActor(roleName, walletBalance, ...moreUtxos) {
     if (this.actors[roleName])
       throw new Error(`duplicate role name '${roleName}'`);
+    this.actorSetupInfo.push({
+      name: roleName,
+      initialBalance: walletBalance,
+      additionalUtxos: [...moreUtxos]
+    });
     //! it instantiates a wallet with the indicated balance pre-set
     const a = this.createWallet(walletBalance);
-    const addr = a.address.toString();
-    console.log(
-      `+\u{1F3AD} Actor: ${roleName}: ${addr.slice(0, 12)}\u2026${addr.slice(
-        -4
-      )} ${lovelaceToAda$1(walletBalance)} (\u{1F511}#${a.address.spendingCredential?.toHex().substring(0, 8)}\u2026)`
-    );
+    if (!this._silentActorSetup) {
+      this.logActor(roleName, a, walletBalance);
+    }
     this.actorContext.others[roleName] = a;
     //! it makes collateral for each actor, above and beyond the initial balance,
     const five = 5n * ADA;
@@ -3377,6 +4130,31 @@ class StellarTestHelper {
     }
     this.actors[roleName] = a;
     return a;
+  }
+  /**
+   * Logs detailed info for a single actor.
+   * @internal
+   */
+  logActor(name, wallet, balance) {
+    const addr = wallet.address.toString();
+    console.log(
+      `+\u{1F3AD} Actor: ${name}: ${addr.slice(0, 12)}\u2026${addr.slice(
+        -4
+      )} ${lovelaceToAda$1(balance)} (\u{1F511}#${wallet.address.spendingCredential?.toHex().substring(0, 8)}\u2026)`
+    );
+  }
+  /**
+   * Logs detailed actor information. Used when actors were created silently
+   * during cache key computation but we want to show them on cache miss.
+   * @internal
+   */
+  logActorDetails() {
+    for (const info of this.actorSetupInfo) {
+      const actor = this.actors[info.name];
+      if (actor) {
+        this.logActor(info.name, actor, info.initialBalance);
+      }
+    }
   }
   //todo use this for enabling prettier diagnostics with clear labels for
   //  -- actor addresses -> names
@@ -3392,7 +4170,7 @@ class StellarTestHelper {
    * @public
    */
   mkNetwork(params) {
-    const theNetwork = new StellarNetworkEmulator(void 0, { params });
+    const theNetwork = new StellarNetworkEmulator(this.randomSeed, { params });
     const emuParams = theNetwork.initHelper();
     return [theNetwork, emuParams];
   }
@@ -3424,13 +4202,32 @@ class StellarTestHelper {
   }
 }
 
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __decorateClass = (decorators, target, key, kind) => {
+  var result = __getOwnPropDesc(target, key) ;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (decorator(target, key, result) ) || result;
+  if (result) __defProp(target, key, result);
+  return result;
+};
 const ACTORS_ALREADY_MOVED = "NONE! all actors were moved from a different network via snapshot";
-const SNAP_BOOTSTRAP = "bootstrapped";
-class CapoTestHelper extends StellarTestHelper {
+const SNAP_ACTORS = "bootstrapWithActors";
+const SNAP_CAPO_INIT = "capoInitialized";
+const SNAP_DELEGATES = "enabledDelegatesDeployed";
+const _CapoTestHelper = class _CapoTestHelper extends StellarTestHelper {
   get capo() {
     return this.strella;
   }
   featureFlags = void 0;
+  /**
+   * Pre-selected seed UTxO for breaking chicken-and-egg dependency (REQT/84f4k7nb6p).
+   * Selected during bootstrapWithActors and stored in actors snapshot offchainData.
+   */
+  preSelectedSeedUtxo = void 0;
+  /** Disk cache for snapshots, shared via helperState for cross-test reuse */
+  snapshotCache;
   constructor(config, helperState) {
     if (!config) {
       super(config, helperState);
@@ -3445,6 +4242,109 @@ class CapoTestHelper extends StellarTestHelper {
         this.featureFlags = featureFlags;
       }
     }
+    if (this.helperState?.snapCache) {
+      this.snapshotCache = this.helperState.snapCache;
+    } else {
+      this.snapshotCache = new SnapshotCache();
+      if (this.helperState) {
+        this.helperState.snapCache = this.snapshotCache;
+      }
+    }
+    this.snapshotCache.register(SNAP_ACTORS, {
+      parentSnapName: "genesis",
+      resolveScriptDependencies: async (helper) => helper.resolveActorsDependencies(),
+      // Label includes seed for easier debugging (ARCH-jj5swg0hfk)
+      computeDirLabel: (inputs) => `seed${inputs.extra?.randomSeed ?? ""}`
+    });
+  }
+  /**
+   * Registers the capo-dependent snapshots. Called after capo is initialized.
+   * @internal
+   */
+  registerCapoSnapshots() {
+    if (this.snapshotCache["registry"].has(SNAP_CAPO_INIT)) {
+      return;
+    }
+    this.snapshotCache.register(SNAP_CAPO_INIT, {
+      parentSnapName: SNAP_ACTORS,
+      resolveScriptDependencies: async (helper) => helper.resolveCoreCapoDependencies()
+    });
+    this.snapshotCache.register(SNAP_DELEGATES, {
+      parentSnapName: SNAP_CAPO_INIT,
+      resolveScriptDependencies: async (helper) => helper.resolveEnabledDelegatesDependencies()
+    });
+  }
+  /**
+   * Default helperState shared across all instances of this helper class.
+   * Subclasses can override this to provide custom default state.
+   * @public
+   */
+  static defaultHelperState = {
+    namedRecords: {},
+    snapCache: new SnapshotCache(),
+    actorContext: { others: {}, wallet: void 0 }
+  };
+  /**
+   * Creates pre-wired describe/it functions that automatically inject this test helper.
+   *
+   * @remarks
+   * This eliminates the need for boilerplate beforeEach setup in every test file.
+   * The returned describe/it functions automatically set up the test context with
+   * this helper class.
+   *
+   * @example
+   * ```typescript
+   * // In your test helper file:
+   * export const { describe, it } = MyCapoTestHelper.createTestContext();
+   *
+   * // In your test files:
+   * import { describe, it } from "../MyCapoTestHelper.js";
+   *
+   * describe("My Tests", () => {
+   *     it("works", async ({ h }) => {
+   *         await h.reusableBootstrap();
+   *         // h is already wired up
+   *     });
+   * });
+   * ```
+   *
+   * @param options - Optional configuration including helperState and config
+   * @returns An object with describe, it, fit, and xit functions
+   * @public
+   */
+  static createTestContext(options) {
+    const HelperClass = this;
+    const {
+      helperState = HelperClass.defaultHelperState,
+      config
+    } = options ?? {};
+    let beforeEachRegistered = false;
+    const wrapDescribe = (vitestFn) => {
+      return (name, fn) => {
+        vitestFn(name, () => {
+          if (!beforeEachRegistered) {
+            beforeEachRegistered = true;
+            beforeEach(async (context) => {
+              await addTestContext(
+                context,
+                HelperClass,
+                config,
+                helperState
+              );
+            });
+          }
+          fn();
+        });
+      };
+    };
+    const describe$1 = wrapDescribe(describe);
+    describe$1.only = wrapDescribe(describe.only);
+    describe$1.skip = describe.skip;
+    describe$1.todo = describe.todo;
+    const it$1 = it;
+    const fit = it$1.only;
+    const xit = it$1.skip;
+    return { describe: describe$1, it: it$1, fit, xit };
   }
   async initialize({ randomSeed = 42 } = {}, args) {
     if (this.strella && this.randomSeed == randomSeed) {
@@ -3462,18 +4362,22 @@ class CapoTestHelper extends StellarTestHelper {
       );
       this.strella = void 0;
       this.actors = {};
+      this.actorSetupInfo = [];
       this._actorName = "";
+      this.actorContext.wallet = void 0;
+      this.actorContext.others = {};
+      if (this.helperState) {
+        this.helperState.offchainData = {};
+        this.helperState.bootstrappedStrella = void 0;
+        this.helperState.previousHelper = void 0;
+      }
     }
     await this.delay(1);
     this.randomSeed = randomSeed;
     if (Object.keys(this.actors).length) {
       console.log("Skipping actor setup - already done");
     } else {
-      console.log("  -- \u{1F3AD}\u{1F3AD}\u{1F3AD} actor setup...");
-      const actorSetup = this.setupActors();
-      await actorSetup;
-      this.network.tick(1);
-      await this.setDefaultActor();
+      await this.snapToBootstrapWithActors();
     }
     this.state.mintedCharterToken = void 0;
     this.state.parsedConfig = void 0;
@@ -3495,6 +4399,7 @@ class CapoTestHelper extends StellarTestHelper {
         // stopwatch emoji: ⏱️
         `  -- \u23F1\uFE0F initialized Capo: ${ts2 - ts1}ms`
       );
+      this.registerCapoSnapshots();
       console.log("checking delegate scripts...");
       return this.checkDelegateScripts(args).then(() => {
         const ts3 = Date.now();
@@ -3533,41 +4438,52 @@ class CapoTestHelper extends StellarTestHelper {
     if (txnName) return tcx.withName(txnName);
     return tcx;
   }
-  loadSnapshot(snapName) {
-    const snap = this.helperState.snapshots[snapName];
-    if (!snap) throw new Error(`no snapshot named ${snapName}`);
-    this.network.loadSnapshot(snap);
-  }
-  async reusableBootstrap(snap = SNAP_BOOTSTRAP) {
+  /**
+   * Reuses existing bootstrap or creates fresh one.
+   * Implements REQT/trjb6qtjt6 (Snapshot Orchestration).
+   */
+  async reusableBootstrap(snap = SNAP_DELEGATES) {
     let capo;
     const helperState = this.helperState;
-    if (helperState.bootstrapped) {
+    const { bootstrappedStrella, previousHelper } = helperState;
+    if (previousHelper === this && bootstrappedStrella) {
+      console.log("  ---  \u2697\uFE0F\u{1F41E}\u{1F41E} nested call - returning existing capo");
+      return bootstrappedStrella;
+    }
+    const cached = bootstrappedStrella && previousHelper ? await this.snapshotCache.find(snap, this) : null;
+    if (cached && bootstrappedStrella && previousHelper) {
       console.log("  ---  \u2697\uFE0F\u{1F41E}\u{1F41E} already bootstrapped");
-      if (!helperState.previousHelper) {
-        debugger;
-        throw new Error(
-          `already bootstrapped, but no previousHelper : ( `
-        );
-      }
+      console.log(
+        `changing helper from network ${previousHelper.network.id} to ${this.network.id}`
+      );
       capo = await this.restoreFrom(snap);
     } else {
       capo = await this.bootstrap();
       helperState.bootstrappedStrella = capo;
+      helperState.parsedConfig = this.state.parsedConfig;
     }
-    const { previousHelper } = helperState;
-    if (!previousHelper) {
-      this.snapshot(SNAP_BOOTSTRAP);
-    } else {
-      console.log(
-        `changing helper from network ${previousHelper.network.id} to ${this.network.id}`
-      );
-    }
-    helperState.bootstrapped = true;
     helperState.previousHelper = this;
     return capo;
   }
-  // a decorator for test-helper functions that generate named snapshots
-  static hasNamedSnapshot(snapshotName, actorName) {
+  /**
+   * Static registry of snapshot metadata, populated at class definition time.
+   * Maps snapshot name → registration metadata including the snap* method reference.
+   * @internal
+   */
+  static _snapshotRegistrations = /* @__PURE__ */ new Map();
+  /**
+   * A decorator for test-helper functions that generate named snapshots.
+   * Snapshot name is derived from method name: snapToFoo → "foo".
+   * Implements REQT/7hcqed9mvn (Built-in Snapshot Registration).
+   * @param options - Options object with actor, parentSnapName, and optional resolveScriptDependencies
+   */
+  static hasNamedSnapshot(options) {
+    const { actor: actorName, parentSnapName, internal, resolveScriptDependencies, computeDirLabel } = options;
+    if (!parentSnapName) {
+      throw new Error(
+        `hasNamedSnapshot(): parentSnapName is required. Use 'bootstrapped' for typical app snapshots, or 'genesis' for root snapshots.`
+      );
+    }
     return function(target, propertyKey, descriptor) {
       descriptor.value;
       descriptor.value = SnapWrap;
@@ -3577,27 +4493,34 @@ class CapoTestHelper extends StellarTestHelper {
           `hasNamedSnapshot(): ${propertyKey}(): expected method name to start with 'snapTo'`
         );
       }
-      const methodName = WithCapMethodName[0].toLowerCase() + WithCapMethodName.slice(1);
-      const generateSnapshotFunc = target[methodName];
+      const snapshotName = WithCapMethodName[0].toLowerCase() + WithCapMethodName.slice(1);
+      const generateSnapshotFunc = target[snapshotName];
       if (!generateSnapshotFunc) {
         throw new Error(
-          `hasNamedSnapshot(): ${propertyKey}: expected method ${methodName} to exist`
+          `hasNamedSnapshot(): ${propertyKey}: expected builder method '${snapshotName}' to exist`
         );
       }
-      console.log(
-        "hasNamedSnapshot(): ",
-        propertyKey,
-        " -> ",
-        methodName
-      );
       async function SnapWrap(...args) {
-        await this.reusableBootstrap();
+        this.ensureSnapshotRegistrations();
+        if (parentSnapName === "genesis") {
+          this.ensureHelperState();
+        } else if (internal) {
+          this.ensureHelperState();
+        } else {
+          await this.reusableBootstrap();
+        }
         return this.findOrCreateSnapshot(
           snapshotName,
           actorName,
           () => {
-            return generateSnapshotFunc.apply(this, ...args).then((result) => {
-              if (this.actorName !== actorName) {
+            return generateSnapshotFunc.apply(this, args).then((result) => {
+              if (actorName === "default") {
+                if (!this.actorName) {
+                  throw new Error(
+                    `snapshot ${snapshotName}: expected default actor to be set, but no actor is set`
+                  );
+                }
+              } else if (this.actorName !== actorName) {
                 throw new Error(
                   `snapshot ${snapshotName}: expected actor '${actorName}', but current actor is '${this.actorName}'`
                 );
@@ -3608,45 +4531,426 @@ class CapoTestHelper extends StellarTestHelper {
           }
         );
       }
+      const ctor = target.constructor;
+      if (!ctor.hasOwnProperty("_snapshotRegistrations")) {
+        ctor._snapshotRegistrations = new Map(ctor._snapshotRegistrations || []);
+      }
+      ctor._snapshotRegistrations.set(snapshotName, {
+        parentSnapName,
+        resolveScriptDependencies,
+        computeDirLabel,
+        actor: actorName,
+        internal,
+        snapMethod: SnapWrap
+        // Store the decorated method for parent resolution
+      });
+      console.log(
+        `hasNamedSnapshot(): ${propertyKey} \u2192 "${snapshotName}" (parent: "${parentSnapName}")`
+      );
       return descriptor;
     };
   }
-  hasSnapshot(snapshotName) {
-    return !!this.helperState?.snapshots[snapshotName];
+  /**
+   * Copies all snapshot registrations from the class hierarchy to the snapshotCache.
+   * Called once per helper instance to ensure all metadata is available.
+   * @internal
+   */
+  _registrationsCopied = false;
+  ensureSnapshotRegistrations() {
+    if (this._registrationsCopied) return;
+    this._registrationsCopied = true;
+    let ctor = this.constructor;
+    while (ctor) {
+      const registrations = ctor._snapshotRegistrations;
+      if (registrations) {
+        for (const [snapshotName, meta] of registrations) {
+          if (!this.snapshotCache["registry"].has(snapshotName)) {
+            this.snapshotCache.register(snapshotName, {
+              parentSnapName: meta.parentSnapName,
+              resolveScriptDependencies: meta.resolveScriptDependencies,
+              computeDirLabel: meta.computeDirLabel
+            });
+          }
+        }
+      }
+      ctor = Object.getPrototypeOf(ctor);
+    }
   }
-  snapshot(snapshotName) {
+  /**
+   * Determines whether a new Capo should be created based on current state vs loaded config.
+   * Implements the Capo reconstruction decision tree (REQT/vz0fc3s057).
+   *
+   * Returns true (create new) when:
+   * - a) No Capo exists at all
+   * - a) Capo exists but is unconfigured (egg)
+   * - b) Capo exists but has different mph than loaded config
+   *
+   * Returns false (hot-swap) when:
+   * - c) Capo exists and has same mph as loaded config
+   *
+   * @internal
+   */
+  shouldCreateNewCapo(loadedConfig) {
+    if (!this.strella) {
+      console.log(`  [shouldCreateNewCapo] No Capo \u2192 create new`);
+      return true;
+    }
+    if (!this.strella.configIn?.mph) {
+      console.log(`  [shouldCreateNewCapo] Egg (no mph) \u2192 create new`);
+      return true;
+    }
+    if (!loadedConfig?.mph) {
+      console.log(`  [shouldCreateNewCapo] No loaded config \u2192 keep existing`);
+      return false;
+    }
+    const currentMph = this.strella.mintingPolicyHash?.toHex();
+    const loadedMph = loadedConfig.mph.toHex();
+    if (currentMph !== loadedMph) {
+      console.log(`  [shouldCreateNewCapo] Different mph (${currentMph?.slice(0, 12)} vs ${loadedMph.slice(0, 12)}) \u2192 create new`);
+      return true;
+    }
+    console.log(`  [shouldCreateNewCapo] Same mph \u2192 hot-swap`);
+    return false;
+  }
+  /**
+   * Gets the pre-selected seed UTxO from the actors snapshot's offchainData.
+   * Used by resolvers for cache key computation (REQT/mvf88mnsez).
+   * @internal
+   */
+  getPreSelectedSeedUtxo() {
+    if (this.preSelectedSeedUtxo) {
+      return this.preSelectedSeedUtxo;
+    }
+    const actorsOffchainData = this.helperState?.offchainData?.[SNAP_ACTORS];
+    if (actorsOffchainData?.targetSeedUtxo) {
+      return actorsOffchainData.targetSeedUtxo;
+    }
+    return void 0;
+  }
+  /**
+   * Pre-selects a seed UTxO from the default actor's wallet (REQT/84f4k7nb6p).
+   * Must be called after setDefaultActor() so wallet is available.
+   * @internal
+   */
+  async preSelectSeedUtxo() {
+    if (!this.wallet) {
+      throw new Error(`preSelectSeedUtxo: no wallet - call setDefaultActor() first`);
+    }
+    const utxos = await this.wallet.utxos;
+    if (utxos.length === 0) {
+      throw new Error(`preSelectSeedUtxo: default actor has no UTxOs`);
+    }
+    const seedUtxo = utxos[utxos.length - 1];
+    this.preSelectedSeedUtxo = {
+      txId: seedUtxo.id.txId.toString(),
+      utxoIdx: seedUtxo.id.index
+    };
+    console.log(`  -- Pre-selected seed UTxO: ${this.preSelectedSeedUtxo.txId.slice(0, 12)}...#${this.preSelectedSeedUtxo.utxoIdx}`);
+  }
+  /**
+   * Creates test actors for the emulator.
+   * Idempotent: only runs if actors haven't been set up yet.
+   * Called by snapToBootstrapWithActors via @hasNamedSnapshot decorator.
+   * @internal
+   */
+  async bootstrapWithActors() {
+    if (this.actorSetupInfo.length === 0) {
+      await this.setupActors();
+    } else {
+      this.logActorDetails();
+    }
+    await this.setDefaultActor();
+    this.network.tick(1);
+    await this.preSelectSeedUtxo();
+  }
+  async snapToBootstrapWithActors() {
+  }
+  async snapToCapoInitialized(args, options) {
+  }
+  /**
+   * Mints the charter token and initializes the Capo.
+   * Called by snapToCapoInitialized via @hasNamedSnapshot decorator.
+   * @internal
+   */
+  async capoInitialized(args, options) {
+    await this.mintCharterToken(args, options);
+    console.log(
+      "       --- \u2697\uFE0F \u{1F41E} \u2697\uFE0F \u{1F41E} \u2697\uFE0F \u{1F41E} \u2697\uFE0F \u{1F41E} \u2705 Capo bootstrap with charter"
+    );
+  }
+  /**
+   * Deploys enabled delegates after Capo initialization.
+   * Called by snapToEnabledDelegatesDeployed via @hasNamedSnapshot decorator.
+   * @internal
+   */
+  async enabledDelegatesDeployed(args, options) {
+    await this.extraBootstrapping(args, options);
+    console.log(
+      "       --- \u2697\uFE0F \u{1F41E} \u2697\uFE0F \u{1F41E} \u2697\uFE0F \u{1F41E} \u2697\uFE0F \u{1F41E} \u2705 Delegates deployed"
+    );
+  }
+  async snapToEnabledDelegatesDeployed(args, options) {
+  }
+  /**
+   * Ensures helperState exists, creating a default one if needed.
+   * This enables disk caching for test helpers that don't use the @hasNamedSnapshot decorator.
+   * @internal
+   */
+  ensureHelperState() {
     if (!this.helperState) {
-      throw new Error(`can't snapshot without a helperState`);
-    }
-    if (this.hasSnapshot(snapshotName)) {
-      throw new Error(`snapshot ${snapshotName} already exists`);
-    }
-    this.helperState.snapshots[snapshotName] = this.network.snapshot(snapshotName);
-  }
-  async findOrCreateSnapshot(snapshotName, actorName, contentBuilder) {
-    if (this.helperState.snapshots[snapshotName]) {
-      const capo = await this.restoreFrom(snapshotName);
-      await this.setActor(actorName);
-      return capo;
-    }
-    let result;
-    try {
-      result = await contentBuilder();
-      return this.strella;
-      return result;
-    } catch (e) {
-      throw e;
-    } finally {
-      if (result) {
-        this.snapshot(snapshotName);
+      this.helperState = {
+        namedRecords: {}
+      };
+    } else {
+      if (!this.helperState.namedRecords) {
+        this.helperState.namedRecords = {};
       }
     }
   }
+  /**
+   * Builds offchainData for a snapshot being stored.
+   * Also populates helperState.offchainData for in-memory cache access.
+   * @internal
+   */
+  buildOffchainData(snapshotName, entry) {
+    const parentSnapName = entry?.parentSnapName || "genesis";
+    let offchainData;
+    if (parentSnapName === "genesis" && Object.keys(this.actors).length > 0) {
+      offchainData = {
+        ...this.getActorWalletKeys(),
+        targetSeedUtxo: this.preSelectedSeedUtxo
+      };
+    } else if (this.state.config) {
+      const capoAddr = this.strella?.address?.toString();
+      offchainData = {
+        capoConfig: this.state.config,
+        _diag: {
+          capoAddr,
+          validatorHash: this.strella?.validatorHash?.toHex(),
+          utxoCountAtCapoAddr: capoAddr ? this.network._addressUtxos[capoAddr]?.length || 0 : 0,
+          addressUtxoKeys: Object.keys(this.network._addressUtxos)
+        }
+      };
+    }
+    if (offchainData) {
+      if (!this.helperState.offchainData) {
+        this.helperState.offchainData = {};
+      }
+      this.helperState.offchainData[snapshotName] = offchainData;
+    }
+    return offchainData;
+  }
+  /**
+   * Logs diagnostic comparison between stored and current Capo state.
+   * Essential for debugging address mismatches and UTxO loading issues.
+   * @internal
+   */
+  logSnapshotRestoreDiagnostics(cached, snapshotName) {
+    const storedDiag = cached.offchainData?._diag;
+    if (!storedDiag) return;
+    const currentCapoAddr = this.strella?.address?.toString();
+    const currentValidatorHash = this.strella?.validatorHash?.toHex();
+    const currentUtxoCount = currentCapoAddr ? this.network._addressUtxos[currentCapoAddr]?.length || 0 : 0;
+    const currentAddressKeys = Object.keys(this.network._addressUtxos);
+    console.log(`  [DIAG] Snapshot restore comparison for '${snapshotName}':`);
+    console.log(`    storedCapoAddr:   ${storedDiag.capoAddr}`);
+    console.log(`    currentCapoAddr:  ${currentCapoAddr}`);
+    console.log(`    addrMatch: ${storedDiag.capoAddr === currentCapoAddr}`);
+    console.log(`    storedValidatorHash:  ${storedDiag.validatorHash}`);
+    console.log(`    currentValidatorHash: ${currentValidatorHash}`);
+    console.log(`    vhMatch: ${storedDiag.validatorHash === currentValidatorHash}`);
+    console.log(`    storedUtxoCount:  ${storedDiag.utxoCountAtCapoAddr}`);
+    console.log(`    currentUtxoCount: ${currentUtxoCount}`);
+    console.log(`    storedAddressKeys (${storedDiag.addressUtxoKeys?.length}): ${storedDiag.addressUtxoKeys?.slice(0, 5).join(", ")}${(storedDiag.addressUtxoKeys?.length || 0) > 5 ? "..." : ""}`);
+    console.log(`    currentAddressKeys (${currentAddressKeys.length}): ${currentAddressKeys.slice(0, 5).join(", ")}${currentAddressKeys.length > 5 ? "..." : ""}`);
+    if (storedDiag.capoAddr !== currentCapoAddr) {
+      console.warn(`    \u26A0\uFE0F ADDRESS MISMATCH - this is likely the bug!`);
+    }
+    if (currentUtxoCount === 0 && (storedDiag.utxoCountAtCapoAddr || 0) > 0) {
+      console.warn(`    \u26A0\uFE0F UTxO COUNT DROPPED TO ZERO - snapshot may not have loaded correctly`);
+    }
+  }
+  /**
+   * Handles Capo reconstruction when loading a non-genesis snapshot.
+   * Implements the decision tree from REQT/vz0fc3s057.
+   * @internal
+   */
+  async handleCapoReconstruction(cached, snapshotName) {
+    const { bootstrappedStrella } = this.helperState;
+    const loadedRawConfig = cached.offchainData?.capoConfig;
+    const loadedConfig = loadedRawConfig ? parseCapoJSONConfig(loadedRawConfig) : void 0;
+    const shouldCreateNew = this.shouldCreateNewCapo(loadedConfig);
+    if (shouldCreateNew) {
+      console.log(`  -- Creating new Capo from loaded config (shouldCreateNew=${shouldCreateNew})`);
+      const config = loadedConfig || this.helperState.parsedConfig;
+      if (config) {
+        this.helperState.parsedConfig = config;
+        this.state.parsedConfig = config;
+        this.state.config = loadedRawConfig;
+        await this.initStellarClass(config);
+      } else {
+        await this.initStellarClass();
+      }
+      this.helperState.bootstrappedStrella = this.strella;
+      this.helperState.previousHelper = this;
+    } else if (bootstrappedStrella && this.helperState.previousHelper) {
+      console.log(`  -- Hot-swapping network for existing Capo`);
+      await this.restoreFrom(snapshotName);
+    } else {
+      console.log(`  -- Using existing Capo (no previousHelper)`);
+      this.helperState.bootstrappedStrella = this.strella;
+      this.helperState.previousHelper = this;
+    }
+    if (loadedRawConfig && !this.state.config) {
+      this.state.config = loadedRawConfig;
+    }
+    if (loadedRawConfig && !this.state.mintedCharterToken) {
+      this.state.mintedCharterToken = { restored: true };
+    }
+  }
+  /**
+   * Loads a cached snapshot into the emulator and sets up helper state.
+   * This is called for BOTH cache hits AND freshly-built snapshots.
+   * @internal
+   */
+  async loadCachedSnapshot(cached, snapshotName, actorName) {
+    this.network.loadSnapshot(cached.snapshot);
+    Object.assign(this.helperState.namedRecords, cached.namedRecords);
+    if (cached.offchainData) {
+      if (!this.helperState.offchainData) {
+        this.helperState.offchainData = {};
+      }
+      this.helperState.offchainData[snapshotName] = cached.offchainData;
+    }
+    const entry = this.snapshotCache["registry"].get(snapshotName);
+    const isGenesisSnapshot = entry?.parentSnapName === "genesis";
+    if (isGenesisSnapshot) {
+      if (Object.keys(this.actors).length === 0) {
+        const actorWallets = cached.offchainData?.actorWallets;
+        if (actorWallets) {
+          this.restoreActorsFromStoredKeys({ actorWallets });
+        } else {
+          console.warn(`  \u26A0\uFE0F No stored actor keys in disk cache for '${snapshotName}' - cache may need rebuild`);
+        }
+      }
+      if (!this.preSelectedSeedUtxo && cached.offchainData?.targetSeedUtxo) {
+        this.preSelectedSeedUtxo = cached.offchainData.targetSeedUtxo;
+        console.log(`  -- Restored pre-selected seed UTxO from cache: ${this.preSelectedSeedUtxo.txId.slice(0, 12)}...#${this.preSelectedSeedUtxo.utxoIdx}`);
+      }
+    } else {
+      await this.handleCapoReconstruction(cached, snapshotName);
+      this.logSnapshotRestoreDiagnostics(cached, snapshotName);
+    }
+    if (actorName === "default") {
+      await this.setDefaultActor();
+    } else {
+      await this.setActor(actorName);
+    }
+  }
+  /**
+   * Resolves snapshot name aliases.
+   * "bootstrapped" is a symbolic alias for "enabledDelegatesDeployed".
+   * @internal
+   */
+  resolveSnapshotAlias(name) {
+    if (name === "bootstrapped") {
+      return "enabledDelegatesDeployed";
+    }
+    return name;
+  }
+  /**
+   * Ensures a snapshot is in cache (memory or disk), building recursively if needed.
+   * This is the single chokepoint for snapshot resolution.
+   * @internal
+   */
+  async ensureSnapshotCached(snapshotName, contentBuilder) {
+    const cacheStart = performance.now();
+    let cached = await this.snapshotCache.find(snapshotName, this);
+    if (cached) {
+      const entry2 = this.snapshotCache["registry"].get(snapshotName);
+      const isGenesis = entry2?.parentSnapName === "genesis";
+      const cacheElapsed = (performance.now() - cacheStart).toFixed(1);
+      console.log(`  \u26A1 cache hit${isGenesis ? " (genesis)" : ""} '${snapshotName}': ${cacheElapsed}ms`);
+      return cached;
+    }
+    console.log(`  \u{1F4E6} cache miss '${snapshotName}' - building...`);
+    const entry = this.snapshotCache["registry"].get(snapshotName);
+    const parentSnapName = entry?.parentSnapName;
+    if (parentSnapName && parentSnapName !== "genesis") {
+      const resolvedParentName = this.resolveSnapshotAlias(parentSnapName);
+      let parentCached2 = await this.snapshotCache.find(parentSnapName, this);
+      if (!parentCached2) {
+        const parentReg = this.constructor._snapshotRegistrations?.get(resolvedParentName);
+        if (parentReg?.snapMethod) {
+          const aliasNote = resolvedParentName !== parentSnapName ? ` (alias for '${resolvedParentName}')` : "";
+          console.log(`  \u{1F4E6} building parent '${parentSnapName}'${aliasNote} first...`);
+          await parentReg.snapMethod.call(this);
+          parentCached2 = await this.snapshotCache.find(parentSnapName, this);
+        } else {
+          throw new Error(
+            `Parent snapshot '${parentSnapName}' has no snapMethod registered. Ensure snapTo${resolvedParentName[0].toUpperCase()}${resolvedParentName.slice(1)}() exists with @hasNamedSnapshot decorator.`
+          );
+        }
+      }
+      if (!parentCached2) {
+        throw new Error(
+          `Parent '${parentSnapName}' should be cached after snapMethod call, but wasn't found.`
+        );
+      }
+      console.log(`  \u{1F4E6} loading parent '${parentSnapName}' state for building '${snapshotName}'...`);
+      this.network.loadSnapshot(parentCached2.snapshot);
+      Object.assign(this.helperState.namedRecords, parentCached2.namedRecords);
+    }
+    console.log(`  \u{1F528} building '${snapshotName}'...`);
+    const buildStart = performance.now();
+    await contentBuilder();
+    const buildElapsed = (performance.now() - buildStart).toFixed(1);
+    console.log(`  \u{1F422} built '${snapshotName}': ${buildElapsed}ms`);
+    const storeStart = performance.now();
+    const snapshot = this.network.snapshot(snapshotName);
+    const parentCached = parentSnapName && parentSnapName !== "genesis" ? await this.snapshotCache.find(parentSnapName, this) : null;
+    const parentHash = parentCached?.snapshotHash || null;
+    if (!this.helperState.namedRecords) {
+      throw new Error(
+        `ensureSnapshotCached('${snapshotName}'): helperState.namedRecords is undefined. This should not happen - ensureHelperState() should have initialized it.`
+      );
+    }
+    const offchainData = this.buildOffchainData(snapshotName, entry);
+    const cachedSnapshot = {
+      snapshot,
+      namedRecords: { ...this.helperState.namedRecords },
+      parentSnapName: parentSnapName || "genesis",
+      parentHash,
+      snapshotHash: this.network.lastBlockHash,
+      offchainData
+    };
+    await this.snapshotCache.store(snapshotName, cachedSnapshot, this);
+    const storeElapsed = (performance.now() - storeStart).toFixed(1);
+    console.log(`  \u{1F4BE} stored '${snapshotName}': ${storeElapsed}ms`);
+    return cachedSnapshot;
+  }
+  /**
+   * Finds or creates a snapshot, using the single chokepoint pattern (ARCH-7jcyqx1mg8).
+   * 1. ensureSnapshotCached() handles recursive parent resolution and caching
+   * 2. loadCachedSnapshot() provides uniform loading for both cache hits and freshly-built
+   * Implements REQT/sjer71jjmb (Reuse existing or create new snapshot).
+   */
+  async findOrCreateSnapshot(snapshotName, actorName, contentBuilder) {
+    const startTime = performance.now();
+    const cached = await this.ensureSnapshotCached(snapshotName, contentBuilder);
+    await this.loadCachedSnapshot(cached, snapshotName, actorName);
+    const elapsed = (performance.now() - startTime).toFixed(1);
+    console.log(`  \u2705 '${snapshotName}' ready: ${elapsed}ms`);
+    return this.strella;
+  }
+  /**
+   * Restores helper state from a named snapshot.
+   * Implements REQT/7n8ws6gabc (Actor Wallet Transfer).
+   */
   async restoreFrom(snapshotName) {
     const {
       helperState,
       helperState: {
-        snapshots,
         previousHelper,
         bootstrappedStrella
       } = {}
@@ -3659,8 +4963,9 @@ class CapoTestHelper extends StellarTestHelper {
       throw new Error(
         `can't restore from a previous helper without a bootstrappedStrella`
       );
-    if (!snapshots || !snapshots[snapshotName]) {
-      throw new Error(`no snapshot named ${snapshotName} in helperState`);
+    const cached = await this.snapshotCache.find(snapshotName, this);
+    if (!cached) {
+      throw new Error(`no snapshot named ${snapshotName} in snapshotCache`);
     }
     if (!previousHelper) {
       throw new Error(`no previousHelper in helperState`);
@@ -3674,37 +4979,53 @@ class CapoTestHelper extends StellarTestHelper {
     const { network: previousNetwork } = oldNetworkEnvelope;
     const { network: newNet } = this.networkCtx;
     this.initSetup(previousSetup);
-    const otherNet = previousHelper.actors[ACTORS_ALREADY_MOVED];
-    if (otherNet) {
-      if (otherNet !== newNet.id) {
-        throw new Error(
-          `actors already moved to network #${otherNet}; can't move to #${newNet.id} now.`
-        );
-      }
-      console.log("  -- actors are already here");
-    } else {
-      if (this === previousHelper) {
-        console.log(
-          "  -- helper already transferred; loading incremental snapshot"
-        );
-      } else {
-        Object.assign(this.actors, previousHelper.actors);
-        previousHelper.networkCtx = { network: previousNetwork };
-        previousHelper.actorContext = {
-          wallet: "previous network retired",
-          others: previousHelper.actorContext.others
-        };
-        this.networkCtx = oldNetworkEnvelope;
-        this.actorContext = oldActorContext;
-        this.networkCtx.network = newNet;
-        this.state.mintedCharterToken = previousHelper.state.mintedCharterToken;
+    console.log(`  [DEBUG restoreFrom] this===previousHelper: ${this === previousHelper}`);
+    console.log(`  [DEBUG restoreFrom] this._actorName: "${this._actorName}"`);
+    console.log(`  [DEBUG restoreFrom] this.actorContext.wallet: ${this.actorContext.wallet?.address?.toString().slice(0, 20) || "undefined"}`);
+    console.log(`  [DEBUG restoreFrom] oldActorContext.wallet: ${oldActorContext.wallet?.address?.toString().slice(0, 20) || oldActorContext.wallet || "undefined"}`);
+    console.log(`  [DEBUG restoreFrom] Object.keys(this.actors): ${Object.keys(this.actors).join(", ")}`);
+    console.log(`  [DEBUG restoreFrom] Object.keys(previousHelper.actors): ${Object.keys(previousHelper.actors).join(", ")}`);
+    const thisHasRealActors = Object.keys(this.actors).some((k) => k !== ACTORS_ALREADY_MOVED);
+    const previousHasRealActors = Object.keys(previousHelper.actors).some((k) => k !== ACTORS_ALREADY_MOVED);
+    if (this === previousHelper || thisHasRealActors) {
+      console.log(
+        `  -- ${this === previousHelper ? "same helper" : "actors already present"} - loading snapshot only`
+      );
+      console.log(`  [DEBUG restoreFrom] BEFORE: this.networkCtx.network.id=${this.networkCtx.network.id}, newNet.id=${newNet.id}`);
+      console.log(`  [DEBUG restoreFrom] BEFORE: bootstrappedStrella?.setup?.network?.id=${bootstrappedStrella?.setup?.network?.id}`);
+      if (this !== previousHelper) {
+        this.state.config = previousHelper.state.config;
         this.state.parsedConfig = parsedConfig;
-        previousHelper.actors = { [ACTORS_ALREADY_MOVED]: newNet.id };
-        console.log(
-          `   -- moving ${Object.keys(this.actors).length} actors from network ${previousNetwork.id} to ${newNet.id}`
-        );
+        this.state.mintedCharterToken = previousHelper.state.mintedCharterToken;
       }
-      newNet.loadSnapshot(snapshots[snapshotName]);
+      newNet.loadSnapshot(cached.snapshot);
+      if (this.networkCtx.network !== newNet) {
+        console.log(`  [DEBUG restoreFrom] Swapping this.networkCtx.network from ${this.networkCtx.network.id} to ${newNet.id}`);
+        this.networkCtx.network = newNet;
+      }
+      if (bootstrappedStrella?.setup?.network !== newNet) {
+        console.log(`  [DEBUG restoreFrom] Swapping bootstrappedStrella.setup.network from ${bootstrappedStrella?.setup?.network?.id} to ${newNet.id}`);
+        bootstrappedStrella.setup.network = newNet;
+      }
+      console.log(`  [DEBUG restoreFrom] AFTER: this.networkCtx.network.id=${this.networkCtx.network.id}`);
+      console.log(`  [DEBUG restoreFrom] AFTER: bootstrappedStrella?.setup?.network?.id=${bootstrappedStrella?.setup?.network?.id}`);
+    } else if (!previousHasRealActors) {
+      throw new Error(
+        `restoreFrom('${snapshotName}'): previousHelper has no actors to transfer (already retired). This usually means helperState is stale from a previous test.`
+      );
+    } else {
+      Object.assign(this.actors, previousHelper.actors);
+      previousHelper.networkCtx = { network: previousNetwork };
+      this.networkCtx = oldNetworkEnvelope;
+      this.networkCtx.network = newNet;
+      this.state.mintedCharterToken = previousHelper.state.mintedCharterToken;
+      this.state.parsedConfig = parsedConfig;
+      this.state.config = previousHelper.state.config;
+      previousHelper.actors = { [ACTORS_ALREADY_MOVED]: newNet.id };
+      console.log(
+        `   -- moving ${Object.keys(this.actors).length} actors from network ${previousNetwork.id} to ${newNet.id}`
+      );
+      newNet.loadSnapshot(cached.snapshot);
     }
     if (!this.actorName) {
       await this.setDefaultActor();
@@ -3717,7 +5038,7 @@ class CapoTestHelper extends StellarTestHelper {
   }
   async bootstrap(args, submitOptions = {}) {
     let strella = this.strella || await this.initialize(void 0, args);
-    if (this.bootstrap != CapoTestHelper.prototype.bootstrap) {
+    if (this.bootstrap != _CapoTestHelper.prototype.bootstrap) {
       throw new Error(
         `Don't override the test-helper bootstrap().  Instead, provide an implementation of extraBootstrapping()`
       );
@@ -3734,13 +5055,9 @@ class CapoTestHelper extends StellarTestHelper {
         this.network.tick(1);
       }
     };
-    await this.mintCharterToken(args, options);
-    console.log(
-      "       --- \u2697\uFE0F \u{1F41E} \u2697\uFE0F \u{1F41E} \u2697\uFE0F \u{1F41E} \u2697\uFE0F \u{1F41E} \u2705 Capo bootstrap with charter"
-    );
-    this.network.tick(1);
-    await this.extraBootstrapping(args, options);
-    return strella;
+    await this.snapToCapoInitialized(args, options);
+    await this.snapToEnabledDelegatesDeployed(args, options);
+    return this.strella;
   }
   /**
    * Returns the id of a named record previously stored in the helperState.namedRecords.
@@ -3810,7 +5127,187 @@ class CapoTestHelper extends StellarTestHelper {
     await this.submitTxnWithBlock(tcx2, submitOptions);
     return this.strella;
   }
-}
+  /**
+   * Resolves cache key inputs for the base actors snapshot.
+   * @public
+   */
+  resolveActorsDependencies() {
+    const actorData = this.actorSetupInfo.map((actor) => ({
+      name: actor.name,
+      initialBalance: actor.initialBalance.toString(),
+      additionalUtxos: actor.additionalUtxos.map((u) => u.toString())
+    }));
+    console.log(`[DEBUG resolveActorsDependencies] randomSeed=${this.randomSeed}, actorCount=${actorData.length}`);
+    return {
+      bundles: [],
+      // No script bundles for actors snapshot
+      extra: {
+        actors: actorData,
+        randomSeed: this.randomSeed,
+        // REQT/xh612fhw3c
+        heliosVersion: VERSION
+        // REQT/v4c7x9m1kz
+      }
+    };
+  }
+  /**
+   * Ensures an egg (unconfigured Capo) exists for cache key computation (REQT/dynnc9bq1v).
+   * Creates one via initStrella() if this.strella is undefined or unconfigured.
+   * @internal
+   */
+  async ensureEggForCacheKey() {
+    if (this.strella) {
+      return;
+    }
+    console.log(`  -- Creating egg (unconfigured Capo) for cache key computation`);
+    const { featureFlags } = this;
+    if (featureFlags) {
+      this.strella = await this.initStrella(this.stellarClass, {
+        featureFlags
+      });
+    } else {
+      this.strella = await this.initStrella(this.stellarClass);
+    }
+  }
+  /**
+   * Resolves cache key inputs for core Capo scripts (minter, mint delegate, spend delegate).
+   * Used for snapshot cache key computation for the capoInitialized snapshot.
+   * Implements REQT/p19q6ak0xj (Bundle Dependency Hashing).
+   * @public
+   */
+  async resolveCoreCapoDependencies() {
+    await this.ensureEggForCacheKey();
+    const seedUtxo = this.getPreSelectedSeedUtxo();
+    const capoBundle = await this.capo.getBundle();
+    const capoBundleClass = capoBundle.constructor;
+    const bundles = [{
+      name: capoBundle.moduleName || capoBundle.constructor.name,
+      sourceHash: capoBundle.computeSourceHash(),
+      // Works without config! (REQT/mexwd3p8mr)
+      params: { seedUtxo }
+      // Identity params only, NOT derived values like mph
+    }];
+    const { delegateRoles } = this.capo;
+    if (delegateRoles.mintDelegate) {
+      const mintDelegateClass = delegateRoles.mintDelegate.delegateClass;
+      const mintBundleClass = await mintDelegateClass.scriptBundleClass();
+      const boundMintBundleClass = mintBundleClass.usingCapoBundleClass(capoBundleClass);
+      const mintBundle = new boundMintBundleClass();
+      bundles.push({
+        name: mintBundle.moduleName || mintBundle.constructor.name,
+        sourceHash: mintBundle.computeSourceHash(),
+        params: {}
+      });
+    }
+    if (delegateRoles.spendDelegate) {
+      const spendDelegateClass = delegateRoles.spendDelegate.delegateClass;
+      const spendBundleClass = await spendDelegateClass.scriptBundleClass();
+      const boundSpendBundleClass = spendBundleClass.usingCapoBundleClass(capoBundleClass);
+      const spendBundle = new boundSpendBundleClass();
+      bundles.push({
+        name: spendBundle.moduleName || spendBundle.constructor.name,
+        sourceHash: spendBundle.computeSourceHash(),
+        params: {}
+      });
+    }
+    return {
+      bundles,
+      extra: {
+        // heliosVersion is in genesis (actors) snapshot only - no need to repeat here
+        // heliosVersion: HELIOS_VERSION,
+      }
+    };
+  }
+  /**
+   * Resolves cache key inputs for all enabled delegates.
+   * Used for snapshot cache key computation for the enabledDelegatesDeployed snapshot.
+   * Includes dgData controllers (filtered by featureFlags) per REQT/venhawwjrz and REQT/3r1d1ntx6e.
+   * Uses computeSourceHash() to work with egg Capo (REQT/mvf88mnsez, REQT/mexwd3p8mr).
+   * @public
+   */
+  async resolveEnabledDelegatesDependencies() {
+    const coreInputs = await this.resolveCoreCapoDependencies();
+    const bundles = [...coreInputs.bundles];
+    const capoBundle = await this.capo.getBundle();
+    const capoBundleClass = capoBundle.constructor;
+    const { delegateRoles } = this.capo;
+    for (const [roleName, roleSetup] of Object.entries(delegateRoles)) {
+      const { delegateType, delegateClass } = roleSetup;
+      if (["spendDgt", "mintDgt", "authority"].includes(delegateType)) {
+        continue;
+      }
+      if (delegateType === "dgDataPolicy") {
+        const isSettingsRole = roleName === "settings";
+        if (!isSettingsRole && !this.featureFlags?.[roleName]) {
+          continue;
+        }
+        const dgDelegateClass = delegateClass;
+        const dgBundleClass = await dgDelegateClass.scriptBundleClass();
+        const boundDgBundleClass = dgBundleClass.usingCapoBundleClass(capoBundleClass);
+        const dgBundle = new boundDgBundleClass();
+        bundles.push({
+          name: dgBundle.moduleName || dgBundle.constructor.name,
+          sourceHash: dgBundle.computeSourceHash(),
+          params: {}
+        });
+      }
+    }
+    return {
+      bundles,
+      extra: {
+        // heliosVersion is in genesis (actors) snapshot only - no need to repeat here
+        // ...coreInputs.extra,
+        featureFlags: this.featureFlags || {}
+      }
+    };
+  }
+};
+__decorateClass([
+  _CapoTestHelper.hasNamedSnapshot({
+    actor: "default",
+    parentSnapName: "genesis",
+    // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
+    async resolveScriptDependencies(helper) {
+      const h = helper;
+      if (h.actorSetupInfo.length === 0) {
+        h._silentActorSetup = true;
+        try {
+          await h.setupActors();
+        } finally {
+          h._silentActorSetup = false;
+        }
+      }
+      return h.resolveActorsDependencies();
+    },
+    // Label includes seed for easier debugging (ARCH-jj5swg0hfk)
+    computeDirLabel: (inputs) => `seed${inputs.extra?.randomSeed ?? ""}`
+  })
+], _CapoTestHelper.prototype, "snapToBootstrapWithActors");
+__decorateClass([
+  _CapoTestHelper.hasNamedSnapshot({
+    actor: "default",
+    parentSnapName: SNAP_ACTORS,
+    internal: true,
+    // REQT/h4kp7wm2nx (internal: true skips reusableBootstrap)
+    // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
+    async resolveScriptDependencies(helper) {
+      return helper.resolveCoreCapoDependencies();
+    }
+  })
+], _CapoTestHelper.prototype, "snapToCapoInitialized");
+__decorateClass([
+  _CapoTestHelper.hasNamedSnapshot({
+    actor: "default",
+    parentSnapName: SNAP_CAPO_INIT,
+    internal: true,
+    // REQT/h4kp7wm2nx (internal: true skips reusableBootstrap)
+    // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
+    async resolveScriptDependencies(helper) {
+      return helper.resolveEnabledDelegatesDependencies();
+    }
+  })
+], _CapoTestHelper.prototype, "snapToEnabledDelegatesDeployed");
+let CapoTestHelper = _CapoTestHelper;
 
 class DefaultCapoTestHelper extends CapoTestHelper {
   /**
@@ -3834,6 +5331,13 @@ class DefaultCapoTestHelper extends CapoTestHelper {
       get stellarClass() {
         return s;
       }
+      /**
+       * Merged defaultHelperState including any specialState fields
+       */
+      static defaultHelperState = {
+        ...DefaultCapoTestHelper.defaultHelperState,
+        ...specialState ?? {}
+      };
     }
     return specificCapoHelper;
   }
@@ -3955,10 +5459,14 @@ class DefaultCapoTestHelper extends CapoTestHelper {
     const { delay } = this;
     const { tina, tom, tracy } = this.actors;
     if (this.state.mintedCharterToken) {
-      console.warn(
-        "reusing minted charter from existing testing-context"
-      );
-      return this.state.mintedCharterToken;
+      if (typeof this.state.mintedCharterToken === "object" && this.state.mintedCharterToken.state) {
+        console.warn(
+          "reusing minted charter from existing testing-context"
+        );
+        return this.state.mintedCharterToken;
+      }
+      console.log("  -- charter already minted (restored from cache)");
+      return;
     }
     if (!this.strella) await this.initialize();
     const capo = await this.strella;
@@ -3967,8 +5475,8 @@ class DefaultCapoTestHelper extends CapoTestHelper {
       ...args || {}
     };
     const tcx = await capo.mkTxnMintCharterToken(goodArgs);
-    const rawConfig = this.state.rawConfig = this.state.config = tcx.state.bootstrappedConfig;
-    this.state.parsedConfig = parseCapoJSONConfig(rawConfig);
+    const config = this.state.config = tcx.state.bootstrappedConfig;
+    this.state.parsedConfig = parseCapoJSONConfig(config);
     expect(capo.network).toBe(this.network);
     await tcx.submitAll(submitOptions);
     console.log(
@@ -4008,5 +5516,5 @@ class DefaultCapoTestHelper extends CapoTestHelper {
 const insufficientInputError = /(need .* lovelace, but only have|transaction doesn't have enough inputs)/;
 Error.stackTraceLimit = 100;
 
-export { ADA, CapoTestHelper, DefaultCapoTestHelper, SimpleWallet_stellar, StellarNetworkEmulator, StellarTestHelper, addTestContext, insufficientInputError };
+export { ADA, CapoTestHelper, DefaultCapoTestHelper, SimpleWallet_stellar, SnapshotCache, StellarNetworkEmulator, StellarTestHelper, addTestContext, insufficientInputError };
 //# sourceMappingURL=testing-node.mjs.map

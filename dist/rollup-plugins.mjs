@@ -1073,6 +1073,10 @@ var StellarTxnContext2 = class _StellarTxnContext {
   kind = "StellarTxnContext";
   id = nanoid(5);
   inputs = [];
+  /** Maps input ID (as string) to the stack trace where it was added */
+  inputStackTraces = /* @__PURE__ */ new Map();
+  /** Maps reference input ID (as string) to the stack trace where it was added (REQT/acczfb1bd6) */
+  refInputStackTraces = /* @__PURE__ */ new Map();
   collateral;
   outputs = [];
   feeLimit;
@@ -1227,9 +1231,17 @@ var StellarTxnContext2 = class _StellarTxnContext {
    ... otherwise, add txn details first or set isFacade to false`
       );
     }
+    if (thisWithMoreType.state.addlTxns?.[txnName]) {
+      throw new Error(
+        `addlTxns['${txnName}'] already included in this transaction:
+` + Object.keys(thisWithMoreType.state.addlTxns).map(
+          (k) => ` \u2022 ${k}`
+        ).join("\n")
+      );
+    }
     thisWithMoreType.state.addlTxns = {
       ...thisWithMoreType.state.addlTxns || {},
-      [txInfo.id]: txInfo
+      [txnName]: txInfo
     };
     return thisWithMoreType;
   }
@@ -1409,7 +1421,8 @@ var StellarTxnContext2 = class _StellarTxnContext {
     this.noFacade("validFor");
     const startMoment = this.txnTime.getTime();
     this._validityPeriodSet = true;
-    this.txb.validFromTime(new Date(startMoment)).validToTime(new Date(startMoment + durationMs));
+    this._txnEndTime = new Date(startMoment + durationMs);
+    this.txb.validFromTime(new Date(startMoment)).validToTime(this._txnEndTime);
     return this;
   }
   _validityPeriodSet = false;
@@ -1425,6 +1438,8 @@ var StellarTxnContext2 = class _StellarTxnContext {
   addRefInput(input, refScript) {
     this.noFacade("addRefInput");
     if (!input) throw new Error(`missing required input for addRefInput()`);
+    const currentStack = new Error().stack || "(stack unavailable)";
+    const inputIdKey = input.id.toString();
     if (this.txRefInputs.find((v) => v.id.isEqual(input.id))) {
       console.warn("suppressing second add of refInput");
       return this;
@@ -1435,6 +1450,7 @@ var StellarTxnContext2 = class _StellarTxnContext {
       );
       return this;
     }
+    this.refInputStackTraces.set(inputIdKey, currentStack);
     this.txRefInputs.push(input);
     const v2sBefore = this.txb.v2Scripts;
     if (refScript) {
@@ -1463,6 +1479,22 @@ var StellarTxnContext2 = class _StellarTxnContext {
         // JSON.stringify(r, delegateLinkSerializer)
       );
     }
+    const currentStack = new Error().stack || "(stack unavailable)";
+    const inputIdKey = input.id.toString();
+    const existingStack = this.inputStackTraces.get(inputIdKey);
+    if (existingStack) {
+      const originalStackSummary = existingStack.split("\n").slice(1, 6).join("\n");
+      throw new Error(
+        `Duplicate input detected: ${inputIdKey}
+
+Original input was added at:
+${originalStackSummary}
+
+Duplicate addition attempted at:
+${currentStack}`
+      );
+    }
+    this.inputStackTraces.set(inputIdKey, currentStack);
     if (input.address.pubKeyHash)
       this.allNeededWitnesses.push(input.address);
     this.inputs.push(input);
@@ -4376,13 +4408,26 @@ if ((() => {
   OPTIMIZE = parseInt(process.env.OPTIMIZE || "0");
 }
 console.log("env:", { DEBUG, CARDANO_NETWORK, NODE_ENV, BF_API_KEY, OPTIMIZE, cwd });
+console.log("NODE_ENV sources:", {
+  "process.env.NODE_ENV": isNodeJS ? process.env.NODE_ENV : "(not node)",
+  "import.meta.env.MODE": (() => {
+    try {
+      return import.meta.env?.MODE ?? "(MODE undefined)";
+    } catch {
+      return "(no import.meta.env)";
+    }
+  })(),
+  "environment.NODE_ENV": NODE_ENV
+});
+var isTest = isNodeJS && process.env.NODE_ENV === "test";
 var environment = {
   DEBUG,
   CARDANO_NETWORK,
   BF_API_KEY,
   NODE_ENV,
   OPTIMIZE,
-  cwd
+  cwd,
+  isTest
 };
 
 // src/helios/rollupPlugins/StellarHeliosProject.ts
@@ -4928,6 +4973,7 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
         );
       } else {
         const { version } = value;
+        console.error("-> initCacheFromBundle -> programFromCacheEntry", new Error().stack);
         if (version !== "PlutusV2" && version !== "PlutusV3") {
           console.log(
             `\u{1F422}${this.id}: unknown version '${version}'' in compiler cache entry: ${key}; skipping`
@@ -5106,7 +5152,7 @@ var CachedHeliosProgram = class _CachedHeliosProgram extends Program {
     const cacheKey = this.getCacheKey(options);
     const fromCache = await this.getFromCache(cacheKey);
     if (fromCache) {
-      console.log(`\u{1F422}${this.id}: ${cacheKey}: from cache`);
+      console.canDebug?.(`\u{1F422}${this.id}: ${cacheKey}: from cache`);
       const end1 = Date.now();
       this.compileTime = {
         fetchedCache: end1 - start
@@ -5710,15 +5756,13 @@ function heliosRollupBundler(opts = {}) {
                     }
                   }
                 }
-                console.log(
-                  // `˚. ✦.˳·˖✶ ⋆.✧̣̇˚. `
-                  `--------------------------------------------------------------
-  -- stellar-bundler: emitting ${isPreconfiguredCapo} ${relativePath2(
+                this.debug(
+                  // `˚. ✦.˳·˖✶ ⋆.✧̣̇˚. `    
+                  // `--------------------------------------------------------------\n` +
+                  `  -- stellar-bundler: emitting ${isPreconfiguredCapo} ${relativePath2(
                     resolved.id
                   )}
-     for import("${packageImportName}") (condition = network-${networkId})
---------------------------------------------------------------
-`
+     for import("${packageImportName}") (condition = network-${networkId})`
                 );
                 addMeta.call(this, resolved.id, localMeta);
                 const resolvedInfo = {
@@ -5991,6 +6035,11 @@ function heliosRollupBundler(opts = {}) {
     watchChange: {
       order: "pre",
       handler: function watchChangeHandler(id, change) {
+        this.warn("project root " + projectRoot2);
+        this.warn("id " + id);
+        if (id.startsWith(projectRoot2 + "/.stellar/")) {
+          return Promise.resolve();
+        }
         this.warn("change: " + id + " " + change.event);
         removeOutputArtifact(id);
         const hlbs = state.hlToHlb.get(id);

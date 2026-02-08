@@ -1,4 +1,4 @@
-export { e as environment } from './environment.mjs';
+import { e as environment } from './environment.mjs';
 import { A as Activity, d as datum, S as StellarContract, U as UutName, p as partialTxn, t as txn } from './StellarContract2.mjs';
 export { a as UtxoHelper } from './StellarContract2.mjs';
 import { C as ContractDataBridge, i as impliedSeedActivityMaker, D as DataBridgeReaderClass, m as mkValuesEntry, d as dumpAny, a as isLibraryMatchedTcx, b as mkUutValuesEntries, c as delegateLinkSerializer, e as errorMapAsString, u as uplcDataSerializer, T as TxNotNeededError, S as StellarTxnContext, A as AlreadyPendingError } from './DataBridge.mjs';
@@ -26,9 +26,7 @@ export { DelegatedDataBundle } from './DelegatedDataBundle.mjs';
 import { EventEmitter } from 'eventemitter3';
 import { customAlphabet } from 'nanoid';
 import { createInteractionContext, createLedgerStateQueryClient, createTransactionSubmissionClient } from '@cardano-ogmios/client';
-import 'arktype';
 import 'dexie';
-import '@ark/json-schema';
 import '@helios-lang/compiler-utils';
 import './DefaultCapo.mjs';
 import './BasicDelegate.mjs';
@@ -9174,11 +9172,9 @@ class Capo extends StellarContract {
    * @remarks
    *
    * This is a flag that can be set to true to enable auto-setup for delegates in the Capo contract.
-   * It is currently false by default, meaning that the Capo contract will not automatically setup any delegates.
-   *
-   * We'll change that to true real soon now.
+   * When true (the default), the Capo contract will automatically setup delegates during bootstrap.
    */
-  autoSetup = false;
+  autoSetup = true;
   isChartered = false;
   dataBridgeClass = CapoDataBridge;
   needsCoreDelegateUpdates = false;
@@ -9259,8 +9255,9 @@ class Capo extends StellarContract {
     return super.getBundle();
   }
   static async scriptBundleClass() {
-    console.warn(
-      `${this.name}: each Capo will need to provide a static scriptBundleClass() method.
+    if (!environment.isTest) {
+      console.warn(
+        `${this.name}: each Capo will need to provide a static scriptBundleClass() method.
 It should return an instance of a class defined in a *.hlb.ts file.  At minimum:
 
     export default class MyAppCapoBundle extends CapoHeliosBundle {
@@ -9277,7 +9274,8 @@ It's recommended to import your bundle asyncrhonously.Your static scriptBundleCl
 
 We suggest naming your Capo bundle class with your application's name.
 `
-    );
+      );
+    }
     console.warn(
       "using a generic Capo bundle - just enough for getting started."
     );
@@ -9361,6 +9359,7 @@ We suggest naming your Capo bundle class with your application's name.
         } = { config: void 0 }
       } = {}
     } = bundle;
+    console.log(`[DEBUG Capo.init] configuredParams=${!!configuredParams}, configIn=${!!this.configIn}, bootstrapping=${this.configIn?.bootstrapping}, rootCapoScriptHash=${!!this.configIn?.rootCapoScriptHash}, mph=${this.configIn?.mph?.toHex()?.substring(0, 12)}`);
     if (configuredParams) {
       seedTxn = configuredParams.seedTxn;
       configuredParams.seedIndex;
@@ -9369,6 +9368,16 @@ We suggest naming your Capo bundle class with your application's name.
     } else if (this.configIn && !this.configIn.bootstrapping) {
       seedTxn = this.configIn.seedTxn;
       this.configIn.seedIndex;
+    }
+    console.log(`[DEBUG Capo.init] rootCapoScriptHash=${!!this.configIn?.rootCapoScriptHash}, bundle.configuredScriptDetails=${!!bundle.configuredScriptDetails}, bundle.configuredScriptDetails?.scriptHash=${!!bundle.configuredScriptDetails?.scriptHash}`);
+    if (this.configIn?.rootCapoScriptHash && !bundle.configuredScriptDetails?.scriptHash) {
+      console.log(`[DEBUG Capo.init] Setting bundle.configuredScriptDetails.scriptHash from rootCapoScriptHash`);
+      bundle.configuredScriptDetails = {
+        ...bundle.configuredScriptDetails,
+        config: this.configIn,
+        scriptHash: this.configIn.rootCapoScriptHash.bytes
+      };
+      console.log(`[DEBUG Capo.init] bundle.configuredScriptDetails.scriptHash=${bundle.configuredScriptDetails?.scriptHash?.length} bytes`);
     }
     if (seedTxn) {
       await this.connectMintingScript(minterConfig);
@@ -9802,14 +9811,18 @@ We suggest naming your Capo bundle class with your application's name.
       config,
       noPreviousOnchainScript
     );
-    await minter.asyncCompiledScript();
-    if (expectedMph && !minter.mintingPolicyHash?.isEqual(expectedMph)) {
-      throw new Error(
-        `This minter script with this seed-utxo doesn't produce the required  minting policy hash
-expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toHex()
-      );
-    } else if (!expectedMph) {
-      console.log(`${this.constructor.name}: seeding new minting policy`);
+    if (!expectedMph) {
+      console.log(`${this.constructor.name}: seeding new minting policy - compiling script`);
+      await minter.asyncCompiledScript();
+    } else if (this.configIn?.rootCapoScriptHash) {
+      const minterBundle = await minter.getBundle();
+      if (!minterBundle.configuredScriptDetails?.scriptHash) {
+        minterBundle.configuredScriptDetails = {
+          ...minterBundle.configuredScriptDetails,
+          config: minter.configIn,
+          scriptHash: expectedMph.bytes
+        };
+      }
     }
     console.log("temp: skipping mintingCharter activity check");
     return this.minter = minter;
@@ -9923,7 +9936,7 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
       delegateLinkSerializer
       // 4 // indent 4 spaces
     );
-    console.log("offchainDgtLink cache key", role, cacheKey);
+    console.canDebug?.(`offchainDgtLink cache key`, role, cacheKey);
     this._delegateCache[role] = this._delegateCache[role] || {};
     this._delegateCache[role][cacheKey] = configured;
     return configured;
@@ -10135,7 +10148,12 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
   }
   _delegateCache = {};
   // get connectDelegate()
-  async connectDelegateWithOnchainRDLink(role, delegateLink) {
+  async connectDelegateWithOnchainRDLink(role, delegateLink, options) {
+    if (typeof options?.onchain !== "boolean") {
+      throw new Error(
+        `connectDelegateWithOnchainRDLink: 'onchain' option is required (true for transactions, false for read-only)`
+      );
+    }
     const foundRole = this.delegateRoles[role];
     //!!! work on type-safety with roleName + available roles
     const onchainDgtLink = this.reader.RelativeDelegateLink(
@@ -10156,7 +10174,10 @@ expected: ` + expectedMph.toHex() + "\nactual: " + minter.mintingPolicyHash?.toH
         // strategyName,
         delegate: delegate2
       } = cachedRole;
-      console.log(`  \u2705 \u{1F481} ${role} - from cache `);
+      if (options.onchain && delegate2.usesContractScript && !delegate2._bundle?.alreadyCompiledScript) {
+        await delegate2.asyncCompiledScript();
+      }
+      console.canDebug?.(`  \u2705 \u{1F481} ${role} - from cache `);
       return delegate2;
     }
     console.log(`   \u{1F50E}delegate \u{1F481} ${role}`);
@@ -10187,7 +10208,7 @@ link details: ${this.showDelegateLink(delegateLink)}`
     if (effectiveConfig.rev === "1") {
       debugger;
     }
-    const serializedCfg1 = JSON.stringify(
+    JSON.stringify(
       effectiveConfig,
       delegateLinkSerializer,
       4
@@ -10215,43 +10236,53 @@ link details: ${this.showDelegateLink(delegateLink)}`
       // reqdAddress,
       // addrHint,
     });
-    if (delegate.usesContractScript) {
-      await delegate.asyncCompiledScript();
-    }
-    const previousOnchainScript = await (async () => {
-      if (!onchainValidatorHash) return void 0;
-      let needsUpgrade = false;
-      const currentDvh = delegate.delegateValidatorHash;
-      if (!currentDvh) {
-        return void 0;
+    if (options.onchain) {
+      if (delegate.usesContractScript) {
+        await delegate.asyncCompiledScript();
       }
-      if (!currentDvh.isEqual(onchainValidatorHash)) {
-        needsUpgrade = true;
-      }
-      if (!needsUpgrade) return void 0;
-      const refScriptUtxo = await this.findRefScriptUtxo(
-        onchainValidatorHash.bytes,
-        await this.findCapoUtxos()
-      );
-      if (!refScriptUtxo?.output.refScript) {
-        throw new Error(`unexpected: refScript for ${role} not found`);
-      }
-      return {
-        validatorHash: onchainValidatorHash.bytes,
-        uplcProgram: refScriptUtxo?.output.refScript
-      };
-    })();
-    if (previousOnchainScript) {
-      console.warn(
-        `Delegate configuration for role '${role}' requires upgrade
+      const previousOnchainScript = await (async () => {
+        if (!onchainValidatorHash) return void 0;
+        let needsUpgrade = false;
+        const currentDvh = delegate.delegateValidatorHash;
+        if (!currentDvh) {
+          return void 0;
+        }
+        if (!currentDvh.isEqual(onchainValidatorHash)) {
+          needsUpgrade = true;
+        }
+        if (!needsUpgrade) return void 0;
+        const refScriptUtxo = await this.findRefScriptUtxo(
+          onchainValidatorHash.bytes,
+          await this.findCapoUtxos()
+        );
+        if (!refScriptUtxo?.output.refScript) {
+          throw new Error(`unexpected: refScript for ${role} not found`);
+        }
+        return {
+          validatorHash: onchainValidatorHash.bytes,
+          uplcProgram: refScriptUtxo?.output.refScript
+        };
+      })();
+      if (previousOnchainScript) {
+        const actualNextConfig = {
+          ...effectiveConfig,
+          rev: delegate._bundle?.rev?.toString() ?? effectiveConfig.rev
+        };
+        const serializedActualNextConfig = JSON.stringify(
+          actualNextConfig,
+          delegateLinkSerializer,
+          4
+        );
+        console.warn(
+          `Delegate configuration for role '${role}' requires upgrade
   Previous config: ${serializedCfg2}
-  Next config: ${serializedCfg1}
+  Next config: ${serializedActualNextConfig}
 `
-      );
-      delegate._bundle.previousOnchainScript = previousOnchainScript;
-      this.needsCoreDelegateUpdates = true;
+        );
+        delegate._bundle.previousOnchainScript = previousOnchainScript;
+        this.needsCoreDelegateUpdates = true;
+      }
     }
-    delegate.delegateValidatorHash;
     console.log(
       `   \u2705 \u{1F481} ${role}  (now cached) `
       // +Debug info: +` @ key = ${cacheKey}`
@@ -10457,9 +10488,9 @@ link details: ${this.showDelegateLink(delegateLink)}`
     }
     const { govAuthorityLink, mintDelegateLink, spendDelegateLink } = charter;
     return Promise.all([
-      this.connectDelegateWithOnchainRDLink("mintDelegate", mintDelegateLink),
-      this.connectDelegateWithOnchainRDLink("govAuthority", govAuthorityLink),
-      this.connectDelegateWithOnchainRDLink("spendDelegate", spendDelegateLink)
+      this.connectDelegateWithOnchainRDLink("mintDelegate", mintDelegateLink, { onchain: true }),
+      this.connectDelegateWithOnchainRDLink("govAuthority", govAuthorityLink, { onchain: true }),
+      this.connectDelegateWithOnchainRDLink("spendDelegate", spendDelegateLink, { onchain: true })
     ]);
   }
   mkDatumScriptReference() {
@@ -10475,11 +10506,12 @@ link details: ${this.showDelegateLink(delegateLink)}`
   //     const adapter = this.settingsAdapter;
   //     return adapter.toOnchainDatum(settings) as any;
   // }
-  async findGovDelegate(charterData) {
+  async findGovDelegate(charterData, options = { onchain: true }) {
     const chD = charterData || await this.findCharterData();
     const capoGovDelegate = await this.connectDelegateWithOnchainRDLink(
       "govAuthority",
-      chD.govAuthorityLink
+      chD.govAuthorityLink,
+      { onchain: options.onchain }
     );
     console.log(
       "finding charter's govDelegate via link" + uplcDataSerializer("link", chD.govAuthorityLink)
@@ -10520,16 +10552,16 @@ link details: ${this.showDelegateLink(delegateLink)}`
   //     MDT extends BasicMintDelegate & THIS["delegateRoles"]["mintDgt"] extends RoleInfo<any, any, infer DT> ? DT : never
   // >() : Promise<MDT>{
   // todo: get mintDelegate type from delegateRoles
-  async getMintDelegate(charterData) {
+  async getMintDelegate(charterData, options = { onchain: true }) {
     if (!this.configIn) ;
     //!!! needs to work also during bootstrapping.
     const chD = charterData || await this.findCharterData();
-    return this.connectDelegateWithOnchainRDLink("mintDelegate", chD.mintDelegateLink);
+    return this.connectDelegateWithOnchainRDLink("mintDelegate", chD.mintDelegateLink, { onchain: options.onchain });
   }
   // todo: get spendDelegate type from delegateRoles
-  async getSpendDelegate(charterData) {
+  async getSpendDelegate(charterData, options = { onchain: true }) {
     const chD = charterData || await this.findCharterData();
-    return this.connectDelegateWithOnchainRDLink("spendDelegate", chD.spendDelegateLink);
+    return this.connectDelegateWithOnchainRDLink("spendDelegate", chD.spendDelegateLink, { onchain: options.onchain });
   }
   getSettingsController(options) {
     return this.getDgDataController("settings", options);
@@ -10542,10 +10574,15 @@ link details: ${this.showDelegateLink(delegateLink)}`
    * for that typeName.
    */
   async getDgDataController(recordTypeName, options) {
-    const { charterData, optional } = options || {};
-    const chD = charterData || await this.findCharterData(void 0, {
+    if (typeof options?.onchain !== "boolean") {
+      throw new Error(
+        `getDgDataController: 'onchain' option is required (true for transactions, false for read-only)`
+      );
+    }
+    const { charterData, optional, onchain } = options;
+    const chD = await (charterData || this.findCharterData(void 0, {
       optional: optional || false
-    });
+    }));
     const foundME = chD.manifest.get(recordTypeName);
     if (!foundME) {
       if (optional) return void 0;
@@ -10563,7 +10600,7 @@ Delegated-data-types registered in the manifest:
       );
     }
     if (foundME?.entryType.DgDataPolicy) {
-      return this.connectDelegateWithOnchainRDLink(recordTypeName, foundME.entryType.DgDataPolicy.policyLink);
+      return this.connectDelegateWithOnchainRDLink(recordTypeName, foundME.entryType.DgDataPolicy.policyLink, { onchain });
     } else {
       const actualEntryType = Object.keys(foundME.entryType)[0];
       throw new Error(
@@ -10583,7 +10620,7 @@ Delegated-data-types registered in the manifest:
    * @remarks
    * @public
    **/
-  async getOtherNamedDelegate(delegateName, charterData) {
+  async getOtherNamedDelegate(delegateName, charterData, options = { onchain: true }) {
     const chD = charterData || await this.findCharterData();
     const foundDelegateLink = chD.otherNamedDelegates.get(delegateName);
     if (!foundDelegateLink) {
@@ -10591,16 +10628,16 @@ Delegated-data-types registered in the manifest:
         `${this.constructor.name}: no namedDelegate found: ${delegateName}`
       );
     }
-    return this.connectDelegateWithOnchainRDLink(delegateName, foundDelegateLink);
+    return this.connectDelegateWithOnchainRDLink(delegateName, foundDelegateLink, { onchain: options.onchain });
   }
-  async getNamedDelegates(charterData) {
+  async getNamedDelegates(charterData, options = { onchain: true }) {
     const chD = charterData || await this.findCharterData();
     const namedDelegates = chD.otherNamedDelegates;
     const allNamedDelegates = [...namedDelegates.entries()].map(
       async ([otherDgtName, v]) => {
         return [
           otherDgtName,
-          await this.connectDelegateWithOnchainRDLink(otherDgtName, v)
+          await this.connectDelegateWithOnchainRDLink(otherDgtName, v, { onchain: options.onchain })
         ];
       }
     );
@@ -10918,7 +10955,9 @@ These should match; use the recordTypeName in the delegateRoles map!`
       const optional = true;
       const foundDelegate = await this.getDgDataController("settings", {
         charterData,
-        optional
+        optional,
+        onchain: false
+        // Just checking existence
       });
       if (!foundDelegate) {
         tcx.includeAddlTxn("create settings delegate", {
@@ -10941,7 +10980,7 @@ These should match; use the recordTypeName in the delegateRoles map!`
           moreInfo: "needed to configure other contract scripts",
           optional: false,
           mkTcx: async () => {
-            const settingsController = await this.getDgDataController("settings");
+            const settingsController = await this.getDgDataController("settings", { onchain: true });
             if (!settingsController) {
               throw new Error(
                 `no settings policy found in the Capo manifest`
@@ -10975,7 +11014,7 @@ These should match; use the recordTypeName in the delegateRoles map!`
           moreInfo: "provides settings to all the Capo scripts",
           optional: false,
           mkTcx: async () => {
-            await this.getDgDataController("settings");
+            await this.getDgDataController("settings", { onchain: true });
             const settingsUtxo = (await this.findDelegatedDataUtxos({
               type: "settings"
             }))[0];
@@ -11174,6 +11213,13 @@ ADDING SCRIPT DIRECTLY TO TXN!`
   singleItem(xs) {
     const [first, ...excess] = xs;
     if (excess.length) {
+      console.error(
+        "expected single item",
+        dumpAny(
+          xs.map((x) => x.utxo),
+          this.networkParams
+        )
+      );
       throw new Error("expected single item, got extra " + excess.length);
     }
     return first;
@@ -11193,21 +11239,29 @@ ADDING SCRIPT DIRECTLY TO TXN!`
     charterData,
     capoUtxos
   }) {
+    const perfLabel = `findDelegatedDataUtxos(${type || "all"})`;
+    performance.mark(`${perfLabel}:start`);
     if (!type && !predicate && !id) {
       throw new Error("Must provide either type, predicate or id");
     }
     if (id && predicate) {
       throw new Error("Cannot provide both id and predicate");
     }
+    performance.mark(`${perfLabel}:findCapoUtxos:start`);
     if (!capoUtxos) {
       capoUtxos = await this.findCapoUtxos();
     }
+    performance.mark(`${perfLabel}:findCapoUtxos:end`);
+    performance.measure(`${perfLabel}:findCapoUtxos`, `${perfLabel}:findCapoUtxos:start`, `${perfLabel}:findCapoUtxos:end`);
+    performance.mark(`${perfLabel}:findCharterData:start`);
     if (!charterData) {
       charterData = await this.findCharterData(void 0, {
         optional: false,
         capoUtxos
       });
     }
+    performance.mark(`${perfLabel}:findCharterData:end`);
+    performance.measure(`${perfLabel}:findCharterData`, `${perfLabel}:findCharterData:start`, `${perfLabel}:findCharterData:end`);
     if (id) {
       let idBytes;
       if (Array.isArray(id)) {
@@ -11222,16 +11276,23 @@ ADDING SCRIPT DIRECTLY TO TXN!`
         return equalsBytes(datum2.id, idBytes);
       };
     }
+    performance.mark(`${perfLabel}:getDgDataController:start`);
     if ("undefined" !== typeof type) {
       const dgtForType = await this.getDgDataController(type, {
-        charterData
+        charterData,
+        onchain: false
+        // Skip compilation - we only need the data bridge for reading
       });
       if (!dgtForType) {
         console.log("no adapter for type", type);
       }
     }
+    performance.mark(`${perfLabel}:getDgDataController:end`);
+    performance.measure(`${perfLabel}:getDgDataController`, `${perfLabel}:getDgDataController:start`, `${perfLabel}:getDgDataController:end`);
+    performance.mark(`${perfLabel}:processUtxos:start`);
+    let controllerLoadCount = 0;
     const utxosWithDatum = (await Promise.all(
-      capoUtxos.map(async (utxo) => {
+      capoUtxos.map(async (utxo, utxoIdx) => {
         const { datum: datum2 } = utxo.output;
         if (!datum2?.data) return null;
         if (datum2.kind != "InlineTxOutputDatum") {
@@ -11239,7 +11300,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
             `unexpected datum kind ${datum2.kind} in utxo`
           );
         }
-        let type2;
+        let datumType;
         if (datum2.data.kind == "constr") {
           const cField = datum2.data.fields[0];
           if (!cField) {
@@ -11252,12 +11313,11 @@ ADDING SCRIPT DIRECTLY TO TXN!`
               if (k.kind != "bytes") {
                 console.log("   - key not bytes", k.kind);
               } else {
-                console.log("key ", decodeUtf8(k.bytes));
                 return k.kind == "bytes" && equalsBytes(k.bytes, typeBytes);
               }
             })?.[1];
             if (seenTypeBytes?.kind == "bytes") {
-              type2 = decodeUtf8(seenTypeBytes.bytes);
+              datumType = decodeUtf8(seenTypeBytes.bytes);
             }
           } else {
             console.log(
@@ -11265,7 +11325,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
               datum2.data.dataPath
             );
           }
-          if (!type2) {
+          if (!datumType) {
             console.log(
               "   - no type field in datum",
               datum2.data.dataPath
@@ -11273,10 +11333,20 @@ ADDING SCRIPT DIRECTLY TO TXN!`
             return void 0;
           }
         }
-        const dgtForType = type2 && await this.getDgDataController(type2, {
+        if (type && datumType !== type) {
+          return void 0;
+        }
+        const loadLabel = `${perfLabel}:loadController:${datumType}:utxo${utxoIdx}`;
+        performance.mark(`${loadLabel}:start`);
+        const dgtForType = datumType && await this.getDgDataController(datumType, {
           charterData,
-          optional: true
+          optional: true,
+          onchain: false
+          // Skip compilation - we only need the data bridge for reading
         });
+        performance.mark(`${loadLabel}:end`);
+        performance.measure(loadLabel, `${loadLabel}:start`, `${loadLabel}:end`);
+        controllerLoadCount++;
         if (!dgtForType) {
           console.log(
             "no type found in datum",
@@ -11284,7 +11354,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
             "in utxo",
             dumpAny(utxo.id)
           );
-          const msg = type2 ? `no delegate for type ${type2}` : "no type in datum";
+          const msg = datumType ? `no delegate for type ${datumType}` : "no type in datum";
           return {
             utxo,
             datum: datum2,
@@ -11303,7 +11373,12 @@ ADDING SCRIPT DIRECTLY TO TXN!`
         return mkFoundDatum(utxo, dgtForType, datum2, typedData);
       })
     )).filter((x) => !!x);
-    console.log(type, `findDelegatedData: `, utxosWithDatum.length);
+    performance.mark(`${perfLabel}:processUtxos:end`);
+    performance.measure(`${perfLabel}:processUtxos`, `${perfLabel}:processUtxos:start`, `${perfLabel}:processUtxos:end`);
+    performance.mark(`${perfLabel}:end`);
+    performance.measure(perfLabel, `${perfLabel}:start`, `${perfLabel}:end`);
+    const totalTime = performance.getEntriesByName(perfLabel)[0]?.duration || 0;
+    console.log(`\u23F1\uFE0F ${perfLabel}: ${totalTime.toFixed(1)}ms (${capoUtxos.length} utxos, ${controllerLoadCount} controller loads, ${utxosWithDatum.length} results)`);
     return utxosWithDatum;
     function mkFoundDatum(utxo, delegate, datum2, data) {
       if (!data) {
@@ -11670,7 +11745,9 @@ ADDING SCRIPT DIRECTLY TO TXN!`
       typeName,
       {
         charterData,
-        optional: true
+        optional: true,
+        onchain: false
+        // Just checking existence
       }
     );
     const mintDgt = await this.getMintDelegate(charterData);
@@ -11990,7 +12067,7 @@ ADDING SCRIPT DIRECTLY TO TXN!`
             );
           }
           if (entryType.DgDataPolicy) {
-            const previousDgt = await this.getDgDataController(name);
+            const previousDgt = await this.getDgDataController(name, { onchain: true });
             if (!previousDgt) {
               throw new Error(
                 `can't find previous dgDataPolicy: ${name}`
@@ -21421,8 +21498,8 @@ class CapoWithoutSettings extends Capo {
       Reqt: defineRole("dgDataPolicy", ReqtsController, {})
     };
   }
-  async reqtsController() {
-    return this.getDgDataController("Reqt");
+  async reqtsController(options = { onchain: true }) {
+    return this.getDgDataController("Reqt", { onchain: options.onchain });
   }
 }
 
@@ -23955,5 +24032,5 @@ class DraftEternlMultiSigner extends GenericSigner {
   }
 }
 
-export { Activity, AlreadyPendingError, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, BatchSubmitController, Capo, CapoDelegateBundle, CapoHeliosBundle, CapoMinter, CapoWithoutSettings, ContractBasedDelegate, ContractDataBridge, DataBridgeReaderClass, DelegateConfigNeeded, DelegatedDataContract, DraftEternlMultiSigner, EnumBridge, GenericSigner, MintSpendDelegateBundle, OgmiosTxSubmitter, StellarContract, StellarDelegate, StellarTxnContext, TxBatcher, TxNotNeededError, TxSubmissionTracker, TxSubmitMgr, UnspecializedDelegateBridge, UnspecializedDelegate_hl as UnspecializedDelegateScript, UnspecializedMintDelegate, UutName, WalletSigningStrategy, WrappedDgDataContract, capoConfigurationDetails, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, impliedSeedActivityMaker, makeOgmiosConnection, mkCancellablePromise, mkDgtStateKey, mkUutValuesEntries, mkValuesEntry, partialTxn, placeholderSetupDetails, txn, uplcDataSerializer };
+export { Activity, AlreadyPendingError, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, BatchSubmitController, Capo, CapoDelegateBundle, CapoHeliosBundle, CapoMinter, CapoWithoutSettings, ContractBasedDelegate, ContractDataBridge, DataBridgeReaderClass, DelegateConfigNeeded, DelegatedDataContract, DraftEternlMultiSigner, EnumBridge, GenericSigner, MintSpendDelegateBundle, OgmiosTxSubmitter, StellarContract, StellarDelegate, StellarTxnContext, TxBatcher, TxNotNeededError, TxSubmissionTracker, TxSubmitMgr, UnspecializedDelegateBridge, UnspecializedDelegate_hl as UnspecializedDelegateScript, UnspecializedMintDelegate, UutName, WalletSigningStrategy, WrappedDgDataContract, capoConfigurationDetails, datum, defineRole, delegateRoles, dumpAny, environment, errorMapAsString, hasReqts, impliedSeedActivityMaker, makeOgmiosConnection, mkCancellablePromise, mkDgtStateKey, mkUutValuesEntries, mkValuesEntry, partialTxn, placeholderSetupDetails, txn, uplcDataSerializer };
 //# sourceMappingURL=stellar-contracts.mjs.map

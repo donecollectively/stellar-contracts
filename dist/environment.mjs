@@ -35,13 +35,26 @@ if ((() => {
   OPTIMIZE = parseInt(process.env.OPTIMIZE || "0");
 }
 console.log("env:", { DEBUG, CARDANO_NETWORK, NODE_ENV, BF_API_KEY, OPTIMIZE, cwd });
+console.log("NODE_ENV sources:", {
+  "process.env.NODE_ENV": isNodeJS ? process.env.NODE_ENV : "(not node)",
+  "import.meta.env.MODE": (() => {
+    try {
+      return import.meta.env?.MODE ?? "(MODE undefined)";
+    } catch {
+      return "(no import.meta.env)";
+    }
+  })(),
+  "environment.NODE_ENV": NODE_ENV
+});
+const isTest = isNodeJS && process.env.NODE_ENV === "test";
 const environment = {
   DEBUG,
   CARDANO_NETWORK,
   BF_API_KEY,
   NODE_ENV,
   OPTIMIZE,
-  cwd
+  cwd,
+  isTest
 };
 
 export { environment as e };

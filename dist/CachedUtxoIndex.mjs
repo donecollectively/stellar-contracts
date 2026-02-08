@@ -2,11 +2,9 @@ import { makeCast } from '@helios-lang/contract-utils';
 import { makeInlineTxOutputDatum, makeAddress, makeMintingPolicyHash, makeAssetClass, makeValidatorHash, decodeTx, makeTxId, makeTxOutputId, makeValue, makeDatumHash, makeHashedTxOutputDatum, makeTxOutput, makeTxInput } from '@helios-lang/ledger';
 import { O as DataBridge, C as ContractDataBridge, D as DataBridgeReaderClass, i as impliedSeedActivityMaker, U as nanoid } from './DataBridge.mjs';
 import { bytesToHex, encodeUtf8, hexToBytes } from '@helios-lang/codec-utils';
-import { type, ArkErrors } from 'arktype';
 import EventEmitter from 'eventemitter3';
 import { decodeUplcProgramV2FromCbor, decodeUplcData } from '@helios-lang/uplc';
 import Dexie, { Entity } from 'dexie';
-import { jsonSchemaToType } from '@ark/json-schema';
 
 const JustAnEnum = Symbol("JustAnEnum");
 const Nested = Symbol("Nested");
@@ -4548,6 +4546,8 @@ class dexieUtxoDetails extends Entity {
   referenceScriptHash;
   // REQT/tqrhbphgyx
   uutIds;
+  spentInTx;
+  // REQT/11msfc4wv8
 }
 
 const DEFAULT_DB_NAME = "StellarDappIndex-v0.1";
@@ -4625,9 +4625,15 @@ class DexieUtxoStore extends Dexie {
   async saveUtxo(entry) {
     await this.utxos.put(entry);
   }
+  // REQT/hhbcnvd9aj: Mark a UTXO as spent
+  async markUtxoSpent(utxoId, spentInTx) {
+    await this.utxos.where("utxoId").equals(utxoId).modify({ spentInTx });
+  }
   // REQT/cchf3wgnk3 (UUT Catalog Storage) - query UTXOs by UUT identifier
+  // REQT/g3jen1rcvd: Filter out spent UTXOs
   async findUtxoByUUT(uutId) {
-    return await this.utxos.where("uutIds").equals(uutId).first();
+    const results = await this.utxos.where("uutIds").equals(uutId).toArray();
+    return results.find((u) => u.spentInTx === null || u.spentInTx === void 0);
   }
   // REQT/nm2ed7m80y (Transaction Storage)
   async findTxId(txId) {
@@ -4644,10 +4650,12 @@ class DexieUtxoStore extends Dexie {
     await this.scripts.put(script);
   }
   // REQT/50zkk5xgrx: Query API Methods
+  // REQT/g3jen1rcvd: All query methods filter out spent UTXOs
   async findUtxosByAsset(policyId, tokenName, options) {
     const { limit = 100, offset = 0 } = options ?? {};
     const allUtxos = await this.utxos.toArray();
     const filtered = allUtxos.filter((utxo) => {
+      if (utxo.spentInTx !== null && utxo.spentInTx !== void 0) return false;
       return utxo.tokens.some((token) => {
         if (token.policyId !== policyId) return false;
         if (tokenName !== void 0 && token.tokenName !== tokenName)
@@ -4659,11 +4667,15 @@ class DexieUtxoStore extends Dexie {
   }
   async findUtxosByAddress(address, options) {
     const { limit = 100, offset = 0 } = options ?? {};
-    return await this.utxos.where("address").equals(address).offset(offset).limit(limit).toArray();
+    const results = await this.utxos.where("address").equals(address).toArray();
+    const unspent = results.filter((u) => u.spentInTx === null || u.spentInTx === void 0);
+    return unspent.slice(offset, offset + limit);
   }
   async getAllUtxos(options) {
     const { limit = 100, offset = 0 } = options ?? {};
-    return await this.utxos.offset(offset).limit(limit).toArray();
+    const allUtxos = await this.utxos.toArray();
+    const unspent = allUtxos.filter((u) => u.spentInTx === null || u.spentInTx === void 0);
+    return unspent.slice(offset, offset + limit);
   }
   // REQT/620ypcc34d: Wallet Address Storage
   async findWalletAddress(address) {
@@ -4718,8 +4730,7 @@ class RateLimitedFetch {
     this.metricsInterval = setInterval(() => {
       this.emitMetricsIfChanged();
     }, 1e3);
-    console.log("unref at startMetricsInterval " + new Error().stack);
-    this.metricsInterval.unref();
+    this.metricsInterval.unref?.();
   }
   /**
    * Emits metrics event if they have changed since last emission.
@@ -4852,8 +4863,7 @@ class RateLimitedFetch {
         }
       }
     }, 1e4);
-    console.log("unref at startRecovery " + new Error().stack);
-    this.recoveryInterval.unref();
+    this.recoveryInterval.unref?.();
   }
   /**
    * Acquires a token, waiting if the bucket is empty.
@@ -4931,426 +4941,6 @@ function getBlockfrostRateLimiter() {
   });
   return blockfrostRateLimiter;
 }
-
-const BlockDetailsFactory = type({
-  time: "number",
-  height: "number",
-  hash: "string",
-  slot: "number",
-  epoch: "number",
-  epoch_slot: "number",
-  slot_leader: "string",
-  size: "number",
-  tx_count: "number",
-  output: "string | null",
-  fees: "string | null",
-  block_vrf: "string | null",
-  op_cert: "string | null",
-  op_cert_counter: "string | null",
-  previous_block: "string | null",
-  next_block: "string | null",
-  confirmations: "number"
-});
-jsonSchemaToType({
-  "type": "object",
-  "properties": {
-    "time": {
-      "type": "integer",
-      "description": "Block creation time in UNIX time"
-      // "examples": [
-      //   1641338934
-      // ]
-    },
-    "height": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "description": "Block number"
-      // "examples": [
-      //   15243593
-      // ]
-    },
-    "hash": {
-      "type": "string",
-      "description": "Hash of the block"
-      //  "examples": [
-      //   "4ea1ba291e8eef538635a53e59fddba7810d1679631cc3aed7c8e6c4091a516a"
-      // ]
-    },
-    "slot": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "description": "Slot number"
-      // "examples": [
-      //   412162133
-      // ]
-    },
-    "epoch": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "description": "Epoch number"
-      // "examples": [
-      //   425
-      // ]
-    },
-    "epoch_slot": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "description": "Slot within the epoch"
-      // "examples": [
-      //   12
-      // ]
-    },
-    "slot_leader": {
-      "type": "string",
-      "description": "Bech32 ID of the slot leader or specific block description in case there is no slot leader"
-      // "examples": [
-      //   "pool1pu5jlj4q9w9jlxeu370a3c9myx47md5j5m2str0naunn2qnikdy"
-      // ]
-    },
-    "size": {
-      "type": "integer",
-      "description": "Block size in Bytes"
-      // "examples": [
-      //   3
-      // ]
-    },
-    "tx_count": {
-      "type": "integer",
-      "description": "Number of transactions in the block"
-      // "examples": [
-      //   1
-      // ]
-    },
-    "output": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Total output within the block in Lovelaces"
-      // "examples": [
-      //   "128314491794"
-      // ]
-    },
-    "fees": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Total fees within the block in Lovelaces"
-      // "examples": [
-      //   "592661"
-      // ]
-    },
-    "block_vrf": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "VRF key of the block"
-      // "minLength": 65,
-      // "maxLength": 65,
-      // "examples": [
-      //   "vrf_vk1wf2k6lhujezqcfe00l6zetxpnmh9n6mwhpmhm0dvfh3fxgmdnrfqkms8ty"
-      // ]
-    },
-    "op_cert": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "The hash of the operational certificate of the block producer"
-      // "examples": [
-      //   "da905277534faf75dae41732650568af545134ee08a3c0392dbefc8096ae177c"
-      // ]
-    },
-    "op_cert_counter": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "The value of the counter used to produce the operational certificate"
-      // "examples": [
-      //   "18"
-      // ]
-    },
-    "previous_block": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Hash of the previous block"
-      // "examples": [
-      //   "43ebccb3ac72c7cebd0d9b755a4b08412c9f5dcb81b8a0ad1e3c197d29d47b05"
-      // ]
-    },
-    "next_block": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Hash of the next block"
-      // "examples": [
-      //   "8367f026cf4b03e116ff8ee5daf149b55ba5a6ec6dec04803b8dc317721d15fa"
-      // ]
-    },
-    "confirmations": {
-      "type": "integer",
-      "description": "Number of block confirmations"
-      // "examples": [
-      //   4698
-      // ]
-    }
-  },
-  "required": [
-    "time",
-    "height",
-    "hash",
-    "slot",
-    "epoch",
-    "epoch_slot",
-    "slot_leader",
-    "size",
-    "tx_count",
-    "output",
-    "fees",
-    "block_vrf",
-    "op_cert",
-    "op_cert_counter",
-    "previous_block",
-    "next_block",
-    "confirmations"
-  ]
-});
-
-const ValueType = type({
-  unit: "string",
-  quantity: "string.numeric.parse"
-});
-const UtxoDetailsValidator = type({
-  address: "string",
-  tx_hash: "string",
-  tx_index: "number",
-  output_index: "number",
-  amount: ValueType.array(),
-  block: "string",
-  data_hash: "string | null",
-  inline_datum: "string | null",
-  reference_script_hash: "string | null"
-});
-function validateUtxoDetails(data) {
-  const result = UtxoDetailsValidator(data);
-  if (result instanceof type.errors) {
-    throw new Error(`Invalid UtxoDetails: ${result.summary}`);
-  }
-  return result;
-}
-jsonSchemaToType({
-  "type": "array",
-  "items": {
-    "type": "object",
-    "properties": {
-      "address": {
-        "type": "string",
-        "description": "Bech32 encoded addresses - useful when querying by payment_cred",
-        "examples": [
-          "addr1qxqs59lphg8g6qndelq8xwqn60ag3aeyfcp33c2kdp46a09re5df3pzwwmyq946axfcejy5n4x0y99wqpgtp2gd0k09qsgy6pz"
-        ]
-      },
-      "tx_hash": {
-        "type": "string",
-        "description": "Transaction hash of the UTXO"
-      },
-      "tx_index": {
-        "type": "integer",
-        "deprecated": true,
-        "description": "UTXO index in the transaction"
-      },
-      "output_index": {
-        "type": "integer",
-        "description": "UTXO index in the transaction"
-      },
-      "amount": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "description": "The sum of all the UTXO per asset",
-          "properties": {
-            "unit": {
-              "type": "string",
-              "format": "Lovelace or concatenation of asset policy_id and hex-encoded asset_name",
-              "description": "The unit of the value"
-            },
-            "quantity": {
-              "type": "string",
-              "description": "The quantity of the unit"
-            }
-          },
-          "required": [
-            "unit",
-            "quantity"
-          ]
-        }
-      },
-      "block": {
-        "type": "string",
-        "description": "Block hash of the UTXO"
-      },
-      "data_hash": {
-        "type": [
-          "string",
-          "null"
-        ],
-        "description": "The hash of the transaction output datum"
-      },
-      "inline_datum": {
-        "type": [
-          "string",
-          "null"
-        ],
-        "description": "CBOR encoded inline datum",
-        "examples": [
-          "19a6aa"
-        ]
-      },
-      "reference_script_hash": {
-        "type": [
-          "string",
-          "null"
-        ],
-        "description": "The hash of the reference script of the output",
-        "examples": [
-          "13a3efd825703a352a8f71f4e2758d08c28c564e8dfcce9f77776ad1"
-        ]
-      }
-    },
-    "required": [
-      "address",
-      "tx_hash",
-      "tx_index",
-      "output_index",
-      "amount",
-      "block",
-      "data_hash",
-      "inline_datum",
-      "reference_script_hash"
-    ]
-  },
-  "examples": [
-    [
-      {
-        "address": "addr1qxqs59lphg8g6qndelq8xwqn60ag3aeyfcp33c2kdp46a09re5df3pzwwmyq946axfcejy5n4x0y99wqpgtp2gd0k09qsgy6pz",
-        "tx_hash": "39a7a284c2a0948189dc45dec670211cd4d72f7b66c5726c08d9b3df11e44d58",
-        "output_index": 0,
-        "amount": [
-          {
-            "unit": "lovelace",
-            "quantity": "42000000"
-          }
-        ],
-        "block": "7eb8e27d18686c7db9a18f8bbcfe34e3fed6e047afaa2d969904d15e934847e6",
-        "data_hash": "9e478573ab81ea7a8e31891ce0648b81229f408d596a3483e6f4f9b92d3cf710",
-        "inline_datum": null,
-        "reference_script_hash": null
-      },
-      {
-        "address": "addr1qxqs59lphg8g6qndelq8xwqn60ag3aeyfcp33c2kdp46a09re5df3pzwwmyq946axfcejy5n4x0y99wqpgtp2gd0k09qsgy6pz",
-        "tx_hash": "4c4e67bafa15e742c13c592b65c8f74c769cd7d9af04c848099672d1ba391b49",
-        "output_index": 0,
-        "amount": [
-          {
-            "unit": "lovelace",
-            "quantity": "729235000"
-          }
-        ],
-        "block": "953f1b80eb7c11a7ffcd67cbd4fde66e824a451aca5a4065725e5174b81685b7",
-        "data_hash": null,
-        "inline_datum": null,
-        "reference_script_hash": null
-      },
-      {
-        "address": "addr1qxqs59lphg8g6qndelq8xwqn60ag3aeyfcp33c2kdp46a09re5df3pzwwmyq946axfcejy5n4x0y99wqpgtp2gd0k09qsgy6pz",
-        "tx_hash": "768c63e27a1c816a83dc7b07e78af673b2400de8849ea7e7b734ae1333d100d2",
-        "output_index": 1,
-        "amount": [
-          {
-            "unit": "lovelace",
-            "quantity": "42000000"
-          },
-          {
-            "unit": "b0d07d45fe9514f80213f4020e5a61241458be626841cde717cb38a76e7574636f696e",
-            "quantity": "12"
-          }
-        ],
-        "block": "5c571f83fe6c784d3fbc223792627ccf0eea96773100f9aedecf8b1eda4544d7",
-        "data_hash": null,
-        "inline_datum": null,
-        "reference_script_hash": null
-      }
-    ]
-  ]
-});
-
-const AddressTransactionSummariesFactory = type({
-  tx_hash: "string",
-  tx_index: "number",
-  block_height: "number",
-  block_time: "number"
-});
-jsonSchemaToType({
-  type: "array",
-  items: {
-    type: "object",
-    properties: {
-      tx_hash: {
-        type: "string",
-        description: "Hash of the transaction"
-      },
-      tx_index: {
-        type: "integer",
-        description: "Transaction index within the block"
-      },
-      block_height: {
-        type: "integer",
-        description: "Block height"
-      },
-      block_time: {
-        type: "integer",
-        description: "Block creation time in UNIX time"
-      }
-    },
-    required: ["tx_hash", "tx_index", "block_height", "block_time"]
-  },
-  examples: [
-    [
-      {
-        tx_hash: "8788591983aa73981fc92d6cddbbe643959f5a784e84b8bee0db15823f575a5b",
-        tx_index: 6,
-        block_height: 69,
-        block_time: 1635505891
-      },
-      {
-        tx_hash: "52e748c4dec58b687b90b0b40d383b9fe1f24c1a833b7395cdf07dd67859f46f",
-        tx_index: 9,
-        block_height: 4547,
-        block_time: 1635505987
-      },
-      {
-        tx_hash: "e8073fd5318ff43eca18a852527166aa8008bee9ee9e891f585612b7e4ba700b",
-        tx_index: 0,
-        block_height: 564654,
-        block_time: 1834505492
-      }
-    ]
-  ]
-});
 
 const refreshInterval = 60 * 1e3;
 const DEFAULT_SYNC_PAGE_SIZE = 100;
@@ -5559,7 +5149,7 @@ class CachedUtxoIndex {
    * Checks for new transactions at the capo address and indexes new UTXOs.
    * Supports pagination with configurable page size and max pages.
    *
-   * REQT-1.3.2 (checkForNewTxns)
+   * REQT/fh56sce22g (checkForNewTxns)
    */
   async checkForNewTxns(fromBlockHeight) {
     this.events.emit("syncing");
@@ -5583,20 +5173,7 @@ class CachedUtxoIndex {
         hasMorePages = false;
         break;
       }
-      const transactionSummaries = [];
-      for (const item of untyped) {
-        const validationResult = AddressTransactionSummariesFactory(item);
-        if (validationResult instanceof ArkErrors) {
-          console.error(
-            `Error validating transaction summary:`,
-            item
-          );
-          validationResult.throw();
-        }
-        transactionSummaries.push(
-          validationResult
-        );
-      }
+      const transactionSummaries = untyped;
       for (const summary of transactionSummaries) {
         await this.processTransactionForNewUtxos(
           summary.tx_hash,
@@ -5643,7 +5220,7 @@ class CachedUtxoIndex {
         );
       }
     }, refreshInterval);
-    this.refreshTimerId.unref();
+    this.refreshTimerId.unref?.();
   }
   /**
    * Stops the periodic refresh timer.
@@ -5741,7 +5318,7 @@ class CachedUtxoIndex {
   /**
    * Processes a transaction to identify and index new UTXOs.
    *
-   * REQT-1.3.3 (processTransactionForNewUtxos)
+   * REQT/0vrkpk6a6h (processTransactionForNewUtxos)
    */
   async processTransactionForNewUtxos(txHash, summary) {
     const tx = await this.findOrFetchTxDetails(txHash);
@@ -5771,6 +5348,17 @@ class CachedUtxoIndex {
             e.message || e
           );
         }
+      }
+    }
+    for (const input of tx.body.inputs) {
+      const utxoId = input.id.toString();
+      const existingUtxo = await this.store.findUtxoId(utxoId);
+      if (existingUtxo && !existingUtxo.spentInTx) {
+        await this.store.markUtxoSpent(utxoId, txHash);
+        await this.store.log(
+          "sp3nt",
+          `Marked UTXO ${utxoId} as spent in tx ${txHash}`
+        );
       }
     }
     if (charterChanged) {
@@ -5864,7 +5452,9 @@ class CachedUtxoIndex {
       datumHash,
       inlineDatum,
       referenceScriptHash,
-      uutIds: this.extractUutIds(output)
+      uutIds: this.extractUutIds(output),
+      spentInTx: null
+      // REQT/11msfc4wv8: New UTXOs are unspent
     };
   }
   /**
@@ -5904,7 +5494,9 @@ class CachedUtxoIndex {
       datumHash,
       inlineDatum,
       referenceScriptHash,
-      uutIds: this.extractUutIdsFromTxInput(txInput)
+      uutIds: this.extractUutIdsFromTxInput(txInput),
+      spentInTx: null
+      // REQT/11msfc4wv8: New UTXOs are unspent
     };
   }
   /**
@@ -5957,7 +5549,9 @@ class CachedUtxoIndex {
       datumHash: bfUtxo.data_hash,
       inlineDatum: bfUtxo.inline_datum,
       referenceScriptHash: bfUtxo.reference_script_hash,
-      uutIds
+      uutIds,
+      spentInTx: null
+      // REQT/11msfc4wv8: New UTXOs are unspent
     };
   }
   /**
@@ -6018,7 +5612,7 @@ class CachedUtxoIndex {
    * Catalogs delegate UUTs mentioned in the charter.
    * Uses delegate links directly with Blockfrost queries (decoupled from Capo).
    *
-   * REQT-1.2.1 (catalogDelegateUuts)
+   * REQT/k0mnv27tz4 (catalogDelegateUuts)
    */
   async catalogDelegateUuts(charterData) {
     await this.store.log("z5h89", `Cataloging delegate UUTs`);
@@ -6159,7 +5753,7 @@ class CachedUtxoIndex {
       );
       return;
     }
-    const typed = validateUtxoDetails(untyped[0]);
+    const typed = untyped[0];
     const utxoId = this.formatUtxoId(typed.tx_hash, typed.output_index);
     const entry = this.blockfrostUtxoToIndexEntry(typed, utxoId);
     await this.store.saveUtxo(entry);
@@ -6208,19 +5802,12 @@ class CachedUtxoIndex {
       `Fetching block details for ${blockId} from blockfrost`
     );
     const untyped = await this.fetchFromBlockfrost(`blocks/${blockId}`);
-    const typed = BlockDetailsFactory(untyped);
-    if (typed instanceof ArkErrors) {
-      return typed.throw();
-    }
-    return typed;
+    return untyped;
   }
   async fetchAndStoreLatestBlock() {
     await this.store.log("x2xzt", `Fetching latest block from blockfrost`);
     const untyped = await this.fetchFromBlockfrost(`blocks/latest`);
-    const typed = BlockDetailsFactory(untyped);
-    if (typed instanceof ArkErrors) {
-      return typed.throw();
-    }
+    const typed = untyped;
     await this.store.log(
       "8y2yn",
       `latest block from blockfrost: #${typed.height} ${typed.hash}`

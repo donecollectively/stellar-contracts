@@ -3,6 +3,7 @@ import { o as utxosAsString, d as dumpAny, N as getSeed, a as isLibraryMatchedTc
 import { decodeUtf8, encodeUtf8, equalsBytes } from '@helios-lang/codec-utils';
 import { selectLargestFirst } from '@helios-lang/tx-utils';
 import '@helios-lang/crypto';
+import { e as environment } from './environment.mjs';
 import { placeholderSetupDetails } from './HeliosBundle.mjs';
 import '@helios-lang/contract-utils';
 
@@ -390,7 +391,9 @@ class UtxoHelper {
     for (const addr of addrs.flat(1)) {
       if (!addr) continue;
       if (options.findCached) {
-        console.log(`  Temporary: calling through to network instead of using cache`);
+        console.log(
+          `  Temporary: calling through to network instead of using cache: ` + this.network.constructor.name || "\u2039no network name\u203A"
+        );
       }
       const addrUtxos = await this.network.getUtxos(addr);
       utxos.push(...addrUtxos);
@@ -474,7 +477,6 @@ class UtxoHelper {
         console.log(`  Temporary: calling through to network instead of using cache`);
       }
       const addrUtxos = await this.network.getUtxos(addr);
-      utxos.push(...addrUtxos);
       utxos.push(...addrUtxos);
     }
     return this.hasUtxo(
@@ -669,7 +671,7 @@ class UtxoHelper {
       const utxos2 = address ? await this.network.getUtxos(address) : await wallet.utxos;
       console.log(
         addrString,
-        wallet,
+        ...environment.isTest ? [] : [{ wallet }],
         addrs.map((a) => a?.toString())
       );
       for (const u of utxos2) {
@@ -1089,7 +1091,7 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
       if (this._bundle?._program) {
         const datumType = this._bundle.locateDatumType();
         if (datumType) {
-          console.log(
+          console.canDebug?.(
             `${this.constructor.name} dataBridgeClass = `,
             dataBridgeClass.name
           );
@@ -1257,7 +1259,7 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
       this._bundle = bundle;
     } else if (config || partialConfig) {
       const variant = (config || partialConfig).variant;
-      console.log(
+      console.canDebug?.(
         `${this.constructor.name}: stellar offchain class init with config`
       );
       let params = config ? this.getContractScriptParams(config) : void 0;
@@ -1294,8 +1296,8 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
           debugger;
           throw new Error(`what is this situation here? (dbpa)`);
         }
-        console.log(
-          bundle.configuredScriptDetails?.programName || bundle.loadProgram().name,
+        console.canDebug?.(
+          bundle.configuredScriptDetails?.programName || bundle.moduleName || this.constructor.name,
           "bundle loaded"
         );
       }
@@ -1393,11 +1395,9 @@ Note: if you haven't customized the mint AND spend delegates for your Capo,
         "This contract isn't yet configured with a validatorHash"
       );
     }
-    console.log(this.constructor.name, "caching addr");
     console.log(
-      "TODO TODO TODO - ensure each contract can indicate the right stake part of its address"
+      "TODO - ensure each contract can indicate the right stake part of its address"
     );
-    console.log("and that the onchain part also supports it");
     const isMainnet = this.setup.isMainnet;
     if ("undefined" == typeof isMainnet) {
       throw new Error(

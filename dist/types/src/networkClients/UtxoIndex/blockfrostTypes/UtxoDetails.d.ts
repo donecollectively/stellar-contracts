@@ -12,5 +12,4 @@ export interface UtxoDetailsType {
     inline_datum: string | null;
     reference_script_hash: string | null;
 }
-export declare function validateUtxoDetails(data: unknown): UtxoDetailsType;
 //# sourceMappingURL=UtxoDetails.d.ts.map

@@ -110,7 +110,7 @@ export declare class CachedUtxoIndex {
      * Checks for new transactions at the capo address and indexes new UTXOs.
      * Supports pagination with configurable page size and max pages.
      *
-     * REQT-1.3.2 (checkForNewTxns)
+     * REQT/fh56sce22g (checkForNewTxns)
      */
     checkForNewTxns(fromBlockHeight?: number): Promise<void>;
     /**
@@ -148,7 +148,7 @@ export declare class CachedUtxoIndex {
     /**
      * Processes a transaction to identify and index new UTXOs.
      *
-     * REQT-1.3.3 (processTransactionForNewUtxos)
+     * REQT/0vrkpk6a6h (processTransactionForNewUtxos)
      */
     private processTransactionForNewUtxos;
     /**
@@ -205,7 +205,7 @@ export declare class CachedUtxoIndex {
      * Catalogs delegate UUTs mentioned in the charter.
      * Uses delegate links directly with Blockfrost queries (decoupled from Capo).
      *
-     * REQT-1.2.1 (catalogDelegateUuts)
+     * REQT/k0mnv27tz4 (catalogDelegateUuts)
      */
     private catalogDelegateUuts;
     /**

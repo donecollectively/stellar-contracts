@@ -1,5 +1,5 @@
 export type { TestHelperSubmitOptions } from "./StellarTestHelper.js";
-export type { NetworkSnapshot } from "./StellarNetworkEmulator.js";
+export type { NetworkSnapshot } from "./emulator/StellarNetworkEmulator.js";
 export { CapoTestHelper } from "./CapoTestHelper.js";
 export * from "./types.js";
 /**
@@ -19,5 +19,7 @@ export { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
  * @public
  */
 export { StellarTestHelper } from "./StellarTestHelper.js";
-export { StellarNetworkEmulator, SimpleWallet_stellar } from "./StellarNetworkEmulator.js";
+export { StellarNetworkEmulator, SimpleWallet_stellar } from "./emulator/StellarNetworkEmulator.js";
+export { SnapshotCache, type CacheKeyInputs, type CachedSnapshot, type ParentSnapName, type SnapshotRegistryEntry, } from "./emulator/SnapshotCache.js";
+export type { WrappedDescribe, TestContextFactory, CreateTestContextOptions, } from "./CapoTestHelper.js";
 //# sourceMappingURL=index.d.ts.map
