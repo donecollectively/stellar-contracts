@@ -403,10 +403,32 @@ mkTxnUpdateRecord()
 - Normalizing data representations (e.g., converting string formats)
 
 **Context types** (`src/delegation/DelegatedDataContract.ts`):
-- `createContext<TLike>`: `{ activity: isActivity }`
-- `updateContext<T>`: `{ original: T, activity: isActivity }`
+- `createContext<TLike>`: `{ activity: isActivity, tcx: StellarTxnContext }`
+- `updateContext<T>`: `{ original: T, activity: isActivity, tcx: StellarTxnContext }`
 
-The `original` field in `updateContext` provides access to the pre-update on-chain record (typed as `T`, the on-chain type), enabling delta-aware transforms.
+The `original` field in `updateContext` provides access to the pre-update on-chain record (typed as `T`, the on-chain type), enabling delta-aware transforms. Both `record` and `original` are Helios-aware deep clones, frozen to enforce the return-value contract. The `tcx` is passed by direct reference — hooks MAY mutate it.
+
+### Backlog: Typed Activity Identity in Hook Contexts
+
+The current `activity: isActivity` in hook contexts carries the materialized UPLC redeemer — opaque data that hooks cannot meaningfully inspect. A planned enhancement (REQT/2kd3mrnq4t, REQT/mfpqs35scd) would add the activity's **variant name** and **pre-serialization arguments** to the context, type-safe to the controller's generated activity types.
+
+**Type design challenge**: The generated `MintingActivity` and `SpendingActivity` types are discriminated unions of the form `{ VariantName: ArgsType }`. For example:
+
+```typescript
+// Generated from Helios, per controller:
+type SpendingActivity = { UpdatingTData: number[] }
+type MintingActivity = { CreatingTData: TxOutputId }
+```
+
+To expose type-safe `activityName` and `activityArgs`, the context types need:
+
+1. **Union key extraction**: `keyof` on a union type yields the intersection of keys (often `never`). A utility type like `T extends any ? keyof T : never` is needed to extract all variant names from the union.
+2. **Discriminated arg lookup**: Given a variant name, resolve the corresponding args type from the union. A conditional type like `T extends { [P in K]: infer V } ? V : never` maps name to args.
+3. **Type parameter threading**: The concrete `MintingActivity`/`SpendingActivity` types are generated per-controller. The `createContext` and `updateContext` types would need additional type parameters threaded from the controller's type bridge through `DelegatedDataContract`'s generic hierarchy.
+
+**Common case**: Most seeded minting activities have no explicit args (the seed is implied). The `activityArgs` field would be `undefined` in these cases. Edge cases include activities with partial args available at hook time, with the remainder resolved after transaction finalization (see `StellarTxnContext.architecture.md` § Lazy Redeemer Pattern).
+
+**Relationship to lazy redeemers**: When activity construction is deferred via `LazyRedeemerData`, the closure captures call-site context (variant name, known args) while the UPLC redeemer is produced later from the finalized `TxInfo`. The hook's `activityName` and `activityArgs` represent the semantic identity available at hook invocation time — independent of whether the UPLC construction is immediate or deferred.
 
 ### After-Hooks: Planned
 

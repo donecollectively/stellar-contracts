@@ -540,6 +540,26 @@ Transaction builders are stored as factories (`mkTcx: () => Promise<TCX>`) rathe
 2. **Fresh state**: Network state may change between queueing and building
 3. **Conditional logic**: The factory can make decisions based on current state
 
+### Backlog: Lazy Redeemer Pattern (LazyRedeemerData) {#ARCH-b4gv3t4jyj}
+
+Helios's `TxBuilder` supports deferred redeemer construction via `LazyRedeemerData<T> = (tx?: TxInfo) => T | Promise<T>`. The redeemer callback fires at the very end of transaction finalization, after the transaction structure is fully resolved, and receives the nearly-complete `TxInfo`.
+
+**Available builder methods**: `spendWithLazyRedeemer`, `mintAssetClassWithLazyRedeemer`, `withdrawWithLazyRedeemer` (plus `*Unsafe` variants).
+
+The framework does not currently use this capability. When adopted, it enables:
+
+1. **Retroactive index hints**: The on-chain policy can receive exact transaction structure offsets (e.g., "input at position 3", "output at offset 5") computed from the finalized transaction. This enables O(1) lookups in the on-chain validator instead of scanning — significant script budget savings.
+
+2. **Closure-based context capture**: The lazy redeemer should be a closure that captures contextual information from the call site (activity variant, record data, delegation chain state) and combines it with the finalized `TxInfo` to produce the UPLC redeemer. The closure pattern means the redeemer construction has access to both:
+   - **Call-site context**: everything known when the input/mint is added to the transaction
+   - **Finalized transaction state**: inputs, outputs, minting, validity range — the complete picture
+
+3. **Deferred activity construction**: Some activity redeemers depend on transaction state not yet available when the `txn*` method adds the input. With lazy redeemers, the activity variant and its known args can be captured in the closure, and the remaining fields (indices, hashes, counts) computed from `TxInfo` at finalization time.
+
+**Not specific to DelegatedDataContract** — this is a transaction-building concern applicable anywhere activities are used. The DelegatedDataContract hooks (`beforeCreate`, `beforeUpdate`) surface a related but distinct need: exposing the activity variant name and pre-serialization args at hook time, independent of whether the UPLC redeemer construction is immediate or deferred.
+
+**Relationship to typed activity identity in hooks**: The backlog items in `DelegatedDataContract.reqts.md` (type-safe `activityName` + `activityArgs` in hook contexts) complement this pattern. The hook receives the semantic activity information (variant name, known args) while the lazy redeemer handles the UPLC construction independently.
+
 ---
 
 ## Files
