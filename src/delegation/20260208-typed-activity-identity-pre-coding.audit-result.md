@@ -45,7 +45,9 @@ The `details` field is **never set**. The `enumPathExpr` (which contains the qua
 2. Add `src/helios/dataBridge/EnumBridge.ts` to the work unit's Focus Files
 3. Update the plan to include this one-line fix as a prerequisite step
 
-**Status**: PENDING
+**Status**: RESOLVED — Design revised per stakeholder direction: enrich `isActivity` at `EnumBridge.mkUplcData` with `variantName`, `activityArgs`, `isDeferredRedeemer`, and `details`. This makes `EnumBridge.mkUplcData` the single identity choke point, eliminating the need for downstream extraction logic.
+
+**Resolution**: Work unit plan updated to reflect the enriched `isActivity` approach. The `details` string fallback is no longer the primary mechanism — identity is populated structurally at origin.
 
 ---
 
@@ -53,47 +55,22 @@ The `details` field is **never set**. The `enumPathExpr` (which contains the qua
 
 **Evidence**: The plan describes extracting activity identity at two call sites (create path in `mkTxnCreateRecord`/`txnCreatingRecord`, update path in `mkTxnUpdateRecord`/`txnUpdatingRecord`) using two methods (SeedActivity/UpdateActivity wrapper inspection, and `details` string parsing). This produces up to four inline extraction points for the same concept.
 
-**Impact**: DRY violation risk. If the extraction logic changes (e.g., the `details` format evolves, or a third wrapper type is added), each site must be updated independently. The two call sites will likely share the same extraction pattern:
-```
-if wrapper → use wrapper.variantName + wrapper.arg/args
-else → parse from activity.details
-```
+**Impact**: DRY violation risk. If the extraction logic changes (e.g., the `details` format evolves, or a third wrapper type is added), each site must be updated independently.
 
-**Proposed remediation**: Add a single utility function as the extraction choke point:
-```typescript
-function extractActivityIdentity(
-    activity: isActivity | SeedActivity<any> | UpdateActivity<any>
-): { activityName: string; activityArgs?: unknown }
-```
-Located alongside the context type definitions in `DelegatedDataContract.ts` (or in a shared utility). Both call sites delegate to this function. Add this to the work unit's plan.
-
-**Status**: PENDING
+**Status**: RESOLVED — Design revised: `EnumBridge.mkUplcData` is the single choke point. All `isActivity` objects carry identity from birth. No downstream extraction utilities needed. Call sites pass the activity through; identity fields are already present.
 
 ---
 
 ### y3ktnra645 (Suggestion): Plan typo — updateContext conditional references wrong type parameter
 
-**Evidence**: The work unit's plan shows:
-```typescript
-type updateContext<T, SA = any> = {
-    ...
-} & ([MA] extends [any] ? { activityName?: string; activityArgs?: unknown } : ActivityIdentity<SA>);
-```
+**Evidence**: The work unit's plan showed `[MA] extends [any]` in the `updateContext` type but the parameter is `SA`.
 
-The conditional uses `[MA]` but the type parameter is `SA`. Should be `[SA] extends [any]`.
-
-**Proposed remediation**: Fix the plan text to reference `SA` consistently.
-
-**Status**: PENDING
+**Status**: RESOLVED — Fixed in work unit plan. Now reads `[SA] extends [any]`.
 
 ---
 
 ### 9kjyp4k7sz (Suggestion): Public vs Core options boundary not explicit
 
-**Evidence**: The plan says to "thread through `CoreDgDataCreationOptions` and `CoreDgDataUpdateOptions`" but doesn't explicitly address the public `DgDataCreationOptions` and `DgDataUpdateOptions` types. The identity fields (`activityName`, `activityArgs`) should be internal-only — the framework extracts them from the activity, callers don't provide them.
+**Evidence**: The plan didn't explicitly address whether identity fields belong on public or internal options types.
 
-**Impact**: Without explicit guidance, the Coder might add identity fields to the public options types, creating a confusing API where callers could provide conflicting identity info.
-
-**Proposed remediation**: Add an explicit note to the plan: "The `activityName`/`activityArgs` fields are framework-internal. Add them to `CoreDgDataCreationOptions` and `CoreDgDataUpdateOptions` only. Do NOT add to the public `DgDataCreationOptions` or `DgDataUpdateOptions`."
-
-**Status**: PENDING
+**Status**: RESOLVED — Plan now explicitly states: identity fields go on `CoreDgDataCreationOptions` and `CoreDgDataUpdateOptions` only. NOT on public `DgDataCreationOptions` or `DgDataUpdateOptions`.
