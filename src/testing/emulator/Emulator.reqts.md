@@ -388,14 +388,14 @@ See `emulator-capo-chicken-egg.md` for full architectural details.
 
 #### Purpose: Ensures the `actor` field in `@hasNamedSnapshot` is honored consistently across all snapshot paths — build, verify, and load. Applied when implementing or modifying actor management in snapshot operations, or when reviewing snapshot decorator behavior.
 
- - **REQT-3.7.1/j9b8pr7yck**: NEXT: **Pre-build actor setup** - When building a snapshot (cache miss), the SnapWrap contentBuilder lambda MUST set the declared actor before invoking the content builder (`generateSnapshotFunc`). For `"default"`, MUST call `setDefaultActor()`; for named actors, MUST call `setActor(actorName)`.
-    - **REQT-3.7.1.1/bjeez2n09p**: NEXT: **Genesis exception** - Pre-build actor setup MUST be skipped when `parentSnapName === "genesis"`, because actors do not exist yet — the builder creates them.
+ - **REQT-3.7.1/j9b8pr7yck**: IMPLEMENTED/NEEDS VERIFICATION: **Pre-build actor setup** - When building a snapshot (cache miss), the SnapWrap contentBuilder lambda MUST set the declared actor before invoking the content builder (`generateSnapshotFunc`). For `"default"`, MUST call `setDefaultActor()`; for named actors, MUST call `setActor(actorName)`.
+    - **REQT-3.7.1.1/bjeez2n09p**: IMPLEMENTED/NEEDS VERIFICATION: **Genesis exception** - Pre-build actor setup MUST be skipped when `parentSnapName === "genesis"`, because actors do not exist yet — the builder creates them.
 
  - **REQT-3.7.2/pt47cnb818**: COMPLETED: **Post-build actor assertion** - After the content builder returns, the infrastructure MUST verify the current actor matches the declared actor and MUST fail with a descriptive error if it does not. EXPECTS the downstream content builder to keep the declared actor current by the end of its execution; builders that switch actors mid-build MUST restore the declared actor before returning.
 
  - **REQT-3.7.3/x4mzf51p6g**: COMPLETED: **Post-load actor setup** - When loading a snapshot from cache (`loadCachedSnapshot`), the infrastructure MUST set the declared actor after restoring network state. For `"default"`, MUST call `setDefaultActor()`; for named actors, MUST call `setActor(actorName)`.
 
- - **REQT-3.7.4/vwk0je2vef**: NEXT: **Single location per path** - Actor lifecycle for the build path (pre-build setup + post-build assertion) MUST be co-located in the SnapWrap contentBuilder lambda. Actor lifecycle for the load path (post-load setup) MUST remain in `loadCachedSnapshot`. These are the only two locations that manage actor state for snapshots.
+ - **REQT-3.7.4/vwk0je2vef**: IMPLEMENTED/NEEDS VERIFICATION: **Single location per path** - Actor lifecycle for the build path (pre-build setup + post-build assertion) MUST be co-located in the SnapWrap contentBuilder lambda. Actor lifecycle for the load path (post-load setup) MUST remain in `loadCachedSnapshot`. These are the only two locations that manage actor state for snapshots.
 
 > **RATIONALE (id:yx06ya2paq)**: The `actor` field in `@hasNamedSnapshot` is declarative — "this snapshot's world is this actor." Without pre-build setup, builders that don't defensively call `setActor()` work on clean builds (parent builder left the right actor) but fail on partial-cache scenarios (parent loaded from cache, actor is stale). The three-part contract (set before build, verify after build, set after load) eliminates this path-dependent fragility.
 

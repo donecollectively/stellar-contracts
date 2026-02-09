@@ -560,25 +560,35 @@ export abstract class CapoTestHelper<
                 return this.findOrCreateSnapshot(
                     snapshotName,
                     actorName,
-                    () => {
-                        return generateSnapshotFunc
-                            .apply(this, args)
-                            .then((result: any) => {
-                                // "default" means accept whatever setDefaultActor() set (just verify one is set)
-                                if (actorName === "default") {
-                                    if (!this.actorName) {
-                                        throw new Error(
-                                            `snapshot ${snapshotName}: expected default actor to be set, but no actor is set`,
-                                        );
-                                    }
-                                } else if (this.actorName !== actorName) {
-                                    throw new Error(
-                                        `snapshot ${snapshotName}: expected actor '${actorName}', but current actor is '${this.actorName}'`,
-                                    );
-                                }
-                                this.network.tick(1);
-                                return result;
-                            });
+                    async () => {
+                        // (a) Pre-build: set declared actor REQT/j9b8pr7yck
+                        // REQT/bjeez2n09p: skip genesis — actors don't exist yet
+                        if (parentSnapName !== "genesis") {
+                            if (actorName === "default") {
+                                await this.setDefaultActor();
+                            } else {
+                                await this.setActor(actorName);
+                            }
+                        }
+
+                        // REQT/vwk0je2vef: build path actor lifecycle co-located here
+                        const result = await generateSnapshotFunc.apply(this, args);
+
+                        // (b) Post-build: verify actor wasn't changed REQT/pt47cnb818
+                        // "default" means accept whatever setDefaultActor() set (just verify one is set)
+                        if (actorName === "default") {
+                            if (!this.actorName) {
+                                throw new Error(
+                                    `snapshot ${snapshotName}: expected default actor to be set, but no actor is set`,
+                                );
+                            }
+                        } else if (this.actorName !== actorName) {
+                            throw new Error(
+                                `snapshot ${snapshotName}: expected actor '${actorName}', but current actor is '${this.actorName}'`,
+                            );
+                        }
+                        this.network.tick(1);
+                        return result;
                     },
                 );
             }
