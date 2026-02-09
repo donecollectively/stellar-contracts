@@ -22,7 +22,7 @@ import {
     type StellarTestContext,
 } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
-import { SNAP_ACTORS, SNAP_CAPO_INIT, SNAP_DELEGATES, type PreSelectedSeedUtxo } from "../src/testing/CapoTestHelper.js";
+import { CapoTestHelper, SNAP_ACTORS, SNAP_CAPO_INIT, SNAP_DELEGATES, type PreSelectedSeedUtxo } from "../src/testing/CapoTestHelper.js";
 
 // Test context type for Capo-based tests
 type CapoTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -835,5 +835,74 @@ describe("Incremental Snapshot Storage (REQT-1.2.5)", () => {
                 expect(ids.length).toBe(uniqueIds.size);
             }
         });
+    });
+});
+
+// --- Regression test for partial-cache actor setup (C-1, REQT/j9b8pr7yck) ---
+
+/**
+ * Test helper that adds a snapshot with actor: "tracy" (not the default "tina").
+ * The builder deliberately does NOT call setActor() — it relies on the
+ * pre-build actor setup (a) in the contentBuilder lambda.
+ */
+class PartialCacheTestHelper extends DefaultCapoTestHelper {
+    /** Records which actor was active when the builder ran */
+    builderEntryActor: string | undefined;
+
+    @CapoTestHelper.hasNamedSnapshot({
+        actor: "tracy",
+        parentSnapName: "bootstrapped",
+    })
+    async snapToActorVerification() {
+        return this.actorVerification();
+    }
+
+    async actorVerification() {
+        // Record the actor at entry — NO defensive setActor() call
+        this.builderEntryActor = this.actorName;
+        // Trivial operation so the snapshot captures something
+        this.network.tick(1);
+        return this.strella;
+    }
+}
+
+type PartialCacheTC = StellarTestContext<PartialCacheTestHelper>;
+const describePartialCache = descrWithContext<PartialCacheTC>;
+const itPartialCache = itWithContext<PartialCacheTC>;
+
+describePartialCache("Pre-build actor setup on partial-cache rebuild (REQT/j9b8pr7yck)", () => {
+    beforeEach<PartialCacheTC>(async (context) => {
+        await new Promise((res) => setTimeout(res, 10));
+        await addTestContext(context, PartialCacheTestHelper);
+    });
+
+    itPartialCache("builder sees declared actor when parent is cached but child is not", async ({ h }: PartialCacheTC) => {
+        // Step 1: Warm up full chain including the test snapshot
+        await h.snapToActorVerification();
+
+        // Step 2: Find the child's disk cache path
+        const snap = await h.snapshotCache.find("actorVerification", h);
+        expect(snap).not.toBeNull();
+        expect(snap!.path).toBeDefined();
+        const childCachePath = snap!.path!;
+        expect(existsSync(childCachePath)).toBe(true);
+
+        // Step 3: Delete child's disk cache only (parent chain stays on disk)
+        rmSync(childCachePath, { recursive: true });
+        expect(existsSync(childCachePath)).toBe(false);
+
+        // Step 4: Clear in-memory snapshot cache (forces disk lookups)
+        (h.snapshotCache as any).loadedSnapshots.clear();
+
+        // Step 5: Set a different actor to create observable stale state
+        await h.setActor("tom");
+        h.builderEntryActor = undefined;
+
+        // Step 6: Load the snapshot again — parent hits disk, child misses → triggers build
+        await h.snapToActorVerification();
+
+        // Step 7: Verify the builder saw the declared actor ("tracy"), not the stale one ("tom")
+        // REQT/j9b8pr7yck: pre-build actor setup must fire before the builder
+        expect(h.builderEntryActor).toBe("tracy");
     });
 });

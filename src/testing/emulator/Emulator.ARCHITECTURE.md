@@ -344,9 +344,13 @@ type ParentSnapName =
     | (string & {});                    // custom snapshot name
 
 type SnapshotDecoratorOptions = {
-  actor: string;                        // actor to set after loading:
+  actor: string;                        // declarative: "this snapshot's world is this actor"
                                         //   "default" → setDefaultActor() (abstract)
                                         //   other → setActor(name)
+                                        // honored in all paths (REQT/yx06ya2paq):
+                                        //   (a) set before builder runs (skip for genesis)
+                                        //   (b) asserted after builder returns
+                                        //   (c) set after loading from cache
   parentSnapName: ParentSnapName;       // explicit parent snapshot name
   internal?: boolean;                   // skip reusableBootstrap() for bootstrap-internal snapshots
   resolveScriptDependencies?: ScriptDependencyResolver;
