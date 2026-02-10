@@ -87,7 +87,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return this.strella;
     }
 
-    @CapoTestHelper.hasNamedSnapshot("installingTestDataPolicy", {
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "capoInitialized",
     })
@@ -105,7 +105,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return this.submitTxnWithBlock(tcx);
     }
 
-    @CapoTestHelper.hasNamedSnapshot("hasTestDataPolicyDgt", {
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "capoInitialized",
     })
@@ -121,7 +121,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return this.submitTxnWithBlock(tcx);
     }
 
-    @CapoTestHelper.hasNamedSnapshot("replacingTestDataPolicy", {
+    @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "capoInitialized",
     })
