@@ -9,6 +9,7 @@ import {
 } from "vitest";
 
 import { makeAddress, makeValidatorHash } from "@helios-lang/ledger";
+import { bytesToHex } from "@helios-lang/codec-utils";
 
 import { ADA, addTestContext } from "../src/testing/types";
 import { StellarTestContext } from "../src/testing/StellarTestContext";
@@ -510,11 +511,13 @@ describe("Capo", () => {
 
             const script = (await mintDelegate.asyncCompiledScript())!;
             // uses the reference script in the minting txn:
+            // Compare by hash — toString() differs (named vs anonymous UPLC params)
+            const scriptHash = bytesToHex(script.hash());
             expect(
                 tcx2b.txRefInputs.find(
                     (i) =>
-                        i.output.refScript?.toString() ==
-                        script.toString()
+                        i.output.refScript &&
+                        bytesToHex(i.output.refScript.hash()) === scriptHash
                 )
             ).toBeTruthy();
         });
