@@ -246,6 +246,14 @@ export abstract class StellarTestHelper<
         // Use class-level default helperState if none provided
         this.helperState = helperState ??
             (this.constructor as typeof StellarTestHelper).defaultHelperState;
+        // Ensure critical fields exist (test files commonly use `as any` casts
+        // that omit required fields like actorContext)
+        if (!this.helperState.actorContext) {
+            this.helperState.actorContext = { others: {}, wallet: undefined };
+        }
+        if (!this.helperState.namedRecords) {
+            this.helperState.namedRecords = {};
+        }
         const cfg = config || {};
         if (Object.keys(cfg).length) {
             console.log(

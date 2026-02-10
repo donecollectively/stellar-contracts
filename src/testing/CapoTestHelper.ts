@@ -181,7 +181,21 @@ export abstract class CapoTestHelper<
         // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym) - no binding
         this.snapshotCache.register(SNAP_ACTORS, {
             parentSnapName: "genesis",
-            resolveScriptDependencies: async (helper) => (helper as this).resolveActorsDependencies(),
+            resolveScriptDependencies: async (helper) => {
+                const h = helper as CapoTestHelper<any, any>;
+                // Ensure actors are set up so cache key includes actor data.
+                // Without this, find() computes key with actorCount=0 (before build)
+                // while store() computes with actorCount=N (after build) — permanent cache miss.
+                if (h.actorSetupInfo.length === 0) {
+                    h._silentActorSetup = true;
+                    try {
+                        await h.setupActors();
+                    } finally {
+                        h._silentActorSetup = false;
+                    }
+                }
+                return h.resolveActorsDependencies();
+            },
             // Label includes seed for easier debugging (ARCH-jj5swg0hfk)
             computeDirLabel: (inputs) => `seed${inputs.extra?.randomSeed ?? ''}`,
         });
@@ -561,14 +575,20 @@ export abstract class CapoTestHelper<
                     snapshotName,
                     actorName,
                     async () => {
+                        // DIAGNOSTIC: trace contentBuilder entry for clean-cache debugging
+                        console.log(`  [contentBuilder:${snapshotName}] ENTERED — current actor: '${this.actorName}', declared: '${actorName}', parent: '${parentSnapName}'`);
+
                         // (a) Pre-build: set declared actor REQT/j9b8pr7yck
                         // REQT/bjeez2n09p: skip genesis — actors don't exist yet
                         if (parentSnapName !== "genesis") {
                             if (actorName === "default") {
+                                console.log(`  [contentBuilder:${snapshotName}] calling setDefaultActor()`);
                                 await this.setDefaultActor();
                             } else {
+                                console.log(`  [contentBuilder:${snapshotName}] calling setActor('${actorName}'), currently '${this.actorName}'`);
                                 await this.setActor(actorName);
                             }
+                            console.log(`  [contentBuilder:${snapshotName}] after setActor: '${this.actorName}'`);
                         }
 
                         // REQT/vwk0je2vef: build path actor lifecycle co-located here
@@ -1125,7 +1145,7 @@ export abstract class CapoTestHelper<
             const entry = this.snapshotCache["registry"].get(snapshotName);
             const isGenesis = entry?.parentSnapName === "genesis";
             const cacheElapsed = (performance.now() - cacheStart).toFixed(1);
-            console.log(`  ⚡ cache hit${isGenesis ? ' (genesis)' : ''} '${snapshotName}': ${cacheElapsed}ms`);
+            console.log(`  ⚡ cache hit${isGenesis ? ' (genesis)' : ''} '${snapshotName}': ${cacheElapsed}ms [DIAGNOSTIC: contentBuilder SKIPPED, actor='${this.actorName}']`);
             return cached;
         }
         console.log(`  📦 cache miss '${snapshotName}' - building...`);

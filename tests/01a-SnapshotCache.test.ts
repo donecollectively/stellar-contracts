@@ -597,6 +597,56 @@ describe("Egg/Chicken Pattern for Disk Cache (REQT-3.6)", () => {
     });
 });
 
+// Cache Key Consistency Tests - verify find() and store() compute the same cache key
+// Bug: Constructor registers bootstrapWithActors resolver WITHOUT setupActors() guard,
+// so find() computes cache key with actorCount=0, while store() (after build) sees actorCount=6.
+
+describe("Cache Key Consistency (bootstrapWithActors resolver)", () => {
+    beforeEach<CapoTC>(async (context) => {
+        await new Promise((res) => setTimeout(res, 10));
+        await addTestContext(context, DefaultCapoTestHelper);
+    });
+
+    it("registered resolver populates actors before computing cache key", async ({ h }: CapoTC) => {
+        // The snapshotCache registry should have a resolver for bootstrapWithActors
+        const entry = (h.snapshotCache as any).registry.get(SNAP_ACTORS);
+        expect(entry).toBeDefined();
+        expect(entry.resolveScriptDependencies).toBeDefined();
+
+        // Simulate the state find() sees: fresh helper, no actors yet
+        h.actorSetupInfo = [];
+
+        // Call the resolver exactly as find() does
+        const inputs = await entry.resolveScriptDependencies(h);
+
+        // The resolver MUST have called setupActors() to populate the actor list.
+        // If it didn't, actorCount=0 and find() computes a different cache key than store().
+        expect(inputs.extra.actors.length).toBeGreaterThan(0);
+    });
+
+    it("find() and store() would compute the same cache key", async ({ h }: CapoTC) => {
+        const entry = (h.snapshotCache as any).registry.get(SNAP_ACTORS);
+        expect(entry).toBeDefined();
+
+        // Simulate find() path: no actors yet
+        h.actorSetupInfo = [];
+        const findInputs = await entry.resolveScriptDependencies(h);
+        const findKey = h.snapshotCache.computeKey(null, findInputs);
+
+        // Simulate store() path: actors have been created by the builder
+        // (setupActors was already called above if resolver is correct,
+        //  but if not, call it now to simulate what the builder does)
+        if (h.actorSetupInfo.length === 0) {
+            await h.setupActors();
+        }
+        const storeInputs = await entry.resolveScriptDependencies(h);
+        const storeKey = h.snapshotCache.computeKey(null, storeInputs);
+
+        // Both keys MUST match — otherwise cache is permanently broken
+        expect(findKey).toBe(storeKey);
+    });
+});
+
 // Incremental Storage Tests - verify correct transaction counts at each snapshot level
 // These tests verify that:
 // 1. Root snapshot (actors) stores all genesis transactions
