@@ -38,21 +38,15 @@ See essential-stellar-dapp-architecture.md for more details about the overall ar
 - usingAuthority: CharterData-only admin gate; enforces governance authorization helper.
 
 ### CapoLifecycleActivities in the mint/spend delegates (BasicDelegate.hl); not used by data-policy delegates:
-- Guard rails: charter context + gov authority; the delegate’s redeemer must match the Capo’s lifecycle redeemer. Role is decided by dgtRolesForLifecycleActivity (mint, spend, or both).
+- Guard rails: charter context + gov authority; the delegate's redeemer must match the Capo's lifecycle redeemer. Role is decided by dgtRolesForLifecycleActivity (mint, spend, or both).
 - CreatingDelegate: mint delegate validates minting a new delegate UUT and that the next charter data installs it; other delegates are rejected.
 - queuePendingChange: mint delegate-centric. Validates queued Add/Replace for a data-policy delegate (UUT mint, ownership, idPrefix, no duplicates). Spend path is effectively disabled.
 - commitPendingChanges: split duties. Spend delegate (when acting) checks the pending changes were applied to the next manifest; mint delegate (when acting) checks required burns for removed/replaced delegate tokens.
-- updatingManifest: currently only “add entry” is supported; role-gated (typically spend). Ensures the new manifest entry matches the token and the remainder is unchanged. Other manifest mutations are TODO.
+- updatingManifest: currently only "add entry" is supported; role-gated (typically spend). Ensures the new manifest entry matches the token and the remainder is unchanged. Other manifest mutations are TODO.
 - removePendingChange: stub/TODO (intended for spend).
 - forcingNewMintDelegate / forcingNewSpendDelegate: rejected in delegates (Capo handles these directly).
 
-### CapoLifecycleActivity responsibility detail
-- Any CapoLifecycleActivity requires charter context + gov authority; delegate redeemer must match Capo’s redeemer; role gate determined by dgtRolesForLifecycleActivity.
-- CreatingDelegate: mint delegate validates UUT mint and that the next CharterData installs it; other delegates rejected.
-- queuePendingChange: mint delegate path; validates add/replace for data-policy delegates (UUT mint, ownership, idPrefix match, no duplicates/replacements out of order). Spend path effectively disabled.
-- commitPendingChanges: spend delegate checks pending→manifest applied; mint delegate checks required burns for removed/replaced delegate tokens.
-- updatingManifest: role-gated (usually spend); currently only “add entry” supported; verifies new entry matches provided token and the rest is unchanged; other mutations TODO.
-- Forcing delegates: rejected in delegates (Capo handles directly).
+For on-chain script-level enforcement details (redeemer matching, `dgtRolesForLifecycleActivity` gating, validation logic), see `reference/essential-stellar-onchain.md` § "CapoLifecycleActivity summary". For off-chain transaction-building interfaces that trigger these lifecycle activities, see `reference/essential-offchain-bootstrapping.md`.
 
 
 

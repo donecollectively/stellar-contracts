@@ -28,6 +28,8 @@ You'll need to be familiar with `reference/essential-cardano.md` and `reference/
  - application-specific data indexing: dApps can use basic blockchain indexers like Blockfrost to load their essential data, but they can also define more advance indexing strategies to support application-specific data queries and reporting.  Self-sovereign indexing and decentralized data-indexing services are being built to support many different application use-cases of this kind.
 
 ## Components (sources)
+These are described here from an architectural perspective. For off-chain Typescript APIs, see `reference/essential-stellar-offchain.md` § "Core classes". For on-chain enforcement details, see `reference/essential-stellar-onchain.md`.
+
 - Capo contract: `src/Capo.ts` (treasury/data hub, charter token, manifest).  The typescript class contains methods for creating and evolving the on-chain contracts, finding on-chain utxos, and managing the charter utxo.  Along with the on-chain Capo script enforcing those same safety-critical operations, it is the central point of control for dApp's on-chain operations.  
 - CapoMinter: `src/minting/CapoMinter.ts` (fixed policy, defers to mint delegate).  The off-chain class has just a few key methods supporting the Capo lifecycle.  It and the Capo policy defer to the mint/spend delegates for all day-to-day transaction policy enforcement.
 - Delegates:
@@ -53,6 +55,8 @@ Because most UTxOs are stored in the Capo, data-policies can be trivially upgrad
 - Off-chain SDK: Capo + delegates + txn context for assembly.
 
 ## Data/UTxO model
+For the actual Helios type definitions (CapoDatum variants, CIP-68 structure, datum alignment), see `reference/essential-stellar-onchain.md` § "Core on-chain types".
+
 - Capo address holds: charter UTxO (inline `CharterData`), delegated-data UTxOs, ref-script UTxOs, settings UTxO, manifest-driven UTxOs.
 - Authority tokens (UUTs) prove delegate control of policy to the on-chain Capo script; manifest entries map data-type/role to tokenName (and optional mph). These tokens are held at the delegate's own script address with the DelegateDatum::IsDelegation datum variant (from CapoDelegateHelpers). This IsDelegation datum is the standard delegation datum used for all delegate authority tokens (mint/spend/data-policy/named), and it’s what binds the UUT to the policy script.
      - its IsDelegation details connect that delegate back to the Capo address, its mph, and its token name.  
@@ -88,11 +92,7 @@ Because most UTxOs are stored in the Capo, data-policies can be trivially upgrad
 - Install/replace data policy: queue pending change (new controller link, idPrefix); commit to manifest; optional burn old token; add ref script for new policy.
 
 ### Responsibilities:
-- Mint delegate: CreatingDelegate; queuePendingChange checks; its share of commitPendingChanges (burns).
-- Spend delegate: commitPendingChanges (manifest application); future manifest updates; other lifecycle actions when dgtRolesForLifecycleActivity says spend.
-- Capo only: forced delegate swaps, ref-script retire, base delegated-data id/token consistency; governance gating for lifecycle/admin.
-
-See `reference/essential-capo-lifecycle.md` for more details.
+Lifecycle responsibilities are divided between mint delegate, spend delegate, and the Capo itself — see `reference/essential-capo-lifecycle.md` for the full breakdown.
 
 ## Key Conventions
 

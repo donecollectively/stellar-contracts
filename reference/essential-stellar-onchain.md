@@ -13,6 +13,8 @@ You may sometimes need to inspect the onchain library code in stellar-contracts 
 All activities and datums are defined in Helios code, either in a library file or in an application-specific file.  Those are `.hl` files, not Typescript/javascript.
 
 ## Capo validator (leader)
+The similarly-named off-chain Typescript classes provide Javascript access for transaction-building and lifecycle methods related to these policies — see `reference/essential-stellar-offchain.md` § "Core classes". For architectural context, see `reference/essential-stellar-dapp-architecture.md` § "Components".
+
 - Sources: `src/Capo.ts`, `src/CapoHelpers.hl`, `src/delegation/CapoDelegateHelpers.hl`, `src/minting/CapoMinter.ts`.
 - Purpose: treasury/data hub locked by Capo script; owns charter token; coordinates delegates.
 - Parameters: `mph` (minting policy hash), seed txn/id, feature flags (off-chain), optional precompiled bundle.
@@ -44,14 +46,15 @@ All activities and datums are defined in Helios code, either in a library file o
 - Used to locate settings/data refs and delegate thread tokens; defaults mph=Capo mph.
 
 ## Helper modules (CapoHelpers / CapoDelegateHelpers / StellarHeliosHelpers)
-- CapoHelpers: on-chain helpers to interpret CapoDatum, manifest, delegate links; shared enums/structs for manifest entries, pending changes, delegate roles.
-- CapoDelegateHelpers: delegate-link utilities and lifecycle/authority helpers used by Capo, minter, mint/spend delegates, data-policy delegates, and named delegates.
-- StellarHeliosHelpers: generic utilities for redeemers, Values, CIP-68 map unwrapping, logging/requirements, and time helpers.
+- CapoHelpers (`src/CapoHelpers.hl`): defines the CapoDatum enum supporting various types of data stored at the Capo address, along with the structs and enum definitions supporting those data — manifest entries, pending changes, delegate roles.
+- CapoDelegateHelpers (`src/delegation/CapoDelegateHelpers.hl`): defines the structs and enum definitions supporting delegate links and activities. Lifecycle/authority helpers used by Capo, minter, mint/spend delegates, data-policy delegates, and named delegates.
+- StellarHeliosHelpers (`src/StellarHeliosHelpers.hl`): generic utilities for redeemers, Values, CIP-68 map unwrapping, logging/requirements, and time helpers. `REQT()` expresses invariant requirements with grouped variants (`REQTgroup`, `bREQTgroup`, `REQTgroupUnit`) providing boolean/unit return values, nested function execution, and implicit logging groups.
 
 ### UTxO & value helpers
 - `UtxoSource`, `dgd_DataSrc` classify delegated-data input/ref/output provenance.
-- `mustFindInputRedeemer`, `getOutputWithValue` parse common tx structures.
-- `mkTv`, `tvCharter` construct Values with Capo mph + token names; `DgTknDisposition` marks delegate token returned vs created.
+- `outputAndDatum{output, datum, rawData}` struct pairs outputs with datums; `fromCip68Wrapper(data)` unwraps CIP-68 map.
+- `mustFindInputRedeemer(txInput)` fetches the redeemer for a specific input; `getOutputWithValue`, `getOutputForInput` parse common tx structures.
+- `mkTv(mph, tn|tnBytes, count)`, `tvCharter(mph)` construct Values with Capo mph + token names; `DgTknDisposition` marks delegate token returned vs created.
 
 ### Logging & REQT utilities
 - `logGroupStart` / `logGroupEnd` mark logging groups; `logGroup` / `logGroupUnit` wrap callbacks with grouped output; `TRACE`, `TODO` emit diagnostics.
@@ -59,12 +62,20 @@ All activities and datums are defined in Helios code, either in a library file o
 - `REQTgroupStart` opens a requirement-labelled group; `assertREQTgroup` / `bREQTgroup` execute callbacks with grouped assertions; generic `REQTgroup[T]` wraps any callback and returns its result; `REQTgroupUnit` is the unit-return variant.
 - See `reference/essential-stellar-onchain-diagnostics.md` for more details about using the logging and REQT utilities.
 
+### Time helpers
+- `getTimeRange`, `startsAfter/Before`, `now`, `startsExactlyAt`, `endsExactlyAt`.
+
+### Token return checks
+- `returnsValueToScript(value)` ensures value returned to same script.
+
 ### Roles, links, and safety helpers
 - `RelativeDelegateLink` authority helpers: `hasDelegateInput`, `hasValidOutput`, `validatesUpdatedSettings`, `tvAuthorityToken`, `acAuthorityToken`.
 - Safety helpers: `unmodifiedDelegation`, `requiresNoDelegateInput`.
 - Delegate roles/enums (DelegateRole, CapoLifecycleActivity, DelegateLifecycleActivity, ManifestActivity, PendingDelegateAction, AbstractDelegateActivitiesEnum) are defined here; lifecycle intent/details are expanded in `reference/essential-capo-lifecycle.md`.
 
 ## Core on-chain types (highlights)
+For the conceptual data model (what lives where and why), see `reference/essential-stellar-dapp-architecture.md` § "Data/UTxO model".
+
 - Enum `CapoDatum` (`CapoHelpers.hl`):
   - `CharterData{spendDelegateLink, spendInvariants, otherNamedDelegates, mintDelegateLink, mintInvariants, govAuthorityLink, manifest:Map[String]CapoManifestEntry, pendingChanges:[]PendingCharterChange}`
   - `ScriptReference`
@@ -110,48 +121,22 @@ All activities and datums are defined in Helios code, either in a library file o
     - MultipleDelegateActivities (activities: []Data): ??? need to review and clarify how/whether dgData policies use this.
     - OtherActivities (activity: Data): policy-specific activity types
 
-### CapoLifecycleActivity summary (responsibility + intent)
+### CapoLifecycleActivity summary (on-chain enforcement)
 
-Executes upgradeable policies governing the Capo's charter.  Enforced by the CURRENT spend delegate.
+Executes upgradeable policies governing the Capo's charter.  Enforced by the CURRENT spend delegate.  For the general responsibility model and delegate role assignments, see `reference/essential-capo-lifecycle.md`. For off-chain transaction-building interfaces, see `reference/essential-offchain-bootstrapping.md`.
 
-Common gate: Any CapoLifecycleActivity requires charter context + gov authority; the delegate’s redeemer must match the Capo’s charter redeemer. Role is determined by dgtRolesForLifecycleActivity, so the script enforces you’re acting as the right delegate before handling specifics.
+Common gate: Any CapoLifecycleActivity requires charter context + gov authority; the delegate's redeemer must match the Capo's charter redeemer. Role is determined by `dgtRolesForLifecycleActivity`, so the script enforces you're acting as the right delegate before handling specifics.
 
  - CreatingDelegate: Mint delegate validates minting a new delegate UUT and that the next charter data contains the matching delegate link/output. Spend/other delegates are rejected here.
- - queuePendingChange: Mint delegate owns the path (spend path effectively disabled). It checks the queued Add/Replace for a data-policy delegate: validates UUT mint, ownership, idPrefix match, duplicate prevention, and replacement token matching. Only DelegateRole::DgDataPolicy is supported here.
+ - queuePendingChange: Mint delegate owns the path (spend path effectively disabled). It checks the queued Add/Replace for a data-policy delegate: validates UUT mint, ownership, idPrefix match, duplicate prevention, and replacement token matching. Only `DelegateRole::DgDataPolicy` is supported here.
  - commitPendingChanges: Split duties. Spend delegate (when acting) walks pending changes vs next manifest to ensure queued adds/replaces/removes are reflected. Mint delegate (when acting) ensures required burns for removed/replaced delegate tokens are present and nothing extra is burned.
- - updatingManifest: Role-gated (typically spend). Ensures only manifest updates happen; currently only supports addingEntry, verifying the new entry matches the provided token and the remainder is unchanged (other cases are TODO). Mint requirement appears only for forkingThreadToken (TODO).
+ - updatingManifest: Role-gated (typically spend). Ensures only manifest updates happen; currently only supports `addingEntry`, verifying the new entry matches the provided token and the remainder is unchanged (other cases are TODO). Mint requirement appears only for `forkingThreadToken` (TODO).
  - removePendingChange: Stub/TODO; intended for spend delegate to undo queued changes, but currently errors.
- - forcingNewMintDelegate / forcingNewSpendDelegate: Rejected in this delegate; marked as Capo-only escape hatches.  Any CapoLifecycleActivity tagged HandledByCapoOnly (per dgtRolesForLifecycleActivity) is rejected up front, so non-applicable delegates can’t execute those paths.
+ - forcingNewMintDelegate / forcingNewSpendDelegate: Rejected in this delegate; marked as Capo-only escape hatches.  Any CapoLifecycleActivity tagged `HandledByCapoOnly` (per `dgtRolesForLifecycleActivity`) is rejected up front, so non-applicable delegates can't execute those paths.
 
 
-## On-chain utility functions (StellarHeliosHelpers.hl)
-- Value helpers: `mkTv(mph, tn|tnBytes, count)`; `tvCharter(mph)`.
-- Redeemers: `mustFindInputRedeemer(txInput)` to fetch redeemer for a specific input.
-- Datum helpers: `fromCip68Wrapper(data)` unwraps CIP-68 map; `outputAndDatum{output, datum, rawData}` struct; `getOutputWithValue`, `getOutputForInput`.
-- Logging/requirements: `REQT`, `bREQT`, `REQTgroup*`, `logGroup*`, `TRACE`, `TODO`.
-- Time: `getTimeRange`, `startsAfter/Before`, `now`, `startsExactlyAt`, `endsExactlyAt`.
-- Token return checks: `returnsValueToScript(value)` ensures value returned to same script.
 
-
-## Helper data types and functions
-
-CapoHelpers.hl defines the CapoDatum enum supporting various types of data stored at the Capo address, along with the structs and enum definitions supporting those data.  See essential-stellar-onchain.md for more details about these.
-
-CapoDelegateHelpers.hl defines the structs and enum definitions supporting the delegate links and activities.  Find more information below about these.
-
-StellarHeliosHelpers.hl defines functions and struct definitions for various purposes: `mustFindInputRedeemer` locates input redeemers for specific inputs in the transaction, `mkTv`, `tvCharter` constructing Values with Capo mph + token names, `REQT()` expressing invariant requirements (with REQTgroup(...callback), bREQTgroup(...callback), REQTgroupUnit(...callback), providing boolean/unit return values, nested function execution and implicit logging groups), and diagnostic logging (logGroupStart/End, TODO, TRACE), and other helper functions and generic data types.
-
-
-### UTXO & value helpers
-- `UtxoSource`, `dgd_DataSrc` classify input/ref/output provenance for delegated data.
-- `outputAndDatum`, `fromCip68Wrapper`, `mustFindInputRedeemer` parse common structures.
-- `mkTv`, `tvCharter` construct Values with Capo mph + token names.
-- `DgTknDisposition` marks delegate token returned vs created.
-
-### Logging & REQT utilities
-- REQT/REQTgroup/bREQT annotate invariant requirements; `logGroup*` helpers for structured tracing.
-
-### Delegate enforcement and other helpers 
+## Delegate enforcement and other helpers
 - Use `CapoDatum::DelegatedData` shape (`@id`, `tpe` keys) and manifest entries (`CapoManifestEntry`) to bind record type → data-policy.
 - Enforce authority: require delegate UUT via `RelativeDelegateLink.hasDelegateInput/hasValidOutput`, `mustReturnValueToScript` (CapoDelegateHelpers.hl), or prefer the higher-level `requiresMintDelegateInput()`/`requiresSpendDelegateInput()` helpers in CapoCtx.
   - struct `CapoCtx` helpers: 
@@ -185,7 +170,7 @@ Most helpers implicitly throw an error, making the transaction invalid, if they 
 - Charter update: spend charter UTxO with `updatingCharter` + redeemers from delegates as required; keeps charter token; can queue `pendingChanges` (delegate installs) then commit them.
 - Charter ref: many flows use charter UTxO as reference input instead of spending when only reading.
 
-See essential-capo-lifecycle.md for more details about the charter lifecycle and responsibilities.
+See `reference/essential-capo-lifecycle.md` for more details about the charter lifecycle and responsibilities. For the off-chain transaction-building interfaces that drive these flows, see `reference/essential-offchain-bootstrapping.md`.
 
 
 ## Delegate enforcement (on-chain contracts)

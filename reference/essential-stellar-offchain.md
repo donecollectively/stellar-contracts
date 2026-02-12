@@ -10,12 +10,11 @@ If you need to do test automation, you should also read `reference/essential-ste
 
 ## On-chain vs. Off-chain Roles
 
--   **On-chain (Validator):** On-chain policies only **validate** submitted transactions against a set of rules. They are the source of truth and security. They cannot construct or modify transactions.
--   **Off-chain (Constructor):** The off-chain code detailed here **constructs** transactions. It is responsible for building a transaction that satisfies the on-chain policy.
-
-**Summary for Agent:** Your role is off-chain. You will use the classes and methods in this document to build transactions. The on-chain code will then validate your work. Success depends on building a valid transaction.
+**On-chain validates, off-chain constructs** — see `essential-cardano.md` for the fundamental model. Your role here is off-chain: use the classes and methods in this document to build transactions that satisfy the on-chain policy.
 
 ## Core classes
+The on-chain versions of these have similar naming and contain the on-chain enforcement of policies, but they're distinct — see `reference/essential-stellar-onchain.md`. For architectural context, see `reference/essential-stellar-dapp-architecture.md` § "Components".
+
 - `Capo` (extends StellarContract): orchestrates charter mint/update, delegates, manifest, delegated data, ref scripts.  `src/Capo.ts`.
 - `CapoMinter`: fixed minting policy script; mints charter token + UUTs; defers policy to mint delegate except forced admin paths.  `src/minting/CapoMinter.ts`.
 - `ContractBasedDelegate`: base for script-backed delegate controllers (mint/spend/data/named). Provides bundle wiring, activity/datum accessors, authority token helpers.  `src/delegation/ContractBasedDelegate.ts`.
