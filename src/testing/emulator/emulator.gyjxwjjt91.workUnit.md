@@ -5,6 +5,8 @@
 **Audit**: `snapshot-impl-audit.4xb49a4jyw`
 **Created**: 2026-02-02
 
+> **Required context**: Load [work-planner.SKILL.md](../../../skillz/work-planner/work-planner.SKILL.md) for lifecycle protocol, team composition, and sign-off procedures before operating on this work unit.
+
 ## References
 
 | Type | ID | Description |

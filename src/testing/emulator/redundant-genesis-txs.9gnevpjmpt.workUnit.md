@@ -4,6 +4,8 @@
 **Audit**: `redundant-genesis-txs.audit.md`
 **Finding**: `n4p8x7c2qm`
 
+> **Required context**: Load [work-planner.SKILL.md](../../../skillz/work-planner/work-planner.SKILL.md) for lifecycle protocol, team composition, and sign-off procedures before operating on this work unit.
+
 ## Problem
 
 Child snapshots are storing duplicate `genesis` arrays. Each snapshot in the chain currently stores the full genesis (24 txs), wasting disk space and violating incremental storage principles.

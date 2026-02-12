@@ -6,6 +6,8 @@
 **Estimated Complexity**: Medium-High
 **Test File**: `tests/01a-SnapshotCache.test.ts`
 
+> **Required context**: Load [work-planner.SKILL.md](../../../skillz/work-planner/work-planner.SKILL.md) for lifecycle protocol, team composition, and sign-off procedures before operating on this work unit.
+
 ## Summary
 
 Implement the egg/chicken pattern to enable cache key computation when loading chartered Capo from disk, solving the chicken-and-egg problem where cache key needs `configuredParams` but those only exist after minting.

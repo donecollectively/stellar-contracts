@@ -4,6 +4,8 @@
 **Created**: 2026-02-03
 **Status**: Complete
 
+> **Required context**: Load [work-planner.SKILL.md](../../skillz/work-planner/work-planner.SKILL.md) for lifecycle protocol, team composition, and sign-off procedures before operating on this work unit.
+
 ## Required Skills
 
 - TypeScript

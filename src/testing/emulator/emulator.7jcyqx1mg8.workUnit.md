@@ -4,6 +4,8 @@
 **Status**: completed
 **Relates to**: ARCH-rmegyaj58k (Build App Snapshot with Cached Parent), ARCH-1d82vckcae (SnapshotCache)
 
+> **Required context**: Load [work-planner.SKILL.md](../../../skillz/work-planner/work-planner.SKILL.md) for lifecycle protocol, team composition, and sign-off procedures before operating on this work unit.
+
 **Required Skills**:
 - TypeScript off-chain development
 - Testing framework (Vitest, emulator snapshot system)

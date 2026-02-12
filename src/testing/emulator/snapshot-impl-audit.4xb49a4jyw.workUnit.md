@@ -5,6 +5,8 @@
 *Expertise: Architect (system prompt) + Discrepancy Audit skill*
 *Theme: Goal state alignment - implementation should match architecture*
 
+> **Required context**: Load [work-planner.SKILL.md](../../../skillz/work-planner/work-planner.SKILL.md) for lifecycle protocol, team composition, and sign-off procedures before operating on this work unit.
+
 ## Audit Configuration
 
 **Target**: `Emulator.ARCHITECTURE.md` workflows/interfaces vs implementation

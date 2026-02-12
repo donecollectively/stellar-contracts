@@ -3,6 +3,8 @@
 **UUT**: `0rkf9rncgw`
 **Created**: 2026-02-04
 
+> **Required context**: Load [work-planner.SKILL.md](../../../skillz/work-planner/work-planner.SKILL.md) for lifecycle protocol, team composition, and sign-off procedures before operating on this work unit.
+
 ## References
 
 | Type | ID | Description |
