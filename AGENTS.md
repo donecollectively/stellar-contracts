@@ -9,10 +9,16 @@ see `AGENTS-internals.md`.
 
 ## Project Overview
 
-Stellar Contracts is a TypeScript library for building sophisticated Cardano
-smart contracts using the Helios language. It provides a framework for creating
-upgradeable, multi-contract applications with data management capabilities
-similar to database applications, while leveraging Cardano's blockchain technology.
+Stellar Contracts is a TypeScript library for building sophisticated **Cardano**
+smart contracts using the **Helios** on-chain language. It provides a framework
+for creating upgradeable, multi-contract applications with data management
+capabilities similar to database applications, while leveraging Cardano's
+UTxO-based blockchain technology.
+
+### Name Disambiguation
+
+"Stellar" is a project name. This has no relation to the Stellar blockchain,
+Soroban, or Horizon.
 
 ## Reference Directory Index
 
