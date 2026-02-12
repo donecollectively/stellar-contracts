@@ -4,7 +4,7 @@
 
 Before studying this document, you should understand cardano essentials in `essential-cardano.md`, and the overall architecture and transaction patterns in `reference/essential-stellar-dapp-architecture.md`, and the lifecycle duties in `reference/essential-capo-lifecycle.md`.
 
-Use this as a map; you should also understand lifecycle duties in `reference/essential-capo-lifecycle.md`.  You may sometimes need `reference/essential-helios-api.md` for more details on the Helios API, but you're more likely to need context from kickstart guide `reference/essential-stellar-dapp-kickstart.md`, or stellar-contracts `docs/` contents, or to reference the source code in StellarTxnContext.ts, DelegatedDataContract.ts, or its parent classes.
+Use this as a map; you should also understand lifecycle duties in `reference/essential-capo-lifecycle.md`.  You may sometimes need `reference/essential-helios-api.md` for lower-level details on the Helios off-chain SDK (transaction building primitives, ledger types, value/address construction), but you're more likely to need context from kickstart guide `reference/essential-stellar-dapp-kickstart.md`, or stellar-contracts `docs/` contents, or to reference the source code in StellarTxnContext.ts, DelegatedDataContract.ts, or its parent classes.
 
 If you need to do test automation, you should also read `reference/essential-stellar-testing.md`.
 
@@ -168,6 +168,7 @@ For initial setup — chartering, installing policies, ref scripts, and first de
 
 ## Cross-links
 - On-chain basics: `reference/essential-stellar-onchain.md`
+- Helios off-chain SDK: `reference/essential-helios-api.md`
 - UI support: `reference/essential-stellar-ui.md`
 - Architecture view: `reference/essential-stellar-dapp-architecture.md`
 - Kickstart guide: `reference/essential-stellar-dapp-kickstart.md`
