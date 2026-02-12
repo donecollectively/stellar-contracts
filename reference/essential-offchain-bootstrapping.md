@@ -35,3 +35,9 @@ For the overall dApp creation workflow, see the kickstart guide at `reference/es
 ## Bootstrapping helpers
 - `mkOnchainRelativeDelegateLink` / `extractDelegateLinkDetails`: encode delegate link from configured delegate.
 - Pending changes: queue delegate installs in CharterData `pendingChanges`, then `commitPendingChangesIfNeeded` to activate.
+
+## Cross-links
+- Off-chain flows: `reference/essential-stellar-offchain.md`
+- UI support: `reference/essential-stellar-ui.md`
+- Kickstart guide: `reference/essential-stellar-dapp-kickstart.md`
+- Lifecycle duties: `reference/essential-capo-lifecycle.md`
