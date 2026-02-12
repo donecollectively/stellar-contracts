@@ -109,4 +109,5 @@ Application-specific Capo can import/reuse data-policies from other packages.  D
 ## Cross-links
 - On-chain details: `reference/essential-stellar-onchain.md`
 - Off-chain flows: `reference/essential-stellar-offchain.md`
+- Bootstrapping & lifecycle: `reference/essential-offchain-bootstrapping.md`
 - Kickstart steps: `reference/essential-stellar-dapp-kickstart.md`

@@ -1,6 +1,6 @@
 # Stellar dapp kickstart (builder’s guide)
 
-Use this as a map; the detailed, step-by-step off-chain flow now lives in `reference/essential-stellar-offchain.md`, and lifecycle duties in `reference/essential-capo-lifecycle.md`.
+Use this as a map; day-to-day off-chain patterns live in `reference/essential-stellar-offchain.md`, bootstrapping and lifecycle mechanics in `reference/essential-offchain-bootstrapping.md`, and lifecycle duties in `reference/essential-capo-lifecycle.md`.
 
 ## MUST READ: What you need before coding
 - Read: `reference/essential-stellar-onchain.md`, `reference/essential-stellar-offchain.md`, `reference/essential-stellar-dapp-architecture.md`
