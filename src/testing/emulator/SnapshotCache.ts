@@ -690,10 +690,10 @@ export class SnapshotCache {
         if (entry.resolveScriptDependencies) {
             inputs = await entry.resolveScriptDependencies(helper);
             cacheKey = this.computeKey(parentHash, inputs);
-            // Log key inputs for debugging
+            // Log key inputs for debugging — include actual values, not just keys
             const bundleNames = inputs.bundles.map(b => `${b.name}:${b.sourceHash?.slice(0, 8)}`).join(', ');
-            const extraKeys = inputs.extra ? Object.keys(inputs.extra).join(',') : '';
-            console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (bundles=[${bundleNames}], extra=[${extraKeys}])`);
+            const extraSummary = inputs.extra ? JSON.stringify(inputs.extra) : '';
+            console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (bundles=[${bundleNames}], extra=${extraSummary})`);
         } else {
             // No resolver - use parent hash only (for simple snapshots)
             inputs = { bundles: [] };
@@ -907,7 +907,8 @@ export class SnapshotCache {
             cacheKeyInputs = await entry.resolveScriptDependencies(helper);
             cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
             const bundleNames = cacheKeyInputs.bundles.map(b => `${b.name}:${b.sourceHash?.slice(0, 8)}`).join(', ');
-            console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, bundles=[${bundleNames}])`);
+            const extraSummary = cacheKeyInputs.extra ? JSON.stringify(cacheKeyInputs.extra) : '';
+            console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, bundles=[${bundleNames}], extra=${extraSummary})`);
         } else {
             cacheKeyInputs = { bundles: [] };
             cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);

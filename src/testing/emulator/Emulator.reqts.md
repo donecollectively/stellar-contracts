@@ -241,6 +241,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.2.11.1/vn0drr8d8s**: COMPLETED: `store()` MUST write `key-inputs.json` alongside `snapshot.json` containing the original `CacheKeyInputs`
  - **REQT-1.2.11.2/e79g49xyyj**: COMPLETED: `find()` MUST load `key-inputs.json` and include it in `CachedSnapshot.cacheKeyInputs`
  - **REQT-1.2.11.3/hn8f6z92k0**: COMPLETED: Missing `key-inputs.json` MUST be handled gracefully (return undefined, for older snapshots)
+ - **REQT-1.2.11.4/qx7ckss2gj**: IMPLEMENTED/NEEDS VERIFICATION: **Cache Key Diagnostics** - `find()` and `store()` log messages MUST include the actual values of `CacheKeyInputs.extra` (e.g., feature flag values), not just the key names. This enables diagnosing cache key mismatches without inspecting `key-inputs.json` on disk.
 
 ### REQT-1.2.12/mkap3784hw: COMPLETED: **Offchain Data Storage**
 
@@ -316,6 +317,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-3.2.2/04k32hh8km**: COMPLETED: **Basic case**: Built-in resolvers return bundle source hashes + params:
     - `resolveCoreCapoDependencies()` returns core bundles (capo minter, mintDelegate, spendDelegate)
     - `resolveEnabledDelegatesDependencies()` returns core bundles + namedDelegate bundles (always) + dgData controller bundles (filtered by `featureEnabled(typeName)`)
+    - **REQT-3.2.2.1/rcy0849rsd**: IMPLEMENTED/NEEDS VERIFICATION: **Default Feature Flags** - `resolveEnabledDelegatesDependencies()` MUST use `this.capo.defaultFeatureFlags` as fallback when `this.featureFlags` is not explicitly configured on the test helper. This ensures dgDataPolicy delegate bundle hashes are included in the cache key without requiring every test helper subclass to manually copy feature flags from its Capo class.
  - **REQT-3.2.3/97qa2f7m25**: COMPLETED: **Dynamic case**: Resolver signature supports reading parent state via `ScriptDependencyResolver` type
  - **REQT-3.2.4/5cj9et1a6j**: COMPLETED: **Custom case**: `CacheKeyInputs.extra` field supports closure-captured details including `heliosVersion`
 

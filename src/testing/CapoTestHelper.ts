@@ -1644,6 +1644,12 @@ export abstract class CapoTestHelper<
         const coreInputs = await this.resolveCoreCapoDependencies();
         const bundles = [...coreInputs.bundles];
 
+        // Fall back to Capo's defaultFeatureFlags when helper has no explicit flags.
+        // This ensures dgDataPolicy delegates are included in the cache key
+        // without requiring every test helper subclass to manually copy them.
+        const effectiveFeatureFlags: Record<string, boolean> =
+            this.featureFlags ?? this.capo.defaultFeatureFlags ?? {};
+
         // Get Capo bundle class for binding delegate bundles (egg-compatible)
         const capoBundle = await this.capo.getBundle();
         const capoBundleClass = capoBundle.constructor as any;
@@ -1659,13 +1665,11 @@ export abstract class CapoTestHelper<
                 continue;
             }
 
-            // For dgDataPolicy: check featureEnabled via this.featureFlags
-            // (this.capo.featureEnabled has generic constraint keyof featureFlags which
-            // resolves to 'never' when featureFlags defaults to {})
+            // For dgDataPolicy: check featureEnabled via effectiveFeatureFlags
             // EXCEPTION: "settings" role is always deployed when present (doesn't use featureFlags)
             if (delegateType === "dgDataPolicy") {
                 const isSettingsRole = roleName === "settings";
-                if (!isSettingsRole && !this.featureFlags?.[roleName]) {
+                if (!isSettingsRole && !effectiveFeatureFlags[roleName]) {
                     continue;
                 }
 
@@ -1688,7 +1692,7 @@ export abstract class CapoTestHelper<
             extra: {
                 // heliosVersion is in genesis (actors) snapshot only - no need to repeat here
                 // ...coreInputs.extra,
-                featureFlags: this.featureFlags || {},
+                featureFlags: effectiveFeatureFlags,
             },
         };
     }
