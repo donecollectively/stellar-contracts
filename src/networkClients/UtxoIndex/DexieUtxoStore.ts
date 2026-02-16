@@ -7,6 +7,8 @@ import type { BlockIndexEntry } from "./types/BlockIndexEntry.js";
 import type { TxIndexEntry } from "./types/TxIndexEntry.js";
 import type { ScriptIndexEntry } from "./types/ScriptIndexEntry.js";
 import type { WalletAddressEntry } from "./types/WalletAddressEntry.js";
+import type { RecordIndexEntry } from "./types/RecordIndexEntry.js";
+import type { MetadataEntry } from "./types/MetadataEntry.js";
 import { dexieBlockDetails } from "./dexieRecords/BlockDetails.js";
 import { indexerLogs } from "./dexieRecords/Logs.js";
 import { dexieUtxoDetails } from "./dexieRecords/UtxoDetails.js";
@@ -27,6 +29,8 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     txs!: EntityTable<TxIndexEntry, "txid">;
     scripts!: EntityTable<ScriptIndexEntry, "scriptHash">;
     walletAddresses!: EntityTable<WalletAddressEntry, "address">;
+    records!: EntityTable<RecordIndexEntry, "id">;  // REQT/8a4jkznm6a
+    metadata!: EntityTable<MetadataEntry, "key">;   // REQT/38d4zc2qrx
     logs!: EntityTable<indexerLogs, "logId">;
 
     pid: number = 0;
@@ -34,13 +38,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     constructor(dbName: string = DEFAULT_DB_NAME) {
         super(dbName);
 
-        // Schema v1: Complete schema with all tables and indexes
-        // - blocks: block metadata indexed by hash and height
-        // - utxos: UTXO data with *uutIds multiEntry index (REQT/nt1pqd3m3z) and address index (REQT/50zkk5xgrx)
-        // - txs: transaction CBOR indexed by txid
-        // - scripts: reference script CBOR indexed by scriptHash (REQT/k2wvnd3f1e)
-        // - walletAddresses: registered wallet addresses with sync state (REQT/620ypcc34d)
-        // - logs: operational logs indexed by logId and [pid,time]
+        // Schema v1: Initial schema
         this.version(1).stores({
             blocks: "hash, height",
             utxos: "utxoId, *uutIds, address",
@@ -48,6 +46,27 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             scripts: "scriptHash",
             walletAddresses: "address",
             logs: "logId, [pid+time]",
+        });
+
+        // Schema v2: REQT/6h4f158gvs — add blockHeight index to utxos
+        // REQT/8a4jkznm6a — add records table for parsed delegated-data
+        // REQT/38d4zc2qrx — add metadata table for lastParsedBlockHeight tracking
+        this.version(2).stores({
+            blocks: "hash, height",
+            utxos: "utxoId, *uutIds, address, blockHeight",
+            txs: "txid",
+            scripts: "scriptHash",
+            walletAddresses: "address",
+            records: "id, utxoId, type",
+            metadata: "key",
+            logs: "logId, [pid+time]",
+        }).upgrade(tx => {
+            // Backfill blockHeight=0 for existing UTXOs that don't have it
+            return tx.table("utxos").toCollection().modify(utxo => {
+                if (utxo.blockHeight === undefined || utxo.blockHeight === null) {
+                    utxo.blockHeight = 0;
+                }
+            });
         });
 
         this.blocks.mapToClass(dexieBlockDetails);
@@ -127,8 +146,13 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // REQT/hhbcnvd9aj: Mark a UTXO as spent
+    // CW-F1: Cascade to markRecordSpent — store owns spent-state consistency.
+    // Cascade looks up by utxoId (not record id) to avoid marking a replacement
+    // record as spent when old and new appear in the same transaction.
     async markUtxoSpent(utxoId: string, spentInTx: string): Promise<void> {
         await this.utxos.where("utxoId").equals(utxoId).modify({ spentInTx });
+        // REQT/gdmdg66paw: Cascade spent state to corresponding records
+        await this.markRecordSpent(utxoId, spentInTx);
     }
 
     // REQT/cchf3wgnk3 (UUT Catalog Storage) - query UTXOs by UUT identifier
@@ -229,5 +253,95 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
 
     async getAllWalletAddresses(): Promise<WalletAddressEntry[]> {
         return await this.walletAddresses.toArray();
+    }
+
+    // =========================================================================
+    // REQT/8a4jkznm6a: Record Storage for parsed delegated-data
+    // =========================================================================
+
+    async saveRecord(record: RecordIndexEntry): Promise<void> {
+        await this.records.put(record);
+    }
+
+    // REQT/gdmdg66paw: Filter out spent records
+    async findRecord(id: string): Promise<RecordIndexEntry | undefined> {
+        const record = await this.records.where("id").equals(id).first();
+        if (record && (record.spentInTx === null || record.spentInTx === undefined)) {
+            return record;
+        }
+        return undefined;
+    }
+
+    // REQT/gdmdg66paw: Filter out spent records
+    async findRecordsByType(
+        type: string,
+        options?: { limit?: number; offset?: number }
+    ): Promise<RecordIndexEntry[]> {
+        const { limit = 100, offset = 0 } = options ?? {};
+        const results = await this.records
+            .where("type")
+            .equals(type)
+            .toArray();
+        // Filter out spent records, then apply pagination
+        const unspent = results.filter(
+            r => r.spentInTx === null || r.spentInTx === undefined
+        );
+        return unspent.slice(offset, offset + limit);
+    }
+
+    // REQT/gdmdg66paw: Mark records as spent by utxoId (CW-F1 cascade target)
+    async markRecordSpent(utxoId: string, spentInTx: string): Promise<void> {
+        await this.records
+            .where("utxoId")
+            .equals(utxoId)
+            .modify({ spentInTx });
+    }
+
+    // REQT/3aew7g7wdw: Query UTXOs by blockHeight for catchup processing
+    async findUtxosByBlockHeightRange(
+        minBlockHeight: number,
+        options?: { withInlineDatum?: boolean; unspentOnly?: boolean }
+    ): Promise<UtxoIndexEntry[]> {
+        const { withInlineDatum = false, unspentOnly = false } = options ?? {};
+        let results: UtxoIndexEntry[];
+
+        if (minBlockHeight === 0) {
+            // When minBlockHeight is 0 (first catchup), get ALL UTXOs
+            results = await this.utxos.toArray();
+        } else {
+            // Use the blockHeight index for efficient range query
+            results = await this.utxos
+                .where("blockHeight")
+                .above(minBlockHeight)
+                .toArray();
+        }
+
+        // Apply filters
+        if (withInlineDatum) {
+            results = results.filter(u => u.inlineDatum !== null && u.inlineDatum !== undefined);
+        }
+        if (unspentOnly) {
+            results = results.filter(u => u.spentInTx === null || u.spentInTx === undefined);
+        }
+        return results;
+    }
+
+    // =========================================================================
+    // REQT/38d4zc2qrx: Metadata for parsed block height tracking
+    // =========================================================================
+
+    async getLastParsedBlockHeight(): Promise<number> {
+        const entry = await this.metadata
+            .where("key")
+            .equals("lastParsedBlockHeight")
+            .first();
+        return entry ? parseInt(entry.value, 10) : 0;
+    }
+
+    async setLastParsedBlockHeight(height: number): Promise<void> {
+        await this.metadata.put({
+            key: "lastParsedBlockHeight",
+            value: String(height),
+        });
     }
 }

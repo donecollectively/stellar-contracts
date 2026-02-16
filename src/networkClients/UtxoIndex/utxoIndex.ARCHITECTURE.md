@@ -14,6 +14,7 @@ The UtxoIndex is a **dedicated UTXO monitor and cache** for Cardano smart contra
 |-----------|----------|------|-------|-----------------|
 | `CachedUtxoIndex` | Local (browser) | Class | UtxoIndex | **YES** - converts Helios → storage types |
 | `UtxoIndexEntry` | Local (browser) | Type | UtxoIndex | **NO** - storage-agnostic |
+| `RecordIndexEntry` | Local (browser) | Type | UtxoIndex | **NO** - storage-agnostic |
 | `UtxoStoreGeneric` | Local (browser) | Interface | UtxoIndex | **NO** - uses UtxoIndexEntry |
 | `DexieUtxoStore` | Local (browser) | Class | UtxoIndex | **NO** - uses UtxoIndexEntry |
 | Blockfrost Type Validators | Local (browser) | Type definitions + ArkType factories | UtxoIndex | **NO** - Blockfrost schemas only |
@@ -104,8 +105,12 @@ type UtxoIndexEntry = {
 **Schema** (v2):
 ```
 blocks: hash (PK), height
-utxos: utxoId (PK), *uutIds (multiEntry), blockHeight
+utxos: utxoId (PK), *uutIds (multiEntry), address, blockHeight
 txs: txid (PK)
+scripts: scriptHash (PK)
+walletAddresses: address (PK)
+records: id (PK), utxoId, type
+metadata: key (PK)
 logs: logId (PK), [pid+time] (compound index)
 ```
 
@@ -235,6 +240,8 @@ This section defines where each specific area of functionality belongs.
 | `src/networkClients/UtxoIndex/` | UtxoIndex | Root directory |
 | `CachedUtxoIndex.ts` | UtxoIndex | Main orchestrator (Helios coupling boundary) |
 | `types/UtxoIndexEntry.ts` | UtxoIndex | Storage-agnostic UTXO type |
+| `types/RecordIndexEntry.ts` | UtxoIndex | Storage-agnostic parsed record type |
+| `types/MetadataEntry.ts` | UtxoIndex | Key-value metadata storage type |
 | `UtxoStoreGeneric.ts` | UtxoIndex | Storage interface (no Helios) |
 | `DexieUtxoStore.ts` | UtxoIndex | Dexie implementation (no Helios) |
 | `blockfrostTypes/*.ts` | UtxoIndex | Blockfrost API response schemas |
@@ -615,6 +622,35 @@ Isolated databases are cleaned up after each test; the shared database is cleane
 
 **Implementation**: When processing transaction outputs, check for charter UUT. If found, re-catalog delegate UUTs to capture any new or changed delegates.
 
+### Optional Datum Parsing via Capo Attachment
+
+**Decision**: Support optional Capo attachment for datum parsing after construction
+
+**Rationale**:
+- **Lifecycle mismatch**: In CapoDappProvider, CachedUtxoIndex is often created before the Capo exists (using precompiled bundle config). Datum parsing requires the Capo's delegate controllers.
+- **Decoupled design preserved**: `attachCapo()` accepts a Capo instance via `import type` — type-only, no runtime coupling. No new runtime dependency on Capo is introduced.
+- **Catchup mechanism**: When a Capo is attached, cached UTXOs that haven't been parsed are caught up using `lastParsedBlockHeight` watermark.
+
+**Implementation**:
+- `attachCapo(capo)` stores the reference and triggers catchup
+- During monitoring, new UTXOs with inline datums are parsed inline after indexing
+- `parseDelegatedDatum()` on Capo encapsulates the parsing pipeline — CachedUtxoIndex calls it via the attached instance
+- Processing-order invariant: outputs are indexed and records are saved before inputs mark spent state
+
+**Data Flow**:
+```
+Capo attached → catchupRecordParsing()
+                   ├─ query UTXOs where blockHeight > lastParsedBlockHeight
+                   ├─ for each: decode CBOR → capo.parseDelegatedDatum()
+                   ├─ store RecordIndexEntry
+                   └─ advance lastParsedBlockHeight
+
+New TX monitored → processTransactionForNewUtxos()
+                   ├─ index outputs (with blockHeight)
+                   ├─ parse datums → store records (if Capo attached)
+                   └─ mark spent inputs (cascades to records)
+```
+
 ### ReadonlyCardanoClient Conformance
 
 **Decision**: Implement Helios `ReadonlyCardanoClient` interface (REQT/rc7km2x8hp)
@@ -665,5 +701,5 @@ Isolated databases are cleaned up after each test; the shared database is cleane
 
 ---
 
-**Document Version**: 1.8
-**Last Updated**: 2026-02-05 - Added Ogmios provider, server-side storage, and server-mediated sync backlog items
+**Document Version**: 1.9
+**Last Updated**: 2026-02-16 - Added Parsed Record Index: optional Capo attachment, datum parsing, records table, catchup mechanism

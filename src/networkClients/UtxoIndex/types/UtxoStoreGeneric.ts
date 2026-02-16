@@ -12,6 +12,7 @@ import type { BlockIndexEntry } from "./BlockIndexEntry.js";
 import type { TxIndexEntry } from "./TxIndexEntry.js";
 import type { ScriptIndexEntry } from "./ScriptIndexEntry.js";
 import type { WalletAddressEntry } from "./WalletAddressEntry.js";
+import type { RecordIndexEntry } from "./RecordIndexEntry.js";
 
 export interface UtxoStoreGeneric {
     // Logging
@@ -61,4 +62,23 @@ export interface UtxoStoreGeneric {
     findWalletAddress(address: string): Promise<WalletAddressEntry | undefined>;
     saveWalletAddress(entry: WalletAddressEntry): Promise<void>;
     getAllWalletAddresses(): Promise<WalletAddressEntry[]>;
+
+    // REQT/8a4jkznm6a: Record Storage for parsed delegated-data
+    saveRecord(record: RecordIndexEntry): Promise<void>;
+    findRecord(id: string): Promise<RecordIndexEntry | undefined>;
+    findRecordsByType(
+        type: string,
+        options?: { limit?: number; offset?: number }
+    ): Promise<RecordIndexEntry[]>;
+    markRecordSpent(utxoId: string, spentInTx: string): Promise<void>;
+
+    // REQT/8a4jkznm6a: Query UTXOs by blockHeight for catchup processing
+    findUtxosByBlockHeightRange(
+        minBlockHeight: number,
+        options?: { withInlineDatum?: boolean; unspentOnly?: boolean }
+    ): Promise<UtxoIndexEntry[]>;
+
+    // REQT/38d4zc2qrx: Metadata for parsed block height tracking
+    getLastParsedBlockHeight(): Promise<number>;
+    setLastParsedBlockHeight(height: number): Promise<void>;
 }

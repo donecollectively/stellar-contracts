@@ -1786,6 +1786,11 @@ export class CapoDAppProvider<
                     );
                     utxoIndex = await this.enableUtxoCache(capo);
                 }
+
+                // REQT/md6x3wbnct: Attach Capo for datum parsing in both early-index and late-index paths
+                if (utxoIndex) {
+                    await utxoIndex.attachCapo(capo);
+                }
             }
 
             if (!autoNext) {

@@ -11,3 +11,5 @@ export type { TxIndexEntry } from "./TxIndexEntry.js";
 export type { ScriptIndexEntry } from "./ScriptIndexEntry.js";
 export type { LogEntry } from "./LogEntry.js";
 export type { WalletAddressEntry } from "./WalletAddressEntry.js";
+export type { RecordIndexEntry } from "./RecordIndexEntry.js";
+export type { MetadataEntry } from "./MetadataEntry.js";

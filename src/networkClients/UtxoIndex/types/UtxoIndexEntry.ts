@@ -21,4 +21,5 @@ export interface UtxoIndexEntry {
     referenceScriptHash: string | null;  // script hash hex (REQT/tqrhbphgyx)
     uutIds: string[];            // extracted UUT identifiers
     spentInTx: string | null;    // txHash that spent this UTXO, or null if unspent (REQT/11msfc4wv8)
+    blockHeight: number;         // REQT/6h4f158gvs: block height when UTXO was created (0 if unknown)
 }

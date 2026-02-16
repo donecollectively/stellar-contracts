@@ -70,6 +70,9 @@ import {
 } from "./blockfrostTypes/AddressTransactionSummaries.js";
 import type { CharterData } from "../../CapoTypes.js";
 import type { RelativeDelegateLink } from "../../delegation/UnspecializedDelegate.typeInfo.js";
+// REQT/yx0yze9swf: Type-only import — no runtime dependency on Capo
+import type { Capo } from "../../Capo.js";
+import type { RecordIndexEntry } from "./types/RecordIndexEntry.js";
 
 // periodically queries for new utxos at the capo address
 const refreshInterval = 60 * 1000; // 1 minute
@@ -117,6 +120,12 @@ export class CachedUtxoIndex {
     private _mph: MintingPolicyHash;
     private _isMainnet: boolean;
     private bridge: CapoDataBridge;
+
+    // REQT/yx0yze9swf: Optional Capo attachment for datum parsing
+    private _capo: Capo<any> | undefined;
+    // Cached charter data — set during sync/charter change, passed to parseDelegatedDatum
+    // to avoid redundant charter fetches during record parsing
+    private _charterData: CharterData | undefined;
 
     // REQT/zzsg63b2fb: Timer for periodic refresh
     private refreshTimerId: ReturnType<typeof setInterval> | null = null;
@@ -347,6 +356,7 @@ export class CachedUtxoIndex {
 
         // Decode charter data using the bridge
         const charterData = this.decodeCharterData(charterUtxo);
+        this._charterData = charterData;
 
         // Resolve and catalog delegate UUTs
         await this.catalogDelegateUuts(charterData);
@@ -578,6 +588,142 @@ export class CachedUtxoIndex {
         return true;
     }
 
+    // =========================================================================
+    // REQT/5bmbf54qhy: Parsed Record Index
+    // =========================================================================
+
+    /**
+     * Attaches a Capo instance for datum parsing.
+     * When attached, new UTXOs with inline datums will be parsed during monitoring,
+     * and any cached UTXOs not yet parsed will be caught up.
+     *
+     * REQT/yx0yze9swf (Optional Capo Attachment)
+     */
+    async attachCapo(capo: Capo<any>): Promise<void> {
+        this._capo = capo;
+        await this.store.log(
+            "ac1at",
+            "Capo attached for datum parsing",
+        );
+
+        // REQT/3aew7g7wdw: Trigger catchup of unparsed cached UTXOs
+        await this.catchupRecordParsing();
+    }
+
+    /**
+     * Catches up record parsing for cached UTXOs that haven't been parsed yet.
+     * Called when a Capo is attached after raw-only indexing.
+     *
+     * REQT/3aew7g7wdw (Catchup on Capo Attachment)
+     */
+    private async catchupRecordParsing(): Promise<void> {
+        if (!this._capo) return;
+
+        const lastParsed = await this.store.getLastParsedBlockHeight();
+
+        await this.store.log(
+            "cu1st",
+            `Starting record catchup from lastParsedBlockHeight=${lastParsed}`,
+        );
+
+        // REQT/3aew7g7wdw: Query cached UTXOs needing parsing
+        const unparsedUtxos = await this.store.findUtxosByBlockHeightRange(
+            lastParsed,
+            { withInlineDatum: true, unspentOnly: true },
+        );
+
+        await this.store.log(
+            "cu2ct",
+            `Found ${unparsedUtxos.length} UTXOs to parse for records`,
+        );
+
+        let parsedCount = 0;
+        for (const entry of unparsedUtxos) {
+            const saved = await this.parseAndSaveRecord(entry);
+            if (saved) parsedCount++;
+        }
+
+        // REQT/38d4zc2qrx: Advance lastParsedBlockHeight
+        const newHeight = this.lastBlockHeight > 0 ? this.lastBlockHeight : lastParsed;
+        await this.store.setLastParsedBlockHeight(newHeight);
+
+        await this.store.log(
+            "cu3ok",
+            `Catchup complete: parsed ${parsedCount} records, advanced lastParsedBlockHeight to ${newHeight}`,
+        );
+    }
+
+    /**
+     * Parses an inline datum from a UtxoIndexEntry and saves the parsed record.
+     * Returns true if a record was saved, false if the datum was not parseable.
+     *
+     * @param entry - The UTXO entry containing an inline datum to parse
+     * @param charterData - Optional pre-fetched charter data to avoid redundant lookups
+     *
+     * REQT/pshpah30em (Parse Datum for New UTXOs)
+     */
+    private async parseAndSaveRecord(entry: UtxoIndexEntry, charterData?: CharterData): Promise<boolean> {
+        if (!this._capo || !entry.inlineDatum) return false;
+
+        try {
+            // Decode CBOR hex to UplcData
+            const uplcData = decodeUplcData(hexToBytes(entry.inlineDatum));
+
+            // REQT/gtgje3zy0g: Use Capo's parseDelegatedDatum method
+            // Pass charterData to avoid redundant charter fetches per datum
+            const parsed = await this._capo.parseDelegatedDatum(uplcData, charterData ?? this._charterData);
+            if (!parsed) return false; // REQT/pshpah30em: Gracefully skip unparseable datums
+
+            // REQT/xpvvqfwf5m: Store as RecordIndexEntry with structured data
+            const record: RecordIndexEntry = {
+                id: parsed.id,
+                utxoId: entry.utxoId,
+                type: parsed.type,
+                parsedData: transformByteArrays(parsed.data),
+                spentInTx: null,
+            };
+
+            await this.store.saveRecord(record);
+            return true;
+        } catch (e: any) {
+            // Log but don't fail — parsing errors for individual datums shouldn't block indexing
+            await this.store.log(
+                "pr1er",
+                `Error parsing datum for ${entry.utxoId}: ${e.message || e}`,
+            );
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // REQT/gdmdg66paw: Record Query Methods
+    // =========================================================================
+
+    /**
+     * Finds a parsed record by its record ID.
+     * Returns undefined if not found or if the record's UTXO has been spent.
+     *
+     * REQT/gdmdg66paw (Record Query Methods)
+     */
+    async findRecord(id: string): Promise<RecordIndexEntry | undefined> {
+        await this.syncReady;
+        return this.store.findRecord(id);
+    }
+
+    /**
+     * Finds all parsed records of a given type.
+     * Filters out records whose UTXOs have been spent.
+     *
+     * REQT/gdmdg66paw (Record Query Methods)
+     */
+    async findRecordsByType(
+        type: string,
+        options?: { limit?: number; offset?: number },
+    ): Promise<RecordIndexEntry[]> {
+        await this.syncReady;
+        return this.store.findRecordsByType(type, options);
+    }
+
     /**
      * Processes a transaction to identify and index new UTXOs.
      *
@@ -605,7 +751,8 @@ export class CachedUtxoIndex {
             }
 
             // REQT/0vrkpk6a6h: Index ALL outputs, not just UUT-containing ones
-            await this.indexUtxoFromOutput(txHash, outputIndex, output);
+            // REQT/6h4f158gvs: Pass block_height from transaction summary
+            await this.indexUtxoFromOutput(txHash, outputIndex, output, summary.block_height);
 
             // REQT/xrdj6qpgnj: Check if charter token is present (indicates charter change)
             const tokenNames = output.value.assets.getPolicyTokenNames(mph);
@@ -624,6 +771,23 @@ export class CachedUtxoIndex {
                         e.message || e,
                     );
                     // Skip invalid token names
+                }
+            }
+        }
+
+        // REQT/pshpah30em: Parse inline datums for new outputs when Capo is attached
+        // Processing-order invariant: outputs are processed (above) before inputs (below)
+        // to ensure record save-by-id precedes any spent-state cascade.
+        if (this._capo) {
+            for (
+                let outputIndex = 0;
+                outputIndex < tx.body.outputs.length;
+                outputIndex++
+            ) {
+                const utxoId = this.formatUtxoId(txHash, outputIndex);
+                const entry = await this.store.findUtxoId(utxoId);
+                if (entry && entry.inlineDatum) {
+                    await this.parseAndSaveRecord(entry);
                 }
             }
         }
@@ -652,6 +816,7 @@ export class CachedUtxoIndex {
             const charterUtxo = this.findCharterUtxo(capoUtxos);
             if (charterUtxo) {
                 const charterData = this.decodeCharterData(charterUtxo);
+                this._charterData = charterData;
                 await this.catalogDelegateUuts(charterData);
             }
         }
@@ -710,11 +875,13 @@ export class CachedUtxoIndex {
      * Converts a TxOutput to a storage-agnostic UtxoIndexEntry.
      *
      * TYPE BOUNDARY: This method converts Helios types to storage types.
+     * REQT/6h4f158gvs: blockHeight populated from transaction summary when available.
      */
     private txOutputToIndexEntry(
         txHash: string,
         outputIndex: number,
         output: TxOutput,
+        blockHeight: number = 0,
     ): UtxoIndexEntry {
         const utxoId = this.formatUtxoId(txHash, outputIndex);
 
@@ -759,6 +926,7 @@ export class CachedUtxoIndex {
             referenceScriptHash,
             uutIds: this.extractUutIds(output),
             spentInTx: null,  // REQT/11msfc4wv8: New UTXOs are unspent
+            blockHeight,       // REQT/6h4f158gvs
         };
     }
 
@@ -766,8 +934,9 @@ export class CachedUtxoIndex {
      * Converts a TxInput to a storage-agnostic UtxoIndexEntry.
      *
      * TYPE BOUNDARY: This method converts Helios types to storage types.
+     * REQT/6h4f158gvs: blockHeight defaults to 0 when not available from call context.
      */
-    private txInputToIndexEntry(txInput: TxInput): UtxoIndexEntry {
+    private txInputToIndexEntry(txInput: TxInput, blockHeight: number = 0): UtxoIndexEntry {
         const utxoId = txInput.id.toString();
 
         // Extract tokens using getPolicies() and getPolicyTokens()
@@ -811,6 +980,7 @@ export class CachedUtxoIndex {
             referenceScriptHash,
             uutIds: this.extractUutIdsFromTxInput(txInput),
             spentInTx: null,  // REQT/11msfc4wv8: New UTXOs are unspent
+            blockHeight,       // REQT/6h4f158gvs
         };
     }
 
@@ -818,10 +988,13 @@ export class CachedUtxoIndex {
      * Converts Blockfrost UtxoDetailsType to storage-agnostic UtxoIndexEntry.
      *
      * TYPE BOUNDARY: This method converts Blockfrost types to storage types.
+     * REQT/6h4f158gvs: blockHeight defaults to 0 for Blockfrost UTXO responses
+     * (block hash is available but height requires additional lookup).
      */
     private blockfrostUtxoToIndexEntry(
         bfUtxo: UtxoDetailsType,
         utxoId: string,
+        blockHeight: number = 0,
     ): UtxoIndexEntry {
         // Find lovelace amount
         const lovelaceAmount = bfUtxo.amount.find((a) => a.unit === "lovelace");
@@ -880,6 +1053,7 @@ export class CachedUtxoIndex {
             referenceScriptHash: bfUtxo.reference_script_hash,
             uutIds,
             spentInTx: null,  // REQT/11msfc4wv8: New UTXOs are unspent
+            blockHeight,       // REQT/6h4f158gvs
         };
     }
 
@@ -937,13 +1111,15 @@ export class CachedUtxoIndex {
      * Indexes a UTXO from a transaction output.
      *
      * REQT/mvjrak021s (UTXO Indexing)
+     * REQT/6h4f158gvs: blockHeight passed through from transaction summary.
      */
     private async indexUtxoFromOutput(
         txHash: string,
         outputIndex: number,
         output: TxOutput,
+        blockHeight: number = 0,
     ): Promise<void> {
-        const entry = this.txOutputToIndexEntry(txHash, outputIndex, output);
+        const entry = this.txOutputToIndexEntry(txHash, outputIndex, output, blockHeight);
         await this.store.saveUtxo(entry);
     }
 
@@ -1547,4 +1723,70 @@ export class CachedUtxoIndex {
         await this.syncReady;
         return this.store.getAllUtxos(options);
     }
+}
+
+// =========================================================================
+// REQT/xpvvqfwf5m: Byte array transformation for parsed record data
+// =========================================================================
+
+/**
+ * Detects whether a value is a byte array (number[] where all elements are 0-255).
+ */
+function isByteArray(value: unknown): value is number[] {
+    if (!Array.isArray(value) || value.length === 0) return false;
+    // Check first and last elements as a fast heuristic, then validate all
+    if (typeof value[0] !== "number") return false;
+    return value.every(
+        (v) => typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 255,
+    );
+}
+
+/**
+ * Attempts UTF-8 decoding of a byte array.
+ * Returns the string if valid UTF-8, undefined otherwise.
+ */
+function tryUtf8Decode(bytes: number[]): string | undefined {
+    try {
+        const decoded = new TextDecoder("utf-8", { fatal: true }).decode(
+            new Uint8Array(bytes),
+        );
+        return decoded;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Recursively walks a parsed datum object and converts number[] byte arrays
+ * to `{bytes: number[], string?: string}`.
+ *
+ * The resulting shape is compatible with Helios `makeByteArrayData()` which
+ * accepts `{bytes: number[]}` via the `BytesLike` / `toBytes()` interface.
+ *
+ * REQT/xpvvqfwf5m (RecordIndexEntry Type)
+ */
+function transformByteArrays(value: unknown): any {
+    if (isByteArray(value)) {
+        const result: { bytes: number[]; string?: string } = { bytes: value };
+        const str = tryUtf8Decode(value);
+        if (str !== undefined) {
+            result.string = str;
+        }
+        return result;
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(transformByteArrays);
+    }
+
+    if (value !== null && typeof value === "object") {
+        const result: Record<string, any> = {};
+        for (const [k, v] of Object.entries(value)) {
+            result[k] = transformByteArrays(v);
+        }
+        return result;
+    }
+
+    // Primitives pass through
+    return value;
 }
