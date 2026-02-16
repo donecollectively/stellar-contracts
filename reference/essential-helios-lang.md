@@ -35,8 +35,9 @@
   - any tagged field (UTF-8 string tag following a field def `field3: Int "f3"`) forces CIP-68-style data map using the tag for encoding; use the full field name in all onchain code
   - struct methods: place `func foo(self [, arg1: Type]) -> returnType { ... }` inside struct block; `self` has implicit type; called with thing.foo(arg1). 
   - "static"/associated function inside the struct block `func bar() -> returnType { ... }` is called with `Type::bar()`. 
-- Enums: sum types with variants 
+- Enums: sum types with variants
   - methods and static/associated functions allowed as with structs.  `self` typed as base (use `self.switch {...}`).
+  - Variant tag numbers: by default, variants get implicit tags starting at 0 and auto-incrementing.  To assign an explicit tag, prefix the variant with `N :` (number, colon).  Subsequent variants auto-increment from the explicit tag.  Example: `42 : KeepAlive` gives KeepAlive tag 42; the next variant gets 43.
 - Builtin `Data` enum variants: `IntData`, `ByteArrayData`, `ListData`, `MapData`, `ConstrData`.
 - Destructuring: positional, not pattern matching. Works in assignments and switch cases; can nest, optional type annotations; destructuring into a variant performs runtime type assertion. `_` discards.
 
@@ -131,7 +132,7 @@ func main(args: MixedArgs) -> Bool {
 ```
 - Enums:
   ```
-  enum PizzaSize { 
+  enum PizzaSize {
     Small  // no fields; no braces; newline required
     Medium // no comma allowed after the variant name
     Large {
@@ -143,6 +144,18 @@ func main(args: MixedArgs) -> Bool {
     }
   } // no comma after the enum declaration
   ```
+- Enums with explicit tag numbers (custom ConstrData indices):
+  ```
+  enum Redeemer {
+    Cancel              // implicit tag 0
+    Buy {               // implicit tag 1
+        buyer: PubKeyHash
+    }
+    42 : KeepAlive      // explicit tag 42
+    SomethingElse       // auto-increments to tag 43
+  }
+  ```
+  Use explicit tags when on-chain encoding must match a specific ConstrData tag index (e.g. for cross-script interop or datum compatibility).  Without explicit tags, variants are numbered 0, 1, 2, ... in declaration order.
 
 - `switch` on enums uses the `.switch { ... }` form; variants are written without the enum prefix:
   - `a: Variant => { ... }` extracts the typed variant value (must be used inside).
