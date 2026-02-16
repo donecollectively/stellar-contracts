@@ -619,6 +619,14 @@ export class CachedUtxoIndex {
     private async catchupRecordParsing(): Promise<void> {
         if (!this._capo) return;
 
+        // Ensure charterData is available — in cache-first startup, _charterData
+        // is not set because syncNow() skips the full sync path.
+        // Fetch once here to avoid per-datum charter lookups.
+        if (!this._charterData) {
+            const charterData = await this._capo.findCharterData();
+            this._charterData = charterData;
+        }
+
         const lastParsed = await this.store.getLastParsedBlockHeight();
 
         await this.store.log(
