@@ -3412,17 +3412,26 @@ export abstract class Capo<
         if (!dgtForType) return undefined; // No controller registered for this type
 
         // Step 3: Parse and unwrap the datum
-        const data = dgtForType.newReadDatum(uplcData) as any;
-        const typedData = data.capoStoredData?.data;
-        if (!typedData) return undefined;
+        // Wrapped in try/catch — datums may have a recognized type but incompatible
+        // internal structure (e.g. schema version mismatch, partial data)
+        try {
+            const data = dgtForType.newReadDatum(uplcData) as any;
+            const typedData = data.capoStoredData?.data;
+            if (!typedData) return undefined;
 
-        if (!typedData.id || !typedData.type) return undefined;
+            if (!typedData.id || !typedData.type) return undefined;
 
-        return {
-            id: bytesToText(typedData.id),
-            type: datumType,
-            data: typedData,
-        };
+            return {
+                id: bytesToText(typedData.id),
+                type: datumType,
+                data: typedData,
+            };
+        } catch (e: any) {
+            console.log(
+                `⚠️ parseDelegatedDatum: failed to parse datum of type '${datumType}': ${e.message || e}`
+            );
+            return undefined;
+        }
     }
 
     /**
