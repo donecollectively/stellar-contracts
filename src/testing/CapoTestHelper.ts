@@ -111,7 +111,7 @@ type TestContextConfig<SC extends Capo<any>> = SC extends Capo<any, infer FF>
  */
 export type CreateTestContextOptions<
     SC extends Capo<any>,
-    SpecialState extends Record<string, any> = Record<string, never>
+    SpecialState extends Record<string, any> = {}
 > = {
     /** Optional pre-existing helperState for snapshot sharing */
     helperState?: TestHelperState<SC, SpecialState>;
@@ -265,7 +265,7 @@ export abstract class CapoTestHelper<
     static createTestContext<
         TH extends CapoTestHelper<SC, SS>,
         SC extends Capo<any>,
-        SS extends Record<string, any> = Record<string, never>,
+        SS extends Record<string, any> = {},
         TC extends StellarTestContext<TH, SC> = StellarTestContext<TH, SC>
     >(
         this: new (...args: any[]) => TH,

@@ -574,7 +574,7 @@ export class StellarContract<
                 !bundle.configuredScriptDetails
             ) {
                 console.log(
-                    "first-time configuration of bundle ${bundle.constructor.name}"
+                    `first-time configuration of bundle ${bundle.constructor.name}`
                 );
             }
             if (!bundle._didInit) {

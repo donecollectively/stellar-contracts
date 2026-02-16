@@ -17,7 +17,7 @@ import {
 } from "./emulator/StellarNetworkEmulator.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
 import { SnapshotCache } from "./emulator/SnapshotCache.js";
-import { CapoTestHelper } from "./CapoTestHelper.js";
+import { CapoTestHelper, type CreateTestContextOptions, type TestContextFactory } from "./CapoTestHelper.js";
 // import type {
 //     StellarTestContext,
 //     StellarTestHelper,
@@ -49,6 +49,12 @@ export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
 /**
  * Type for classes returned by DefaultCapoTestHelper.forCapoClass().
  * Includes both the constructor signature and inherited static members.
+ * @remarks
+ * createTestContext is explicitly bound to SC/SpecialState rather than using
+ * `typeof CapoTestHelper.createTestContext`, because TypeScript's inference
+ * cannot decompose mixin-pattern base types back into their generic parameters.
+ * The raw `typeof` reference would cause SC to fall back to `Capo<any>` and
+ * SpecialState to its default, losing the specific Capo subclass linkage.
  * @public
  */
 export type DefaultCapoTestHelperClass<
@@ -64,7 +70,11 @@ export type DefaultCapoTestHelperClass<
     ): DefaultCapoTestHelper<SC, SpecialState>;
 
     // Static members inherited from CapoTestHelper
-    createTestContext: typeof CapoTestHelper.createTestContext;
+    // createTestContext binds SC and SpecialState so that subclasses using
+    // the forCapoClass() mixin pattern preserve the specific Capo type.
+    createTestContext(
+        options?: CreateTestContextOptions<SC, SpecialState>
+    ): TestContextFactory<StellarTestContext<DefaultCapoTestHelper<SC, SpecialState>, SC>>;
     defaultHelperState: TestHelperState<SC, SpecialState>;
     hasNamedSnapshot: typeof CapoTestHelper.hasNamedSnapshot;
 };
