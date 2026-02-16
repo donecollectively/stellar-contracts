@@ -221,6 +221,30 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
    - MUST define `indexerLogs` extending Dexie Entity with logId, pid, time, location, message fields
    - MUST provide computed properties (e.g., `blockId`, `blockHeight`) where needed
 
+### 5. Parsed Record Index
+
+Provides pre-parsed delegated-data records from cached UTXOs, so consumers get typed JavaScript structs by record-id or record-type without re-parsing CBOR or querying the network. When a Capo is attached to the indexer, inline datums are decoded using the appropriate delegate controllers and stored in a `records` table keyed by record-id.
+
+#### Functional Requirements:
+
+1. **Optional Capo Attachment**:
+   - MUST support operation without a Capo (raw UTXO indexing only, as today)
+   - MUST provide a method to attach a Capo instance at any point in the index lifecycle
+   - When a Capo is attached, MUST automatically process any cached UTXOs that have not yet been parsed
+
+2. **Record Parsing on New UTXOs**:
+   - When a Capo is attached and new UTXOs are discovered during monitoring, MUST decode inline datums using the Capo's delegate controllers and store the parsed result
+   - MUST gracefully skip datums whose type has no registered controller
+
+3. **Catchup Processing**:
+   - MUST track the last block height at which record parsing was performed
+   - When the Capo is attached after raw-only indexing, MUST catch up by parsing all unparsed UTXOs since the last parsed block height
+
+4. **Record Queries**:
+   - MUST provide lookup by record-id returning the parsed datum
+   - MUST provide lookup by record type returning all matching records
+   - MUST filter out spent records
+
 ## Detailed Requirements
 
 This section organizes key software objects, expressing the detailed requirements connected to actually implementing the functional needs.
@@ -336,6 +360,19 @@ Enables the indexer to cache UTXOs from connected wallet addresses, not just the
  - **REQT-1.9.3**/92m7kpkny7: COMPLETED: **On-Demand Sync** - When `getUtxos(address)` is called for a registered wallet address, must first check if sync is needed (based on `lastSyncTime` for that address). If stale (configurable threshold, default 30 seconds), must perform incremental sync before returning results. Must not block indefinitely - use existing rate limiter. *(Implemented via syncWalletAddressIfStale() called from getUtxos())*
  - **REQT-1.9.4**/620ypcc34d: COMPLETED: **Multi-Address Storage** - Must extend storage schema to track per-address sync state (lastBlockHeight, lastSyncTime). Must support querying UTXOs filtered by source address. Must distinguish between Capo-address UTXOs (which have UUT tracking) and wallet-address UTXOs (which do not). *(Implemented WalletAddressEntry type and walletAddresses table in DexieUtxoStore)*
 
+### REQT-1.10/5bmbf54qhy: NEXT: **Parsed Record Index**
+
+#### Purpose
+Enables the indexer to store and serve pre-parsed delegated-data records, eliminating repeated CBOR decoding and network queries for typed data access. Applied when implementing or modifying record parsing, Capo integration, or record query methods.
+
+ - **REQT-1.10.1**/yx0yze9swf: NEXT: **Optional Capo Attachment** — MUST provide `attachCapo(capo)` to register a Capo instance for datum parsing. The Capo is NOT required at construction. Without a Capo, the index MUST operate as before (raw `inlineDatum` CBOR only, no records). When a Capo is attached, MUST trigger catchup processing per REQT/3aew7g7wdw (Catchup on Capo Attachment).
+
+ - **REQT-1.10.2**/pshpah30em: NEXT: **Parse Datum for New UTXOs** — When a Capo is attached and a new UTXO with an inline datum is discovered during monitoring, MUST identify the delegated-data type, decode the datum using the appropriate delegate controller, and store the parsed result (including `id`, `type`, and the typed data fields) in the records table. MUST gracefully skip UTXOs whose datum type has no registered controller.
+
+ - **REQT-1.10.3**/3aew7g7wdw: NEXT: **Catchup on Capo Attachment** — MUST persist `lastParsedBlockHeight` in the store. When a Capo is attached and `lastParsedBlockHeight < lastBlockHeight`, MUST query cached UTXOs with `blockHeight > lastParsedBlockHeight` having unparsed inline datums, decode each via the Capo, and store results in the records table. MUST advance `lastParsedBlockHeight` upon completion. NEEDS REQT/6h4f158gvs (Database Definition) for `blockHeight` on UTXO entries.
+
+ - **REQT-1.10.4**/gdmdg66paw: NEXT: **Record Query Methods** — MUST implement `findRecord(id): Promise<RecordIndexEntry | undefined>` for single-record lookup by record-id. MUST implement `findRecordsByType(type, options?): Promise<RecordIndexEntry[]>` for type-filtered queries. Both MUST filter out records where `spentInTx` is not null. When a UTXO is marked as spent, the corresponding record entry MUST also be marked spent.
+
 ### Component: UtxoStoreGeneric Interface
 
 #### Overview
@@ -354,12 +391,12 @@ Establishes the abstraction layer for storage backends. Applied when implementin
 #### Overview
 Dexie-based implementation of `UtxoStoreGeneric` providing persistent browser storage using IndexedDB.
 
-### REQT-3.1/dbwnqvqwa1: COMPLETED: **Dexie Database Schema & Initialization**
+### REQT-3.1/dbwnqvqwa1: IN PROGRESS: **Dexie Database Schema & Initialization**
 
 #### Purpose
 Defines the IndexedDB schema and entity mappings for the Dexie storage backend. Applied when modifying database structure, adding tables, or changing indexes.
 
- - **REQT-3.1.1**/6h4f158gvs: COMPLETED: **Database Definition** - Must extend Dexie with configurable database name (default: "StellarDappIndex-v0.1"). Must define schema with tables and indexed fields: `blocks` (hash, height), `utxos` (utxoId, *uutIds, blockHeight), `txs` (txid), `logs` (logId, [pid+time]).
+ - **REQT-3.1.1**/6h4f158gvs: NEXT: **Database Definition** - Must extend Dexie with configurable database name (default: "StellarDappIndex-v0.1"). Must define schema with tables and indexed fields: `blocks` (hash, height), `utxos` (utxoId, *uutIds, blockHeight), `txs` (txid), `logs` (logId, [pid+time]).
  - **REQT-3.1.2**/exv4s020a0: COMPLETED: **Entity Mapping** - Must map tables to appropriate Dexie Entity classes for type-safe storage.
  - **REQT-3.1.3**/t7dbk8n4mx: COMPLETED: **Database Name Configuration** - DexieUtxoStore constructor must accept optional `dbName` parameter for test isolation. CachedUtxoIndex must pass through `dbName` option to allow tests to create isolated database instances.
 
@@ -417,6 +454,17 @@ Defines Dexie Entity classes for type-safe storage. Applied when modifying datab
  - **REQT-5.1.3**/cj6nm0mpm1: COMPLETED: **Log Entity** - Must store log entries with logId, pid, time, and message.
  - **REQT-5.1.4**/nt1pqd3m3z: COMPLETED: **UUT Catalog Entity** - Must store UUT catalog entries by augmenting the UTXO entity with the uutIds array as a multiEntry secondary index
 
+### REQT-5.2/9d3wch4hsc: NEXT: **Record Index Entity**
+
+#### Purpose
+Defines the storage type and Dexie table for parsed delegated-data records. Applied when modifying the records storage schema or adding record query methods.
+
+ - **REQT-5.2.1**/xpvvqfwf5m: NEXT: **RecordIndexEntry Type** — MUST define `RecordIndexEntry` with fields: `id` (string, record-id — same namespace as uutIds), `utxoId` (string, FK to UtxoIndexEntry), `type` (string, delegated data type name), `parsedData` (JSON-serialized parsed datum), `spentInTx` (string | null, mirrors UtxoIndexEntry). MUST be Helios-free.
+
+ - **REQT-5.2.2**/8a4jkznm6a: NEXT: **Records Dexie Table** — MUST add `records` table to DexieUtxoStore with indexes: `id` (PK), `utxoId`, `type`. MUST implement `saveRecord()`, `findRecord(id)`, `findRecordsByType(type)`, and `markRecordSpent(id, txHash)` on `UtxoStoreGeneric`.
+
+ - **REQT-5.2.3**/38d4zc2qrx: NEXT: **Parsed Block Height Tracking** — MUST persist `lastParsedBlockHeight` in the store. MUST provide `getLastParsedBlockHeight()` and `setLastParsedBlockHeight(height)` on `UtxoStoreGeneric`.
+
 ## Files
 
 1. `src/networkClients/UtxoIndex/CachedUtxoIndex.ts`
@@ -430,6 +478,7 @@ Defines Dexie Entity classes for type-safe storage. Applied when modifying datab
 9. `src/networkClients/UtxoIndex/dexieRecords/BlockDetails.ts`
 10. `src/networkClients/UtxoIndex/dexieRecords/UtxoDetails.ts`
 11. `src/networkClients/UtxoIndex/dexieRecords/Logs.ts`
+12. `src/networkClients/UtxoIndex/types/RecordIndexEntry.ts`
 
 ## Implementation Notes
 
@@ -540,6 +589,17 @@ Extends indexer to cache UTXOs from connected wallet addresses:
 * DONE: `getUtxos()` checks staleness for registered wallet addresses (REQT/92m7kpkny7)
 * TODO: CapoDappProvider integration to auto-register on wallet connect (REQT/ctc4z2k5pq)
 
+#### NEXT: Parsed Record Index (REQT/5bmbf54qhy)
+Pre-parsed delegated-data records stored in `records` Dexie table:
+* Prerequisite fix: REQT/6h4f158gvs needs `blockHeight` restored to UtxoIndexEntry and Dexie utxos schema (was specified but never implemented; status corrected COMPLETED → NEXT)
+* `RecordIndexEntry` type and `records` Dexie table (REQT/9d3wch4hsc)
+* `lastParsedBlockHeight` persistent tracking (REQT/38d4zc2qrx)
+* `attachCapo(capo)` enables datum parsing after construction (REQT/yx0yze9swf)
+* New UTXOs parsed inline during monitoring when Capo attached (REQT/pshpah30em)
+* Catchup processing on Capo attachment using `lastParsedBlockHeight` watermark (REQT/3aew7g7wdw)
+* `findRecord(id)` and `findRecordsByType(type)` query methods (REQT/gdmdg66paw)
+* Work unit: `src/networkClients/UtxoIndex/20260216.parsed-record-index.workUnit.md`
+
 ## Release Management Plan
 
 ### v1 (Current)
@@ -560,6 +620,7 @@ Extends indexer to cache UTXOs from connected wallet addresses:
     - Invariant support (REQT/jz6zf4py6n)
     - Full TxInput restoration (REQT/ss7w87ecmj)
     - Wallet address indexing (REQT/ngn9agx52a)
+    - Parsed record index (REQT/5bmbf54qhy)
 
 ### v3 (Future)
  - **Goal**: Multi-Backend Storage & Provider Support
