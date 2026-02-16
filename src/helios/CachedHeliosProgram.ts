@@ -111,8 +111,6 @@ export type LockInfoForStrat<T extends CachedHeliosProgram> = Awaited<
     ReturnType<T["acquireLock"]>
 >;
 
-const redirecToCorrectConstructor =
-    "🐢${this.id}: wrong direct use of new() constructor in CachedHeliosProgram; use forCurrentPlatform() instead";
 
 /**
  * A Helios program that caches its compiled UPLC program.
@@ -160,7 +158,7 @@ export class CachedHeliosProgram extends Program {
         this.props = effectiveProps;
 
         if (this.constructor === CachedHeliosProgram) {
-            throw new Error(redirecToCorrectConstructor);
+            throw new Error(this.constructorRedirect);
         }
     }
 
@@ -171,7 +169,13 @@ export class CachedHeliosProgram extends Program {
      * as a platform-specific STATIC method.
      */
     static async ifCached(cacheKey: string): Promise<string | null> {
-        throw new Error(redirecToCorrectConstructor);
+        throw new Error(`wrong direct use of new() constructor in CachedHeliosProgram; use forCurrentPlatform() instead`);
+    }
+
+    static staticRedirect = `wrong direct use of new() constructor in CachedHeliosProgram; use forCurrentPlatform() instead`;
+
+    get constructorRedirect() { 
+        return `🐢${this.id}: wrong direct use of new() constructor in CachedHeliosProgram; use forCurrentPlatform() instead`
     }
 
     /**
@@ -185,7 +189,7 @@ export class CachedHeliosProgram extends Program {
         cacheKey: string,
         props: CacheableProgramProps
     ): Promise<lockInfo<any>> {
-        throw new Error(redirecToCorrectConstructor);
+        throw new Error(CachedHeliosProgram.staticRedirect);
     }
 
     /**
@@ -196,7 +200,7 @@ export class CachedHeliosProgram extends Program {
         cacheKey: any,
         props: CacheableProgramProps
     ): Promise<lockInfo<any> | null> {
-        throw new Error(redirecToCorrectConstructor);
+        throw new Error(CachedHeliosProgram.staticRedirect);
     }
 
     /**
@@ -208,7 +212,7 @@ export class CachedHeliosProgram extends Program {
         value: string,
         raw: HeliosProgramCacheEntry
     ): Promise<void> {
-        throw new Error(redirecToCorrectConstructor);
+        throw new Error(CachedHeliosProgram.staticRedirect);
     }
 
     static async initCacheFromBundle(
