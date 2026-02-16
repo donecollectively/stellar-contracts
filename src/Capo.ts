@@ -3358,6 +3358,74 @@ export abstract class Capo<
     }
 
     /**
+     * Parses a single inline datum's UplcData into a typed record.
+     * @remarks
+     * Encapsulates the full datum → typed record pipeline:
+     * 1. Datum type extraction — inspect UplcData.fields[0] map for the `tpe` key
+     * 2. Controller lookup — getDgDataController(datumType, { optional: true, onchain: false })
+     * 3. Parse + unwrap — controller.newReadDatum(uplcData) → capoStoredData.data
+     *
+     * Returns undefined for datums with no type field, no registered controller,
+     * or non-delegated-data structure (e.g. ScriptReference).
+     *
+     * REQT/gtgje3zy0g (Capo parseDelegatedDatum Dependency)
+     *
+     * @param uplcData - The raw UplcData from an inline datum
+     * @param charterData - Optional pre-fetched charter data (avoids redundant lookup)
+     * @returns Parsed record with id, type, and data fields, or undefined if not parseable
+     */
+    async parseDelegatedDatum(
+        this: SELF,
+        uplcData: UplcData,
+        charterData?: CharterData,
+    ): Promise<{ id: string; type: string; data: Record<string, any> } | undefined> {
+        // Step 1: Extract datum type from UplcData structure
+        if (uplcData.kind !== "constr") return undefined;
+
+        const cField = uplcData.fields[0];
+        if (!cField) return undefined; // No fields (e.g. ScriptReference)
+
+        const map = cField.kind === "map" ? cField.items : null;
+        if (!map) return undefined; // No map field in datum
+
+        const typeBytes = textToBytes("tpe");
+        const seenTypeBytes = map.find(([k, _v]) => {
+            return k.kind === "bytes" && equalsBytes(k.bytes, typeBytes);
+        })?.[1];
+
+        if (seenTypeBytes?.kind !== "bytes") return undefined; // No type field
+        const datumType = bytesToText(seenTypeBytes.bytes);
+
+        // Step 2: Look up the controller for this datum type
+        if (!charterData) {
+            charterData = await this.findCharterData(undefined, {
+                optional: false,
+            });
+        }
+
+        const dgtForType = await this.getDgDataController(datumType, {
+            charterData,
+            optional: true,
+            onchain: false, // Skip compilation — only need the data bridge for reading
+        });
+
+        if (!dgtForType) return undefined; // No controller registered for this type
+
+        // Step 3: Parse and unwrap the datum
+        const data = dgtForType.newReadDatum(uplcData) as any;
+        const typedData = data.capoStoredData?.data;
+        if (!typedData) return undefined;
+
+        if (!typedData.id || !typedData.type) return undefined;
+
+        return {
+            id: bytesToText(typedData.id),
+            type: datumType,
+            data: typedData,
+        };
+    }
+
+    /**
      * Queries a chain-index to find utxos having a specific type of delegated datum
      * @remarks
      * Optionally filters records by `id`, `type` and/or `predicate`
@@ -3457,14 +3525,13 @@ export abstract class Capo<
         performance.measure(`${perfLabel}:getDgDataController`, `${perfLabel}:getDgDataController:start`, `${perfLabel}:getDgDataController:end`);
         // console.log("findDelegatedDataUtxos", type, predicate);
 
-        // console.log("utxos", dumpAny(utxos));
+        // REQT/gtgje3zy0g: Use parseDelegatedDatum for core parsing pipeline
         performance.mark(`${perfLabel}:processUtxos:start`);
         let controllerLoadCount = 0;
         const utxosWithDatum = (
             await Promise.all(
                 capoUtxos.map(async (utxo: TxInput, utxoIdx: number) => {
                     const { datum } = utxo.output;
-                    // console.log("datum", datum);
                     if (!datum?.data) return null;
                     if (datum.kind != "InlineTxOutputDatum") {
                         throw new Error(
@@ -3472,118 +3539,24 @@ export abstract class Capo<
                         );
                     }
 
-                    // if (
-                    //     "undefined" !== typeof type &&
-                    //     !this.dataWrappers[type]
-                    // ) {
-                    //     console.log(
-                    //         ` ⚠️  WARNING: no adapter for type ${type}; skipping readDatum()`
-                    //     );
-                    //     return null;
-                    // }
-                    // const wrapperClass =
-                    //     type &&
-                    //     this.dataWrappers[type] // as unknown as ADAPTER_TYPE);
-
-                    let datumType: string | undefined;
-                    if (datum.data.kind == "constr") {
-                        const cField = datum.data.fields[0];
-                        if (!cField) {
-                            // ignore datums with no fields (e.g. ScriptReference)
-                            return undefined;
-                        }
-                        const map = cField.kind == "map" ? cField.items : null;
-                        if (map) {
-                            const typeBytes = textToBytes("tpe");
-                            const seenTypeBytes = map.find(([k, v]) => {
-                                if (k.kind != "bytes") {
-                                    console.log("   - key not bytes", k.kind);
-                                } else {
-                                    // console.log("key ", bytesToText(k.bytes));
-                                    return (
-                                        k.kind == "bytes" &&
-                                        equalsBytes(k.bytes, typeBytes)
-                                    );
-                                }
-                            })?.[1];
-                            if (seenTypeBytes?.kind == "bytes") {
-                                datumType = bytesToText(seenTypeBytes.bytes);
-                            }
-                        } else {
-                            console.log(
-                                "   - no map field in datum",
-                                datum.data.dataPath
-                            );
-                        }
-                        if (!datumType) {
-                            // ignore datums with no type field
-                            console.log(
-                                "   - no type field in datum",
-                                datum.data.dataPath
-                            );
-                            return undefined;
-                        }
-                    }
-
-                    // Skip if a specific type was requested and this datum doesn't match
-                    if (type && datumType !== type) {
-                        return undefined;
-                    }
-
-                    const loadLabel = `${perfLabel}:loadController:${datumType}:utxo${utxoIdx}`;
+                    const loadLabel = `${perfLabel}:parseDatum:utxo${utxoIdx}`;
                     performance.mark(`${loadLabel}:start`);
-                    const dgtForType =
-                        datumType &&
-                        (await this.getDgDataController(datumType, {
-                            charterData,
-                            optional: true,
-                            onchain: false,  // Skip compilation - we only need the data bridge for reading
-                        }));
+                    const parsed = await this.parseDelegatedDatum(datum.data, charterData);
                     performance.mark(`${loadLabel}:end`);
                     performance.measure(loadLabel, `${loadLabel}:start`, `${loadLabel}:end`);
                     controllerLoadCount++;
-                    if (!dgtForType) {
-                        console.log(
-                            "no type found in datum",
-                            datum.data.dataPath,
-                            "in utxo",
-                            dumpAny(utxo.id)
-                        );
 
-                        const msg = datumType
-                            ? `no delegate for type ${datumType}`
-                            : "no type in datum";
-                        return {
-                            utxo,
-                            datum,
-                            dataWrapped:
-                                `Error: ${msg}, couldn't parse data` as any,
-                            toJSON() {
-                                return {
-                                    utxo: utxo.datum,
-                                    data: `[error: couldn't parse]`,
-                                    dataWrapped: null,
-                                };
-                            },
-                        };
-                    }
+                    if (!parsed) return undefined;
 
-                    const data = dgtForType.newReadDatum(datum.data) as any; // todo: better type? RAW_DATUM_TYPE;
+                    // Get delegate controller for wrapData support (cached from parseDelegatedDatum)
+                    const dgtForType = await this.getDgDataController(parsed.type as any, {
+                        charterData,
+                        optional: true,
+                        onchain: false,
+                    });
+                    if (!dgtForType) return undefined;
 
-                    const typedData = data.capoStoredData.data;
-                    return mkFoundDatum(utxo, dgtForType, datum, typedData);
-                    // return datum.then(
-                    //     mkFoundDatum.bind(
-                    //         this,
-                    //         utxo,
-                    //         dgtForType,
-                    //     ) as any /* allows the error callback to fit the signature */,
-                    //     (e) => {
-                    //         debugger;
-                    //         console.log("wtf1", e, utxo.output.datum);
-                    //         return null; // we don't care about Datums other than DelegatedData:
-                    //     }
-                    // );
+                    return mkFoundDatum(utxo, dgtForType, datum, parsed.data as DelegateDatum$capoStoredDataLike["data"]);
                 })
             )
         )
