@@ -373,6 +373,10 @@ Enables the indexer to store and serve pre-parsed delegated-data records, elimin
 
  - **REQT-1.10.4**/gdmdg66paw: NEXT: **Record Query Methods** — MUST implement `findRecord(id): Promise<RecordIndexEntry | undefined>` for single-record lookup by record-id. MUST implement `findRecordsByType(type, options?): Promise<RecordIndexEntry[]>` for type-filtered queries. Both MUST filter out records where `spentInTx` is not null. When a UTXO is marked as spent, the corresponding record entry MUST also be marked spent.
 
+ - **REQT-1.10.5**/gtgje3zy0g: NEXT: **Capo parseDelegatedDatum Dependency** — EXPECTS Capo to expose `parseDelegatedDatum(uplcData, charterData?): Promise<{ id: string; type: string; data: Record<string, any> } | undefined>` encapsulating datum type extraction, controller lookup, and parsing. CachedUtxoIndex calls this method via the attached Capo instance (REQT/yx0yze9swf). The Capo type is referenced via `import type` only — no runtime dependency.
+
+ - **REQT-1.10.6**/md6x3wbnct: NEXT: **CapoDappProvider Attachment Integration** — EXPECTS `CapoDappProvider.connectCapo()` to call `utxoIndex.attachCapo(capo)` after the Capo is created and the utxoIndex is available. MUST be called in both early-index (index created before Capo) and late-index (index created after Capo) paths.
+
 ### Component: UtxoStoreGeneric Interface
 
 #### Overview
@@ -598,6 +602,8 @@ Pre-parsed delegated-data records stored in `records` Dexie table:
 * New UTXOs parsed inline during monitoring when Capo attached (REQT/pshpah30em)
 * Catchup processing on Capo attachment using `lastParsedBlockHeight` watermark (REQT/3aew7g7wdw)
 * `findRecord(id)` and `findRecordsByType(type)` query methods (REQT/gdmdg66paw)
+* EXPECTS Capo to expose `parseDelegatedDatum()` for datum parsing pipeline (REQT/gtgje3zy0g)
+* EXPECTS CapoDappProvider to call `attachCapo()` in `connectCapo()` (REQT/md6x3wbnct)
 * Work unit: `src/networkClients/UtxoIndex/20260216.parsed-record-index.workUnit.md`
 
 ## Release Management Plan
