@@ -37,9 +37,9 @@ if (minted == 1) {
 - `REQTgroupStart(reqt, collapsed=false) -> ()`
   - Opens a requirement-scoped log when you will finish manually with `logGroupEnd`.
 - `assertREQTgroup(reqt, collapsed, callback) -> ()`
-  - Runs a Bool callback in a grouped log; asserts on false.
+  - Grouped requirement enforcement that returns nothing. Runs a Bool callback inside a requirement-labelled log group; asserts on false. Use when you need grouped enforcement in a void context — the requirement must hold, but you don't need a Bool result for chaining. The void return makes intent clear: this is a standalone gate, not part of a boolean expression.
 - `bREQTgroup(reqt, collapsed, callback) -> Bool`
-  - Returns the Bool result after asserting; good for conjunctions.
+  - Grouped requirement enforcement that returns the Bool result after asserting. Use when combining grouped requirements inside boolean expressions or when you want the result for short-circuit chaining.
 - `REQTgroup[T](reqt, collapsed, callback) -> T`
   - Wraps any return type; asserts by virtue of `logGroupEnd("✅")` only when the callback succeeds.
   - Example for mandatory gov authority check:
@@ -94,6 +94,7 @@ logGroup(group:"🏒 checking activity: "+desc, collapsed: false, callback: () -
 
 ## When to pick what (quick rules)
 - Use `REQT`/`REQTgroup*` for invariants that must abort the transaction; select the variant that fits your return type and whether you need automatic log closure.
+- Use `assertREQTgroup` for standalone grouped enforcement gates in void context — the requirement must hold, but the surrounding code doesn't need a Bool result.
 - Use `bREQT`/`bREQTgroup` when combining requirements inside boolean expressions or when you want short-circuit behavior with logging.
 - Use `REQTgroupStart` + `logGroupEnd` when you need to emit intermediate logs before deciding success/failure.
 - Use `logGroup*` for narrative tracing or optional flows where failure should not assert.
