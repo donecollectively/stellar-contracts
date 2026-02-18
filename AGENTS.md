@@ -53,6 +53,7 @@ needed based on the task at hand — you do NOT need to read all of them upfront
 - **Creating a data delegate**: `essential-stellar-data-policy.md` + `essential-stellar-internals.md`
 - **Writing tests**: `essential-stellar-testing.md` + `essential-stellar-testing-snapshots.md`
 - **Understanding Cardano fundamentals**: `essential-cardano.md`
+- **Expressing on-chain requirements**: `essential-stellar-onchain-diagnostics.md` — REQT* variant selection for traceable invariant enforcement
 - **Debugging on-chain failures**: `essential-stellar-onchain-diagnostics.md`
 
 ### Boilerplate Templates

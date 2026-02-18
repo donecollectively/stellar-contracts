@@ -36,6 +36,7 @@ Every data-policy delegate is wrapped by a Typescript subclass of DelegatedDataC
    - Use `capoCtx.updatingDgData(recId)` / `creatingDgData(recId)` / `referencingDgData(recId)` to get DgDataDetails.
    - Read datums via `inputData()/outputData()` and cast with `<YourData>::from_data`.
    - Enforce invariants (auth, state transitions, value checks); return Bool.
+   - Express each invariant using REQT* diagnostic helpers (`bREQTgroup`, `assertREQTgroup`, `REQT`, etc.) rather than bare `assert()` — see `reference/essential-stellar-onchain-diagnostics.md` for which variant to pick based on your return type and grouping needs.
 5) Multi-activity: if you support batching, allow `MultipleDelegateActivities` and iterate nested activities; otherwise reject it.
 6) Ref scripts/UUT: ensure your manifest entry names the policy token (idPrefix) and ref script is stored; mint path validates UUT name (seed+idPrefix).
 

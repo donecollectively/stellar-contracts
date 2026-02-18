@@ -1,5 +1,7 @@
 # On-chain diagnostics: REQT & logging helpers
 
+Use these helpers when **writing** validation logic — not just when debugging. They are the standard way to express enforceable, traceable requirements in on-chain code. Every invariant your validator enforces should be wrapped in a REQT* call so it's visible at runtime, not just in source.
+
 The REQT helpers create proactive transparency/observability and support end-user verification of actual contractual behaviors.
 
 ## How we choose helpers (principles seen in src/*.hl)
