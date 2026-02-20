@@ -293,6 +293,15 @@ export abstract class StellarTestHelper<
         //@ts-expect-error on our synthetic property
         if (preProdParams.isFixedUp) return preProdParams;
 
+        // When OPTIMIZE=1, compiled scripts are much smaller and cheaper —
+        // the generous fixups for unoptimized scripts aren't needed.
+        if (environment.OPTIMIZE) {
+            console.log("test env: ⚡ OPTIMIZE=1 — skipping network param fixups (optimized scripts fit within standard limits)");
+            //@ts-expect-error on our synthetic property
+            preProdParams.isFixedUp = true;
+            return preProdParams;
+        }
+
         // REQT/pejg3twvpv (Increased maxTxSize)
         const origMaxTxSize = preProdParams.maxTxSize;
         //@ts-expect-error on our synthetic property
