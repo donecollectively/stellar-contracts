@@ -162,6 +162,25 @@ Charter creation/update, delegate installation/replacement, and ref script manag
 ```
 Note that the UI-provided form manager does this sequence itself, so application developers may often be able to meet their needs without needing to implement this pattern directly.
 
+## Validity windows
+
+On-chain policies access time through `tx.time_range`. The on-chain `now(granularity)` returns `validity.start`, and `getTimeRange(granularity)` enforces the window width (see `essential-stellar-onchain.md` § "Time helpers"). Off-chain must set the window to match.
+
+- `tcx.validFor(durationMs)`: Sets the validity window from `tcx.txnTime` to `txnTime + durationMs`. **The duration must not exceed the on-chain policy's granularity** — if the policy calls `getTimeRange(5*Duration::MINUTE)`, use `validFor(5 * 60 * 1000)` or less.
+- `tcx.txnTime`: The validity window start (`Date`). Auto-set on first access (~3 min ago, slot-aligned). Use this for datum fields the policy compares against `now()` (which returns `validity.start`).
+- `tcx.txnEndTime`: The validity window end (`Date`). Only available after `validFor()`. Use for datum fields the policy compares against `validity.end`.
+- `tcx.futureDate(date)`: Pins `txnTime` to a specific future time. Must be called **before** `validFor()`. In tests, the emulator auto-advances to this time before submission.
+
+When a policy enforces `datum.timestamp == now()`, set that field from `tcx.txnTime`:
+```typescript
+const tcx = this.mkTcx("activate sale");
+const activationTime = tcx.txnTime;       // = validity.start on-chain
+tcx.validFor(5 * 60 * 1000);              // matches policy's 5*Duration::MINUTE
+await this.mkTxnUpdateRecord(sale, {
+    updatedFields: { activatedAt: activationTime },
+}, tcx);
+```
+
 ## dApp creation & bootstrap
 For initial setup — chartering, installing policies, ref scripts, and first deployment — see `reference/essential-offchain-bootstrapping.md` and the step-by-step kickstart guide at `reference/essential-stellar-dapp-kickstart.md`.
 

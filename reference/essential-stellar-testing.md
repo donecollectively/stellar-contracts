@@ -236,6 +236,11 @@ This confirms the hook isn't just cosmetic — the policy actually needs what it
 
 ## Tips and pitfalls
 - **Comparing byte values in assertions**: Raw `number[]` from `.hash()` or datum fields cannot be compared with `===`, `==`, or `expect().toBe()` — these check reference identity, not contents, and will silently fail. Use `equalsBytes(a, b)` from `@helios-lang/codec-utils`: `expect(equalsBytes(script1.hash(), script2.hash())).toBe(true)`. For typed Helios hash objects (`MintingPolicyHash`, `ValidatorHash`, etc.), use `.isEqual()`: `expect(mph1.isEqual(mph2)).toBe(true)`. Avoid `.toHex()` roundtrips just for comparison — they work but obscure intent.
+- **Testing time-sensitive transactions**: When a policy uses `getTimeRange(granularity)` or `now()`, tests must set the validity window correctly.
+  - **Future-dating**: Pass `{ futureDate: new Date(Date.now() + offset) }` to `submitTxnWithBlock()` or helper submit options — the emulator auto-advances to that time. Or call `tcx.futureDate(date)` during transaction building (before `validFor()`) when the controller needs `tcx.txnTime` to produce correct datum values.
+  - **Testing time-based rejections**: Manipulate datum timestamp fields relative to the transaction time so the policy's time comparison fails. For example, set a datum's timestamp to a future date then transact at the current time, or future-date the transaction past a deadline stored in the datum.
+  - In both cases, `tcx.txnTime` is the `validity.start` seen on-chain as `now()`. `h.network.tick(n)` advances the emulator by `n` slots for manual time control.
+  - For how `validFor()`, `txnTime`, and `txnEndTime` synchronize with on-chain time checks, see `essential-stellar-offchain.md` § "Validity windows".
 - Prefer using a snapshot (`h.snapTo...`) or `await h.reusableBootstrap()` when you need to test onchain functionality.  `initialize()` is faster and good for testing off-chain-only code, but it can't check any onchain policies.
 - For one-off transaction execution, use submitTxnWithBlock() directly for one-off cases of submitting a txn built directly from a controller mkTxn* method.  Can use mocking.
 - To DRY up tests, create helper methods that have options?: { submit?: boolean; expectError?: true; } and call through to submitTxnWithBlock().  mock-compatible if it doesn't use snapshots.

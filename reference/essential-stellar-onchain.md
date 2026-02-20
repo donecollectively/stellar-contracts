@@ -63,7 +63,10 @@ The similarly-named off-chain Typescript classes provide Javascript access for t
 - See `reference/essential-stellar-onchain-diagnostics.md` for more details about using the logging and REQT utilities.
 
 ### Time helpers
-- `getTimeRange`, `startsAfter/Before`, `now`, `startsExactlyAt`, `endsExactlyAt`.
+On-chain scripts access time through `tx.time_range` — the transaction's validity window, set off-chain. Two helpers in `StellarHeliosHelpers.hl`:
+
+- `getTimeRange(granularity: Duration = Duration::HOUR) -> TimeRange`: Returns `tx.time_range` after asserting `end - start <= granularity`. Policies choose their own granularity (e.g., `5*Duration::MINUTE`). The returned `TimeRange` has standard Helios methods (`.start`, `.end`, `.contains(t)`, `.is_after(t)`, `.is_before(t)`, etc.) — use those directly for comparisons.
+- `now(granularity: Duration = Duration::HOUR) -> Time`: Shorthand for `getTimeRange(granularity).start`. When off-chain code writes a datum field the policy compares against `now()`, it must use `tcx.txnTime` (see `essential-stellar-offchain.md` § "Validity windows").
 
 ### Token return checks
 - `returnsValueToScript(value)` ensures value returned to same script.
