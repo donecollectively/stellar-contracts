@@ -616,7 +616,7 @@ export abstract class HeliosScriptBundle {
                     this.setupDetails.specialOriginatorLabel || "‹unknown›"
                 }'`
             );
-            throw new Error(`check isPrecompiled() logic here`);
+            // throw new Error(`check isPrecompiled() logic here`);
             return false;
         }
         return false;

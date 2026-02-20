@@ -47,7 +47,7 @@ export class EnumBridge<
     TYPE extends isActivity | isDatum | JustAnEnum = JustAnEnum,
     // NESTED extends Nested | NotNested = NotNested,
     uplcReturnType = //extends (isActivity extends TYPE ? { redeemer: UplcData } : UplcData) =
-    isActivity extends TYPE ? { redeemer: UplcData } : UplcData
+    isActivity extends TYPE ? { redeemer: UplcData; moduleName: string; activityName: string; activityData: any } : UplcData
 > extends DataBridge {
     constructor(options : DataBridgeOptions) {
         super(options);
@@ -64,9 +64,12 @@ export class EnumBridge<
         
         uplc.dataPath = enumPathExpr;
         if (this.isActivity) {
+            const [moduleName, activityName] = enumPathExpr.split("::");
             return {
                 redeemer: uplc,
-                details: enumPathExpr
+                moduleName,
+                activityName,
+                activityData: value
             } as uplcReturnType;
         } else {
             return uplc as uplcReturnType;
