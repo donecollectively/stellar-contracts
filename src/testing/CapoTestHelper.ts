@@ -1,4 +1,4 @@
-import { Capo, StellarTxnContext, parseCapoJSONConfig } from "@donecollectively/stellar-contracts";
+import { Capo, StellarTxnContext, parseCapoJSONConfig, environment } from "@donecollectively/stellar-contracts";
 import { VERSION as HELIOS_VERSION } from "@helios-lang/compiler";
 import type {
     hasBootstrappedCapoConfig,
@@ -1629,6 +1629,11 @@ export abstract class CapoTestHelper<
             extra: {
                 // heliosVersion is in genesis (actors) snapshot only - no need to repeat here
                 // heliosVersion: HELIOS_VERSION,
+
+                // OPTIMIZE=1 produces different compiled UPLC (different validator hashes),
+                // so it must differentiate the cache key. Only included when truthy so that
+                // default (OPTIMIZE=0/unset) doesn't change existing cache keys.
+                ...(environment.OPTIMIZE ? { optimize: environment.OPTIMIZE } : {}),
             },
         };
     }

@@ -32,8 +32,8 @@ if (
     NODE_ENV = import.meta.env.DEV ? "development" : "production";
     //@ts-expect-error
     BF_API_KEY = import.meta.env.VITE_BF_API_KEY || "";
-    //@ts-expect-error
-    OPTIMIZE = parseInt(import.meta.env.VITE_OPTIMIZE || "0");
+    //@ts-expect-error  — fall back to process.env.OPTIMIZE for vitest (OPTIMIZE is a build/test concern, not VITE_-prefixed)
+    OPTIMIZE = parseInt(import.meta.env.VITE_OPTIMIZE || (isNodeJS && process.env.OPTIMIZE) || "0");
 } else if (anyNEXTjsCue) {
     console.log("nextjs worker env - using NODE_ENV and NEXT_PUBLIC_*");
     DEBUG = parseInt(process.env.NEXT_PUBLIC_DEBUG || "0");
