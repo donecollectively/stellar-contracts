@@ -78,7 +78,7 @@ These built-in types are available for on-chain use.  You should be familiar wit
 ## Int — https://helios-lang.io/docs/lang/builtins/int
 - Unbounded integer; literals support decimal/hex/etc per Helios basics.
 - Parse/encode: `parse(string)` (no leading zeroes except `0`), `from_base58`, `to_base58` (non-negative), `from_big_endian` / `to_big_endian` (non-negative), `from_little_endian` / `to_little_endian` (non-negative), `to_hex`, `from_data`.
-- Helpers: `sqrt` (truncates, rejects negative), `max(a,b)`, `min(a,b)`, zigzag `encode_zigzag`/`decode_zigzag` (decode expects non-negative input), `to_real`, `to_bool` (0→false else true), `bound(low, high)`, `bound_min(low)`, `bound_max(high)`, `abs`.
+- Helpers: `abs()`, `sqrt()` (truncates, rejects negative), `max(a,b)`, `min(a,b)`, zigzag `encode_zigzag`/`decode_zigzag` (decode expects non-negative input), `to_real`, `to_bool` (0→false else true), `bound(low, high)`, `bound_min(low)`, `bound_max(high)`, `abs`.
 - Arithmetic/comparison: `+ - * / %` and `== != > < >= <=`.
 
 ## List — https://helios-lang.io/docs/lang/builtins/list
