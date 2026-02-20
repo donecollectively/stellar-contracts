@@ -11,6 +11,15 @@ WARNING: Helios on-chain builtins are often closely aligned to the OFFCHAIN Type
     - On-chain types are VERY similar in places, but the off-chain typescript API IS DIFFERENT from the on-chain types.
 - Orientation: ledger module gives typed ledger objects + conversions; tx-utils adds clients, wallets, coin selection, and tx builders.
 
+## codec-utils (`@helios-lang/codec-utils`)
+Low-level byte/string utilities used throughout the Helios SDK and stellar-contracts. Already a transitive dependency — import directly.
+
+- **Byte comparison**: `equalsBytes(a, b)` — compares two `number[]` or `Uint8Array` values element-by-element. **This is the correct way to compare on-chain byte arrays** (hashes, token names, datum IDs, script hashes). JavaScript `===`/`==` on arrays checks reference identity, not contents, so it will silently return `false` for identical byte values. Typed Helios hash objects (`MintingPolicyHash`, `ValidatorHash`, etc.) provide `.isEqual(other)` which calls `equalsBytes` internally — use that when you have typed hashes, and `equalsBytes` when you have raw `number[]` (e.g., from `UplcProgram.hash()`).
+- **Byte/hex conversion**: `bytesToHex(bytes)`, `hexToBytes(hex)`, `isValidHex(str)`.
+- **String/byte conversion**: `encodeUtf8(str)` → `number[]`, `decodeUtf8(bytes)` → `string`. Common for token name encoding.
+- **Byte ordering**: `compareBytes(a, b)` → `-1 | 0 | 1` (lexicographic).
+- **Type coercion**: `toBytes(bytesLike)` normalizes `BytesLike` (hex string, `number[]`, or `Uint8Array`) to `number[]`.
+
 ## ledger v0.7.15 (ledger/index.html — https://helios-lang.io/docs/sdk/ledger/)
 - Purpose: mainnet ledger primitives—`Address`, `AssetClass`, `DCert`, pools, `TimeRange`, `Tx`, `TxInput`, `TxOutput`, `Value`, etc.
 - Era coverage: Byron → Conway (listed on the page).

@@ -70,7 +70,7 @@ The readable data-types always use their "Ergo" forms for enums and structs (wit
  - onchain Option[T] is `undefined | ‹Ergo-T›` for read, or `undefined | ‹TLike›` for write.  the key is required and `undefined` is required (null not allowed) for None.
  - onchain Int is `bigint` for read or `number | bigint` for write.
  - onchain String is `string` off-chain (read/write).
- - onchain ByteArray is `number[]` for read, and `number[] | string` for write (but note that a string value has to be hex-encoded binary data, so its utility is constrained)
+ - onchain ByteArray is `number[]` for read, and `number[] | string` for write (but note that a string value has to be hex-encoded binary data, so its utility is constrained). **Comparing on-chain byte arrays, encoded as `number[]`**: JavaScript `===`/`==` checks reference identity, not contents — it will silently return `false` for identical byte values. Use `equalsBytes(a, b)` from `@helios-lang/codec-utils` for element-by-element comparison. For typed Helios hash objects (`MintingPolicyHash`, `ValidatorHash`, etc.), use their `.isEqual(other)` method instead.
  - onchain List[T] is `List<T>` for primitives and List<‹ErgoT›> for enums/structs for reading, and List<TLike> for primitives, enums and structs for writing.
  - onchain Map[K,V] is unknown. If you need to know about this, please STOP processing and instigate a separate research thread to fix this TODO:ce2esg3cmf
  - onchain Boolean is `boolean`.

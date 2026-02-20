@@ -235,6 +235,7 @@ This confirms the hook isn't just cosmetic — the policy actually needs what it
   - When there is a test failure, be sure to look at the whole error message and not only the first line of the error; often Helios reports the script name and the actual site of the error in later lines of the error message.
 
 ## Tips and pitfalls
+- **Comparing byte values in assertions**: Raw `number[]` from `.hash()` or datum fields cannot be compared with `===`, `==`, or `expect().toBe()` — these check reference identity, not contents, and will silently fail. Use `equalsBytes(a, b)` from `@helios-lang/codec-utils`: `expect(equalsBytes(script1.hash(), script2.hash())).toBe(true)`. For typed Helios hash objects (`MintingPolicyHash`, `ValidatorHash`, etc.), use `.isEqual()`: `expect(mph1.isEqual(mph2)).toBe(true)`. Avoid `.toHex()` roundtrips just for comparison — they work but obscure intent.
 - Prefer using a snapshot (`h.snapTo...`) or `await h.reusableBootstrap()` when you need to test onchain functionality.  `initialize()` is faster and good for testing off-chain-only code, but it can't check any onchain policies.
 - For one-off transaction execution, use submitTxnWithBlock() directly for one-off cases of submitting a txn built directly from a controller mkTxn* method.  Can use mocking.
 - To DRY up tests, create helper methods that have options?: { submit?: boolean; expectError?: true; } and call through to submitTxnWithBlock().  mock-compatible if it doesn't use snapshots.
