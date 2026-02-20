@@ -56,9 +56,7 @@ export class EnumBridge<
     // and compile-time type-checking.  
     mkUplcData(value: any, enumPathExpr: string) : uplcReturnType{
         if (this.redirectTo) {
-            //@ts-expect-error the signature's return type is provided by the returned
-            //   value from the redirectTo() callback.
-            return this.redirectTo(value)
+            return this.redirectTo(value, enumPathExpr);
         }
         const uplc = this.ᱺᱺcast.toUplcData(value, enumPathExpr);
         const t = uplc.toString();
@@ -67,7 +65,8 @@ export class EnumBridge<
         uplc.dataPath = enumPathExpr;
         if (this.isActivity) {
             return {
-                redeemer: uplc
+                redeemer: uplc,
+                details: enumPathExpr
             } as uplcReturnType;
         } else {
             return uplc as uplcReturnType;

@@ -992,9 +992,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             }
         });\n` +
             `        nestedAccessor.mkDataVia(\n` +
-            `            (${nestedFieldName}: ${nestedEnumName}Like) => {\n` +
+            `            (${nestedFieldName}: ${nestedEnumName}Like, innerPath?: string) => {\n` +
+            `                const variantSuffix = innerPath ? "." + innerPath.split(".").pop() : "";\n` +
             `                return  this.mkUplcData({ ${variantName}: ${nestedFieldName} },
-            ${enumPathExpr});\n` +
+            ${enumPathExpr} + variantSuffix);\n` +
             `        });\n` +
             `        return nestedAccessor;\n` +
             `    } /* nested enum accessor */`

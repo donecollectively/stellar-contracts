@@ -210,11 +210,11 @@ export class DataBridge extends (dataBridgeProxyBase as typeof Object) {
     /**
      * @internal
      */
-    redirectTo?: (value: any) => void;
+    redirectTo?: (value: any, innerPath?: string) => any;
     /**
      * @internal
      */
-    mkDataVia(redirectionCallback: (value: any) => void) {
+    mkDataVia(redirectionCallback: (value: any, innerPath?: string) => any) {
         if (!this.isNested) {
             throw new Error(
                 `dataMaker ${this.constructor.name}: redirectTo is only valid for nested enums`
