@@ -171,10 +171,10 @@ On-chain policies access time through `tx.time_range`. The on-chain `now(granula
 - `tcx.txnEndTime`: The validity window end (`Date`). Only available after `validFor()`. Use for datum fields the policy compares against `validity.end`.
 - `tcx.futureDate(date)`: Pins `txnTime` to a specific future time. Must be called **before** `validFor()`. In tests, the emulator auto-advances to this time before submission.
 
-When a policy enforces `datum.timestamp == now()`, set that field from `tcx.txnTime`:
+When a policy enforces `datum.timestamp == now()`, set that field from `tcx.txnTime.getTime()` — the bridge expects milliseconds (`number`) for on-chain `Time` fields, not a `Date`:
 ```typescript
 const tcx = this.mkTcx("activate sale");
-const activationTime = tcx.txnTime;       // = validity.start on-chain
+const activationTime = tcx.txnTime.getTime();  // ms — matches on-chain now()
 tcx.validFor(5 * 60 * 1000);              // matches policy's 5*Duration::MINUTE
 await this.mkTxnUpdateRecord(sale, {
     updatedFields: { activatedAt: activationTime },
