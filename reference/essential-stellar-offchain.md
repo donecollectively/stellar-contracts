@@ -169,7 +169,7 @@ On-chain policies access time through `tx.time_range`. The on-chain `now(granula
 - `tcx.validFor(durationMs)`: Sets the validity window from `tcx.txnTime` to `txnTime + durationMs`. **The duration must not exceed the on-chain policy's granularity** — if the policy calls `getTimeRange(5*Duration::MINUTE)`, use `validFor(5 * 60 * 1000)` or less.
 - `tcx.txnTime`: The validity window start (`Date`). Auto-set on first access (~3 min ago, slot-aligned). Use this for datum fields the policy compares against `now()` (which returns `validity.start`).
 - `tcx.txnEndTime`: The validity window end (`Date`). Only available after `validFor()`. Use for datum fields the policy compares against `validity.end`.
-- `tcx.futureDate(date)`: Pins `txnTime` to a specific future time. Must be called **before** `validFor()`. In tests, the emulator auto-advances to this time before submission.
+- `tcx.futureDate(date)`: **Specialized** — pins `txnTime` to a specific future time. Must be called **before** `validFor()`. In tests, the emulator auto-advances to this time before submission. Reserve for cases where the transaction itself must not be valid until a future moment (e.g., time-locked releases). For normal time-sensitive tests, use `txnTime` + datum field manipulation instead.
 
 When a policy enforces `datum.timestamp == now()`, set that field from `tcx.txnTime.getTime()` — the bridge expects milliseconds (`number`) for on-chain `Time` fields, not a `Date`:
 ```typescript
