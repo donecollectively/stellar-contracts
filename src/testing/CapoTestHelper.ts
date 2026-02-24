@@ -73,6 +73,14 @@ export type SnapshotDecoratorOptions = {
     resolveScriptDependencies?: ScriptDependencyResolver;
     /** Optional label resolver for human-readable directory names (ARCH-jj5swg0hfk). Default returns empty string. */
     computeDirLabel?: DirLabelResolver;
+    /**
+     * Builder version for cache invalidation when snapshot-building code changes.
+     * Required field — forces explicit acknowledgment at every snapshot declaration.
+     * - `undefined`: no effect on cache keys (preserves existing caches)
+     * - `0, 1, 2, ...`: incrementing invalidates cached snapshots from previous versions
+     * REQT/h3t4xpvgtp (Builder Version in Cache Key)
+     */
+    builderVersion: number | undefined;
 };
 
 /**
@@ -523,7 +531,7 @@ export abstract class CapoTestHelper<
     static hasNamedSnapshot(
         options: SnapshotDecoratorOptions,
     ) {
-        const { actor: actorName, parentSnapName, internal, resolveScriptDependencies, computeDirLabel } = options;
+        const { actor: actorName, parentSnapName, internal, resolveScriptDependencies, computeDirLabel, builderVersion } = options;
         if (!parentSnapName) {
             throw new Error(
                 `hasNamedSnapshot(): parentSnapName is required. ` +
@@ -624,6 +632,7 @@ export abstract class CapoTestHelper<
                 parentSnapName,
                 resolveScriptDependencies,
                 computeDirLabel,
+                builderVersion,
                 actor: actorName,
                 internal,
                 snapMethod: SnapWrap,  // Store the decorated method for parent resolution
@@ -659,6 +668,7 @@ export abstract class CapoTestHelper<
                             parentSnapName: meta.parentSnapName,
                             resolveScriptDependencies: meta.resolveScriptDependencies,
                             computeDirLabel: meta.computeDirLabel,
+                            builderVersion: meta.builderVersion,
                         });
                     }
                 }
@@ -796,6 +806,7 @@ export abstract class CapoTestHelper<
     @CapoTestHelper.hasNamedSnapshot({
         actor: "default",
         parentSnapName: "genesis",
+        builderVersion: undefined, // REQT/h3t4xpvgtp
         // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
         async resolveScriptDependencies(helper) {
             const h = helper as CapoTestHelper<any, any>;
@@ -831,6 +842,7 @@ export abstract class CapoTestHelper<
         actor: "default",
         parentSnapName: SNAP_ACTORS,
         internal: true, // REQT/h4kp7wm2nx (internal: true skips reusableBootstrap)
+        builderVersion: undefined, // REQT/h3t4xpvgtp
         // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
         async resolveScriptDependencies(helper) {
             return (helper as CapoTestHelper<any, any>).resolveCoreCapoDependencies();
@@ -884,6 +896,7 @@ export abstract class CapoTestHelper<
         actor: "default",
         parentSnapName: SNAP_CAPO_INIT,
         internal: true, // REQT/h4kp7wm2nx (internal: true skips reusableBootstrap)
+        builderVersion: undefined, // REQT/h3t4xpvgtp
         // Resolver takes helper as explicit argument (ARCH-8rqhpfy1ym)
         async resolveScriptDependencies(helper) {
             return (helper as CapoTestHelper<any, any>).resolveEnabledDelegatesDependencies();

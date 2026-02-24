@@ -29,6 +29,7 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(Pizz
     @CapoTestHelper.hasNamedSnapshot({
         actor: "wally",
         parentSnapName: "bootstrapped",
+        builderVersion: undefined,
     })
     async snapToFirstRegisteredCustomer() {
         throw new Error("never called; see firstRegisteredCustomer()");
@@ -58,6 +59,7 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(Pizz
     @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "firstRegisteredCustomer",
+        builderVersion: undefined,
     })
     async snapToFirstPendingOrder() {
         throw new Error("never called; see firstPendingOrder()");
@@ -91,6 +93,7 @@ export class PizzaCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(Pizz
     @CapoTestHelper.hasNamedSnapshot({
         actor: "baker",
         parentSnapName: "firstPendingOrder",
+        builderVersion: undefined,
     })
     async snapToFirstOrderBaked() {
         throw new Error("never called; see firstOrderBaked()");

@@ -24,7 +24,7 @@ For dApp teams who already write basic Typescript, this guide shows how to test 
 - **Snapshot builder method naming**: the builder method name IS the snapshot name. `snapToFirstOrderPending` requires builder `firstOrderPending()`, and the snapshot name is `"firstOrderPending"`. Chain via `parentSnapName` using the builder name (e.g., `parentSnapName: "firstRegisteredCustomer"`).
  - **Snapshot method body**: The body of the `snapToX` method is never executed (the decorator replaces it). Include a throw + unreachable return for documentation:
     ```typescript
-    @CapoTestHelper.hasNamedSnapshot({ actor: "tina", parentSnapName: "bootstrapped" })
+    @CapoTestHelper.hasNamedSnapshot({ actor: "tina", parentSnapName: "bootstrapped", builderVersion: undefined })
     async snapToFooIsReady() {
         throw new Error("never called; see fooIsReady()");
         return this.fooIsReady();
@@ -90,6 +90,7 @@ export class YourCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(YourC
     @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "bootstrapped",  // or "enabledDelegatesDeployed", or a custom parent
+        builderVersion: undefined,
     })
     async snapToFirstRecordProposed() {
         throw new Error("never called; see firstRecordProposed()");

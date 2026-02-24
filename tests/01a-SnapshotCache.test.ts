@@ -902,6 +902,7 @@ class PartialCacheTestHelper extends DefaultCapoTestHelper {
     @CapoTestHelper.hasNamedSnapshot({
         actor: "tracy",
         parentSnapName: "bootstrapped",
+        builderVersion: undefined,
     })
     async snapToActorVerification() {
         return this.actorVerification();

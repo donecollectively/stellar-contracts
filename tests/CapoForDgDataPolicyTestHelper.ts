@@ -90,6 +90,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
     @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "capoInitialized",
+        builderVersion: undefined,
     })
     async snapToInstallingTestDataPolicy() {
         console.log("never called");
@@ -108,6 +109,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
     @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "capoInitialized",
+        builderVersion: undefined,
     })
     async snapToInstalledTestDataPolicy() {
         console.log("never called");
@@ -124,6 +126,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
     @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "capoInitialized",
+        builderVersion: undefined,
     })
     async snapToReplacingTestDataPolicy() {
         console.log("never called");

@@ -92,6 +92,13 @@ export type SnapshotRegistryEntry = {
     resolveScriptDependencies?: (helper: unknown) => Promise<CacheKeyInputs>;
     /** Optional label resolver for human-readable directory names. Default returns empty string. (ARCH-jj5swg0hfk) */
     computeDirLabel?: DirLabelResolver;
+    /**
+     * Builder version for cache invalidation when snapshot-building code changes.
+     * undefined: no effect on cache key. 0, 1, 2, ...: invalidates previous caches.
+     * Incorporated into cache key automatically by the framework.
+     * REQT/h3t4xpvgtp (Builder Version in Cache Key)
+     */
+    builderVersion?: number | undefined;
 };
 
 /**
@@ -607,14 +614,17 @@ export class SnapshotCache {
      * Returns 6 bech32 characters (~1 billion combinations, sufficient for uniqueness).
      * (ARCH-14zt4f9rtg)
      */
-    computeKey(parentHash: string | null, inputs: CacheKeyInputs): string {
+    computeKey(parentHash: string | null, inputs: CacheKeyInputs, builderVersion?: number | undefined): string {
         // Use replacer to handle BigInt in params
         const replacer = (_key: string, value: unknown) =>
             typeof value === "bigint" ? value.toString() : value;
+        // REQT/h3t4xpvgtp: builderVersion included in hash data when defined;
+        // JSON.stringify drops undefined values, preserving existing cache keys
         const data = JSON.stringify({
             parent: parentHash,
             bundles: inputs.bundles,
             extra: inputs.extra,
+            builderVersion,
         }, replacer);
         const hashBytes = blake2b(encodeUtf8(data));
         // Use bech32 encoding with a dummy HRP, then take last 6 chars
@@ -698,20 +708,24 @@ export class SnapshotCache {
 
         // Compute cache key BEFORE checking in-memory cache
         // Different seeds/configs produce different cache keys (REQT/j9adgp9rwv)
+        // REQT/h3t4xpvgtp: builderVersion from registry entry incorporated automatically
+        const { builderVersion } = entry;
         let cacheKey: string;
         let inputs: CacheKeyInputs;
         if (entry.resolveScriptDependencies) {
             inputs = await entry.resolveScriptDependencies(helper);
-            cacheKey = this.computeKey(parentHash, inputs);
+            cacheKey = this.computeKey(parentHash, inputs, builderVersion);
             // Log key inputs for debugging — include actual values, not just keys
             const bundleNames = inputs.bundles.map(b => `${b.name}:${b.sourceHash?.slice(0, 8)}`).join(', ');
             const extraSummary = inputs.extra ? JSON.stringify(inputs.extra) : '';
-            console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (bundles=[${bundleNames}], extra=${extraSummary})`);
+            const bvSummary = builderVersion !== undefined ? `, builderVersion=${builderVersion}` : '';
+            console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (bundles=[${bundleNames}], extra=${extraSummary}${bvSummary})`);
         } else {
             // No resolver - use parent hash only (for simple snapshots)
             inputs = { bundles: [] };
-            cacheKey = this.computeKey(parentHash, inputs);
-            console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (no resolver, parent-only)`);
+            cacheKey = this.computeKey(parentHash, inputs, builderVersion);
+            const bvSummary = builderVersion !== undefined ? `, builderVersion=${builderVersion}` : '';
+            console.log(`  [find:${snapshotName}] cacheKey=${cacheKey} (no resolver, parent-only${bvSummary})`);
         }
 
         // Compute directory label for human-readable path (ARCH-jj5swg0hfk)
@@ -914,18 +928,22 @@ export class SnapshotCache {
         }
 
         // Compute cache key using resolver
+        // REQT/h3t4xpvgtp: builderVersion from registry entry incorporated automatically
+        const { builderVersion } = entry;
         let cacheKey: string;
         let cacheKeyInputs: CacheKeyInputs;
         if (entry.resolveScriptDependencies) {
             cacheKeyInputs = await entry.resolveScriptDependencies(helper);
-            cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
+            cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs, builderVersion);
             const bundleNames = cacheKeyInputs.bundles.map(b => `${b.name}:${b.sourceHash?.slice(0, 8)}`).join(', ');
             const extraSummary = cacheKeyInputs.extra ? JSON.stringify(cacheKeyInputs.extra) : '';
-            console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, bundles=[${bundleNames}], extra=${extraSummary})`);
+            const bvSummary = builderVersion !== undefined ? `, builderVersion=${builderVersion}` : '';
+            console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, bundles=[${bundleNames}], extra=${extraSummary}${bvSummary})`);
         } else {
             cacheKeyInputs = { bundles: [] };
-            cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs);
-            console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, no resolver)`);
+            cacheKey = this.computeKey(cachedSnapshot.parentHash, cacheKeyInputs, builderVersion);
+            const bvSummary = builderVersion !== undefined ? `, builderVersion=${builderVersion}` : '';
+            console.log(`  [store:${snapshotName}] cacheKey=${cacheKey} (parentHash=${cachedSnapshot.parentHash?.slice(0, 12)}, no resolver${bvSummary})`);
         }
 
         // Compute directory label for human-readable path (ARCH-jj5swg0hfk)

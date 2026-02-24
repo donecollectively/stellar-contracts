@@ -21,6 +21,7 @@ import { CapoTestHelper } from "@donecollectively/stellar-contracts/testing";
 @CapoTestHelper.hasNamedSnapshot({
     actor: "tina",                        // Required: actor after snapshot loads
     parentSnapName: "bootstrapped",       // Required: parent snapshot name
+    builderVersion: undefined,            // Required: bump when builder logic changes
     resolveScriptDependencies?: async (helper) => {...}  // Optional: custom cache key
 })
 async snapToFirstRecordProposed() {  // → snapshot name "firstRecordProposed"
@@ -35,6 +36,7 @@ async snapToFirstRecordProposed() {  // → snapshot name "firstRecordProposed"
 |--------|----------|-------------|
 | `actor` | Yes | Actor name to set after loading. Use `"default"` for the helper's default actor. |
 | `parentSnapName` | Yes | Parent snapshot. Common values: `"genesis"`, `"bootstrapWithActors"`, `"bootstrapped"` (alias for `"enabledDelegatesDeployed"`), or a custom snapshot name. |
+| `builderVersion` | Yes | `number | undefined`. Set `undefined` normally; bump to a number when builder logic changes to invalidate caches. See [Cache Key Resolution](#cache-key-resolution). |
 | `resolveScriptDependencies` | No | Async function returning `CacheKeyInputs` for custom cache key computation. Built-in snapshots have default resolvers. |
 
 ---
@@ -60,6 +62,7 @@ The decorator **requires** a specific naming pattern:
 @CapoTestHelper.hasNamedSnapshot({
     actor: "tina",
     parentSnapName: "bootstrapped",
+    builderVersion: undefined,
 })
 async snapToFirstOrder() {
     throw new Error("never called; see firstOrder()");
@@ -108,6 +111,7 @@ Cache keys determine when snapshots need rebuilding. They're computed from:
 
 1. **Parent's snapshot hash** - ensures parent chain integrity
 2. **Script dependencies** - source hashes of Helios contracts + params
+3. **Builder version** - invalidates caches when snapshot-building code changes (see below)
 
 For app snapshots inheriting from `"bootstrapped"`, the default resolver includes all enabled delegate bundles. Override with `resolveScriptDependencies` for custom logic:
 
@@ -115,6 +119,7 @@ For app snapshots inheriting from `"bootstrapped"`, the default resolver include
 @CapoTestHelper.hasNamedSnapshot({
     actor: "tina",
     parentSnapName: "bootstrapped",
+    builderVersion: undefined,  // bump when builder logic changes
     resolveScriptDependencies: async (helper) => {
         const h = helper as YourCapoTestHelper;
         return {
@@ -130,6 +135,26 @@ For app snapshots inheriting from `"bootstrapped"`, the default resolver include
     }
 })
 ```
+
+### `builderVersion` — when to use it
+
+Every `@hasNamedSnapshot` declaration **requires** `builderVersion`. The type system forces you to include it, making the field impossible to overlook:
+
+- **`undefined`** (default): No effect on cache keys. Use this when your snapshot builders haven't changed.
+- **`0`, `1`, `2`, ...**: Incrementing invalidates all cached snapshots built by previous versions. Bump it when you change **how** a snapshot is built (e.g., adding a new actor, changing initial balances, modifying bootstrap logic) without changing the on-chain scripts themselves.
+
+```typescript
+// You changed firstRegisteredCustomer() to also fund the customer wallet.
+// On-chain scripts didn't change, but the snapshot state is different now.
+@CapoTestHelper.hasNamedSnapshot({
+    actor: "wally",
+    parentSnapName: "bootstrapped",
+    builderVersion: 2,  // was undefined → 0 → 1 → 2
+})
+async snapToFirstRegisteredCustomer() { ... }
+```
+
+The framework incorporates `builderVersion` into the cache key automatically — you don't need to include it in `resolveScriptDependencies`.
 
 ---
 
@@ -207,6 +232,7 @@ export class YourCapoTestHelper extends DefaultCapoTestHelper.forCapoClass(YourC
     @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "bootstrapped",
+        builderVersion: undefined,
     })
     async snapToFirstRecordCreated() {
         throw new Error("never called; see firstRecordCreated()");
@@ -240,6 +266,7 @@ Snapshots can depend on other custom snapshots via `parentSnapName`:
 @CapoTestHelper.hasNamedSnapshot({
     actor: "tracy",
     parentSnapName: "firstOrderCreated",  // Your custom snapshot as parent
+    builderVersion: undefined,
 })
 async snapToFirstOrderShipped() {  // → snapshot name "firstOrderShipped"
     throw new Error("never called; see firstOrderShipped()");
