@@ -652,7 +652,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      *
      * In the test environment, the network wil normally be advanced to this date
      * before executing the transaction, unless a different execution time is indicated.
-     * Use the test helper's `submitTxnWithBlock(txn, {futureDate})` or `advanceNetworkTimeForTx()` methods, or args to
+     * Use the test helper's `submitTxnWithBlock(txn, {travelToFuture})` or `advanceNetworkTimeForTx()` methods, or args to
      * use-case-specific functions that those methods.
      */
     futureDate<TCX extends StellarTxnContext<S>>(this: TCX, date: Date) {

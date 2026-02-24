@@ -88,7 +88,13 @@ export const expectTxnError = {
  * @public
  */
 export type TestHelperSubmitOptions = SubmitOptions & {
-    futureDate?: Date;
+    /**
+     * Advance the emulator to this future time before submitting.
+     * Use when the transaction itself must not be valid until a future moment
+     * (e.g., time-locked releases). For normal time-sensitive tests, use
+     * tcx.txnTime + datum field manipulation instead.
+     */
+    travelToFuture?: Date;
 };
 
 /**
@@ -369,7 +375,7 @@ export abstract class StellarTestHelper<
         options: TestHelperSubmitOptions = {},
     ): Promise<TCX> {
         const t = await tcx;
-        await this.advanceNetworkTimeForTx(t, options.futureDate);
+        await this.advanceNetworkTimeForTx(t, options.travelToFuture);
 
         return t.buildAndQueueAll(options).then(() => {
             this.network.tick(1);
@@ -385,17 +391,17 @@ export abstract class StellarTestHelper<
     /**
      * @public
      */
-    async advanceNetworkTimeForTx(tcx: StellarTxnContext, futureDate?: Date) {
+    async advanceNetworkTimeForTx(tcx: StellarTxnContext, travelToFuture?: Date) {
         // determines the validity range of the transaction
 
         let txBody: TxBody | undefined = undefined;
         let validFrom = 0,
             validTo = 0;
-        let targetTime: number = futureDate?.getTime() || Date.now();
+        let targetTime: number = travelToFuture?.getTime() || Date.now();
         let targetSlot = this.netPHelper.timeToSlot(BigInt(targetTime));
         const nph = this.netPHelper;
 
-        if (tcx.isFacade && !futureDate) {
+        if (tcx.isFacade && !travelToFuture) {
             console.log("not advancing network time for facade tx");
             return;
         } else if (!tcx.isFacade) {
@@ -462,10 +468,10 @@ export abstract class StellarTestHelper<
             tcx.logger.logPrint(
                 "\n  ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: " + (tcx.txnName || ""),
             );
-            if (futureDate) {
+            if (travelToFuture) {
                 debugger;
                 tcx.logger.logPrint(
-                    `\n    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`,
+                    `\n    ---- ⚗️ 🐞🐞 explicit travelToFuture ${travelToFuture.toISOString()} -> slot ${targetSlot}`,
                 );
             }
 
@@ -473,11 +479,7 @@ export abstract class StellarTestHelper<
                 `\n    ---- ⚗️ 🐞🐞 current slot ${currentSlot} ${currentToNowDiff} = now slot ${nowSlot} \n` +
                     `                    current ${currentToTargetDiff} = targetSlot ${targetSlot}`,
             );
-            if (futureDate) {
-                // ":info:ℹ️"
-                // ":test: ⚗️"
-                // ":debug: 🐞 "
-                // info emoji with i in a blue square: "ℹ️"
+            if (travelToFuture) {
                 tcx.logger.logPrint(
                     `\n    ---- ⚗️ 🐞ℹ️  txnTime ${
                         validInPast
@@ -485,7 +487,7 @@ export abstract class StellarTestHelper<
                             : validInFuture
                               ? "not yet valid"
                               : "‹??incontheevable??›"
-                    }; advancing to explicit futureDate @now + ${
+                    }; advancing to explicit travelToFuture @now + ${
                         targetSlot - nowSlot
                     }s`,
                 );
@@ -498,7 +500,7 @@ export abstract class StellarTestHelper<
                             : validInFuture
                               ? "not yet valid"
                               : "‹??incontheevable??›"
-                    }; no futureDate specified; not interfering with network time`,
+                    }; no travelToFuture specified; not interfering with network time`,
                 );
                 effectiveNetworkSlot = nowSlot;
                 showEffectiveNetworkSlotTIme();
@@ -511,12 +513,12 @@ export abstract class StellarTestHelper<
         if (slotDiff < 0) {
             effectiveNetworkSlot = nowSlot;
             showEffectiveNetworkSlotTIme();
-            if (futureDate) {
+            if (travelToFuture) {
                 tcx.logger.logPrint(
                     `\n    ------ ⚗️ 🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`,
                 );
                 throw new Error(
-                    `explicit futureDate ${futureDate} is in the past; can't go back ${slotDiff}s`,
+                    `explicit travelToFuture ${travelToFuture} is in the past; can't go back ${slotDiff}s`,
                 );
             }
             tcx.logger.logPrint(
