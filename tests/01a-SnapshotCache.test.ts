@@ -187,11 +187,11 @@ describeNoCapo("SnapshotCache", () => {
 
             const inputs1: CacheKeyInputs = {
                 bundles: [],
-                extra: { heliosVersion: "0.17.0" },
+                extra: { heliosVersion: "0.17.0", builderVersion: undefined },
             };
             const inputs2: CacheKeyInputs = {
                 bundles: [],
-                extra: { heliosVersion: "0.18.0" },
+                extra: { heliosVersion: "0.18.0", builderVersion: undefined },
             };
 
             const key1 = cache.computeKey(null, inputs1);

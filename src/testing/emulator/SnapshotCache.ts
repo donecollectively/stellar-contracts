@@ -13,12 +13,25 @@ import {
 import { decodeTx, makeAddress, makeAssets, makeTxId, makeMintingPolicyHash, type TxInput, makeTxInput, makeTxOutputId, makeTxOutput, makeValue, type MintingPolicyHash } from "@helios-lang/ledger";
 
 /**
+ * Extra cache key fields beyond bundles.
+ * `builderVersion` is required-key but undefined-able:
+ * - Forces all client code to explicitly acknowledge the field
+ * - When undefined: JSON.stringify drops it, existing cache keys unaffected
+ * - When set to 0, 1, 2, ...: naturally invalidates previous cache entries
+ * REQT/h3t4xpvgtp (Builder Version in Cache Key)
+ * @public
+ */
+export type CacheKeyExtra = Record<string, unknown> & {
+    builderVersion: number | undefined;
+};
+
+/**
  * Inputs for computing a snapshot cache key.
  * @public
  */
 export type CacheKeyInputs = {
     bundles: BundleCacheKeyInputs[];
-    extra?: Record<string, unknown>;
+    extra?: CacheKeyExtra;
 };
 
 /**

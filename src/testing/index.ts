@@ -38,6 +38,7 @@ export {
 
 export {
     SnapshotCache,
+    type CacheKeyExtra,
     type CacheKeyInputs,
     type CachedSnapshot,
     type ParentSnapName,

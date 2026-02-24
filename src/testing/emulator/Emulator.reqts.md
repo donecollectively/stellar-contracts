@@ -215,6 +215,8 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
 
  - **REQT-1.2.8/v4c7x9m1kz**: COMPLETED: **Helios Version in Cache Key** - The base snapshot cache key MUST include the Helios compiler version (available via `import { VERSION } from "@helios-lang/compiler"`)
 
+ - **REQT-1.2.13/h3t4xpvgtp**: NEXT: **Builder Version in Cache Key** - The `@hasNamedSnapshot` decorator options MUST require a `builderVersion: number | undefined` field. The key MUST be present even when `undefined`, forcing all snapshot declarations to explicitly acknowledge the field. The framework MUST incorporate `builderVersion` into the cache key computation automatically — resolvers MUST NOT need to include it. When `undefined`, it MUST NOT affect existing cache keys (JSON.stringify drops undefined values). When set to a number (0, 1, 2, ...), it MUST naturally invalidate previous cache entries. This enables snapshot invalidation when the snapshot-building infrastructure code changes, independent of on-chain code or compiler version changes.
+
  - **REQT-1.2.9/d34w6546fx**: COMPLETED: **Hierarchical Cache Directories** - Cache MUST use hierarchical directory structure for consumability:
     - **REQT-1.2.9.1/d230hkb6vm**: COMPLETED: Cache MUST use hierarchical directories: `{parentPath}/{snapshotName}-{cacheKey}/snapshot.json` (e.g., `.stellar/emu/bootstrapWithActors-AAAAAA/capoInitialized-CICICICI/snapshot.json`)
     - **REQT-1.2.9.2/asb3wybpc7**: COMPLETED: Snapshot names are invalid if they have any non-alphanumeric characters no spaces no underscores no hyphens maximum length 35 characters

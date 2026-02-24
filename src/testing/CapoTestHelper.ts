@@ -1544,6 +1544,7 @@ export abstract class CapoTestHelper<
                 actors: actorData,
                 randomSeed: this.randomSeed, // REQT/xh612fhw3c
                 heliosVersion: HELIOS_VERSION, // REQT/v4c7x9m1kz
+                builderVersion: undefined, // REQT/h3t4xpvgtp (Builder Version in Cache Key)
             },
         };
     }
@@ -1634,6 +1635,7 @@ export abstract class CapoTestHelper<
                 // so it must differentiate the cache key. Only included when truthy so that
                 // default (OPTIMIZE=0/unset) doesn't change existing cache keys.
                 ...(environment.OPTIMIZE ? { optimize: environment.OPTIMIZE } : {}),
+                builderVersion: undefined, // REQT/h3t4xpvgtp (Builder Version in Cache Key)
             },
         };
     }
@@ -1698,6 +1700,7 @@ export abstract class CapoTestHelper<
                 // heliosVersion is in genesis (actors) snapshot only - no need to repeat here
                 // ...coreInputs.extra,
                 featureFlags: effectiveFeatureFlags,
+                builderVersion: undefined, // REQT/h3t4xpvgtp (Builder Version in Cache Key)
             },
         };
     }

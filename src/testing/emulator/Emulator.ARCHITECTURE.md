@@ -355,6 +355,10 @@ type SnapshotDecoratorOptions = {
   internal?: boolean;                   // skip reusableBootstrap() for bootstrap-internal snapshots
   resolveScriptDependencies?: ScriptDependencyResolver;
   computeDirLabel?: DirLabelResolver;   // optional label for directory name (default: empty string)
+  builderVersion: number | undefined;   // REQT/h3t4xpvgtp: required-key, undefined-able
+                                        // undefined: no effect on cache key (preserves existing caches)
+                                        // 0, 1, 2, ...: invalidates cached snapshots from prior versions
+                                        // framework incorporates into cache key automatically
 }
 
 // Pure function of cache key inputs, returns short human-readable label for directory name
@@ -482,6 +486,7 @@ class SnapshotCache {
   private registry: Map<string, {
     parentSnapName: ParentSnapName;
     resolveScriptDependencies: () => Promise<CacheKeyInputs>;  // bound to helper
+    builderVersion: number | undefined;  // REQT/h3t4xpvgtp — incorporated into cache key automatically
   }>;
 
   // helperState-scope cache of loaded snapshots (REQT/j9adgp9rwv)
@@ -1070,6 +1075,7 @@ Full offchainData/capoConfig restoration is unnecessary—that's handled by the 
 | **Touch directories > 1 day old** | Keeps recently-used caches fresh for cleanup detection |
 | **`.stellar/emu/` location** | Project-local, gitignore-able |
 | **Helios VERSION in cache key** | Compiler changes could affect output |
+| **`builderVersion` on decorator** | Required-key on `@hasNamedSnapshot` with `number | undefined` value — forces awareness at every snapshot declaration; `undefined` preserves existing keys, numeric values invalidate naturally; framework incorporates into cache key automatically (resolvers don't handle it) |
 | **autoSetup + featureFlags** | autoSetup triggers iteration; featureFlags filters which deploy |
 | **Hierarchical directories** `{parent}/{name}-{key}/snapshot.json` | Parent relationship implicit in path; easy subtree deletion via `rm -rf`; enables `ls` to see chain structure |
 | **Just-in-time registration** | Snapshots register metadata (parentSnapName, resolver) before use; SnapshotCache resolves parent chain recursively |
