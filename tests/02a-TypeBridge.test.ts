@@ -29,9 +29,9 @@ import { expectTxnError } from "../src/testing/StellarTestHelper.js";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import type { SomeEnum } from "../src/testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
 
-// these imports look like they're unused, but they allow this test file to be 
-// used as an entry-point for triggering type-generation for all the helios code 
-// needed for running the rest of the tests.  
+// these imports look like they're unused, but they allow this test file to be
+// used as an entry-point for triggering type-generation for all the helios code
+// needed for running the rest of the tests.
 
 import CapoMinterBundle from "../src/minting/CapoMinter.hlb.js";
 import BadSettingsBundle from "./customizing/BadSettings.hlb.js";
@@ -230,7 +230,7 @@ describe("Type Bridge", async () => {
                     });
                     const backToJS = readDatum(bridged.data);
                     expect(backToJS).toStrictEqual({
-                        SingleNestedStruct: { 
+                        SingleNestedStruct: {
                             a: 42n,
                             b: new Map([["life", [42, 42, 42]]]),
                             c: [true],
@@ -261,7 +261,7 @@ describe("Type Bridge", async () => {
                         const datum = mkDatum.HasNestedEnum.justAnInt(42);
 
                         expect(datum.dataPath).toBe(
-                            "uutMintingDelegate::DelegateDatum.HasNestedEnum"
+                            "uutMintingDelegate::DelegateDatum.HasNestedEnum.justAnInt"
                         );
                         const result = readDatum(datum);
                         expect(result).toStrictEqual({

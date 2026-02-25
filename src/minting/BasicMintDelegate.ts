@@ -75,29 +75,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      * but the data-delegate's controller-token may have additional details in ITS redeemer.
      * @public
      */
-    @Activity.redeemer
-    activityCreatingDelegatedData(
-        seedFrom: hasSeed,
-        uutPurpose: string
-    ): isActivity {
-        throw new Error(`deprecated: explicit activity helper`);
-        const seed = this.getSeed(seedFrom);
-        const redeemer = this.activityVariantToUplc("CreatingDelegatedData", {
-            seed,
-            dataType: uutPurpose,
-        });
-        return { redeemer };
-        // const enumVariantStatement = Activity.prototype._enumVariantStatement;
-        // const creatingDgDataIndex = enumVariantStatement.constrIndex;
-        // const uutPurposeBytes = helios.textToBytes(uutPurpose);
-
-        // return {
-        //     redeemer: new helios.ConstrData(creatingDgDataIndex, [
-        //         seed.toUplcData(),
-        //         new helios.ByteArrayData(uutPurposeBytes)
-        //     ])
-        // }
-    }
+    // deleted: activityCreatingDelegatedData — was deprecated, use bridge activity instead
 
     /**
      * A mint-delegate activity indicating that a delegated-data controller UUT is being created

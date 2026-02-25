@@ -646,9 +646,12 @@ export abstract class Capo<
 
     @Activity.redeemer
     activityUsingAuthority(): isActivity {
-        // throw new Error("deprecated manual activity; use bridge activity instead")
+        // TODO: migrate to bridge activity
         return {
             redeemer: this.activityVariantToUplc("usingAuthority", {}),
+            moduleName: (this as any)._bundle?.moduleName || this.constructor.name,
+            activityName: "usingAuthority",
+            activityData: {},
         };
     }
 
@@ -2047,17 +2050,23 @@ export abstract class Capo<
 
     @Activity.redeemer
     activityUpdatingCharter(): isActivity {
-        // throw new Error(`use bridge activity instead`)
+        // TODO: migrate to bridge activity
         return {
             redeemer: this.activityVariantToUplc("updatingCharter", {}),
+            moduleName: (this as any)._bundle?.moduleName || this.constructor.name,
+            activityName: "updatingCharter",
+            activityData: {},
         };
     }
 
     @Activity.redeemer
-    activitySpendingDelegatedDatum() {
-        // throw new Error(`use bridge activity instead`)
+    activitySpendingDelegatedDatum(): isActivity {
+        // TODO: migrate to bridge activity
         return {
             redeemer: this.activityVariantToUplc("spendingDelegatedDatum", {}),
+            moduleName: (this as any)._bundle?.moduleName || this.constructor.name,
+            activityName: "spendingDelegatedDatum",
+            activityData: {},
         };
     }
 

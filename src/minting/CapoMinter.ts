@@ -109,18 +109,7 @@ export class CapoMinter
         return "MinterActivity";
     }
 
-    /**
-     * Mints initial charter token for a Capo contract
-     * @remarks
-     *
-     * This is the fundamental bootstrapping event for a Capo.
-     * @param ownerInfo - contains the `{owner}` address of the Capo contract
-     * @public
-     **/
-    @Activity.redeemer
-    activityMintingCharter(ownerInfo: MintCharterActivityArgs): isActivity {
-        return this.activityRedeemer("mintingCharter", ownerInfo);
-    }
+    // deleted: activityMintingCharter — no callers, use bridge activity instead
 
     /**
      * Mints any tokens on sole authority of the Capo contract's minting delegage
@@ -136,24 +125,7 @@ export class CapoMinter
         return this.activityRedeemer("mintWithDelegateAuthorizing");
     }
 
-    /**
-     * Mints a new UUT specifically for a minting invariant
-     * @remarks
-     *
-     * When adding a minting invariant, the Capo's existing mint delegate
-     * doesn't get to be involved, as it could otherwise block a critical administrative
-     * change needed.  The Capo's authority token is all the minter requires
-     * to create the needed UUT.
-     *
-     * @param seedFrom - either a transaction-context with seedUtxo, or `{seedTxn, seedIndex}`
-     * @public
-     **/
-    @Activity.redeemer
-    activityAddingMintInvariant(seedFrom: hasSeed): isActivity {
-        const seed = this.getSeed(seedFrom);
-
-        return this.activityRedeemer("addingMintInvariant", { seed });
-    }
+    // deleted: activityAddingMintInvariant — only caller was commented out, use bridge activity instead
 
     /** Mints a new UUT specifically for a spending invariant
      * @remarks When adding a spending invariant, the Capo's existing mint delegate
@@ -168,49 +140,9 @@ export class CapoMinter
         return this.activityRedeemer("addingSpendInvariant", { seed });
     }
 
-    /**
-     * Forces replacement of the Capo's mint delegate
-     * @remarks
-     *
-     * Forces the minting of a new UUT to replace the Capo's mint delegate.
-     *
-     * @public
-     **/
-    @Activity.redeemer
-    activityForcingNewMintDelegate(seedFrom: hasSeed): isActivity {
-        console.warn(
-            "NOTE: REPLACING THE MINT DELEGATE USING A DIRECT MINTER ACTIVITY\n" +
-                "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
-        );
-        const seed = this.getSeed(seedFrom);
-        return this.activityRedeemer("forcingNewMintDelegate", { seed });
-    }
+    // deleted: activityForcingNewMintDelegate — no callers, use bridge activity instead
 
-    /**
-     * Forces replacement of the Capo's spend delegate
-     * @remarks
-     *
-     * Creates a new UUT to replace the Capo's spend delegate.  The mint delegate
-     * is bypassed in this operation.  There is always some existing spend delegate
-     * when this is called, and it's normally burned in the process, when replacingUut is
-     * provided.  If replacingUut is not provided, the existing spend delegate is left in place,
-     * although it won't be useful because the new spend delegate will have been installed.
-     *
-     * @param seedFrom - either a transaction-context with seedUtxo, or `{seedTxn, seedIndex}`
-     * @param replacingUut - the name of an exiting delegate being replaced
-     * @public
-     **/
-    @Activity.redeemer
-    activityForcingNewSpendDelegate(
-        seedFrom: hasSeed,
-        replacingUut?: number[]
-    ): isActivity {
-        const seed = this.getSeed(seedFrom);
-        return this.activityRedeemer("forcingNewSpendDelegate", {
-            seed,
-            replacingUut,
-        });
-    }
+    // deleted: activityForcingNewSpendDelegate — no callers, use bridge activity instead
 
     //! overrides base getter type with undefined not being allowed
     get mintingPolicyHash(): MintingPolicyHash {

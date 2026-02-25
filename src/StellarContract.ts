@@ -1373,6 +1373,9 @@ export class StellarContract<
             redeemer: this.typeToUplc(activities, {
                 [activityName]: data,
             }),
+            moduleName: (this as any)._bundle?.moduleName || this.constructor.name,
+            activityName,
+            activityData: data,
         };
     }
 

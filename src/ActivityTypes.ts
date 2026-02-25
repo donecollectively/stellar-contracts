@@ -18,6 +18,12 @@ export type isActivity = {
     // redeemer: UplcDataValue | UplcData | T;
     redeemer: UplcData;
     details?: string;
+    /** The Helios module name, produced by bridge-generated activities */
+    moduleName: string;
+    /** The activity variant name (e.g. "SpendingActivities.Activating"), produced by bridge-generated activities */
+    activityName: string;
+    /** The off-chain data passed to the activity factory, produced by bridge-generated activities */
+    activityData: any;
 };
 
 /**
@@ -74,12 +80,7 @@ export type SeedActivityArg<
     // : never;
 // > = ARG;
 
-function noArgsFunc(seed: hasSeed) : isActivity{
-    return { redeemer: "no-args" as any };
-}
-type NOARGS_func = typeof noArgsFunc;
-type noArgsArg = SeedActivityArg<typeof noArgsFunc>
-const tt : IFISNEVER<SeedActivityArg<typeof noArgsFunc>, true, false> = true;
+// type-level seed activity tests removed — noArgsFunc was dead code
 
 /**
  * @public
