@@ -345,6 +345,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     get networkParams(): NetworkParams {
+        const network = this.setup.network;
+        if ("parametersSync" in network) {
+            return (network as { parametersSync: NetworkParams }).parametersSync;
+        }
         return this.setup.networkParams;
     }
 
@@ -723,14 +727,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * Identifies the time at which the current transaction is expected to be executed.
      * Use this attribute in any transaction-building code that sets date/time values
      * for the transaction.
-     * Honors any futureDate() setting or uses the current time if none has been set.
+     * Honors any futureDate() setting or uses the network's current tip time if none has been set.
      */
     get txnTime() {
         if (this._txnTime) return this._txnTime;
-        const now = Date.now();
-        const recent = now - 180_000;
         const d = new Date(
-            Number(this.slotToTime(this.timeToSlot(BigInt(recent)))),
+            makeNetworkParamsHelper(this.networkParams).latestTipTime,
         );
         // time emoji: ⏰
         console.log("⏰⏰setting txnTime to ", d.toString());

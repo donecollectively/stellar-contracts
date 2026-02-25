@@ -167,7 +167,7 @@ Note that the UI-provided form manager does this sequence itself, so application
 On-chain policies access time through `tx.time_range`. The on-chain `now(granularity)` returns `validity.start`, and `getTimeRange(granularity)` enforces the window width (see `essential-stellar-onchain.md` § "Time helpers"). Off-chain must set the window to match.
 
 - `tcx.validFor(durationMs)`: Sets the validity window from `tcx.txnTime` to `txnTime + durationMs`. **The duration must not exceed the on-chain policy's granularity** — if the policy calls `getTimeRange(5*Duration::MINUTE)`, use `validFor(5 * 60 * 1000)` or less.
-- `tcx.txnTime`: The validity window start (`Date`). Auto-set on first access (~3 min ago, slot-aligned). Use this for datum fields the policy compares against `now()` (which returns `validity.start`).
+- `tcx.txnTime`: The validity window start (`Date`). Auto-set on first access to the network's current tip time. Use this for datum fields the policy compares against `now()` (which returns `validity.start`).
 - `tcx.txnEndTime`: The validity window end (`Date`). Only available after `validFor()`. Use for datum fields the policy compares against `validity.end`.
 - `tcx.futureDate(date)`: Pins `txnTime` to a specific future time for building a future-valid transaction. Must be called **before** `validFor()`. Use when a controller needs `tcx.txnTime` to produce correct datum values for a transaction valid in the future. To also advance the emulator clock, pass `{ travelToFuture: date }` to `submitTxnWithBlock()`.
 
