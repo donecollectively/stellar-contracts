@@ -10,3 +10,6 @@ drafts
 
 // temporary files
 *~ 
+/.proj
+/.trees
+/.assets
