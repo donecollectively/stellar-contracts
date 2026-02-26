@@ -1,0 +1,314 @@
+#!/usr/bin/env node
+// scripts/release — stellar-contracts release automation
+// REQT-r0g2gfymrt, REQT-n04657rp5t, REQT-k8jkb0gef1 (pre-flight)
+// REQT-ev26jfd4ce, REQT-nc74ve6dan, REQT-51vtve38mt (version bump)
+// REQT-9s2nw8v3qx, REQT-hvf7sfca32 (build & package)
+// REQT-w8br372bd1, REQT-fh7e7abr6g, REQT-mjdepm0n85 (release notes)
+// REQT-sz456nadba, REQT-0dr53zysr3 (publication sequence)
+// REQT-bmbzmcwhna, REQT-1ex1k5gx7t (downstream & error recovery)
+
+import { execSync, spawnSync } from 'child_process';
+import {
+    readFileSync, writeFileSync, existsSync, mkdirSync,
+    mkdtempSync, copyFileSync, unlinkSync,
+} from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import semver from 'semver';
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function run(cmd, opts = {}) {
+    return execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], ...opts });
+}
+
+function runInherited(cmd) {
+    execSync(cmd, { stdio: 'inherit' });
+}
+
+function die(msg) {
+    console.error(`\nerror: ${msg}`);
+    process.exit(1);
+}
+
+let mutationsBegun = false;
+function showWorktreeStatus() {
+    console.error('\n─── git status across worktrees ───');
+    for (const dir of [ROOT, join(ROOT, '.proj'), join(ROOT, '.proj', 'assets')]) {
+        if (existsSync(join(dir, '.git')) || existsSync(dir + '/.git')) {
+            console.error(`\n=== ${dir} ===`);
+            try { console.error(run(`git -C "${dir}" status --short`)); } catch {}
+        }
+    }
+}
+
+// ─── repo root ──────────────────────────────────────────────────────────────
+
+const ROOT = run('git rev-parse --show-toplevel').trim();
+process.chdir(ROOT);
+
+// ─── weaver detection (REQT-238e33vzfm) ────────────────────────────────────
+
+if (!existsSync(join(ROOT, '.weaver'))) {
+    console.error(`
+error: .weaver/ not found. This project uses Eidos Weaver for branch management.
+
+To set up Eidos Weaver:
+  git submodule add https://github.com/eidos-sys/weaver .weaver
+  git submodule update --init
+
+Then re-run the release script.
+`);
+    process.exit(1);
+}
+
+// ─── arg parsing ────────────────────────────────────────────────────────────
+
+const args = process.argv.slice(2);
+const bumpArg = args.find(a => a.startsWith('--bump='))?.split('=')[1] ?? null;
+const VALID_MODES = ['patch', 'release', 'minor', 'major', 'prerelease', 'release-or-minor'];
+
+if (bumpArg && !VALID_MODES.includes(bumpArg)) {
+    die(`unknown --bump mode: ${bumpArg}\nValid modes: ${VALID_MODES.join(', ')}`);
+}
+
+// ─── read package.json ──────────────────────────────────────────────────────
+
+const pkgPath = join(ROOT, 'package.json');
+const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+const currentVersion = pkg.version;
+const isPreRelease = !!semver.prerelease(currentVersion);
+
+// ─── VERSION_PREV ───────────────────────────────────────────────────────────
+
+const VERSION_PREV = process.env.VERSION_PREV
+    ?? run('git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD').trim();
+
+// ─── fetch remote tags, check if already released (REQT-wyh7se401f) ────────
+
+console.log('Fetching remote tags...');
+run('git fetch --tags origin');
+const remoteTags = new Set(run('git tag -l').trim().split('\n').filter(Boolean));
+
+if (remoteTags.has(currentVersion) && !bumpArg) {
+    const pre = isPreRelease;
+    const base = `${semver.major(currentVersion)}.${semver.minor(currentVersion)}.${semver.patch(currentVersion)}`;
+    const nextPatch = semver.inc(base, 'patch');
+
+    const options = [];
+    if (pre) {
+        const preArr = semver.prerelease(currentVersion);
+        options.push(['--bump=patch',       `${base}-${preArr[0]}.${Number(preArr[1]) + 1}`]);
+        options.push(['--bump=release',      base]);
+    }
+    options.push(['--bump=minor',        nextPatch]);
+    options.push(['--bump=major',        semver.inc(currentVersion, 'major')]);
+    options.push(['--bump=prerelease',   `${nextPatch}-beta.1`]);
+
+    const pad = Math.max(...options.map(([f]) => f.length));
+    console.error(`\nVersion ${currentVersion} is already released. To release a new version:\n`);
+    for (const [flag, result] of options) {
+        console.error(`  pnpm release ${flag.padEnd(pad)}  →  ${result}`);
+    }
+    console.error('');
+    process.exit(1);
+}
+
+// ─── compute release version ─────────────────────────────────────────────────
+
+function computeReleaseVersion(mode) {
+    const base = `${semver.major(currentVersion)}.${semver.minor(currentVersion)}.${semver.patch(currentVersion)}`;
+    const nextPatch = semver.inc(base, 'patch');
+
+    switch (mode) {
+        case 'patch': {
+            if (!isPreRelease) die(`--bump=patch is only valid for pre-release versions (current: ${currentVersion})`);
+            const pre = semver.prerelease(currentVersion);
+            return `${base}-${pre[0]}.${Number(pre[1]) + 1}`;
+        }
+        case 'release':
+            if (!isPreRelease) die(`--bump=release is only valid for pre-release versions (current: ${currentVersion})`);
+            return base;
+        case 'minor':
+            return nextPatch;
+        case 'major':
+            return semver.inc(currentVersion, 'major');
+        case 'prerelease':
+            return `${nextPatch}-beta.1`;
+        case 'release-or-minor':
+            return isPreRelease ? base : nextPatch;
+        default:
+            die(`unknown bump mode: ${mode}`);
+    }
+}
+
+const effectiveBump = bumpArg ?? 'release-or-minor';
+const releaseVersion = remoteTags.has(currentVersion)
+    ? computeReleaseVersion(effectiveBump)
+    : (bumpArg ? computeReleaseVersion(bumpArg) : currentVersion);
+
+console.log(`\nReleasing: ${currentVersion} → ${releaseVersion}`);
+
+// ─── pre-flight: clean working tree (REQT-5zsdm0x74r) ──────────────────────
+
+const dirty = run('git status --porcelain').trim();
+if (dirty) {
+    die(`working tree is not clean:\n\n${dirty}\n\nCommit or stash changes before releasing.`);
+}
+
+// ─── pre-flight: proj woven into main (REQT-nt4bpnpgag) ────────────────────
+
+try {
+    run('git merge-base --is-ancestor proj main');
+} catch {
+    die('proj branch has not been woven into main.\nRun: .weaver/sync');
+}
+
+// ─── build before mutations (REQT-qzgr32xrbq) ──────────────────────────────
+
+console.log('\nBuilding...');
+try {
+    runInherited('pnpm build');
+} catch {
+    die('build failed — git state unchanged. Fix the build and retry.');
+}
+
+// ─── from here on: mutations begun — catch errors and show status ───────────
+
+mutationsBegun = true;
+process.on('exit', (code) => {
+    if (code !== 0 && mutationsBegun) showWorktreeStatus();
+});
+
+// ─── bump version in package.json, commit to main (REQT-bcwkg88p59) ────────
+
+if (releaseVersion !== currentVersion) {
+    console.log(`\nBumping package.json: ${currentVersion} → ${releaseVersion}`);
+    const newPkg = { ...pkg, version: releaseVersion };
+    writeFileSync(pkgPath, JSON.stringify(newPkg, null, 4) + '\n');
+    run('git add package.json');
+    run(`git commit -m "chore: bump version to ${releaseVersion}"`);
+}
+
+// ─── release notes curation step (REQT-zyhrtbewtg, REQT-16mz9nt9sd, REQT-fhbvs6sedp) ──
+
+console.log('\nPreparing release notes curation files...');
+
+const tmpDir = mkdtempSync(join(tmpdir(), 'stellar-release-'));
+const COMMIT_LOGS_FILE  = join(tmpDir, 'commit-log.txt');
+const RELEASE_NOTES_FILE = join(tmpDir, `${releaseVersion}.release-notes.md`);
+const CHANGELOG_SEGMENT  = join(tmpDir, 'changelog-segment.md');
+
+// raw commit log
+const commitLog = run(`git log "${VERSION_PREV}..HEAD" --no-merges`);
+writeFileSync(COMMIT_LOGS_FILE, commitLog);
+
+// release notes template
+writeFileSync(RELEASE_NOTES_FILE, [
+    `# Release ${releaseVersion}`,
+    ``,
+    `_Previous release: ${VERSION_PREV}_`,
+    ``,
+    `<!-- Summarize the release for users and contributors. -->`,
+    `<!-- Reference: ${COMMIT_LOGS_FILE} -->`,
+    ``,
+].join('\n'));
+
+// changelog segment template
+const today = new Date().toISOString().slice(0, 10);
+writeFileSync(CHANGELOG_SEGMENT, [
+    `## [${releaseVersion}] — ${today}`,
+    ``,
+    `<!-- Customer-facing summary of this release. -->`,
+    `<!-- Link to release notes: .proj/releases/${releaseVersion}.release-notes.md -->`,
+    ``,
+].join('\n'));
+
+console.log(`\nCuration files:`);
+console.log(`  COMMIT_LOGS_FILE   = ${COMMIT_LOGS_FILE}`);
+console.log(`  RELEASE_NOTES_FILE = ${RELEASE_NOTES_FILE}`);
+console.log(`  CHANGELOG_SEGMENT  = ${CHANGELOG_SEGMENT}`);
+
+const curatorEnv = {
+    ...process.env,
+    VERSION_PREV,
+    VERSION_NEXT: releaseVersion,
+    COMMIT_LOGS_FILE,
+    RELEASE_NOTES_FILE,
+    CHANGELOG_SEGMENT,
+};
+
+if (process.env.CHANGELOG_CURATOR) {
+    console.log(`\nInvoking CHANGELOG_CURATOR: ${process.env.CHANGELOG_CURATOR}`);
+    const result = spawnSync(process.env.CHANGELOG_CURATOR, [], {
+        env: curatorEnv, stdio: 'inherit', shell: true,
+    });
+    if (result.status !== 0) die('CHANGELOG_CURATOR exited with an error');
+} else {
+    console.log('\nOpening shell for manual curation. Edit the files above, then exit to continue.\n');
+    spawnSync(process.env.SHELL ?? 'bash', [], { env: curatorEnv, stdio: 'inherit' });
+}
+
+// ─── commit release notes to proj, CHANGELOG to main (REQT-bcwkg88p59) ─────
+
+const projReleasesDir = join(ROOT, '.proj', 'releases');
+mkdirSync(projReleasesDir, { recursive: true });
+const destNotes = join(projReleasesDir, `${releaseVersion}.release-notes.md`);
+copyFileSync(RELEASE_NOTES_FILE, destNotes);
+run(`git -C "${join(ROOT, '.proj')}" add "releases/${releaseVersion}.release-notes.md"`);
+run(`git -C "${join(ROOT, '.proj')}" commit -m "docs: release notes for ${releaseVersion}"`);
+
+const changelogPath = join(ROOT, 'CHANGELOG.md');
+const segment = readFileSync(CHANGELOG_SEGMENT, 'utf8');
+const existing = existsSync(changelogPath) ? readFileSync(changelogPath, 'utf8') : '';
+writeFileSync(changelogPath, segment + '\n' + existing);
+run('git add CHANGELOG.md');
+run(`git commit -m "docs: update CHANGELOG for ${releaseVersion}"`);
+
+// ─── weave proj into main (REQT-bcwkg88p59) ─────────────────────────────────
+
+console.log('\nWeaving proj into main...');
+runInherited(`"${join(ROOT, '.proj', 'weave.sh')}"`);
+
+// ─── pack (REQT-w544n4ajyj) ──────────────────────────────────────────────────
+
+console.log('\nPacking...');
+const packOutput = run('pnpm pack').trim();
+// pnpm pack prints the filename on the last line
+const packedFile = packOutput.split('\n').pop().trim();
+const tgzName = `stellar-contracts-${releaseVersion}.tgz`;
+const tgzPath = join(ROOT, tgzName);
+run(`mv "${join(ROOT, packedFile)}" "${tgzPath}"`);
+console.log(`  → ${tgzName}`);
+
+// ─── add-asset, weave meta-assets, tag, push (REQT-yyx4gkgce8) ──────────────
+
+console.log('\nPublishing to meta-assets...');
+runInherited(`"${join(ROOT, '.weaver', 'add-asset')}" "${tgzPath}" "${tgzName}"`);
+
+// clean up staging tgz
+unlinkSync(tgzPath);
+
+// weave proj+main into meta-assets (headless)
+runInherited(`"${join(ROOT, '.proj', 'weave.sh')}" --ref meta-assets main proj`);
+
+// tag the meta-assets tip
+const metaTip = run('git rev-parse meta-assets').trim();
+run(`git tag "${releaseVersion}" "${metaTip}"`);
+console.log(`  tagged meta-assets tip as ${releaseVersion}`);
+
+// push
+console.log('\nPushing...');
+runInherited('git push origin meta-assets');
+runInherited(`git push origin "${releaseVersion}"`);
+
+// ─── cleanup ────────────────────────────────────────────────────────────────
+
+try { unlinkSync(COMMIT_LOGS_FILE); } catch {}
+try { unlinkSync(RELEASE_NOTES_FILE); } catch {}
+try { unlinkSync(CHANGELOG_SEGMENT); } catch {}
+
+// ─── done ───────────────────────────────────────────────────────────────────
+
+mutationsBegun = false;
+console.log(`\n✓ Released ${releaseVersion}\n`);
