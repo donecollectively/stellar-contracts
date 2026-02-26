@@ -65,7 +65,7 @@ How the script determines and applies the new release version
 #### Key Requirements:
 1. **Bump Flag**: You control the release type with a single --bump flag — no manual package.json edits needed
 2. **Bump Behavior Per Mode**: Each bump mode has deterministic behavior — you always know exactly what version you'll get from any starting point
-3. **Package.json Scripts and Bin**: You trigger releases with familiar pnpm run commands, and downstream projects get the same behavior via stellar-release
+3. **CLI Interface**: You get clear help with real version examples, invalid input always tells you what went wrong, and releases are triggered with familiar pnpm run commands — downstream projects get the same behavior via stellar-release
 
 ### 3. Build and Package
 Building and packaging the release artifact before git mutations
@@ -130,10 +130,14 @@ Behavior in downstream projects and on mid-release failure
 
  - 2.2.1: REQT-5vay51a5w9: **BACKLOG**/draft: **Mode-by-Mode Semantics** - Bump behavior MUST be: patch — pre-release only: increments pre-release counter (0.9.4-beta.1→0.9.4-beta.2); MUST error if current version is stable; release — pre-release only: graduates to stable (0.9.4-beta.1→0.9.4); MUST error if current version is stable; minor — bumps patch digit for both stable and pre-release (0.9.4-beta.1→0.9.5, 0.9.4→0.9.5); major — bumps major version (0.9.4→1.0.0); prerelease — bumps patch and starts beta.1 (0.9.5→0.9.6-beta.1); release-or-minor — if on pre-release drops pre-release label (0.9.5-beta.12→0.9.5), if stable bumps patch digit (0.9.4→0.9.5); always produces exactly one tag.
 
-### **REQT-2.3/51vtve38mt**: **BACKLOG**/draft: **Package.json Scripts and Bin**
-#### Purpose: Establishes the standard developer interface for release invocation and the downstream bin entry. Applied when wiring pnpm scripts or adding the stellar-release bin entry.
+### **REQT-2.3/g4wvjth1cz**: **BACKLOG**/draft: **CLI Interface**
+#### Purpose: Defines the developer-facing interface: self-documentation, options, error handling, pnpm scripts, and the downstream bin entry. Applied when implementing arg parsing, adding new options, wiring pnpm scripts, or reviewing usability.
 
- - 2.3.1: REQT-vrxnr7kaz9: **BACKLOG**/draft: **Scripts and Bin Entries** - package.json MUST include scripts: release (default), release:patch, release:minor, release:major, release:prerelease; and a bin entry stellar-release pointing to scripts/release.
+ - 2.3.1: REQT-477fxq1xxn: **BACKLOG**/draft: **Help Flag** - The script MUST support --help and -h flags that display usage information including all bump modes with concrete version transitions computed from the current version, then exit 0.
+ - 2.3.2: REQT-d9ve2wgg0a: **BACKLOG**/draft: **Unknown Argument Rejection** - Unknown arguments and unknown --bump modes MUST show an error message followed by help text, then exit non-zero.
+ - 2.3.3: REQT-f5w1s9tkcd: **BACKLOG**/draft: **Pre-Release Label Option** - The script MUST support --pre=TAG to set the pre-release label used by --bump=prerelease. Default MUST be beta.
+ - 2.3.4: REQT-0eesm26ava: **BACKLOG**/draft: **Untracked Files Option** - The script MUST support --untracked-ok to skip the untracked files check during pre-flight.
+ - 2.3.5: REQT-vrxnr7kaz9: **BACKLOG**/draft: **Scripts and Bin Entries** - package.json MUST include scripts: release (default), release:patch, release:minor, release:major, release:prerelease; and a bin entry stellar-release pointing to scripts/release.
 
 ## Area 3: Build and Package
 
