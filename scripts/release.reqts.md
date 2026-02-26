@@ -14,18 +14,40 @@
 
 Release automation script for @donecollectively/stellar-contracts. Handles version bumping, build, packaging, weaver integration, tagging, and publishing to meta-assets. Also exposed as stellar-release for use in downstream projects.
 
-The essential technologies are **bash, pnpm, git, weaver**. Related technologies include semver, github.
+The essential technologies are **node, pnpm, git, weaver**. Related technologies include semver, github, bash.
 
+
+# Background
+
+Manual releases of stellar-contracts require coordinating version bumps, builds, npm pack, weaver branch DAG weaving, meta-assets publication, git tagging, and push. This multi-step sequence is error-prone and tedious — a missed step can leave git state inconsistent across worktrees or publish an incomplete bundle.
+
+
+
+# Design Goals
+
+**General Approach**
+
+- Script in `scripts/` — JavaScript (Node.js), using semver for bump logic
+- Uses existing weaver tools (.weaver/add-asset, .weaver/sync, .proj/weave.sh)
+- Exposed downstream via pnpm bin entry
+
+**Specific Goals**
+
+1. **Guard Rails First**: Fail fast on dirty trees, stale weaves, or duplicate versions before any mutation
+2. **Deterministic Bumps**: Explicit --bump flag with predictable semver behavior for each mode
+3. **Weaver-Native**: Leverage existing .weaver/ tooling with no new infrastructure
+4. **Downstream Reuse**: Exposed as stellar-release so downstream projects get identical release behavior
 
 
 # Must Read: Special Skills and Know-how
 
+1. **Weaver sync/weave semantics, worktree management, branch topology (proj → main → meta-assets)**: When implementing or reviewing the publication sequence (Areas 5-6), weave operations, or branch DAG topology → load `.weaver/host-repo.SKILL.md`
 
 # Collaborators
 
 
 
-**Expected users:** 
+**Expected users:** Library maintainers, downstream projects using stellar-contracts and weaver
 
 # Functional Areas and Key Requirements
 
@@ -33,46 +55,48 @@ The essential technologies are **bash, pnpm, git, weaver**. Related technologies
 Checks that must pass before any mutations begin
 
 #### Key Requirements:
-1. **Clean Working Tree**: Prevents corrupted or incomplete releases caused by uncommitted work reaching the published bundle.
-2. **Proj Woven Into Main**: Prevents releases where proj-only content is missing from the release commit graph.
-3. **No Duplicate Bundle**: Forces the user to explicitly bump the version rather than accidentally overwriting an existing published bundle.
+1. **Clean Working Tree**: When you run a release, the script catches uncommitted changes upfront — you'll never ship a dirty working tree
+2. **Proj Woven Into Main**: Before any release proceeds, you're guaranteed that all proj-branch content is woven into main — nothing gets left behind
+3. **No Duplicate Release**: If you accidentally try to re-release an existing version, the script stops and shows you exactly which bump options are available and what version each produces
 
 ### 2. Version Bump Control
 How the script determines and applies the new release version
 
 #### Key Requirements:
-1. **Bump Flag**: Gives the caller explicit control over release type without requiring manual package.json edits.
-2. **Bump Behavior Per Mode**: Ensures any developer or downstream user can predict the resulting version from a given bump mode and starting version.
-3. **Package.json Scripts and Bin**: Lets developers trigger releases via familiar pnpm run commands and exposes the script to downstream projects as stellar-release.
+1. **Bump Flag**: You control the release type with a single --bump flag — no manual package.json edits needed
+2. **Bump Behavior Per Mode**: Each bump mode has deterministic behavior — you always know exactly what version you'll get from any starting point
+3. **Package.json Scripts and Bin**: You trigger releases with familiar pnpm run commands, and downstream projects get the same behavior via stellar-release
 
 ### 3. Build and Package
 Building and packaging the release artifact before git mutations
 
 #### Key Requirements:
-1. **Build Before Mutations**: Prevents incomplete releases where git is modified but the build artifact is broken or absent.
-2. **Bundle Naming and Cleanup**: Ensures downstream projects can reference bundles by a predictable, version-stamped filename and that no staging artifacts linger after publication.
+1. **Build Before Mutations**: The build runs before any git changes — if it fails, your repo is untouched
+2. **Bundle Naming and Cleanup**: You get a predictably-named stellar-contracts-{version}.tgz bundle, and staging artifacts are cleaned up automatically
 
-### 4. Release Notes
+### 4. Release Notes Curation
 Documenting each release with sufficient detail for users and contributors
 
 #### Key Requirements:
-1. **Agent Interview for Notes**: Ensures release notes reflect the full depth of changes by requiring an agent-mediated review of the complete commit log, not mechanical summarization.
-2. **Release Notes File**: Gives contributors a stable location to find detailed per-release context that goes beyond a changelog summary.
-3. **Changelog Update**: Keeps CHANGELOG.md useful as a quick-scan resource while linking to detailed notes for readers who want depth.
+1. **Curation Step Mechanics**: When a release reaches the curation step, you get a temp directory with three prepared files and a set of env vars — then either a shell or your custom curator command runs with that context
+2. **Content Source**: Your curator always receives the full commit history since the last release — no merge noise, no truncated messages — so every change is visible for review
+3. **Release Notes Output**: After curation, you'll find detailed release notes at a stable, version-specific path — substantive enough to understand the release without reading every commit
+4. **Changelog Output**: CHANGELOG.md gets a concise customer-facing entry linking to the full release notes — quick to scan, with depth one click away
 
 ### 5. Publication Sequence
 Ordering of git mutations to ensure a coherent release state
 
 #### Key Requirements:
-1. **Pre-Meta-Assets Commits and Weave**: Ensures main and proj are in a coherent, fully-woven state before any meta-assets operations touch the release bundle.
-2. **Meta-Assets Publication**: Ensures the released bundle, its provenance (weave graph), its tag, and its remote push all happen in the correct order.
+1. **Pre-Meta-Assets Commits and Weave**: Version bump, release notes, and changelog are all committed and woven before meta-assets publication begins — you won't get a half-committed release
+2. **Meta-Assets Publication**: The bundle is added to meta-assets, the DAG is woven, the tag is created, and everything is pushed — in one correct sequence you don't have to orchestrate
 
 ### 6. Downstream Exposure and Error Recovery
 Behavior in downstream projects and on mid-release failure
 
 #### Key Requirements:
-1. **Weaver Detection**: Prevents opaque failures in downstream projects and gives users a clear path to set up the required infrastructure.
-2. **Failure Status Display**: Enables users to understand their exact git state across all worktrees and recover manually without guesswork.
+1. **Weaver Detection**: If you run the script without weaver set up, it detects this and offers to help — no cryptic failures
+2. **Failure Status Display**: If something fails mid-release after git mutations, you see the exact status of every worktree so you can recover without guesswork
+3. **Downstream Init Subcommand**: You run a single init command and your downstream project gets all the release:* scripts wired into package.json automatically
 
 
 # Detailed Requirements
@@ -89,10 +113,10 @@ Behavior in downstream projects and on mid-release failure
 
  - 1.2.1: REQT-nt4bpnpgag: **BACKLOG**/draft: **Proj Ancestry Check** - The script MUST verify that the proj branch tip is an ancestor of main (i.e. .weaver/sync has been run) before proceeding.
 
-### **REQT-1.3/k8jkb0gef1**: **BACKLOG**/draft: **No Duplicate Bundle**
-#### Purpose: Guards against publishing a bundle with a version that already exists on meta-assets. Applied during pre-flight before any mutations begin.
+### **REQT-1.3/k8jkb0gef1**: **BACKLOG**/draft: **No Duplicate Release**
+#### Purpose: Guards against publishing a version that has already been released. Uses the presence of a remote git tag as the canonical signal. Applied during pre-flight before any mutations begin.
 
- - 1.3.1: REQT-wyh7se401f: **BACKLOG**/draft: **Duplicate Bundle Detection** - The script MUST verify that stellar-contracts-{currentVersion}.tgz does not already exist on the meta-assets branch. If it does, the script MUST exit with a clear error directing the user to bump the version before releasing.
+ - 1.3.1: REQT-wyh7se401f: **BACKLOG**/draft: **Already-Released Version Detection** - The script MUST fetch remote tags and check whether the current version tag already exists on origin. If it does and no --bump flag was provided, the script MUST display the valid bump options for the current version type (pre-release or stable), each with its resulting version number, then exit. The script MUST NOT show options that are invalid for the current version type (e.g. --bump=patch and --bump=release are not shown for stable versions).
 
 ## Area 2: Version Bump Control
 
@@ -104,7 +128,7 @@ Behavior in downstream projects and on mid-release failure
 ### **REQT-2.2/nc74ve6dan**: **BACKLOG**/draft: **Bump Behavior Per Mode**
 #### Purpose: Defines the exact semantic behavior for each bump mode to ensure deterministic and predictable version transitions. Applied when testing or implementing bump logic, or reviewing version output.
 
- - 2.2.1: REQT-5vay51a5w9: **BACKLOG**/draft: **Mode-by-Mode Semantics** - Bump behavior MUST be: patch — increments pre-release counter (0.9.4-beta.1→0.9.4-beta.2) or stable patch (0.9.4→0.9.5); minor — drops pre-release and bumps patch digit (0.9.4-beta.1→0.9.5); major — bumps major version; release — graduates pre-release to stable (0.9.4-beta.1→0.9.4); prerelease — bumps patch and starts beta.1 (0.9.5→0.9.6-beta.1); release-or-minor — if on pre-release drops pre-release label, if stable bumps patch digit; always produces exactly one tag.
+ - 2.2.1: REQT-5vay51a5w9: **BACKLOG**/draft: **Mode-by-Mode Semantics** - Bump behavior MUST be: patch — pre-release only: increments pre-release counter (0.9.4-beta.1→0.9.4-beta.2); MUST error if current version is stable; release — pre-release only: graduates to stable (0.9.4-beta.1→0.9.4); MUST error if current version is stable; minor — bumps patch digit for both stable and pre-release (0.9.4-beta.1→0.9.5, 0.9.4→0.9.5); major — bumps major version (0.9.4→1.0.0); prerelease — bumps patch and starts beta.1 (0.9.5→0.9.6-beta.1); release-or-minor — if on pre-release drops pre-release label (0.9.5-beta.12→0.9.5), if stable bumps patch digit (0.9.4→0.9.5); always produces exactly one tag.
 
 ### **REQT-2.3/51vtve38mt**: **BACKLOG**/draft: **Package.json Scripts and Bin**
 #### Purpose: Establishes the standard developer interface for release invocation and the downstream bin entry. Applied when wiring pnpm scripts or adding the stellar-release bin entry.
@@ -122,23 +146,32 @@ Behavior in downstream projects and on mid-release failure
 #### Purpose: Establishes the canonical name and lifecycle of the release bundle file. Applied when implementing packaging and verifying publication completeness.
 
  - 3.2.1: REQT-w544n4ajyj: **BACKLOG**/draft: **Bundle Filename and Cleanup** - The package MUST be produced via pnpm pack and renamed to stellar-contracts-{version}.tgz. The staging file MUST be deleted after successful publication.
+ - 3.2.2: REQT-z5rnv8hd6f: **BACKLOG**/draft: **Temp File Cleanup** - The script MUST remove the curation temp directory after successful publication.
 
-## Area 4: Release Notes
+## Area 4: Release Notes Curation
 
-### **REQT-4.1/w8br372bd1**: **BACKLOG**/draft: **Agent Interview for Notes**
-#### Purpose: Governs the source material and interaction model for generating release notes content. Applied when implementing or invoking the release notes generation step.
+### **REQT-4.1/az99gygycq**: **BACKLOG**/draft: **Curation Step Mechanics**
+#### Purpose: Defines how the release script orchestrates the curation environment — temp files, env vars, and curator invocation. Applied when implementing or reviewing the curation step, or when building a custom curator.
 
- - 4.1.1: REQT-zyhrtbewtg: **BACKLOG**/draft: **Full-Log Agent Interview** - Release notes MUST be produced via an agent interview process using the full git log since the prior release tag. Merge commits MUST be excluded. The log MUST NOT use --oneline — full commit messages are required.
+ - 4.1.1: REQT-dg7ymbabzz: **BACKLOG**/draft: **Temp Dir and File Setup** - The script MUST create a temp directory containing three files: (1) the raw git commit log since the prior release tag, (2) an empty CHANGELOG entry template, and (3) an empty release notes template. The paths to these files MUST be listed on screen before invoking the curator.
+ - 4.1.2: REQT-ans8qxa9e1: **BACKLOG**/draft: **Environment Variables** - The script MUST set these env vars before invoking the curator: VERSION_PREV (last released tag, default: most recent git tag, overridable by caller), VERSION_NEXT (new release version post-bump), COMMIT_LOGS_FILE (path to raw git log), RELEASE_NOTES_FILE (path to release notes template), CHANGELOG_SEGMENT (path to CHANGELOG entry template).
+ - 4.1.3: REQT-162c7xerq9: **BACKLOG**/draft: **Default Shell Behavior** - When CHANGELOG_CURATOR env var is not set, the script MUST open an interactive bash shell so the user can curate release notes and changelog manually.
+ - 4.1.4: REQT-pqyv6v5xxy: **BACKLOG**/draft: **Pluggable Curator** - When CHANGELOG_CURATOR env var is set, the script MUST invoke that command/script instead of opening a shell. The curator receives all curation env vars.
 
-### **REQT-4.2/fh7e7abr6g**: **BACKLOG**/draft: **Release Notes File**
-#### Purpose: Establishes where release notes are stored and the quality standard the content must meet. Applied when writing or reviewing the release notes output from the agent interview.
+### **REQT-4.2/w8br372bd1**: **BACKLOG**/draft: **Content Source**
+#### Purpose: Governs the source material for generating release notes. Applied when implementing or reviewing what data the curator receives.
 
- - 4.2.1: REQT-16mz9nt9sd: **BACKLOG**/draft: **Notes File Path and Quality** - Release notes MUST be saved to .proj/releases/{version}.release-notes.md. The content MUST be substantive — not a full commit dump but not merely a summary.
+ - 4.2.1: REQT-zyhrtbewtg: **BACKLOG**/draft: **Full Commit Log** - The commit log file MUST contain the full git log since the prior release tag. Merge commits MUST be excluded. The log MUST NOT use --oneline — full commit messages are required.
 
-### **REQT-4.3/mjdepm0n85**: **BACKLOG**/draft: **Changelog Update**
+### **REQT-4.3/fh7e7abr6g**: **BACKLOG**/draft: **Release Notes Output**
+#### Purpose: Establishes where release notes are stored and the quality standard. Applied when writing or reviewing the release notes produced by the curator.
+
+ - 4.3.1: REQT-16mz9nt9sd: **BACKLOG**/draft: **Notes File Path and Quality** - Release notes MUST be saved to .proj/releases/{version}.release-notes.md. The content MUST be substantive — not a full commit dump but not merely a summary.
+
+### **REQT-4.4/mjdepm0n85**: **BACKLOG**/draft: **Changelog Output**
 #### Purpose: Defines the format and linking requirements for the customer-facing changelog entry. Applied when prepending CHANGELOG.md after each release.
 
- - 4.3.1: REQT-fhbvs6sedp: **BACKLOG**/draft: **Changelog Prepend Format** - CHANGELOG.md MUST be prepended with a customer-facing summary of the release, linking to the release notes file in two forms: local weaver-checkout path and remote URL.
+ - 4.4.1: REQT-fhbvs6sedp: **BACKLOG**/draft: **Changelog Prepend Format** - CHANGELOG.md MUST be prepended with a customer-facing summary of the release, linking to the release notes file in two forms: local weaver-checkout path and remote URL.
 
 ## Area 5: Publication Sequence
 
@@ -150,7 +183,8 @@ Behavior in downstream projects and on mid-release failure
 ### **REQT-5.2/0dr53zysr3**: **BACKLOG**/draft: **Meta-Assets Publication**
 #### Purpose: Governs the complete sequence of operations constituting a meta-assets publication. Applied when implementing or auditing the publication phase.
 
- - 5.2.1: REQT-yyx4gkgce8: **BACKLOG**/draft: **Meta-Assets Publication Steps** - The script MUST add stellar-contracts-{version}.tgz to meta-assets via .weaver/add-asset, weave proj+main into meta-assets, tag the meta-assets tip with the verbatim package.json version (no v prefix), then push the branch and tag to origin.
+ - 5.2.1: REQT-yyx4gkgce8: **BACKLOG**/draft: **Meta-Assets Publication Steps** - The script MUST add stellar-contracts-{version}.tgz to meta-assets via .weaver/add-asset, weave proj+main into meta-assets, tag the meta-assets tip per REQT-k9zgpff7da (Tag Format Convention), then push the branch and tag to origin.
+ - 5.2.2: REQT-k9zgpff7da: **BACKLOG**/draft: **Tag Format Convention** - Release tags MUST use the format x.y.z for stable releases and x.y.z-beta.b for pre-releases, with no v prefix. This is the established convention (38+ existing tags back to 0.9.0-beta.3). Tags MUST NOT be derived from package.json — the script MUST construct the tag string from the resolved version components.
 
 ## Area 6: Downstream Exposure and Error Recovery
 
@@ -164,9 +198,16 @@ Behavior in downstream projects and on mid-release failure
 
  - 6.2.1: REQT-3vhp3een3b: **BACKLOG**/draft: **Worktree Status on Failure** - On failure after git mutations have begun, the script MUST display git status for all checked-out worktrees to assist manual recovery. No automated rollback is attempted.
 
+### **REQT-6.3/xta8chsm7v**: **BACKLOG**/draft: **Downstream Init Subcommand**
+#### Purpose: Defines a setup subcommand that wires release scripts into a downstream project's package.json. Applied when onboarding a new downstream project to use stellar-release.
+
+ - 6.3.1: REQT-zzjmbhwxky: **BACKLOG**/draft: **Package.json Script Injection** - stellar-release init (or equivalent subcommand) MUST add the standard release, release:patch, release:minor, release:major, and release:prerelease scripts to the downstream project's package.json.
+ - 6.3.2: REQT-5vqahdp8fe: **BACKLOG**/draft: **Missing Scripts Guidance** - When the script detects that the project's package.json has no release scripts configured, it MUST display instructions for how to add them — either by running the init subcommand or by showing the exact scripts entries to add manually.
+
 
 # Files
 
+- `scripts/release` - Main release automation script (JavaScript/Node.js)
 
 # Implementation Log
 
