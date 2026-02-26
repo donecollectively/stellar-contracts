@@ -296,11 +296,11 @@ writeFileSync(COMMIT_LOGS_FILE, commitLog);
 
 // release notes template
 writeFileSync(RELEASE_NOTES_FILE, [
-    `# Release ${releaseVersion}`,
+    `# Detailed Release Notes — ${releaseVersion}`,
     ``,
     `_Previous release: ${VERSION_PREV}_`,
     ``,
-    `<!-- Summarize the release for users and contributors. -->`,
+    `<!-- Technical detail for stakeholders: decisions, migrations, breaking changes. -->`,
     `<!-- Reference: ${COMMIT_LOGS_FILE} -->`,
     ``,
 ].join('\n'));
@@ -308,10 +308,10 @@ writeFileSync(RELEASE_NOTES_FILE, [
 // changelog segment template
 const today = new Date().toISOString().slice(0, 10);
 writeFileSync(CHANGELOG_SEGMENT, [
-    `## [${releaseVersion}] — ${today}`,
+    `## ${releaseVersion}  ${today}`,
     ``,
-    `<!-- Customer-facing summary of this release. -->`,
-    `<!-- Link to release notes: .proj/releases/${releaseVersion}.release-notes.md -->`,
+    `<!-- Public changelog entry: user-facing summary of what changed and why it matters. -->`,
+    `<!-- Detailed release notes: .proj/releases/${releaseVersion}.release-notes.md -->`,
     ``,
 ].join('\n'));
 
@@ -396,8 +396,9 @@ const metaTip = run('git rev-parse meta-assets').trim();
 run(`git tag "${releaseVersion}" "${metaTip}"`);
 console.log(`  tagged meta-assets tip as ${releaseVersion}`);
 
-// push
+// REQT-yyx4gkgce8 (Meta-Assets Publication Steps) — push main, meta-assets, tag
 console.log('\nPushing...');
+runInherited('git push origin main');
 runInherited('git push origin meta-assets');
 runInherited(`git push origin "${releaseVersion}"`);
 
