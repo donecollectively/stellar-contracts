@@ -74,14 +74,14 @@ Building and packaging the release artifact before git mutations
 1. **Build Before Mutations**: The build runs before any git changes — if it fails, your repo is untouched
 2. **Bundle Naming and Cleanup**: You get a predictably-named stellar-contracts-{version}.tgz bundle, and staging artifacts are cleaned up automatically
 
-### 4. Release Notes Curation
-Documenting each release with sufficient detail for users and contributors
+### 4. Release Documentation Curation
+Producing two tiers of release content: a public changelog entry for users and detailed release notes for technical stakeholders
 
 #### Key Requirements:
 1. **Curation Step Mechanics**: When a release reaches the curation step, you get a temp directory with three prepared files and a set of env vars — then either a shell or your custom curator command runs with that context
 2. **Content Source**: Your curator always receives the full commit history since the last release — no merge noise, no truncated messages — so every change is visible for review
-3. **Release Notes Output**: After curation, you'll find detailed release notes at a stable, version-specific path — substantive enough to understand the release without reading every commit
-4. **Changelog Output**: CHANGELOG.md gets a concise customer-facing entry linking to the full release notes — quick to scan, with depth one click away
+3. **Detailed Release Notes Output**: After curation, you'll find detailed release notes at a stable, version-specific path — substantive enough to understand the release without reading every commit
+4. **Public Changelog Output**: CHANGELOG.md gets a concise public entry linking to the detailed release notes — quick to scan, with depth one click away
 
 ### 5. Publication Sequence
 Ordering of git mutations to ensure a coherent release state
@@ -152,14 +152,14 @@ Behavior in downstream projects and on mid-release failure
  - 3.2.1: REQT-w544n4ajyj: **BACKLOG**/draft: **Bundle Filename and Cleanup** - The package MUST be produced via pnpm pack and renamed to stellar-contracts-{version}.tgz. The staging file MUST be deleted after successful publication.
  - 3.2.2: REQT-z5rnv8hd6f: **BACKLOG**/draft: **Temp File Cleanup** - The script MUST remove the curation temp directory after successful publication.
 
-## Area 4: Release Notes Curation
+## Area 4: Release Documentation Curation
 
 ### **REQT-4.1/az99gygycq**: **BACKLOG**/draft: **Curation Step Mechanics**
 #### Purpose: Defines how the release script orchestrates the curation environment — temp files, env vars, and curator invocation. Applied when implementing or reviewing the curation step, or when building a custom curator.
 
- - 4.1.1: REQT-dg7ymbabzz: **BACKLOG**/draft: **Temp Dir and File Setup** - The script MUST create a temp directory containing three files: (1) the raw git commit log since the prior release tag, (2) an empty CHANGELOG entry template, and (3) an empty release notes template. The paths to these files MUST be listed on screen before invoking the curator.
- - 4.1.2: REQT-ans8qxa9e1: **BACKLOG**/draft: **Environment Variables** - The script MUST set these env vars before invoking the curator: VERSION_PREV (last released tag, default: most recent git tag, overridable by caller), VERSION_NEXT (new release version post-bump), COMMIT_LOGS_FILE (path to raw git log), RELEASE_NOTES_FILE (path to release notes template), CHANGELOG_SEGMENT (path to CHANGELOG entry template).
- - 4.1.3: REQT-162c7xerq9: **BACKLOG**/draft: **Default Shell Behavior** - When CHANGELOG_CURATOR env var is not set, the script MUST open an interactive bash shell so the user can curate release notes and changelog manually.
+ - 4.1.1: REQT-dg7ymbabzz: **BACKLOG**/draft: **Temp Dir and File Setup** - The script MUST create a temp directory containing three files: (1) the raw git commit log since the prior release tag, (2) an empty public changelog entry template, and (3) an empty detailed release notes template. The paths to these files MUST be listed on screen before invoking the curator.
+ - 4.1.2: REQT-ans8qxa9e1: **BACKLOG**/draft: **Environment Variables** - The script MUST set these env vars before invoking the curator: VERSION_PREV (last released tag, default: most recent git tag, overridable by caller), VERSION_NEXT (new release version post-bump), COMMIT_LOGS_FILE (path to raw git log), RELEASE_NOTES_FILE (path to detailed release notes template), CHANGELOG_SEGMENT (path to public changelog entry template).
+ - 4.1.3: REQT-162c7xerq9: **BACKLOG**/draft: **Default Shell Behavior** - When CHANGELOG_CURATOR env var is not set, the script MUST open an interactive bash shell so the user can curate the detailed release notes and public changelog entry manually.
  - 4.1.4: REQT-pqyv6v5xxy: **BACKLOG**/draft: **Pluggable Curator** - When CHANGELOG_CURATOR env var is set, the script MUST invoke that command/script instead of opening a shell. The curator receives all curation env vars.
 
 ### **REQT-4.2/w8br372bd1**: **BACKLOG**/draft: **Content Source**
@@ -167,15 +167,15 @@ Behavior in downstream projects and on mid-release failure
 
  - 4.2.1: REQT-zyhrtbewtg: **BACKLOG**/draft: **Full Commit Log** - The commit log file MUST contain the full git log since the prior release tag. Merge commits MUST be excluded. The log MUST NOT use --oneline — full commit messages are required.
 
-### **REQT-4.3/fh7e7abr6g**: **BACKLOG**/draft: **Release Notes Output**
-#### Purpose: Establishes where release notes are stored and the quality standard. Applied when writing or reviewing the release notes produced by the curator.
+### **REQT-4.3/fh7e7abr6g**: **BACKLOG**/draft: **Detailed Release Notes Output**
+#### Purpose: Establishes where detailed release notes are stored and the quality standard. Applied when writing or reviewing the release notes produced by the curator.
 
- - 4.3.1: REQT-16mz9nt9sd: **BACKLOG**/draft: **Notes File Path and Quality** - Release notes MUST be saved to .proj/releases/{version}.release-notes.md. The content MUST be substantive — not a full commit dump but not merely a summary.
+ - 4.3.1: REQT-16mz9nt9sd: **BACKLOG**/draft: **Notes File Path and Quality** - Detailed release notes MUST be saved to .proj/releases/{version}.release-notes.md. The content MUST be substantive — not a full commit dump but not merely a summary.
 
-### **REQT-4.4/mjdepm0n85**: **BACKLOG**/draft: **Changelog Output**
+### **REQT-4.4/mjdepm0n85**: **BACKLOG**/draft: **Public Changelog Output**
 #### Purpose: Defines the format and linking requirements for the customer-facing changelog entry. Applied when prepending CHANGELOG.md after each release.
 
- - 4.4.1: REQT-fhbvs6sedp: **BACKLOG**/draft: **Changelog Prepend Format** - CHANGELOG.md MUST be prepended with a customer-facing summary of the release, linking to the release notes file in two forms: local weaver-checkout path and remote URL.
+ - 4.4.1: REQT-fhbvs6sedp: **BACKLOG**/draft: **Changelog Prepend Format** - CHANGELOG.md MUST be prepended with a customer-facing summary of the release, linking to the detailed release notes file in two forms: local weaver-checkout path and remote URL.
 
 ## Area 5: Publication Sequence
 
@@ -187,7 +187,7 @@ Behavior in downstream projects and on mid-release failure
 ### **REQT-5.2/0dr53zysr3**: **BACKLOG**/draft: **Meta-Assets Publication**
 #### Purpose: Governs the complete sequence of operations constituting a meta-assets publication. Applied when implementing or auditing the publication phase.
 
- - 5.2.1: REQT-yyx4gkgce8: **BACKLOG**/draft: **Meta-Assets Publication Steps** - The script MUST add stellar-contracts-{version}.tgz to meta-assets via .weaver/add-asset, weave proj+main into meta-assets, tag the meta-assets tip per REQT-k9zgpff7da (Tag Format Convention), then push the branch and tag to origin.
+ - 5.2.1: REQT-yyx4gkgce8: **BACKLOG**/draft: **Meta-Assets Publication Steps** - The script MUST add stellar-contracts-{version}.tgz to meta-assets via .weaver/add-asset, weave proj+main into meta-assets, tag the meta-assets tip per REQT-k9zgpff7da (Tag Format Convention), then push main, meta-assets, and the tag to origin.
  - 5.2.2: REQT-k9zgpff7da: **BACKLOG**/draft: **Tag Format Convention** - Release tags MUST use the format x.y.z for stable releases and x.y.z-beta.b for pre-releases, with no v prefix. This is the established convention (38+ existing tags back to 0.9.0-beta.3). Tags MUST NOT be derived from package.json — the script MUST construct the tag string from the resolved version components.
 
 ## Area 6: Downstream Exposure and Error Recovery
