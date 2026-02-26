@@ -1,1 +1,0 @@
-{"version":3,"file":"LogEntry.d.ts","sourceRoot":"","sources":["../../../../../../src/networkClients/UtxoIndex/types/LogEntry.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AACH,MAAM,WAAW,QAAQ;IACrB,KAAK,EAAE,MAAM,CAAC;IACd,GAAG,EAAE,MAAM,CAAC;IACZ,IAAI,EAAE,MAAM,CAAC;IACb,QAAQ,EAAE,MAAM,CAAC;IACjB,OAAO,EAAE,MAAM,CAAC;CACnB"}
