@@ -59,23 +59,91 @@ Then re-run the release script.
     process.exit(1);
 }
 
-// ─── arg parsing ────────────────────────────────────────────────────────────
-// REQT-rgt21gw5mn (Supported Bump Modes)
-
-const args = process.argv.slice(2);
-const bumpArg = args.find(a => a.startsWith('--bump='))?.split('=')[1] ?? null;
-const VALID_MODES = ['patch', 'release', 'minor', 'major', 'prerelease', 'release-or-minor'];
-
-if (bumpArg && !VALID_MODES.includes(bumpArg)) {
-    die(`unknown --bump mode: ${bumpArg}\nValid modes: ${VALID_MODES.join(', ')}`);
-}
-
 // ─── read package.json ──────────────────────────────────────────────────────
 
 const pkgPath = join(ROOT, 'package.json');
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 const currentVersion = pkg.version;
 const isPreRelease = !!semver.prerelease(currentVersion);
+
+// ─── bump options table (shared by --help and already-released message) ─────
+// REQT-rgt21gw5mn (Supported Bump Modes)
+
+const VALID_MODES = ['patch', 'release', 'minor', 'major', 'prerelease', 'release-or-minor'];
+
+function buildBumpOptions() {
+    const base = `${semver.major(currentVersion)}.${semver.minor(currentVersion)}.${semver.patch(currentVersion)}`;
+    const nextPatch = semver.inc(base, 'patch');
+    const options = [];
+    if (isPreRelease) {
+        const preArr = semver.prerelease(currentVersion);
+        options.push(['--bump=patch',       `${base}-${preArr[0]}.${Number(preArr[1]) + 1}`]);
+        options.push(['--bump=release',      base]);
+    }
+    options.push(['--bump=minor',        nextPatch]);
+    options.push(['--bump=major',        semver.inc(currentVersion, 'major')]);
+    options.push(['--bump=prerelease',   `${nextPatch}-beta.1`]);
+    if (isPreRelease) {
+        options.push(['--bump=release-or-minor', base, '(default)']);
+    } else {
+        options.push(['--bump=release-or-minor', nextPatch, '(default)']);
+    }
+    return options;
+}
+
+function formatBumpOptions() {
+    const options = buildBumpOptions();
+    const pad = Math.max(...options.map(([f]) => f.length));
+    return options.map(([flag, result, note]) =>
+        `  ${flag.padEnd(pad)}  →  ${result}${note ? '  ' + note : ''}`
+    ).join('\n');
+}
+
+function showHelp(stream = process.stdout) {
+    stream.write(`
+stellar-release — release automation for stellar-contracts
+
+Current version: ${currentVersion}
+
+Usage:
+  stellar-release [--bump=MODE]
+  stellar-release --help
+
+Bump modes (from ${currentVersion}):
+${formatBumpOptions()}
+
+Environment:
+  VERSION_PREV       Override the base tag for commit log range (default: most recent git tag)
+  CHANGELOG_CURATOR  Command to invoke for release notes curation (default: interactive shell)
+`);
+}
+
+// ─── arg parsing ────────────────────────────────────────────────────────────
+
+const args = process.argv.slice(2);
+
+// REQT-g4wvjth1cz (Help and Argument Validation)
+if (args.includes('--help') || args.includes('-h')) {
+    showHelp();
+    process.exit(0);
+}
+
+const bumpArg = args.find(a => a.startsWith('--bump='))?.split('=')[1] ?? null;
+const unknownArgs = args.filter(a => a !== `--bump=${bumpArg}` && a !== '--bump');
+
+// REQT-g4wvjth1cz (Help and Argument Validation) — unknown args
+if (unknownArgs.length > 0) {
+    console.error(`Unknown argument(s): ${unknownArgs.join(', ')}\n`);
+    showHelp(process.stderr);
+    process.exit(1);
+}
+
+// REQT-g4wvjth1cz (Help and Argument Validation) — unknown bump mode
+if (bumpArg && !VALID_MODES.includes(bumpArg)) {
+    console.error(`Unknown --bump mode: ${bumpArg}\n`);
+    showHelp(process.stderr);
+    process.exit(1);
+}
 
 // ─── VERSION_PREV ───────────────────────────────────────────────────────────
 // REQT-ans8qxa9e1 (Environment Variables) — VERSION_PREV default/override
@@ -91,25 +159,8 @@ run('git fetch --tags origin');
 const remoteTags = new Set(run('git tag -l').trim().split('\n').filter(Boolean));
 
 if (remoteTags.has(currentVersion) && !bumpArg) {
-    const pre = isPreRelease;
-    const base = `${semver.major(currentVersion)}.${semver.minor(currentVersion)}.${semver.patch(currentVersion)}`;
-    const nextPatch = semver.inc(base, 'patch');
-
-    const options = [];
-    if (pre) {
-        const preArr = semver.prerelease(currentVersion);
-        options.push(['--bump=patch',       `${base}-${preArr[0]}.${Number(preArr[1]) + 1}`]);
-        options.push(['--bump=release',      base]);
-    }
-    options.push(['--bump=minor',        nextPatch]);
-    options.push(['--bump=major',        semver.inc(currentVersion, 'major')]);
-    options.push(['--bump=prerelease',   `${nextPatch}-beta.1`]);
-
-    const pad = Math.max(...options.map(([f]) => f.length));
     console.error(`\nVersion ${currentVersion} is already released. To release a new version:\n`);
-    for (const [flag, result] of options) {
-        console.error(`  pnpm release ${flag.padEnd(pad)}  →  ${result}`);
-    }
+    console.error(formatBumpOptions());
     console.error('');
     process.exit(1);
 }
