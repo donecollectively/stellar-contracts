@@ -1,16 +1,11 @@
 #!/usr/bin/env node
 // scripts/release — stellar-contracts release automation
-// REQT-r0g2gfymrt, REQT-n04657rp5t, REQT-k8jkb0gef1 (pre-flight)
-// REQT-ev26jfd4ce, REQT-nc74ve6dan, REQT-51vtve38mt (version bump)
-// REQT-9s2nw8v3qx, REQT-hvf7sfca32 (build & package)
-// REQT-w8br372bd1, REQT-fh7e7abr6g, REQT-mjdepm0n85 (release notes)
-// REQT-sz456nadba, REQT-0dr53zysr3 (publication sequence)
-// REQT-bmbzmcwhna, REQT-1ex1k5gx7t (downstream & error recovery)
+// Requirements: .proj/scripts/release.reqts.jsonl
 
 import { execSync, spawnSync } from 'child_process';
 import {
     readFileSync, writeFileSync, existsSync, mkdirSync,
-    mkdtempSync, copyFileSync, unlinkSync,
+    mkdtempSync, copyFileSync, rmSync,
 } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -31,6 +26,7 @@ function die(msg) {
     process.exit(1);
 }
 
+// REQT-3vhp3een3b (Worktree Status on Failure)
 let mutationsBegun = false;
 function showWorktreeStatus() {
     console.error('\n─── git status across worktrees ───');
@@ -47,7 +43,8 @@ function showWorktreeStatus() {
 const ROOT = run('git rev-parse --show-toplevel').trim();
 process.chdir(ROOT);
 
-// ─── weaver detection (REQT-238e33vzfm) ────────────────────────────────────
+// ─── weaver detection ───────────────────────────────────────────────────────
+// REQT-238e33vzfm (Weaver Absence Detection)
 
 if (!existsSync(join(ROOT, '.weaver'))) {
     console.error(`
@@ -63,6 +60,7 @@ Then re-run the release script.
 }
 
 // ─── arg parsing ────────────────────────────────────────────────────────────
+// REQT-rgt21gw5mn (Supported Bump Modes)
 
 const args = process.argv.slice(2);
 const bumpArg = args.find(a => a.startsWith('--bump='))?.split('=')[1] ?? null;
@@ -80,11 +78,13 @@ const currentVersion = pkg.version;
 const isPreRelease = !!semver.prerelease(currentVersion);
 
 // ─── VERSION_PREV ───────────────────────────────────────────────────────────
+// REQT-ans8qxa9e1 (Environment Variables) — VERSION_PREV default/override
 
 const VERSION_PREV = process.env.VERSION_PREV
     ?? run('git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD').trim();
 
-// ─── fetch remote tags, check if already released (REQT-wyh7se401f) ────────
+// ─── fetch remote tags, check if already released ───────────────────────────
+// REQT-wyh7se401f (Already-Released Version Detection)
 
 console.log('Fetching remote tags...');
 run('git fetch --tags origin');
@@ -115,6 +115,7 @@ if (remoteTags.has(currentVersion) && !bumpArg) {
 }
 
 // ─── compute release version ─────────────────────────────────────────────────
+// REQT-5vay51a5w9 (Mode-by-Mode Semantics)
 
 function computeReleaseVersion(mode) {
     const base = `${semver.major(currentVersion)}.${semver.minor(currentVersion)}.${semver.patch(currentVersion)}`;
@@ -142,21 +143,23 @@ function computeReleaseVersion(mode) {
     }
 }
 
-const effectiveBump = bumpArg ?? 'release-or-minor';
+const effectiveBump = bumpArg ?? 'release-or-minor'; // REQT-rgt21gw5mn (default mode)
 const releaseVersion = remoteTags.has(currentVersion)
     ? computeReleaseVersion(effectiveBump)
     : (bumpArg ? computeReleaseVersion(bumpArg) : currentVersion);
 
 console.log(`\nReleasing: ${currentVersion} → ${releaseVersion}`);
 
-// ─── pre-flight: clean working tree (REQT-5zsdm0x74r) ──────────────────────
+// ─── pre-flight: clean working tree ─────────────────────────────────────────
+// REQT-5zsdm0x74r (Working Tree Cleanliness Check)
 
 const dirty = run('git status --porcelain').trim();
 if (dirty) {
     die(`working tree is not clean:\n\n${dirty}\n\nCommit or stash changes before releasing.`);
 }
 
-// ─── pre-flight: proj woven into main (REQT-nt4bpnpgag) ────────────────────
+// ─── pre-flight: proj woven into main ───────────────────────────────────────
+// REQT-nt4bpnpgag (Proj Ancestry Check)
 
 try {
     run('git merge-base --is-ancestor proj main');
@@ -164,7 +167,8 @@ try {
     die('proj branch has not been woven into main.\nRun: .weaver/sync');
 }
 
-// ─── build before mutations (REQT-qzgr32xrbq) ──────────────────────────────
+// ─── build before mutations ─────────────────────────────────────────────────
+// REQT-qzgr32xrbq (Build-First Exit Guard)
 
 console.log('\nBuilding...');
 try {
@@ -174,13 +178,15 @@ try {
 }
 
 // ─── from here on: mutations begun — catch errors and show status ───────────
+// REQT-3vhp3een3b (Worktree Status on Failure) — exit handler
 
 mutationsBegun = true;
 process.on('exit', (code) => {
     if (code !== 0 && mutationsBegun) showWorktreeStatus();
 });
 
-// ─── bump version in package.json, commit to main (REQT-bcwkg88p59) ────────
+// ─── bump version in package.json, commit to main ───────────────────────────
+// REQT-bcwkg88p59 (Pre-Meta-Assets Commit Order) — step 1: version bump commit
 
 if (releaseVersion !== currentVersion) {
     console.log(`\nBumping package.json: ${currentVersion} → ${releaseVersion}`);
@@ -190,7 +196,8 @@ if (releaseVersion !== currentVersion) {
     run(`git commit -m "chore: bump version to ${releaseVersion}"`);
 }
 
-// ─── release notes curation step (REQT-zyhrtbewtg, REQT-16mz9nt9sd, REQT-fhbvs6sedp) ──
+// ─── release notes curation step ────────────────────────────────────────────
+// REQT-dg7ymbabzz (Temp Dir and File Setup)
 
 console.log('\nPreparing release notes curation files...');
 
@@ -199,7 +206,7 @@ const COMMIT_LOGS_FILE  = join(tmpDir, 'commit-log.txt');
 const RELEASE_NOTES_FILE = join(tmpDir, `${releaseVersion}.release-notes.md`);
 const CHANGELOG_SEGMENT  = join(tmpDir, 'changelog-segment.md');
 
-// raw commit log
+// REQT-zyhrtbewtg (Full Commit Log) — full messages, no merges, no --oneline
 const commitLog = run(`git log "${VERSION_PREV}..HEAD" --no-merges`);
 writeFileSync(COMMIT_LOGS_FILE, commitLog);
 
@@ -229,6 +236,7 @@ console.log(`  COMMIT_LOGS_FILE   = ${COMMIT_LOGS_FILE}`);
 console.log(`  RELEASE_NOTES_FILE = ${RELEASE_NOTES_FILE}`);
 console.log(`  CHANGELOG_SEGMENT  = ${CHANGELOG_SEGMENT}`);
 
+// REQT-ans8qxa9e1 (Environment Variables)
 const curatorEnv = {
     ...process.env,
     VERSION_PREV,
@@ -238,19 +246,23 @@ const curatorEnv = {
     CHANGELOG_SEGMENT,
 };
 
+// REQT-pqyv6v5xxy (Pluggable Curator)
 if (process.env.CHANGELOG_CURATOR) {
     console.log(`\nInvoking CHANGELOG_CURATOR: ${process.env.CHANGELOG_CURATOR}`);
     const result = spawnSync(process.env.CHANGELOG_CURATOR, [], {
         env: curatorEnv, stdio: 'inherit', shell: true,
     });
     if (result.status !== 0) die('CHANGELOG_CURATOR exited with an error');
+// REQT-162c7xerq9 (Default Shell Behavior)
 } else {
     console.log('\nOpening shell for manual curation. Edit the files above, then exit to continue.\n');
     spawnSync(process.env.SHELL ?? 'bash', [], { env: curatorEnv, stdio: 'inherit' });
 }
 
-// ─── commit release notes to proj, CHANGELOG to main (REQT-bcwkg88p59) ─────
+// ─── commit release notes to proj, CHANGELOG to main ────────────────────────
+// REQT-bcwkg88p59 (Pre-Meta-Assets Commit Order) — step 2: notes + changelog commits
 
+// REQT-16mz9nt9sd (Notes File Path and Quality)
 const projReleasesDir = join(ROOT, '.proj', 'releases');
 mkdirSync(projReleasesDir, { recursive: true });
 const destNotes = join(projReleasesDir, `${releaseVersion}.release-notes.md`);
@@ -258,6 +270,7 @@ copyFileSync(RELEASE_NOTES_FILE, destNotes);
 run(`git -C "${join(ROOT, '.proj')}" add "releases/${releaseVersion}.release-notes.md"`);
 run(`git -C "${join(ROOT, '.proj')}" commit -m "docs: release notes for ${releaseVersion}"`);
 
+// REQT-fhbvs6sedp (Changelog Prepend Format)
 const changelogPath = join(ROOT, 'CHANGELOG.md');
 const segment = readFileSync(CHANGELOG_SEGMENT, 'utf8');
 const existing = existsSync(changelogPath) ? readFileSync(changelogPath, 'utf8') : '';
@@ -265,34 +278,36 @@ writeFileSync(changelogPath, segment + '\n' + existing);
 run('git add CHANGELOG.md');
 run(`git commit -m "docs: update CHANGELOG for ${releaseVersion}"`);
 
-// ─── weave proj into main (REQT-bcwkg88p59) ─────────────────────────────────
+// ─── weave proj into main ───────────────────────────────────────────────────
+// REQT-bcwkg88p59 (Pre-Meta-Assets Commit Order) — step 3: weave before meta-assets
 
 console.log('\nWeaving proj into main...');
 runInherited(`"${join(ROOT, '.proj', 'weave.sh')}"`);
 
-// ─── pack (REQT-w544n4ajyj) ──────────────────────────────────────────────────
+// ─── pack ───────────────────────────────────────────────────────────────────
+// REQT-w544n4ajyj (Bundle Filename and Cleanup)
 
 console.log('\nPacking...');
 const packOutput = run('pnpm pack').trim();
-// pnpm pack prints the filename on the last line
 const packedFile = packOutput.split('\n').pop().trim();
 const tgzName = `stellar-contracts-${releaseVersion}.tgz`;
 const tgzPath = join(ROOT, tgzName);
 run(`mv "${join(ROOT, packedFile)}" "${tgzPath}"`);
 console.log(`  → ${tgzName}`);
 
-// ─── add-asset, weave meta-assets, tag, push (REQT-yyx4gkgce8) ──────────────
+// ─── add-asset, weave meta-assets, tag, push ────────────────────────────────
+// REQT-yyx4gkgce8 (Meta-Assets Publication Steps)
 
 console.log('\nPublishing to meta-assets...');
 runInherited(`"${join(ROOT, '.weaver', 'add-asset')}" "${tgzPath}" "${tgzName}"`);
 
-// clean up staging tgz
-unlinkSync(tgzPath);
+// REQT-w544n4ajyj (Bundle Filename and Cleanup) — staging file cleanup
+rmSync(tgzPath);
 
-// weave proj+main into meta-assets (headless)
+// weave proj+main into meta-assets
 runInherited(`"${join(ROOT, '.proj', 'weave.sh')}" --ref meta-assets main proj`);
 
-// tag the meta-assets tip
+// REQT-k9zgpff7da (Tag Format Convention) — x.y.z or x.y.z-beta.b, no v prefix
 const metaTip = run('git rev-parse meta-assets').trim();
 run(`git tag "${releaseVersion}" "${metaTip}"`);
 console.log(`  tagged meta-assets tip as ${releaseVersion}`);
@@ -303,10 +318,9 @@ runInherited('git push origin meta-assets');
 runInherited(`git push origin "${releaseVersion}"`);
 
 // ─── cleanup ────────────────────────────────────────────────────────────────
+// REQT-z5rnv8hd6f (Temp File Cleanup)
 
-try { unlinkSync(COMMIT_LOGS_FILE); } catch {}
-try { unlinkSync(RELEASE_NOTES_FILE); } catch {}
-try { unlinkSync(CHANGELOG_SEGMENT); } catch {}
+rmSync(tmpDir, { recursive: true, force: true });
 
 // ─── done ───────────────────────────────────────────────────────────────────
 

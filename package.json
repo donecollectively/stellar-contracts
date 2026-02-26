@@ -9,7 +9,8 @@
         "node": ">=20"
     },
     "bin": {
-        "stellog": "./dist/stellog-cli-node.mjs"
+        "stellog": "./dist/stellog-cli-node.mjs",
+        "stellar-release": "./scripts/release"
     },
     "exports": {
         ".": {
@@ -48,6 +49,11 @@
     "type": "module",
     "scripts": {
         "build": "scripts/build",
+        "release": "scripts/release",
+        "release:patch": "scripts/release --bump=patch",
+        "release:minor": "scripts/release --bump=minor",
+        "release:major": "scripts/release --bump=major",
+        "release:prerelease": "scripts/release --bump=prerelease",
         "dev": "scripts/rollup --watch",
         "dev:rollupPlugin": "scripts/esbuild-rollup-dev",
         "docs:build": "tsc -p ./tsconfig.all.dts.json ; pnpm docs:generate",
