@@ -55,8 +55,11 @@ export class EnumBridge<
     // the uplcReturnType provides type clues, mainly for editor support
     // and compile-time type-checking.  
     mkUplcData(value: any, enumPathExpr: string) : uplcReturnType{
+        console.log(`[EnumBridge.mkUplcData] path=${enumPathExpr} isActivity=${this.isActivity} isNested=${this.isNested} hasRedirect=${!!this.redirectTo}`);
         if (this.redirectTo) {
-            return this.redirectTo(value, enumPathExpr);
+            const result = this.redirectTo(value, enumPathExpr);
+            console.log(`[EnumBridge.mkUplcData] after redirect, result keys=${Object.keys(result)}`);
+            return result;
         }
         const uplc = this.ᱺᱺcast.toUplcData(value, enumPathExpr);
         const t = uplc.toString();
@@ -65,6 +68,7 @@ export class EnumBridge<
         uplc.dataPath = enumPathExpr;
         if (this.isActivity) {
             const [moduleName, activityName] = enumPathExpr.split("::");
+            console.log(`[EnumBridge.mkUplcData] wrapping as activity: moduleName=${moduleName} activityName=${activityName}`);
             return {
                 redeemer: uplc,
                 moduleName,
@@ -72,6 +76,7 @@ export class EnumBridge<
                 activityData: value
             } as uplcReturnType;
         } else {
+            console.log(`[EnumBridge.mkUplcData] NOT wrapping (isActivity=false)`);
             return uplc as uplcReturnType;
         }
     }
