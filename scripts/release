@@ -9,6 +9,7 @@ import {
 } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { createInterface } from 'readline';
 import semver from 'semver';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -74,29 +75,35 @@ const VALID_MODES = ['patch', 'release', 'minor', 'major', 'prerelease', 'releas
 function buildBumpOptions() {
     const base = `${semver.major(currentVersion)}.${semver.minor(currentVersion)}.${semver.patch(currentVersion)}`;
     const nextPatch = semver.inc(base, 'patch');
+    // [flag, description, resultVersion or null if N/A]
     const options = [];
     if (isPreRelease) {
         const preArr = semver.prerelease(currentVersion);
-        options.push(['--bump=patch',       `${base}-${preArr[0]}.${Number(preArr[1]) + 1}`]);
-        options.push(['--bump=release',      base]);
-    }
-    options.push(['--bump=minor',        nextPatch]);
-    options.push(['--bump=major',        semver.inc(currentVersion, 'major')]);
-    options.push(['--bump=prerelease',   `${nextPatch}-beta.1`]);
-    if (isPreRelease) {
-        options.push(['--bump=release-or-minor', base, '(default)']);
+        options.push(['--bump=patch',       'increment pre-release counter',     `${base}-${preArr[0]}.${Number(preArr[1]) + 1}`]);
+        options.push(['--bump=release',      'graduate pre-release to stable',                base]);
     } else {
-        options.push(['--bump=release-or-minor', nextPatch, '(default)']);
+        options.push(['--bump=patch',       'increment pre-release counter',     null]);
+        options.push(['--bump=release',      'graduate pre-release to stable',                null]);
+    }
+    options.push(['--bump=minor',            'bump minor digit',                  nextPatch]);
+    options.push(['--bump=major',            'bump major version',                semver.inc(currentVersion, 'major')]);
+    options.push(['--bump=prerelease',       `start next ${preLabel} (or --pre=TAG)`, `${nextPatch}-${preLabel}.1`]);
+    if (isPreRelease) {
+        options.push(['--bump=release-or-minor', 'graduate or bump (default)',    base]);
+    } else {
+        options.push(['--bump=release-or-minor', 'graduate or bump (default)',    nextPatch]);
     }
     return options;
 }
 
 function formatBumpOptions() {
     const options = buildBumpOptions();
-    const pad = Math.max(...options.map(([f]) => f.length));
-    return options.map(([flag, result, note]) =>
-        `  ${flag.padEnd(pad)}  →  ${result}${note ? '  ' + note : ''}`
-    ).join('\n');
+    const flagPad = Math.max(...options.map(([f]) => f.length));
+    const descPad = Math.max(...options.map(([, d]) => d.length));
+    return options.map(([flag, desc, result]) => {
+        const arrow = result ? `→  ${result}` : '   (pre-release only)';
+        return `  ${flag.padEnd(flagPad)}  // ${desc.padEnd(descPad)}  ${arrow}`;
+    }).join('\n');
 }
 
 function showHelp(stream = process.stdout) {
@@ -106,11 +113,15 @@ stellar-release — release automation for stellar-contracts
 Current version: ${currentVersion}
 
 Usage:
-  stellar-release [--bump=MODE]
+  stellar-release [--bump=MODE] [--pre=TAG] [--untracked-ok]
   stellar-release --help
 
 Bump modes (from ${currentVersion}):
 ${formatBumpOptions()}
+
+Options:
+  --pre=TAG        Pre-release label for --bump=prerelease (default: beta)
+  --untracked-ok   Skip the untracked files check
 
 Environment:
   VERSION_PREV       Override the base tag for commit log range (default: most recent git tag)
@@ -121,15 +132,21 @@ Environment:
 // ─── arg parsing ────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
+const bumpArg = args.find(a => a.startsWith('--bump='))?.split('=')[1] ?? null;
+const preLabel = args.find(a => a.startsWith('--pre='))?.split('=')[1] ?? 'beta';
+const untrackedOk = args.includes('--untracked-ok');
+const unknownArgs = args.filter(a =>
+    a !== `--bump=${bumpArg}` && a !== '--bump'
+    && a !== `--pre=${preLabel}` && !a.startsWith('--pre=')
+    && a !== '--untracked-ok'
+    && a !== '--help' && a !== '-h'
+);
 
 // REQT-g4wvjth1cz (Help and Argument Validation)
 if (args.includes('--help') || args.includes('-h')) {
     showHelp();
     process.exit(0);
 }
-
-const bumpArg = args.find(a => a.startsWith('--bump='))?.split('=')[1] ?? null;
-const unknownArgs = args.filter(a => a !== `--bump=${bumpArg}` && a !== '--bump');
 
 // REQT-g4wvjth1cz (Help and Argument Validation) — unknown args
 if (unknownArgs.length > 0) {
@@ -186,7 +203,7 @@ function computeReleaseVersion(mode) {
         case 'major':
             return semver.inc(currentVersion, 'major');
         case 'prerelease':
-            return `${nextPatch}-beta.1`;
+            return `${nextPatch}-${preLabel}.1`;
         case 'release-or-minor':
             return isPreRelease ? base : nextPatch;
         default:
@@ -204,9 +221,25 @@ console.log(`\nReleasing: ${currentVersion} → ${releaseVersion}`);
 // ─── pre-flight: clean working tree ─────────────────────────────────────────
 // REQT-5zsdm0x74r (Working Tree Cleanliness Check)
 
-const dirty = run('git status --porcelain').trim();
-if (dirty) {
-    die(`working tree is not clean:\n\n${dirty}\n\nCommit or stash changes before releasing.`);
+const statusLines = run('git status --porcelain').trim().split('\n').filter(Boolean);
+const modified = statusLines.filter(l => !l.startsWith('??'));
+const untracked = statusLines.filter(l => l.startsWith('??'));
+
+if (modified.length > 0) {
+    die(`working tree has uncommitted changes:\n\n${modified.join('\n')}\n\nCommit or stash changes before releasing.`);
+}
+
+if (untracked.length > 0 && !untrackedOk) {
+    if (!process.stdin.isTTY) {
+        die(`working tree has untracked files (non-interactive — aborting):\n\n${untracked.join('\n')}\n\nRemove, .gitignore, or pass --untracked-ok to proceed.`);
+    }
+    console.warn(`\nWarning: untracked files present:\n\n${untracked.join('\n')}\n`);
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await new Promise(resolve => rl.question('Continue anyway? [y/N] ', resolve));
+    rl.close();
+    if (answer.toLowerCase() !== 'y') {
+        die('aborted by user.');
+    }
 }
 
 // ─── pre-flight: proj woven into main ───────────────────────────────────────
