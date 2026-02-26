@@ -1,0 +1,30 @@
+## [0.9.5-beta.1] - 2026-02-26
+
+### Application Performance
+
+- New `CachedUtxoIndex`: a Dexie-backed in-browser UTxO cache for Capo dApps. Incrementally syncs from the last known block, evicts spent UTxOs, indexes by wallet address and asset class, and rate-limits Blockfrost calls with graceful backoff.
+- `CapoDappProvider` now shows a network sync rate gauge during initial sync and Blockfrost rate-limit backoff.
+- Startup performance: deferred Helios script compilation for read-only delegates and restructured wallet load order. dApps start faster.
+
+### Reference Documentation and Agent Guidance
+
+- New validity window guide in reference docs: covers `validFor()`, `txnTime`, `txnEndTime`, `futureDate()`, granularity alignment, and synchronizing datum timestamps with on-chain `now()`. Testing guidance included.
+- New codec-utils section in `essential-helios-api.md` documents `equalsBytes`, `bytesToHex`, `encodeUtf8`, `compareBytes`, and `toBytes`. Warning added to offchain docs: `===` silently fails on `number[]` byte arrays.
+- New architecture docs: overall Stellar Contracts stack, on-chain validator design, and UI component architecture. Reference docs deduplicated and cross-linked.
+- Bootstrapping and charter lifecycle content split into dedicated `essential-offchain-bootstrapping.md`. UI essentials doc expanded with component structure and Tailwind integration details.
+- `AGENTS.md` updated with detailed reference index and Weaver guidance. `CLAUDE.md` refocused on maintainer guidance. REQT\* helper discoverability improved in three reference locations.
+
+### Transaction-Building and On-Chain Data Lifecycle
+
+- Fixed: `txnTime` now derived from network block time rather than wall-clock `now()`. Eliminates time drift between client and chain for time-bounded transactions.
+- `isActivity` enriched: required `moduleName`, `activityName`, and `activityData` fields added. Multi-level enum paths supported. Deprecated manual activity constructors removed.
+- Transaction context (`tcx`) added to `beforeCreate`/`beforeUpdate` hook signatures. Enables time-aware and transaction-aware hook logic.
+- Transaction context fixes: `txnEndTime` now captured when using `validFor()`, stack traces added to duplicate-input errors, duplicate spare inputs filtered before submission.
+- `getDgDataController()` API update: optional `readOnly` replaced by required `onchain` boolean. All call sites must be updated.
+
+### Testing Environment: On-Disk State Snapshots
+
+- On-Disk State Snapshots for Testing — The test emulator now has a mature snapshot system that persists blockchain state to disk between test runs. Test suites build snapshots incrementally, reuse them across runs, and recover correctly from partial-cache scenarios — dramatically reducing test cycle time for suites with expensive setup.
+- `@hasNamedSnapshot` now requires a `builderVersion` field. Pass `undefined` for no change to the cache key, or increment to invalidate stale snapshots when a builder's logic changes.
+- Renamed: emulator `futureDate()` is now `travelToFuture()`. Update all test call sites.
+
