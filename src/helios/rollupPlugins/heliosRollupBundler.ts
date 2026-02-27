@@ -7,7 +7,7 @@ import {
     utimesSync,
     writeFileSync,
 } from "fs";
-import { createFilter } from "rollup-pluginutils";
+import { createFilter } from "@rollup/pluginutils";
 import MagicString from "magic-string";
 import { inspect } from "util";
 import { colors } from "../../utils.js";

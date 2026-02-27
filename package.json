@@ -128,7 +128,6 @@
         "rollup-plugin-esbuild": "^6.1.0",
         "rollup-plugin-import-css": "^4.1.2",
         "rollup-plugin-node-externals": "^6.1.1",
-        "rollup-pluginutils": "^2.8.2",
         "semver": ">=7.5.2",
         "tslib": "^2.5.3",
         "typedoc": "^0.28.14",

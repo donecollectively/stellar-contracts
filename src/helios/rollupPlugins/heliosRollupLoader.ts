@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import path from "path";
 
-import { createFilter } from "rollup-pluginutils";
+import { createFilter } from "@rollup/pluginutils";
 import type { LoadResult, PluginContext, ResolveIdResult } from "rollup";
 
 /**
