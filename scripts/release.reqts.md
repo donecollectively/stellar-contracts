@@ -106,7 +106,7 @@ Behavior in downstream projects and on mid-release failure
 ### **REQT-1.1/r0g2gfymrt**: **BACKLOG**/draft: **Clean Working Tree**
 #### Purpose: Ensures the release always starts from a known-good git state, preventing uncommitted changes from contaminating the build or being silently excluded. Applied before implementing or reviewing any mutation step.
 
- - 1.1.1: REQT-5zsdm0x74r: **BACKLOG**/draft: **Working Tree Cleanliness Check** - The script MUST verify that the main working tree has no uncommitted changes before any mutations begin.
+ - 1.1.1: REQT-5zsdm0x74r: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Working Tree Cleanliness Check** - The script MUST verify the working tree before any mutations begin. Uncommitted changes MUST cause a hard fail. Untracked files with --untracked-ok MUST be silently ignored. Untracked files in a non-TTY context MUST cause a hard fail. Untracked files in a TTY context MUST prompt the user to continue or abort.
 
 ### **REQT-1.2/n04657rp5t**: **BACKLOG**/draft: **Proj Woven Into Main**
 #### Purpose: Ensures all project-branch content is incorporated into main before a release is cut. Applied as part of pre-flight verification when reviewing the release sequence.
@@ -133,10 +133,10 @@ Behavior in downstream projects and on mid-release failure
 ### **REQT-2.3/g4wvjth1cz**: **BACKLOG**/draft: **CLI Interface**
 #### Purpose: Defines the developer-facing interface: self-documentation, options, error handling, pnpm scripts, and the downstream bin entry. Applied when implementing arg parsing, adding new options, wiring pnpm scripts, or reviewing usability.
 
- - 2.3.1: REQT-477fxq1xxn: **BACKLOG**/draft: **Help Flag** - The script MUST support --help and -h flags that display usage information including all bump modes with concrete version transitions computed from the current version, then exit 0.
- - 2.3.2: REQT-d9ve2wgg0a: **BACKLOG**/draft: **Unknown Argument Rejection** - Unknown arguments and unknown --bump modes MUST show an error message followed by help text, then exit non-zero.
- - 2.3.3: REQT-f5w1s9tkcd: **BACKLOG**/draft: **Pre-Release Label Option** - The script MUST support --pre=TAG to set the pre-release label used by --bump=prerelease. Default MUST be beta.
- - 2.3.4: REQT-0eesm26ava: **BACKLOG**/draft: **Untracked Files Option** - The script MUST support --untracked-ok to skip the untracked files check during pre-flight.
+ - 2.3.1: REQT-477fxq1xxn: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Help Flag** - The script MUST support --help and -h flags that display usage information including all bump modes with concrete version transitions computed from the current version, then exit 0.
+ - 2.3.2: REQT-d9ve2wgg0a: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Unknown Argument Rejection** - Unknown arguments and unknown --bump modes MUST show an error message followed by help text, then exit non-zero.
+ - 2.3.3: REQT-f5w1s9tkcd: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Pre-Release Label Option** - The script MUST support --pre=TAG to set the pre-release label used by --bump=prerelease. Default MUST be beta.
+ - 2.3.4: REQT-0eesm26ava: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Untracked Files Option** - The script MUST support --untracked-ok to skip the untracked files check during pre-flight.
  - 2.3.5: REQT-vrxnr7kaz9: **BACKLOG**/draft: **Scripts and Bin Entries** - package.json MUST include scripts: release (default), release:patch, release:minor, release:major, release:prerelease; and a bin entry stellar-release pointing to scripts/release.
 
 ## Area 3: Build and Package
@@ -170,12 +170,12 @@ Behavior in downstream projects and on mid-release failure
 ### **REQT-4.3/fh7e7abr6g**: **BACKLOG**/draft: **Detailed Release Notes Output**
 #### Purpose: Establishes where detailed release notes are stored and the quality standard. Applied when writing or reviewing the release notes produced by the curator.
 
- - 4.3.1: REQT-16mz9nt9sd: **BACKLOG**/draft: **Notes File Path and Quality** - Detailed release notes MUST be saved to .proj/releases/{version}.release-notes.md. The content MUST be substantive — not a full commit dump but not merely a summary.
+ - 4.3.1: REQT-16mz9nt9sd: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Notes File Path and Quality** - Detailed release notes MUST be saved to .proj/releases/{version}.release-notes.md. The template MUST include a pre-generated download URL for the release tgz. The content MUST be substantive — not a full commit dump but not merely a summary.
 
 ### **REQT-4.4/mjdepm0n85**: **BACKLOG**/draft: **Public Changelog Output**
 #### Purpose: Defines the format and linking requirements for the customer-facing changelog entry. Applied when prepending CHANGELOG.md after each release.
 
- - 4.4.1: REQT-fhbvs6sedp: **BACKLOG**/draft: **Changelog Prepend Format** - CHANGELOG.md MUST be prepended with a customer-facing summary of the release, linking to the detailed release notes file in two forms: local weaver-checkout path and remote URL.
+ - 4.4.1: REQT-fhbvs6sedp: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Changelog Prepend Format** - CHANGELOG.md MUST be prepended with a customer-facing summary of the release. The template MUST include pre-generated links to the detailed release notes in two forms (local weaver-checkout path and remote URL), and a pre-generated download/dependency URL for the release tgz.
 
 ## Area 5: Publication Sequence
 
