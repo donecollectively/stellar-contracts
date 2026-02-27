@@ -285,6 +285,17 @@ if (releaseVersion !== currentVersion) {
 
 console.log('\nPreparing release notes curation files...');
 
+// derive GitHub raw base URL from main branch's tracking remote
+const mainRemote = run('git config branch.main.remote').trim() || 'origin';
+const remoteUrl  = run(`git remote get-url ${mainRemote}`).trim();
+const repoPath   = remoteUrl
+    .replace(/^git@github\.com:/, '')
+    .replace(/^https:\/\/github\.com\//, '')
+    .replace(/\.git$/, '');
+const RAW_BASE = `https://raw.githubusercontent.com/${repoPath}`;
+const tgzUrl   = `${RAW_BASE}/${releaseVersion}/stellar-contracts-${releaseVersion}.tgz`;
+const notesUrl = `${RAW_BASE}/${releaseVersion}/.proj/releases/${releaseVersion}.release-notes.md`;
+
 const tmpDir = mkdtempSync(join(tmpdir(), 'stellar-release-'));
 const COMMIT_LOGS_FILE  = join(tmpDir, 'commit-log.txt');
 const RELEASE_NOTES_FILE = join(tmpDir, `${releaseVersion}.release-notes.md`);
@@ -300,8 +311,10 @@ writeFileSync(RELEASE_NOTES_FILE, [
     ``,
     `_Previous release: ${VERSION_PREV}_`,
     ``,
+    `**Download / package.json dependency:** <${tgzUrl}>`,
+    ``,
     `<!-- Technical detail for stakeholders: decisions, migrations, breaking changes. -->`,
-    `<!-- Reference: ${COMMIT_LOGS_FILE} -->`,
+    `<!-- Commit log reference: ${COMMIT_LOGS_FILE} -->`,
     ``,
 ].join('\n'));
 
@@ -311,7 +324,10 @@ writeFileSync(CHANGELOG_SEGMENT, [
     `## ${releaseVersion}  ${today}`,
     ``,
     `<!-- Public changelog entry: user-facing summary of what changed and why it matters. -->`,
-    `<!-- Detailed release notes: .proj/releases/${releaseVersion}.release-notes.md -->`,
+    ``,
+    `[Detailed release notes](.proj/releases/${releaseVersion}.release-notes.md) ([remote](${notesUrl}))`,
+    ``,
+    `**Download / package.json dependency:** <${tgzUrl}>`,
     ``,
 ].join('\n'));
 
