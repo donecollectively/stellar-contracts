@@ -66,6 +66,7 @@ const pkgPath = join(ROOT, 'package.json');
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 const currentVersion = pkg.version;
 const isPreRelease = !!semver.prerelease(currentVersion);
+const pkgTgzBase = pkg.name.split('/').pop();
 
 // ─── bump options table (shared by --help and already-released message) ─────
 // REQT-rgt21gw5mn (Supported Bump Modes)
@@ -293,7 +294,7 @@ const repoPath   = remoteUrl
     .replace(/^https:\/\/github\.com\//, '')
     .replace(/\.git$/, '');
 const RAW_BASE = `https://raw.githubusercontent.com/${repoPath}`;
-const tgzUrl   = `${RAW_BASE}/${releaseVersion}/stellar-contracts-${releaseVersion}.tgz`;
+const tgzUrl   = `${RAW_BASE}/${releaseVersion}/${pkgTgzBase}-${releaseVersion}.tgz`;
 const notesUrl = `${RAW_BASE}/${releaseVersion}/.proj/releases/${releaseVersion}.release-notes.md`;
 
 const tmpDir = mkdtempSync(join(tmpdir(), 'stellar-release-'));
@@ -390,7 +391,7 @@ runInherited(`"${join(ROOT, '.proj', 'weave.sh')}"`);
 console.log('\nPacking...');
 const packOutput = run('pnpm pack').trim();
 const packedFile = packOutput.split('\n').pop().trim();
-const tgzName = `stellar-contracts-${releaseVersion}.tgz`;
+const tgzName = `${pkgTgzBase}-${releaseVersion}.tgz`;
 const tgzPath = join(ROOT, tgzName);
 run(`mv "${join(ROOT, packedFile)}" "${tgzPath}"`);
 console.log(`  → ${tgzName}`);
