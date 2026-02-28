@@ -711,8 +711,9 @@ export class TxSubmitMgr extends StateMachine<
                         `rescue attempt ${this.$mgrState.rescueAttempts}/${maxRescueAttempts}`,
                         retryInterval
                     );
+                } else {
+                    this.log(`reached maximum rescue attempts for transaction (${this.$mgrState.rescueAttempts}/${maxRescueAttempts})`);
                 }
-                // else: budget exhausted — terminal failed, no more transitions
             } else {
                 // Legitimate recovery path (e.g. slot battle, transient issue)
                 this.$deferredTransition(
