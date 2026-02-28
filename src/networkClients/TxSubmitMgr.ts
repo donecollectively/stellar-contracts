@@ -59,6 +59,8 @@ export type SubmitManagerState = {
     totalConfirmationAttempts: number;
     totalConfirmationSuccesses: number;
 
+    rescueAttempts: number;
+
     nextActivityStartTime?: dateAsMillis;
 };
 
@@ -106,6 +108,7 @@ type TxSubmitterTransitions =
     | "timeout"
     | "txExpired"
     | "reconfirm"
+    | "resubmit"
     | "otherSubmitterProblem";
 
 /**
@@ -132,6 +135,7 @@ const noTransitionsExcept = {
     timeout: null,
     txExpired: null,
     reconfirm: null,
+    resubmit: null,
     otherSubmitterProblem: null,
 };
 
@@ -303,6 +307,8 @@ export class TxSubmitMgr extends StateMachine<
             totalSubmissionSuccesses: 0,
             totalConfirmationAttempts: 0,
             totalConfirmationSuccesses: 0,
+
+            rescueAttempts: 0,
 
             nextActivityStartTime: undefined,
         };
@@ -686,11 +692,35 @@ export class TxSubmitMgr extends StateMachine<
             );
         },
         [`failed`]: () => {
-            this.$deferredTransition(
-                "reconfirm",
-                "possible rescue of failure",
-                this.retryIntervals.reconfirm
-            );
+            if (this.$mgrState.isBadTx) {
+                // Bounded rescue: the tx was classified as bad, but that
+                // classification can be wrong (e.g. Blockfrost UtxoFailure
+                // doesn't distinguish "already submitted" from "input spent").
+                // Allow a brief window (~5 attempts with firm backoff, ~2.5 min)
+                // to check if the tx actually landed on-chain.
+                const maxRescueAttempts = 5;
+                this.$mgrState.rescueAttempts++;
+                if (this.$mgrState.rescueAttempts <= maxRescueAttempts) {
+                    const retryInterval = this.gradualBackoff(
+                        this.retryIntervals.reconfirm,
+                        this.$mgrState.rescueAttempts,
+                        firmBackoff
+                    );
+                    this.$deferredTransition(
+                        "reconfirm",
+                        `rescue attempt ${this.$mgrState.rescueAttempts}/${maxRescueAttempts}`,
+                        retryInterval
+                    );
+                }
+                // else: budget exhausted — terminal failed, no more transitions
+            } else {
+                // Legitimate recovery path (e.g. slot battle, transient issue)
+                this.$deferredTransition(
+                    "reconfirm",
+                    "possible rescue of failure",
+                    this.retryIntervals.reconfirm
+                );
+            }
         },
     };
 
@@ -970,6 +1000,11 @@ export class TxSubmitMgr extends StateMachine<
                 to: "confirming",
                 // ^^ its onEntry does another confirmation right away
             },
+            resubmit: {
+                // for txs that were never successfully submitted —
+                // skip the confirmation detour and go straight to submitting
+                to: "submitting",
+            },
         },
     };
 
@@ -1061,6 +1096,7 @@ export class TxSubmitMgr extends StateMachine<
                         "(debugging breakpoint available)"
                 );
             }
+            throw e;
         }
     }
 

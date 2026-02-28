@@ -340,6 +340,106 @@ describe("TxSubmitMgr", async () => {
         return promise;
     });
 
+    it("propagates synchronous submitTx errors to notSubmitted (sync-submit-error-propagation)", async (context: localTC) => {
+        const { resolve, tsm, reject, promise } = mkSubmitMgr();
+
+        // DON'T mock doSubmit — let the real code path run including the catch block
+        // Instead, mock the submitter to throw synchronously
+        vi.spyOn(tsm.submitter, "submitTx").mockImplementation(() => {
+            throw new Error("sync kaboom");
+        });
+        vi.spyOn(tsm, "confirmTx").mockImplementation(async () => {
+            return false;
+        });
+        // Plain Error — not expiry, not UTxO — falls through to isBadTx
+        vi.spyOn(tsm, "isExpiryError").mockReturnValue(false);
+        vi.spyOn(tsm, "isUnknownUtxoError").mockReturnValue(false);
+
+        tsm.$notifier.on("state:entered", (tsm, state) => {
+            if (state === "failed") {
+                resolve(tsm);
+            }
+        });
+
+        return promise.then(() => {
+            expect(tsm.$mgrState.isBadTx).toBeTruthy();
+        });
+    });
+
+    it("terminates after bounded rescue attempts for bad tx (bounded-rescue-termination)", async (context: localTC) => {
+        timeout = 15000;
+        const { resolve, tsm, reject, promise } = mkSubmitMgr();
+
+        vi.spyOn(tsm, "doSubmit").mockImplementation(async () => {
+            throw new Error("permanently bad tx");
+        });
+        vi.spyOn(tsm, "confirmTx").mockImplementation(async () => {
+            return false;
+        });
+        vi.spyOn(tsm, "isExpiryError").mockReturnValue(false);
+        vi.spyOn(tsm, "isUnknownUtxoError").mockReturnValue(false);
+
+        let failedEntryCount = 0;
+        tsm.$notifier.on("state:entered", (tsm, state) => {
+            if (state === "failed") {
+                failedEntryCount++;
+            }
+        });
+
+        // Wait long enough for rescue budget to exhaust.
+        // With fast retry intervals (max 1200ms) and ~5 attempts, ~8s should be plenty
+        await tsm.delayed(8000);
+
+        const failedCountAtExhaustion = failedEntryCount;
+
+        // Wait another interval to confirm no more activity
+        await tsm.delayed(2000);
+
+        expect(failedEntryCount, "should not cycle after rescue budget exhausted").toBe(failedCountAtExhaustion);
+        expect(failedCountAtExhaustion, "should have attempted rescue").toBeGreaterThan(1);
+        expect(failedCountAtExhaustion, "rescue attempts should be bounded").toBeLessThanOrEqual(6);
+        expect(tsm.$state).toBe("failed");
+        expect(tsm.$mgrState.rescueAttempts).toBeGreaterThan(0);
+
+        resolve(tsm);
+        return promise;
+    });
+
+    it("rescues misclassified bad tx when confirmation succeeds during window (rescue-window-confirmation)", async (context: localTC) => {
+        timeout = 15000;
+        const { resolve, tsm, reject, promise } = mkSubmitMgr();
+
+        vi.spyOn(tsm, "doSubmit").mockImplementation(async () => {
+            throw new Error("looks bad but isn't");
+        });
+        vi.spyOn(tsm, "isExpiryError").mockReturnValue(false);
+        vi.spyOn(tsm, "isUnknownUtxoError").mockReturnValue(false);
+
+        let confirmAttempts = 0;
+        vi.spyOn(tsm, "confirmTx").mockImplementation(async () => {
+            confirmAttempts++;
+            // Succeed on 3rd attempt — within rescue window
+            return confirmAttempts >= 3;
+        });
+
+        tsm.$notifier.on("state:entered", (tsm, state) => {
+            if (state === "confirmed") {
+                resolve(tsm);
+            }
+        });
+
+        return promise.then(() => {
+            expect(confirmAttempts).toBeGreaterThanOrEqual(3);
+        });
+    });
+
+    // NOTE: the "resubmit" transition from failed→submitting exists for defensive
+    // completeness, but is not naturally reachable with the current state machine.
+    // All paths to the failed state either set isBadTx (unknown errors) or go through
+    // expirationDetected (where resubmission wouldn't help). The !successfulSubmitAt
+    // branch in onEntry.failed is future-proofing for new error classifications that
+    // distinguish transient failures from permanently bad txs.
+
     it("acknoweldges permanent failure when the tx can't ever be valid", async (context: localTC) => {
         // timeout = 5000000
         const { resolve, tsm, reject, promise } = mkSubmitMgr();
