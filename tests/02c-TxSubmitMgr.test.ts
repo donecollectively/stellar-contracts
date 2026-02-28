@@ -433,12 +433,89 @@ describe("TxSubmitMgr", async () => {
         });
     });
 
-    // NOTE: the "resubmit" transition from failed→submitting exists for defensive
-    // completeness, but is not naturally reachable with the current state machine.
-    // All paths to the failed state either set isBadTx (unknown errors) or go through
-    // expirationDetected (where resubmission wouldn't help). The !successfulSubmitAt
-    // branch in onEntry.failed is future-proofing for new error classifications that
-    // distinguish transient failures from permanently bad txs.
+    it("retries while premature then terminates when expired (premature-to-expired)", async (context: localTC) => {
+        timeout = 15000;
+        const { resolve, tsm, reject, promise } = mkSubmitMgr();
+
+        let submitCount = 0;
+        vi.spyOn(tsm, "doSubmit").mockImplementation(async () => {
+            await tsm.delayed(1);
+            submitCount++;
+            throw new Error("UTxO not found");
+        });
+        vi.spyOn(tsm, "isExpiryError").mockReturnValue(false);
+        vi.spyOn(tsm, "isUnknownUtxoError").mockReturnValue(true);
+        vi.spyOn(tsm, "confirmTx").mockImplementation(async () => false);
+        vi.spyOn(tsm, "inputUtxosAreResolvable").mockImplementation(async () => false);
+        vi.spyOn(tsm, "checkTxInputStatus").mockImplementation(async () => {
+            // Premature for the first 3 attempts, then expired
+            return submitCount <= 3 ? "premature" : "expired";
+        });
+
+        // Flow: submit fails → UTxO error → inputs not resolvable →
+        //   checkTxInputStatus "premature" → no isBadTx → notOk → retry in submitting
+        //   ... repeats 3 times ...
+        //   checkTxInputStatus "expired" → isBadTx set → notOk → "failed" state
+        //   → bounded rescue exhausts → terminal failed
+
+        tsm.$notifier.on("state:entered", (tsm, state) => {
+            if (state === "failed") {
+                // Once isBadTx is set and rescue exhausts, it terminates here
+                resolve(tsm);
+            }
+        });
+
+        return promise.then(() => {
+            expect(submitCount, "should have retried while premature").toBeGreaterThanOrEqual(3);
+            expect(tsm.$mgrState.isBadTx, "should be classified as bad after expired").toBeTruthy();
+        });
+    });
+
+    it("resubmits from failed when premature tx expires without isBadTx (resubmit-from-failed)", async (context: localTC) => {
+        timeout = 10000;
+        const { resolve, tsm, reject, promise } = mkSubmitMgr();
+
+        let submitCount = 0;
+        vi.spyOn(tsm, "doSubmit").mockImplementation(async () => {
+            await tsm.delayed(1);
+            submitCount++;
+            if (submitCount === 1) {
+                // First attempt: looks expired
+                throw new Error("OutsideValidityIntervalUTxO");
+            }
+            // Second attempt: succeeds
+            return tsm.tx.id();
+        });
+        vi.spyOn(tsm, "isExpiryError").mockImplementation(() => {
+            return submitCount <= 1; // first submit looks like expiry
+        });
+        vi.spyOn(tsm, "isTxExpired").mockReturnValue(true);
+        vi.spyOn(tsm, "isUnknownUtxoError").mockReturnValue(false);
+
+        let confirmAttempts = 0;
+        vi.spyOn(tsm, "confirmTx").mockImplementation(async () => {
+            await tsm.delayed(1);
+            confirmAttempts++;
+            // After the resubmit succeeds, confirmations should pass
+            return submitCount >= 2;
+        });
+
+        // Flow: submit(1) → expiry + isTxExpired → txExpired → confirming
+        //   → confirmTx fails → notOk + expirationDetected → "failed" state
+        //   → !isBadTx, !successfulSubmitAt → resubmit → submitting
+        //   → submit(2) succeeds → confirming → confirmed → softConfirmed → confirmed
+
+        tsm.$notifier.on("state:entered", (tsm, state) => {
+            if (state === "confirmed") {
+                resolve(tsm);
+            }
+        });
+
+        return promise.then(() => {
+            expect(submitCount, "should have submitted twice").toBe(2);
+            expect(tsm.$mgrState.isBadTx, "should not be classified as bad tx").toBeFalsy();
+        });
+    });
 
     it("acknoweldges permanent failure when the tx can't ever be valid", async (context: localTC) => {
         // timeout = 5000000

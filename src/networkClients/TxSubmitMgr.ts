@@ -510,18 +510,22 @@ export class TxSubmitMgr extends StateMachine<
     }
 
     /**
-     * Checks whether a failed tx's input UTxOs are permanently spent
-     * or just not yet available (dependency not yet on-chain).
+     * Checks whether a failed tx's input UTxOs are permanently spent,
+     * not yet available (dependency not yet on-chain), or no longer
+     * worth waiting for.
      *
-     * Returns "bad" if the inputs are confirmed spent (tx can never succeed),
-     * or "premature" if the inputs simply aren't visible yet (retry later).
+     * Returns:
+     * - "bad" if the inputs are confirmed spent (tx can never succeed)
+     * - "premature" if the inputs simply aren't visible yet (retry later)
+     * - "expired" if waiting is no longer worthwhile (e.g. tx validity
+     *    window has passed, or dependency tx itself failed)
      *
-     * TODO: implement actual on-chain lookup to distinguish the two cases.
+     * TODO: implement actual on-chain lookup to distinguish the cases.
      * For now, conservatively assumes "bad" to preserve existing behavior.
      */
     async checkTxInputStatus(
         tx: Tx
-    ): Promise<"bad" | "premature"> {
+    ): Promise<"bad" | "premature" | "expired"> {
         return "bad";
     }
 
@@ -550,6 +554,9 @@ export class TxSubmitMgr extends StateMachine<
                 const inputStatus = await this.checkTxInputStatus(this.tx);
                 if (inputStatus === "bad") {
                     this.submitIssue = "input utxo already spent (confirmed)";
+                    this.$mgrState.isBadTx = problem;
+                } else if (inputStatus === "expired") {
+                    this.submitIssue = "dependency will never arrive";
                     this.$mgrState.isBadTx = problem;
                 } else {
                     this.submitIssue = "wait for available utxo";
