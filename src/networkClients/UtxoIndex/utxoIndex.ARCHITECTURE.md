@@ -242,6 +242,7 @@ This section defines where each specific area of functionality belongs.
 | `types/UtxoIndexEntry.ts` | UtxoIndex | Storage-agnostic UTXO type |
 | `types/RecordIndexEntry.ts` | UtxoIndex | Storage-agnostic parsed record type |
 | `types/MetadataEntry.ts` | UtxoIndex | Key-value metadata storage type |
+| `types/PendingTxEntry.ts` | UtxoIndex | Serializable pending transaction entry type |
 | `UtxoStoreGeneric.ts` | UtxoIndex | Storage interface (no Helios) |
 | `DexieUtxoStore.ts` | UtxoIndex | Dexie implementation (no Helios) |
 | `blockfrostTypes/*.ts` | UtxoIndex | Blockfrost API response schemas |
@@ -667,6 +668,232 @@ New TX monitored → processTransactionForNewUtxos()
 - `getTx()` for transaction retrieval
 - `isMainnet()`, `now`, `parameters` for network state
 
+### In-Flight Transaction Integration
+
+**Decision**: Connect the transaction submission path to the UTXO index, allowing submitted transactions to be reflected in query results while tracking their pending/confirmed/rolled-back lifecycle.
+
+**Rationale**:
+- **Stale reads after writes**: Without this, the index is blind to locally-submitted transactions for up to 60 seconds (next Blockfrost poll). Queries return stale data — spent UTXOs appear unspent, new outputs don't exist.
+- **Double-spend prevention**: Transaction builders query the index for available UTXOs. If a just-submitted tx consumed a UTXO but the index doesn't know, a second transaction could try to spend the same input.
+- **Pending-state visibility**: Downstream consumers (UI, transaction builders) need to know a change is in-flight — for pending indicators, deferring conflicting operations, and user feedback.
+- **Timeout and rollback**: Each Cardano transaction has a validity window. If the tx isn't confirmed by the deadline, in-flight state must be rolled back with failure notification.
+
+#### The Tension
+
+The index serves as the Capo's network client (`ReadonlyCardanoClient`), but has no awareness of locally-submitted transactions — creating a blind spot that causes correctness and UX problems. The submission side (`TxSubmissionTracker` → `BatchSubmitController` → `TxBatcher`) knows every input consumed, every output created, and the validity window, but never tells the index.
+
+#### Integration Format: CBOR
+
+The submission side passes signed CBOR hex to the index via `registerPendingTx()`. CBOR is just a string — no Helios coupling leaks. The index decodes it through its existing `decodeTx()` pipeline, preserving the established type boundary.
+
+#### Pending State Model
+
+Pending state is a property of the **transaction**, not the UTXO. No new fields are added to `UtxoIndexEntry` or `RecordIndexEntry`.
+
+- **Speculatively spent inputs**: `spentInTx` is set eagerly to the pending txHash. Queries filter these out (same as confirmed spent). If the pending tx rolls back, `spentInTx` is cleared — the UTXO is restored.
+- **Pending-origin outputs**: Indexed normally via `indexUtxoFromOutput()`. Identified as pending because their `utxoId` prefix (`txHash#idx`) matches a txHash in the PendingTxEntry table. On rollback, these entries are deleted.
+- **Pending records**: If a Capo is attached, inline datums from pending outputs are parsed into `RecordIndexEntry` as usual. On rollback, records whose `utxoId` starts with the rolled-back txHash are deleted.
+
+A `PendingTxEntry` Dexie table is the persistent source of truth for in-flight state:
+
+```
+PendingTxEntry (Dexie) {
+    txHash: string           // PK
+    description: string
+    id: string               // TxDescription.id
+    parentId?: string
+    depth: number
+    moreInfo?: string
+    txName?: string
+    txCborHex: string        // unsigned CBOR
+    signedTxCborHex: string  // signed CBOR
+    deadline: number         // txValidityEnd + graceBuffer, based on chain time
+    status: "pending" | "confirmed" | "rolled-back"
+    submittedAt: number
+}
+```
+
+An in-memory `Map<txHash, txd>` holds the live `TxDescription` for current-session consumers. This is session-scoped — not persisted, not restored on reload. Events carry the live `txd` when available.
+
+#### UTXO State Table
+
+| Origin | Spending | Query behavior | On confirm | On rollback |
+|--------|----------|---------------|------------|-------------|
+| Confirmed | Unspent | ✅ Return | n/a | n/a |
+| Confirmed | Speculatively spent | ❌ Filter out | → Confirmed spent | Restore (clear spentInTx) |
+| Confirmed | Confirmed spent | ❌ Filter out (permanent) | n/a | n/a |
+| Pending | Unspent | ✅ Return (identifiable as pending) | → Confirmed/Unspent | Remove entry |
+| Pending | Speculatively spent | ❌ Filter out | → Confirmed/Confirmed spent | Remove entry |
+| Pending | Confirmed spent | ❌ Filter out | n/a | n/a |
+
+#### Deadline Calculation
+
+The deadline is anchored to **chain time** (last known block slot time), not wallclock time:
+
+```
+deadline = txValidityEnd + graceBuffer
+```
+
+Where `txValidityEnd` is extracted from the decoded tx's validity interval, and `graceBuffer` (e.g. 40-60 seconds) accounts for block propagation delay. The 10s deadline checker compares against the last synced block's slot time. Rollback triggers when a synced block's time exceeds the deadline and the tx still isn't confirmed. This prevents premature rollback from wallclock drift or stale sync state.
+
+#### Public Pending-State API
+
+**`isPending` query**:
+```typescript
+isPending(item: TxOutputId | string | FoundDatumUtxo<any, any>): string | undefined
+```
+
+Synchronous check against the in-memory `pendingTxMap`. Returns the pending txHash or `undefined`. Lives on `CachedUtxoIndex` — `FoundDatumUtxo` stays a plain type. Consumers with a reference to the index can check pending state for any UTXO without additional queries.
+
+**`getPendingTxs` query**:
+```typescript
+getPendingTxs(): PendingTxEntry[]
+```
+
+Returns all PendingTxEntry rows with `status === "pending"`. Used by CapoDappProvider on startup to show pending count/list before sync completes.
+
+**`pendingSyncState` property**:
+```typescript
+get pendingSyncState(): "stale" | "fresh"
+```
+
+Starts as `"stale"` on construction/reload. Flips to `"fresh"` after the first sync cycle resolves pending state (confirms landed txs, rolls back expired ones). CapoDappProvider maps this to React state so UI can distinguish "showing stale pending list" from "showing verified status."
+
+#### Events
+
+Extends CachedUtxoIndex's existing EventEmitter:
+
+- **`txConfirmed`**: `{ txHash, description, txd? }` — `txd` available if same session. CapoDappProvider shows ✓ toast.
+- **`txRolledBack`**: `{ txHash, description, cbor, txd? }` — includes CBOR for recovery path. CapoDappProvider offers recovery UI.
+- **`pendingSynced`**: Emitted after first sync cycle resolves pending state. CapoDappProvider flips from stale to fresh display.
+
+#### Startup Recovery
+
+On page reload, pending state survives in Dexie but the in-memory `pendingTxMap` is empty:
+
+1. **Immediate**: Load PendingTxEntry rows with `status === "pending"` from Dexie. Expose to consumers with `pendingSyncState: "stale"`. UI can show count/list immediately.
+2. **After first sync**: `checkForNewTxns()` confirms any that landed in blocks. `checkPendingDeadlines()` rolls back any that expired. Emit events for transitions. Flip `pendingSyncState` to `"fresh"`, emit `pendingSynced`.
+
+#### Dataflow: Register Pending Transaction
+
+```
+[Submission Side]                    [CachedUtxoIndex]                         [DexieUtxoStore]
+      |                                     |                                         |
+      |-- registerPendingTx(cbor, opts) --> |                                         |
+      |                                     |-- decodeTx(cbor)                        |
+      |                                     |                                         |
+      |                                     |-- persist PendingTxEntry {              |
+      |                                     |     txHash, status:"pending",           |
+      |                                     |     deadline, ...                       |
+      |                                     |   } ---------------------------------> |-- savePendingTx()
+      |                                     |                                         |
+      |                                     |-- for each tx.body.input:               |
+      |                                     |   set spentInTx = txHash  ------------> |-- saveUtxo({spentInTx})
+      |                                     |   (txHash is in pendingTx table,        |
+      |                                     |    so queries know it's speculative)    |
+      |                                     |                                         |
+      |                                     |-- for each tx.body.output:              |
+      |                                     |   indexUtxoFromOutput()                  |
+      |                                     |   utxoId = "txHash#idx"  -------------> |-- saveUtxo(entry)
+      |                                     |   (txHash prefix matches pendingTx      |
+      |                                     |    table, so queries know it's pending)  |
+      |                                     |                                         |
+      |                                     |-- if capo attached:                     |
+      |                                     |   parse datums → records                |
+      |                                     |   record.utxoId = "txHash#idx" -------> |-- saveRecord(entry)
+      |                                     |   (same txHash prefix → pending)        |
+      |                                     |                                         |
+      |                                     |-- store txd in memory map               |
+```
+
+#### Dataflow: Confirm Pending Transaction
+
+When `checkForNewTxns()` discovers a txHash that exists in the pending-tx table:
+
+1. Skip normal indexing (outputs already indexed, inputs already marked spent)
+2. `setPendingTxStatus(txHash, "confirmed")`
+3. Emit `txConfirmed { txHash, description, txd? }`
+
+#### Dataflow: Rollback Expired Pending Transaction
+
+When `checkPendingDeadlines()` (10s timer) finds a pending entry whose deadline is past the last synced block's slot time:
+
+1. `clearSpentByTx(txHash)` — nullify `spentInTx` on UTXOs where `spentInTx === txHash`
+2. `deleteUtxosByTxHash(txHash)` — remove UTXOs where `utxoId` starts with `txHash#`
+3. `deleteRecordsByTxHash(txHash)` — remove records where `utxoId` starts with `txHash#`
+4. `setPendingTxStatus(txHash, "rolled-back")`
+5. Emit `txRolledBack { txHash, description, cbor, txd? }`
+
+#### Store Interface Extensions
+
+New methods on `UtxoStoreGeneric` / `DexieUtxoStore`:
+
+```typescript
+// Pending transaction operations
+savePendingTx(entry: PendingTxEntry): Promise<void>
+findPendingTx(txHash: string): Promise<PendingTxEntry | undefined>
+getPendingByStatus(status: string): Promise<PendingTxEntry[]>
+setPendingTxStatus(txHash: string, status: string): Promise<void>
+
+// Rollback operations
+clearSpentByTx(txHash: string): Promise<void>        // nullify spentInTx where === txHash
+deleteUtxosByTxHash(txHash: string): Promise<void>    // remove utxos where utxoId starts with txHash#
+deleteRecordsByTxHash(txHash: string): Promise<void>  // remove records where utxoId starts with txHash#
+
+// Cleanup
+purgeOldPendingTxs(olderThan: number): Promise<void>  // delete non-pending entries older than 72h
+```
+
+Dexie schema addition: `pendingTxs` table with `txHash` as PK, `status` indexed.
+
+#### Caller Integration
+
+`registerPendingTx()` is called by the submission side after successful network submission, once per transaction, in submission order. The method signature:
+
+```typescript
+registerPendingTx(signedCborHex: string, opts: {
+    description: string;
+    id: string;
+    parentId?: string;
+    depth: number;
+    moreInfo?: string;
+    txName?: string;
+    txCborHex: string;
+    txd?: TxDescription<any, "submitted">;  // live object, not persisted
+}): Promise<void>
+```
+
+#### Design Decisions Within In-Flight Integration
+
+**Reuse `spentInTx` for speculative spends (no `pendingSpentByTx` field)**:
+Pending-ness is a property of the transaction, not the UTXO. Rather than adding a separate `pendingSpentByTx` field to UtxoIndexEntry, `spentInTx` is set eagerly to the pending txHash. The pending-tx table determines whether a given `spentInTx` value represents a speculative or confirmed spend. This avoids schema changes to the heavily-used utxos and records tables, and avoids query methods needing to check two fields.
+
+**`isPending()` on CachedUtxoIndex, not on FoundDatumUtxo**:
+Considered adding a `pendingInTx` dynamic getter to `FoundDatumUtxo` (closing over the pending-tx map). Rejected because: (a) `FoundDatumUtxo` is currently a plain type used widely across the codebase, and making it require construction with a closure changes its nature; (b) centralizing pending logic on the index is cleaner — one method, one location. The `isPending()` method accepts `TxOutputId | string | FoundDatumUtxo<any, any>` for ergonomic call sites.
+
+**`BuiltTcxStats` excluded from PendingTxEntry**:
+`BuiltTcxStats` contains `Wallet`, `WalletHelper` (live objects with methods), and `PubKeyHash[]` (Helios types) — none of which are IndexedDB-serializable. Since stats are not needed for pending-state tracking, confirmation, rollback, or UI display, they are excluded entirely from the persisted entry.
+
+**Register on successful submit, not before**:
+Considered registering the pending tx before network submission (to close the stale-read window entirely) with immediate rollback on submission failure. Chose post-submission registration for simplicity — avoids a rollback path for submission errors, which is distinct from validity-timeout rollback. The brief window between submission and registration is acceptable for now.
+
+**CapoDappProvider mediates UI access**:
+UI components do not observe CachedUtxoIndex directly. CapoDappProvider holds the `utxoIndex` reference, subscribes to its events, and manages React state. Pending-tx state flows through CapoDappProvider: it calls `getPendingTxs()` on startup, observes `pendingSyncState`, and subscribes to `txConfirmed`/`txRolledBack`/`pendingSynced` events to update UI state.
+
+**72-hour purge retention for non-pending entries**:
+Confirmed and rolled-back PendingTxEntries are purged after 72 hours. The purge runs on the 10s deadline-check timer (cheap — a single Dexie delete query). Long enough for any session to observe final status; short enough to prevent unbounded accumulation.
+
+**One `registerPendingTx` call per transaction, in submission order**:
+For chained batches (txA → txB where txB spends txA's output), each tx is registered separately with its own txHash. This means rollback of txB doesn't affect txA's entries, since rollback operates by txHash. Registration order matches submission order.
+
+**Non-registered transactions in `checkForNewTxns` use existing path**:
+When `checkForNewTxns` discovers a txHash with no matching PendingTxEntry (the common case — transactions submitted by other users, or before the index existed), the existing indexing path runs unmodified. The pending-tx check is additive, not a gate.
+
+#### Open Questions
+
+- **Test strategy**: Current CachedUtxoIndex tests are all Blockfrost/preprod-based. Pending-tx features need either emulator-based test infrastructure or integration tests with real submissions.
+- **Chained transactions**: Per-tx registration with distinct txHashes handles chains naturally (txB's rollback doesn't affect txA). Edge cases with rapid sequential submissions may need further analysis.
+
 ---
 
 ## Key Expectations
@@ -701,5 +928,5 @@ New TX monitored → processTransactionForNewUtxos()
 
 ---
 
-**Document Version**: 1.9
-**Last Updated**: 2026-02-16 - Added Parsed Record Index: optional Capo attachment, datum parsing, records table, catchup mechanism
+**Document Version**: 2.0
+**Last Updated**: 2026-02-27 - Added In-Flight Transaction Integration: pending tx registration, confirmation/rollback lifecycle, PendingTxEntry table, isPending query, startup recovery, events for CapoDappProvider
