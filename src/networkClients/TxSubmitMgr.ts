@@ -68,6 +68,7 @@ const basicRetryInterval = 1000;
 const gradualBackoff = 1.27;
 const firmBackoff = /* ~1.61 */ gradualBackoff * gradualBackoff;
 const halfSlot = 10 * 1000; // half of avg slot-time 20s
+const maxRescueAttempts = 10;
 
 type txSubmissionDetails = {
     name: string;
@@ -164,12 +165,20 @@ export class TxSubmitMgr extends StateMachine<
             signsOfServiceLife,
             battleDetected: slotBattleDetected,
             isBadTx,
+            rescueAttempts,
             nextActivityStartTime,
         } = this.$mgrState;
         const { $describeDeferredAction: deferredAction } = this;
 
+        const status = this.$state === "failed"
+            && !!isBadTx
+            && rescueAttempts > 0
+            && rescueAttempts <= maxRescueAttempts
+            ? "possible recovery"
+            : this.$state;
+
         return {
-            status: this.$state,
+            status,
             currentActivity: pendingActivity,
             deferredAction,
             confirmations,
@@ -177,6 +186,7 @@ export class TxSubmitMgr extends StateMachine<
             expirationDetected,
             isHealthy: signsOfServiceLife > 2,
             isBadTx,
+            rescueAttempts,
             recovering: slotBattleDetected,
             nextActivityStartTime: nextActivityStartTime,
             stats: {
@@ -785,9 +795,8 @@ export class TxSubmitMgr extends StateMachine<
                 // Bounded rescue: the tx was classified as bad, but that
                 // classification can be wrong (e.g. Blockfrost UtxoFailure
                 // doesn't distinguish "already submitted" from "input spent").
-                // Allow a brief window (~5 attempts with firm backoff, ~2.5 min)
+                // Allow a rescue window (~10 attempts with firm backoff)
                 // to check if the tx actually landed on-chain.
-                const maxRescueAttempts = 5;
                 this.$mgrState.rescueAttempts++;
                 if (this.$mgrState.rescueAttempts <= maxRescueAttempts) {
                     const retryInterval = this.gradualBackoff(

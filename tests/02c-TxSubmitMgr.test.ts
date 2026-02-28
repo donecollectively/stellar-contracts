@@ -367,7 +367,7 @@ describe("TxSubmitMgr", async () => {
     });
 
     it("terminates after bounded rescue attempts for bad tx (bounded-rescue-termination)", async (context: localTC) => {
-        timeout = 15000;
+        timeout = 25000;
         const { resolve, tsm, reject, promise } = mkSubmitMgr();
 
         vi.spyOn(tsm, "doSubmit").mockImplementation(async () => {
@@ -387,8 +387,8 @@ describe("TxSubmitMgr", async () => {
         });
 
         // Wait long enough for rescue budget to exhaust.
-        // With fast retry intervals (max 1200ms) and ~5 attempts, ~8s should be plenty
-        await tsm.delayed(8000);
+        // With fast retry intervals (max 1200ms) and ~10 attempts, ~15s should be plenty
+        await tsm.delayed(15000);
 
         const failedCountAtExhaustion = failedEntryCount;
 
@@ -397,7 +397,7 @@ describe("TxSubmitMgr", async () => {
 
         expect(failedEntryCount, "should not cycle after rescue budget exhausted").toBe(failedCountAtExhaustion);
         expect(failedCountAtExhaustion, "should have attempted rescue").toBeGreaterThan(1);
-        expect(failedCountAtExhaustion, "rescue attempts should be bounded").toBeLessThanOrEqual(6);
+        expect(failedCountAtExhaustion, "rescue attempts should be bounded").toBeLessThanOrEqual(11);
         expect(tsm.$state).toBe("failed");
         expect(tsm.$mgrState.rescueAttempts).toBeGreaterThan(0);
 
