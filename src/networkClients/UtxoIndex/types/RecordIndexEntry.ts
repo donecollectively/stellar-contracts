@@ -20,8 +20,7 @@ export interface RecordIndexEntry {
     type: string;
     /** Structured parsed datum data, stored directly in IndexedDB */
     parsedData: Record<string, any>;
-    /** txHash that spent the containing UTXO, or null if unspent. Mirrors UtxoIndexEntry.spentInTx */
-    spentInTx: string | null;
+
 }
 
 /**

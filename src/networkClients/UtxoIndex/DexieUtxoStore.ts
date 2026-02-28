@@ -72,7 +72,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         });
 
         // Schema v3: REQT/yz1ymcenzx — add pendingTxs table for in-flight transaction tracking
-        // REQT/5skb90kx7n — add spentInTx index to utxos and records for efficient rollback queries
+        // REQT/5skb90kx7n — add spentInTx index to utxos for efficient rollback queries
         // (IndexedDB excludes null values from indexes, so cost is minimal — only spent entries indexed)
         this.version(3).stores({
             blocks: "hash, height",
@@ -80,7 +80,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             txs: "txid",
             scripts: "scriptHash",
             walletAddresses: "address",
-            records: "id, utxoId, type, spentInTx",
+            records: "id, utxoId, type",
             pendingTxs: "txHash, status",
             metadata: "key",
             logs: "logId, [pid+time]",
@@ -163,13 +163,28 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // REQT/hhbcnvd9aj: Mark a UTXO as spent
-    // CW-F1: Cascade to markRecordSpent — store owns spent-state consistency.
-    // Cascade looks up by utxoId (not record id) to avoid marking a replacement
-    // record as spent when old and new appear in the same transaction.
     async markUtxoSpent(utxoId: string, spentInTx: string): Promise<void> {
         await this.utxos.where("utxoId").equals(utxoId).modify({ spentInTx });
-        // REQT/gdmdg66paw: Cascade spent state to corresponding records
-        await this.markRecordSpent(utxoId, spentInTx);
+
+        // NOTE: It may seem intuitive to cascade spent state to records here
+        // (markRecordSpent), but this is a no-op in the common case and wrong
+        // in edge cases:
+        //
+        // - UPDATE case: The processing-order invariant ensures outputs are
+        //   indexed (and records saved) BEFORE inputs are marked spent. By the
+        //   time we get here, the old record has already been overwritten by
+        //   saveRecord() (records use `id` as PK). The old utxoId no longer
+        //   matches any record — markRecordSpent finds nothing.
+        //
+        // - DELETE case: The record is not overwritten, so markRecordSpent
+        //   WOULD find it. But the record should remain queryable until the
+        //   tx is confirmed — marking it spent here would hide it prematurely
+        //   for pending txs. The record's visibility is already governed by
+        //   the UTXO layer: query methods that return FoundDatumUtxo filter
+        //   on the UTXO's spentInTx, so the record becomes unreachable
+        //   through normal query paths without needing its own spentInTx set.
+        //
+        // Previously: await this.markRecordSpent(utxoId, spentInTx);
     }
 
     // REQT/cchf3wgnk3 (UUT Catalog Storage) - query UTXOs by UUT identifier
@@ -280,16 +295,12 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         await this.records.put(record);
     }
 
-    // REQT/gdmdg66paw: Filter out spent records
+    // REQT/gdmdg66paw: Record query methods
     async findRecord(id: string): Promise<RecordIndexEntry | undefined> {
-        const record = await this.records.where("id").equals(id).first();
-        if (record && (record.spentInTx === null || record.spentInTx === undefined)) {
-            return record;
-        }
-        return undefined;
+        return await this.records.where("id").equals(id).first();
     }
 
-    // REQT/gdmdg66paw: Filter out spent records
+    // REQT/gdmdg66paw: Record query methods
     async findRecordsByType(
         type: string,
         options?: { limit?: number; offset?: number }
@@ -299,19 +310,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             .where("type")
             .equals(type)
             .toArray();
-        // Filter out spent records, then apply pagination
-        const unspent = results.filter(
-            r => r.spentInTx === null || r.spentInTx === undefined
-        );
-        return unspent.slice(offset, offset + limit);
-    }
-
-    // REQT/gdmdg66paw: Mark records as spent by utxoId (CW-F1 cascade target)
-    async markRecordSpent(utxoId: string, spentInTx: string): Promise<void> {
-        await this.records
-            .where("utxoId")
-            .equals(utxoId)
-            .modify({ spentInTx });
+        return results.slice(offset, offset + limit);
     }
 
     // REQT/3aew7g7wdw: Query UTXOs by blockHeight for catchup processing
@@ -390,17 +389,11 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
 
     /**
      * Nullify spentInTx on UTXOs where spentInTx === txHash.
-     * Uses the spentInTx index for efficient lookup on both utxos and records.
+     * Uses the spentInTx index for efficient rollback query.
      */
     async clearSpentByTx(txHash: string): Promise<void> {
         // REQT/5skb90kx7n: Use spentInTx index for efficient rollback query
         await this.utxos
-            .where("spentInTx")
-            .equals(txHash)
-            .modify({ spentInTx: null });
-
-        // Also clear spent state on records — uses spentInTx index (v3 schema)
-        await this.records
             .where("spentInTx")
             .equals(txHash)
             .modify({ spentInTx: null });

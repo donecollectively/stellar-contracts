@@ -71,8 +71,6 @@ export interface UtxoStoreGeneric {
         type: string,
         options?: { limit?: number; offset?: number }
     ): Promise<RecordIndexEntry[]>;
-    markRecordSpent(utxoId: string, spentInTx: string): Promise<void>;
-
     // REQT/8a4jkznm6a: Query UTXOs by blockHeight for catchup processing
     findUtxosByBlockHeightRange(
         minBlockHeight: number,
