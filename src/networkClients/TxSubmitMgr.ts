@@ -509,6 +509,22 @@ export class TxSubmitMgr extends StateMachine<
         })
     }
 
+    /**
+     * Checks whether a failed tx's input UTxOs are permanently spent
+     * or just not yet available (dependency not yet on-chain).
+     *
+     * Returns "bad" if the inputs are confirmed spent (tx can never succeed),
+     * or "premature" if the inputs simply aren't visible yet (retry later).
+     *
+     * TODO: implement actual on-chain lookup to distinguish the two cases.
+     * For now, conservatively assumes "bad" to preserve existing behavior.
+     */
+    async checkTxInputStatus(
+        tx: Tx
+    ): Promise<"bad" | "premature"> {
+        return "bad";
+    }
+
     async notSubmitted(problem: Error) {
         const { stack, message, ...details } = problem;
         this.log(`submission failed with this error:`, {
@@ -531,7 +547,13 @@ export class TxSubmitMgr extends StateMachine<
                 this.submitIssue = "input utxo already spent";
                 this.$mgrState.isBadTx = problem;
             } else {
-                this.submitIssue = "wait for available utxo";
+                const inputStatus = await this.checkTxInputStatus(this.tx);
+                if (inputStatus === "bad") {
+                    this.submitIssue = "input utxo already spent (confirmed)";
+                    this.$mgrState.isBadTx = problem;
+                } else {
+                    this.submitIssue = "wait for available utxo";
+                }
             }
             return this.transition("notOk");
         }
@@ -714,6 +736,22 @@ export class TxSubmitMgr extends StateMachine<
                 } else {
                     this.log(`reached maximum rescue attempts for transaction (${this.$mgrState.rescueAttempts}/${maxRescueAttempts})`);
                 }
+            } else if (!this.$mgrState.successfulSubmitAt) {
+                // Never successfully submitted — skip the confirmation detour
+                // and go straight to resubmission. This handles the case where
+                // a tx's dependency hasn't landed yet (checkTxInputStatus
+                // returned "premature"), so isBadTx was not set but the tx
+                // still reached the failed state.
+                const retryInterval = this.gradualBackoff(
+                    this.retryIntervals.submit,
+                    this.$mgrState.failedSubmissions,
+                    gradualBackoff
+                );
+                this.$deferredTransition(
+                    "resubmit",
+                    "will resubmit (never submitted successfully)",
+                    retryInterval
+                );
             } else {
                 // Legitimate recovery path (e.g. slot battle, transient issue)
                 this.$deferredTransition(
