@@ -1,0 +1,9 @@
+{
+  "id": "1",
+  "subject": "1.1: Existing artifacts and current state of submission + index paths",
+  "description": "Review existing CachedUtxoIndex architecture, TxSubmissionTracker state machine, TxBatcher/BatchSubmitController, and their current (disconnected) relationship",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

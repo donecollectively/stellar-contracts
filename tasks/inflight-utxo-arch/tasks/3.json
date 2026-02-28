@@ -1,0 +1,9 @@
+{
+  "id": "3",
+  "subject": "1.3: Known components and pieces already in play",
+  "description": "Identify all existing pieces: CachedUtxoIndex, TxSubmissionTracker, TxBatcher, BatchSubmitController, TxSubmitMgr, StellarTxnContext, validity windows, soft-delete pattern",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

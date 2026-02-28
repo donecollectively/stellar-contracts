@@ -1,0 +1,9 @@
+{
+  "id": "8",
+  "subject": "2.4: External dependencies and interaction patterns",
+  "description": "Blockfrost confirmation (existing poll), wallet submission, downstream UI consumers, RecordIndexEntry cascade",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

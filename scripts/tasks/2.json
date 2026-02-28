@@ -1,0 +1,9 @@
+{
+  "id": "2",
+  "subject": "1.2: Functional-area maturity fields",
+  "description": "All 6 area records missing maturity.status: draft",
+  "owner": "reqm3",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

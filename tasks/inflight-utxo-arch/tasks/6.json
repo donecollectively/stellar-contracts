@@ -1,0 +1,9 @@
+{
+  "id": "6",
+  "subject": "2.2: System-level concerns — pending state, timeout, notifications",
+  "description": "New artifacts/resources: pending UTXO entries, pending spent markers, validity deadline tracking, rollback events, confirmation events",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

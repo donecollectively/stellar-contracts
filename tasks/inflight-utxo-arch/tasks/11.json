@@ -1,0 +1,9 @@
+{
+  "id": "11",
+  "subject": "3.3: Dataflow — rolling back an expired pending tx",
+  "description": "Deadline check finds expired pending tx → remove pending outputs → clear spentInTx on inputs → update PendingTxEntry status → emit txRolledBack",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

@@ -1,0 +1,9 @@
+{
+  "id": "19",
+  "subject": "5.3: Open questions for implementation",
+  "description": "Remaining uncertainties: chained tx edge cases, purge retention period, page-reload event ordering, etc.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

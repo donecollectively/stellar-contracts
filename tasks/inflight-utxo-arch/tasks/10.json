@@ -1,0 +1,9 @@
+{
+  "id": "10",
+  "subject": "3.2: Dataflow — confirming a pending tx from a block",
+  "description": "checkForNewTxns sees txHash in pending table → promote status → emit txConfirmed event → pending outputs become confirmed",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

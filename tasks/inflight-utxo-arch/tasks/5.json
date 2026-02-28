@@ -1,0 +1,9 @@
+{
+  "id": "5",
+  "subject": "2.1: Activities — what the in-flight integration does",
+  "description": "Ingest submitted tx CBOR, mark inputs as speculatively spent, index outputs as pending, track validity timeout, confirm or rollback, notify downstream",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

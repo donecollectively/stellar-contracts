@@ -1,0 +1,9 @@
+{
+  "id": "20",
+  "subject": "5.4: Update architecture doc",
+  "description": "Write the in-flight transaction section into utxoIndex.ARCHITECTURE.md",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

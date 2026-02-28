@@ -1,0 +1,9 @@
+{
+  "id": "3",
+  "subject": "1.3: Rewrite functional fields to client-facing perspective",
+  "description": "All 15 L2 requirement functional fields read as internal value props, not client service contracts",
+  "owner": "reqm3",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

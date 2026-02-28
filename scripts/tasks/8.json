@@ -1,0 +1,9 @@
+{
+  "id": "8",
+  "subject": "2.2: Structural pass — naming stewardship",
+  "description": "Check domain-first names, consistency, no library overloading",
+  "owner": "cwispy",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

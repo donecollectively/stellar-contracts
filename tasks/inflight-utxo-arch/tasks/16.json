@@ -1,0 +1,9 @@
+{
+  "id": "16",
+  "subject": "4.4: Uncertainty flags for deep interview",
+  "description": "Areas needing further specification — edge cases, chained tx handling, page-reload recovery, purge strategy",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

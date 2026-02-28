@@ -1,0 +1,9 @@
+{
+  "id": "12",
+  "subject": "3.4: Query behavior — how pending state affects getUtxos/findRecord",
+  "description": "How query methods use the pending-tx table to interpret spentInTx and identify pending-origin UTXOs via utxoId prefix matching",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

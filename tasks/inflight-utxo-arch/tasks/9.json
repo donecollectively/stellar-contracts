@@ -1,0 +1,9 @@
+{
+  "id": "9",
+  "subject": "3.1: Dataflow — registering a pending tx into the index",
+  "description": "Submission side calls registerPendingTx → decode CBOR → index outputs as pending → mark inputs spent → persist PendingTxEntry → store txd in memory map",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

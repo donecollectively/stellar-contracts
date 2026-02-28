@@ -1,0 +1,9 @@
+{
+  "id": "10",
+  "subject": "2.4: Requirements traceability — forward pass (code → reqts)",
+  "description": "Verify existing annotations are correct and complete",
+  "owner": "cwispy",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

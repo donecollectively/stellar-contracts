@@ -1,0 +1,9 @@
+{
+  "id": "4",
+  "subject": "1.4: Add summaries to long statements",
+  "description": "3+ L3 requirements with >30 word statements need summary fields",
+  "owner": "reqm3",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

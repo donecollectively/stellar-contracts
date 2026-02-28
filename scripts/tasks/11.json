@@ -1,0 +1,9 @@
+{
+  "id": "11",
+  "subject": "2.5: Requirements traceability — reverse pass (reqts → code)",
+  "description": "Verify every requirement has implementation coverage",
+  "owner": "cwispy",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

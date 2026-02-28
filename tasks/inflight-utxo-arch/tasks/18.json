@@ -1,0 +1,9 @@
+{
+  "id": "18",
+  "subject": "5.2: Key design decisions and rationale",
+  "description": "Document the decisions made: CBOR as integration format, no new fields on UtxoIndexEntry, pending-tx table as source of truth, in-memory map for live txd, isPending on index not FoundDatumUtxo, etc.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

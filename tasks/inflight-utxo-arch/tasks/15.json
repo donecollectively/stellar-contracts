@@ -1,0 +1,9 @@
+{
+  "id": "15",
+  "subject": "4.3: Technology constraints and location",
+  "description": "Dexie for persistence, in-memory Map for live txd and synchronous isPending, 10s timer, existing type boundary preservation",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

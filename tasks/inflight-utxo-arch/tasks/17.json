@@ -1,0 +1,9 @@
+{
+  "id": "17",
+  "subject": "5.1: Architectural synthesis — consolidated component/interface diagram",
+  "description": "Consolidate all findings into a coherent component structure with interfaces and dataflows",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

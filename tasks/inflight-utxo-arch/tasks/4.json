@@ -1,0 +1,9 @@
+{
+  "id": "4",
+  "subject": "1.4: Technologies and constraints shaping the design",
+  "description": "Dexie/IndexedDB, Helios types, EventEmitter patterns, Cardano validity windows, TxChainBuilder virtual UTxOs, existing type boundaries. KEY INSIGHT: CBOR is the integration format - submission side provides CBOR, index side processes it through existing decodeTx path, keeping coupling clean.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

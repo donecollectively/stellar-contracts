@@ -1,0 +1,9 @@
+{
+  "id": "13",
+  "subject": "1.2: CHANGELOG_SEGMENT scaffold header and comment",
+  "description": "What should the guide comment say in the public changelog template file?",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

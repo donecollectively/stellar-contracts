@@ -1,0 +1,9 @@
+{
+  "id": "2",
+  "subject": "1.2: The tension — why in-flight tx integration is needed now",
+  "description": "What change/problem motivated connecting tx submission to the utxo index? Stale queries, double-spends, user confusion about pending state?",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

@@ -1,0 +1,9 @@
+{
+  "id": "9",
+  "subject": "2.3: Structural pass — testability awareness",
+  "description": "Side effect separation, dependency injection seams, hidden state",
+  "owner": "cwispy",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

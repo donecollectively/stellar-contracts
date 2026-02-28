@@ -1,0 +1,9 @@
+{
+  "id": "14",
+  "subject": "4.2: Key interfaces between components",
+  "description": "registerPendingTx interface shape, store-level pending operations, event payloads, isPending query",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

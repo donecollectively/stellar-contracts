@@ -1,0 +1,9 @@
+{
+  "id": "6",
+  "subject": "1.6: Regenerate markdown via generate-reqts.mjs",
+  "description": "Final step after all JSONL repairs",
+  "owner": "reqm3",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

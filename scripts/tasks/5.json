@@ -1,0 +1,9 @@
+{
+  "id": "5",
+  "subject": "1.5: Review structure — breakdowns, reorg, missing requirements",
+  "description": "Check if requirements need breakdown into sub-requirements; check for missing coverage from release-context.md; consider reorg",
+  "owner": "reqm3",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

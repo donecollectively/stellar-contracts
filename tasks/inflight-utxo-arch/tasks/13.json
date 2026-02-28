@@ -1,0 +1,9 @@
+{
+  "id": "13",
+  "subject": "4.1: Named components and responsibility areas",
+  "description": "What new components or extensions to existing components does this feature require? PendingTxEntry table, pending-tx methods on CachedUtxoIndex, new store operations on DexieUtxoStore, events",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

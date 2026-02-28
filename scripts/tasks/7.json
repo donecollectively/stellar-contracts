@@ -1,0 +1,9 @@
+{
+  "id": "7",
+  "subject": "2.1: Structural pass — internal structure, data flow, error handling",
+  "description": "Examine functions, helpers, mutation tracking, error paths",
+  "owner": "cwispy",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

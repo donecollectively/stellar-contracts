@@ -1,0 +1,9 @@
+{
+  "id": "7",
+  "subject": "2.3: Ownership — who initiates, who processes, who notifies",
+  "description": "Submission side pushes CBOR; index side owns all interpretation, storage, timeout, rollback. Where does the event flow live?",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}
