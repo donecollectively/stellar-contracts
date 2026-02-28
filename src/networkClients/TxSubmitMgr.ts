@@ -514,19 +514,79 @@ export class TxSubmitMgr extends StateMachine<
      * not yet available (dependency not yet on-chain), or no longer
      * worth waiting for.
      *
-     * Returns:
-     * - "bad" if the inputs are confirmed spent (tx can never succeed)
-     * - "premature" if the inputs simply aren't visible yet (retry later)
-     * - "expired" if waiting is no longer worthwhile (e.g. tx validity
-     *    window has passed, or dependency tx itself failed)
+     * Called when inputUtxosAreResolvable() returned false — at least one
+     * input's parent tx wasn't found via getTx(). This method distinguishes
+     * why.
      *
-     * TODO: implement actual on-chain lookup to distinguish the cases.
-     * For now, conservatively assumes "bad" to preserve existing behavior.
+     * Returns:
+     * - "bad" if any input UTxO is confirmed spent (tx can never succeed)
+     * - "premature" if unresolved inputs are from txs not yet on-chain
+     *    and the tx's validity window is still open (retry later)
+     * - "expired" if the tx's validity window has passed, making further
+     *    waiting pointless regardless of input status
      */
     async checkTxInputStatus(
         tx: Tx
     ): Promise<"bad" | "premature" | "expired"> {
-        return "bad";
+        // If the tx's validity window has passed, no point waiting
+        // for dependencies — the tx can't be submitted regardless.
+        if (this.isTxExpired(tx)) {
+            return "expired";
+        }
+
+        if (!this.submitter?.hasUtxo) {
+            // Can't determine UTxO status without hasUtxo support —
+            // conservatively assume bad to avoid infinite retry.
+            this.log("checkTxInputStatus: submitter has no hasUtxo method, assuming bad");
+            return "bad";
+        }
+
+        const inputs = tx.body.inputs;
+        for (const input of inputs) {
+            const inputId = input.id;
+
+            // Check if the parent tx is on-chain
+            let parentTxFound: boolean;
+            try {
+                parentTxFound = !!(await this.submitter.getTx!(inputId.txId));
+            } catch (e: any) {
+                // getTx threw — parent tx not findable, could be premature
+                this.log(
+                    `checkTxInputStatus: getTx failed for ${inputId.txId.toHex()}: ${e.message}`
+                );
+                parentTxFound = false;
+            }
+
+            if (parentTxFound) {
+                // Parent tx is on-chain. Check if our specific UTxO output
+                // is still unspent.
+                try {
+                    const utxoExists = await this.submitter.hasUtxo(inputId);
+                    if (!utxoExists) {
+                        // The UTxO we need has been consumed by another tx.
+                        // This tx can never succeed.
+                        this.log(
+                            `checkTxInputStatus: input ${inputId.txId.toHex()}#${inputId.index} already spent`
+                        );
+                        return "bad";
+                    }
+                    // UTxO still exists — this input is fine, check others
+                } catch (e: any) {
+                    // hasUtxo threw — can't confirm status, assume bad
+                    // to avoid infinite retry on broken queries
+                    this.log(
+                        `checkTxInputStatus: hasUtxo failed for ${inputId.txId.toHex()}#${inputId.index}: ${e.message}, assuming bad`
+                    );
+                    return "bad";
+                }
+            }
+            // else: parent tx not on-chain yet — this input is premature,
+            // continue checking others (a spent input elsewhere = "bad" overall)
+        }
+
+        // No inputs confirmed spent, at least one parent tx not found yet.
+        // The tx is premature — dependencies haven't landed.
+        return "premature";
     }
 
     async notSubmitted(problem: Error) {
