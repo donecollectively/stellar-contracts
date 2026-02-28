@@ -377,32 +377,32 @@ Enables the indexer to store and serve pre-parsed delegated-data records, elimin
 
  - **REQT-1.10.6**/md6x3wbnct: IMPLEMENTED/NEEDS VERIFICATION: **CapoDappProvider Attachment Integration** — EXPECTS `CapoDappProvider.connectCapo()` to call `utxoIndex.attachCapo(capo)` after the Capo is created and the utxoIndex is available. MUST be called in both early-index (index created before Capo) and late-index (index created after Capo) paths.
 
-### REQT-1.11/3dhhjsav15: NEXT: **In-Flight Transaction Integration**
+### REQT-1.11/3dhhjsav15: IN PROGRESS: **In-Flight Transaction Integration**
 
 #### Purpose
 Enables the indexer to reflect locally-submitted transactions in query results immediately, before they are confirmed on-chain. Prevents stale reads after writes, avoids double-spend attempts from the same session, and provides pending-state visibility to downstream consumers. Applied when implementing or modifying transaction registration, confirmation, rollback, or pending-state query logic.
 
- - **REQT-1.11.1**/p2ts24jbkg: NEXT: **Register Pending Transaction** — MUST implement `registerPendingTx(signedCborHex: string, opts: { description, id, parentId?, depth, moreInfo?, txName?, txCborHex, txd? })`. MUST decode signed CBOR via existing `decodeTx()` pipeline. MUST persist a `PendingTxEntry` to the store with `status: "pending"` and deadline computed as `txValidityEnd + graceBuffer` anchored to chain time. MUST mark each `tx.body.input` as spent by setting `spentInTx` to the pending txHash. MUST index each `tx.body.output` via existing `indexUtxoFromOutput()`. MUST parse inline datums into records if a Capo is attached per REQT/yx0yze9swf (Optional Capo Attachment). MUST store the live `txd` (TxDescription) in the in-memory `pendingTxMap` for same-session consumers. MUST be called once per transaction, in submission order, after successful network submission.
+ - **REQT-1.11.1**/p2ts24jbkg: IN PROGRESS: **Register Pending Transaction** — MUST implement `registerPendingTx(signedCborHex: string, opts: { description, id, parentId?, depth, moreInfo?, txName?, txCborHex, txd? })`. MUST decode signed CBOR via existing `decodeTx()` pipeline. MUST persist a `PendingTxEntry` to the store with `status: "pending"` and deadline computed as `txValidityEnd + graceBuffer` anchored to chain time. MUST mark each `tx.body.input` as spent by setting `spentInTx` to the pending txHash. MUST index each `tx.body.output` via existing `indexUtxoFromOutput()`. MUST parse inline datums into records if a Capo is attached per REQT/yx0yze9swf (Optional Capo Attachment). MUST store the live `txd` (TxDescription) in the in-memory `pendingTxMap` for same-session consumers. MUST be called once per transaction, in submission order, after successful network submission.
 
- - **REQT-1.11.2**/58b9nzgcbj: NEXT: **Confirm Pending Transaction** — When `checkForNewTxns()` discovers a txHash that matches a PendingTxEntry with `status: "pending"`, MUST skip normal indexing (outputs already indexed, inputs already marked spent). MUST set the entry's status to `"confirmed"` via `store.setPendingTxStatus()`. MUST emit `txConfirmed` event with `{ txHash, description, txd? }` — `txd` available from in-memory map if same session.
+ - **REQT-1.11.2**/58b9nzgcbj: IN PROGRESS: **Confirm Pending Transaction** — When `checkForNewTxns()` discovers a txHash that matches a PendingTxEntry with `status: "pending"`, MUST skip normal indexing (outputs already indexed, inputs already marked spent). MUST set the entry's status to `"confirmed"` via `store.setPendingTxStatus()`. MUST emit `txConfirmed` event with `{ txHash, description, txd? }` — `txd` available from in-memory map if same session.
 
- - **REQT-1.11.3**/a9y19g0pmr: NEXT: **Rollback Expired Pending Transaction** — MUST implement `checkPendingDeadlines()` on a 10-second timer, separate from the 60s Blockfrost poll. MUST query pending entries where `deadline < lastSyncedBlockSlotTime`. For each expired entry: MUST clear `spentInTx` on UTXOs where `spentInTx === txHash` (restore speculatively-spent inputs). MUST delete UTXO entries where `utxoId` starts with `txHash#` (remove pending outputs). MUST delete record entries where `utxoId` starts with `txHash#` (remove pending records). MUST set PendingTxEntry status to `"rolled-back"`. MUST emit `txRolledBack` event with `{ txHash, description, cbor, txd? }` — `cbor` included for recovery path.
+ - **REQT-1.11.3**/a9y19g0pmr: IN PROGRESS: **Rollback Expired Pending Transaction** — MUST implement `checkPendingDeadlines()` on a 10-second timer, separate from the 60s Blockfrost poll. MUST query pending entries where `deadline < lastSyncedBlockSlotTime`. For each expired entry: MUST clear `spentInTx` on UTXOs where `spentInTx === txHash` (restore speculatively-spent inputs). MUST delete UTXO entries where `utxoId` starts with `txHash#` (remove pending outputs). MUST delete record entries where `utxoId` starts with `txHash#` (remove pending-origin records). MUST re-parse inline datums from restored input UTXOs to recreate records that were overwritten during registration (records use `id` as PK — `saveRecord()` overwrites originals when a pending tx updates an existing record; deleting the pending-origin record alone would lose the original data). Re-parsing requires Capo attached; MUST be a no-op without Capo (consistent with registration). MUST set PendingTxEntry status to `"rolled-back"`. MUST emit `txRolledBack` event with `{ txHash, description, cbor, txd? }` — `cbor` included for recovery path.
 
- - **REQT-1.11.4**/c3ytg4rttd: NEXT: **Deadline Calculation** — Deadline MUST be computed as `txValidityEnd + graceBuffer` where `txValidityEnd` is extracted from the decoded tx's validity interval and `graceBuffer` accounts for block propagation delay (e.g. 40-60 seconds). Deadline MUST be compared against chain time (last synced block's slot time), NOT wallclock time. This prevents premature rollback from clock drift or stale sync state.
+ - **REQT-1.11.4**/c3ytg4rttd: IN PROGRESS: **Deadline Calculation** — Deadline MUST be computed as `txValidityEnd + graceBuffer` where `txValidityEnd` is extracted from the decoded tx's validity interval and `graceBuffer` accounts for block propagation delay (e.g. 40-60 seconds). Deadline MUST be compared against chain time (last synced block's slot time), NOT wallclock time. This prevents premature rollback from clock drift or stale sync state.
 
- - **REQT-1.11.5**/mjhf1yezr9: NEXT: **isPending Query** — MUST implement `isPending(item: TxOutputId | string | FoundDatumUtxo<any, any>): string | undefined`. MUST be synchronous, checking the in-memory `pendingTxMap`. MUST return the pending txHash if the item's UTXO originates from or is spent by a pending transaction, `undefined` otherwise. MUST accept three input forms: Helios `TxOutputId`, string utxoId, or `FoundDatumUtxo` object.
+ - **REQT-1.11.5**/mjhf1yezr9: IN PROGRESS: **isPending Query** — MUST implement `isPending(item: TxOutputId | string | FoundDatumUtxo<any, any>): string | undefined`. MUST be synchronous, checking the in-memory `pendingTxMap`. MUST return the pending txHash if the item's UTXO originates from or is spent by a pending transaction, `undefined` otherwise. MUST accept three input forms: Helios `TxOutputId`, string utxoId, or `FoundDatumUtxo` object.
 
- - **REQT-1.11.6**/r0y7s2vggr: NEXT: **getPendingTxs Query** — MUST implement `getPendingTxs(): PendingTxEntry[]` returning all entries with `status === "pending"`. Used by CapoDappProvider on startup to show pending count/list before sync completes.
+ - **REQT-1.11.6**/r0y7s2vggr: IN PROGRESS: **getPendingTxs Query** — MUST implement `getPendingTxs(): PendingTxEntry[]` returning all entries with `status === "pending"`. Used by CapoDappProvider on startup to show pending count/list before sync completes.
 
- - **REQT-1.11.7**/9r9rc1hrfv: NEXT: **pendingSyncState Property** — MUST expose `get pendingSyncState(): "stale" | "fresh"`. MUST start as `"stale"` on construction/reload. MUST flip to `"fresh"` after the first sync cycle resolves pending state (confirms landed txs, rolls back expired ones). CapoDappProvider maps this to React state so UI can distinguish stale pending list from verified status.
+ - **REQT-1.11.7**/9r9rc1hrfv: IN PROGRESS: **pendingSyncState Property** — MUST expose `get pendingSyncState(): "stale" | "fresh"`. MUST start as `"stale"` on construction/reload. MUST flip to `"fresh"` after the first sync cycle resolves pending state (confirms landed txs, rolls back expired ones). CapoDappProvider maps this to React state so UI can distinguish stale pending list from verified status.
 
- - **REQT-1.11.8**/fz6z7rr702: NEXT: **Pending Transaction Events** — MUST extend CachedUtxoIndex's existing EventEmitter with three new events. `txConfirmed`: `{ txHash, description, txd? }` — CapoDappProvider shows ✓ toast. `txRolledBack`: `{ txHash, description, cbor, txd? }` — CapoDappProvider offers recovery UI; includes CBOR so recovery path can decode the failed tx. `pendingSynced`: emitted after first sync cycle resolves pending state — CapoDappProvider flips from stale to fresh display.
+ - **REQT-1.11.8**/fz6z7rr702: IN PROGRESS: **Pending Transaction Events** — MUST extend CachedUtxoIndex's existing EventEmitter with three new events. `txConfirmed`: `{ txHash, description, txd? }` — CapoDappProvider shows ✓ toast. `txRolledBack`: `{ txHash, description, cbor, txd? }` — CapoDappProvider offers recovery UI; includes CBOR so recovery path can decode the failed tx. `pendingSynced`: emitted after first sync cycle resolves pending state — CapoDappProvider flips from stale to fresh display.
 
- - **REQT-1.11.9**/fn70x96nxm: NEXT: **Startup Recovery** — On page reload, MUST load PendingTxEntry rows with `status === "pending"` from Dexie and expose them immediately with `pendingSyncState: "stale"`. After first sync cycle: `checkForNewTxns()` MUST confirm any that landed in blocks; `checkPendingDeadlines()` MUST roll back any that expired. MUST emit events for transitions. MUST flip `pendingSyncState` to `"fresh"` and emit `pendingSynced`. In-memory `pendingTxMap` is empty after reload — events fire without live `txd`; consumers get txHash, description, and cbor from Dexie fields.
+ - **REQT-1.11.9**/fn70x96nxm: IN PROGRESS: **Startup Recovery** — On page reload, MUST load PendingTxEntry rows with `status === "pending"` from Dexie and expose them immediately with `pendingSyncState: "stale"`. After first sync cycle: `checkForNewTxns()` MUST confirm any that landed in blocks; `checkPendingDeadlines()` MUST roll back any that expired. MUST emit events for transitions. MUST flip `pendingSyncState` to `"fresh"` and emit `pendingSynced`. In-memory `pendingTxMap` is empty after reload — events fire without live `txd`; consumers get txHash, description, and cbor from Dexie fields.
 
- - **REQT-1.11.10**/agg98btez8: NEXT: **Purge Old Pending Entries** — MUST purge PendingTxEntry rows with `status !== "pending"` and `submittedAt` older than 72 hours. Purge SHOULD run on the 10s deadline-check timer (cheap — single Dexie delete query).
+ - **REQT-1.11.10**/agg98btez8: IN PROGRESS: **Purge Old Pending Entries** — MUST purge PendingTxEntry rows with `status !== "pending"` and `submittedAt` older than 72 hours. Purge SHOULD run on the 10s deadline-check timer (cheap — single Dexie delete query).
 
- - **REQT-1.11.11**/2w2yyc2m1k: NEXT: **In-Memory Pending Map** — MUST maintain `pendingTxMap: Map<string, TxDescription>` in memory, keyed by txHash. MUST store the live `txd` when `registerPendingTx` is called with one. MUST NOT persist this map — it is session-scoped. MUST be used by `isPending()` for synchronous lookups and by event emission to include `txd` when available.
+ - **REQT-1.11.11**/2w2yyc2m1k: IN PROGRESS: **In-Memory Pending Map** — MUST maintain `pendingTxMap: Map<string, TxDescription>` in memory, keyed by txHash. MUST store the live `txd` when `registerPendingTx` is called with one. MUST NOT persist this map — it is session-scoped. MUST be used by `isPending()` for synchronous lookups and by event emission to include `txd` when available.
 
 ### Component: UtxoStoreGeneric Interface
 
@@ -417,16 +417,16 @@ Establishes the abstraction layer for storage backends. Applied when implementin
  - **REQT-2.1.1**/nhbqmacrwn: COMPLETED: **Interface Methods** - Must define `UtxoStoreGeneric` interface with methods: `log()`, `findBlockId()`, `saveBlock()`, `findUtxoId()`, `saveUtxo()`, `findTxId()`, `saveTx()`, `findUtxoByUUT()`
  - **REQT-2.1.2**/bq0ammh636: COMPLETED: **Type Definitions** - Must define `TxIndexEntry` type with `txid` and `cbor` fields.
 
-### REQT-2.2/4wc5crjd3y: NEXT: **Pending Transaction Store Operations**
+### REQT-2.2/4wc5crjd3y: IN PROGRESS: **Pending Transaction Store Operations**
 
 #### Purpose
 Extends the storage interface with operations for persisting and managing in-flight transaction state. Applied when implementing pending-tx support in new storage backends or modifying the pending-tx persistence contract.
 
- - **REQT-2.2.1**/kd9xwtg4df: NEXT: **Pending Tx CRUD** — MUST add to `UtxoStoreGeneric`: `savePendingTx(entry: PendingTxEntry): Promise<void>`, `findPendingTx(txHash: string): Promise<PendingTxEntry | undefined>`, `getPendingByStatus(status: string): Promise<PendingTxEntry[]>`, `setPendingTxStatus(txHash: string, status: string): Promise<void>`.
+ - **REQT-2.2.1**/kd9xwtg4df: IMPLEMENTED/NEEDS VERIFICATION: **Pending Tx CRUD** — MUST add to `UtxoStoreGeneric`: `savePendingTx(entry: PendingTxEntry): Promise<void>`, `findPendingTx(txHash: string): Promise<PendingTxEntry | undefined>`, `getPendingByStatus(status: string): Promise<PendingTxEntry[]>`, `setPendingTxStatus(txHash: string, status: string): Promise<void>`.
 
- - **REQT-2.2.2**/p0nt8nwtxj: NEXT: **Rollback Store Operations** — MUST add to `UtxoStoreGeneric`: `clearSpentByTx(txHash: string): Promise<void>` to nullify `spentInTx` on UTXOs where `spentInTx === txHash`; `deleteUtxosByTxHash(txHash: string): Promise<void>` to remove UTXOs where `utxoId` starts with `txHash#`; `deleteRecordsByTxHash(txHash: string): Promise<void>` to remove records where `utxoId` starts with `txHash#`.
+ - **REQT-2.2.2**/p0nt8nwtxj: IMPLEMENTED/NEEDS VERIFICATION: **Rollback Store Operations** — MUST add to `UtxoStoreGeneric`: `clearSpentByTx(txHash: string): Promise<void>` to nullify `spentInTx` on UTXOs where `spentInTx === txHash`; `deleteUtxosByTxHash(txHash: string): Promise<void>` to remove UTXOs where `utxoId` starts with `txHash#`; `deleteRecordsByTxHash(txHash: string): Promise<void>` to remove records where `utxoId` starts with `txHash#`.
 
- - **REQT-2.2.3**/h4m8p3x16c: NEXT: **Purge Operation** — MUST add to `UtxoStoreGeneric`: `purgeOldPendingTxs(olderThan: number): Promise<void>` to delete PendingTxEntry rows where `status !== "pending"` and `submittedAt < olderThan`.
+ - **REQT-2.2.3**/h4m8p3x16c: IMPLEMENTED/NEEDS VERIFICATION: **Purge Operation** — MUST add to `UtxoStoreGeneric`: `purgeOldPendingTxs(olderThan: number): Promise<void>` to delete PendingTxEntry rows where `status !== "pending"` and `submittedAt < olderThan`.
 
 ### Component: DexieUtxoStore Class
 
@@ -468,18 +468,18 @@ Documents planned alternative storage implementations. Applied when evaluating s
  - **REQT-3.4.1**/pd0vdphpmp: BACKLOG: **Memory Store Implementation** - Must implement `MemoryUtxoStore` class for in-memory storage (currently throws "Memory strategy not implemented").
  - **REQT-3.4.2**/7h35vgvw4a: BACKLOG: **Dred Store Implementation** - Must implement `DredUtxoStore` class for Dred-based storage (currently throws "Dred strategy not implemented").
 
-### REQT-3.5/5q7mqc45w1: NEXT: **Pending Transaction Dexie Implementation**
+### REQT-3.5/5q7mqc45w1: IN PROGRESS: **Pending Transaction Dexie Implementation**
 
 #### Purpose
 Implements the pending-tx store operations in the Dexie backend. Applied when modifying the pendingTxs table schema, implementing rollback queries, or debugging pending-tx persistence.
 
- - **REQT-3.5.1**/yz1ymcenzx: NEXT: **PendingTxs Table Schema** — MUST add `pendingTxs` table to DexieUtxoStore Dexie schema with `txHash` as primary key and `status` as indexed field. MUST require a schema version bump.
+ - **REQT-3.5.1**/yz1ymcenzx: IMPLEMENTED/NEEDS VERIFICATION: **PendingTxs Table Schema** — MUST add `pendingTxs` table to DexieUtxoStore Dexie schema with `txHash` as primary key and `status` as indexed field. MUST require a schema version bump.
 
- - **REQT-3.5.2**/9d83h3a7df: NEXT: **Pending Tx CRUD Implementation** — MUST implement `savePendingTx()`, `findPendingTx()`, `getPendingByStatus()`, and `setPendingTxStatus()` using Dexie operations on the `pendingTxs` table.
+ - **REQT-3.5.2**/9d83h3a7df: IMPLEMENTED/NEEDS VERIFICATION: **Pending Tx CRUD Implementation** — MUST implement `savePendingTx()`, `findPendingTx()`, `getPendingByStatus()`, and `setPendingTxStatus()` using Dexie operations on the `pendingTxs` table.
 
- - **REQT-3.5.3**/5skb90kx7n: NEXT: **Rollback Operations Implementation** — MUST implement `clearSpentByTx(txHash)` to query utxos table for entries where `spentInTx === txHash` and set `spentInTx` to null. MUST implement `deleteUtxosByTxHash(txHash)` to delete utxos where `utxoId` starts with `txHash#`. MUST implement `deleteRecordsByTxHash(txHash)` to delete records where `utxoId` starts with `txHash#`.
+ - **REQT-3.5.3**/5skb90kx7n: IMPLEMENTED/NEEDS VERIFICATION: **Rollback Operations Implementation** — MUST implement `clearSpentByTx(txHash)` to query utxos table for entries where `spentInTx === txHash` and set `spentInTx` to null. MUST implement `deleteUtxosByTxHash(txHash)` to delete utxos where `utxoId` starts with `txHash#`. MUST implement `deleteRecordsByTxHash(txHash)` to delete records where `utxoId` starts with `txHash#`.
 
- - **REQT-3.5.4**/5799nq1d0x: NEXT: **Purge Implementation** — MUST implement `purgeOldPendingTxs(olderThan)` to delete pendingTxs rows where `status !== "pending"` and `submittedAt < olderThan`.
+ - **REQT-3.5.4**/5799nq1d0x: IMPLEMENTED/NEEDS VERIFICATION: **Purge Implementation** — MUST implement `purgeOldPendingTxs(olderThan)` to delete pendingTxs rows where `status !== "pending"` and `submittedAt < olderThan`.
 
 ### Component: Blockfrost Type Definitions
 
@@ -520,12 +520,12 @@ Defines the storage type and Dexie table for parsed delegated-data records. Appl
 
  - **REQT-5.2.3**/38d4zc2qrx: IMPLEMENTED/NEEDS VERIFICATION: **Parsed Block Height Tracking** — MUST persist `lastParsedBlockHeight` in the store. MUST provide `getLastParsedBlockHeight()` and `setLastParsedBlockHeight(height)` on `UtxoStoreGeneric`.
 
-### REQT-5.3/xa1224nbsc: NEXT: **Pending Transaction Entry Type**
+### REQT-5.3/xa1224nbsc: IN PROGRESS: **Pending Transaction Entry Type**
 
 #### Purpose
 Defines the storage type for in-flight transaction records. Applied when modifying the pending-tx persistence schema or adding fields to the serializable projection of TxDescription.
 
- - **REQT-5.3.1**/jqz2m497vx: NEXT: **PendingTxEntry Type** — MUST define `PendingTxEntry` in `types/PendingTxEntry.ts` with fields: `txHash` (string, PK), `description` (string), `id` (string, TxDescription.id), `parentId` (string, optional), `depth` (number), `moreInfo` (string, optional), `txName` (string, optional), `txCborHex` (string, unsigned CBOR), `signedTxCborHex` (string, signed CBOR), `deadline` (number, epoch ms — txValidityEnd + graceBuffer based on chain time), `status` (`"pending" | "confirmed" | "rolled-back"`), `submittedAt` (number, epoch ms). MUST be Helios-free and IndexedDB-serializable. MUST NOT include `BuiltTcxStats` (contains non-serializable `Wallet`, `WalletHelper`, `PubKeyHash` objects). The live `TxDescription` object is held in-memory only per REQT/2w2yyc2m1k (In-Memory Pending Map).
+ - **REQT-5.3.1**/jqz2m497vx: IMPLEMENTED/NEEDS VERIFICATION: **PendingTxEntry Type** — MUST define `PendingTxEntry` in `types/PendingTxEntry.ts` with fields: `txHash` (string, PK), `description` (string), `id` (string, TxDescription.id), `parentId` (string, optional), `depth` (number), `moreInfo` (string, optional), `txName` (string, optional), `txCborHex` (string, unsigned CBOR), `signedTxCborHex` (string, signed CBOR), `deadline` (number, epoch ms — txValidityEnd + graceBuffer based on chain time), `status` (`"pending" | "confirmed" | "rolled-back"`), `submittedAt` (number, epoch ms). MUST be Helios-free and IndexedDB-serializable. MUST NOT include `BuiltTcxStats` (contains non-serializable `Wallet`, `WalletHelper`, `PubKeyHash` objects). The live `TxDescription` object is held in-memory only per REQT/2w2yyc2m1k (In-Memory Pending Map).
 
 ## Files
 

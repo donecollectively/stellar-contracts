@@ -8,6 +8,7 @@ import type { TxIndexEntry } from "./types/TxIndexEntry.js";
 import type { ScriptIndexEntry } from "./types/ScriptIndexEntry.js";
 import type { WalletAddressEntry } from "./types/WalletAddressEntry.js";
 import type { RecordIndexEntry } from "./types/RecordIndexEntry.js";
+import type { PendingTxEntry } from "./types/PendingTxEntry.js";
 import type { MetadataEntry } from "./types/MetadataEntry.js";
 import { dexieBlockDetails } from "./dexieRecords/BlockDetails.js";
 import { indexerLogs } from "./dexieRecords/Logs.js";
@@ -30,6 +31,7 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     scripts!: EntityTable<ScriptIndexEntry, "scriptHash">;
     walletAddresses!: EntityTable<WalletAddressEntry, "address">;
     records!: EntityTable<RecordIndexEntry, "id">;  // REQT/8a4jkznm6a
+    pendingTxs!: EntityTable<PendingTxEntry, "txHash">;  // REQT/yz1ymcenzx
     metadata!: EntityTable<MetadataEntry, "key">;   // REQT/38d4zc2qrx
     logs!: EntityTable<indexerLogs, "logId">;
 
@@ -67,6 +69,21 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
                     utxo.blockHeight = 0;
                 }
             });
+        });
+
+        // Schema v3: REQT/yz1ymcenzx — add pendingTxs table for in-flight transaction tracking
+        // REQT/5skb90kx7n — add spentInTx index to utxos and records for efficient rollback queries
+        // (IndexedDB excludes null values from indexes, so cost is minimal — only spent entries indexed)
+        this.version(3).stores({
+            blocks: "hash, height",
+            utxos: "utxoId, *uutIds, address, blockHeight, spentInTx",
+            txs: "txid",
+            scripts: "scriptHash",
+            walletAddresses: "address",
+            records: "id, utxoId, type, spentInTx",
+            pendingTxs: "txHash, status",
+            metadata: "key",
+            logs: "logId, [pid+time]",
         });
 
         this.blocks.mapToClass(dexieBlockDetails);
@@ -343,5 +360,94 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             key: "lastParsedBlockHeight",
             value: String(height),
         });
+    }
+
+    // =========================================================================
+    // REQT/9d83h3a7df: Pending Tx CRUD Implementation
+    // =========================================================================
+
+    async savePendingTx(entry: PendingTxEntry): Promise<void> {
+        await this.pendingTxs.put(entry);
+    }
+
+    async findPendingTx(txHash: string): Promise<PendingTxEntry | undefined> {
+        return await this.pendingTxs.where("txHash").equals(txHash).first();
+    }
+
+    async getPendingByStatus(status: string): Promise<PendingTxEntry[]> {
+        return await this.pendingTxs.where("status").equals(status).toArray();
+    }
+
+    async setPendingTxStatus(txHash: string, status: string): Promise<void> {
+        await this.pendingTxs.where("txHash").equals(txHash).modify({
+            status: status as PendingTxEntry["status"],
+        });
+    }
+
+    // =========================================================================
+    // REQT/5skb90kx7n: Rollback Operations Implementation
+    // =========================================================================
+
+    /**
+     * Nullify spentInTx on UTXOs where spentInTx === txHash.
+     * Uses the spentInTx index for efficient lookup on both utxos and records.
+     */
+    async clearSpentByTx(txHash: string): Promise<void> {
+        // REQT/5skb90kx7n: Use spentInTx index for efficient rollback query
+        await this.utxos
+            .where("spentInTx")
+            .equals(txHash)
+            .modify({ spentInTx: null });
+
+        // Also clear spent state on records — uses spentInTx index (v3 schema)
+        await this.records
+            .where("spentInTx")
+            .equals(txHash)
+            .modify({ spentInTx: null });
+    }
+
+    /**
+     * Remove UTXOs where utxoId starts with txHash#.
+     * These are pending-origin outputs that should be deleted on rollback.
+     * Uses PK range query: '#' (0x23) < '$' (0x24) in ASCII, so
+     * between("txHash#", "txHash$") captures all "txHash#N" entries.
+     */
+    async deleteUtxosByTxHash(txHash: string): Promise<void> {
+        // REQT/5skb90kx7n: Delete pending-origin UTXOs by txHash prefix
+        await this.utxos
+            .where("utxoId")
+            .between(`${txHash}#`, `${txHash}$`, true, false)
+            .delete();
+    }
+
+    /**
+     * Remove records where utxoId starts with txHash#.
+     * These are pending-origin records that should be deleted on rollback.
+     * Uses utxoId index range query for efficiency.
+     */
+    async deleteRecordsByTxHash(txHash: string): Promise<void> {
+        // REQT/5skb90kx7n: Delete pending-origin records by txHash prefix
+        await this.records
+            .where("utxoId")
+            .between(`${txHash}#`, `${txHash}$`, true, false)
+            .delete();
+    }
+
+    // =========================================================================
+    // REQT/5799nq1d0x: Purge Implementation
+    // =========================================================================
+
+    /**
+     * Delete PendingTxEntry rows where status !== "pending" and submittedAt < olderThan.
+     */
+    async purgeOldPendingTxs(olderThan: number): Promise<void> {
+        // REQT/5799nq1d0x: Purge non-pending entries older than threshold
+        const candidates = await this.pendingTxs.toArray();
+        const toDelete = candidates
+            .filter(e => e.status !== "pending" && e.submittedAt < olderThan)
+            .map(e => e.txHash);
+        if (toDelete.length > 0) {
+            await this.pendingTxs.bulkDelete(toDelete);
+        }
     }
 }

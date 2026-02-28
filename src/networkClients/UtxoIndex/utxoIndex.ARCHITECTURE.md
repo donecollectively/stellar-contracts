@@ -692,7 +692,7 @@ Pending state is a property of the **transaction**, not the UTXO. No new fields 
 
 - **Speculatively spent inputs**: `spentInTx` is set eagerly to the pending txHash. Queries filter these out (same as confirmed spent). If the pending tx rolls back, `spentInTx` is cleared — the UTXO is restored.
 - **Pending-origin outputs**: Indexed normally via `indexUtxoFromOutput()`. Identified as pending because their `utxoId` prefix (`txHash#idx`) matches a txHash in the PendingTxEntry table. On rollback, these entries are deleted.
-- **Pending records**: If a Capo is attached, inline datums from pending outputs are parsed into `RecordIndexEntry` as usual. On rollback, records whose `utxoId` starts with the rolled-back txHash are deleted.
+- **Pending records**: If a Capo is attached, inline datums from pending outputs are parsed into `RecordIndexEntry` as usual. **Record ID collision**: Records use `id` as PK in Dexie. When a pending tx updates an existing record, `saveRecord()` overwrites the original (same `id`, new `utxoId`). This means rollback cannot simply delete pending-origin records — the original data would be lost. On rollback, after deleting pending-origin records and restoring speculatively-spent input UTXOs, the rollback procedure **re-parses inline datums from the restored input UTXOs** (if Capo is attached) to recreate the overwritten records.
 
 A `PendingTxEntry` Dexie table is the persistent source of truth for in-flight state:
 
@@ -818,11 +818,12 @@ When `checkForNewTxns()` discovers a txHash that exists in the pending-tx table:
 
 When `checkPendingDeadlines()` (10s timer) finds a pending entry whose deadline is past the last synced block's slot time:
 
-1. `clearSpentByTx(txHash)` — nullify `spentInTx` on UTXOs where `spentInTx === txHash`
-2. `deleteUtxosByTxHash(txHash)` — remove UTXOs where `utxoId` starts with `txHash#`
-3. `deleteRecordsByTxHash(txHash)` — remove records where `utxoId` starts with `txHash#`
-4. `setPendingTxStatus(txHash, "rolled-back")`
-5. Emit `txRolledBack { txHash, description, cbor, txd? }`
+1. `clearSpentByTx(txHash)` — nullify `spentInTx` on UTXOs where `spentInTx === txHash` (restore speculatively-spent inputs)
+2. `deleteUtxosByTxHash(txHash)` — remove UTXOs where `utxoId` starts with `txHash#` (remove pending outputs)
+3. `deleteRecordsByTxHash(txHash)` — remove records where `utxoId` starts with `txHash#` (remove pending-origin records)
+4. **Re-parse datums from restored input UTXOs** — decode the rolled-back tx's CBOR to find its inputs, look up the now-restored UTXOs, and re-parse their inline datums via `parseAndSaveRecord()` to recreate records that were overwritten during registration. Requires Capo attached; no-op without Capo (consistent with registration, which also skips parsing without Capo).
+5. `setPendingTxStatus(txHash, "rolled-back")`
+6. Emit `txRolledBack { txHash, description, cbor, txd? }`
 
 #### Store Interface Extensions
 

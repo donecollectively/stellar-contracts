@@ -72,7 +72,11 @@ import type { CharterData } from "../../CapoTypes.js";
 import type { RelativeDelegateLink } from "../../delegation/UnspecializedDelegate.typeInfo.js";
 // REQT/yx0yze9swf: Type-only import — no runtime dependency on Capo
 import type { Capo } from "../../Capo.js";
+import type { FoundDatumUtxo } from "../../CapoTypes.js";
+// REQT/2w2yyc2m1k: Type-only import for in-memory pending map
+import type { TxDescription, StellarTxnContext } from "../../StellarTxnContext.js";
 import type { RecordIndexEntry } from "./types/RecordIndexEntry.js";
+import type { PendingTxEntry } from "./types/PendingTxEntry.js";
 
 // periodically queries for new utxos at the capo address
 const refreshInterval = 60 * 1000; // 1 minute
@@ -85,6 +89,20 @@ const DEFAULT_MAX_SYNC_PAGES = Infinity;
 // REQT/92m7kpkny7: Wallet address staleness threshold (default 30 seconds)
 const DEFAULT_WALLET_STALENESS_MS = 30 * 1000;
 
+// REQT/fz6z7rr702: Pending Transaction Event Payloads
+export interface TxConfirmedEvent {
+    txHash: string;
+    description: string;
+    txd?: TxDescription<any, "submitted">;
+}
+
+export interface TxRolledBackEvent {
+    txHash: string;
+    description: string;
+    cbor: string;
+    txd?: TxDescription<any, "submitted">;
+}
+
 export interface CachedUtxoIndexEvents {
     /** Emitted when initial sync from scratch begins */
     syncStart: [];
@@ -96,6 +114,13 @@ export interface CachedUtxoIndexEvents {
     synced: [];
     /** Forwarded rate limiter metrics */
     rateLimitMetrics: [RateLimiterMetrics];
+    // REQT/fz6z7rr702: Pending Transaction Events
+    /** Emitted when a pending tx is confirmed in a block */
+    txConfirmed: [TxConfirmedEvent];
+    /** Emitted when a pending tx is rolled back due to deadline expiry */
+    txRolledBack: [TxRolledBackEvent];
+    /** Emitted after first sync cycle resolves pending state (stale → fresh) */
+    pendingSynced: [];
 }
 
 export class CachedUtxoIndex {
@@ -130,6 +155,24 @@ export class CachedUtxoIndex {
     // REQT/zzsg63b2fb: Timer for periodic refresh
     private refreshTimerId: ReturnType<typeof setInterval> | null = null;
 
+    // REQT/a9y19g0pmr: Timer for pending deadline checks (10s interval)
+    private deadlineTimerId: ReturnType<typeof setInterval> | null = null;
+
+    // REQT/2w2yyc2m1k: In-Memory Pending Map — session-scoped, not persisted
+    private pendingTxMap: Map<string, TxDescription<any, "submitted">> = new Map();
+
+    // REQT/p2ts24jbkg: Set of txHashes with pending status, for fast lookup during checkForNewTxns
+    private pendingTxHashes: Set<string> = new Set();
+
+    // REQT/mjhf1yezr9: Map of utxoId → txHash for UTXOs consumed by pending txs (spent-by-pending lookup)
+    private pendingSpentUtxoIds: Map<string, string> = new Map();
+
+    // REQT/9r9rc1hrfv: Pending sync state — starts stale, flips to fresh after first sync resolves pending state
+    private _pendingSyncState: "stale" | "fresh" = "stale";
+
+    // REQT/c3ytg4rttd: Grace buffer for deadline calculation (in slots, ~1 slot/sec on Cardano)
+    private graceBufferSlots: number;
+
     // Promise that resolves when initial sync completes.
     // Query methods await this before accessing the cache.
     private syncReady: Promise<void>;
@@ -137,6 +180,14 @@ export class CachedUtxoIndex {
 
     // Event emitter for sync status and rate limit metrics
     public readonly events = new EventEmitter<CachedUtxoIndexEvents>();
+
+    /**
+     * Returns pending sync state — "stale" until first sync resolves pending state, then "fresh".
+     * REQT/9r9rc1hrfv (pendingSyncState Property)
+     */
+    get pendingSyncState(): "stale" | "fresh" {
+        return this._pendingSyncState;
+    }
 
     // REQT/9a0nx1gr4b (Core State) - expose capoAddress for external access
     get capoAddress(): string {
@@ -226,6 +277,7 @@ export class CachedUtxoIndex {
         dbName,
         syncPageSize,
         maxSyncPages,
+        graceBufferSlots,
     }: {
         address: Address | string;
         mph: MintingPolicyHash | string;
@@ -239,6 +291,8 @@ export class CachedUtxoIndex {
         syncPageSize?: number;
         /** Maximum number of pages to fetch during sync (default: unlimited) */
         maxSyncPages?: number;
+        /** Grace buffer for pending tx deadlines in slots (default: 60, ~1 slot/sec on Cardano) */
+        graceBufferSlots?: number;
     }) {
         // Convert string inputs to proper types if needed
         this._address =
@@ -267,6 +321,9 @@ export class CachedUtxoIndex {
         if (maxSyncPages !== undefined) {
             this.maxSyncPages = maxSyncPages;
         }
+
+        // REQT/c3ytg4rttd: Default grace buffer of 60 slots (~60 seconds on Cardano)
+        this.graceBufferSlots = graceBufferSlots ?? 60;
 
         if (strategy === "dexie") {
             this.store = new DexieUtxoStore(dbName);
@@ -298,6 +355,9 @@ export class CachedUtxoIndex {
     async syncNow() {
         this.events.emit("syncStart");
 
+        // REQT/fn70x96nxm: Startup Recovery — load pending entries from Dexie
+        await this.loadPendingFromStore();
+
         // REQT/gz9a5b8qv: Initialize from cached block data if available
         const cachedBlock = await this.store.getLatestBlock();
         if (cachedBlock) {
@@ -311,6 +371,10 @@ export class CachedUtxoIndex {
 
             // Have cached data - just do incremental sync for new transactions
             await this.checkForNewTxns();
+
+            // REQT/fn70x96nxm: After first sync, resolve pending state
+            await this.resolvePendingState();
+
             this.syncReadyResolve();
             this.events.emit("syncComplete");
             return;
@@ -364,6 +428,9 @@ export class CachedUtxoIndex {
         // Fetch and store the latest block details
         await this.fetchAndStoreLatestBlock();
 
+        // REQT/fn70x96nxm: After first sync, resolve pending state
+        await this.resolvePendingState();
+
         this.syncReadyResolve();
         this.events.emit("syncComplete");
     }
@@ -391,6 +458,7 @@ export class CachedUtxoIndex {
         let currentPage = 1;
         let hasMorePages = true;
         let lastTxIndex: number | undefined;
+        let highestBlockHeight = 0;
 
         while (hasMorePages && currentPage <= this.maxSyncPages) {
             // Build URL with pagination parameters
@@ -416,6 +484,10 @@ export class CachedUtxoIndex {
                     summary.tx_hash,
                     summary,
                 );
+                // Track highest block height seen for slot advancement
+                if (summary.block_height > highestBlockHeight) {
+                    highestBlockHeight = summary.block_height;
+                }
             }
 
             // Check if there might be more pages
@@ -437,13 +509,38 @@ export class CachedUtxoIndex {
             );
         }
 
+        // Advance block tracking from the highest block seen in processed transactions.
+        // This ensures lastSlot advances during periodic refresh, which is needed for
+        // pending-tx deadline comparison (checkPendingDeadlines).
+        // Note: technically outside the in-flight-tx plan scope — gap discovered during
+        // implementation. See IN-1 notes in work unit.
+        if (highestBlockHeight > this.lastBlockHeight) {
+            try {
+                const blockDetails = await this.fetchBlockDetails(
+                    String(highestBlockHeight),
+                );
+                const entry = this.blockfrostBlockToIndexEntry(blockDetails);
+                await this.store.saveBlock(entry);
+                this.lastBlockHeight = entry.height;
+                this.lastBlockId = entry.hash;
+                this.lastSlot = entry.slot;
+            } catch (e: any) {
+                await this.store.log(
+                    "bk5er",
+                    `Failed to fetch block ${highestBlockHeight} for slot advancement: ${e.message || e}`,
+                );
+            }
+        }
+
         this.events.emit("synced");
     }
 
     /**
-     * Starts periodic refresh timer to automatically check for new transactions.
+     * Starts periodic refresh timer to automatically check for new transactions,
+     * and the 10s deadline-check timer for pending tx management.
      *
      * REQT/zzsg63b2fb (Automated Periodic Refresh)
+     * REQT/a9y19g0pmr (Rollback Expired Pending Transaction — 10s timer)
      */
     startPeriodicRefresh(): void {
         if (this.refreshTimerId) {
@@ -466,18 +563,34 @@ export class CachedUtxoIndex {
         }, refreshInterval);
         
         this.refreshTimerId.unref?.();
+
+        // REQT/a9y19g0pmr: Start 10s deadline-check timer
+        // REQT/agg98btez8: Also runs 72h purge
+        this.deadlineTimerId = setInterval(async () => {
+            try {
+                await this.checkPendingDeadlines();
+            } catch (e) {
+                console.warn("Pending deadline check failed:", e);
+            }
+        }, 10_000);
+        this.deadlineTimerId.unref?.();
     }
 
     /**
-     * Stops the periodic refresh timer.
+     * Stops the periodic refresh timer and the deadline-check timer.
      *
      * REQT/zzsg63b2fb (Automated Periodic Refresh)
+     * REQT/a9y19g0pmr (Rollback timer lifecycle)
      */
     stopPeriodicRefresh(): void {
         if (this.refreshTimerId) {
             this.store.log("pr5t0", "Stopping periodic refresh");
             clearInterval(this.refreshTimerId);
             this.refreshTimerId = null;
+        }
+        if (this.deadlineTimerId) {
+            clearInterval(this.deadlineTimerId);
+            this.deadlineTimerId = null;
         }
     }
 
@@ -732,8 +845,379 @@ export class CachedUtxoIndex {
         return this.store.findRecordsByType(type, options);
     }
 
+    // =========================================================================
+    // REQT/3dhhjsav15: In-Flight Transaction Integration
+    // =========================================================================
+
+    /**
+     * Registers a pending transaction in the index.
+     * Called once per transaction, in submission order, after successful network submission.
+     *
+     * Decodes the signed CBOR, marks inputs as speculatively spent, indexes outputs,
+     * parses records if Capo attached, and persists PendingTxEntry.
+     *
+     * REQT/p2ts24jbkg (Register Pending Transaction)
+     * REQT/c3ytg4rttd (Deadline Calculation)
+     * REQT/2w2yyc2m1k (In-Memory Pending Map)
+     */
+    async registerPendingTx(
+        signedCborHex: string,
+        opts: {
+            description: string;
+            id: string;
+            parentId?: string;
+            depth: number;
+            moreInfo?: string;
+            txName?: string;
+            txCborHex: string;
+            txd?: TxDescription<any, "submitted">;
+        },
+    ): Promise<void> {
+        // REQT/p2ts24jbkg: Decode signed CBOR via existing decodeTx() pipeline
+        const tx = decodeTx(signedCborHex);
+        const txHash = tx.id().toHex();
+
+        await this.store.log(
+            "pt1rg",
+            `Registering pending tx ${txHash}: ${opts.description}`,
+        );
+
+        // REQT/c3ytg4rttd: Compute deadline from tx validity interval
+        const lastValidSlot = tx.body.lastValidSlot;
+        if (lastValidSlot === undefined) {
+            throw new Error(
+                `Cannot register pending tx ${txHash}: transaction has no validity end (lastValidSlot)`,
+            );
+        }
+        const deadline = lastValidSlot + this.graceBufferSlots; // REQT/c3ytg4rttd
+
+        // REQT/p2ts24jbkg: Persist PendingTxEntry to store
+        const pendingEntry: PendingTxEntry = {
+            txHash,
+            description: opts.description,
+            id: opts.id,
+            parentId: opts.parentId,
+            depth: opts.depth,
+            moreInfo: opts.moreInfo,
+            txName: opts.txName,
+            txCborHex: opts.txCborHex,
+            signedTxCborHex: signedCborHex,
+            deadline,
+            status: "pending",
+            submittedAt: Date.now(),
+        };
+        await this.store.savePendingTx(pendingEntry);
+        this.pendingTxHashes.add(txHash);
+
+        // REQT/p2ts24jbkg: Mark each input as speculatively spent
+        // REQT/mjhf1yezr9: Track consumed utxoIds for isPending() spent-by-pending lookup
+        for (const input of tx.body.inputs) {
+            const utxoId = input.id.toString();
+            this.pendingSpentUtxoIds.set(utxoId, txHash);
+            const existingUtxo = await this.store.findUtxoId(utxoId);
+            if (existingUtxo && !existingUtxo.spentInTx) {
+                await this.store.markUtxoSpent(utxoId, txHash);
+                await this.store.log(
+                    "pt2sp",
+                    `Marked UTXO ${utxoId} as speculatively spent by pending tx ${txHash}`,
+                );
+            }
+        }
+
+        // REQT/p2ts24jbkg: Index each output via existing indexUtxoFromOutput()
+        for (
+            let outputIndex = 0;
+            outputIndex < tx.body.outputs.length;
+            outputIndex++
+        ) {
+            const output = tx.body.outputs[outputIndex];
+            await this.indexUtxoFromOutput(txHash, outputIndex, output, 0);
+        }
+
+        // REQT/p2ts24jbkg: Parse inline datums into records if Capo is attached
+        if (this._capo) {
+            for (
+                let outputIndex = 0;
+                outputIndex < tx.body.outputs.length;
+                outputIndex++
+            ) {
+                const utxoId = this.formatUtxoId(txHash, outputIndex);
+                const entry = await this.store.findUtxoId(utxoId);
+                if (entry && entry.inlineDatum) {
+                    await this.parseAndSaveRecord(entry);
+                }
+            }
+        }
+
+        // REQT/2w2yyc2m1k: Store live txd in memory map for same-session consumers
+        if (opts.txd) {
+            this.pendingTxMap.set(txHash, opts.txd);
+        }
+
+        // Also store the tx CBOR for future reference
+        await this.store.saveTx({ txid: txHash, cbor: signedCborHex });
+
+        await this.store.log(
+            "pt3ok",
+            `Registered pending tx ${txHash}: ${tx.body.inputs.length} inputs spent, ${tx.body.outputs.length} outputs indexed, deadline slot ${deadline}`,
+        );
+    }
+
+    /**
+     * Confirms a pending transaction that has been discovered in a block.
+     * Skips normal indexing since outputs are already indexed and inputs already marked spent.
+     *
+     * REQT/58b9nzgcbj (Confirm Pending Transaction)
+     * REQT/fz6z7rr702 (Pending Transaction Events)
+     */
+    private async confirmPendingTx(txHash: string): Promise<void> {
+        const pendingEntry = await this.store.findPendingTx(txHash);
+        if (!pendingEntry || pendingEntry.status !== "pending") return;
+
+        await this.store.log(
+            "pt4cf",
+            `Confirming pending tx ${txHash}: ${pendingEntry.description}`,
+        );
+
+        // REQT/58b9nzgcbj: Set status to confirmed
+        await this.store.setPendingTxStatus(txHash, "confirmed");
+        this.pendingTxHashes.delete(txHash);
+
+        // REQT/fz6z7rr702: Emit txConfirmed event
+        const txd = this.pendingTxMap.get(txHash);
+        this.events.emit("txConfirmed", {
+            txHash,
+            description: pendingEntry.description,
+            txd,
+        });
+
+        // Clean up in-memory maps
+        this.pendingTxMap.delete(txHash);
+        this.cleanupPendingSpentUtxoIds(txHash);
+
+        await this.store.log(
+            "pt4ok",
+            `Confirmed pending tx ${txHash}`,
+        );
+    }
+
+    /**
+     * Checks for pending transactions whose deadlines have expired
+     * and rolls them back. Also runs 72h purge.
+     *
+     * REQT/a9y19g0pmr (Rollback Expired Pending Transaction)
+     * REQT/agg98btez8 (Purge Old Pending Entries)
+     */
+    async checkPendingDeadlines(): Promise<void> {
+        const pendingEntries = await this.store.getPendingByStatus("pending");
+        const lastSyncedSlot = this.lastSlot;
+
+        for (const entry of pendingEntries) {
+            // REQT/c3ytg4rttd: Compare deadline against chain time (last synced block's slot)
+            if (entry.deadline < lastSyncedSlot) {
+                await this.rollbackPendingTx(entry);
+            }
+        }
+
+        // REQT/agg98btez8: Purge non-pending entries older than 72 hours
+        const purgeThreshold = Date.now() - 72 * 60 * 60 * 1000;
+        await this.store.purgeOldPendingTxs(purgeThreshold);
+    }
+
+    /**
+     * Rolls back a single expired pending transaction.
+     * Restores speculatively-spent inputs, removes pending-origin outputs/records,
+     * re-parses restored input UTXOs' datums, and emits rollback event.
+     *
+     * REQT/a9y19g0pmr (Rollback Expired Pending Transaction)
+     * REQT/fz6z7rr702 (Pending Transaction Events)
+     * See IN-1 (Implementer's Note): record restoration for overwritten records
+     */
+    private async rollbackPendingTx(entry: PendingTxEntry): Promise<void> {
+        const { txHash } = entry;
+
+        await this.store.log(
+            "pt5rb",
+            `Rolling back expired pending tx ${txHash}: ${entry.description} (deadline slot ${entry.deadline} < last synced slot ${this.lastSlot})`,
+        );
+
+        // Step 1: Restore speculatively-spent UTXOs
+        await this.store.clearSpentByTx(txHash);
+
+        // Step 2: Remove pending-origin UTXOs
+        await this.store.deleteUtxosByTxHash(txHash);
+
+        // Step 3: Remove pending-origin records
+        await this.store.deleteRecordsByTxHash(txHash);
+
+        // Step 4 (IN-1): Re-parse datums from restored input UTXOs
+        // The pending tx may have overwritten records (same id, put() on PK).
+        // Now that inputs are restored, re-parse their datums to recreate original records.
+        if (this._capo) {
+            try {
+                const tx = decodeTx(entry.signedTxCborHex);
+                for (const input of tx.body.inputs) {
+                    const utxoId = input.id.toString();
+                    const restoredUtxo = await this.store.findUtxoId(utxoId);
+                    if (restoredUtxo && restoredUtxo.inlineDatum && !restoredUtxo.spentInTx) {
+                        await this.parseAndSaveRecord(restoredUtxo);
+                    }
+                }
+            } catch (e: any) {
+                await this.store.log(
+                    "pt5re",
+                    `Error re-parsing records during rollback of ${txHash}: ${e.message || e}`,
+                );
+            }
+        }
+
+        // Step 5: Update status
+        await this.store.setPendingTxStatus(txHash, "rolled-back");
+        this.pendingTxHashes.delete(txHash);
+
+        // Step 6: Emit rollback event
+        // REQT/fz6z7rr702: Include CBOR for recovery path
+        const txd = this.pendingTxMap.get(txHash);
+        this.events.emit("txRolledBack", {
+            txHash,
+            description: entry.description,
+            cbor: entry.signedTxCborHex,
+            txd,
+        });
+
+        // Clean up in-memory maps
+        this.pendingTxMap.delete(txHash);
+        this.cleanupPendingSpentUtxoIds(txHash);
+
+        await this.store.log(
+            "pt5ok",
+            `Rolled back pending tx ${txHash}`,
+        );
+    }
+
+    /**
+     * Loads pending entries from Dexie on startup (page reload recovery).
+     * Populates pendingTxHashes for fast lookup during checkForNewTxns.
+     * Does NOT populate pendingTxMap — that's session-scoped.
+     *
+     * REQT/fn70x96nxm (Startup Recovery)
+     */
+    private async loadPendingFromStore(): Promise<void> {
+        const pendingEntries = await this.store.getPendingByStatus("pending");
+        for (const entry of pendingEntries) {
+            this.pendingTxHashes.add(entry.txHash);
+
+            // Restore pendingSpentUtxoIds by decoding the stored CBOR
+            try {
+                const tx = decodeTx(entry.signedTxCborHex);
+                for (const input of tx.body.inputs) {
+                    this.pendingSpentUtxoIds.set(input.id.toString(), entry.txHash);
+                }
+            } catch (e: any) {
+                await this.store.log(
+                    "pt6er",
+                    `Error decoding CBOR for pending tx ${entry.txHash} during recovery: ${e.message || e}`,
+                );
+            }
+        }
+        if (pendingEntries.length > 0) {
+            await this.store.log(
+                "pt6ld",
+                `Loaded ${pendingEntries.length} pending entries from store for recovery`,
+            );
+        }
+    }
+
+    /**
+     * Resolves pending state after first sync cycle.
+     * Checks deadlines for any remaining pending entries (checkForNewTxns already
+     * handled confirmations). Flips pendingSyncState to "fresh" and emits pendingSynced.
+     *
+     * REQT/fn70x96nxm (Startup Recovery)
+     * REQT/9r9rc1hrfv (pendingSyncState Property)
+     * REQT/fz6z7rr702 (Pending Transaction Events — pendingSynced)
+     */
+    private async resolvePendingState(): Promise<void> {
+        // Roll back any expired pending entries
+        await this.checkPendingDeadlines();
+
+        // REQT/9r9rc1hrfv: Flip to fresh
+        this._pendingSyncState = "fresh";
+
+        // REQT/fz6z7rr702: Emit pendingSynced
+        this.events.emit("pendingSynced");
+
+        await this.store.log(
+            "pt7rs",
+            `Pending state resolved: pendingSyncState is now "fresh"`,
+        );
+    }
+
+    // =========================================================================
+    // REQT/mjhf1yezr9: isPending Query
+    // REQT/r0y7s2vggr: getPendingTxs Query
+    // =========================================================================
+
+    /**
+     * Synchronous check whether a UTXO is associated with a pending transaction.
+     * Returns the pending txHash if the item originates from or is spent by a pending tx,
+     * undefined otherwise.
+     *
+     * REQT/mjhf1yezr9 (isPending Query)
+     */
+    isPending(item: TxOutputId | string | FoundDatumUtxo<any, any>): string | undefined {
+        // Normalize to utxoId string
+        let utxoId: string;
+        if (typeof item === "string") {
+            utxoId = item;
+        } else if ("utxo" in item) {
+            // FoundDatumUtxo — extract utxoId from the TxInput
+            utxoId = item.utxo.id.toString();
+        } else {
+            // TxOutputId
+            utxoId = item.toString();
+        }
+
+        // REQT/mjhf1yezr9: Check if this utxoId originates from a pending tx (txHash prefix match)
+        const txHashFromId = utxoId.split("#")[0];
+        if (this.pendingTxHashes.has(txHashFromId)) {
+            return txHashFromId;
+        }
+
+        // REQT/mjhf1yezr9: Check if this utxoId is spent by a pending tx
+        const spentByTxHash = this.pendingSpentUtxoIds.get(utxoId);
+        if (spentByTxHash !== undefined) {
+            return spentByTxHash;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Removes all entries from pendingSpentUtxoIds belonging to a given txHash.
+     * Called during confirmation and rollback cleanup.
+     */
+    private cleanupPendingSpentUtxoIds(txHash: string): void {
+        for (const [utxoId, hash] of this.pendingSpentUtxoIds) {
+            if (hash === txHash) {
+                this.pendingSpentUtxoIds.delete(utxoId);
+            }
+        }
+    }
+
+    /**
+     * Returns all pending transaction entries.
+     *
+     * REQT/r0y7s2vggr (getPendingTxs Query)
+     */
+    async getPendingTxs(): Promise<PendingTxEntry[]> {
+        return this.store.getPendingByStatus("pending");
+    }
+
     /**
      * Processes a transaction to identify and index new UTXOs.
+     * REQT/58b9nzgcbj: If the txHash matches a pending entry, skip normal indexing
+     * and confirm the pending transaction instead.
      *
      * REQT/0vrkpk6a6h (processTransactionForNewUtxos)
      */
@@ -741,6 +1225,12 @@ export class CachedUtxoIndex {
         txHash: string,
         summary: AddressTransactionSummariesType,
     ): Promise<void> {
+        // REQT/58b9nzgcbj: Check if this tx is a pending entry being confirmed
+        if (this.pendingTxHashes.has(txHash)) {
+            await this.confirmPendingTx(txHash);
+            return; // Skip normal indexing — outputs already indexed, inputs already marked spent
+        }
+
         const tx = await this.findOrFetchTxDetails(txHash);
         const mph = this._mph;
         let charterChanged = false;

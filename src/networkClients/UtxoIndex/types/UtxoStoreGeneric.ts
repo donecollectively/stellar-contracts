@@ -13,6 +13,7 @@ import type { TxIndexEntry } from "./TxIndexEntry.js";
 import type { ScriptIndexEntry } from "./ScriptIndexEntry.js";
 import type { WalletAddressEntry } from "./WalletAddressEntry.js";
 import type { RecordIndexEntry } from "./RecordIndexEntry.js";
+import type { PendingTxEntry } from "./PendingTxEntry.js";
 
 export interface UtxoStoreGeneric {
     // Logging
@@ -81,4 +82,24 @@ export interface UtxoStoreGeneric {
     // REQT/38d4zc2qrx: Metadata for parsed block height tracking
     getLastParsedBlockHeight(): Promise<number>;
     setLastParsedBlockHeight(height: number): Promise<void>;
+
+    // =========================================================================
+    // REQT/kd9xwtg4df: Pending Transaction CRUD
+    // =========================================================================
+    savePendingTx(entry: PendingTxEntry): Promise<void>;
+    findPendingTx(txHash: string): Promise<PendingTxEntry | undefined>;
+    getPendingByStatus(status: string): Promise<PendingTxEntry[]>;
+    setPendingTxStatus(txHash: string, status: string): Promise<void>;
+
+    // REQT/p0nt8nwtxj: Rollback Store Operations
+    /** Nullify spentInTx on UTXOs where spentInTx === txHash */
+    clearSpentByTx(txHash: string): Promise<void>;
+    /** Remove UTXOs where utxoId starts with txHash# */
+    deleteUtxosByTxHash(txHash: string): Promise<void>;
+    /** Remove records where utxoId starts with txHash# */
+    deleteRecordsByTxHash(txHash: string): Promise<void>;
+
+    // REQT/h4m8p3x16c: Purge Operation
+    /** Delete PendingTxEntry rows where status !== "pending" and submittedAt < olderThan */
+    purgeOldPendingTxs(olderThan: number): Promise<void>;
 }
