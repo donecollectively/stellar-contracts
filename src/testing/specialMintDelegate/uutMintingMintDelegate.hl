@@ -296,6 +296,18 @@ enum DelegateActivity {
                     // _ => // leave as compile-time problem
                 }
             },
+            CreatingDelegatedData => {
+                print(" ℹ️  uutMinting delegate allowing CreatingDelegatedData on the say-so of its policy delegate");
+                true
+            },
+            UpdatingDelegatedData => {
+                print(" ℹ️  uutMinting delegate allowing UpdatingDelegatedData on the say-so of its policy delegate");
+                true
+            },
+            DeletingDelegatedData => {
+                print(" ℹ️  uutMinting delegate allowing DeletingDelegatedData on the say-so of its policy delegate");
+                true
+            },
             OtherActivities => error(
                 "no other activities exist in this delegate"
             ),

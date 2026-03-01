@@ -90,7 +90,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
     @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "capoInitialized",
-        builderVersion: undefined,
+        builderVersion: 1, // bumped: DelegatedDatumTester.hl now supports CreatingDelegatedData via checkMintDgtActivity
     })
     async snapToInstallingTestDataPolicy() {
         console.log("never called");
@@ -109,7 +109,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
     @CapoTestHelper.hasNamedSnapshot({
         actor: "tina",
         parentSnapName: "capoInitialized",
-        builderVersion: undefined,
+        builderVersion: 1, // bumped: DelegatedDatumTester.hl now supports CreatingDelegatedData via checkMintDgtActivity
     })
     async snapToInstalledTestDataPolicy() {
         console.log("never called");

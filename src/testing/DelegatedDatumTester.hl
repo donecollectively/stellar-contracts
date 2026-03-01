@@ -56,6 +56,7 @@ import {
 
 import {
     validateUutMinting,
+    AbstractDelegateActivitiesEnum,
     tnCip68ref100,
     tnCip68nft222,
     mkUutTnFactory
@@ -224,7 +225,13 @@ enum DelegateActivity {
                         purposes: []String{"tData"},
                         // otherMintedValue: ... ,
                         mkTokenName: mkTn,
-                        needsMintDelegateApproval: true
+                        needsMintDelegateApproval: true,
+                        checkMintDgtActivity: (activity: AbstractDelegateActivitiesEnum) -> Bool {
+                            activity.switch {
+                                CreatingDelegatedData => true,
+                                _ => false
+                            }
+                        }
                     )
                 }
             },
