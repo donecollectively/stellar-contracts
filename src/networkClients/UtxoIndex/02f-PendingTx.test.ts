@@ -147,9 +147,9 @@ async function createTestDataRecordTx(h: localTC["h"]) {
     return h.submitTxnWithBlock(tcx);
 }
 
-describe("Pending Transaction Lifecycle", () => {
-    describe("registerPendingTx", () => {
-        it("registers a real datum-bearing transaction, marks inputs spent, indexes outputs, and isPending detects both origin and spent-by UTXOs", async (context: localTC) => {
+describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
+    describe("registerPendingTx (REQT/p2ts24jbkg)", () => {
+        it("registers pending tx, marks inputs spent, indexes outputs, isPending detects origin and spent-by (register-pending-lifecycle/REQT/p2ts24jbkg)", async (context: localTC) => {
             const { h } = context;
             await h.snapToFirstTestRecord();
 
@@ -211,8 +211,8 @@ describe("Pending Transaction Lifecycle", () => {
         });
     });
 
-    describe("confirmPendingTx", () => {
-        it("confirms a pending tx: preserves outputs, clears isPending, fires txConfirmed event", async (context: localTC) => {
+    describe("confirmPendingTx (REQT/58b9nzgcbj)", () => {
+        it("confirms pending tx, preserves outputs, clears isPending, fires txConfirmed (confirm-pending-lifecycle/REQT/58b9nzgcbj)", async (context: localTC) => {
             const { h } = context;
             await h.snapToFirstTestRecord();
 
@@ -259,8 +259,8 @@ describe("Pending Transaction Lifecycle", () => {
         });
     });
 
-    describe("rollbackPendingTx", () => {
-        it("rolls back: deletes outputs, restores inputs, clears isPending, fires txRolledBack with CBOR", async (context: localTC) => {
+    describe("rollbackPendingTx (REQT/a9y19g0pmr)", () => {
+        it("rolls back pending tx, deletes outputs, restores inputs, fires txRolledBack with CBOR (rollback-pending-lifecycle/REQT/a9y19g0pmr)", async (context: localTC) => {
             const { h } = context;
             await h.snapToFirstTestRecord();
 
@@ -327,8 +327,8 @@ describe("Pending Transaction Lifecycle", () => {
         });
     });
 
-    describe("checkPendingDeadlines", () => {
-        it("rolls back expired pending txs when lastSlot passes deadline, leaves non-expired alone", async (context: localTC) => {
+    describe("checkPendingDeadlines (REQT/c3ytg4rttd)", () => {
+        it("rolls back expired pending txs when chain time passes deadline (deadline-expiry-rollback/REQT/c3ytg4rttd)", async (context: localTC) => {
             const { h } = context;
             await h.snapToFirstTestRecord();
 
@@ -372,8 +372,8 @@ describe("Pending Transaction Lifecycle", () => {
         });
     });
 
-    describe("startup recovery", () => {
-        it("recovers pending state from store including spent-by-pending via CBOR decode", async (context: localTC) => {
+    describe("startup recovery (REQT/fn70x96nxm)", () => {
+        it("recovers pending state from store including spent-by-pending via CBOR decode (startup-recovery-pending/REQT/fn70x96nxm)", async (context: localTC) => {
             const { h } = context;
             await h.snapToFirstTestRecord();
 
