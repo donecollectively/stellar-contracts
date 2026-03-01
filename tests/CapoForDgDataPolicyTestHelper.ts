@@ -133,6 +133,29 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return this.replacingTestDataPolicy();
     }
 
+    @CapoTestHelper.hasNamedSnapshot({
+        actor: "tina",
+        parentSnapName: "installedTestDataPolicy",
+        builderVersion: undefined,
+    })
+    async snapToFirstTestRecord() {
+        throw new Error("never called; see firstTestRecord()");
+        return this.firstTestRecord();
+    }
+
+    async firstTestRecord() {
+        await this.snapToInstalledTestDataPolicy();
+
+        const charterData = await this.capo.findCharterData();
+        const testDataController = await this.capo.getTestDataController(charterData);
+        const tcx = await testDataController.mkTxnCreateRecord({
+            activity: testDataController.activity.MintingActivities.$seeded$CreatingTData,
+            data: testDataController.exampleData(),
+        });
+
+        return this.submitTxnWithBlock(tcx);
+    }
+
     async replacingTestDataPolicy() {
         await this.snapToInstalledTestDataPolicy();
         const testDataController1 = await this.capo.getTestDataController();
