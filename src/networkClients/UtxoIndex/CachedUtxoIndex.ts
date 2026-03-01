@@ -74,7 +74,7 @@ import type { RelativeDelegateLink } from "../../delegation/UnspecializedDelegat
 import type { Capo } from "../../Capo.js";
 import type { FoundDatumUtxo } from "../../CapoTypes.js";
 // REQT/2w2yyc2m1k: Type-only import for in-memory pending map
-import type { TxDescription, StellarTxnContext } from "../../StellarTxnContext.js";
+import type { TxDescription } from "../../StellarTxnContext.js";
 import type { RecordIndexEntry } from "./types/RecordIndexEntry.js";
 import type { PendingTxEntry } from "./types/PendingTxEntry.js";
 
@@ -801,7 +801,6 @@ export class CachedUtxoIndex {
                 utxoId: entry.utxoId,
                 type: parsed.type,
                 parsedData: transformByteArrays(parsed.data),
-                spentInTx: null,
             };
 
             await this.store.saveRecord(record);
@@ -877,9 +876,10 @@ export class CachedUtxoIndex {
         const tx = decodeTx(signedCborHex);
         const txHash = tx.id().toHex();
 
+        alert(`🟡 REGISTER PENDING TX: ${txHash.slice(0, 8)}… — ${opts.description} — capo=${!!this._capo}`);
         await this.store.log(
             "pt1rg",
-            `Registering pending tx ${txHash}: ${opts.description}`,
+            `Registering pending tx ${txHash}: ${opts.description}, capo=${!!this._capo}`,
         );
 
         // REQT/c3ytg4rttd: Compute deadline from tx validity interval
@@ -932,10 +932,18 @@ export class CachedUtxoIndex {
         ) {
             const output = tx.body.outputs[outputIndex];
             await this.indexUtxoFromOutput(txHash, outputIndex, output, 0);
+            const utxoId = this.formatUtxoId(txHash, outputIndex);
+            const indexed = await this.store.findUtxoId(utxoId);
+            await this.store.log(
+                "pt2ix",
+                `Indexed pending output ${utxoId} at address ${indexed?.address ?? "UNKNOWN"}, hasDatum=${!!indexed?.inlineDatum}`,
+            );
         }
 
         // REQT/p2ts24jbkg: Parse inline datums into records if Capo is attached
         if (this._capo) {
+            let parsedCount = 0;
+            let skippedCount = 0;
             for (
                 let outputIndex = 0;
                 outputIndex < tx.body.outputs.length;
@@ -944,9 +952,33 @@ export class CachedUtxoIndex {
                 const utxoId = this.formatUtxoId(txHash, outputIndex);
                 const entry = await this.store.findUtxoId(utxoId);
                 if (entry && entry.inlineDatum) {
-                    await this.parseAndSaveRecord(entry);
+                    const saved = await this.parseAndSaveRecord(entry);
+                    if (saved) {
+                        parsedCount++;
+                        await this.store.log(
+                            "pt2rc",
+                            `Parsed pending record from ${utxoId}`,
+                        );
+                    } else {
+                        skippedCount++;
+                        await this.store.log(
+                            "pt2rs",
+                            `Datum at ${utxoId} did not parse to a record (parseAndSaveRecord returned false)`,
+                        );
+                    }
                 }
             }
+            alert(`🟡 PENDING RECORDS: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`);
+            await this.store.log(
+                "pt2rd",
+                `Pending record parsing complete: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`,
+            );
+        } else {
+            alert(`🔴 NO CAPO — skipping record parsing for pending tx ${txHash.slice(0, 8)}…`);
+            await this.store.log(
+                "pt2nc",
+                `⚠️ No Capo attached — skipping record parsing for pending tx ${txHash}. Records will NOT be queryable until confirmation sync.`,
+            );
         }
 
         // REQT/2w2yyc2m1k: Store live txd in memory map for same-session consumers
@@ -974,6 +1006,7 @@ export class CachedUtxoIndex {
         const pendingEntry = await this.store.findPendingTx(txHash);
         if (!pendingEntry || pendingEntry.status !== "pending") return;
 
+        alert(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description}`);
         await this.store.log(
             "pt4cf",
             `Confirming pending tx ${txHash}: ${pendingEntry.description}`,
@@ -1036,6 +1069,7 @@ export class CachedUtxoIndex {
     private async rollbackPendingTx(entry: PendingTxEntry): Promise<void> {
         const { txHash } = entry;
 
+        alert(`🔴 ROLLBACK PENDING TX: ${txHash.slice(0, 8)}… — ${entry.description} — deadline ${entry.deadline} < lastSlot ${this.lastSlot}`);
         await this.store.log(
             "pt5rb",
             `Rolling back expired pending tx ${txHash}: ${entry.description} (deadline slot ${entry.deadline} < last synced slot ${this.lastSlot})`,
@@ -1227,6 +1261,7 @@ export class CachedUtxoIndex {
     ): Promise<void> {
         // REQT/58b9nzgcbj: Check if this tx is a pending entry being confirmed
         if (this.pendingTxHashes.has(txHash)) {
+            alert(`🟢 SYNC found pending tx ${txHash.slice(0, 8)}… — fast-path confirm (skip re-index)`);
             await this.confirmPendingTx(txHash);
             return; // Skip normal indexing — outputs already indexed, inputs already marked spent
         }
