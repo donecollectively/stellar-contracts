@@ -211,7 +211,65 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
         });
     });
 
+    describe("registerPendingTx edge cases", () => {
+        it("double registration of same txHash is idempotent (double-register-noop/REQT/p2ts24jbkg)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("double-register");
+            const index = createTestIndex(h, dbName);
+            setLastSyncedBlock(index, 100, "block100", 500);
+
+            await prePopulateInputUtxos(index, tx);
+
+            const opts = {
+                description: "double reg test",
+                id: "test-txd-double",
+                depth: 0,
+                txCborHex,
+            };
+
+            // First registration
+            await index.registerPendingTx(signedTxCborHex, opts);
+
+            // Second registration — should not throw or corrupt state
+            await index.registerPendingTx(signedTxCborHex, opts);
+
+            // Verify: still exactly one pending entry
+            const pending = await index.getPendingTxs();
+            expect(pending.length).toBe(1);
+            expect(pending[0].txHash).toBe(txHash);
+            expect(pending[0].status).toBe("pending");
+
+            // Verify: outputs still indexed, not duplicated
+            const store = getStore(index);
+            for (let i = 0; i < tx.body.outputs.length; i++) {
+                const utxo = await store.findUtxoId(`${txHash}#${i}`);
+                expect(utxo, `output ${i} should exist`).toBeTruthy();
+            }
+        });
+    });
+
     describe("confirmPendingTx (REQT/58b9nzgcbj)", () => {
+        it("confirms non-existent txHash without error (confirm-nonexistent-noop/REQT/58b9nzgcbj)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const dbName = createIsolatedDbName("confirm-nonexistent");
+            const index = createTestIndex(h, dbName);
+            setLastSyncedBlock(index, 100, "block100", 500);
+
+            // Confirm a txHash that was never registered — should not throw
+            await index.confirmPendingTx("0000000000000000000000000000000000000000000000000000000000000000");
+
+            // Verify: no pending entries, no crash
+            const pending = await index.getPendingTxs();
+            expect(pending.length).toBe(0);
+        });
+
         it("confirms pending tx, preserves outputs, clears isPending, fires txConfirmed (confirm-pending-lifecycle/REQT/58b9nzgcbj)", async (context: localTC) => {
             const { h } = context;
             await h.snapToFirstTestRecord();
