@@ -874,7 +874,7 @@ export class TxSubmitMgr extends StateMachine<
                     if (this.$mgrState.isBadTx) {
                         return "failed";
                     }
-                    this.scheduleAnotherSubmit(
+                    return this.scheduleAnotherSubmit(
                         "notOk",
                         this.submitIssue,
                     );
@@ -930,7 +930,7 @@ export class TxSubmitMgr extends StateMachine<
                     this.$mgrState.serviceFailures++;
                     this.$mgrState.lastServiceFailureAt = Date.now();
                     this.$mgrState.failedSubmissions++;
-                    this.scheduleAnotherSubmit("timeout", "timed out");
+                    return this.scheduleAnotherSubmit("timeout", "timed out");
                 },
             },
         },
@@ -1148,6 +1148,7 @@ export class TxSubmitMgr extends StateMachine<
             signedTxCborHex,
         } = this.txd;
         const { onSubmitError } = options;
+
         try {
             // const submitting = Promise.resolve(tx.id());
             const submitting = this.submitter
