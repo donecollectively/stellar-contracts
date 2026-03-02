@@ -182,7 +182,37 @@ export class TxSubmissionTracker extends StateMachine<
             const txdSigned: TxDescription<any, "signed"> = txd as any;
             txdSigned.signedTxCborHex = bytesToHex(tx.toCbor());
 
+            alert(`🔵 SIGNED TX — about to call $didSignTx()`);
             this.$didSignTx();
+            alert(`🔵 $didSignTx() returned — about to registerPendingTx`);
+
+            // Register pending tx in CachedUtxoIndex if available,
+            // so speculative outputs/records are immediately queryable.
+            // MUST complete before wallet.submitTx — registerPendingTx may
+            // trigger async lookups through the index (parseDelegatedDatum → 
+            // getDgDataController) that should not race with submission.
+            const networkClient = this.setup.network as any;
+            alert(`🔵 networkClient type: ${networkClient?.constructor?.name}, hasRegisterPendingTx: ${typeof networkClient?.registerPendingTx === "function"}`);
+            if (typeof networkClient?.registerPendingTx === "function") {
+                alert(`🔵 calling registerPendingTx NOW`);
+                try {
+                    await networkClient.registerPendingTx(txdSigned.signedTxCborHex, {
+                        description: txd.description,
+                        id: txd.id,
+                        parentId: txd.parentId,
+                        depth: txd.depth,
+                        txName: txd.txName,
+                        txCborHex: txdSigned.signedTxCborHex,
+                        txd: txdSigned,
+                    });
+                    alert(`🔵 registerPendingTx completed successfully`);
+                } catch (e: any) {
+                    alert(`🔴 registerPendingTx FAILED: ${e.message}`);
+                    console.error(`registerPendingTx failed for ${txd.id}:`, e);
+                }
+            }
+
+            alert(`🔵 about to set wallet.submitTx setTimeout`);
             setTimeout(() => {
                 wallet.submitTx(tx).then((txid) => {
                     console.log(`submitted signed tx ${txid} via wallet`);
@@ -238,8 +268,10 @@ export class TxSubmissionTracker extends StateMachine<
      * @public
      */
     $didSignTx() {
+        alert(`🔵 $didSignTx: about to transition("submitting")`);
         this.isSigned = true;
         this.transition("submitting");
+        alert(`🔵 $didSignTx: transition("submitting") returned`);
     }
 
 
@@ -250,6 +282,14 @@ export class TxSubmissionTracker extends StateMachine<
         if (!this.isSigned) {
             throw new Error(`tx must be signed before submitting`);
         }
+
+        // Guard: don't re-create TxSubmitMgrs if they already exist.
+        // Re-entering "submitting" state (e.g. from updateSubmitterState)
+        // must NOT spawn duplicate managers — the existing ones handle retries.
+        if (Object.keys(this.txSubmitters).length > 0) {
+            return;
+        }
+
         const txd: TxDescription<any, "signed"> = this.txd as any;
         const { id, tx } = txd;
         if (!tx) {
@@ -356,6 +396,8 @@ export class TxSubmissionTracker extends StateMachine<
         [`failed`]: {
             ...noTransitionsExcept,
             reconfirm: { to: "confirming" },
+            confirming: { to: "confirming" },
+            submitting: { to: "submitting" },
         },
     };
 
