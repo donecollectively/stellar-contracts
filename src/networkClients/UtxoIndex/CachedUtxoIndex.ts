@@ -1034,6 +1034,20 @@ export class CachedUtxoIndex {
         const pendingEntries = await this.store.getPendingByStatus("pending");
         const lastSyncedSlot = this.lastSlot;
 
+        if (pendingEntries.length > 0) {
+            const wallclockSec = Math.floor(Date.now() / 1000);
+            const slotDrift = wallclockSec - lastSyncedSlot;
+            console.log(
+                `⏱️ checkPendingDeadlines: ${pendingEntries.length} pending, lastSlot ${lastSyncedSlot}, wallclock ${wallclockSec}, slot drift ${slotDrift}s`,
+            );
+            for (const entry of pendingEntries) {
+                const remaining = entry.deadline - lastSyncedSlot;
+                console.log(
+                    `  📌 ${entry.txHash.slice(0, 8)}…: deadline ${entry.deadline}, ${remaining > 0 ? `${remaining}s remaining` : `EXPIRED by ${-remaining}s`}`,
+                );
+            }
+        }
+
         for (const entry of pendingEntries) {
             // REQT/c3ytg4rttd: Compare deadline against chain time (last synced block's slot)
             if (entry.deadline < lastSyncedSlot) {
