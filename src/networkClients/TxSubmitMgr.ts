@@ -634,6 +634,13 @@ export class TxSubmitMgr extends StateMachine<
             }
             return this.transition("notOk");
         }
+        // Rate-limited errors are transient — the tx is valid, just retry later
+        if (message?.includes("rate limited") || message?.includes("429") || message?.includes("too many requests")) {
+            this.log(`rate-limited — will retry submission`);
+            this.submitIssue = "rate limited";
+            return this.transition("notOk");
+        }
+
         this.log(
             `unknown error: ${message}\n  - details: `,
             details,
