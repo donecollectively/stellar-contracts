@@ -212,7 +212,6 @@ export class TxSubmissionTracker extends StateMachine<
                 }
             }
 
-            alert(`🔵 about to set wallet.submitTx setTimeout`);
             setTimeout(() => {
                 wallet.submitTx(tx).then((txid) => {
                     console.log(`submitted signed tx ${txid} via wallet`);
@@ -395,6 +394,7 @@ export class TxSubmissionTracker extends StateMachine<
         [`confirmed`]: terminalState,
         [`failed`]: {
             ...noTransitionsExcept,
+            failed: { to: "failed" },
             reconfirm: { to: "confirming" },
             confirming: { to: "confirming" },
             submitting: { to: "submitting" },
