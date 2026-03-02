@@ -83,12 +83,12 @@ When the auto-setup flow encounters orphaned state from a previous partial failu
 
 ## Component: Auto-Setup Orchestration
 
-### REQT-1.0/nw1q658egr: NEXT: **Pre-Loop Orphaned Commit Recovery**
+### REQT-1.0/nw1q658egr: IMPLEMENTED/NEEDS VERIFICATION: **Pre-Loop Orphaned Commit Recovery**
 #### Purpose: Governs recovery from orphaned pending manifest changes before the auto-setup loop runs. Applied when reviewing the startup resilience path, or when debugging delegates that fail to install because a prior pending change blocks them.
 
- - **REQT-1.0.1**/2zg7em3xd1: NEXT: **Pre-Loop Commit Call** — `mkTxnUpgradeIfNeeded()` MUST call `commitPendingChangesIfNeeded()` (or equivalent) BEFORE entering the auto-setup delegate loop. This clears any orphaned pending changes from a previous failed run before new delegate setup begins.
- - **REQT-1.0.2**/5z56hybrdw: NEXT: **Clean Skip** — When no orphaned pending changes exist, the pre-loop commit MUST produce a `TxNotNeededError` and be cleanly skipped by the addlTxn resolution pipeline.
- - **REQT-1.0.3**/0crhes9x8a: NEXT: **Distinct AddlTxn Name** — The pre-loop commit MUST use a different addlTxn name than the post-loop `commitPendingChangesIfNeeded()` call (which uses `"commit pending charter changes"`). This satisfies `includeAddlTxn()`'s name uniqueness constraint and allows both commits to coexist in the same transaction context.
+ - **REQT-1.0.1**/2zg7em3xd1: IMPLEMENTED/NEEDS VERIFICATION: **Pre-Loop Commit Call** — `mkTxnUpgradeIfNeeded()` MUST call `commitPendingChangesIfNeeded()` (or equivalent) BEFORE entering the auto-setup delegate loop. This clears any orphaned pending changes from a previous failed run before new delegate setup begins.
+ - **REQT-1.0.2**/5z56hybrdw: IMPLEMENTED/NEEDS VERIFICATION: **Clean Skip** — When no orphaned pending changes exist, the pre-loop commit MUST produce a `TxNotNeededError` and be cleanly skipped by the addlTxn resolution pipeline.
+ - **REQT-1.0.3**/0crhes9x8a: IMPLEMENTED/NEEDS VERIFICATION: **Distinct AddlTxn Name** — The pre-loop commit MUST use a different addlTxn name than the post-loop `commitPendingChangesIfNeeded()` call (which uses `"commit pending charter changes"`). This satisfies `includeAddlTxn()`'s name uniqueness constraint and allows both commits to coexist in the same transaction context.
 
 # Files
 

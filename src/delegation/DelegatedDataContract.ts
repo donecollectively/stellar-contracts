@@ -16,6 +16,7 @@ import type { hasSettingsRef } from "../CapoTypes.js";
 import type { noInheritedReqts, ReqtsMap } from "../Requirements.js";
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
+import { TxNotNeededError } from "../utils.js";
 import type { UutName } from "./UutName.js";
 import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
 import {
@@ -779,15 +780,40 @@ export abstract class DelegatedDataContract<
             description: `${action} on-chain policy for ${idPrefix}-* records of type ${recordTypeName}`,
             moreInfo: this.moreInfo(),
             mkTcx: async () => {
-                const charterData = await this.capo.findCharterData();
-                console.warn(
-                    "---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead"
-                );
-                return this.capo.mkTxnInstallPolicyDelegate({
-                    typeName: recordTypeName,
-                    idPrefix,
-                    charterData,
-                });
+                try {
+                    const charterData = await this.capo.findCharterData();
+                    console.warn(
+                        "---- vvv   when multiple policies can be queued and installed at once, use mkTxnInstall**ing**PolicyDelegate instead"
+                    );
+                    return await this.capo.mkTxnInstallPolicyDelegate({
+                        typeName: recordTypeName,
+                        idPrefix,
+                        charterData,
+                    });
+                } catch (e) {
+                    if (!(e instanceof TxNotNeededError)) throw e;
+
+                    // REQT/a955vye5qt (Backfill Detection) — delegate doesn't need
+                    // upgrade, but check if its ref script is missing on-chain.
+                    // REQT/75md751tp4 (Upgrade Detection Safety) — use this.asyncCompiledScript()
+                    // directly instead of getDgDataController({onchain: true}) to avoid
+                    // triggering upgrade detection that throws on missing ref scripts.
+                    const compiledScript = await this.asyncCompiledScript();
+                    if (!compiledScript) throw e; // no script to backfill
+
+                    const hash = compiledScript.hash();
+                    const capoUtxos = await this.capo.findCapoUtxos();
+                    const refUtxo = await this.capo.findRefScriptUtxo(hash, capoUtxos);
+
+                    if (refUtxo) throw e; // ref script exists — skip cleanly
+
+                    // REQT/688px8jrrk (Backfill Transaction) — ref script missing,
+                    // create it without re-queuing the delegate change.
+                    console.warn(
+                        `⚠️ backfilling missing ref script for ${recordTypeName} delegate`
+                    );
+                    return this.capo.mkRefScriptTxn(compiledScript);
+                }
             },
         });
     }

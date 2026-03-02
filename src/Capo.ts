@@ -2814,6 +2814,14 @@ export abstract class Capo<
                     capoUtxos,
                     optional: false,
                 });
+                // REQT/2zg7em3xd1 (Pre-Loop Commit Call) — clear orphaned pending changes
+                // from a previous failed run before any new delegate setup begins.
+                // REQT/5z56hybrdw (Clean Skip) — throws TxNotNeededError when no orphans exist.
+                this.commitPendingChangesIfNeeded(
+                    tcx3,
+                    "commit orphaned pending changes" // REQT/0crhes9x8a (Distinct AddlTxn Name)
+                );
+
                 if (this.autoSetup) {
                     // tractor emoji: 🚜
                     console.log(
@@ -2918,8 +2926,12 @@ export abstract class Capo<
      * Use this after each queued manifest update
      * @public
      */
-    async commitPendingChangesIfNeeded(this: SELF, tcx: StellarTxnContext) {
-        return tcx.includeAddlTxn("commit pending charter changes", {
+    async commitPendingChangesIfNeeded(
+        this: SELF,
+        tcx: StellarTxnContext,
+        name: string = "commit pending charter changes" // REQT/0crhes9x8a (Distinct AddlTxn Name)
+    ) {
+        return tcx.includeAddlTxn(name, {
             description: `commit pending changes if needed`,
             moreInfo:
                 "If the capo manifest has any pending changes, this tx makes them active",
