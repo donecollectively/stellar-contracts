@@ -1854,6 +1854,7 @@ export class CachedUtxoIndex {
 
     async fetchFromBlockfrost<T>(url: string): Promise<T> {
         // Use global rate limiter to avoid exceeding Blockfrost's rate limits
+        console.log(`⚡ fetchFromBlockfrost: ${url}`);
         return getBlockfrostRateLimiter().fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
                 headers: {
                     project_id: this.blockfrostKey,
@@ -2139,6 +2140,7 @@ export class CachedUtxoIndex {
         }
 
         // Fall back to network if not in cache
+        console.warn(`⚡ getUtxo CACHE MISS — falling through to network for ${utxoId}`);
         return this.network.getUtxo(id);
     }
 
@@ -2162,6 +2164,7 @@ export class CachedUtxoIndex {
         }
 
         // Fall back to network if no cached data
+        console.warn(`⚡ getUtxos CACHE MISS — falling through to network for ${addrStr}`);
         return this.network.getUtxos(address);
     }
 
@@ -2193,11 +2196,13 @@ export class CachedUtxoIndex {
         }
 
         // Fall through to network on cache miss
+        console.warn(`⚡ getUtxosWithAssetClass CACHE MISS — falling through to network for ${addrStr} asset ${policyId.slice(0,8)}…/${tokenName}`);
         if (this.network.getUtxosWithAssetClass) {
             return this.network.getUtxosWithAssetClass(address, assetClass);
         }
 
         // If network doesn't support this method, filter from getUtxos
+        console.warn(`⚡ getUtxosWithAssetClass — network doesn't support method, falling back to getUtxos`);
         const allUtxos = await this.network.getUtxos(address);
         const minAssetValue = makeValue(
             assetClass.mph,
