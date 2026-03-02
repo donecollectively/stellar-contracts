@@ -1035,15 +1035,13 @@ export class CachedUtxoIndex {
         const lastSyncedSlot = this.lastSlot;
 
         if (pendingEntries.length > 0) {
-            const wallclockSec = Math.floor(Date.now() / 1000);
-            const slotDrift = wallclockSec - lastSyncedSlot;
             console.log(
-                `⏱️ checkPendingDeadlines: ${pendingEntries.length} pending, lastSlot ${lastSyncedSlot}, wallclock ${wallclockSec}, slot drift ${slotDrift}s`,
+                `⏱️ checkPendingDeadlines: ${pendingEntries.length} pending, lastSlot ${lastSyncedSlot}`,
             );
             for (const entry of pendingEntries) {
                 const remaining = entry.deadline - lastSyncedSlot;
                 console.log(
-                    `  📌 ${entry.txHash.slice(0, 8)}…: deadline ${entry.deadline}, ${remaining > 0 ? `${remaining}s remaining` : `EXPIRED by ${-remaining}s`}`,
+                    `  📌 ${entry.txHash.slice(0, 8)}…: deadline ${entry.deadline}, ${remaining > 0 ? `~${remaining}s remaining` : `EXPIRED by ${-remaining}s`}`,
                 );
             }
         }
