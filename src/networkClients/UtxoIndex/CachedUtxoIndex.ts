@@ -509,27 +509,16 @@ export class CachedUtxoIndex {
             );
         }
 
-        // Advance block tracking from the highest block seen in processed transactions.
-        // This ensures lastSlot advances during periodic refresh, which is needed for
-        // pending-tx deadline comparison (checkPendingDeadlines).
-        // Note: technically outside the in-flight-tx plan scope — gap discovered during
-        // implementation. See IN-1 notes in work unit.
-        if (highestBlockHeight > this.lastBlockHeight) {
-            try {
-                const blockDetails = await this.fetchBlockDetails(
-                    String(highestBlockHeight),
-                );
-                const entry = this.blockfrostBlockToIndexEntry(blockDetails);
-                await this.store.saveBlock(entry);
-                this.lastBlockHeight = entry.height;
-                this.lastBlockId = entry.hash;
-                this.lastSlot = entry.slot;
-            } catch (e: any) {
-                await this.store.log(
-                    "bk5er",
-                    `Failed to fetch block ${highestBlockHeight} for slot advancement: ${e.message || e}`,
-                );
-            }
+        // REQT/9gq8rwg9ng: Fetch latest block unconditionally to advance lastSlot.
+        // Pending-tx deadline rollback (checkPendingDeadlines) compares against lastSlot,
+        // so it must reflect the current chain tip even when no new transactions are found.
+        try {
+            await this.fetchAndStoreLatestBlock();
+        } catch (e: any) {
+            await this.store.log(
+                "bk5er",
+                `Failed to fetch latest block for slot advancement: ${e.message || e}`,
+            );
         }
 
         this.events.emit("synced");
