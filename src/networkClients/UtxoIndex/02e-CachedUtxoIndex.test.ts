@@ -28,10 +28,13 @@ import { makeBlockfrostV0Client } from "@helios-lang/tx-utils";
 import {
     makeAddress,
     makeTxId,
+    makeTxInput,
+    makeTxOutput,
     makeTxOutputId,
     makeAssetClass,
     makeValue,
 } from "@helios-lang/ledger";
+import type { TxInput } from "@helios-lang/ledger";
 import { CachedUtxoIndex } from "./CachedUtxoIndex.js";
 import { CapoDataBridge } from "../../helios/scriptBundling/CapoHeliosBundle.bridge.js";
 import {
@@ -1329,3 +1332,148 @@ if (!BLOCKFROST_API_KEY) {
         });
     });
 }
+
+// =========================================================================
+// Wallet Address UTXO Reconciliation Tests
+// No Blockfrost API key required — uses mocked network
+// =========================================================================
+
+/**
+ * Creates a mock TxInput with a given txHash, output index, and lovelace amount.
+ */
+function mockTxInput(txHash: string, outputIndex: number, lovelace: bigint): TxInput {
+    const addr = makeAddress(false, [false, "0".repeat(56)]);
+    const txId = makeTxId(txHash);
+    const outputId = makeTxOutputId(txId, outputIndex);
+    const output = makeTxOutput(addr, makeValue(lovelace));
+    return makeTxInput(outputId, output);
+}
+
+/** Distinct 64-char hex tx hashes for test UTxOs */
+const TX1 = "aa".repeat(32);
+const TX2 = "bb".repeat(32);
+const TX3 = "cc".repeat(32);
+
+describe("Wallet Address UTXO Reconciliation (REQT/ygvc43wg0x)", () => {
+    let index: CachedUtxoIndex;
+    let dbName: string;
+    // Use a deterministic bech32 address derived from mockTxInput's address
+    const WALLET_ADDR = makeAddress(false, [false, "0".repeat(56)]).toBech32();
+
+    beforeEach(async () => {
+        dbName = createIsolatedDbName("wallet-reconcile");
+        // Create index with a mock network
+        const mockNetwork = {
+            getUtxos: vi.fn().mockResolvedValue([]),
+            getUtxo: vi.fn(),
+            hasUtxo: vi.fn(),
+            isMainnet: () => false,
+            get now() { return 0; },
+            get parameters() { return Promise.resolve({}); },
+        };
+        index = new CachedUtxoIndex({
+            address: TEST_CAPO_ADDRESS,
+            mph: TEST_CAPO_MPH,
+            isMainnet: false,
+            network: mockNetwork as any,
+            bridge: CapoDataBridge,
+            blockfrostKey: "preprod_fake_key_for_wallet_tests",
+            dbName,
+        });
+        // Suppress actual Blockfrost sync — we're testing wallet paths only
+        vi.spyOn(index as any, "syncNow").mockResolvedValue(undefined);
+        // Resolve syncReady so queries don't block
+        (index as any).syncReadyResolve?.();
+    });
+
+    afterEach(async () => {
+        vi.restoreAllMocks();
+        await closeStore(index);
+        await Dexie.delete(dbName);
+    });
+
+    it("marks stale UTxOs as spent after wallet re-sync (stale-eviction/REQT/ygvc43wg0x)", async () => {
+        // Setup: mock network returns 3 UTxOs on first call
+        const utxo1 = mockTxInput(TX1, 0, 200_000_000n);
+        const utxo2 = mockTxInput(TX2, 0, 300_000_000n);
+        const utxo3 = mockTxInput(TX3, 0, 150_000_000n);
+        const networkSpy = vi.spyOn(index["network"], "getUtxos");
+        networkSpy.mockResolvedValueOnce([utxo1, utxo2, utxo3]);
+
+        // Act: register wallet — caches 3 UTxOs
+        await index.addWalletAddress(WALLET_ADDR);
+
+        // Verify: 3 UTxOs cached
+        const store = getStore(index);
+        const cached = await store.findUtxosByAddress(WALLET_ADDR);
+        expect(cached).toHaveLength(3);
+
+        // Setup: mock network returns only utxo1 on re-sync (utxo2, utxo3 spent)
+        networkSpy.mockResolvedValueOnce([utxo1]);
+        // Force staleness so syncWalletAddressIfStale triggers
+        await store.saveWalletAddress({
+            address: WALLET_ADDR,
+            lastBlockHeight: 0,
+            lastSyncTime: 0,
+        });
+
+        // Act: getUtxos triggers syncWalletAddressIfStale
+        const result = await index.getUtxos(makeAddress(WALLET_ADDR));
+
+        // Assert: only utxo1 returned
+        expect(result).toHaveLength(1);
+
+        // Verify: stale UTxOs removed from cache
+        const staleEntry = await store.findUtxoId(`${TX2}#0`);
+        // stale entry should either be gone or have spentInTx set
+        if (staleEntry) {
+            expect(staleEntry.spentInTx).toBeTruthy();
+        }
+    });
+
+    it("handles wallet with zero on-chain UTxOs (zero-utxos/REQT/06b01nyf51)", async () => {
+        const networkSpy = vi.spyOn(index["network"], "getUtxos");
+        // First sync: 2 UTxOs
+        const utxo1 = mockTxInput(TX1, 0, 200_000_000n);
+        const utxo2 = mockTxInput(TX2, 0, 300_000_000n);
+        networkSpy.mockResolvedValueOnce([utxo1, utxo2]);
+        await index.addWalletAddress(WALLET_ADDR);
+
+        // Re-sync: zero UTxOs
+        networkSpy.mockResolvedValueOnce([]);
+        const store = getStore(index);
+        await store.saveWalletAddress({
+            address: WALLET_ADDR,
+            lastBlockHeight: 0,
+            lastSyncTime: 0,
+        });
+
+        const result = await index.getUtxos(makeAddress(WALLET_ADDR));
+        expect(result).toHaveLength(0);
+    });
+
+    it("re-registration reconciles existing stale data (re-register-reconcile/REQT/mp4dx7ngvf)", async () => {
+        const networkSpy = vi.spyOn(index["network"], "getUtxos");
+
+        // First registration: 3 UTxOs
+        networkSpy.mockResolvedValueOnce([
+            mockTxInput(TX1, 0, 200_000_000n),
+            mockTxInput(TX2, 0, 300_000_000n),
+            mockTxInput(TX3, 0, 150_000_000n),
+        ]);
+        await index.addWalletAddress(WALLET_ADDR);
+
+        const store = getStore(index);
+        let cached = await store.findUtxosByAddress(WALLET_ADDR);
+        expect(cached).toHaveLength(3);
+
+        // Re-registration: only 1 UTxO remains
+        networkSpy.mockResolvedValueOnce([
+            mockTxInput(TX1, 0, 200_000_000n),
+        ]);
+        await index.addWalletAddress(WALLET_ADDR);
+
+        cached = await store.findUtxosByAddress(WALLET_ADDR);
+        expect(cached).toHaveLength(1);
+    });
+});
