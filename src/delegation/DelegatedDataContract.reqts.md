@@ -112,6 +112,7 @@ Self-installing the controller's policy delegate into the Capo manifest, gated b
 
 #### Key Requirements:
 1. **Policy Setup**: The controller can register itself in the Capo's delegate manifest, creating an additional transaction for policy installation — gated by the Capo's feature flags so only enabled controllers are deployed.
+2. **Ref Script Backfill**: When a delegate is current in the manifest but its ref script is missing on-chain, the controller detects the gap and creates a backfill transaction to restore the ref script — without re-queuing the delegate change or modifying the manifest.
 
 ### 9. Gov Authority Integration
 Conditional inclusion of the Capo's governance authority token in transactions when the controller's script bundle requires it.
@@ -164,6 +165,13 @@ Conditional inclusion of the Capo's governance authority token in transactions w
  - 3.2.3: REQT-zx1w72nxen: **COMPLETED**/draft: **Base Class Passthrough** - The base class implementation MUST be a passthrough that returns the record unmodified.
  - 3.2.4: REQT-pj4jv8zq0v: **COMPLETED**/draft: **Synchronous Contract** - MUST be synchronous (returns `TLike`, not `Promise<TLike>`).
  - 3.2.5: REQT-51vkbcm2vf: **NEXT**/draft: **Record Input Protection** - The record passed to `beforeCreate()` MUST be a deep clone of the merged record, frozen recursively before the hook receives it. The clone MUST be Helios-aware: calling `.copy()` on mutable Helios types (Address, Value, Assets), sharing immutable Helios types by reference (PubKeyHash, UplcData variants), and recursing into plain objects and arrays. The freeze MUST be recursive but MUST NOT freeze Helios type instances — only plain objects and arrays. This protects caller data from accidental mutation and enforces the return-value contract.
+ - 3.2.6: REQT-2kd3mrnq4t: **BACKLOG**/draft: **Activity Identity in createContext** - The `createContext` SHOULD include the minting activity's variant name and pre-serialization arguments, type-safe to the controller's generated `MintingActivity` type. The variant name MUST always be available at hook invocation time. `activityArgs` MAY be undefined when the activity has no explicit arguments (the common case for seeded minting activities).
+
+Expected type shape:
+```typescript
+activityName: /* variant key from MintingActivity, e.g. */ "CreatingTData"
+activityArgs?: /* args for that variant, e.g. */ TxOutputId
+```
 
 ### **REQT-3.3.0/6t6hk8zk1w**: **COMPLETED**/draft: **Creation Transaction Output**
 #### Purpose: Governs how the creation transaction outputs the new record to the chain. Applied when reviewing datum construction, value composition, or the authority flow during record creation.
@@ -197,6 +205,13 @@ Conditional inclusion of the Capo's governance authority token in transactions w
  - 4.2.5: REQT-v538zt7mkh: **NEXT**/draft: **Record Input Protection** - The merged record passed to `beforeUpdate()` MUST be a deep clone of the merged record, frozen recursively before the hook receives it. The clone MUST be Helios-aware: calling `.copy()` on mutable Helios types (Address, Value, Assets), sharing immutable Helios types by reference (PubKeyHash, UplcData variants), and recursing into plain objects and arrays. The freeze MUST be recursive but MUST NOT freeze Helios type instances — only plain objects and arrays.
  - 4.2.6: REQT-fyc6n4e6rt: **NEXT**/draft: **Original Record Protection** - The `original` record in the `updateContext` MUST be a deep clone of the pre-update on-chain record, frozen recursively before the hook receives it. This follows the same Helios-aware cloning strategy as the record input. The hook can safely read `original` for comparison without risk of mutating the source UTxO data.
  - 4.2.7: REQT-tsg5f4mz07: **NEXT**/draft: **Return Value Contract** - The framework MUST use only the return value of `beforeUpdate()` as the record data for datum construction. The frozen input enforces that hooks return a new object with modifications rather than mutating the input in place.
+ - 4.2.8: REQT-mfpqs35scd: **BACKLOG**/draft: **Activity Identity in updateContext** - The `updateContext` SHOULD include the spending activity's variant name and pre-serialization arguments, type-safe to the controller's generated `SpendingActivity` type. Same contract as the `createContext` counterpart: variant name always present, args undefined when no explicit arguments exist.
+
+Expected type shape:
+```typescript
+activityName: /* variant key from SpendingActivity, e.g. */ "UpdatingTData"
+activityArgs?: /* args for that variant, e.g. */ number[]
+```
 
 ### **REQT-4.3.0/03vrnvz9kw**: **COMPLETED**/draft: **Update Transaction Output**
 #### Purpose: Governs how the update transaction outputs the modified record back to the chain. Applied when reviewing datum reconstruction, value composition, or the return address for updated records.
@@ -247,9 +262,9 @@ Conditional inclusion of the Capo's governance authority token in transactions w
 ### **REQT-8.2.0/c1c692bq30**: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Ref Script Backfill**
 #### Purpose: Governs recovery when a delegate's policy is current in the manifest but its ref script is missing on-chain. Applied when reviewing the auto-setup resilience path, or when debugging delegates that operate without ref scripts after a partial installation failure.
 
- - 8.2.1: REQT-a955vye5qt: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Backfill Detection** - When `setupCapoPolicy()` determines the delegate does not need an upgrade (caught `TxNotNeededError`), MUST check whether the delegate's compiled script has a corresponding ref script UTxO on-chain. If the ref script exists, MUST rethrow `TxNotNeededError` (no action needed). If the ref script is missing, MUST proceed to backfill.
+ - 8.2.1: REQT-a955vye5qt: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Backfill Detection** - When setupCapoPolicy() determines the delegate does not need an upgrade (caught TxNotNeededError), MUST check whether the delegate's compiled script has a corresponding ref script UTxO on-chain. If the ref script exists, MUST rethrow TxNotNeededError (no action needed). If the ref script is missing, MUST proceed to backfill.
  - 8.2.2: REQT-688px8jrrk: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Backfill Transaction** - When a missing ref script is detected, MUST queue an additional transaction that creates the ref script on-chain for the current delegate, without re-queuing the delegate change or modifying the manifest. The backfill transaction MUST be the only transaction produced — no upgrade, no commit.
- - 8.2.3: REQT-75md751tp4: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Upgrade Detection Safety** - The backfill detection path MUST NOT trigger the upgrade detection logic that throws when a ref script is missing. MUST obtain the delegate's compiled script without invoking `onchain: true` upgrade checks, to avoid circular failure.
+ - 8.2.3: REQT-75md751tp4: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Upgrade Detection Safety** - The backfill detection path MUST NOT trigger the upgrade detection logic that throws when a ref script is missing. MUST obtain the delegate's compiled script without invoking onchain: true upgrade checks, to avoid circular failure.
 
 ## Area 9: Gov Authority Integration
 
@@ -274,8 +289,8 @@ Conditional inclusion of the Capo's governance authority token in transactions w
 ### Version 1.0
 
  - **added**: Initial v3 requirements document covering full CRUD surface, migrated from v2 lifecycle-hooks-only scope — 9 functional areas, 44 requirements. Migrated beforeCreate (REQT-5xcxm119jz), beforeUpdate (REQT-5rsshp821f), afterCreate (REQT-1q0vd26stf) with original UUTs preserved. Added Record Type Identity, Reading, Creation pipeline, Update pipeline, Deletion (BACKLOG), Validation, Data Serialization, Policy Setup, and Gov Authority Integration.
- - **updated**: Hook context enrichment and input protection — per Code Whisperer pre-coding advisory (work unit k7m2x9p4w6). Updated REQT-a30n3rbmkp and REQT-76xh3h4fsk to add tcx to hook contexts (status COMPLETED→NEXT). Added 4 new requirements: REQT-51vkbcm2vf (beforeCreate record input protection), REQT-v538zt7mkh (beforeUpdate record input protection), REQT-fyc6n4e6rt (original record protection), REQT-tsg5f4mz07 (return value contract). All new reqts status NEXT. Total requirements now 48.
- - **added**: Ref Script Backfill (REQT-8.2.0/c1c692bq30) — 3 new requirements for recovering from missing ref scripts during auto-setup. Covers backfill detection (REQT-a955vye5qt), backfill transaction (REQT-688px8jrrk), and upgrade detection safety (REQT-75md751tp4). All status NEXT. Total requirements now 51. Origin: work unit 20260301.delegate-setup-backfill.
+ - **updated**: Hook context enrichment and input protection — per Code Whisperer pre-coding advisory (work unit k7m2x9p4w6) — Updated REQT-a30n3rbmkp and REQT-76xh3h4fsk to add tcx to hook contexts (status COMPLETED→NEXT). Added 4 new requirements: REQT-51vkbcm2vf (beforeCreate record input protection), REQT-v538zt7mkh (beforeUpdate record input protection), REQT-fyc6n4e6rt (original record protection), REQT-tsg5f4mz07 (return value contract). All new reqts status NEXT. Total requirements now 48.
+ - **added**: Backlog: typed activity identity in hook contexts — Added REQT-2kd3mrnq4t (Activity Identity in createContext, BACKLOG) and REQT-mfpqs35scd (Activity Identity in updateContext, BACKLOG). Type-safe variant names and args from generated MintingActivity/SpendingActivity types. Design detail in offchainRuntime.ARCHITECTURE.md § DelegatedDataContract Lifecycle Hooks. Total requirements now 50.
 
 
 # Release Management Plan
