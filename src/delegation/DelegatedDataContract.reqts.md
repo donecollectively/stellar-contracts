@@ -244,6 +244,13 @@ Conditional inclusion of the Capo's governance authority token in transactions w
  - 8.1.3: REQT-91s9d9pm83: **COMPLETED**/draft: **Additional Transaction Pattern** - MUST use `tcx.includeAddlTxn()` to queue the policy installation as an additional transaction with a deferred `mkTcx` callback. The callback MUST fetch fresh charter data before calling `capo.mkTxnInstallPolicyDelegate()` with the controller's `recordTypeName` and `idPrefix`.
  - 8.1.4: REQT-gb7s82j7nt: **COMPLETED**/draft: **moreInfo Description** - MUST provide a `moreInfo()` method returning a human-readable description of the controller's purpose, used in the Capo's on-screen policy management interface. The base class MUST provide a default implementation referencing the `idPrefix` and `recordTypeName`.
 
+### **REQT-8.2.0/c1c692bq30**: **NEXT**/draft: **Ref Script Backfill**
+#### Purpose: Governs recovery when a delegate's policy is current in the manifest but its ref script is missing on-chain. Applied when reviewing the auto-setup resilience path, or when debugging delegates that operate without ref scripts after a partial installation failure.
+
+ - 8.2.1: REQT-a955vye5qt: **NEXT**/draft: **Backfill Detection** - When `setupCapoPolicy()` determines the delegate does not need an upgrade (caught `TxNotNeededError`), MUST check whether the delegate's compiled script has a corresponding ref script UTxO on-chain. If the ref script exists, MUST rethrow `TxNotNeededError` (no action needed). If the ref script is missing, MUST proceed to backfill.
+ - 8.2.2: REQT-688px8jrrk: **NEXT**/draft: **Backfill Transaction** - When a missing ref script is detected, MUST queue an additional transaction that creates the ref script on-chain for the current delegate, without re-queuing the delegate change or modifying the manifest. The backfill transaction MUST be the only transaction produced — no upgrade, no commit.
+ - 8.2.3: REQT-75md751tp4: **NEXT**/draft: **Upgrade Detection Safety** - The backfill detection path MUST NOT trigger the upgrade detection logic that throws when a ref script is missing. MUST obtain the delegate's compiled script without invoking `onchain: true` upgrade checks, to avoid circular failure.
+
 ## Area 9: Gov Authority Integration
 
 ### **REQT-9.1.0/0h457z25k5**: **COMPLETED**/draft: **Gov Authority Integration**
@@ -268,6 +275,7 @@ Conditional inclusion of the Capo's governance authority token in transactions w
 
  - **added**: Initial v3 requirements document covering full CRUD surface, migrated from v2 lifecycle-hooks-only scope — 9 functional areas, 44 requirements. Migrated beforeCreate (REQT-5xcxm119jz), beforeUpdate (REQT-5rsshp821f), afterCreate (REQT-1q0vd26stf) with original UUTs preserved. Added Record Type Identity, Reading, Creation pipeline, Update pipeline, Deletion (BACKLOG), Validation, Data Serialization, Policy Setup, and Gov Authority Integration.
  - **updated**: Hook context enrichment and input protection — per Code Whisperer pre-coding advisory (work unit k7m2x9p4w6). Updated REQT-a30n3rbmkp and REQT-76xh3h4fsk to add tcx to hook contexts (status COMPLETED→NEXT). Added 4 new requirements: REQT-51vkbcm2vf (beforeCreate record input protection), REQT-v538zt7mkh (beforeUpdate record input protection), REQT-fyc6n4e6rt (original record protection), REQT-tsg5f4mz07 (return value contract). All new reqts status NEXT. Total requirements now 48.
+ - **added**: Ref Script Backfill (REQT-8.2.0/c1c692bq30) — 3 new requirements for recovering from missing ref scripts during auto-setup. Covers backfill detection (REQT-a955vye5qt), backfill transaction (REQT-688px8jrrk), and upgrade detection safety (REQT-75md751tp4). All status NEXT. Total requirements now 51. Origin: work unit 20260301.delegate-setup-backfill.
 
 
 # Release Management Plan
