@@ -121,8 +121,10 @@ export function mkCancellablePromise<T>(
         cpObj.status = "fulfilled"
         timeoutId = undefined
     }, () =>{
-        // prevent unhanded promise rejection.
-        // callers should still handle the rejection.
+        // Clear timeout on rejection too — if the wrapped promise rejects,
+        // there's no point firing the timeout callback afterward.
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = undefined
     });
 
     if (wrapped) {
