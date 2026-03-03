@@ -163,6 +163,10 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // REQT/hhbcnvd9aj: Mark a UTXO as spent
+    async deleteUtxo(utxoId: string): Promise<void> {
+        await this.utxos.where("utxoId").equals(utxoId).delete();
+    }
+
     async markUtxoSpent(utxoId: string, spentInTx: string): Promise<void> {
         await this.utxos.where("utxoId").equals(utxoId).modify({ spentInTx });
 

@@ -668,8 +668,21 @@ export class CachedUtxoIndex {
         const heliosAddress = makeAddress(address);
         const utxos = await this.network.getUtxos(heliosAddress);
 
-        // Update cached UTXOs for this address
-        // First, we store the new UTXOs (put will overwrite existing)
+        // REQT/06b01nyf51: Reconcile cached UTxOs against fresh network snapshot
+        // Build set of fresh utxoIds for O(1) lookup
+        const freshUtxoIds = new Set(utxos.map((u) => u.id.toString()));
+
+        // Find cached unspent UTxOs for this address that are no longer on-chain
+        const cachedUtxos = await this.store.findUtxosByAddress(address);
+        let removedCount = 0;
+        for (const cached of cachedUtxos) {
+            if (!freshUtxoIds.has(cached.utxoId)) {
+                await this.store.deleteUtxo(cached.utxoId);
+                removedCount++;
+            }
+        }
+
+        // Store fresh UTXOs (put will overwrite existing by utxoId)
         for (const utxo of utxos) {
             const entry = this.txInputToIndexEntry(utxo);
             await this.store.saveUtxo(entry);
@@ -684,7 +697,7 @@ export class CachedUtxoIndex {
 
         await this.store.log(
             "wa2ok",
-            `Synced wallet ${address}: ${utxos.length} UTXOs`,
+            `Synced wallet ${address}: ${utxos.length} UTXOs (${removedCount} stale removed)`,
         );
 
         return true;

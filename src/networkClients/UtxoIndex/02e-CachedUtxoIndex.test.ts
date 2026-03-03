@@ -27,6 +27,7 @@ import { makeBlockfrostV0Client } from "@helios-lang/tx-utils";
 
 import {
     makeAddress,
+    makeDummyAddress,
     makeTxId,
     makeTxInput,
     makeTxOutput,
@@ -1338,11 +1339,15 @@ if (!BLOCKFROST_API_KEY) {
 // No Blockfrost API key required — uses mocked network
 // =========================================================================
 
+/** A valid testnet wallet address for test use */
+const WALLET_ADDR = makeDummyAddress(false, 42).toBech32();
+
 /**
  * Creates a mock TxInput with a given txHash, output index, and lovelace amount.
+ * Uses WALLET_ADDR so the UTxO's address matches the registered wallet.
  */
 function mockTxInput(txHash: string, outputIndex: number, lovelace: bigint): TxInput {
-    const addr = makeAddress(false, [false, "0".repeat(56)]);
+    const addr = makeAddress(WALLET_ADDR);
     const txId = makeTxId(txHash);
     const outputId = makeTxOutputId(txId, outputIndex);
     const output = makeTxOutput(addr, makeValue(lovelace));
@@ -1357,8 +1362,6 @@ const TX3 = "cc".repeat(32);
 describe("Wallet Address UTXO Reconciliation (REQT/ygvc43wg0x)", () => {
     let index: CachedUtxoIndex;
     let dbName: string;
-    // Use a deterministic bech32 address derived from mockTxInput's address
-    const WALLET_ADDR = makeAddress(false, [false, "0".repeat(56)]).toBech32();
 
     beforeEach(async () => {
         dbName = createIsolatedDbName("wallet-reconcile");
@@ -1371,6 +1374,9 @@ describe("Wallet Address UTXO Reconciliation (REQT/ygvc43wg0x)", () => {
             get now() { return 0; },
             get parameters() { return Promise.resolve({}); },
         };
+        // Spy on syncNow BEFORE construction via prototype so the
+        // constructor's this.syncNow() call is intercepted
+        vi.spyOn(CachedUtxoIndex.prototype, "syncNow").mockResolvedValue(undefined);
         index = new CachedUtxoIndex({
             address: TEST_CAPO_ADDRESS,
             mph: TEST_CAPO_MPH,
@@ -1380,8 +1386,6 @@ describe("Wallet Address UTXO Reconciliation (REQT/ygvc43wg0x)", () => {
             blockfrostKey: "preprod_fake_key_for_wallet_tests",
             dbName,
         });
-        // Suppress actual Blockfrost sync — we're testing wallet paths only
-        vi.spyOn(index as any, "syncNow").mockResolvedValue(undefined);
         // Resolve syncReady so queries don't block
         (index as any).syncReadyResolve?.();
     });
@@ -1452,10 +1456,10 @@ describe("Wallet Address UTXO Reconciliation (REQT/ygvc43wg0x)", () => {
         expect(result).toHaveLength(0);
     });
 
-    it("re-registration reconciles existing stale data (re-register-reconcile/REQT/mp4dx7ngvf)", async () => {
+    it("stale sync after registration removes spent UTxOs (stale-after-register/REQT/06b01nyf51)", async () => {
         const networkSpy = vi.spyOn(index["network"], "getUtxos");
 
-        // First registration: 3 UTxOs
+        // Register with 3 UTxOs
         networkSpy.mockResolvedValueOnce([
             mockTxInput(TX1, 0, 200_000_000n),
             mockTxInput(TX2, 0, 300_000_000n),
@@ -1467,12 +1471,20 @@ describe("Wallet Address UTXO Reconciliation (REQT/ygvc43wg0x)", () => {
         let cached = await store.findUtxosByAddress(WALLET_ADDR);
         expect(cached).toHaveLength(3);
 
-        // Re-registration: only 1 UTxO remains
+        // Force staleness, then getUtxos with only 1 remaining
+        await store.saveWalletAddress({
+            address: WALLET_ADDR,
+            lastBlockHeight: 0,
+            lastSyncTime: 0,
+        });
         networkSpy.mockResolvedValueOnce([
             mockTxInput(TX1, 0, 200_000_000n),
         ]);
-        await index.addWalletAddress(WALLET_ADDR);
 
+        const result = await index.getUtxos(makeAddress(WALLET_ADDR));
+        expect(result).toHaveLength(1);
+
+        // Verify stale entries removed
         cached = await store.findUtxosByAddress(WALLET_ADDR);
         expect(cached).toHaveLength(1);
     });
