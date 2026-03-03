@@ -78,7 +78,11 @@ import type { TxDescription } from "../../StellarTxnContext.js";
 import type { RecordIndexEntry } from "./types/RecordIndexEntry.js";
 import type { PendingTxEntry } from "./types/PendingTxEntry.js";
 
-// periodically queries for new utxos at the capo address
+// Lightweight block-tip poll interval: checks blocks/latest for new blocks
+const blockPollInterval = 5 * 1000; // 5 seconds
+
+// Fallback refresh interval: full sync runs if no new block detected for this long
+// (safety net in case block-tip polling misses something)
 const refreshInterval = 60 * 1000; // 1 minute
 const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
 
@@ -157,6 +161,9 @@ export class CachedUtxoIndex {
 
     // REQT/a9y19g0pmr: Timer for pending deadline checks (10s interval)
     private deadlineTimerId: ReturnType<typeof setInterval> | null = null;
+
+    // Block-tip poll timer: lightweight 5s check for new blocks
+    private blockPollTimerId: ReturnType<typeof setInterval> | null = null;
 
     // REQT/2w2yyc2m1k: In-Memory Pending Map — session-scoped, not persisted
     private pendingTxMap: Map<string, TxDescription<any, "submitted">> = new Map();
@@ -455,6 +462,23 @@ export class CachedUtxoIndex {
             );
         }
 
+        // Advance lastBlockHeight/lastSlot to current tip BEFORE syncing txns.
+        // This ensures startHeight (captured above from the PREVIOUS lastBlockHeight)
+        // is used for the txn query, while lastBlockHeight now reflects the tip at
+        // sync-start. If a new block arrives during the txn fetch below, the next
+        // poll will detect it (tip > lastBlockHeight) and sync from lastBlockHeight+1,
+        // closing the gap. Previously this was done AFTER the txn fetch, which could
+        // advance lastBlockHeight past a block whose txns weren't yet visible in the
+        // address/transactions query.
+        try {
+            await this.fetchAndStoreLatestBlock();
+        } catch (e: any) {
+            await this.store.log(
+                "bk5er",
+                `Failed to fetch latest block for slot advancement: ${e.message || e}`,
+            );
+        }
+
         let currentPage = 1;
         let hasMorePages = true;
         let lastTxIndex: number | undefined;
@@ -509,36 +533,46 @@ export class CachedUtxoIndex {
             );
         }
 
-        // REQT/9gq8rwg9ng: Fetch latest block unconditionally to advance lastSlot.
-        // Pending-tx deadline rollback (checkPendingDeadlines) compares against lastSlot,
-        // so it must reflect the current chain tip even when no new transactions are found.
-        try {
-            await this.fetchAndStoreLatestBlock();
-        } catch (e: any) {
-            await this.store.log(
-                "bk5er",
-                `Failed to fetch latest block for slot advancement: ${e.message || e}`,
-            );
-        }
-
         this.events.emit("synced");
     }
 
     /**
-     * Starts periodic refresh timer to automatically check for new transactions,
-     * and the 10s deadline-check timer for pending tx management.
+     * Starts block-tip polling (5s) to detect new blocks and trigger sync,
+     * a fallback full-refresh timer (60s), and the 10s deadline-check timer
+     * for pending tx management.
+     *
+     * The block-tip poll is lightweight (single blocks/latest call). When a
+     * new block is detected, it triggers checkForNewTxns() immediately. The
+     * 60s fallback ensures sync still happens even if block polling misses
+     * something.
      *
      * REQT/zzsg63b2fb (Automated Periodic Refresh)
      * REQT/a9y19g0pmr (Rollback Expired Pending Transaction — 10s timer)
      */
     startPeriodicRefresh(): void {
-        if (this.refreshTimerId) {
+        if (this.blockPollTimerId) {
             return; // Already running
         }
         this.store.log(
             "pr5t1",
-            `Starting periodic refresh every ${refreshInterval / 1000} seconds`,
+            `Starting block-tip poll every ${blockPollInterval / 1000}s, fallback refresh every ${refreshInterval / 1000}s`,
         );
+
+        // Primary: lightweight block-tip poll at 5s intervals
+        this.blockPollTimerId = setInterval(async () => {
+            try {
+                const newBlock = await this.checkBlockTip();
+                if (newBlock) {
+                    console.debug(`🔵 new block detected — triggering sync`);
+                    await this.checkForNewTxns();
+                }
+            } catch (e) {
+                console.warn("Block-tip poll failed:", e);
+            }
+        }, blockPollInterval);
+        this.blockPollTimerId.unref?.();
+
+        // Fallback: full refresh at 60s intervals (safety net)
         this.refreshTimerId = setInterval(async () => {
             try {
                 await this.checkForNewTxns();
@@ -550,7 +584,6 @@ export class CachedUtxoIndex {
                 );
             }
         }, refreshInterval);
-        
         this.refreshTimerId.unref?.();
 
         // REQT/a9y19g0pmr: Start 10s deadline-check timer
@@ -572,6 +605,11 @@ export class CachedUtxoIndex {
      * REQT/a9y19g0pmr (Rollback timer lifecycle)
      */
     stopPeriodicRefresh(): void {
+        if (this.blockPollTimerId) {
+            this.store.log("pr5t0", "Stopping block-tip poll and periodic refresh");
+            clearInterval(this.blockPollTimerId);
+            this.blockPollTimerId = null;
+        }
         if (this.refreshTimerId) {
             this.store.log("pr5t0", "Stopping periodic refresh");
             clearInterval(this.refreshTimerId);
@@ -589,7 +627,7 @@ export class CachedUtxoIndex {
      * REQT/zzsg63b2fb (Automated Periodic Refresh)
      */
     get isPeriodicRefreshActive(): boolean {
-        return this.refreshTimerId !== null;
+        return this.blockPollTimerId !== null;
     }
 
     // =========================================================================
@@ -878,7 +916,7 @@ export class CachedUtxoIndex {
         const tx = decodeTx(signedCborHex);
         const txHash = tx.id().toHex();
 
-        alert(`🟡 REGISTER PENDING TX: ${txHash.slice(0, 8)}… — ${opts.description} — capo=${!!this._capo}`);
+        console.debug(`🟡 REGISTER PENDING TX: ${txHash.slice(0, 8)}… — ${opts.description} — capo=${!!this._capo}`);
         await this.store.log(
             "pt1rg",
             `Registering pending tx ${txHash}: ${opts.description}, capo=${!!this._capo}`,
@@ -970,13 +1008,13 @@ export class CachedUtxoIndex {
                     }
                 }
             }
-            alert(`🟡 PENDING RECORDS: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`);
+            console.debug(`🟡 PENDING RECORDS: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`);
             await this.store.log(
                 "pt2rd",
                 `Pending record parsing complete: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`,
             );
         } else {
-            alert(`🔴 NO CAPO — skipping record parsing for pending tx ${txHash.slice(0, 8)}…`);
+            console.warn(`🔴 NO CAPO — skipping record parsing for pending tx ${txHash.slice(0, 8)}…`);
             await this.store.log(
                 "pt2nc",
                 `⚠️ No Capo attached — skipping record parsing for pending tx ${txHash}. Records will NOT be queryable until confirmation sync.`,
@@ -1008,7 +1046,7 @@ export class CachedUtxoIndex {
         const pendingEntry = await this.store.findPendingTx(txHash);
         if (!pendingEntry || pendingEntry.status !== "pending") return;
 
-        alert(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description}`);
+        console.debug(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description}`);
         await this.store.log(
             "pt4cf",
             `Confirming pending tx ${txHash}: ${pendingEntry.description}`,
@@ -1275,7 +1313,7 @@ export class CachedUtxoIndex {
     ): Promise<void> {
         // REQT/58b9nzgcbj: Check if this tx is a pending entry being confirmed
         if (this.pendingTxHashes.has(txHash)) {
-            alert(`🟢 SYNC found pending tx ${txHash.slice(0, 8)}… — fast-path confirm (skip re-index)`);
+            console.debug(`🟢 SYNC found pending tx ${txHash.slice(0, 8)}… — fast-path confirm (skip re-index)`);
             await this.confirmPendingTx(txHash);
             return; // Skip normal indexing — outputs already indexed, inputs already marked spent
         }
@@ -1941,6 +1979,30 @@ export class CachedUtxoIndex {
     }
 
     /**
+     * Lightweight block-tip check. Fetches only blocks/latest and compares
+     * the height to our last-known block. Returns true if a new block was
+     * detected, false otherwise.
+     *
+     * Bypasses fetchFromBlockfrost() to avoid per-call logging noise at 5s
+     * polling frequency. Uses the same rate limiter.
+     *
+     * Does NOT store anything or trigger syncing — the caller decides
+     * what to do when a new block is found.
+     */
+    private async checkBlockTip(): Promise<boolean> {
+        const res = await getBlockfrostRateLimiter().fetch(
+            `${this.blockfrostBaseUrl}/api/v0/blocks/latest`,
+            { headers: { project_id: this.blockfrostKey } }
+        );
+        if (!res.ok) {
+            console.warn(`checkBlockTip: ${res.statusText}`);
+            return false;
+        }
+        const typed = (await res.json()) as BlockDetailsType;
+        return typed.height > this.lastBlockHeight;
+    }
+
+    /**
      * Fetches and caches a reference script by its hash.
      * Returns the decoded UplcProgramV2 or undefined if not found.
      *
@@ -2174,6 +2236,13 @@ export class CachedUtxoIndex {
         const entries = await this.store.findUtxosByAddress(addrStr);
 
         if (entries.length > 0) {
+            // 🔍 DIAG: Check for duplicate entries from store
+            const entryIds = entries.map(e => e.utxoId);
+            const entryIdSet = new Set(entryIds);
+            if (entryIdSet.size !== entryIds.length) {
+                console.error(`🔴 getUtxos: store.findUtxosByAddress returned ${entryIds.length} entries but only ${entryIdSet.size} unique! Duplicates:`,
+                    entryIds.filter((id, i) => entryIds.indexOf(id) !== i));
+            }
             return Promise.all(entries.map((e) => this.indexEntryToTxInput(e)));
         }
 

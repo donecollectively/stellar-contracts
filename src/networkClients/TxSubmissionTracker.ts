@@ -182,9 +182,9 @@ export class TxSubmissionTracker extends StateMachine<
             const txdSigned: TxDescription<any, "signed"> = txd as any;
             txdSigned.signedTxCborHex = bytesToHex(tx.toCbor());
 
-            alert(`🔵 SIGNED TX — about to call $didSignTx()`);
+            console.debug(`🔵 SIGNED TX — about to call $didSignTx()`);
             this.$didSignTx();
-            alert(`🔵 $didSignTx() returned — about to registerPendingTx`);
+            console.debug(`🔵 $didSignTx() returned — about to registerPendingTx`);
 
             // Register pending tx in CachedUtxoIndex if available,
             // so speculative outputs/records are immediately queryable.
@@ -192,9 +192,9 @@ export class TxSubmissionTracker extends StateMachine<
             // trigger async lookups through the index (parseDelegatedDatum → 
             // getDgDataController) that should not race with submission.
             const networkClient = this.setup.network as any;
-            alert(`🔵 networkClient type: ${networkClient?.constructor?.name}, hasRegisterPendingTx: ${typeof networkClient?.registerPendingTx === "function"}`);
+            console.debug(`🔵 networkClient type: ${networkClient?.constructor?.name}, hasRegisterPendingTx: ${typeof networkClient?.registerPendingTx === "function"}`);
             if (typeof networkClient?.registerPendingTx === "function") {
-                alert(`🔵 calling registerPendingTx NOW`);
+                console.debug(`🔵 calling registerPendingTx NOW`);
                 try {
                     await networkClient.registerPendingTx(txdSigned.signedTxCborHex, {
                         description: txd.description,
@@ -205,9 +205,9 @@ export class TxSubmissionTracker extends StateMachine<
                         txCborHex: txdSigned.signedTxCborHex,
                         txd: txdSigned,
                     });
-                    alert(`🔵 registerPendingTx completed successfully`);
+                    console.debug(`🔵 registerPendingTx completed successfully`);
                 } catch (e: any) {
-                    alert(`🔴 registerPendingTx FAILED: ${e.message}`);
+                    console.warn(`🔴 registerPendingTx FAILED: ${e.message}`);
                     console.error(`registerPendingTx failed for ${txd.id}:`, e);
                 }
             }
@@ -267,10 +267,10 @@ export class TxSubmissionTracker extends StateMachine<
      * @public
      */
     $didSignTx() {
-        alert(`🔵 $didSignTx: about to transition("submitting")`);
+        console.debug(`🔵 $didSignTx: about to transition("submitting")`);
         this.isSigned = true;
         this.transition("submitting");
-        alert(`🔵 $didSignTx: transition("submitting") returned`);
+        console.debug(`🔵 $didSignTx: transition("submitting") returned`);
     }
 
 
