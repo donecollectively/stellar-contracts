@@ -18,7 +18,6 @@ import {
     type Wallet,
     makeTxBuilder,
     makeWalletHelper,
-    makeTxChainBuilder,
 } from "@helios-lang/tx-utils";
 import {
     decodeTx,
@@ -422,22 +421,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         };
 
         const currentBatch = this.currentBatch;
-        const hasOpenBatch = currentBatch?.isOpen;
         if (!currentBatch || currentBatch.isConfirmationComplete) {
-            this.setup.txBatcher.rotate(this.setup.chainBuilder);
+            this.setup.txBatcher.rotate();
         }
-
-        if (!this.setup.isTest && !this.setup.chainBuilder) {
-            if (currentBatch.chainBuilder) {
-                // backfills the chainbuilder from the one auto-populated
-                // during `get TxBatcher.current()`
-                this.setup.chainBuilder = currentBatch.chainBuilder;
-            } else {
-                this.setup.chainBuilder = makeTxChainBuilder(
-                    this.setup.network,
-                );
-            }
-        }
+        // Re-access after potential rotate to get the fresh BSC.
+        // The getter creates chainBuilder and sets this.setup.chainBuilder.
+        const _activeBatch = this.currentBatch;
 
         if (parentTcx) {
             debugger;

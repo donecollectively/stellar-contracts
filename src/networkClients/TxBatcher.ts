@@ -1,4 +1,4 @@
-import { makeTxChainBuilder, type TxChainBuilder } from "@helios-lang/tx-utils";
+import { makeTxChainBuilder } from "@helios-lang/tx-utils";
 import type { SetupInfo } from "../StellarContract.js";
 import {
     BatchSubmitController,
@@ -89,7 +89,7 @@ export class TxBatcher {
         return false;
     }
 
-    rotate(newChainBuilder?: TxChainBuilder) {
+    rotate() {
         if (!this.setup) {
             throw new Error(`setup not set`);
         }
@@ -100,18 +100,9 @@ export class TxBatcher {
             throw new Error(`must verify canRotate() before rotating`);
         }
         this.previous?.destroy();
-        this.previous = this.current;
-        const chainBuilder = newChainBuilder || makeTxChainBuilder(this.setup.network);
-
-        this._current = new BatchSubmitController({
-            submitters: this.submitters,
-            setup: {
-                ...this.setup,
-                chainBuilder,
-            },
-            signingStrategy: this.signingStrategy,
-        });
-        this.$notifier.emit("rotated", this._current);
+        this.previous = this._current;
+        this._current = undefined;
+        this.setup.chainBuilder = undefined;
     }
 
     cancel() {
@@ -125,20 +116,7 @@ export class TxBatcher {
         this.previous?.destroy();
         this._current?.destroy();
         this.previous = undefined;
-
-        const chainBuilder = this.setup.isTest
-            ? undefined
-            : makeTxChainBuilder(this.setup.network);
-        this.setup.chainBuilder = chainBuilder;
-
-        this._current = new BatchSubmitController({
-            submitters: this.submitters,
-            setup: {
-                ...this.setup,
-                chainBuilder,
-            },
-            signingStrategy: this.signingStrategy,
-        });
-        this.$notifier.emit("rotated", this._current);
+        this._current = undefined;
+        this.setup.chainBuilder = undefined;
     }
 }
