@@ -181,15 +181,17 @@ export function TxBatchUI() {
 
             txBatcher.$notifier.on("rotated", (batch) => {
                 console.log("batch rotated", batch);
-                const txns = batch.$allTxns;
-                if (txns.length) {
-                    setInitialId(txns[0].id);
-                } else {
-                    batch.$txChanges.once("txAdded", (txTracker) => {
-                        console.log("tx added", txTracker);
-                        const { id } = txTracker;
-                        setInitialId(id);
-                    });
+                if (batch) {
+                    const txns = batch.$allTxns;
+                    if (txns.length) {
+                        setInitialId(txns[0].id);
+                    } else {
+                        batch.$txChanges.once("txAdded", (txTracker) => {
+                            console.log("tx added", txTracker);
+                            const { id } = txTracker;
+                            setInitialId(id);
+                        });
+                    }
                 }
                 setTxBatch(batch);
 

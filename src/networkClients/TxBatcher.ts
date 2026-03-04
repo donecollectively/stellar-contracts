@@ -11,7 +11,7 @@ import type { WalletSigningStrategy } from "./WalletSigningStrategy.js";
  * @public
  */
 type TxBatcherChanges = {
-    rotated: [BatchSubmitController];
+    rotated: [BatchSubmitController | undefined];
 };
 
 /**
@@ -118,5 +118,6 @@ export class TxBatcher {
         this.previous = undefined;
         this._current = undefined;
         this.setup.chainBuilder = undefined;
+        this.$notifier.emit("rotated", undefined);
     }
 }
