@@ -262,7 +262,7 @@ The core class that orchestrates UTXO indexing, transaction monitoring, and bloc
 Establishes the foundational data structures and initialization sequence for the indexer. Applied when implementing or modifying constructor logic, core data types, or initial setup procedures.
 
  - **REQT-1.1.1**/xxkzfx9gf4: COMPLETED: **Constructor & Initialization** - Must accept `capo`, `blockfrostKey`, and optional `storeIn` strategy. Must determine Blockfrost base URL from API key prefix (mainnet/preprod/preview). Must initialize storage backend based on strategy. `static async createAndSync()` must trigger `async syncNow()` after construction and initialization.
- - **REQT-1.1.2**/9a0nx1gr4b: COMPLETED: **Core State** - Must maintain: `capoAddress` (bech32 string), `capoMph` (hex-encoded minting policy hash for filtering), `lastBlockHeight` (last block height processed), `lastBlockId`.
+ - **REQT-1.1.2**/9a0nx1gr4b: NEXT: **Core State** - Must maintain: `capoAddress` (bech32 string), `capoMph` (hex-encoded minting policy hash for filtering), `lastBlockHeight` (chain tip height for time/slot calculations), `lastBlockId` (chain tip hash), `lastSlot` (chain tip slot). Tip-tracking state is independent of transaction processing progress.
  - **REQT-1.1.3**/j8vn3rm90z: COMPLETED: **Sync-Ready Promise** - Must expose a `syncReady` promise that resolves when initial sync completes. All query methods (`getUtxo`, `getUtxos`, `getUtxosWithAssetClass`, `getTx`, `hasUtxo`, `findUtxoByUUT`, `findUtxosByAsset`, `findUtxosByAddress`, `getAllUtxos`) must await `syncReady` before accessing cached data. This ensures queries block until the cache is populated, preventing premature network fallbacks.
  - **REQT-1.1.4**/n5kffw8tf2: COMPLETED: **Cache-First Startup** - On construction, `syncNow()` must check for existing cached block data via `store.getLatestBlock()`. If cached data exists, must initialize `lastBlockHeight`, `lastBlockId`, and `lastSlot` from cache, then perform incremental sync via `checkForNewTxns()` instead of full sync. This enables fast startup from persisted IndexedDB data.
 
@@ -281,7 +281,7 @@ Governs delegate UUT discovery, cataloging, and updates based on charter changes
 Defines how the indexer performs initial synchronization and ongoing transaction monitoring of the Capo address. Applied when implementing sync logic, periodic monitoring, or transaction processing.
 
  - **REQT-1.3.1**/vk2bywdycn: COMPLETED: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via underlying provider. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
- - **REQT-1.3.2**/fh56sce22g: COMPLETED: **Transaction Monitoring** - Must implement `checkForNewTxns()` to check for new transactions at `capoAddress`. Must query Blockfrost `addresses/{capoAddress}/transactions` endpoint with `order=desc`, `count=100`, and `from` parameter set to last synced block. Must process each new transaction via `processTransactionForNewUtxos()`. Must update last synced block details on success.
+ - **REQT-1.3.2**/fh56sce22g: NEXT: **Transaction Monitoring** - MUST reliably discover all transactions touching `capoAddress`, with no gaps from timing, indexing lag, or cursor advancement. MUST process each discovered transaction via `processTransactionForNewUtxos()`. MUST process blocks in order. A transaction that lands on-chain MUST eventually be discovered regardless of when the chain tip advances.
  - **REQT-1.3.3**/0vrkpk6a6h: COMPLETED: **Transaction Processing** - Must implement `processTransactionForNewUtxos()` to extract and index relevant UTXOs from transactions. Must fetch full transaction CBOR and decode using Helios `decodeTx()`. Must examine each transaction output. Must check if UTXO already exists in store via `store.findUtxoId()`. Must index new UTXOs via `indexUtxoFromOutput()`. Must update UUT catalog if delegate UUTs moved.
     - **REQT-1.3.4**/mvjrak021s: COMPLETED: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to store UTXO id and any mph-matching token values for later search. Must extract inline datum as binary data or datum hash. Must save to store via `store.saveUtxo()`.
 
@@ -294,12 +294,19 @@ Ensures the index only returns active (unspent) UTXOs when queried. Without this
  - **REQT-1.3.5.2**/11msfc4wv8: COMPLETED: **Soft Delete Strategy** - MUST use soft delete by adding a `spentInTx: string | null` field to `UtxoIndexEntry`. When a UTXO is spent, MUST set this field to the spending transaction's hash. This preserves historical data for debugging and allows potential restoration during chain reorganization handling.
  - **REQT-1.3.5.3**/g3jen1rcvd: COMPLETED: **Query Filtering** - All query methods (`getUtxos`, `getUtxosWithAssetClass`, `findUtxosByAddress`, `findUtxosByAsset`, `getAllUtxos`, `findUtxoByUUT`) MUST filter out UTXOs where `spentInTx` is not null. The storage layer MUST provide filtered query methods or the CachedUtxoIndex MUST filter results before returning.
 
-### REQT-1.3.6/4da1wyv35e: NEXT: **Unconditional Slot Advancement**
+### REQT-1.3.6/4da1wyv35e: NEXT: **Block Tip Tracking & Per-Block Address Recording**
 
 #### Purpose
-Ensures `lastSlot` (and therefore `now`) always reflects the current chain tip after each sync cycle, even when no new transactions were discovered. Without this, pending-tx deadline checking and validity interval calculations use stale slot values. Applied when modifying the sync cycle or pending-tx deadline logic.
+Ensures the indexer maintains a fresh view of the chain tip for time/slot calculations, and records which addresses (and their transaction IDs) are associated with each block. The tip is tracked independently of transaction processing progress. Applied when modifying tip polling, block storage, or per-block metadata.
 
- - **REQT-1.3.6.1**/9gq8rwg9ng: NEXT: **Fetch Latest Block on Every Sync** — `checkForNewTxns()` MUST call `fetchAndStoreLatestBlock()` unconditionally at the end of each sync cycle, regardless of whether any new transactions were discovered. This ensures `lastSlot`, `lastBlockHeight`, and `lastBlockId` always advance to the current chain tip.
+ - **REQT-1.3.6.1**/9gq8rwg9ng: NEXT: **Block Tip & Address Recording** — MUST track the latest block on-chain, maintaining fresh `lastSlot`, `lastBlockHeight`, and `lastBlockId` for tip-time calculations independently of transaction processing progress. MUST record the relevant addresses and their associated transaction IDs for each block. This per-block address data serves as the basis for transaction discovery in REQT/fh56sce22g.
+
+### REQT-1.3.7/21ec41e31a: NEXT: **Block Processing Cursor**
+
+#### Purpose
+Maintains a reliable record of which blocks have been fully processed for transactions, independent of the chain tip. Ensures the indexer can resume processing from the correct point after restart, and that no block's transactions are skipped. Applied when modifying sync resumption, block processing order, or transaction discovery.
+
+ - **REQT-1.3.7.1**/5d4f73c9bf: NEXT: **Last Processed Block** — MUST track which blocks have been fully processed for transactions. MUST be able to determine the last processed block reliably after restart. The processing cursor MUST be independent of the chain tip (`lastBlockHeight`). Blocks MUST be processed in order — no block may be skipped.
 
 ### REQT-1.4/k3xfpg6jkb: COMPLETED: **External Data Services & Utilities**
 
