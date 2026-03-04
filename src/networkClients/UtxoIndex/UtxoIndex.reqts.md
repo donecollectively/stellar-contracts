@@ -281,7 +281,9 @@ Governs delegate UUT discovery, cataloging, and updates based on charter changes
 Defines how the indexer performs initial synchronization and ongoing transaction monitoring of the Capo address. Applied when implementing sync logic, periodic monitoring, or transaction processing.
 
  - **REQT-1.3.1**/vk2bywdycn: COMPLETED: **Initial Sync** - Must implement `syncNow()` method to perform full index initialization. Must fetch charter data via `capo.findCharterData()`. Must fetch all UTXOs at `capoAddress` via underlying provider. Must store UTXOs via `store.saveUtxo()`. Must call `catalogDelegateUuts(charterData)` to catalog delegate UUTs. Must fetch and store latest block details.
- - **REQT-1.3.2**/fh56sce22g: NEXT: **Transaction Monitoring** - MUST reliably discover all transactions touching `capoAddress`, with no gaps from timing, indexing lag, or cursor advancement. MUST process each discovered transaction via `processTransactionForNewUtxos()`. MUST process blocks in order. A transaction that lands on-chain MUST eventually be discovered regardless of when the chain tip advances.
+ - **REQT-1.3.2**/fh56sce22g: NEXT: **Transaction Monitoring** - MUST reliably discover all transactions touching `capoAddress`, with no gaps from timing, indexing lag, or cursor advancement. MUST process each discovered transaction via `processTransactionForNewUtxos()`. MUST process blocks in order. A transaction that lands on-chain MUST eventually be discovered regardless of when the chain tip advances. MUST select sync mode based on how far behind the processing cursor is (configurable threshold, default 20 blocks).
+    - **REQT-1.3.2.1**/gfsjgaac1y: NEXT: **Incremental Mode** — When the gap between the processing cursor and the chain tip is within the threshold, MUST walk forward block-by-block from the last processed block, checking each block for transactions touching monitored addresses. MUST process blocks in order and mark each as processed. Optimized for small gaps (1-2 blocks per poll cycle).
+    - **REQT-1.3.2.2**/2he55bafxd: NEXT: **Catchup Mode** — When the gap exceeds the threshold, MUST use address-level transaction queries (`from=lastProcessedBlock`) to sparsely discover which blocks contain relevant transactions, then populate block records for only those blocks. MUST reconcile cached UTxOs against current on-chain state via address UTxO query to ensure cache correctness. MUST advance the processing cursor to the chain tip on completion.
  - **REQT-1.3.3**/0vrkpk6a6h: COMPLETED: **Transaction Processing** - Must implement `processTransactionForNewUtxos()` to extract and index relevant UTXOs from transactions. Must fetch full transaction CBOR and decode using Helios `decodeTx()`. Must examine each transaction output. Must check if UTXO already exists in store via `store.findUtxoId()`. Must index new UTXOs via `indexUtxoFromOutput()`. Must update UUT catalog if delegate UUTs moved.
     - **REQT-1.3.4**/mvjrak021s: COMPLETED: **UTXO Indexing** - Must implement `indexUtxoFromOutput()` to store UTXO id and any mph-matching token values for later search. Must extract inline datum as binary data or datum hash. Must save to store via `store.saveUtxo()`.
 
@@ -420,6 +422,30 @@ Enables the indexer to reflect locally-submitted transactions in query results i
  - **REQT-1.11.10**/agg98btez8: IMPLEMENTED/NEEDS VERIFICATION: **Purge Old Pending Entries** — MUST purge PendingTxEntry rows with `status !== "pending"` and `submittedAt` older than 72 hours. Purge SHOULD run on the 10s deadline-check timer (cheap — single Dexie delete query).
 
  - **REQT-1.11.11**/2w2yyc2m1k: IMPLEMENTED/NEEDS VERIFICATION: **In-Memory Pending Map** — MUST maintain `pendingTxMap: Map<string, TxDescription>` in memory, keyed by txHash. MUST store the live `txd` when `registerPendingTx` is called with one. MUST NOT persist this map — it is session-scoped. MUST be used by `isPending()` for synchronous lookups and by event emission to include `txd` when available.
+
+### REQT-1.12/jrhh4jg6se: NEXT: **Chain Rollback Detection & Recovery**
+
+#### Purpose
+Detects when previously-confirmed blocks are no longer on the canonical chain (orphaned/rolled back) and recovers the index to a consistent state. Cardano rollbacks are rare but can theoretically occur up to ~1 hour after apparent confirmation. Without detection, the index would contain UTxOs and records from blocks that no longer exist on-chain. Applied when modifying block verification, sync startup, or index consistency logic.
+
+ - **REQT-1.12.1**/yasww6cqa4: NEXT: **Chain Intersection Discovery** — MUST verify chain continuity by walking backward from the current chain tip and comparing against stored blocks. MUST identify the last block that matches the canonical chain (the intersection point). Any stored blocks beyond the intersection that are not on the canonical chain MUST be detected.
+
+ - **REQT-1.12.2**/4j3rs4pyjt: NEXT: **Rollback Recovery** — When rolled-back blocks are detected, MUST recover the index to a consistent state aligned with the canonical chain. Recovery MUST handle all index artifacts affected by transactions in the rolled-back blocks.
+    - **REQT-1.12.2.1**/mb8smvc9gx: NEXT: **Invalidate Created UTxOs** — MUST invalidate all UTxOs created by transactions in rolled-back blocks (mark `state=rolled-back`).
+    - **REQT-1.12.2.2**/kzc2n4c8z0: NEXT: **Restore Spent UTxOs** — MUST clear `spentInTx` markers set by transactions in rolled-back blocks, restoring previously-spent UTxOs to unspent state.
+    - **REQT-1.12.2.3**/svtgmv5h30: NEXT: **Invalidate Affected Records** — MUST mark records parsed from UTxOs in rolled-back blocks with `state="affected by pending rollback"`.
+    - **REQT-1.12.2.4**/2grpnzb2q0: NEXT: **Revert Pending Tx Confirmations** — MUST revert any pending transaction confirmations that occurred in rolled-back blocks (status back to `pending`).
+    - **REQT-1.12.2.5**/epwp74mn8x: NEXT: **Roll Back Processing Cursor** — MUST roll the processing cursor back to the intersection point.
+    - **REQT-1.12.2.6**/j4198pv9ea: NEXT: **Re-initiate Sync** — MUST re-initiate sync from the intersection point after rollback recovery completes.
+
+ - **REQT-1.12.3**/dnr06r6ch5: NEXT: **Rollback Event** — MUST emit a `chainRollback` event with rollback depth when a rollback is detected, so downstream consumers (CapoDappProvider, UI) can respond.
+
+### REQT-1.13/8md6dpzxe9: NEXT: **Sync State Tracking**
+
+#### Purpose
+Provides observable sync state so downstream consumers can display appropriate status to users. Different sync activities have different user-facing implications — a rollback recovery is more concerning than a routine incremental sync. Applied when modifying sync lifecycle or integrating with UI status displays.
+
+ - **REQT-1.13.1**/jdkjh536mm: NEXT: **Sync State Metadata** — MUST maintain an observable `syncState` reflecting the current sync activity. Values: `"idle"` (no sync in progress), `"syncing"` (incremental block-walk), `"catchup sync (N blocks)"` (catchup mode with block count), `"recovering from rollback (N blocks)"` (rollback recovery with depth). MUST be updated at the start and end of each sync activity. Downstream consumers observe this to display sync status.
 
 ### Component: UtxoStoreGeneric Interface
 
