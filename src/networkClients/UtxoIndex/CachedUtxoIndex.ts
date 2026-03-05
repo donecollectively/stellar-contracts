@@ -1122,7 +1122,18 @@ export class CachedUtxoIndex {
                 `Cannot register pending tx ${txHash}: transaction has no validity end (lastValidSlot)`,
             );
         }
-        const deadline = lastValidSlot + this.graceBufferSlots; // REQT/c3ytg4rttd
+        const deadlineSlot = lastValidSlot + this.graceBufferSlots; // REQT/c3ytg4rttd
+
+        // === REGISTER DIAGNOSTICS ===
+        console.log([
+            `🟡 REGISTER PENDING TX deadline diagnostics:`,
+            `  tx.lastValidSlot  = ${lastValidSlot}`,
+            `  graceBufferSlots  = ${this.graceBufferSlots}`,
+            `  deadlineSlot      = ${deadlineSlot}`,
+            `  this.lastSlot     = ${this.lastSlot}`,
+            `  Date.now()        = ${Date.now()}`,
+            `  typeof lastValidSlot = ${typeof lastValidSlot}`,
+        ].join("\n"));
 
         // REQT/p2ts24jbkg: Persist PendingTxEntry to store
         const pendingEntry: PendingTxEntry = {
@@ -1130,12 +1141,13 @@ export class CachedUtxoIndex {
             description: opts.description,
             id: opts.id,
             parentId: opts.parentId,
-            depth: opts.depth,
+            batchDepth: opts.depth,
+            confirmationBlockDepth: 0,
             moreInfo: opts.moreInfo,
             txName: opts.txName,
             txCborHex: opts.txCborHex,
             signedTxCborHex: signedCborHex,
-            deadline,
+            deadlineSlot,
             status: "pending",
             submittedAt: Date.now(),
         };
@@ -1224,7 +1236,7 @@ export class CachedUtxoIndex {
 
         await this.store.log(
             "pt3ok",
-            `Registered pending tx ${txHash}: ${tx.body.inputs.length} inputs spent, ${tx.body.outputs.length} outputs indexed, deadline slot ${deadline}`,
+            `Registered pending tx ${txHash}: ${tx.body.inputs.length} inputs spent, ${tx.body.outputs.length} outputs indexed, deadlineSlot ${deadlineSlot}`,
         );
     }
 
@@ -1240,15 +1252,20 @@ export class CachedUtxoIndex {
         const pendingEntry = await this.store.findPendingTx(txHash);
         if (!pendingEntry || pendingEntry.status !== "pending") return;
 
-        console.debug(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description} at block #${blockHeight}`);
+        // Look up the confirming block's slot from the store
+        const confirmingBlock = await this.store.findBlockByHeight(blockHeight);
+        const confirmedAtSlot = confirmingBlock?.slot;
+
+        console.debug(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot}`);
         await this.store.log(
             "pt4cf",
-            `Confirming pending tx ${txHash}: ${pendingEntry.description} at block #${blockHeight}`,
+            `Confirming pending tx ${txHash}: ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot}`,
         );
 
         // REQT/58b9nzgcbj: Set status, confirmedAtBlockHeight, and initial confirmState
         pendingEntry.status = "confirmed";
         pendingEntry.confirmedAtBlockHeight = blockHeight; // REQT/58b9nzgcbj
+        pendingEntry.confirmedAtSlot = confirmedAtSlot;
         pendingEntry.confirmState = "provisional";         // REQT/ddzcp753jr
         await this.store.savePendingTx(pendingEntry);
         this.pendingTxHashes.delete(txHash);
@@ -1312,8 +1329,15 @@ export class CachedUtxoIndex {
                 newState = "provisional";
             }
 
-            // REQT/thy7tkrxh7: Only update if state actually changed
-            if (newState !== entry.confirmState) {
+            // Only save when depth or state actually changed
+            const depthChanged = depth !== entry.confirmationBlockDepth;
+            const stateChanged = newState !== entry.confirmState;
+
+            if (!depthChanged && !stateChanged) continue;
+
+            entry.confirmationBlockDepth = depth;
+
+            if (stateChanged) {
                 const previousState = entry.confirmState;
                 entry.confirmState = newState;
                 await this.store.savePendingTx(entry);
@@ -1329,6 +1353,9 @@ export class CachedUtxoIndex {
                     "cd001",
                     `Confirmation depth advanced: ${entry.txHash.slice(0, 8)}… ${previousState} → ${newState} (depth ${depth})`,
                 );
+            } else {
+                // Depth changed but state didn't — save silently
+                await this.store.savePendingTx(entry);
             }
         }
     }
@@ -1352,19 +1379,23 @@ export class CachedUtxoIndex {
 
         if (pendingEntries.length > 0) {
             console.log(
-                `⏱️ checkPendingDeadlines: ${pendingEntries.length} pending, lastProcessedSlot ${lastProcessedSlot}`,
+                `⏱️ checkPendingDeadlines: ${pendingEntries.length} pending`,
+                `\n  lastProcessed: height=${lastProcessed?.height} slot=${lastProcessedSlot} time=${lastProcessed?.time}`,
+                `\n  tip: height=${this.lastBlockHeight} slot=${this.lastSlot}`,
+                `\n  Date.now()=${Date.now()}`,
             );
             for (const entry of pendingEntries) {
-                const remaining = entry.deadline - lastProcessedSlot;
+                const remaining = entry.deadlineSlot - lastProcessedSlot;
                 console.log(
-                    `  📌 ${entry.txHash.slice(0, 8)}…: deadline ${entry.deadline}, ${remaining > 0 ? `~${remaining}s remaining` : `EXPIRED by ${-remaining}s`}`,
+                    `  📌 ${entry.txHash.slice(0, 8)}…: deadline=${entry.deadlineSlot} submittedAt=${entry.submittedAt}`,
+                    `${remaining > 0 ? `~${remaining} slots remaining` : `EXPIRED by ${-remaining} slots`}`,
                 );
             }
         }
 
         for (const entry of pendingEntries) {
             // REQT/c3ytg4rttd: Compare deadline against last PROCESSED block's slot
-            if (entry.deadline < lastProcessedSlot) {
+            if (entry.deadlineSlot < lastProcessedSlot) {
                 await this.rollbackPendingTx(entry);
             }
         }
@@ -1392,68 +1423,94 @@ export class CachedUtxoIndex {
 
         const lastProcessed = await this.store.getLastProcessedBlock();
         const lastProcessedSlot = lastProcessed?.slot ?? this.lastSlot;
-        const rollbackMsg = `🔴 ROLLBACK PENDING TX: ${txHash.slice(0, 8)}… — ${entry.description} — deadline ${entry.deadline} < lastProcessedSlot ${lastProcessedSlot}`;
+
+        // === ROLLBACK DIAGNOSTICS ===
+        const tx = decodeTx(entry.signedTxCborHex);
+        const lastValidSlot = tx.body.lastValidSlot;
+        console.error([
+            `🔴 ROLLBACK PENDING TX: ${txHash.slice(0, 8)}… — ${entry.description}`,
+            `  entry.deadlineSlot       = ${entry.deadlineSlot}`,
+            `  tx.lastValidSlot     = ${lastValidSlot}`,
+            `  graceBufferSlots     = ${this.graceBufferSlots}`,
+            `  lastProcessed.slot   = ${lastProcessed?.slot}`,
+            `  lastProcessed.time   = ${lastProcessed?.time}`,
+            `  lastProcessed.height = ${lastProcessed?.height}`,
+            `  this.lastSlot (tip)  = ${this.lastSlot}`,
+            `  this.lastBlockHeight = ${this.lastBlockHeight}`,
+            `  Date.now()           = ${Date.now()}`,
+            `  entry.submittedAt    = ${entry.submittedAt}`,
+            `  entry.status         = ${entry.status}`,
+            `  comparison: ${entry.deadlineSlot} < ${lastProcessedSlot} = ${entry.deadlineSlot < lastProcessedSlot}`,
+        ].join("\n"));
         if (typeof globalThis.alert === "function") {
-            globalThis.alert(rollbackMsg);
-        } else {
-            console.error(rollbackMsg);
+            globalThis.alert(`🔴 ROLLBACK PENDING TX: ${txHash.slice(0, 8)}… — ${entry.description} — deadline ${entry.deadlineSlot} < lastProcessedSlot ${lastProcessedSlot}`);
         }
         await this.store.log(
             "pt5rb",
-            `Rolling back expired pending tx ${txHash}: ${entry.description} (deadline slot ${entry.deadline} < last processed slot ${lastProcessedSlot})`,
+            `ROLLBACK TRIGGERED for pending tx ${txHash}: ${entry.description} (deadline slot ${entry.deadlineSlot} < last processed slot ${lastProcessedSlot})`,
         );
 
-        // Step 1: Restore speculatively-spent UTXOs
-        await this.store.clearSpentByTx(txHash);
+        // === DIAGNOSTIC MODE: log what WOULD be destroyed, but don't destroy ===
 
-        // Step 2: Remove pending-origin UTXOs
-        await this.store.deleteUtxosByTxHash(txHash);
-
-        // Step 3: Remove pending-origin records
-        await this.store.deleteRecordsByTxHash(txHash);
-
-        // Step 4 (IN-1): Re-parse datums from restored input UTXOs
-        // The pending tx may have overwritten records (same id, put() on PK).
-        // Now that inputs are restored, re-parse their datums to recreate original records.
-        if (this._capo) {
-            try {
-                const tx = decodeTx(entry.signedTxCborHex);
-                for (const input of tx.body.inputs) {
-                    const utxoId = input.id.toString();
-                    const restoredUtxo = await this.store.findUtxoId(utxoId);
-                    if (restoredUtxo && restoredUtxo.inlineDatum && !restoredUtxo.spentInTx) {
-                        await this.parseAndSaveRecord(restoredUtxo);
-                    }
-                }
-            } catch (e: any) {
-                await this.store.log(
-                    "pt5re",
-                    `Error re-parsing records during rollback of ${txHash}: ${e.message || e}`,
-                );
+        // Step 1 (SUSPENDED): Would restore speculatively-spent UTXOs
+        // await this.store.clearSpentByTx(txHash);
+        {
+            const spentByThis = await this.store.findUtxosSpentByTx(txHash);
+            console.error(`  🔍 Step 1: ${spentByThis.length} UTXOs would have spentInTx cleared:`);
+            for (const u of spentByThis) {
+                console.error(`    - ${u.utxoId} (address: ${u.address})`);
             }
         }
 
-        // Step 5: Update status
-        await this.store.setPendingTxStatus(txHash, "rolled-back");
-        this.pendingTxHashes.delete(txHash);
+        // Step 2 (SUSPENDED): Would remove pending-origin UTXOs
+        // await this.store.deleteUtxosByTxHash(txHash);
+        {
+            const pendingUtxos = await this.store.findUtxosByTxHash(txHash);
+            console.error(`  🔍 Step 2: ${pendingUtxos.length} pending-origin UTXOs would be DELETED:`);
+            for (const u of pendingUtxos) {
+                console.error(`    - ${u.utxoId} (address: ${u.address}, datum: ${!!u.inlineDatum})`);
+            }
+        }
 
-        // Step 6: Emit rollback event
-        // REQT/fz6z7rr702: Include CBOR for recovery path
-        const txd = this.pendingTxMap.get(txHash);
-        this.events.emit("txRolledBack", {
-            txHash,
-            description: entry.description,
-            cbor: entry.signedTxCborHex,
-            txd,
-        });
+        // Step 3 (SUSPENDED): Would remove pending-origin records
+        // await this.store.deleteRecordsByTxHash(txHash);
+        {
+            const pendingRecords = await this.store.findRecordsByTxHash(txHash);
+            console.error(`  🔍 Step 3: ${pendingRecords.length} pending-origin records would be DELETED:`);
+            for (const r of pendingRecords) {
+                console.error(`    - id=${r.id} type=${r.type} utxoId=${r.utxoId}`);
+            }
+        }
 
-        // Clean up in-memory maps
-        this.pendingTxMap.delete(txHash);
-        this.cleanupPendingSpentUtxoIds(txHash);
+        // Step 4 (SUSPENDED): Would re-parse datums from restored input UTXOs
+        // if (this._capo) { ... }
+        console.error(`  🔍 Step 4: Would re-parse input datums (capo attached: ${!!this._capo})`);
+        {
+            for (const input of tx.body.inputs) {
+                const utxoId = input.id.toString();
+                const utxo = await this.store.findUtxoId(utxoId);
+                console.error(`    - input ${utxoId}: exists=${!!utxo}, hasDatum=${!!utxo?.inlineDatum}, spentInTx=${utxo?.spentInTx ?? "null"}`);
+            }
+        }
 
+        // Step 5 (SUSPENDED): Would update status to rolled-back
+        // await this.store.setPendingTxStatus(txHash, "rolled-back");
+        // this.pendingTxHashes.delete(txHash);
+        console.error(`  🔍 Step 5: Would set status → "rolled-back" (currently: ${entry.status})`);
+
+        // Step 6 (SUSPENDED): Would emit rollback event
+        // this.events.emit("txRolledBack", { ... });
+        console.error(`  🔍 Step 6: Would emit txRolledBack event`);
+
+        // In-memory cleanup (SUSPENDED)
+        // this.pendingTxMap.delete(txHash);
+        // this.cleanupPendingSpentUtxoIds(txHash);
+        console.error(`  🔍 In-memory: pendingTxMap has entry: ${this.pendingTxMap.has(txHash)}, pendingSpentUtxoIds count: ${[...this.pendingSpentUtxoIds.values()].filter(h => h === txHash).length}`);
+
+        console.error(`  ⏸️ ROLLBACK SUSPENDED — no data destroyed. Review diagnostics above.`);
         await this.store.log(
-            "pt5ok",
-            `Rolled back pending tx ${txHash}`,
+            "pt5xx",
+            `ROLLBACK SUSPENDED (diagnostic mode) for ${txHash}`,
         );
     }
 

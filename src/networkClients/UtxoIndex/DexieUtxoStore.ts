@@ -157,6 +157,15 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         return await this.blocks.where("hash").equals(blockId).first();
     }
 
+    async findBlockByHeight(height: number): Promise<BlockIndexEntry | undefined> {
+        // Check processed first, then unprocessed
+        const processed = await this.blocks.where("[state+height]")
+            .equals(["processed", height]).first();
+        if (processed) return processed;
+        return this.blocks.where("[state+height]")
+            .equals(["unprocessed", height]).first();
+    }
+
     async saveBlock(block: BlockIndexEntry): Promise<void> {
         await this.blocks.put(block as dexieBlockDetails);
     }
@@ -445,6 +454,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             .modify({ spentInTx: null });
     }
 
+    /** Diagnostic: find UTXOs that would be affected by clearSpentByTx */
+    async findUtxosSpentByTx(txHash: string): Promise<UtxoIndexEntry[]> {
+        return this.utxos
+            .where("spentInTx")
+            .equals(txHash)
+            .toArray();
+    }
+
     /**
      * Remove UTXOs where utxoId starts with txHash#.
      * These are pending-origin outputs that should be deleted on rollback.
@@ -459,6 +476,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             .delete();
     }
 
+    /** Diagnostic: find UTXOs that would be deleted by deleteUtxosByTxHash */
+    async findUtxosByTxHash(txHash: string): Promise<UtxoIndexEntry[]> {
+        return this.utxos
+            .where("utxoId")
+            .between(`${txHash}#`, `${txHash}$`, true, false)
+            .toArray();
+    }
+
     /**
      * Remove records where utxoId starts with txHash#.
      * These are pending-origin records that should be deleted on rollback.
@@ -470,6 +495,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             .where("utxoId")
             .between(`${txHash}#`, `${txHash}$`, true, false)
             .delete();
+    }
+
+    /** Diagnostic: find records that would be deleted by deleteRecordsByTxHash */
+    async findRecordsByTxHash(txHash: string): Promise<{ id: string; type: string; utxoId: string }[]> {
+        return this.records
+            .where("utxoId")
+            .between(`${txHash}#`, `${txHash}$`, true, false)
+            .toArray();
     }
 
     // =========================================================================

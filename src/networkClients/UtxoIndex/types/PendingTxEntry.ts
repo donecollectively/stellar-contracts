@@ -21,8 +21,13 @@ export interface PendingTxEntry {
     id: string;
     /** Parent transaction ID for chained batches */
     parentId?: string;
-    /** Depth in the batch chain */
-    depth: number;
+    /** Position in a chained batch (0 = first tx, 1 = next, etc.) */
+    batchDepth: number;
+    /**
+     * Number of blocks since confirmation.
+     * 0 while pending, updated by updateConfirmationDepths after confirmation.
+     */
+    confirmationBlockDepth: number;
     /** Additional info about the transaction */
     moreInfo?: string;
     /** Transaction builder name (e.g. "mkTxnMintTokens") */
@@ -33,10 +38,10 @@ export interface PendingTxEntry {
     signedTxCborHex: string;
     /**
      * Deadline slot number — txValidityEnd + graceBuffer.
-     * Compared against chain time (last synced block's slot), NOT wallclock time.
+     * Compared against chain time (last processed block's slot), NOT wallclock time.
      * REQT/c3ytg4rttd (Deadline Calculation)
      */
-    deadline: number;
+    deadlineSlot: number;
     /** Lifecycle status of the pending transaction */
     status: "pending" | "confirmed" | "rolled-back";
     /** Timestamp when the transaction was submitted (epoch ms) */
@@ -49,6 +54,13 @@ export interface PendingTxEntry {
      * REQT/58b9nzgcbj (Confirm Pending Transaction)
      */
     confirmedAtBlockHeight?: number;
+
+    /**
+     * Slot number of the block in which the transaction was confirmed.
+     * Set alongside confirmedAtBlockHeight by confirmPendingTx.
+     * Provides slot-space reference for deadline/timing diagnostics.
+     */
+    confirmedAtSlot?: number;
 
     /**
      * Graduated confidence state based on confirmation depth.

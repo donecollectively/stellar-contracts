@@ -176,7 +176,7 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             expect(pendingEntry).toBeTruthy();
             expect(pendingEntry!.status).toBe("pending");
             expect(pendingEntry!.description).toBe("create testData record");
-            expect(pendingEntry!.deadline).toBeGreaterThan(0);
+            expect(pendingEntry!.deadlineSlot).toBeGreaterThan(0);
 
             // Verify: inputs marked as speculatively spent
             for (const input of tx.body.inputs) {
@@ -412,7 +412,7 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             });
 
             const pendingEntry = await store.findPendingTx(txHash);
-            const deadline = pendingEntry!.deadline;
+            const deadlineSlot = pendingEntry!.deadlineSlot;
 
             // Before deadline: should remain pending
             await (index as any).checkPendingDeadlines();
@@ -420,8 +420,8 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             expect(stillPending!.status).toBe("pending");
 
             // Advance past deadline — both in-memory tip AND a processed block in the store
-            setLastSyncedBlock(index, 9999, "block9999", deadline + 1);
-            await store.saveBlock({ hash: "block9999", height: 9999, time: 0, slot: deadline + 1, state: "processed" });
+            setLastSyncedBlock(index, 9999, "block9999", deadlineSlot + 1);
+            await store.saveBlock({ hash: "block9999", height: 9999, time: 0, slot: deadlineSlot + 1, state: "processed" });
 
             let rolledBackEvent: any = null;
             index.events.on("txRolledBack", (ev) => { rolledBackEvent = ev; });

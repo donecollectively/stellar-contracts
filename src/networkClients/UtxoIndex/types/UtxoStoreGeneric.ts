@@ -102,6 +102,14 @@ export interface UtxoStoreGeneric {
     /** Remove records where utxoId starts with txHash# */
     deleteRecordsByTxHash(txHash: string): Promise<void>;
 
+    // Block lookup
+    findBlockByHeight(height: number): Promise<BlockIndexEntry | undefined>;
+
+    // Diagnostic queries (rollback investigation)
+    findUtxosSpentByTx(txHash: string): Promise<UtxoIndexEntry[]>;
+    findUtxosByTxHash(txHash: string): Promise<UtxoIndexEntry[]>;
+    findRecordsByTxHash(txHash: string): Promise<{ id: string; type: string; utxoId: string }[]>;
+
     // REQT/h4m8p3x16c: Purge Operation
     /** Delete PendingTxEntry rows at terminal confidence: confirmed+certain older than certainOlderThan, rolled-back older than rolledBackOlderThan */
     purgeOldPendingTxs(certainOlderThan: number, rolledBackOlderThan: number): Promise<void>;
