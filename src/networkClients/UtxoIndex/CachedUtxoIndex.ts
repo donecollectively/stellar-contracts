@@ -1369,9 +1369,13 @@ export class CachedUtxoIndex {
             }
         }
 
-        // REQT/agg98btez8: Purge non-pending entries older than 72 hours
-        const purgeThreshold = Date.now() - 72 * 60 * 60 * 1000;
-        await this.store.purgeOldPendingTxs(purgeThreshold);
+        // REQT/agg98btez8: Purge old entries that have reached terminal confidence
+        // Only purge rolled-back entries and confirmed entries at "certain" confidence.
+        // Entries still progressing through confirmation states are retained regardless of age.
+        // Rolled-back entries retained for 2 weeks (recovery window); certain entries for 72h.
+        const certainPurgeThreshold = Date.now() - 72 * 60 * 60 * 1000;
+        const rolledBackPurgeThreshold = Date.now() - 14 * 24 * 60 * 60 * 1000;
+        await this.store.purgeOldPendingTxs(certainPurgeThreshold, rolledBackPurgeThreshold);
     }
 
     /**

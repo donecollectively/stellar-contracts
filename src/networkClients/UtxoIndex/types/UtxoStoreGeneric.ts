@@ -103,6 +103,6 @@ export interface UtxoStoreGeneric {
     deleteRecordsByTxHash(txHash: string): Promise<void>;
 
     // REQT/h4m8p3x16c: Purge Operation
-    /** Delete PendingTxEntry rows where status !== "pending" and submittedAt < olderThan */
-    purgeOldPendingTxs(olderThan: number): Promise<void>;
+    /** Delete PendingTxEntry rows at terminal confidence: confirmed+certain older than certainOlderThan, rolled-back older than rolledBackOlderThan */
+    purgeOldPendingTxs(certainOlderThan: number, rolledBackOlderThan: number): Promise<void>;
 }

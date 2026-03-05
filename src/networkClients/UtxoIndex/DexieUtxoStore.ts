@@ -477,13 +477,22 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     // =========================================================================
 
     /**
-     * Delete PendingTxEntry rows where status !== "pending" and submittedAt < olderThan.
+     * Delete PendingTxEntry rows that have reached terminal confidence and are old enough.
+     * Only purges: rolled-back entries (after 2 weeks), and confirmed entries at "certain"
+     * confidence (after 72h). Entries still progressing through confirmation states are
+     * retained regardless of age.
      */
-    async purgeOldPendingTxs(olderThan: number): Promise<void> {
-        // REQT/5799nq1d0x: Purge non-pending entries older than threshold
+    async purgeOldPendingTxs(certainOlderThan: number, rolledBackOlderThan: number): Promise<void> {
+        // REQT/5799nq1d0x: Purge old entries at terminal confidence only
         const candidates = await this.pendingTxs.toArray();
         const toDelete = candidates
-            .filter(e => e.status !== "pending" && e.submittedAt < olderThan)
+            .filter(e => {
+                // Rolled-back entries purgeable after 2 weeks (recovery window)
+                if (e.status === "rolled-back" && e.submittedAt < rolledBackOlderThan) return true;
+                // Confirmed entries only purgeable at "certain" confidence after 72h
+                if (e.status === "confirmed" && e.confirmState === "certain" && e.submittedAt < certainOlderThan) return true;
+                return false;
+            })
             .map(e => e.txHash);
         if (toDelete.length > 0) {
             await this.pendingTxs.bulkDelete(toDelete);
