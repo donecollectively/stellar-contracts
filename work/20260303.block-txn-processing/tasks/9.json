@@ -1,0 +1,9 @@
+{
+  "id": "9",
+  "subject": "3.2: New requirements implied by the new data model",
+  "description": "Block-walk processing, processed indicator, decoupled cursors — these may need new REQTs or significant rewrites of existing ones.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

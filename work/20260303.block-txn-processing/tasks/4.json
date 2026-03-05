@@ -1,0 +1,9 @@
+{
+  "id": "4",
+  "subject": "1.4: Scope boundaries — what's in vs out",
+  "description": "Identify which parts of CachedUtxoIndex are affected, what stays the same, and whether TxSubmitMgr or other components are impacted.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

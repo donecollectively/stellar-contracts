@@ -1,0 +1,9 @@
+{
+  "id": "6",
+  "subject": "2.1: Required domain skills for implementer",
+  "description": "Identify what domain skills the coder needs loaded: offchain development, Blockfrost API knowledge, Dexie/IndexedDB migration, testing patterns.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

@@ -1,0 +1,9 @@
+{
+  "id": "2",
+  "subject": "1.2: Data model evolution — separate tip tracking from processing cursor",
+  "description": "The blocks store should track which blocks have been processed for txns. lastBlockHeight/lastSlot serve tip/time purposes independently. The processing cursor is the highest block actually processed.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

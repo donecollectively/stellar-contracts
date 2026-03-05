@@ -1,0 +1,9 @@
+{
+  "id": "3",
+  "subject": "1.3: Block-by-block processing via blocks/{hash}/next",
+  "description": "Instead of querying address/transactions with a from parameter, fetch the list of blocks since our last processed block using blocks/{hash}/next, then process each block's txns in order.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

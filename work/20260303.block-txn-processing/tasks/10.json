@@ -1,0 +1,9 @@
+{
+  "id": "10",
+  "subject": "3.3: Requirements on other components affected",
+  "description": "Check if pending tx lifecycle, wallet monitoring, or other component REQTs are impacted by the cursor decoupling.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

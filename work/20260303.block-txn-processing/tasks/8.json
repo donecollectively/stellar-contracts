@@ -1,0 +1,9 @@
+{
+  "id": "8",
+  "subject": "3.1: Requirements being modified by this work",
+  "description": "Identify which existing REQTs change behavior and need evolution. checkForNewTxns, block management, core state, periodic refresh all change.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

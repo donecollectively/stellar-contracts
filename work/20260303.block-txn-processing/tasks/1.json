@@ -1,0 +1,9 @@
+{
+  "id": "1",
+  "subject": "1.1: Problem and root cause — what gap causes missed confirmations",
+  "description": "Explore the exact gap: lastBlockHeight represents chain tip (via fetchAndStoreLatestBlock) but is also used as the \"from\" cursor for address/transactions queries. When these diverge, txns in already-\"processed\" blocks are skipped.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}
