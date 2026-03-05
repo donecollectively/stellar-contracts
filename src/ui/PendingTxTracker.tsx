@@ -25,10 +25,10 @@ const stateDisplay: Record<
     { symbol: string; color: string; label: string }
 > = {
     pending:       { symbol: "◑", color: "#9ca3af", label: "Submitting" },
-    provisional:   { symbol: "●", color: "#9ca3af", label: "Provisional" },
-    likely:        { symbol: "●", color: "#e5e7eb", label: "Likely" },
-    confident:     { symbol: "●", color: "#22c55e", label: "Confident" },
-    certain:       { symbol: "●", color: "#15803d", label: "Confirmed" },
+    provisional:   { symbol: "●", color: "#9ca3af", label: "Confidence: Provisional" },
+    likely:        { symbol: "●", color: "oklch(0.86 0.32 149.97 / 0.4)", label: "Confidence: Likely" },
+    confident:     { symbol: "●", color: "oklch(0.77 0.33 145.43 / 0.73)", label: "Confidence: High" },
+    certain:       { symbol: "●", color: "oklch(0.63 0.22 250.05)", label: "Confidence: Confirmed" },
     "rolled-back": { symbol: "✗", color: "#ef4444", label: "Rolled Back" },
 };
 
