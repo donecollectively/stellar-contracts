@@ -183,6 +183,7 @@ BACKLOGGED items SHOULD be considered in the structural design, but implementati
  - **REQT-1.2.2**/ydmm332qye: COMPLETED: **Default Validity** - MUST default to 12 minutes if `validFor()` not called before build.
  - **REQT-1.2.3**/g5tya41gba: COMPLETED: **futureDate Method** - MUST allow setting `_txnTime` for deferred execution scenarios.
  - **REQT-1.2.4**/hekyyjd4rr: COMPLETED: **Time Conversions** - MUST provide `slotToTime()` and `timeToSlot()` using network parameters.
+ - **REQT-1.2.5**/whxwvpw7nf: NEXT: **txnTime Default Time Source** - `txnTime` MUST default to current network time (`setup.network.now`) minus a configurable backdating buffer (default 30 seconds). The buffer ensures the validity start isn't ahead of the chain's consensus view. *Implementer note: the current code uses `latestTipTime` from cached `NetworkParams`, which is stale — it reflects the tip at last params fetch, not current time.*
 
 ### REQT-1.3/n6yg7pebsa: COMPLETED: **Multi-Transaction Support**
 
