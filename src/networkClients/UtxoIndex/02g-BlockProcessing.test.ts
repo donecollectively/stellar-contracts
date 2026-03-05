@@ -578,6 +578,55 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
         });
     });
 
+    describe("Block discovery pagination (REQT/9gq8rwg9ng)", () => {
+        it("paginates blocks/{hash}/next when more than 100 blocks exist (block-discovery-pagination/REQT/9gq8rwg9ng)", async () => {
+            const index = createTestIndex(uniqueDbName("discovery-pages"));
+
+            // Seed: processed up to block 100
+            await seedProcessedBlocks(index, 98, 100);
+
+            const lastSeenHash = makeBlock(100).hash;
+
+            // First /next call returns 100 blocks (101..200) — a full page
+            const firstPage = Array.from({ length: 100 }, (_, i) =>
+                makeBlock(101 + i)
+            );
+            // Second /next call returns 10 blocks (201..210) — short page, signals tip
+            const secondPage = Array.from({ length: 10 }, (_, i) =>
+                makeBlock(201 + i)
+            );
+
+            const lastBlockOfFirstPage = firstPage[firstPage.length - 1];
+
+            const mock = mockBlockfrost(index, {
+                [`blocks/${lastSeenHash}/next`]: firstPage,
+                [`blocks/${lastBlockOfFirstPage.hash}/next`]: secondPage,
+                "blocks/latest": makeBlock(210),
+                // 110 unprocessed blocks > catchup threshold — catchup mode uses
+                // address-level query + UTxO reconciliation instead of per-block walk
+                [`addresses/${TEST_CAPO_ADDRESS}/transactions`]: [],
+                [`addresses/${TEST_CAPO_ADDRESS}/utxos`]: [],
+            });
+
+            vi.spyOn(index as any, "processTransactionForNewUtxos").mockResolvedValue(undefined);
+
+            await index.checkForNewTxns();
+
+            // Assert: both pages of /next were called
+            const nextCalls = mock.calls.filter((url) => url.includes("/next"));
+            expect(nextCalls.length).toBe(2);
+            expect(nextCalls[0]).toBe(`blocks/${lastSeenHash}/next`);
+            expect(nextCalls[1]).toBe(`blocks/${lastBlockOfFirstPage.hash}/next`);
+
+            // Assert: all 110 blocks were stored
+            const store = getStore(index);
+            const block150 = await store.findBlockId(makeBlock(150).hash);
+            const block210 = await store.findBlockId(makeBlock(210).hash);
+            expect(block150).toBeDefined();
+            expect(block210).toBeDefined();
+        });
+    });
+
     describe("Periodic refresh (REQT/zzsg63b2fb)", () => {
         it("5s poll skips when sync already running (concurrency-guard/REQT/zzsg63b2fb)", async () => {
             const index = createTestIndex(uniqueDbName("concurrency"));

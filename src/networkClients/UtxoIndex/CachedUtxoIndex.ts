@@ -496,14 +496,31 @@ export class CachedUtxoIndex {
         this._syncInProgress = true;
 
         try {
-            // REQT/9a0nx1gr4b: Advance tip state (independent of processing cursor)
+            // REQT/9gq8rwg9ng: Discover and store ALL blocks since last-seen.
+            // This also advances the in-memory tip state as new blocks are found.
+            // fetchAndStoreLatestBlock is only needed as a bootstrap when there
+            // are no blocks in the store yet (before initial syncNow completes).
             try {
-                await this.fetchAndStoreLatestBlock();
+                const newBlockCount = await this.fetchAndStoreNewBlocks();
+                if (newBlockCount === 0) {
+                    // No blocks discovered via walk — ensure tip is current
+                    // (handles case where blocks/{hash}/next hasn't caught up yet)
+                    await this.fetchAndStoreLatestBlock();
+                }
             } catch (e: any) {
                 await this.store.log(
-                    "bk5er",
-                    `Failed to fetch latest block for tip advancement: ${e.message || e}`,
+                    "fnber",
+                    `Failed to fetch new blocks: ${e.message || e}`,
                 );
+                // Fallback: at least get the latest block for tip state
+                try {
+                    await this.fetchAndStoreLatestBlock();
+                } catch (e2: any) {
+                    await this.store.log(
+                        "bk5er",
+                        `Failed to fetch latest block: ${e2.message || e2}`,
+                    );
+                }
             }
 
             // REQT/5d4f73c9bf: Determine processing cursor from store
@@ -518,17 +535,18 @@ export class CachedUtxoIndex {
                 return;
             }
 
-            const gap = this.lastBlockHeight - lastProcessed.height;
-            if (gap <= 0) {
-                // Already caught up to tip — nothing to do
+            // REQT/9gq8rwg9ng: Get unprocessed blocks from store
+            const unprocessedBlocks = await this.store.getUnprocessedBlocks();
+            if (unprocessedBlocks.length === 0) {
+                // All blocks processed — nothing to do
                 return;
             }
 
-            // REQT/fh56sce22g: Select sync mode based on gap
-            if (gap <= this.catchupThreshold) {
-                await this.syncIncremental(lastProcessed);
+            // REQT/fh56sce22g: Select sync mode based on unprocessed count
+            if (unprocessedBlocks.length <= this.catchupThreshold) {
+                await this.syncIncremental(unprocessedBlocks);
             } else {
-                await this.syncCatchup(lastProcessed);
+                await this.syncCatchup(lastProcessed, unprocessedBlocks);
             }
         } finally {
             this._syncInProgress = false;
@@ -538,38 +556,28 @@ export class CachedUtxoIndex {
     }
 
     /**
-     * Incremental block-walk mode: walks forward block-by-block from the last
-     * processed block, checking each block for transactions touching capoAddress.
+     * Incremental block-walk mode: processes unprocessed blocks already stored
+     * in the blocks table, checking each for transactions touching capoAddress.
+     * Blocks were previously discovered and stored by fetchAndStoreNewBlocks().
      *
      * REQT/gfsjgaac1y (Incremental Mode) — block-by-block for small gaps
      * REQT/9gq8rwg9ng (Block Tip & Address Recording) — per-block address data
      */
-    private async syncIncremental(lastProcessed: BlockIndexEntry): Promise<void> {
+    private async syncIncremental(unprocessedBlocks: BlockIndexEntry[]): Promise<void> {
         // REQT/jdkjh536mm: Set sync state
         this._syncState = "syncing";
         this.events.emit("syncing");
 
         await this.store.log(
             "si001",
-            `Incremental sync from block #${lastProcessed.height} (${lastProcessed.hash.slice(0, 12)}…)`,
+            `Incremental sync: ${unprocessedBlocks.length} unprocessed blocks`,
         );
 
-        // REQT/gfsjgaac1y: Discover new blocks via blocks/{hash}/next
-        const nextBlocks = await this.fetchFromBlockfrost<BlockDetailsType[]>(
-            `blocks/${lastProcessed.hash}/next`,
-        );
-
-        if (!Array.isArray(nextBlocks) || nextBlocks.length === 0) {
-            await this.store.log("si002", "No new blocks found via blocks/{hash}/next");
-            this.events.emit("synced");
-            return;
-        }
-
-        // REQT/gfsjgaac1y: Process blocks in order
-        for (const blockDetails of nextBlocks) {
+        // REQT/gfsjgaac1y: Process blocks in height order
+        for (const block of unprocessedBlocks) {
             // REQT/9gq8rwg9ng: Check which addresses (and tx IDs) are in this block
             const blockAddresses = await this.fetchFromBlockfrost<BlockAddressEntry[]>(
-                `blocks/${blockDetails.height}/addresses`,
+                `blocks/${block.height}/addresses`,
             );
 
             // REQT/gfsjgaac1y: Filter for capoAddress and process matching txns
@@ -581,8 +589,8 @@ export class CachedUtxoIndex {
                             const summary: AddressTransactionSummariesType = {
                                 tx_hash: tx.tx_hash,
                                 tx_index: 0, // not available from block addresses endpoint
-                                block_height: blockDetails.height,
-                                block_time: blockDetails.time,
+                                block_height: block.height,
+                                block_time: block.time,
                             };
                             await this.processTransactionForNewUtxos(tx.tx_hash, summary);
                         }
@@ -590,20 +598,13 @@ export class CachedUtxoIndex {
                 }
             }
 
-            // REQT/9gq8rwg9ng: Save block with state="processed" after processing
-            const blockEntry: BlockIndexEntry = {
-                hash: blockDetails.hash,
-                height: blockDetails.height,
-                time: blockDetails.time,
-                slot: blockDetails.slot,
-                state: "processed",
-            };
-            await this.store.saveBlock(blockEntry);
+            // REQT/5d4f73c9bf: Mark block as processed after its txns are handled
+            await this.store.saveBlock({ ...block, state: "processed" });
         }
 
         await this.store.log(
             "si003",
-            `Incremental sync complete: processed ${nextBlocks.length} blocks`,
+            `Incremental sync complete: processed ${unprocessedBlocks.length} blocks`,
         );
         this.events.emit("synced");
     }
@@ -611,19 +612,18 @@ export class CachedUtxoIndex {
     /**
      * Catchup mode: uses address-level transaction queries for large gaps,
      * then reconciles the UTxO set against current on-chain state.
+     * Marks all unprocessed blocks as processed on completion.
      *
      * REQT/2he55bafxd (Catchup Mode) — address-level bulk sync
      */
-    private async syncCatchup(lastProcessed: BlockIndexEntry): Promise<void> {
-        const gap = this.lastBlockHeight - lastProcessed.height;
-
+    private async syncCatchup(lastProcessed: BlockIndexEntry, unprocessedBlocks: BlockIndexEntry[]): Promise<void> {
         // REQT/jdkjh536mm: Set sync state with block count
-        this._syncState = `catchup sync (${gap} blocks)`;
+        this._syncState = `catchup sync (${unprocessedBlocks.length} blocks)`;
         this.events.emit("syncing");
 
         await this.store.log(
             "sc001",
-            `Catchup sync: ${gap} blocks behind (last processed #${lastProcessed.height}, tip #${this.lastBlockHeight})`,
+            `Catchup sync: ${unprocessedBlocks.length} blocks behind (last processed #${lastProcessed.height}, tip #${this.lastBlockHeight})`,
         );
 
         // REQT/2he55bafxd: Address-level query to discover relevant transactions
@@ -666,20 +666,9 @@ export class CachedUtxoIndex {
         // REQT/2he55bafxd: Reconcile UTxOs against current on-chain state
         await this.reconcileUtxos();
 
-        // REQT/2he55bafxd: Advance processing cursor to chain tip
-        // Save a "processed" block at the tip height to mark catchup complete
-        const tipBlock = await this.store.findBlockId(this.lastBlockId);
-        if (tipBlock) {
-            await this.store.saveBlock({ ...tipBlock, state: "processed" });
-        } else {
-            // Tip block not yet in store — create it
-            await this.store.saveBlock({
-                hash: this.lastBlockId,
-                height: this.lastBlockHeight,
-                time: 0, // not available without additional fetch
-                slot: this.lastSlot,
-                state: "processed",
-            });
+        // REQT/2he55bafxd: Mark all unprocessed blocks as processed
+        for (const block of unprocessedBlocks) {
+            await this.store.saveBlock({ ...block, state: "processed" });
         }
 
         await this.store.log(
@@ -2138,7 +2127,6 @@ export class CachedUtxoIndex {
      * state set by the block walk or catchup sync).
      *
      * REQT/9a0nx1gr4b (Core State) — tip tracking independent of processing
-     * REQT/9gq8rwg9ng (Block Tip & Address Recording)
      */
     async fetchAndStoreLatestBlock(): Promise<BlockIndexEntry> {
         await this.store.log("x2xzt", `Fetching latest block from blockfrost`);
@@ -2171,6 +2159,71 @@ export class CachedUtxoIndex {
         const entry = this.blockfrostBlockToIndexEntry(typed, "unprocessed");
         await this.store.saveBlock(entry);
         return entry;
+    }
+
+    /**
+     * Discovers and stores ALL blocks since the last-seen block (highest block
+     * in our store, regardless of state). Uses `blocks/{hash}/next` to walk
+     * forward from the last-seen block, saving each discovered block as
+     * "unprocessed". This builds a complete chain segment in the blocks table.
+     *
+     * REQT/9gq8rwg9ng (Block Tip & Address Recording) — complete chain segment recording
+     */
+    private async fetchAndStoreNewBlocks(): Promise<number> {
+        const lastSeen = await this.store.getLatestBlock();
+        if (!lastSeen) {
+            // No blocks in store — fetchAndStoreLatestBlock handles bootstrap
+            return 0;
+        }
+
+        let totalStored = 0;
+        let currentHash = lastSeen.hash;
+
+        // Walk forward from last-seen block, paginating via blocks/{hash}/next
+        // (endpoint returns up to ~100 blocks per call)
+        while (true) {
+            const nextBlocks = await this.fetchFromBlockfrost<BlockDetailsType[]>(
+                `blocks/${currentHash}/next`,
+            );
+
+            if (!Array.isArray(nextBlocks) || nextBlocks.length === 0) {
+                break;
+            }
+
+            for (const blockDetails of nextBlocks) {
+                // Save as "unprocessed" — only if not already in store
+                const existing = await this.store.findBlockId(blockDetails.hash);
+                if (!existing) {
+                    const entry = this.blockfrostBlockToIndexEntry(blockDetails, "unprocessed");
+                    await this.store.saveBlock(entry);
+                    totalStored++;
+                }
+
+                // Update in-memory tip if this block is higher
+                if (blockDetails.height > this.lastBlockHeight) {
+                    this.lastBlockHeight = blockDetails.height;
+                    this.lastBlockId = blockDetails.hash;
+                    this.lastSlot = blockDetails.slot;
+                }
+            }
+
+            // Continue walking from the last block in this batch
+            currentHash = nextBlocks[nextBlocks.length - 1].hash;
+
+            // If we got fewer than a full page, we've reached the tip
+            if (nextBlocks.length < 100) {
+                break;
+            }
+        }
+
+        if (totalStored > 0) {
+            await this.store.log(
+                "fnb01",
+                `Discovered and stored ${totalStored} new blocks since #${lastSeen.height}`,
+            );
+        }
+
+        return totalStored;
     }
 
     /**

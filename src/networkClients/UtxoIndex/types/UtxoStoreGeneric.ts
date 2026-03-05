@@ -25,6 +25,8 @@ export interface UtxoStoreGeneric {
     getLatestBlock(): Promise<BlockIndexEntry | undefined>;
     // REQT/5d4f73c9bf (Last Processed Block) — processing cursor independent of chain tip
     getLastProcessedBlock(): Promise<BlockIndexEntry | undefined>;
+    // REQT/9gq8rwg9ng (Block Recording) — retrieve unprocessed blocks in height order for processing
+    getUnprocessedBlocks(): Promise<BlockIndexEntry[]>;
 
     // UTXO operations - uses storage-agnostic UtxoIndexEntry
     findUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined>;

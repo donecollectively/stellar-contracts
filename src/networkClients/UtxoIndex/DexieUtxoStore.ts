@@ -187,6 +187,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             .first();
     }
 
+    // REQT/9gq8rwg9ng (Block Recording) — unprocessed blocks sorted by height ascending
+    async getUnprocessedBlocks(): Promise<BlockIndexEntry[]> {
+        return await this.blocks
+            .where("[state+height]")
+            .between(["unprocessed", -Infinity], ["unprocessed", Infinity])
+            .toArray();
+    }
+
     // REQT/1gw45sp198 (UTXO Storage)
     async findUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined> {
         return await this.utxos.where("utxoId").equals(utxoId).first();
