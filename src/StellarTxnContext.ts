@@ -720,9 +720,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
      */
     get txnTime() {
         if (this._txnTime) return this._txnTime;
-        const d = new Date(
-            makeNetworkParamsHelper(this.networkParams).latestTipTime,
-        );
+        // REQT/whxwvpw7nf (txnTime Default Time Source) — use current network time
+        // with configurable backdating buffer (default 30s) to ensure validity start
+        // isn't ahead of the chain's consensus view.
+        const backdateSeconds = this.setup.txTimeBackdateBufferSeconds ?? 30;
+        const d = new Date(this.setup.network.now - backdateSeconds * 1000);
         // time emoji: ⏰
         console.log("⏰⏰setting txnTime to ", d.toString());
         return (this._txnTime = d);

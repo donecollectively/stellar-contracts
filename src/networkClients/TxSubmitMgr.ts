@@ -1130,7 +1130,16 @@ export class TxSubmitMgr extends StateMachine<
         },
     };
 
-    get currentSlot() {
+    /**
+     * Returns the current slot from the most recent observed block when
+     * network is a CachedUtxoIndex (ground truth), otherwise derives
+     * from wall-clock time via timeToSlot (approximate).
+     * @internal
+     */
+    private getCurrentSlotEstimate(): number {
+        if ("lastBlockSlot" in this.network) {
+            return (this.network as any).lastBlockSlot;
+        }
         return makeNetworkParamsHelper(this.networkParams).timeToSlot(
             this.network.now
         );
@@ -1181,7 +1190,7 @@ export class TxSubmitMgr extends StateMachine<
                 },
                 (e) => {
                     if (
-                        "currentSlot" in this.network &&
+                        "lastBlockSlot" in this.network &&
                         e.message.match(/or slot out of range/)
                     ) {
                         this.checkTxValidityDetails(this.tx);
@@ -1224,13 +1233,15 @@ export class TxSubmitMgr extends StateMachine<
     }
 
     isTxExpired(tx: Tx) {
-        let { currentSlot } = this;
-        currentSlot -= 60; // 1 minute buffer
+        // Use most recent observed block slot for ground-truth expiry detection.
+        // Duck-type: CachedUtxoIndex exposes lastBlockSlot; fall back to
+        // timeToSlot(network.now) for other CardanoClient implementations.
+        let slot = this.getCurrentSlotEstimate();
+        slot -= 60; // 1 minute buffer
 
-        const validFrom = tx.body.firstValidSlot;
         const validTo = tx.body.lastValidSlot;
 
-        if (validTo && validTo < currentSlot) {
+        if (validTo && validTo < slot) {
             return true;
         }
         return false;
@@ -1258,7 +1269,11 @@ export class TxSubmitMgr extends StateMachine<
         // vf = 100,  current = 100,  vt = 110  =>  FROM now, TO now +10; VALID
         // vf = 100, current = 120, vt = 110  =>  FROM now -20, TO now -10; PAST
         debugger;
-        const { currentSlot } = this;
+        // Use timeToSlot(network.now) for human-readable diagnostic display —
+        // approximate wall-clock comparison is appropriate for "valid for +N seconds".
+        const currentSlot = makeNetworkParamsHelper(this.networkParams).timeToSlot(
+            this.network.now
+        );
         const diff1 = validFrom - currentSlot;
         const diff2 = validTo - currentSlot;
         const disp1 =

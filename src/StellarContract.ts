@@ -310,6 +310,10 @@ export type SetupInfo = {
     optimize?: boolean | HeliosOptimizeOptions;
     /** presentation-cache indicates utxos whose details have already been emitted to the console */
     uxtoDisplayCache?: UtxoDisplayCache;
+    /** REQT/whxwvpw7nf (txnTime Default Time Source) — seconds to subtract from
+     *  wall-clock time when defaulting txnTime, ensuring validity start isn't
+     *  ahead of the chain's consensus view. Default: 30 seconds. */
+    txTimeBackdateBufferSeconds?: number;
 };
 
 /**

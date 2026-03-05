@@ -166,7 +166,8 @@ export class CachedUtxoIndex {
     // remembers the last block-id, height, and slot seen in any capo utxo
     lastBlockId: string;
     lastBlockHeight: number;
-    lastSlot: number;
+    lastBlockSlot: number;
+    lastBlockTime: number;
     store: UtxoStoreGeneric;
     network: CardanoClient;
 
@@ -283,12 +284,14 @@ export class CachedUtxoIndex {
     }
 
     /**
-     * Returns current slot number from the latest synced block.
+     * Returns current wall-clock time in milliseconds since epoch,
+     * matching the CardanoClient interface contract (as implemented
+     * by BlockfrostV0Client and Emulator).
      *
      * REQT/gz9a5b8qv (now Property)
      */
     get now(): number {
-        return this.lastSlot;
+        return Date.now();
     }
 
     /**
@@ -375,7 +378,8 @@ export class CachedUtxoIndex {
         }
         this.lastBlockId = "";
         this.lastBlockHeight = 0;
-        this.lastSlot = 0;
+        this.lastBlockSlot = 0;
+        this.lastBlockTime = 0;
 
         // Apply sync configuration
         if (syncPageSize !== undefined) {
@@ -439,7 +443,8 @@ export class CachedUtxoIndex {
         if (cachedBlock) {
             this.lastBlockId = cachedBlock.hash;
             this.lastBlockHeight = cachedBlock.height;
-            this.lastSlot = cachedBlock.slot;
+            this.lastBlockSlot = cachedBlock.slot;
+            this.lastBlockTime = cachedBlock.time;
             await this.store.log(
                 "c8init",
                 `Initialized from cache: block #${cachedBlock.height}, slot ${cachedBlock.slot}`,
@@ -1131,7 +1136,7 @@ export class CachedUtxoIndex {
             `  tx.lastValidSlot  = ${lastValidSlot}`,
             `  graceBufferSlots  = ${this.graceBufferSlots}`,
             `  deadlineSlot      = ${deadlineSlot}`,
-            `  this.lastSlot     = ${this.lastSlot}`,
+            `  this.lastBlockSlot     = ${this.lastBlockSlot}`,
             `  Date.now()        = ${Date.now()}`,
             `  typeof lastValidSlot = ${typeof lastValidSlot}`,
         ].join("\n"));
@@ -1305,7 +1310,7 @@ export class CachedUtxoIndex {
         if (confirmedEntries.length === 0) return;
 
         const currentHeight = this.lastBlockHeight;
-        const currentSlot = this.lastSlot;
+        const currentSlot = this.lastBlockSlot;
         const { provisionalDepth, confidentDepth, certaintyDepth } =
             this.confirmationThresholds;
 
@@ -1380,7 +1385,7 @@ export class CachedUtxoIndex {
         const pendingEntries = await this.store.getPendingByStatus("pending");
 
         // REQT/c3ytg4rttd: Use the LAST PROCESSED block's slot for deadline comparison,
-        // not the tip slot (this.lastSlot). The tip advances via fetchAndStoreNewBlocks()
+        // not the tip slot (this.lastBlockSlot). The tip advances via fetchAndStoreNewBlocks()
         // before blocks are processed — using the tip would roll back txns whose confirming
         // block hasn't been processed yet (the exact race condition this work unit fixes).
         const lastProcessed = await this.store.getLastProcessedBlock();
@@ -1390,7 +1395,7 @@ export class CachedUtxoIndex {
             console.log(
                 `⏱️ checkPendingDeadlines: ${pendingEntries.length} pending`,
                 `\n  lastProcessed: height=${lastProcessed?.height} slot=${lastProcessedSlot} time=${lastProcessed?.time}`,
-                `\n  tip: height=${this.lastBlockHeight} slot=${this.lastSlot}`,
+                `\n  tip: height=${this.lastBlockHeight} slot=${this.lastBlockSlot}`,
                 `\n  Date.now()=${Date.now()}`,
             );
             for (const entry of pendingEntries) {
@@ -1431,7 +1436,7 @@ export class CachedUtxoIndex {
         const { txHash } = entry;
 
         const lastProcessed = await this.store.getLastProcessedBlock();
-        const lastProcessedSlot = lastProcessed?.slot ?? this.lastSlot;
+        const lastProcessedSlot = lastProcessed?.slot ?? this.lastBlockSlot;
 
         // === ROLLBACK DIAGNOSTICS ===
         const tx = decodeTx(entry.signedTxCborHex);
@@ -1444,7 +1449,7 @@ export class CachedUtxoIndex {
             `  lastProcessed.slot   = ${lastProcessed?.slot}`,
             `  lastProcessed.time   = ${lastProcessed?.time}`,
             `  lastProcessed.height = ${lastProcessed?.height}`,
-            `  this.lastSlot (tip)  = ${this.lastSlot}`,
+            `  this.lastBlockSlot (tip)  = ${this.lastBlockSlot}`,
             `  this.lastBlockHeight = ${this.lastBlockHeight}`,
             `  Date.now()           = ${Date.now()}`,
             `  entry.submittedAt    = ${entry.submittedAt}`,
@@ -2332,7 +2337,8 @@ export class CachedUtxoIndex {
             );
             this.lastBlockHeight = typed.height;
             this.lastBlockId = typed.hash;
-            this.lastSlot = typed.slot;
+            this.lastBlockSlot = typed.slot;
+            this.lastBlockTime = typed.time;
         }
 
         // Save block only if not already in store — preserve existing state
@@ -2389,7 +2395,8 @@ export class CachedUtxoIndex {
                 if (blockDetails.height > this.lastBlockHeight) {
                     this.lastBlockHeight = blockDetails.height;
                     this.lastBlockId = blockDetails.hash;
-                    this.lastSlot = blockDetails.slot;
+                    this.lastBlockSlot = blockDetails.slot;
+                    this.lastBlockTime = blockDetails.time;
                 }
             }
 
