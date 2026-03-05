@@ -90,6 +90,27 @@ const DEFAULT_CATCHUP_THRESHOLD = 20;
 const DEFAULT_SYNC_PAGE_SIZE = 100;
 const DEFAULT_MAX_SYNC_PAGES = Infinity;
 
+/**
+ * REQT/yn45tvmp6k: Configurable thresholds for confirmation depth tracking.
+ * confirmState transitions when depth crosses these thresholds:
+ * - provisional: depth < provisionalDepth
+ * - likely: provisionalDepth ≤ depth < confidentDepth
+ * - confident: confidentDepth ≤ depth < certaintyDepth
+ * - certain: depth ≥ certaintyDepth
+ */
+export interface ConfirmationThresholds {
+    provisionalDepth: number;
+    confidentDepth: number;
+    certaintyDepth: number;
+}
+
+// REQT/yn45tvmp6k: Default depth thresholds
+const DEFAULT_CONFIRMATION_THRESHOLDS: ConfirmationThresholds = {
+    provisionalDepth: 4,
+    confidentDepth: 10,
+    certaintyDepth: 180,
+};
+
 // REQT/92m7kpkny7: Wallet address staleness threshold (default 30 seconds)
 const DEFAULT_WALLET_STALENESS_MS = 30 * 1000;
 
@@ -181,6 +202,9 @@ export class CachedUtxoIndex {
 
     // REQT/fh56sce22g: Threshold for dual-mode sync selection
     private catchupThreshold: number = DEFAULT_CATCHUP_THRESHOLD;
+
+    // REQT/yn45tvmp6k: Configurable confirmation depth thresholds
+    confirmationThresholds: ConfirmationThresholds = { ...DEFAULT_CONFIRMATION_THRESHOLDS };
 
     // REQT/2w2yyc2m1k: In-Memory Pending Map — session-scoped, not persisted
     private pendingTxMap: Map<string, TxDescription<any, "submitted">> = new Map();
@@ -311,6 +335,7 @@ export class CachedUtxoIndex {
         maxSyncPages,
         graceBufferSlots,
         catchupThreshold,
+        confirmationThresholds,
     }: {
         address: Address | string;
         mph: MintingPolicyHash | string;
@@ -328,6 +353,8 @@ export class CachedUtxoIndex {
         graceBufferSlots?: number;
         /** Block gap threshold for dual-mode sync: ≤ threshold → incremental, > threshold → catchup (default: 20) */
         catchupThreshold?: number;
+        /** REQT/yn45tvmp6k: Custom confirmation depth thresholds (default: provisional<4, confident≥10, certain≥180) */
+        confirmationThresholds?: Partial<ConfirmationThresholds>;
     }) {
         // Convert string inputs to proper types if needed
         this._address =
@@ -363,6 +390,14 @@ export class CachedUtxoIndex {
         // REQT/fh56sce22g: Dual-mode sync threshold
         if (catchupThreshold !== undefined) {
             this.catchupThreshold = catchupThreshold;
+        }
+
+        // REQT/yn45tvmp6k: Apply custom confirmation depth thresholds
+        if (confirmationThresholds) {
+            this.confirmationThresholds = {
+                ...DEFAULT_CONFIRMATION_THRESHOLDS,
+                ...confirmationThresholds,
+            };
         }
 
         if (strategy === "dexie") {
@@ -537,17 +572,19 @@ export class CachedUtxoIndex {
 
             // REQT/9gq8rwg9ng: Get unprocessed blocks from store
             const unprocessedBlocks = await this.store.getUnprocessedBlocks();
-            if (unprocessedBlocks.length === 0) {
-                // All blocks processed — nothing to do
-                return;
+            if (unprocessedBlocks.length > 0) {
+                // REQT/fh56sce22g: Select sync mode based on unprocessed count
+                if (unprocessedBlocks.length <= this.catchupThreshold) {
+                    await this.syncIncremental(unprocessedBlocks);
+                } else {
+                    await this.syncCatchup(lastProcessed, unprocessedBlocks);
+                }
             }
 
-            // REQT/fh56sce22g: Select sync mode based on unprocessed count
-            if (unprocessedBlocks.length <= this.catchupThreshold) {
-                await this.syncIncremental(unprocessedBlocks);
-            } else {
-                await this.syncCatchup(lastProcessed, unprocessedBlocks);
-            }
+            // REQT/ddzcp753jr: Recalculate confirmation depths after sync
+            // Runs even when no new blocks were processed — tip may have
+            // advanced in a prior cycle and depths need rechecking
+            await this.updateConfirmationDepths();
         } finally {
             this._syncInProgress = false;
             // REQT/jdkjh536mm: Return to idle
@@ -1236,6 +1273,67 @@ export class CachedUtxoIndex {
     }
 
     /**
+     * Recalculates confirmation depth for all confirmed-but-not-certain pending
+     * transactions and advances confirmState when depth crosses a threshold.
+     * Called at the end of each sync cycle after blocks are processed.
+     *
+     * REQT/ddzcp753jr (Confirmation Depth Tracking)
+     * REQT/thy7tkrxh7 (Depth Advancement) — recalculate on each sync cycle
+     * REQT/yn45tvmp6k (Confirmation States) — threshold-based transitions
+     * REQT/fz6z7rr702 (Pending Transaction Events) — emit confirmStateChanged
+     */
+    private async updateConfirmationDepths(): Promise<void> {
+        const confirmedEntries = await this.store.getPendingByStatus("confirmed");
+        if (confirmedEntries.length === 0) return;
+
+        const currentHeight = this.lastBlockHeight;
+        const { provisionalDepth, confidentDepth, certaintyDepth } =
+            this.confirmationThresholds;
+
+        for (const entry of confirmedEntries) {
+            // REQT/thy7tkrxh7: Skip entries already at "certain" — no further advancement
+            if (entry.confirmState === "certain") continue;
+
+            // REQT/thy7tkrxh7: Skip entries without confirmedAtBlockHeight (shouldn't happen)
+            if (entry.confirmedAtBlockHeight === undefined) continue;
+
+            // REQT/thy7tkrxh7: Calculate depth
+            const depth = currentHeight - entry.confirmedAtBlockHeight;
+
+            // REQT/yn45tvmp6k: Determine new confirmState based on depth thresholds
+            let newState: "provisional" | "likely" | "confident" | "certain";
+            if (depth >= certaintyDepth) {
+                newState = "certain";
+            } else if (depth >= confidentDepth) {
+                newState = "confident";
+            } else if (depth >= provisionalDepth) {
+                newState = "likely";
+            } else {
+                newState = "provisional";
+            }
+
+            // REQT/thy7tkrxh7: Only update if state actually changed
+            if (newState !== entry.confirmState) {
+                const previousState = entry.confirmState;
+                entry.confirmState = newState;
+                await this.store.savePendingTx(entry);
+
+                // REQT/fz6z7rr702: Emit confirmStateChanged event
+                this.events.emit("confirmStateChanged", {
+                    txHash: entry.txHash,
+                    confirmState: newState,
+                    depth,
+                });
+
+                await this.store.log(
+                    "cd001",
+                    `Confirmation depth advanced: ${entry.txHash.slice(0, 8)}… ${previousState} → ${newState} (depth ${depth})`,
+                );
+            }
+        }
+    }
+
+    /**
      * Checks for pending transactions whose deadlines have expired
      * and rolls them back. Also runs 72h purge.
      *
@@ -1461,8 +1559,18 @@ export class CachedUtxoIndex {
      * Returns all pending transaction entries.
      *
      * REQT/r0y7s2vggr (getPendingTxs Query)
+     * REQT/r0y7s2vggr: Supports optional filtering by confirmState
      */
-    async getPendingTxs(): Promise<PendingTxEntry[]> {
+    async getPendingTxs(filter?: {
+        confirmState?: "provisional" | "likely" | "confident" | "certain";
+    }): Promise<PendingTxEntry[]> {
+        if (filter?.confirmState) {
+            // REQT/r0y7s2vggr: Filter confirmed entries by confirmState
+            const confirmed = await this.store.getPendingByStatus("confirmed");
+            return confirmed.filter(
+                (entry) => entry.confirmState === filter.confirmState,
+            );
+        }
         return this.store.getPendingByStatus("pending");
     }
 

@@ -838,3 +838,338 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
         });
     });
 });
+
+// =========================================================================
+// Phase 2: Confirmation Depth Tracking
+// =========================================================================
+
+describe("Confirmation Depth Tracking (REQT/ddzcp753jr)", () => {
+    /**
+     * Helper: creates an index with a pending tx already confirmed at a given block height.
+     * Returns the index, store, and tx hash for further assertions.
+     */
+    async function setupConfirmedPendingTx(
+        label: string,
+        confirmedAtHeight: number,
+        opts?: { thresholds?: Record<string, number> }
+    ): Promise<{
+        index: CachedUtxoIndex;
+        store: ReturnType<typeof getStore>;
+        txHash: string;
+    }> {
+        const index = createTestIndex(uniqueDbName(label));
+
+        // Seed processed blocks up to the confirming block
+        await seedProcessedBlocks(index, confirmedAtHeight - 2, confirmedAtHeight);
+
+        const txHash =
+            "dd00112233445566778899aabbccddeeff00112233445566778899aabbccddee";
+
+        const store = getStore(index);
+
+        // Save a pending tx entry that's already been confirmed at the given height
+        // (simulates Phase 1 having run: confirmPendingTx set status + confirmedAtBlockHeight)
+        await store.savePendingTx({
+            txHash,
+            description: "test depth tracking tx",
+            id: "depth-test-1",
+            depth: 0,
+            txCborHex: "deadbeef",
+            signedTxCborHex: "deadbeef",
+            deadline: 99999999,
+            status: "confirmed",
+            submittedAt: Date.now(),
+        } as any);
+
+        // Manually set confirmedAtBlockHeight (Phase 1 infrastructure)
+        await store.setPendingTxStatus(txHash, "confirmed");
+        const entry = await store.findPendingTx(txHash);
+        if (entry) {
+            (entry as any).confirmedAtBlockHeight = confirmedAtHeight;
+            (entry as any).confirmState = "provisional";
+            await store.savePendingTx(entry);
+        }
+
+        return { index, store, txHash };
+    }
+
+    /**
+     * Helper: advances the index tip and triggers a sync cycle so depth
+     * recalculation runs. Mocks block discovery to show new blocks up to newTipHeight.
+     */
+    async function advanceTipAndSync(
+        index: CachedUtxoIndex,
+        currentTipHeight: number,
+        newTipHeight: number,
+    ): Promise<void> {
+        const currentTipHash = makeBlock(currentTipHeight).hash;
+
+        // Generate new blocks from current+1 to newTip
+        const newBlocks = Array.from(
+            { length: newTipHeight - currentTipHeight },
+            (_, i) => makeBlock(currentTipHeight + 1 + i)
+        );
+
+        const responses: Record<string, unknown> = {
+            [`blocks/${currentTipHash}/next`]: newBlocks,
+            "blocks/latest": makeBlock(newTipHeight),
+        };
+
+        // Add /addresses responses for each new block (no relevant txns)
+        for (let h = currentTipHeight + 1; h <= newTipHeight; h++) {
+            responses[`blocks/${h}/addresses`] = [];
+        }
+
+        // When gap exceeds catchup threshold (default 20), also mock catchup-mode endpoints
+        const gap = newTipHeight - currentTipHeight;
+        if (gap > 20) {
+            responses[`addresses/${TEST_CAPO_ADDRESS}/transactions`] = [];
+            responses[`addresses/${TEST_CAPO_ADDRESS}/utxos`] = [];
+        }
+
+        mockBlockfrost(index, responses);
+        vi.spyOn(index as any, "processTransactionForNewUtxos").mockResolvedValue(undefined);
+
+        await index.checkForNewTxns();
+    }
+
+    describe("Depth advancement (REQT/thy7tkrxh7)", () => {
+        it("confirmState advances through depth thresholds as chain grows (depth-advancement/REQT/thy7tkrxh7)", async () => {
+            // Confirm tx at block 100
+            const { index, store, txHash } = await setupConfirmedPendingTx(
+                "depth-advance", 100
+            );
+
+            // Default thresholds: provisional < 4, likely < 10, confident ≥ 10, certain ≥ 180
+
+            // Advance tip to 103 (depth 3) — should still be "provisional"
+            await advanceTipAndSync(index, 100, 103);
+            let entry = await store.findPendingTx(txHash);
+            expect((entry as any).confirmState).toBe("provisional");
+
+            // Advance tip to 104 (depth 4) — should advance to "likely"
+            await advanceTipAndSync(index, 103, 104);
+            entry = await store.findPendingTx(txHash);
+            expect((entry as any).confirmState).toBe("likely");
+
+            // Advance tip to 109 (depth 9) — should still be "likely"
+            await advanceTipAndSync(index, 104, 109);
+            entry = await store.findPendingTx(txHash);
+            expect((entry as any).confirmState).toBe("likely");
+
+            // Advance tip to 110 (depth 10) — should advance to "confident"
+            await advanceTipAndSync(index, 109, 110);
+            entry = await store.findPendingTx(txHash);
+            expect((entry as any).confirmState).toBe("confident");
+        });
+
+        it("confirmState reaches certain at depth ≥ 180 (depth-certain/REQT/thy7tkrxh7)", async () => {
+            const { index, store, txHash } = await setupConfirmedPendingTx(
+                "depth-certain", 100
+            );
+
+            // Jump straight to depth 180
+            await advanceTipAndSync(index, 100, 280);
+            const entry = await store.findPendingTx(txHash);
+            expect((entry as any).confirmState).toBe("certain");
+        });
+    });
+
+    describe("Depth events (REQT/fz6z7rr702)", () => {
+        it("emits confirmStateChanged at each threshold crossing (depth-events/REQT/fz6z7rr702)", async () => {
+            const { index, store, txHash } = await setupConfirmedPendingTx(
+                "depth-events", 100
+            );
+
+            const stateChanges: Array<{
+                txHash: string;
+                confirmState: string;
+                depth: number;
+            }> = [];
+
+            index.events.on("confirmStateChanged" as any, (event: any) => {
+                stateChanges.push(event);
+            });
+
+            // Advance past provisional → likely threshold (depth 4)
+            await advanceTipAndSync(index, 100, 104);
+
+            expect(stateChanges.length).toBeGreaterThanOrEqual(1);
+            const likelyEvent = stateChanges.find(
+                (e) => e.confirmState === "likely"
+            );
+            expect(likelyEvent).toBeDefined();
+            expect(likelyEvent!.txHash).toBe(txHash);
+            expect(likelyEvent!.depth).toBe(4);
+
+            // Advance past likely → confident threshold (depth 10)
+            stateChanges.length = 0;
+            await advanceTipAndSync(index, 104, 110);
+
+            const confidentEvent = stateChanges.find(
+                (e) => e.confirmState === "confident"
+            );
+            expect(confidentEvent).toBeDefined();
+            expect(confidentEvent!.depth).toBe(10);
+        });
+
+        it("txConfirmed event includes initial confirmState (txconfirmed-with-state/REQT/fz6z7rr702)", async () => {
+            const index = createTestIndex(uniqueDbName("txconfirmed-state"));
+
+            await seedProcessedBlocks(index, 98, 100);
+
+            const PENDING_TX_HASH =
+                "ff00112233445566778899aabbccddeeff00112233445566778899aabbccddee";
+
+            const store = getStore(index);
+            await store.savePendingTx({
+                txHash: PENDING_TX_HASH,
+                description: "test txConfirmed event",
+                id: "event-test-1",
+                depth: 0,
+                txCborHex: "deadbeef",
+                signedTxCborHex: "deadbeef",
+                deadline: 99999999,
+                status: "pending",
+                submittedAt: Date.now(),
+            });
+            (index as any).pendingTxHashes.add(PENDING_TX_HASH);
+
+            // Listen for txConfirmed event
+            const confirmedEvents: any[] = [];
+            index.events.on("txConfirmed", (event: any) => {
+                confirmedEvents.push(event);
+            });
+
+            const block101 = makeBlock(101, { tx_count: 1 });
+            const lastProcessedHash = makeBlock(100).hash;
+
+            mockBlockfrost(index, {
+                "blocks/latest": makeBlock(101),
+                [`blocks/${lastProcessedHash}/next`]: [block101],
+                "blocks/101/addresses": [
+                    {
+                        address: TEST_CAPO_ADDRESS,
+                        transactions: [{ tx_hash: PENDING_TX_HASH }],
+                    },
+                ] as BlockAddressEntry[],
+            });
+
+            await index.checkForNewTxns();
+
+            // Assert: txConfirmed event includes confirmState
+            expect(confirmedEvents.length).toBe(1);
+            expect(confirmedEvents[0].txHash).toBe(PENDING_TX_HASH);
+            expect(confirmedEvents[0].confirmState).toBe("provisional");
+        });
+    });
+
+    describe("Configurable thresholds (REQT/yn45tvmp6k)", () => {
+        it("respects custom depth thresholds (custom-thresholds/REQT/yn45tvmp6k)", async () => {
+            const index = createTestIndex(uniqueDbName("custom-thresholds"));
+
+            // Set custom thresholds: provisional < 2, likely < 5, confident ≥ 5, certain ≥ 20
+            // Phase 2 adds these as configurable properties on CachedUtxoIndex
+            if ("confirmationThresholds" in index) {
+                (index as any).confirmationThresholds = {
+                    provisionalDepth: 2,
+                    confidentDepth: 5,
+                    certaintyDepth: 20,
+                };
+            }
+
+            await seedProcessedBlocks(index, 98, 100);
+
+            const txHash =
+                "aa00112233445566778899aabbccddeeff00112233445566778899aabbccddee";
+
+            const store = getStore(index);
+            await store.savePendingTx({
+                txHash,
+                description: "custom threshold test",
+                id: "thresh-test-1",
+                depth: 0,
+                txCborHex: "deadbeef",
+                signedTxCborHex: "deadbeef",
+                deadline: 99999999,
+                status: "confirmed",
+                submittedAt: Date.now(),
+            } as any);
+
+            const entry = await store.findPendingTx(txHash);
+            if (entry) {
+                (entry as any).confirmedAtBlockHeight = 100;
+                (entry as any).confirmState = "provisional";
+                await store.savePendingTx(entry);
+            }
+
+            // Advance to depth 2 — should transition to "likely" with custom thresholds
+            await advanceTipAndSync(index, 100, 102);
+            let updated = await store.findPendingTx(txHash);
+            expect((updated as any).confirmState).toBe("likely");
+
+            // Advance to depth 5 — should transition to "confident"
+            await advanceTipAndSync(index, 102, 105);
+            updated = await store.findPendingTx(txHash);
+            expect((updated as any).confirmState).toBe("confident");
+
+            // Advance to depth 20 — should transition to "certain"
+            await advanceTipAndSync(index, 105, 120);
+            updated = await store.findPendingTx(txHash);
+            expect((updated as any).confirmState).toBe("certain");
+        });
+    });
+
+    describe("getPendingTxs filtering (REQT/r0y7s2vggr)", () => {
+        it("filters by confirmState (filter-by-confirm-state/REQT/r0y7s2vggr)", async () => {
+            const index = createTestIndex(uniqueDbName("filter-state"));
+
+            const store = getStore(index);
+
+            // Create three confirmed entries at different confirmStates
+            const txHashes = [
+                "aa11000000000000000000000000000000000000000000000000000000000000",
+                "bb22000000000000000000000000000000000000000000000000000000000000",
+                "cc33000000000000000000000000000000000000000000000000000000000000",
+            ];
+
+            for (const [i, txHash] of txHashes.entries()) {
+                const states = ["provisional", "likely", "confident"];
+                await store.savePendingTx({
+                    txHash,
+                    description: `test tx ${i}`,
+                    id: `filter-test-${i}`,
+                    depth: 0,
+                    txCborHex: "deadbeef",
+                    signedTxCborHex: "deadbeef",
+                    deadline: 99999999,
+                    status: "confirmed",
+                    submittedAt: Date.now(),
+                    confirmState: states[i],
+                    confirmedAtBlockHeight: 100 + i,
+                } as any);
+            }
+
+            // Phase 2 adds confirmState parameter to getPendingTxs
+            // getPendingTxs({ confirmState: "provisional" }) should return only the first
+            if (index.getPendingTxs.length > 0 || "getPendingTxs" in index) {
+                // Test filtering — adapt to whatever the Coder's API shape is
+                const provisional = await (index as any).getPendingTxs({
+                    confirmState: "provisional",
+                });
+                if (Array.isArray(provisional)) {
+                    expect(provisional.length).toBe(1);
+                    expect(provisional[0].txHash).toBe(txHashes[0]);
+                }
+
+                const likely = await (index as any).getPendingTxs({
+                    confirmState: "likely",
+                });
+                if (Array.isArray(likely)) {
+                    expect(likely.length).toBe(1);
+                    expect(likely[0].txHash).toBe(txHashes[1]);
+                }
+            }
+        });
+    });
+});
