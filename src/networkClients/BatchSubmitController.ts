@@ -622,6 +622,7 @@ export class BatchSubmitController {
             } else if (count == countFailed) {
                 this.$stateShortSummary = "failed";
             } else if (
+                countConfirming > 0 &&
                 count ==
                 countConfirmed + countConfirming + countMostlyConfirmed
             ) {
