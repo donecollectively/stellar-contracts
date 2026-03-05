@@ -103,6 +103,7 @@ export class TxBatcher {
         this.previous = this._current;
         this._current = undefined;
         this.setup.chainBuilder = undefined;
+        this.$notifier.emit("rotated", undefined);
     }
 
     cancel() {

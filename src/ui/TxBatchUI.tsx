@@ -141,11 +141,11 @@ export function TxBatchUI() {
             </div>
             <div className="flex-shrink-0">
                 {canClose ? (
-                    <Button
+                    <button
                         className="ml-3 p-1 cursor-pointer aspect-square rounded-sm"
                         title="Close successful batch"
                         onClick={closeWIthPossibleConfirmation}
-                    >✖️</Button>
+                    >✖️</button>
                 ) : (
                     <div className="group flex flex-col items-end text-amber-400 overflow-visible">
                         {false && <div className="hidden group-hover:block p-2 border-card relative" data-label="cancel-help-text"
