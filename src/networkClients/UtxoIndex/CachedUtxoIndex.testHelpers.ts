@@ -74,7 +74,7 @@ import type { TxIndexEntry } from "./types/TxIndexEntry.js";
 type CachedUtxoIndexInternal = CachedUtxoIndex & {
     lastBlockHeight: number;
     lastBlockId: string;
-    lastSlot: number;
+    lastBlockSlot: number;
     store: DexieUtxoStore;
 };
 
@@ -91,7 +91,7 @@ export function setLastSyncedBlock(
     const internal = index as CachedUtxoIndexInternal;
     internal.lastBlockHeight = height;
     internal.lastBlockId = id;
-    internal.lastSlot = slot;
+    internal.lastBlockSlot = slot;
 }
 
 /**
@@ -158,7 +158,7 @@ export async function copyIndexData(
         target,
         sourceInternal.lastBlockHeight,
         sourceInternal.lastBlockId,
-        sourceInternal.lastSlot
+        sourceInternal.lastBlockSlot
     );
 }
 
@@ -347,7 +347,7 @@ export async function findRecentTxAndBlock(index: CachedUtxoIndex): Promise<{
         txId,
         blockHeight: internal.lastBlockHeight,
         blockHash: internal.lastBlockId,
-        slot: internal.lastSlot,
+        slot: internal.lastBlockSlot,
     };
 }
 

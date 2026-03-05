@@ -236,13 +236,23 @@ if (!BLOCKFROST_API_KEY) {
                 expect(sharedIndex.lastBlockHeight).toBeGreaterThan(0);
                 expect(sharedIndex.lastBlockId).toBeTruthy();
                 expect(sharedIndex.lastBlockId.length).toBe(64); // Block hash is 64 hex chars
-                expect(sharedIndex.lastSlot).toBeGreaterThan(0);
+                expect(sharedIndex.lastBlockSlot).toBeGreaterThan(0);
             });
 
-            it("should have 'now' property reflect lastSlot value", async () => {
-                // 'now' should equal lastSlot (ReadonlyCardanoClient interface)
-                expect(sharedIndex.now).toBe(sharedIndex.lastSlot);
-                expect(sharedIndex.now).toBeGreaterThan(0);
+            it("returns wall-clock milliseconds matching CardanoClient contract (now-wall-clock-ms/REQT/gz9a5b8qv)", async () => {
+                const before = Date.now();
+                const now = sharedIndex.now;
+                const after = Date.now();
+
+                // Must be in millisecond range (~1.7T), not slot range (~142M)
+                expect(now).toBeGreaterThan(1_000_000_000_000);
+
+                // Must track wall clock
+                expect(now).toBeGreaterThanOrEqual(before);
+                expect(now).toBeLessThanOrEqual(after);
+
+                // Regression: must NOT equal the block slot (the old broken behavior)
+                expect(now).not.toBe(sharedIndex.lastBlockSlot);
             });
         });
 
@@ -577,19 +587,19 @@ if (!BLOCKFROST_API_KEY) {
                 // Initially zero (fresh index, no sync)
                 expect(isolatedIndex.lastBlockHeight).toBe(0);
                 expect(isolatedIndex.lastBlockId).toBe("");
-                expect(isolatedIndex.lastSlot).toBe(0);
+                expect(isolatedIndex.lastBlockSlot).toBe(0);
 
                 const result = await isolatedIndex.fetchAndStoreLatestBlock();
 
                 // State should be updated
                 expect(isolatedIndex.lastBlockHeight).toBeGreaterThan(0);
                 expect(isolatedIndex.lastBlockId.length).toBe(64);
-                expect(isolatedIndex.lastSlot).toBeGreaterThan(0);
+                expect(isolatedIndex.lastBlockSlot).toBeGreaterThan(0);
 
                 // Return value should match state
                 expect(result.height).toBe(isolatedIndex.lastBlockHeight);
                 expect(result.hash).toBe(isolatedIndex.lastBlockId);
-                expect(result.slot).toBe(isolatedIndex.lastSlot);
+                expect(result.slot).toBe(isolatedIndex.lastBlockSlot);
 
                 await cleanupRegistry.cleanup();
             });

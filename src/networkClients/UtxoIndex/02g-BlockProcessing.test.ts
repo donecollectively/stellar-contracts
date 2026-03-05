@@ -424,7 +424,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
             const tipBlock = makeBlock(200);
             (index as any).lastBlockHeight = 200;
             (index as any).lastBlockId = tipBlock.hash;
-            (index as any).lastSlot = tipBlock.slot;
+            (index as any).lastBlockSlot = tipBlock.slot;
 
             // Store the tip block so it exists in the DB
             const store = getStore(index);
