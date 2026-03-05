@@ -397,6 +397,12 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             const index = createTestIndex(h, dbName);
             setLastSyncedBlock(index, 100, "block100", 500);
 
+            // Save a processed block so checkPendingDeadlines can determine
+            // the last processed slot (deadline comparison uses processed slot,
+            // not tip slot, to avoid racing with unprocessed block discovery)
+            const store = getStore(index);
+            await store.saveBlock({ hash: "block100", height: 100, time: 0, slot: 500, state: "processed" });
+
             await prePopulateInputUtxos(index, tx);
             await index.registerPendingTx(signedTxCborHex, {
                 description: "deadline test",
@@ -405,7 +411,6 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
                 txCborHex,
             });
 
-            const store = getStore(index);
             const pendingEntry = await store.findPendingTx(txHash);
             const deadline = pendingEntry!.deadline;
 
@@ -414,8 +419,9 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             const stillPending = await store.findPendingTx(txHash);
             expect(stillPending!.status).toBe("pending");
 
-            // Advance past deadline
+            // Advance past deadline — both in-memory tip AND a processed block in the store
             setLastSyncedBlock(index, 9999, "block9999", deadline + 1);
+            await store.saveBlock({ hash: "block9999", height: 9999, time: 0, slot: deadline + 1, state: "processed" });
 
             let rolledBackEvent: any = null;
             index.events.on("txRolledBack", (ev) => { rolledBackEvent = ev; });

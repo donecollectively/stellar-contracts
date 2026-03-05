@@ -188,7 +188,7 @@ export class CachedUtxoIndex {
     // to avoid redundant charter fetches during record parsing
     private _charterData: CharterData | undefined;
 
-    // REQT/a9y19g0pmr: Timer for pending deadline checks (10s interval)
+    // REQT/a9y19g0pmr: Timer for pending deadline checks (40s interval)
     private deadlineTimerId: ReturnType<typeof setInterval> | null = null;
 
     // REQT/zzsg63b2fb: Block-tip poll timer — sole trigger for checkForNewTxns
@@ -751,7 +751,7 @@ export class CachedUtxoIndex {
 
     /**
      * Starts block-tip polling (5s) to detect new blocks and trigger sync,
-     * and the 10s deadline-check timer for pending tx management.
+     * and the 40s deadline-check timer for pending tx management.
      *
      * The block-tip poll is the sole trigger for checkForNewTxns(). When a
      * new block is detected, it triggers checkForNewTxns() which walks
@@ -759,7 +759,7 @@ export class CachedUtxoIndex {
      * checkForNewTxns prevents overlapping syncs.
      *
      * REQT/zzsg63b2fb (Automated Periodic Refresh) — 5s poll only, no 60s fallback
-     * REQT/a9y19g0pmr (Rollback Expired Pending Transaction — 10s timer)
+     * REQT/a9y19g0pmr (Rollback Expired Pending Transaction — 40s timer)
      */
     startPeriodicRefresh(): void {
         if (this.blockPollTimerId) {
@@ -784,7 +784,7 @@ export class CachedUtxoIndex {
         }, blockPollInterval);
         this.blockPollTimerId.unref?.();
 
-        // REQT/a9y19g0pmr: Start 10s deadline-check timer
+        // REQT/a9y19g0pmr: Start 40s deadline-check timer
         // REQT/agg98btez8: Also runs 72h purge
         this.deadlineTimerId = setInterval(async () => {
             try {
@@ -792,7 +792,7 @@ export class CachedUtxoIndex {
             } catch (e) {
                 console.warn("Pending deadline check failed:", e);
             }
-        }, 10_000);
+        }, 40_000);
         this.deadlineTimerId.unref?.();
     }
 
@@ -1342,14 +1342,20 @@ export class CachedUtxoIndex {
      */
     async checkPendingDeadlines(): Promise<void> {
         const pendingEntries = await this.store.getPendingByStatus("pending");
-        const lastSyncedSlot = this.lastSlot;
+
+        // REQT/c3ytg4rttd: Use the LAST PROCESSED block's slot for deadline comparison,
+        // not the tip slot (this.lastSlot). The tip advances via fetchAndStoreNewBlocks()
+        // before blocks are processed — using the tip would roll back txns whose confirming
+        // block hasn't been processed yet (the exact race condition this work unit fixes).
+        const lastProcessed = await this.store.getLastProcessedBlock();
+        const lastProcessedSlot = lastProcessed?.slot ?? 0;
 
         if (pendingEntries.length > 0) {
             console.log(
-                `⏱️ checkPendingDeadlines: ${pendingEntries.length} pending, lastSlot ${lastSyncedSlot}`,
+                `⏱️ checkPendingDeadlines: ${pendingEntries.length} pending, lastProcessedSlot ${lastProcessedSlot}`,
             );
             for (const entry of pendingEntries) {
-                const remaining = entry.deadline - lastSyncedSlot;
+                const remaining = entry.deadline - lastProcessedSlot;
                 console.log(
                     `  📌 ${entry.txHash.slice(0, 8)}…: deadline ${entry.deadline}, ${remaining > 0 ? `~${remaining}s remaining` : `EXPIRED by ${-remaining}s`}`,
                 );
@@ -1357,8 +1363,8 @@ export class CachedUtxoIndex {
         }
 
         for (const entry of pendingEntries) {
-            // REQT/c3ytg4rttd: Compare deadline against chain time (last synced block's slot)
-            if (entry.deadline < lastSyncedSlot) {
+            // REQT/c3ytg4rttd: Compare deadline against last PROCESSED block's slot
+            if (entry.deadline < lastProcessedSlot) {
                 await this.rollbackPendingTx(entry);
             }
         }
@@ -1380,7 +1386,9 @@ export class CachedUtxoIndex {
     private async rollbackPendingTx(entry: PendingTxEntry): Promise<void> {
         const { txHash } = entry;
 
-        const rollbackMsg = `🔴 ROLLBACK PENDING TX: ${txHash.slice(0, 8)}… — ${entry.description} — deadline ${entry.deadline} < lastSlot ${this.lastSlot}`;
+        const lastProcessed = await this.store.getLastProcessedBlock();
+        const lastProcessedSlot = lastProcessed?.slot ?? this.lastSlot;
+        const rollbackMsg = `🔴 ROLLBACK PENDING TX: ${txHash.slice(0, 8)}… — ${entry.description} — deadline ${entry.deadline} < lastProcessedSlot ${lastProcessedSlot}`;
         if (typeof globalThis.alert === "function") {
             globalThis.alert(rollbackMsg);
         } else {
@@ -1388,7 +1396,7 @@ export class CachedUtxoIndex {
         }
         await this.store.log(
             "pt5rb",
-            `Rolling back expired pending tx ${txHash}: ${entry.description} (deadline slot ${entry.deadline} < last synced slot ${this.lastSlot})`,
+            `Rolling back expired pending tx ${txHash}: ${entry.description} (deadline slot ${entry.deadline} < last processed slot ${lastProcessedSlot})`,
         );
 
         // Step 1: Restore speculatively-spent UTXOs
