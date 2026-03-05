@@ -925,14 +925,13 @@ if (!BLOCKFROST_API_KEY) {
 
         describe("checkForNewTxns (uses shared index)", () => {
             it("should return cleanly when no new transactions exist", async () => {
-                // Call with block height beyond current - should find nothing new
-                const futureHeight = sharedIndex.lastBlockHeight + 1000;
+                // After sync, calling checkForNewTxns should find nothing new
                 await expect(
-                    sharedIndex.checkForNewTxns(futureHeight),
+                    sharedIndex.checkForNewTxns(),
                 ).resolves.toBeUndefined();
             });
 
-            it("should throw when lastBlockHeight is 0 and no param provided", async () => {
+            it("should gracefully skip when no processed blocks exist (no-processed-skip)", async () => {
                 
                 // Create isolated index and wait for sync to complete
                 const dbName = createIsolatedDbName("check-zero-height");
@@ -945,10 +944,9 @@ if (!BLOCKFROST_API_KEY) {
                 // Force lastBlockHeight to 0 to simulate unsynced state
                 setLastSyncedBlock(isolatedIndex, 0, "", 0);
 
-                // Calling checkForNewTxns without param should throw
-                await expect(isolatedIndex.checkForNewTxns()).rejects.toThrow(
-                    "Cannot start checking for new transactions at block height 0",
-                );
+                // With decoupled cursors, checkForNewTxns gracefully skips
+                // when there are no processed blocks (logs and returns)
+                await expect(isolatedIndex.checkForNewTxns()).resolves.toBeUndefined();
             });
 
             it("should load transactions when syncing from an earlier block", async () => {
