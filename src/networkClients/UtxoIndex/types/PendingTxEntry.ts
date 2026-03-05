@@ -41,4 +41,21 @@ export interface PendingTxEntry {
     status: "pending" | "confirmed" | "rolled-back";
     /** Timestamp when the transaction was submitted (epoch ms) */
     submittedAt: number;
+
+    /**
+     * Block height at which the transaction was confirmed on-chain.
+     * Set by confirmPendingTx when the tx is first discovered in a block.
+     * Used by Phase 2 (confirmation depth tracking) to calculate depth.
+     * REQT/58b9nzgcbj (Confirm Pending Transaction)
+     */
+    confirmedAtBlockHeight?: number;
+
+    /**
+     * Graduated confidence state based on confirmation depth.
+     * Progresses: provisional → likely → confident → certain.
+     * Set to "provisional" on first confirmation; advanced by depth tracking.
+     * REQT/ddzcp753jr (Confirmation Depth Tracking)
+     * REQT/yn45tvmp6k (Confirmation States)
+     */
+    confirmState?: "provisional" | "likely" | "confident" | "certain";
 }

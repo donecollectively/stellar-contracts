@@ -172,14 +172,13 @@ async function seedProcessedBlocks(
     const store = getStore(index);
     for (let h = fromHeight; h <= toHeight; h++) {
         const block = makeBlock(h);
-        const entry: BlockIndexEntry & { status?: string } = {
+        const entry: BlockIndexEntry = {
             hash: block.hash,
             height: block.height,
             time: block.time,
             slot: block.slot,
+            state: "processed",
         };
-        // Phase 1 adds status field — set it if the store schema supports it
-        (entry as any).status = "processed";
         await store.saveBlock(entry);
     }
     // Set in-memory state to the last processed block
@@ -264,8 +263,8 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
             const block102Entry = await store.findBlockId(block102.hash);
             expect(block101Entry).toBeDefined();
             expect(block102Entry).toBeDefined();
-            expect((block101Entry as any)?.status).toBe("processed");
-            expect((block102Entry as any)?.status).toBe("processed");
+            expect((block101Entry as any)?.state).toBe("processed");
+            expect((block102Entry as any)?.state).toBe("processed");
         });
 
         it("skips blocks with no matching address (skip-irrelevant-blocks/REQT/gfsjgaac1y)", async () => {
@@ -305,8 +304,8 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
             const b102 = await store.findBlockId(block102.hash);
             expect(b101).toBeDefined();
             expect(b102).toBeDefined();
-            expect((b101 as any)?.status).toBe("processed");
-            expect((b102 as any)?.status).toBe("processed");
+            expect((b101 as any)?.state).toBe("processed");
+            expect((b102 as any)?.state).toBe("processed");
         });
     });
 
@@ -323,8 +322,14 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
             const TX_HASH_B =
                 "eeff010101010101010101010101010101010101010101010101010101010101";
 
+            // Block discovery: blocks/{lastSeen}/next returns blocks 51-80
+            const lastSeenHash = makeBlock(50).hash;
+            const newBlocks = Array.from({ length: 30 }, (_, i) => makeBlock(51 + i));
+
             const mock = mockBlockfrost(index, {
                 "blocks/latest": makeBlock(80),
+                // Block discovery via blocks/{hash}/next
+                [`blocks/${lastSeenHash}/next`]: newBlocks,
                 // Catchup mode uses address-level query instead of block walk
                 [`addresses/${TEST_CAPO_ADDRESS}/transactions`]: [
                     {
@@ -382,8 +387,14 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
                 blockHeight: 45,
             });
 
+            // Block discovery: blocks/{lastSeen}/next returns blocks 51-80
+            const lastSeenHash = makeBlock(50).hash;
+            const newBlocks = Array.from({ length: 30 }, (_, i) => makeBlock(51 + i));
+
             const mock = mockBlockfrost(index, {
                 "blocks/latest": makeBlock(80),
+                // Block discovery via blocks/{hash}/next
+                [`blocks/${lastSeenHash}/next`]: newBlocks,
                 [`addresses/${TEST_CAPO_ADDRESS}/transactions`]: [],
                 // On-chain UTxOs does NOT include stale_tx_hash#0
                 [`addresses/${TEST_CAPO_ADDRESS}/utxos`]: [],
@@ -516,33 +527,30 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
     });
 
     describe("Block status field (REQT/9gq8rwg9ng)", () => {
-        it("backward compat: existing blocks assumed processed (existing-blocks-processed/REQT/9gq8rwg9ng)", async () => {
-            const index = createTestIndex(uniqueDbName("compat"));
+        it("blocks saved with state field are retrievable by state (block-state-query/REQT/9gq8rwg9ng)", async () => {
+            const index = createTestIndex(uniqueDbName("state-query"));
 
-            // Save a block WITHOUT a status field (simulates pre-migration data)
             const store = getStore(index);
             await store.saveBlock({
-                hash: "old_block_hash",
+                hash: "processed_block_hash",
                 height: 50,
                 time: 1700001000,
                 slot: 50000050,
+                state: "processed",
             });
 
-            // When the implementation reads this block for cursor determination,
-            // it should treat it as "processed" (backward compatibility)
-            const block = await store.findBlockId("old_block_hash");
+            // Verify block is retrievable and has correct state
+            const block = await store.findBlockId("processed_block_hash");
             expect(block).toBeDefined();
-            // The absence of `status` field or its value should be treated as "processed"
-            // Implementation may default missing status to "processed"
-            const status = (block as any)?.status;
-            if (status !== undefined) {
-                expect(status).toBe("processed");
-            }
-            // If status is undefined, that's also acceptable — backward compat means
-            // the code treats undefined as processed
+            expect(block!.state).toBe("processed");
+
+            // Verify getLastProcessedBlock returns this block
+            const lastProcessed = await store.getLastProcessedBlock();
+            expect(lastProcessed).toBeDefined();
+            expect(lastProcessed!.hash).toBe("processed_block_hash");
         });
 
-        it("new blocks stored with explicit status enum (new-block-status/REQT/9gq8rwg9ng)", async () => {
+        it("new blocks stored with explicit state enum (new-block-state/REQT/9gq8rwg9ng)", async () => {
             const index = createTestIndex(uniqueDbName("status-enum"));
 
             await seedProcessedBlocks(index, 98, 100);
@@ -560,13 +568,13 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
 
             await index.checkForNewTxns();
 
-            // Assert: newly stored block has status = "processed" (an enum string, not boolean)
+            // Assert: newly stored block has state = "processed" (an enum string, not boolean)
             const store = getStore(index);
             const entry = await store.findBlockId(block101.hash);
             expect(entry).toBeDefined();
-            expect((entry as any)?.status).toBe("processed");
+            expect((entry as any)?.state).toBe("processed");
             // Verify it's a string enum, not a boolean
-            expect(typeof (entry as any)?.status).toBe("string");
+            expect(typeof (entry as any)?.state).toBe("string");
         });
     });
 
@@ -685,8 +693,13 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
             await seedProcessedBlocks(index, 48, 50);
 
             // Tip at 80 — gap of 30 (> threshold 20)
+            // Block discovery: blocks/{lastSeen}/next returns blocks 51-80
+            const lastSeenHash = makeBlock(50).hash;
+            const newBlocks = Array.from({ length: 30 }, (_, i) => makeBlock(51 + i));
+
             const mock = mockBlockfrost(index, {
                 "blocks/latest": makeBlock(80),
+                [`blocks/${lastSeenHash}/next`]: newBlocks,
                 [`addresses/${TEST_CAPO_ADDRESS}/transactions`]: [],
                 [`addresses/${TEST_CAPO_ADDRESS}/utxos`]: [],
             });

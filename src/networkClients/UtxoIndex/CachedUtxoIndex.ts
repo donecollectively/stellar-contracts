@@ -55,7 +55,8 @@ import {
 } from "./RateLimitedFetch.js";
 import type { UtxoStoreGeneric } from "./types/UtxoStoreGeneric.js";
 import type { UtxoIndexEntry } from "./types/UtxoIndexEntry.js";
-import type { BlockIndexEntry } from "./types/BlockIndexEntry.js";
+import type { BlockIndexEntry, BlockState } from "./types/BlockIndexEntry.js";
+import type { BlockAddressEntry } from "./blockfrostTypes/BlockAddresses.js";
 
 // Runtime validators removed - using type casting instead
 // Type definitions still used for compile-time safety
@@ -78,13 +79,12 @@ import type { TxDescription } from "../../StellarTxnContext.js";
 import type { RecordIndexEntry } from "./types/RecordIndexEntry.js";
 import type { PendingTxEntry } from "./types/PendingTxEntry.js";
 
-// Lightweight block-tip poll interval: checks blocks/latest for new blocks
+// REQT/zzsg63b2fb: Lightweight block-tip poll interval — sole trigger for checkForNewTxns
 const blockPollInterval = 5 * 1000; // 5 seconds
 
-// Fallback refresh interval: full sync runs if no new block detected for this long
-// (safety net in case block-tip polling misses something)
-const refreshInterval = 60 * 1000; // 1 minute
-const delegateRefreshInterval = 60 * 60 * 1000; // 1 hour
+// REQT/fh56sce22g: Default threshold for dual-mode sync selection
+// Gap ≤ threshold → incremental block-walk; gap > threshold → catchup mode
+const DEFAULT_CATCHUP_THRESHOLD = 20;
 
 // Default sync configuration
 const DEFAULT_SYNC_PAGE_SIZE = 100;
@@ -97,7 +97,16 @@ const DEFAULT_WALLET_STALENESS_MS = 30 * 1000;
 export interface TxConfirmedEvent {
     txHash: string;
     description: string;
+    // REQT/58b9nzgcbj: Initial confirmState on first confirmation
+    confirmState: string;
     txd?: TxDescription<any, "submitted">;
+}
+
+// REQT/fz6z7rr702: Emitted when confirmState advances (Phase 2 depth tracking)
+export interface ConfirmStateChangedEvent {
+    txHash: string;
+    confirmState: string;
+    depth: number;
 }
 
 export interface TxRolledBackEvent {
@@ -121,6 +130,8 @@ export interface CachedUtxoIndexEvents {
     // REQT/fz6z7rr702: Pending Transaction Events
     /** Emitted when a pending tx is confirmed in a block */
     txConfirmed: [TxConfirmedEvent];
+    /** Emitted when a confirmed tx's confirmState advances (provisional → likely → confident → certain) */
+    confirmStateChanged: [ConfirmStateChangedEvent];
     /** Emitted when a pending tx is rolled back due to deadline expiry */
     txRolledBack: [TxRolledBackEvent];
     /** Emitted after first sync cycle resolves pending state (stale → fresh) */
@@ -156,14 +167,20 @@ export class CachedUtxoIndex {
     // to avoid redundant charter fetches during record parsing
     private _charterData: CharterData | undefined;
 
-    // REQT/zzsg63b2fb: Timer for periodic refresh
-    private refreshTimerId: ReturnType<typeof setInterval> | null = null;
-
     // REQT/a9y19g0pmr: Timer for pending deadline checks (10s interval)
     private deadlineTimerId: ReturnType<typeof setInterval> | null = null;
 
-    // Block-tip poll timer: lightweight 5s check for new blocks
+    // REQT/zzsg63b2fb: Block-tip poll timer — sole trigger for checkForNewTxns
     private blockPollTimerId: ReturnType<typeof setInterval> | null = null;
+
+    // REQT/zzsg63b2fb: Concurrency guard — prevents overlapping checkForNewTxns calls
+    private _syncInProgress: boolean = false;
+
+    // REQT/jdkjh536mm: Observable sync state for downstream consumers (UI status display)
+    private _syncState: string = "idle";
+
+    // REQT/fh56sce22g: Threshold for dual-mode sync selection
+    private catchupThreshold: number = DEFAULT_CATCHUP_THRESHOLD;
 
     // REQT/2w2yyc2m1k: In-Memory Pending Map — session-scoped, not persisted
     private pendingTxMap: Map<string, TxDescription<any, "submitted">> = new Map();
@@ -194,6 +211,14 @@ export class CachedUtxoIndex {
      */
     get pendingSyncState(): "stale" | "fresh" {
         return this._pendingSyncState;
+    }
+
+    /**
+     * Returns the current sync activity state.
+     * REQT/jdkjh536mm (Sync State Metadata)
+     */
+    get syncState(): string {
+        return this._syncState;
     }
 
     // REQT/9a0nx1gr4b (Core State) - expose capoAddress for external access
@@ -285,6 +310,7 @@ export class CachedUtxoIndex {
         syncPageSize,
         maxSyncPages,
         graceBufferSlots,
+        catchupThreshold,
     }: {
         address: Address | string;
         mph: MintingPolicyHash | string;
@@ -300,6 +326,8 @@ export class CachedUtxoIndex {
         maxSyncPages?: number;
         /** Grace buffer for pending tx deadlines in slots (default: 60, ~1 slot/sec on Cardano) */
         graceBufferSlots?: number;
+        /** Block gap threshold for dual-mode sync: ≤ threshold → incremental, > threshold → catchup (default: 20) */
+        catchupThreshold?: number;
     }) {
         // Convert string inputs to proper types if needed
         this._address =
@@ -331,6 +359,11 @@ export class CachedUtxoIndex {
 
         // REQT/c3ytg4rttd: Default grace buffer of 60 slots (~60 seconds on Cardano)
         this.graceBufferSlots = graceBufferSlots ?? 60;
+
+        // REQT/fh56sce22g: Dual-mode sync threshold
+        if (catchupThreshold !== undefined) {
+            this.catchupThreshold = catchupThreshold;
+        }
 
         if (strategy === "dexie") {
             this.store = new DexieUtxoStore(dbName);
@@ -433,7 +466,9 @@ export class CachedUtxoIndex {
         await this.catalogDelegateUuts(charterData);
 
         // Fetch and store the latest block details
-        await this.fetchAndStoreLatestBlock();
+        // REQT/5d4f73c9bf: Full sync fetched all UTxOs — mark tip as "processed"
+        const tipEntry = await this.fetchAndStoreLatestBlock();
+        await this.store.saveBlock({ ...tipEntry, state: "processed" });
 
         // REQT/fn70x96nxm: After first sync, resolve pending state
         await this.resolvePendingState();
@@ -444,51 +479,162 @@ export class CachedUtxoIndex {
 
     /**
      * Checks for new transactions at the capo address and indexes new UTXOs.
-     * Supports pagination with configurable page size and max pages.
+     * Selects sync mode based on gap between processing cursor and chain tip:
+     * - Gap ≤ threshold (default 20): incremental block-walk via blocks/{hash}/next
+     * - Gap > threshold: catchup mode via address-level transaction query + UTxO reconciliation
      *
-     * REQT/fh56sce22g (checkForNewTxns)
+     * REQT/fh56sce22g (Transaction Monitoring) — dual-mode sync, no gaps
+     * REQT/zzsg63b2fb (Automated Periodic Refresh) — concurrency guard
+     * REQT/jdkjh536mm (Sync State Metadata) — syncState transitions
+     * REQT/5d4f73c9bf (Last Processed Block) — processing cursor independent of chain tip
      */
-    async checkForNewTxns(fromBlockHeight?: number): Promise<void> {
+    async checkForNewTxns(): Promise<void> {
+        // REQT/zzsg63b2fb: Concurrency guard — skip if another sync is already running
+        if (this._syncInProgress) {
+            return;
+        }
+        this._syncInProgress = true;
+
+        try {
+            // REQT/9a0nx1gr4b: Advance tip state (independent of processing cursor)
+            try {
+                await this.fetchAndStoreLatestBlock();
+            } catch (e: any) {
+                await this.store.log(
+                    "bk5er",
+                    `Failed to fetch latest block for tip advancement: ${e.message || e}`,
+                );
+            }
+
+            // REQT/5d4f73c9bf: Determine processing cursor from store
+            const lastProcessed = await this.store.getLastProcessedBlock();
+            if (!lastProcessed) {
+                // No processed blocks — nothing to walk from. This happens on
+                // a fresh start before initial sync has completed.
+                await this.store.log(
+                    "npc01",
+                    "No processed blocks found — skipping checkForNewTxns",
+                );
+                return;
+            }
+
+            const gap = this.lastBlockHeight - lastProcessed.height;
+            if (gap <= 0) {
+                // Already caught up to tip — nothing to do
+                return;
+            }
+
+            // REQT/fh56sce22g: Select sync mode based on gap
+            if (gap <= this.catchupThreshold) {
+                await this.syncIncremental(lastProcessed);
+            } else {
+                await this.syncCatchup(lastProcessed);
+            }
+        } finally {
+            this._syncInProgress = false;
+            // REQT/jdkjh536mm: Return to idle
+            this._syncState = "idle";
+        }
+    }
+
+    /**
+     * Incremental block-walk mode: walks forward block-by-block from the last
+     * processed block, checking each block for transactions touching capoAddress.
+     *
+     * REQT/gfsjgaac1y (Incremental Mode) — block-by-block for small gaps
+     * REQT/9gq8rwg9ng (Block Tip & Address Recording) — per-block address data
+     */
+    private async syncIncremental(lastProcessed: BlockIndexEntry): Promise<void> {
+        // REQT/jdkjh536mm: Set sync state
+        this._syncState = "syncing";
         this.events.emit("syncing");
 
-        const startHeight =
-            fromBlockHeight ??
-            (this.lastBlockHeight > 0 ? this.lastBlockHeight + 1 : 0);
+        await this.store.log(
+            "si001",
+            `Incremental sync from block #${lastProcessed.height} (${lastProcessed.hash.slice(0, 12)}…)`,
+        );
 
-        if (startHeight == 0) {
+        // REQT/gfsjgaac1y: Discover new blocks via blocks/{hash}/next
+        const nextBlocks = await this.fetchFromBlockfrost<BlockDetailsType[]>(
+            `blocks/${lastProcessed.hash}/next`,
+        );
+
+        if (!Array.isArray(nextBlocks) || nextBlocks.length === 0) {
+            await this.store.log("si002", "No new blocks found via blocks/{hash}/next");
             this.events.emit("synced");
-            throw new Error(
-                "Cannot start checking for new transactions at block height 0",
-            );
+            return;
         }
 
-        // Advance lastBlockHeight/lastSlot to current tip BEFORE syncing txns.
-        // This ensures startHeight (captured above from the PREVIOUS lastBlockHeight)
-        // is used for the txn query, while lastBlockHeight now reflects the tip at
-        // sync-start. If a new block arrives during the txn fetch below, the next
-        // poll will detect it (tip > lastBlockHeight) and sync from lastBlockHeight+1,
-        // closing the gap. Previously this was done AFTER the txn fetch, which could
-        // advance lastBlockHeight past a block whose txns weren't yet visible in the
-        // address/transactions query.
-        try {
-            await this.fetchAndStoreLatestBlock();
-        } catch (e: any) {
-            await this.store.log(
-                "bk5er",
-                `Failed to fetch latest block for slot advancement: ${e.message || e}`,
+        // REQT/gfsjgaac1y: Process blocks in order
+        for (const blockDetails of nextBlocks) {
+            // REQT/9gq8rwg9ng: Check which addresses (and tx IDs) are in this block
+            const blockAddresses = await this.fetchFromBlockfrost<BlockAddressEntry[]>(
+                `blocks/${blockDetails.height}/addresses`,
             );
+
+            // REQT/gfsjgaac1y: Filter for capoAddress and process matching txns
+            if (Array.isArray(blockAddresses)) {
+                for (const entry of blockAddresses) {
+                    if (entry.address === this.capoAddress) {
+                        for (const tx of entry.transactions) {
+                            // Construct a summary-like object for processTransactionForNewUtxos
+                            const summary: AddressTransactionSummariesType = {
+                                tx_hash: tx.tx_hash,
+                                tx_index: 0, // not available from block addresses endpoint
+                                block_height: blockDetails.height,
+                                block_time: blockDetails.time,
+                            };
+                            await this.processTransactionForNewUtxos(tx.tx_hash, summary);
+                        }
+                    }
+                }
+            }
+
+            // REQT/9gq8rwg9ng: Save block with state="processed" after processing
+            const blockEntry: BlockIndexEntry = {
+                hash: blockDetails.hash,
+                height: blockDetails.height,
+                time: blockDetails.time,
+                slot: blockDetails.slot,
+                state: "processed",
+            };
+            await this.store.saveBlock(blockEntry);
         }
 
+        await this.store.log(
+            "si003",
+            `Incremental sync complete: processed ${nextBlocks.length} blocks`,
+        );
+        this.events.emit("synced");
+    }
+
+    /**
+     * Catchup mode: uses address-level transaction queries for large gaps,
+     * then reconciles the UTxO set against current on-chain state.
+     *
+     * REQT/2he55bafxd (Catchup Mode) — address-level bulk sync
+     */
+    private async syncCatchup(lastProcessed: BlockIndexEntry): Promise<void> {
+        const gap = this.lastBlockHeight - lastProcessed.height;
+
+        // REQT/jdkjh536mm: Set sync state with block count
+        this._syncState = `catchup sync (${gap} blocks)`;
+        this.events.emit("syncing");
+
+        await this.store.log(
+            "sc001",
+            `Catchup sync: ${gap} blocks behind (last processed #${lastProcessed.height}, tip #${this.lastBlockHeight})`,
+        );
+
+        // REQT/2he55bafxd: Address-level query to discover relevant transactions
+        const startHeight = lastProcessed.height + 1;
         let currentPage = 1;
         let hasMorePages = true;
         let lastTxIndex: number | undefined;
-        let highestBlockHeight = 0;
 
         while (hasMorePages && currentPage <= this.maxSyncPages) {
-            // Build URL with pagination parameters
             let url = `addresses/${this.capoAddress}/transactions?order=asc&count=${this.syncPageSize}&from=${startHeight}`;
             if (lastTxIndex !== undefined) {
-                // For subsequent pages, use the last tx_index as offset
                 url += `&after=${lastTxIndex}`;
             }
 
@@ -499,54 +645,94 @@ export class CachedUtxoIndex {
                 break;
             }
 
-            // Type cast instead of runtime validation - trusting Blockfrost API
             const transactionSummaries = untyped as AddressTransactionSummariesType[];
 
-            // Process transactions from this page
             for (const summary of transactionSummaries) {
                 await this.processTransactionForNewUtxos(
                     summary.tx_hash,
                     summary,
                 );
-                // Track highest block height seen for slot advancement
-                if (summary.block_height > highestBlockHeight) {
-                    highestBlockHeight = summary.block_height;
-                }
             }
 
-            // Check if there might be more pages
             if (untyped.length < this.syncPageSize) {
                 hasMorePages = false;
             } else {
-                // Use the last transaction's tx_index for pagination
-                const lastSummary =
-                    transactionSummaries[transactionSummaries.length - 1];
+                const lastSummary = transactionSummaries[transactionSummaries.length - 1];
                 lastTxIndex = lastSummary.tx_index;
                 currentPage++;
             }
         }
 
-        if (currentPage > this.maxSyncPages && hasMorePages) {
-            await this.store.log(
-                "pglim",
-                `Stopped after ${this.maxSyncPages} pages (maxSyncPages limit reached)`,
-            );
+        // REQT/2he55bafxd: Reconcile UTxOs against current on-chain state
+        await this.reconcileUtxos();
+
+        // REQT/2he55bafxd: Advance processing cursor to chain tip
+        // Save a "processed" block at the tip height to mark catchup complete
+        const tipBlock = await this.store.findBlockId(this.lastBlockId);
+        if (tipBlock) {
+            await this.store.saveBlock({ ...tipBlock, state: "processed" });
+        } else {
+            // Tip block not yet in store — create it
+            await this.store.saveBlock({
+                hash: this.lastBlockId,
+                height: this.lastBlockHeight,
+                time: 0, // not available without additional fetch
+                slot: this.lastSlot,
+                state: "processed",
+            });
         }
 
+        await this.store.log(
+            "sc002",
+            `Catchup sync complete: advanced cursor to tip #${this.lastBlockHeight}`,
+        );
         this.events.emit("synced");
     }
 
     /**
+     * Reconciles cached UTxOs against the current on-chain set for the capo address.
+     * Marks any cached UTxOs not present on-chain as spent.
+     *
+     * REQT/2he55bafxd (Catchup Mode) — ensure cache correctness after offline period
+     */
+    private async reconcileUtxos(): Promise<void> {
+        // Fetch current on-chain UTxOs for the capo address
+        const onChainUtxos = await this.fetchFromBlockfrost<UtxoDetailsType[]>(
+            `addresses/${this.capoAddress}/utxos`,
+        );
+
+        if (!Array.isArray(onChainUtxos)) return;
+
+        // Build set of on-chain utxoIds for O(1) lookup
+        const onChainIds = new Set<string>();
+        for (const u of onChainUtxos) {
+            onChainIds.add(this.formatUtxoId(u.tx_hash, u.output_index));
+        }
+
+        // Find cached unspent UTxOs at capo address that are no longer on-chain
+        const cachedUtxos = await this.store.findUtxosByAddress(this.capoAddress);
+        for (const cached of cachedUtxos) {
+            if (!onChainIds.has(cached.utxoId)) {
+                // REQT/2he55bafxd: Mark stale UTxO as spent during reconciliation
+                await this.store.markUtxoSpent(cached.utxoId, "reconciled");
+                await this.store.log(
+                    "rc001",
+                    `Reconciliation: marked stale UTxO ${cached.utxoId} as spent`,
+                );
+            }
+        }
+    }
+
+    /**
      * Starts block-tip polling (5s) to detect new blocks and trigger sync,
-     * a fallback full-refresh timer (60s), and the 10s deadline-check timer
-     * for pending tx management.
+     * and the 10s deadline-check timer for pending tx management.
      *
-     * The block-tip poll is lightweight (single blocks/latest call). When a
-     * new block is detected, it triggers checkForNewTxns() immediately. The
-     * 60s fallback ensures sync still happens even if block polling misses
-     * something.
+     * The block-tip poll is the sole trigger for checkForNewTxns(). When a
+     * new block is detected, it triggers checkForNewTxns() which walks
+     * forward from the last processed block. The concurrency guard on
+     * checkForNewTxns prevents overlapping syncs.
      *
-     * REQT/zzsg63b2fb (Automated Periodic Refresh)
+     * REQT/zzsg63b2fb (Automated Periodic Refresh) — 5s poll only, no 60s fallback
      * REQT/a9y19g0pmr (Rollback Expired Pending Transaction — 10s timer)
      */
     startPeriodicRefresh(): void {
@@ -555,10 +741,10 @@ export class CachedUtxoIndex {
         }
         this.store.log(
             "pr5t1",
-            `Starting block-tip poll every ${blockPollInterval / 1000}s, fallback refresh every ${refreshInterval / 1000}s`,
+            `Starting block-tip poll every ${blockPollInterval / 1000}s`,
         );
 
-        // Primary: lightweight block-tip poll at 5s intervals
+        // REQT/zzsg63b2fb: Sole trigger — lightweight block-tip poll at 5s intervals
         this.blockPollTimerId = setInterval(async () => {
             try {
                 const newBlock = await this.checkBlockTip();
@@ -571,20 +757,6 @@ export class CachedUtxoIndex {
             }
         }, blockPollInterval);
         this.blockPollTimerId.unref?.();
-
-        // Fallback: full refresh at 60s intervals (safety net)
-        this.refreshTimerId = setInterval(async () => {
-            try {
-                await this.checkForNewTxns();
-            } catch (e) {
-                console.warn("Periodic refresh failed:", e);
-                this.store.log(
-                    "pr5er",
-                    `Periodic refresh error: ${e instanceof Error ? e.message : String(e)}`,
-                );
-            }
-        }, refreshInterval);
-        this.refreshTimerId.unref?.();
 
         // REQT/a9y19g0pmr: Start 10s deadline-check timer
         // REQT/agg98btez8: Also runs 72h purge
@@ -599,21 +771,16 @@ export class CachedUtxoIndex {
     }
 
     /**
-     * Stops the periodic refresh timer and the deadline-check timer.
+     * Stops the block-tip poll and deadline-check timers.
      *
      * REQT/zzsg63b2fb (Automated Periodic Refresh)
      * REQT/a9y19g0pmr (Rollback timer lifecycle)
      */
     stopPeriodicRefresh(): void {
         if (this.blockPollTimerId) {
-            this.store.log("pr5t0", "Stopping block-tip poll and periodic refresh");
+            this.store.log("pr5t0", "Stopping block-tip poll");
             clearInterval(this.blockPollTimerId);
             this.blockPollTimerId = null;
-        }
-        if (this.refreshTimerId) {
-            this.store.log("pr5t0", "Stopping periodic refresh");
-            clearInterval(this.refreshTimerId);
-            this.refreshTimerId = null;
         }
         if (this.deadlineTimerId) {
             clearInterval(this.deadlineTimerId);
@@ -1038,29 +1205,34 @@ export class CachedUtxoIndex {
     /**
      * Confirms a pending transaction that has been discovered in a block.
      * Skips normal indexing since outputs are already indexed and inputs already marked spent.
+     * Records the confirming block height and sets initial confirmState.
      *
-     * REQT/58b9nzgcbj (Confirm Pending Transaction)
+     * REQT/58b9nzgcbj (Confirm Pending Transaction) — confirmedAtBlockHeight + confirmState
      * REQT/fz6z7rr702 (Pending Transaction Events)
      */
-    private async confirmPendingTx(txHash: string): Promise<void> {
+    private async confirmPendingTx(txHash: string, blockHeight: number): Promise<void> {
         const pendingEntry = await this.store.findPendingTx(txHash);
         if (!pendingEntry || pendingEntry.status !== "pending") return;
 
-        console.debug(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description}`);
+        console.debug(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description} at block #${blockHeight}`);
         await this.store.log(
             "pt4cf",
-            `Confirming pending tx ${txHash}: ${pendingEntry.description}`,
+            `Confirming pending tx ${txHash}: ${pendingEntry.description} at block #${blockHeight}`,
         );
 
-        // REQT/58b9nzgcbj: Set status to confirmed
-        await this.store.setPendingTxStatus(txHash, "confirmed");
+        // REQT/58b9nzgcbj: Set status, confirmedAtBlockHeight, and initial confirmState
+        pendingEntry.status = "confirmed";
+        pendingEntry.confirmedAtBlockHeight = blockHeight; // REQT/58b9nzgcbj
+        pendingEntry.confirmState = "provisional";         // REQT/ddzcp753jr
+        await this.store.savePendingTx(pendingEntry);
         this.pendingTxHashes.delete(txHash);
 
-        // REQT/fz6z7rr702: Emit txConfirmed event
+        // REQT/fz6z7rr702: Emit txConfirmed event with confirmState
         const txd = this.pendingTxMap.get(txHash);
         this.events.emit("txConfirmed", {
             txHash,
             description: pendingEntry.description,
+            confirmState: "provisional", // REQT/58b9nzgcbj
             txd,
         });
 
@@ -1070,7 +1242,7 @@ export class CachedUtxoIndex {
 
         await this.store.log(
             "pt4ok",
-            `Confirmed pending tx ${txHash}`,
+            `Confirmed pending tx ${txHash} at block #${blockHeight}`,
         );
     }
 
@@ -1121,7 +1293,12 @@ export class CachedUtxoIndex {
     private async rollbackPendingTx(entry: PendingTxEntry): Promise<void> {
         const { txHash } = entry;
 
-        alert(`🔴 ROLLBACK PENDING TX: ${txHash.slice(0, 8)}… — ${entry.description} — deadline ${entry.deadline} < lastSlot ${this.lastSlot}`);
+        const rollbackMsg = `🔴 ROLLBACK PENDING TX: ${txHash.slice(0, 8)}… — ${entry.description} — deadline ${entry.deadline} < lastSlot ${this.lastSlot}`;
+        if (typeof globalThis.alert === "function") {
+            globalThis.alert(rollbackMsg);
+        } else {
+            console.error(rollbackMsg);
+        }
         await this.store.log(
             "pt5rb",
             `Rolling back expired pending tx ${txHash}: ${entry.description} (deadline slot ${entry.deadline} < last synced slot ${this.lastSlot})`,
@@ -1314,7 +1491,7 @@ export class CachedUtxoIndex {
         // REQT/58b9nzgcbj: Check if this tx is a pending entry being confirmed
         if (this.pendingTxHashes.has(txHash)) {
             console.debug(`🟢 SYNC found pending tx ${txHash.slice(0, 8)}… — fast-path confirm (skip re-index)`);
-            await this.confirmPendingTx(txHash);
+            await this.confirmPendingTx(txHash, summary.block_height);
             return; // Skip normal indexing — outputs already indexed, inputs already marked spent
         }
 
@@ -1646,15 +1823,18 @@ export class CachedUtxoIndex {
      * Converts Blockfrost BlockDetailsType to storage-agnostic BlockIndexEntry.
      *
      * TYPE BOUNDARY: This method converts Blockfrost types to storage types.
+     * REQT/9gq8rwg9ng: State defaults to "unprocessed" — callers override when appropriate.
      */
     private blockfrostBlockToIndexEntry(
         bfBlock: BlockDetailsType,
+        state: BlockState = "unprocessed",
     ): BlockIndexEntry {
         return {
             hash: bfBlock.hash,
             height: bfBlock.height,
             time: bfBlock.time,
             slot: bfBlock.slot,
+            state,
         };
     }
 
@@ -1952,6 +2132,14 @@ export class CachedUtxoIndex {
         return untyped as BlockDetailsType;
     }
 
+    /**
+     * Fetches the latest block from Blockfrost and updates in-memory tip state.
+     * Saves the block to store only if it doesn't already exist (to preserve
+     * state set by the block walk or catchup sync).
+     *
+     * REQT/9a0nx1gr4b (Core State) — tip tracking independent of processing
+     * REQT/9gq8rwg9ng (Block Tip & Address Recording)
+     */
     async fetchAndStoreLatestBlock(): Promise<BlockIndexEntry> {
         await this.store.log("x2xzt", `Fetching latest block from blockfrost`);
         const untyped = await this.fetchFromBlockfrost(`blocks/latest`);
@@ -1962,9 +2150,7 @@ export class CachedUtxoIndex {
             `latest block from blockfrost: #${typed.height} ${typed.hash}`,
         );
 
-        const entry = this.blockfrostBlockToIndexEntry(typed);
-        await this.store.saveBlock(entry);
-
+        // REQT/9a0nx1gr4b: Update in-memory tip state (independent of processing)
         if (typed.height > this.lastBlockHeight) {
             await this.store.log(
                 "2k3uq",
@@ -1972,9 +2158,18 @@ export class CachedUtxoIndex {
             );
             this.lastBlockHeight = typed.height;
             this.lastBlockId = typed.hash;
-            this.lastSlot = entry.slot;
+            this.lastSlot = typed.slot;
         }
 
+        // Save block only if not already in store — preserve existing state
+        // set by block walk (incremental) or catchup sync
+        const existing = await this.store.findBlockId(typed.hash);
+        if (existing) {
+            return existing;
+        }
+
+        const entry = this.blockfrostBlockToIndexEntry(typed, "unprocessed");
+        await this.store.saveBlock(entry);
         return entry;
     }
 

@@ -86,6 +86,22 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             logs: "logId, [pid+time]",
         });
 
+        // Schema v4: REQT/9gq8rwg9ng — add [state+height] compound index to blocks
+        // for efficient getLastProcessedBlock() queries (processing cursor).
+        // REQT/58b9nzgcbj — confirmedAtBlockHeight and confirmState on pendingTxs
+        // (optional fields, no index needed — queried by txHash PK).
+        this.version(4).stores({
+            blocks: "hash, [state+height]",
+            utxos: "utxoId, *uutIds, address, blockHeight, spentInTx",
+            txs: "txid",
+            scripts: "scriptHash",
+            walletAddresses: "address",
+            records: "id, utxoId, type",
+            pendingTxs: "txHash, status",
+            metadata: "key",
+            logs: "logId, [pid+time]",
+        });
+
         this.blocks.mapToClass(dexieBlockDetails);
         this.utxos.mapToClass(dexieUtxoDetails);
         this.logs.mapToClass(indexerLogs);
@@ -146,10 +162,28 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     async getLatestBlock(): Promise<BlockIndexEntry | undefined> {
+        // Find the highest block that's still valid (not rolled back).
+        // Uses compound index [state+height] — check unprocessed and processed states.
+        const [unprocessed, processed] = await Promise.all([
+            this.blocks.where("[state+height]")
+                .between(["unprocessed", -Infinity], ["unprocessed", Infinity])
+                .reverse().first(),
+            this.blocks.where("[state+height]")
+                .between(["processed", -Infinity], ["processed", Infinity])
+                .reverse().first(),
+        ]);
+        if (!unprocessed) return processed;
+        if (!processed) return unprocessed;
+        return unprocessed.height > processed.height ? unprocessed : processed;
+    }
+
+    // REQT/5d4f73c9bf (Last Processed Block) — processing cursor independent of chain tip
+    // Uses compound index [state, height] for efficient query: find highest-height "processed" block
+    async getLastProcessedBlock(): Promise<BlockIndexEntry | undefined> {
         return await this.blocks
-            .orderBy("height")
+            .where("[state+height]")
+            .between(["processed", -Infinity], ["processed", Infinity])
             .reverse()
-            .limit(1)
             .first();
     }
 

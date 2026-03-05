@@ -23,6 +23,8 @@ export interface UtxoStoreGeneric {
     findBlockId(blockId: string): Promise<BlockIndexEntry | undefined>;
     saveBlock(block: BlockIndexEntry): Promise<void>;
     getLatestBlock(): Promise<BlockIndexEntry | undefined>;
+    // REQT/5d4f73c9bf (Last Processed Block) — processing cursor independent of chain tip
+    getLastProcessedBlock(): Promise<BlockIndexEntry | undefined>;
 
     // UTXO operations - uses storage-agnostic UtxoIndexEntry
     findUtxoId(utxoId: string): Promise<UtxoIndexEntry | undefined>;
