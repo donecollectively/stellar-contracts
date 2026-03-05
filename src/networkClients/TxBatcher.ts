@@ -82,7 +82,8 @@ export class TxBatcher {
 
         if (
             "failed" == $stateShortSummary ||
-            "confirmed" == $stateShortSummary
+            "confirmed" == $stateShortSummary ||
+            "mostly confirmed" == $stateShortSummary
         ) {
             return true;
         }
