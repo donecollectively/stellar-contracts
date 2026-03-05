@@ -240,16 +240,16 @@ if (!BLOCKFROST_API_KEY) {
             });
 
             it("returns wall-clock milliseconds matching CardanoClient contract (now-wall-clock-ms/REQT/gz9a5b8qv)", async () => {
-                const before = Date.now();
                 const now = sharedIndex.now;
-                const after = Date.now();
 
                 // Must be in millisecond range (~1.7T), not slot range (~142M)
                 expect(now).toBeGreaterThan(1_000_000_000_000);
 
-                // Must track wall clock
-                expect(now).toBeGreaterThanOrEqual(before);
-                expect(now).toBeLessThanOrEqual(after);
+                // Must be truncated to whole seconds (no sub-second precision)
+                expect(now % 1000).toBe(0);
+
+                // Must be within 1 second of wall clock
+                expect(Math.abs(now - Date.now())).toBeLessThan(1000);
 
                 // Regression: must NOT equal the block slot (the old broken behavior)
                 expect(now).not.toBe(sharedIndex.lastBlockSlot);

@@ -291,7 +291,7 @@ export class CachedUtxoIndex {
      * REQT/gz9a5b8qv (now Property)
      */
     get now(): number {
-        return Date.now();
+        return Math.floor(Date.now() / 1000) * 1000;
     }
 
     /**

@@ -724,7 +724,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         // with configurable backdating buffer (default 30s) to ensure validity start
         // isn't ahead of the chain's consensus view.
         const backdateSeconds = this.setup.txTimeBackdateBufferSeconds ?? 30;
-        const d = new Date(this.setup.network.now - backdateSeconds * 1000);
+        const nowTruncated = Math.floor(this.setup.network.now / 1000) * 1000;
+        const d = new Date(nowTruncated - backdateSeconds * 1000);
         // time emoji: ⏰
         console.log("⏰⏰setting txnTime to ", d.toString());
         return (this._txnTime = d);
