@@ -92,11 +92,12 @@ const DEFAULT_MAX_SYNC_PAGES = Infinity;
 
 /**
  * REQT/yn45tvmp6k: Configurable thresholds for confirmation depth tracking.
- * confirmState transitions when depth crosses these thresholds:
- * - provisional: depth < provisionalDepth
- * - likely: provisionalDepth ≤ depth < confidentDepth
- * - confident: confidentDepth ≤ depth < certaintyDepth
- * - certain: depth ≥ certaintyDepth
+ * provisionalDepth and confidentDepth are measured in BLOCKS.
+ * certaintyDepth is measured in SLOTS (~1 slot/sec, progresses without blocks).
+ * - provisional: blockDepth < provisionalDepth
+ * - likely: provisionalDepth ≤ blockDepth < confidentDepth
+ * - confident: confidentDepth ≤ blockDepth (and slotDepth < certaintyDepth)
+ * - certain: slotDepth ≥ certaintyDepth
  */
 export interface ConfirmationThresholds {
     provisionalDepth: number;
@@ -108,7 +109,7 @@ export interface ConfirmationThresholds {
 const DEFAULT_CONFIRMATION_THRESHOLDS: ConfirmationThresholds = {
     provisionalDepth: 4,
     confidentDepth: 10,
-    certaintyDepth: 180,
+    certaintyDepth: 3600,
 };
 
 // REQT/92m7kpkny7: Wallet address staleness threshold (default 30 seconds)
@@ -1304,6 +1305,7 @@ export class CachedUtxoIndex {
         if (confirmedEntries.length === 0) return;
 
         const currentHeight = this.lastBlockHeight;
+        const currentSlot = this.lastSlot;
         const { provisionalDepth, confidentDepth, certaintyDepth } =
             this.confirmationThresholds;
 
@@ -1311,23 +1313,30 @@ export class CachedUtxoIndex {
             // REQT/thy7tkrxh7: Skip entries already at "certain" — no further advancement
             if (entry.confirmState === "certain") continue;
 
-            // REQT/thy7tkrxh7: Skip entries without confirmedAtBlockHeight (shouldn't happen)
+            // REQT/thy7tkrxh7: Skip entries without confirmation data
             if (entry.confirmedAtBlockHeight === undefined) continue;
+            if (entry.confirmedAtSlot === undefined) continue;
 
-            // REQT/thy7tkrxh7: Calculate depth
-            const depth = currentHeight - entry.confirmedAtBlockHeight;
+            // Block depth for provisional/likely/confident thresholds
+            const blockDepth = currentHeight - entry.confirmedAtBlockHeight;
+            // Slot depth for certainty threshold (~1 slot/sec, progresses without blocks)
+            const slotDepth = currentSlot - entry.confirmedAtSlot;
 
             // REQT/yn45tvmp6k: Determine new confirmState based on depth thresholds
+            // provisional/likely/confident use block depth; certain uses slot depth
             let newState: "provisional" | "likely" | "confident" | "certain";
-            if (depth >= certaintyDepth) {
+            if (slotDepth >= certaintyDepth) {
                 newState = "certain";
-            } else if (depth >= confidentDepth) {
+            } else if (blockDepth >= confidentDepth) {
                 newState = "confident";
-            } else if (depth >= provisionalDepth) {
+            } else if (blockDepth >= provisionalDepth) {
                 newState = "likely";
             } else {
                 newState = "provisional";
             }
+
+            // Use block depth for the stored value (primary user-facing metric)
+            const depth = blockDepth;
 
             // Only save when depth or state actually changed
             const depthChanged = depth !== entry.confirmationBlockDepth;
