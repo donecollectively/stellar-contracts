@@ -20,16 +20,18 @@ import { DexieUtxoStore } from "../networkClients/UtxoIndex/DexieUtxoStore.js";
  *
  * @internal
  */
+// REQT/4p1fvt8tbr (Symbol Mapping) — rollback-pending added for two-gate lifecycle
 const stateDisplay: Record<
     string,
     { symbol: string; color: string; label: string }
 > = {
-    pending:       { symbol: "◑", color: "#9ca3af", label: "Submitting" },
-    provisional:   { symbol: "●", color: "#9ca3af", label: "Confidence: Provisional" },
-    likely:        { symbol: "●", color: "oklch(0.86 0.32 149.97 / 0.4)", label: "Confidence: Likely" },
-    confident:     { symbol: "●", color: "oklch(0.77 0.33 145.43 / 0.73)", label: "Confidence: High" },
-    certain:       { symbol: "●", color: "oklch(0.63 0.22 250.05)", label: "Confidence: Confirmed" },
-    "rolled-back": { symbol: "✗", color: "#ef4444", label: "Rolled Back" },
+    pending:            { symbol: "◑", color: "#9ca3af", label: "Submitting" },
+    provisional:        { symbol: "●", color: "#9ca3af", label: "Confidence: Provisional" },
+    likely:             { symbol: "●", color: "oklch(0.86 0.32 149.97 / 0.4)", label: "Confidence: Likely" },
+    confident:          { symbol: "●", color: "oklch(0.77 0.33 145.43 / 0.73)", label: "Confidence: High" },
+    certain:            { symbol: "●", color: "oklch(0.63 0.22 250.05)", label: "Confidence: Confirmed" },
+    "rollback-pending": { symbol: "✗", color: "#9ca3af", label: "Rollback Pending" },
+    "rolled-back":      { symbol: "✗", color: "#ef4444", label: "Rolled Back" },
 };
 
 /**
@@ -43,6 +45,10 @@ const stateDisplay: Record<
 function getDisplay(entry: PendingTxEntry) {
     if (entry.status === "rolled-back") {
         return stateDisplay["rolled-back"];
+    }
+    // REQT/4p1fvt8tbr (Symbol Mapping) — rollback-pending dispatch
+    if (entry.status === "rollback-pending") {
+        return stateDisplay["rollback-pending"];
     }
     if (entry.status === "confirmed" && entry.confirmState) {
         return stateDisplay[entry.confirmState] ?? stateDisplay.pending;

@@ -42,10 +42,23 @@ export interface PendingTxEntry {
      * REQT/c3ytg4rttd (Deadline Calculation)
      */
     deadlineSlot: number;
-    /** Lifecycle status of the pending transaction */
-    status: "pending" | "confirmed" | "rolled-back";
+    /** Lifecycle status of the pending transaction
+     * REQT/jqz2m497vx (PendingTxEntry Type) — "rollback-pending" added for two-gate lifecycle
+     */
+    status: "pending" | "confirmed" | "rollback-pending" | "rolled-back";
     /** Timestamp when the transaction was submitted (epoch ms) */
     submittedAt: number;
+
+    /**
+     * Competing confirmed transactions that spent UTxOs claimed by this pending tx.
+     * Populated by contention detection in processTransactionForNewUtxos when a
+     * confirmed on-chain tx overwrites spentInTx on a UTxO previously claimed by
+     * this pending tx.
+     *
+     * REQT/jqz2m497vx (PendingTxEntry Type) — contestedByTxs field
+     * REQT/hhbcnvd9aj (Input Detection) — populated by contention detection
+     */
+    contestedByTxs?: Array<{ txHash: string; blockHeight: number }>;
 
     /**
      * Block height at which the transaction was confirmed on-chain.

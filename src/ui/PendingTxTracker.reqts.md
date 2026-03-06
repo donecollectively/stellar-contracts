@@ -79,7 +79,7 @@ Mapping confirmation states to Unicode symbols and colors, layout ordering, and 
 ### **REQT-2.1.0/s9xta87hkb**: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Confidence State Symbols**
 #### Purpose: Governs the visual mapping from confirmation state to display. Applied when reviewing accessibility, color contrast, or adding new confirmation states.
 
- - 2.1.1: REQT-4p1fvt8tbr: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Symbol Mapping** - MUST use the following symbol and color mapping: pending → ◑ grey (#9ca3af), provisional → ● grey (#9ca3af), likely → ● white (#e5e7eb), confident → ● green (#22c55e), certain → ● dark green (#15803d), rolled-back → ✗ red (#ef4444).
+ - 2.1.1: REQT-4p1fvt8tbr: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Symbol Mapping** - MUST use the following symbol and color mapping: pending → ◑ grey (#9ca3af), provisional → ● grey (#9ca3af), likely → ● white (#e5e7eb), confident → ● green (#22c55e), certain → ● dark green (#15803d), rollback-pending → ✗ grey (#9ca3af), rolled-back → ✗ red (#ef4444).
 
 ### **REQT-2.2.0/9fhnzz9648**: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Time-Ordered Layout**
 #### Purpose: Ensures consistent spatial mapping from time to position. Applied when reviewing layout or adding grouping features.

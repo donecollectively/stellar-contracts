@@ -506,6 +506,28 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // =========================================================================
+    // REQT/c3ytg4rttd: Depth-based deadline slot-to-block mapping
+    // =========================================================================
+
+    /**
+     * Find the lowest-height processed block whose slot >= the given slot.
+     * This is "the last possible block it could have been in, if it was gonna."
+     * Used by checkPendingDeadlines to map a deadline slot to a block height
+     * for depth-based expiry comparison.
+     */
+    async findFirstProcessedBlockAtOrAfterSlot(slot: number): Promise<BlockIndexEntry | undefined> {
+        // Query all processed blocks sorted by height ascending,
+        // find the first one whose slot >= the target slot.
+        // We use the compound [state+height] index to get processed blocks in height order.
+        const processedBlocks = await this.blocks
+            .where("[state+height]")
+            .between(["processed", -Infinity], ["processed", Infinity])
+            .toArray();
+        // Blocks are returned in height order (ascending). Find first with slot >= target.
+        return processedBlocks.find(b => b.slot >= slot);
+    }
+
+    // =========================================================================
     // REQT/5799nq1d0x: Purge Implementation
     // =========================================================================
 

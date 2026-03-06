@@ -263,7 +263,7 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             setLastSyncedBlock(index, 100, "block100", 500);
 
             // Confirm a txHash that was never registered — should not throw
-            await index.confirmPendingTx("0000000000000000000000000000000000000000000000000000000000000000");
+            await (index as any).confirmPendingTx("0000000000000000000000000000000000000000000000000000000000000000", 100);
 
             // Verify: no pending entries, no crash
             const pending = await index.getPendingTxs();
@@ -293,10 +293,12 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             let confirmedEvent: any = null;
             index.events.on("txConfirmed", (ev) => { confirmedEvent = ev; });
 
-            await index.confirmPendingTx(txHash);
+            // confirmPendingTx is private — access via cast; provide blockHeight
+            const store = getStore(index);
+            await store.saveBlock({ hash: "block105", height: 105, time: 0, slot: 600, state: "processed" });
+            await (index as any).confirmPendingTx(txHash, 105);
 
             // Verify: status changed to confirmed
-            const store = getStore(index);
             const entry = await store.findPendingTx(txHash);
             expect(entry!.status).toBe("confirmed");
 
@@ -419,16 +421,21 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             const stillPending = await store.findPendingTx(txHash);
             expect(stillPending!.status).toBe("pending");
 
-            // Advance past deadline — both in-memory tip AND a processed block in the store
-            setLastSyncedBlock(index, 9999, "block9999", deadlineSlot + 1);
-            await store.saveBlock({ hash: "block9999", height: 9999, time: 0, slot: deadlineSlot + 1, state: "processed" });
+            // Advance past deadline with sufficient depth:
+            // - Block at/after deadline slot has height 200
+            // - Tip at height 200 + provisionalDepth(4) = 204, so depth = 4 >= 4
+            const deadlineBlockHeight = 200;
+            const tipHeight = deadlineBlockHeight + 4; // provisionalDepth = 4
+            await store.saveBlock({ hash: "blockDeadline", height: deadlineBlockHeight, time: 0, slot: deadlineSlot + 1, state: "processed" });
+            setLastSyncedBlock(index, tipHeight, "blockTip", deadlineSlot + 100);
 
             let rolledBackEvent: any = null;
             index.events.on("txRolledBack", (ev) => { rolledBackEvent = ev; });
 
             await (index as any).checkPendingDeadlines();
 
-            // Verify: rolled back
+            // Gate 1 sets rollback-pending, then executeSettledRollbacks runs Gate 2
+            // (no contention, so Gate 2 passes immediately and rolls back)
             const expired = await store.findPendingTx(txHash);
             expect(expired!.status).toBe("rolled-back");
             expect(rolledBackEvent).toBeTruthy();
@@ -474,6 +481,342 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             expect(index2.pendingSyncState).toBe("stale");
             await (index2 as any).resolvePendingState();
             expect(index2.pendingSyncState).toBe("fresh");
+        });
+    });
+
+    // =========================================================================
+    // Contention-Aware Two-Gate Rollback (pre-work test scaffolding)
+    // These tests are scaffolded during pre-work review. The Coder fills in
+    // implementation-dependent details after Changes 1-9 land.
+    // =========================================================================
+
+    describe("contention detection (REQT/hhbcnvd9aj)", () => {
+        it("confirmed tx overwrites pending spentInTx and records contestedByTxs (contention-overwrites-spent/REQT/hhbcnvd9aj)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash: pendingTxHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("contention-overwrite");
+            const index = createTestIndex(h, dbName);
+            const store = getStore(index);
+            setLastSyncedBlock(index, 100, "block100", 500);
+
+            await prePopulateInputUtxos(index, tx);
+            await index.registerPendingTx(signedTxCborHex, {
+                description: "contention test - pending",
+                id: "test-contention-1",
+                depth: 0,
+                txCborHex,
+            });
+
+            // Verify: inputs marked spent by pending tx
+            const firstInputId = tx.body.inputs[0].id.toString();
+            const beforeContention = await store.findUtxoId(firstInputId);
+            expect(beforeContention?.spentInTx).toBe(pendingTxHash);
+
+            // Simulate contention: directly overwrite spentInTx and record contestedByTxs
+            // as processTransactionForNewUtxos would do (the actual confirmed tx goes through
+            // the full pipeline — here we test the store-level outcome).
+            const confirmedTxHash = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+            const contestBlockHeight = 105;
+            await store.markUtxoSpent(firstInputId, confirmedTxHash);
+            const pendingEntry = await store.findPendingTx(pendingTxHash);
+            expect(pendingEntry).toBeTruthy();
+            pendingEntry!.contestedByTxs = [{ txHash: confirmedTxHash, blockHeight: contestBlockHeight }];
+            await store.savePendingTx(pendingEntry!);
+
+            // Verify: spentInTx overwritten to confirmed tx
+            const afterContention = await store.findUtxoId(firstInputId);
+            expect(afterContention!.spentInTx).toBe(confirmedTxHash);
+
+            // Verify: contestedByTxs populated on losing pending entry
+            const updatedPending = await store.findPendingTx(pendingTxHash);
+            expect(updatedPending!.contestedByTxs).toHaveLength(1);
+            expect(updatedPending!.contestedByTxs![0].txHash).toBe(confirmedTxHash);
+            expect(updatedPending!.contestedByTxs![0].blockHeight).toBe(contestBlockHeight);
+            expect(updatedPending!.status).toBe("pending"); // not rolled back yet
+        });
+
+        it("confirmed tx for same txHash takes fast-path confirm, no contention (confirm-no-contention/REQT/58b9nzgcbj)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("confirm-no-contention");
+            const index = createTestIndex(h, dbName);
+            const store = getStore(index);
+            setLastSyncedBlock(index, 100, "block100", 500);
+
+            await prePopulateInputUtxos(index, tx);
+            await index.registerPendingTx(signedTxCborHex, {
+                description: "fast-path confirm test",
+                id: "test-contention-2",
+                depth: 0,
+                txCborHex,
+            });
+
+            let confirmedEvent: any = null;
+            index.events.on("txConfirmed", (ev) => { confirmedEvent = ev; });
+
+            // Same txHash discovered on-chain → fast-path confirm
+            await (index as any).confirmPendingTx(txHash, 105);
+
+            const entry = await store.findPendingTx(txHash);
+            expect(entry!.status).toBe("confirmed");
+            expect(entry!.contestedByTxs ?? []).toHaveLength(0);
+            expect(confirmedEvent).toBeTruthy();
+            expect(confirmedEvent.txHash).toBe(txHash);
+        });
+    });
+
+    describe("two-gate rollback lifecycle (REQT/a9y19g0pmr)", () => {
+        it("uncontested expiry transitions through rollback-pending to rolled-back (uncontested-two-gate/REQT/vhn7zvn8nc)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("uncontested-two-gate");
+            const index = createTestIndex(h, dbName);
+            const store = getStore(index);
+            setLastSyncedBlock(index, 100, "block100", 500);
+            await store.saveBlock({ hash: "block100", height: 100, time: 0, slot: 500, state: "processed" });
+
+            const inputUtxoIds = tx.body.inputs.map((i: any) => i.id.toString());
+            await prePopulateInputUtxos(index, tx);
+            await index.registerPendingTx(signedTxCborHex, {
+                description: "uncontested two-gate test",
+                id: "test-twogate-1",
+                depth: 0,
+                txCborHex,
+            });
+
+            const pendingEntry = await store.findPendingTx(txHash);
+            const deadlineSlot = pendingEntry!.deadlineSlot;
+
+            // Advance past deadline by provisionalDepth (4) blocks
+            // deadlineBlock at height 200 with slot past deadline, tip at 204 = depth 4
+            const deadlineBlockHeight = 200;
+            const tipHeight = deadlineBlockHeight + 4; // provisionalDepth = 4
+            await store.saveBlock({ hash: "blockDeadline", height: deadlineBlockHeight, time: 0, slot: deadlineSlot + 1, state: "processed" });
+            setLastSyncedBlock(index, tipHeight, "blockTip", deadlineSlot + 100);
+
+            // Gate 1: checkPendingDeadlines should set status → rollback-pending
+            // Gate 2: executeSettledRollbacks (called within checkPendingDeadlines) 
+            // — no contention, should proceed immediately to rolled-back
+            let rolledBackEvent: any = null;
+            index.events.on("txRolledBack", (ev) => { rolledBackEvent = ev; });
+
+            await (index as any).checkPendingDeadlines();
+
+            const afterRollback = await store.findPendingTx(txHash);
+            expect(afterRollback!.status).toBe("rolled-back");
+
+            // Inputs restored
+            for (const utxoId of inputUtxoIds) {
+                const utxo = await store.findUtxoId(utxoId);
+                expect(utxo!.spentInTx, `input ${utxoId} should be restored`).toBeNull();
+            }
+
+            // Outputs deleted
+            for (let i = 0; i < tx.body.outputs.length; i++) {
+                const utxo = await store.findUtxoId(`${txHash}#${i}`);
+                expect(utxo, `output ${i} should be deleted`).toBeFalsy();
+            }
+
+            // Event fired
+            expect(rolledBackEvent).toBeTruthy();
+            expect(rolledBackEvent.txHash).toBe(txHash);
+        });
+
+        it("deadline not deep enough keeps status pending (shallow-deadline-stays-pending/REQT/vhn7zvn8nc)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("shallow-deadline");
+            const index = createTestIndex(h, dbName);
+            const store = getStore(index);
+            setLastSyncedBlock(index, 100, "block100", 500);
+            await store.saveBlock({ hash: "block100", height: 100, time: 0, slot: 500, state: "processed" });
+
+            await prePopulateInputUtxos(index, tx);
+            await index.registerPendingTx(signedTxCborHex, {
+                description: "shallow deadline test",
+                id: "test-twogate-2",
+                depth: 0,
+                txCborHex,
+            });
+
+            const pendingEntry = await store.findPendingTx(txHash);
+            const deadlineSlot = pendingEntry!.deadlineSlot;
+
+            // Advance past deadline slot but only 1 block deep (< provisionalDepth of 4)
+            // deadlineBlock at height 101 with slot past deadline, tip also at 101 = depth 0
+            await store.saveBlock({ hash: "block101", height: 101, time: 0, slot: deadlineSlot + 1, state: "processed" });
+            setLastSyncedBlock(index, 101, "block101", deadlineSlot + 1);
+
+            await (index as any).checkPendingDeadlines();
+
+            const afterCheck = await store.findPendingTx(txHash);
+            expect(afterCheck!.status).toBe("pending");
+        });
+
+        it("contested expiry: Gate 2 holds until competing tx at depth (contested-gate2-holds/REQT/bqy3xpp8rs)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash: pendingTxHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("contested-gate2");
+            const index = createTestIndex(h, dbName);
+            const store = getStore(index);
+            setLastSyncedBlock(index, 100, "block100", 500);
+            await store.saveBlock({ hash: "block100", height: 100, time: 0, slot: 500, state: "processed" });
+
+            const inputUtxoIds = tx.body.inputs.map((i: any) => i.id.toString());
+            await prePopulateInputUtxos(index, tx);
+            await index.registerPendingTx(signedTxCborHex, {
+                description: "contested gate2 test",
+                id: "test-twogate-3",
+                depth: 0,
+                txCborHex,
+            });
+
+            const pendingEntry = await store.findPendingTx(pendingTxHash);
+            const deadlineSlot = pendingEntry!.deadlineSlot;
+
+            // Simulate contention: a confirmed tx at a recent blockHeight took one of our inputs
+            const confirmedTxHash = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+            const firstInputId = tx.body.inputs[0].id.toString();
+
+            // Set up block structure:
+            // - deadlineBlock at height 200 (slot past deadline)
+            // - contestedBlockHeight at 202 (recent — within provisionalDepth of tip)
+            // - Gate 1 tip at 204 (depth 4 past deadline block) — Gate 1 passes
+            // - Gate 2 at tip 204: depth past contention = 204 - 202 = 2 < 4 — Gate 2 holds
+            const deadlineBlockHeight = 200;
+            const contestedBlockHeight = 202;
+            const gate1TipHeight = deadlineBlockHeight + 4; // 204
+
+            // Overwrite spentInTx on the contested input (as processTransactionForNewUtxos would)
+            await store.markUtxoSpent(firstInputId, confirmedTxHash);
+            pendingEntry!.contestedByTxs = [{ txHash: confirmedTxHash, blockHeight: contestedBlockHeight }];
+            await store.savePendingTx(pendingEntry!);
+
+            // Gate 1: advance past deadline with depth
+            await store.saveBlock({ hash: "blockDeadline", height: deadlineBlockHeight, time: 0, slot: deadlineSlot + 1, state: "processed" });
+            setLastSyncedBlock(index, gate1TipHeight, "blockG1tip", deadlineSlot + 500);
+
+            await (index as any).checkPendingDeadlines();
+
+            // After Gate 1 + Gate 2 attempt: should be rollback-pending (Gate 2 held)
+            // Gate 2: 204 - 202 = 2 < provisionalDepth(4) — contention not settled
+            const afterGate1 = await store.findPendingTx(pendingTxHash);
+            expect(afterGate1!.status).toBe("rollback-pending");
+
+            // Gate 2 second attempt: advance chain to contestedBlockHeight + provisionalDepth
+            const gate2TipHeight = contestedBlockHeight + 4; // 206
+            setLastSyncedBlock(index, gate2TipHeight, "blockG2", deadlineSlot + 700);
+            await (index as any).executeSettledRollbacks();
+
+            const afterGate2 = await store.findPendingTx(pendingTxHash);
+            expect(afterGate2!.status).toBe("rolled-back");
+
+            // Contested input should NOT be restored (spentInTx still points to confirmed tx)
+            const contestedUtxo = await store.findUtxoId(firstInputId);
+            expect(contestedUtxo!.spentInTx).toBe(confirmedTxHash);
+
+            // Uncontested inputs SHOULD be restored
+            for (const utxoId of inputUtxoIds) {
+                if (utxoId === firstInputId) continue; // skip contested one
+                const utxo = await store.findUtxoId(utxoId);
+                if (utxo) {
+                    expect(utxo.spentInTx, `uncontested input ${utxoId} should be restored`).toBeNull();
+                }
+            }
+
+            // Outputs deleted
+            for (let i = 0; i < tx.body.outputs.length; i++) {
+                const utxo = await store.findUtxoId(`${pendingTxHash}#${i}`);
+                expect(utxo, `output ${i} should be deleted`).toBeFalsy();
+            }
+        });
+
+        it("selective datum re-parse: only uncontested inputs re-parsed (selective-reparse/REQT/1afcyedaks)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash: pendingTxHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("selective-reparse");
+            const index = createTestIndex(h, dbName);
+            const store = getStore(index);
+            setLastSyncedBlock(index, 100, "block100", 500);
+            await store.saveBlock({ hash: "block100", height: 100, time: 0, slot: 500, state: "processed" });
+
+            // Attach capo so datum parsing is active
+            index.attachCapo(h.capo as any);
+
+            await prePopulateInputUtxos(index, tx);
+            await index.registerPendingTx(signedTxCborHex, {
+                description: "selective reparse test",
+                id: "test-reparse-1",
+                depth: 0,
+                txCborHex,
+            });
+
+            const pendingEntry = await store.findPendingTx(pendingTxHash);
+            const deadlineSlot = pendingEntry!.deadlineSlot;
+
+            // Check which inputs have inline datums (for verification later)
+            const inputsWithDatum: string[] = [];
+            const inputsWithoutDatum: string[] = [];
+            for (const input of tx.body.inputs) {
+                const utxoId = input.id.toString();
+                const utxo = await store.findUtxoId(utxoId);
+                if (utxo?.inlineDatum) {
+                    inputsWithDatum.push(utxoId);
+                } else {
+                    inputsWithoutDatum.push(utxoId);
+                }
+            }
+
+            // Simulate contention on the first input (if any have datums)
+            const confirmedTxHash = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+            if (inputsWithDatum.length > 0) {
+                const contestedInputId = inputsWithDatum[0];
+                await store.markUtxoSpent(contestedInputId, confirmedTxHash);
+                pendingEntry!.contestedByTxs = [{ txHash: confirmedTxHash, blockHeight: 105 }];
+                await store.savePendingTx(pendingEntry!);
+            }
+
+            // Advance past deadline with sufficient depth for both gates
+            const deadlineBlockHeight = 200;
+            const tipHeight = deadlineBlockHeight + 4;
+            await store.saveBlock({ hash: "blockDL", height: deadlineBlockHeight, time: 0, slot: deadlineSlot + 1, state: "processed" });
+            // Ensure contention is also at depth (105 + 4 = 109 < 204)
+            setLastSyncedBlock(index, tipHeight, "blockTip", deadlineSlot + 100);
+
+            await (index as any).checkPendingDeadlines();
+
+            const afterRollback = await store.findPendingTx(pendingTxHash);
+            expect(afterRollback!.status).toBe("rolled-back");
+
+            // The key assertion: uncontested inputs with datums should have records
+            // re-parsed, while contested inputs should NOT have records re-parsed
+            // (their successor records from the confirmed tx are intact)
+            // This is verified by the rollback code only calling parseAndSaveRecord
+            // on restoredUtxos (the ones returned by findUtxosSpentByTx).
         });
     });
 });

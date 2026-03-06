@@ -110,6 +110,13 @@ export interface UtxoStoreGeneric {
     findUtxosByTxHash(txHash: string): Promise<UtxoIndexEntry[]>;
     findRecordsByTxHash(txHash: string): Promise<{ id: string; type: string; utxoId: string }[]>;
 
+    // REQT/c3ytg4rttd: Depth-based deadline check — find the first processed block at or after a slot
+    /** Find the lowest-height processed block whose slot >= the given slot.
+     * Returns undefined if no such block exists (deadline not yet reached in processed blocks).
+     * Used to map a deadline slot to a block height for depth comparison.
+     */
+    findFirstProcessedBlockAtOrAfterSlot(slot: number): Promise<BlockIndexEntry | undefined>;
+
     // REQT/h4m8p3x16c: Purge Operation
     /** Delete PendingTxEntry rows at terminal confidence: confirmed+certain older than certainOlderThan, rolled-back older than rolledBackOlderThan */
     purgeOldPendingTxs(certainOlderThan: number, rolledBackOlderThan: number): Promise<void>;
