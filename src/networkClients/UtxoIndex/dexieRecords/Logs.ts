@@ -1,6 +1,6 @@
 import { Entity } from "dexie";
 import type { DexieUtxoStore } from "../DexieUtxoStore.js";
-import type { LogEntry } from "../types/LogEntry.js";
+import type { LogEntry, LogLevel } from "../types/LogEntry.js";
 
 /**
  * Dexie entity class for log storage.
@@ -16,4 +16,6 @@ export class indexerLogs
     time!: number;
     location!: string;
     message!: string;
+    level!: LogLevel;
+    parentLogId?: string;
 }

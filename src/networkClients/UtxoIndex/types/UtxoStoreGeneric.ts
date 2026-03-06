@@ -14,10 +14,13 @@ import type { ScriptIndexEntry } from "./ScriptIndexEntry.js";
 import type { WalletAddressEntry } from "./WalletAddressEntry.js";
 import type { RecordIndexEntry } from "./RecordIndexEntry.js";
 import type { PendingTxEntry } from "./PendingTxEntry.js";
+import type { LogLevel, LogEntry } from "./LogEntry.js";
 
 export interface UtxoStoreGeneric {
     // Logging
-    log(id: string, message: string): Promise<void>;
+    log(id: string, message: string, level?: LogLevel, parentLogId?: string, callerLocation?: string): Promise<string>;
+    /** Query log entries ordered by time. Pass pid:"all" for cross-pid queries. */
+    getLogs(options?: { since?: number; level?: LogLevel; pid?: number | "all" }): Promise<LogEntry[]>;
 
     // Block operations
     findBlockId(blockId: string): Promise<BlockIndexEntry | undefined>;

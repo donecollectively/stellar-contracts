@@ -228,6 +228,10 @@ export class CachedUtxoIndex {
     private syncReady: Promise<void>;
     private syncReadyResolve!: () => void;
 
+    // Current top-level operation's logId — sub-step logs inherit this as parentLogId.
+    // Set by logOp() at the start of a top-level operation, cleared when it completes.
+    private _currentOpLogId: string | undefined;
+
     // Event emitter for sync status and rate limit metrics
     public readonly events = new EventEmitter<CachedUtxoIndexEvents>();
 
@@ -326,6 +330,50 @@ export class CachedUtxoIndex {
         return this.network.submitTx(tx);
     }
 
+    /**
+     * Captures the call-site location for log entries.
+     * Called in each helper so the stored location points to the actual
+     * log statement in CachedUtxoIndex, not DexieUtxoStore internals.
+     */
+    private _captureLocation(): string {
+        return new Error().stack!.split("\n")[3]!.trim();
+    }
+
+    /**
+     * Logs a top-level operation entry at "info" level and sets it as the
+     * current parent for subsequent sub-step logs. Returns the logId.
+     */
+    private async logOp(id: string, message: string): Promise<string> {
+        const loc = this._captureLocation();
+        const logId = await this.store.log(id, message, "info", undefined, loc);
+        this._currentOpLogId = logId;
+        return logId;
+    }
+
+    /**
+     * Logs a sub-step at "debug" level, parented to the current operation.
+     */
+    private async logDetail(id: string, message: string): Promise<string> {
+        const loc = this._captureLocation();
+        return this.store.log(id, message, "debug", this._currentOpLogId, loc);
+    }
+
+    /**
+     * Logs a warning, parented to the current operation.
+     */
+    private async logWarn(id: string, message: string): Promise<string> {
+        const loc = this._captureLocation();
+        return this.store.log(id, message, "warn", this._currentOpLogId, loc);
+    }
+
+    /**
+     * Logs an error, parented to the current operation.
+     */
+    private async logError(id: string, message: string): Promise<string> {
+        const loc = this._captureLocation();
+        return this.store.log(id, message, "error", this._currentOpLogId, loc);
+    }
+
     constructor({
         address,
         mph,
@@ -414,7 +462,7 @@ export class CachedUtxoIndex {
         } else {
             throw new Error(`Invalid strategy: ${strategy}`);
         }
-        this.store.log(
+        this.logOp(
             "agsbb",
             `CachedUtxoIndex created for address: ${this._address.toString()}`,
         );
@@ -445,7 +493,7 @@ export class CachedUtxoIndex {
             this.lastBlockHeight = cachedBlock.height;
             this.lastBlockSlot = cachedBlock.slot;
             this.lastBlockTime = cachedBlock.time;
-            await this.store.log(
+            await this.logOp(
                 "c8init",
                 `Initialized from cache: block #${cachedBlock.height}, slot ${cachedBlock.slot}`,
             );
@@ -465,7 +513,7 @@ export class CachedUtxoIndex {
         // Fetch all UTXOs from the capo address using the network
         const capoUtxos = await this.network.getUtxos(this._address);
 
-        await this.store.log("yz58q", `Found ${capoUtxos.length} capo UTXOs`);
+        await this.logDetail("yz58q", `Found ${capoUtxos.length} capo UTXOs`);
 
         // REQT/vk2bywdycn: Store all capo UTXOs in the index
         for (const utxo of capoUtxos) {
@@ -481,12 +529,12 @@ export class CachedUtxoIndex {
             }),
         );
 
-        await this.store.log(
+        await this.logDetail(
             "yuyqy",
             `Found ${uniqueTxIds.size} unique transaction IDs`,
         );
         for (const txId of uniqueTxIds) {
-            await this.store.log(
+            await this.logDetail(
                 "48nyb",
                 `Fetching transaction details for ${txId}`,
             );
@@ -549,7 +597,7 @@ export class CachedUtxoIndex {
                     await this.fetchAndStoreLatestBlock();
                 }
             } catch (e: any) {
-                await this.store.log(
+                await this.logError(
                     "fnber",
                     `Failed to fetch new blocks: ${e.message || e}`,
                 );
@@ -557,7 +605,7 @@ export class CachedUtxoIndex {
                 try {
                     await this.fetchAndStoreLatestBlock();
                 } catch (e2: any) {
-                    await this.store.log(
+                    await this.logError(
                         "bk5er",
                         `Failed to fetch latest block: ${e2.message || e2}`,
                     );
@@ -569,7 +617,7 @@ export class CachedUtxoIndex {
             if (!lastProcessed) {
                 // No processed blocks — nothing to walk from. This happens on
                 // a fresh start before initial sync has completed.
-                await this.store.log(
+                await this.logDetail(
                     "npc01",
                     "No processed blocks found — skipping checkForNewTxns",
                 );
@@ -614,7 +662,7 @@ export class CachedUtxoIndex {
         this._syncState = "syncing";
         this.events.emit("syncing");
 
-        await this.store.log(
+        await this.logOp(
             "si001",
             `Incremental sync: ${unprocessedBlocks.length} unprocessed blocks`,
         );
@@ -648,7 +696,7 @@ export class CachedUtxoIndex {
             await this.store.saveBlock({ ...block, state: "processed" });
         }
 
-        await this.store.log(
+        await this.logOp(
             "si003",
             `Incremental sync complete: processed ${unprocessedBlocks.length} blocks`,
         );
@@ -667,7 +715,7 @@ export class CachedUtxoIndex {
         this._syncState = `catchup sync (${unprocessedBlocks.length} blocks)`;
         this.events.emit("syncing");
 
-        await this.store.log(
+        await this.logOp(
             "sc001",
             `Catchup sync: ${unprocessedBlocks.length} blocks behind (last processed #${lastProcessed.height}, tip #${this.lastBlockHeight})`,
         );
@@ -717,7 +765,7 @@ export class CachedUtxoIndex {
             await this.store.saveBlock({ ...block, state: "processed" });
         }
 
-        await this.store.log(
+        await this.logOp(
             "sc002",
             `Catchup sync complete: advanced cursor to tip #${this.lastBlockHeight}`,
         );
@@ -750,7 +798,7 @@ export class CachedUtxoIndex {
             if (!onChainIds.has(cached.utxoId)) {
                 // REQT/2he55bafxd: Mark stale UTxO as spent during reconciliation
                 await this.store.markUtxoSpent(cached.utxoId, "reconciled");
-                await this.store.log(
+                await this.logDetail(
                     "rc001",
                     `Reconciliation: marked stale UTxO ${cached.utxoId} as spent`,
                 );
@@ -774,7 +822,7 @@ export class CachedUtxoIndex {
         if (this.blockPollTimerId) {
             return; // Already running
         }
-        this.store.log(
+        this.logOp(
             "pr5t1",
             `Starting block-tip poll every ${blockPollInterval / 1000}s`,
         );
@@ -813,7 +861,7 @@ export class CachedUtxoIndex {
      */
     stopPeriodicRefresh(): void {
         if (this.blockPollTimerId) {
-            this.store.log("pr5t0", "Stopping block-tip poll");
+            this.logOp("pr5t0", "Stopping block-tip poll");
             clearInterval(this.blockPollTimerId);
             this.blockPollTimerId = null;
         }
@@ -848,14 +896,14 @@ export class CachedUtxoIndex {
         // Check if already registered
         const existing = await this.store.findWalletAddress(address);
         if (existing) {
-            await this.store.log(
+            await this.logDetail(
                 "wa1sk",
                 `Wallet address ${address} already registered, skipping`,
             );
             return;
         }
 
-        await this.store.log("wa1rg", `Registering wallet address: ${address}`);
+        await this.logOp("wa1rg", `Registering wallet address: ${address}`);
 
         // Fetch current UTXOs from network
         const heliosAddress = makeAddress(address);
@@ -874,7 +922,7 @@ export class CachedUtxoIndex {
             lastSyncTime: Date.now(),
         });
 
-        await this.store.log(
+        await this.logDetail(
             "wa1ok",
             `Registered wallet address ${address} with ${utxos.length} UTXOs`,
         );
@@ -899,7 +947,7 @@ export class CachedUtxoIndex {
             return false; // Cache is fresh
         }
 
-        await this.store.log(
+        await this.logDetail(
             "wa2sy",
             `Wallet ${address} is stale (${Math.round(age / 1000)}s old), syncing`,
         );
@@ -935,7 +983,7 @@ export class CachedUtxoIndex {
             lastSyncTime: now,
         });
 
-        await this.store.log(
+        await this.logDetail(
             "wa2ok",
             `Synced wallet ${address}: ${utxos.length} UTXOs (${removedCount} stale removed)`,
         );
@@ -956,7 +1004,7 @@ export class CachedUtxoIndex {
      */
     async attachCapo(capo: Capo<any>): Promise<void> {
         this._capo = capo;
-        await this.store.log(
+        await this.logOp(
             "ac1at",
             "Capo attached for datum parsing",
         );
@@ -984,7 +1032,7 @@ export class CachedUtxoIndex {
 
         const lastParsed = await this.store.getLastParsedBlockHeight();
 
-        await this.store.log(
+        await this.logDetail(
             "cu1st",
             `Starting record catchup from lastParsedBlockHeight=${lastParsed}`,
         );
@@ -995,7 +1043,7 @@ export class CachedUtxoIndex {
             { withInlineDatum: true, unspentOnly: true },
         );
 
-        await this.store.log(
+        await this.logDetail(
             "cu2ct",
             `Found ${unparsedUtxos.length} UTXOs to parse for records`,
         );
@@ -1010,7 +1058,7 @@ export class CachedUtxoIndex {
         const newHeight = this.lastBlockHeight > 0 ? this.lastBlockHeight : lastParsed;
         await this.store.setLastParsedBlockHeight(newHeight);
 
-        await this.store.log(
+        await this.logOp(
             "cu3ok",
             `Catchup complete: parsed ${parsedCount} records, advanced lastParsedBlockHeight to ${newHeight}`,
         );
@@ -1049,7 +1097,7 @@ export class CachedUtxoIndex {
             return true;
         } catch (e: any) {
             // Log but don't fail — parsing errors for individual datums shouldn't block indexing
-            await this.store.log(
+            await this.logError(
                 "pr1er",
                 `Error parsing datum for ${entry.utxoId}: ${e.message || e}`,
             );
@@ -1119,7 +1167,7 @@ export class CachedUtxoIndex {
         const txHash = tx.id().toHex();
 
         console.debug(`🟡 REGISTER PENDING TX: ${txHash.slice(0, 8)}… — ${opts.description} — capo=${!!this._capo}`);
-        await this.store.log(
+        await this.logOp(
             "pt1rg",
             `Registering pending tx ${txHash}: ${opts.description}, capo=${!!this._capo}`,
         );
@@ -1171,7 +1219,7 @@ export class CachedUtxoIndex {
             const existingUtxo = await this.store.findUtxoId(utxoId);
             if (existingUtxo && !existingUtxo.spentInTx) {
                 await this.store.markUtxoSpent(utxoId, txHash);
-                await this.store.log(
+                await this.logDetail(
                     "pt2sp",
                     `Marked UTXO ${utxoId} as speculatively spent by pending tx ${txHash}`,
                 );
@@ -1188,7 +1236,7 @@ export class CachedUtxoIndex {
             await this.indexUtxoFromOutput(txHash, outputIndex, output, 0);
             const utxoId = this.formatUtxoId(txHash, outputIndex);
             const indexed = await this.store.findUtxoId(utxoId);
-            await this.store.log(
+            await this.logDetail(
                 "pt2ix",
                 `Indexed pending output ${utxoId} at address ${indexed?.address ?? "UNKNOWN"}, hasDatum=${!!indexed?.inlineDatum}`,
             );
@@ -1209,13 +1257,13 @@ export class CachedUtxoIndex {
                     const saved = await this.parseAndSaveRecord(entry);
                     if (saved) {
                         parsedCount++;
-                        await this.store.log(
+                        await this.logDetail(
                             "pt2rc",
                             `Parsed pending record from ${utxoId}`,
                         );
                     } else {
                         skippedCount++;
-                        await this.store.log(
+                        await this.logDetail(
                             "pt2rs",
                             `Datum at ${utxoId} did not parse to a record (parseAndSaveRecord returned false)`,
                         );
@@ -1223,13 +1271,13 @@ export class CachedUtxoIndex {
                 }
             }
             console.debug(`🟡 PENDING RECORDS: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`);
-            await this.store.log(
+            await this.logDetail(
                 "pt2rd",
                 `Pending record parsing complete: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`,
             );
         } else {
             console.warn(`🔴 NO CAPO — skipping record parsing for pending tx ${txHash.slice(0, 8)}…`);
-            await this.store.log(
+            await this.logDetail(
                 "pt2nc",
                 `⚠️ No Capo attached — skipping record parsing for pending tx ${txHash}. Records will NOT be queryable until confirmation sync.`,
             );
@@ -1243,7 +1291,7 @@ export class CachedUtxoIndex {
         // Also store the tx CBOR for future reference
         await this.store.saveTx({ txid: txHash, cbor: signedCborHex });
 
-        await this.store.log(
+        await this.logOp(
             "pt3ok",
             `Registered pending tx ${txHash}: ${tx.body.inputs.length} inputs spent, ${tx.body.outputs.length} outputs indexed, deadlineSlot ${deadlineSlot}`,
         );
@@ -1266,7 +1314,7 @@ export class CachedUtxoIndex {
         const confirmedAtSlot = confirmingBlock?.slot;
 
         console.debug(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot}`);
-        await this.store.log(
+        await this.logOp(
             "pt4cf",
             `Confirming pending tx ${txHash}: ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot}`,
         );
@@ -1292,7 +1340,7 @@ export class CachedUtxoIndex {
         this.pendingTxMap.delete(txHash);
         this.cleanupPendingSpentUtxoIds(txHash);
 
-        await this.store.log(
+        await this.logOp(
             "pt4ok",
             `Confirmed pending tx ${txHash} at block #${blockHeight}`,
         );
@@ -1366,7 +1414,7 @@ export class CachedUtxoIndex {
                     depth,
                 });
 
-                await this.store.log(
+                await this.logDetail(
                     "cd001",
                     `Confirmation depth advanced: ${entry.txHash.slice(0, 8)}… ${previousState} → ${newState} (depth ${depth})`,
                 );
@@ -1422,7 +1470,7 @@ export class CachedUtxoIndex {
                 // REQT/vhn7zvn8nc: Set status to rollback-pending — do NOT execute rollback here
                 entry.status = "rollback-pending";
                 await this.store.savePendingTx(entry);
-                await this.store.log(
+                await this.logOp(
                     "pt5g1",
                     `Gate 1 passed: pending tx ${entry.txHash.slice(0, 8)}… → rollback-pending (deadline block #${deadlineBlock.height}, depth ${depthPastDeadline} >= ${provisionalDepth})`,
                 );
@@ -1468,7 +1516,7 @@ export class CachedUtxoIndex {
                 );
                 if (!allSettled) {
                     // Some competing txs are too shallow — skip, re-check next cycle
-                    await this.store.log(
+                    await this.logDetail(
                         "pt5g2",
                         `Gate 2 held for ${entry.txHash.slice(0, 8)}…: ${contestedByTxs.length} contested txs, not all at depth >= ${provisionalDepth}`,
                     );
@@ -1505,7 +1553,7 @@ export class CachedUtxoIndex {
         const tx = decodeTx(entry.signedTxCborHex);
 
         console.log(`🔴 ROLLBACK PENDING TX: ${txHash.slice(0, 8)}… — ${entry.description}`);
-        await this.store.log(
+        await this.logOp(
             "pt5rb",
             `Executing rollback for pending tx ${txHash}: ${entry.description}`,
         );
@@ -1516,7 +1564,7 @@ export class CachedUtxoIndex {
         // at detection time per REQT/hhbcnvd9aj — findUtxosSpentByTx won't find them.
         const restoredUtxos = await this.store.findUtxosSpentByTx(txHash);
         await this.store.clearSpentByTx(txHash); // REQT/348pmgpdzr
-        await this.store.log(
+        await this.logDetail(
             "pt5s1",
             `Step 1: Cleared spentInTx on ${restoredUtxos.length} uncontested inputs`,
         );
@@ -1524,7 +1572,7 @@ export class CachedUtxoIndex {
         // REQT/c919hzrr2y (Pending Output and Record Cleanup) — Steps 2-3
         await this.store.deleteUtxosByTxHash(txHash); // REQT/c919hzrr2y
         await this.store.deleteRecordsByTxHash(txHash); // REQT/c919hzrr2y
-        await this.store.log(
+        await this.logDetail(
             "pt5s2",
             `Steps 2-3: Deleted pending-origin UTXOs and records for ${txHash.slice(0, 8)}…`,
         );
@@ -1544,13 +1592,13 @@ export class CachedUtxoIndex {
                     }
                 }
             }
-            await this.store.log(
+            await this.logDetail(
                 "pt5s4",
                 `Step 4: Re-parsed ${parsedCount} datums from ${restoredUtxos.length} restored inputs`,
             );
         } else if (!this._capo) {
             // REQT/1afcyedaks: No-op without Capo (consistent with registration behavior)
-            await this.store.log(
+            await this.logDetail(
                 "pt5s4",
                 `Step 4: Skipped datum re-parse (no Capo attached)`,
             );
@@ -1574,7 +1622,7 @@ export class CachedUtxoIndex {
         this.pendingTxMap.delete(txHash);
         this.cleanupPendingSpentUtxoIds(txHash);
 
-        await this.store.log(
+        await this.logOp(
             "pt5ok",
             `Rollback complete for ${txHash}: ${restoredUtxos.length} inputs restored, status → rolled-back`,
         );
@@ -1599,14 +1647,14 @@ export class CachedUtxoIndex {
                     this.pendingSpentUtxoIds.set(input.id.toString(), entry.txHash);
                 }
             } catch (e: any) {
-                await this.store.log(
+                await this.logError(
                     "pt6er",
                     `Error decoding CBOR for pending tx ${entry.txHash} during recovery: ${e.message || e}`,
                 );
             }
         }
         if (pendingEntries.length > 0) {
-            await this.store.log(
+            await this.logDetail(
                 "pt6ld",
                 `Loaded ${pendingEntries.length} pending entries from store for recovery`,
             );
@@ -1632,7 +1680,7 @@ export class CachedUtxoIndex {
         // REQT/fz6z7rr702: Emit pendingSynced
         this.events.emit("pendingSynced");
 
-        await this.store.log(
+        await this.logOp(
             "pt7rs",
             `Pending state resolved: pendingSyncState is now "fresh"`,
         );
@@ -1795,7 +1843,7 @@ export class CachedUtxoIndex {
             if (!existingUtxo.spentInTx) {
                 // REQT/hhbcnvd9aj (Input Detection) — unspent → mark spent by confirmed tx
                 await this.store.markUtxoSpent(utxoId, txHash);
-                await this.store.log(
+                await this.logDetail(
                     "sp3nt",
                     `Marked UTXO ${utxoId} as spent in tx ${txHash}`,
                 );
@@ -1806,7 +1854,7 @@ export class CachedUtxoIndex {
                 // On-chain reality wins: overwrite spentInTx with confirmed tx hash
                 const previousTxHash = existingUtxo.spentInTx;
                 await this.store.markUtxoSpent(utxoId, txHash);
-                await this.store.log(
+                await this.logDetail(
                     "ct3nt",
                     `Contention: UTXO ${utxoId} was claimed by ${previousTxHash.slice(0, 8)}… but confirmed tx ${txHash.slice(0, 8)}… wins — overwriting spentInTx`,
                 );
@@ -1818,7 +1866,7 @@ export class CachedUtxoIndex {
                     contestedByTxs.push({ txHash, blockHeight: summary.block_height });
                     losingPendingEntry.contestedByTxs = contestedByTxs;
                     await this.store.savePendingTx(losingPendingEntry);
-                    await this.store.log(
+                    await this.logDetail(
                         "ct3pd",
                         `Recorded contention on pending tx ${previousTxHash.slice(0, 8)}…: confirmed tx ${txHash.slice(0, 8)}… at block #${summary.block_height}`,
                     );
@@ -1828,7 +1876,7 @@ export class CachedUtxoIndex {
 
         // REQT/xrdj6qpgnj: Re-catalog delegates if charter changed
         if (charterChanged) {
-            await this.store.log(
+            await this.logDetail(
                 "ch4rt",
                 `Charter token detected in tx ${txHash}, re-cataloging delegates`,
             );
@@ -2154,13 +2202,13 @@ export class CachedUtxoIndex {
      * REQT/k0mnv27tz4 (catalogDelegateUuts)
      */
     private async catalogDelegateUuts(charterData: CharterData): Promise<void> {
-        await this.store.log("z5h89", `Cataloging delegate UUTs`);
+        await this.logDetail("z5h89", `Cataloging delegate UUTs`);
 
         // Get mint delegate UUT
         try {
             const mintDelegateLink = charterData.mintDelegateLink;
             if (mintDelegateLink?.uutName) {
-                await this.store.log(
+                await this.logDetail(
                     "ht8mg",
                     `Fetching mint delegate UUT: ${mintDelegateLink.uutName}`,
                 );
@@ -2179,7 +2227,7 @@ export class CachedUtxoIndex {
         try {
             const spendDelegateLink = charterData.spendDelegateLink;
             if (spendDelegateLink?.uutName) {
-                await this.store.log(
+                await this.logDetail(
                     "fgmtv",
                     `Fetching spend delegate UUT: ${spendDelegateLink.uutName}`,
                 );
@@ -2198,7 +2246,7 @@ export class CachedUtxoIndex {
         try {
             const govAuthorityLink = charterData.govAuthorityLink;
             if (govAuthorityLink?.uutName) {
-                await this.store.log(
+                await this.logDetail(
                     "g8xpk",
                     `Fetching gov authority UUT: ${govAuthorityLink.uutName}`,
                 );
@@ -2242,7 +2290,7 @@ export class CachedUtxoIndex {
                         "uutName" in delegateLink &&
                         delegateLink.uutName
                     ) {
-                        await this.store.log(
+                        await this.logDetail(
                             "nd8uu",
                             `Fetching named delegate '${delegateName}' UUT`,
                         );
@@ -2264,7 +2312,7 @@ export class CachedUtxoIndex {
             const { DgDataPolicy } = entryInfo.entryType;
             if (!DgDataPolicy) {
                 const actualType = Object.keys(entryInfo.entryType)[0];
-                this.store.log(
+                this.logDetail(
                     "pm5rq",
                     `${entryName} is a ${actualType}, not a DgDataPolicy; skipping`,
                 );
@@ -2273,7 +2321,7 @@ export class CachedUtxoIndex {
             try {
                 const { policyLink } = DgDataPolicy;
                 if (policyLink?.uutName) {
-                    await this.store.log(
+                    await this.logDetail(
                         "c6awj",
                         `Fetching dgData controller UUT: ${policyLink.uutName}`,
                     );
@@ -2308,7 +2356,7 @@ export class CachedUtxoIndex {
               )
             : this._address;
 
-        await this.store.log(
+        await this.logDetail(
             "dx8pq",
             `Fetching UUT for ${label} at address ${address.toString()}`,
         );
@@ -2321,7 +2369,7 @@ export class CachedUtxoIndex {
         const untyped = await this.fetchFromBlockfrost<unknown[]>(url);
 
         if (!Array.isArray(untyped) || untyped.length === 0) {
-            await this.store.log(
+            await this.logDetail(
                 "no8uu",
                 `No UTXO found for ${label} with asset ${asset}`,
             );
@@ -2346,6 +2394,7 @@ export class CachedUtxoIndex {
     async fetchFromBlockfrost<T>(url: string): Promise<T> {
         // Use global rate limiter to avoid exceeding Blockfrost's rate limits
         console.log(`⚡ fetchFromBlockfrost: ${url}`);
+        const callerLoc = this._captureLocation();
         return getBlockfrostRateLimiter().fetch(`${this.blockfrostBaseUrl}/api/v0/${url}`, {
                 headers: {
                     project_id: this.blockfrostKey,
@@ -2357,12 +2406,14 @@ export class CachedUtxoIndex {
                     await this.store.log(
                         "3ecxh",
                         `Error fetching from blockfrost: ${url} ${result.message}`,
+                        "warn", this._currentOpLogId, callerLoc,
                     );
                     throw new Error(result.message);
                 }
                 await this.store.log(
                     "rm7g8",
                     `Successfully fetched from blockfrost: ${url} ${JSON.stringify(result)}`,
+                    "debug", this._currentOpLogId, callerLoc,
                 );
                 return result as T;
             });
@@ -2382,7 +2433,7 @@ export class CachedUtxoIndex {
     }
 
     async fetchBlockDetails(blockId: string): Promise<BlockDetailsType> {
-        await this.store.log(
+        await this.logDetail(
             "78q9n",
             `Fetching block details for ${blockId} from blockfrost`,
         );
@@ -2399,18 +2450,18 @@ export class CachedUtxoIndex {
      * REQT/9a0nx1gr4b (Core State) — tip tracking independent of processing
      */
     async fetchAndStoreLatestBlock(): Promise<BlockIndexEntry> {
-        await this.store.log("x2xzt", `Fetching latest block from blockfrost`);
+        await this.logDetail("x2xzt", `Fetching latest block from blockfrost`);
         const untyped = await this.fetchFromBlockfrost(`blocks/latest`);
         // Type cast instead of runtime validation - trusting Blockfrost API
         const typed = untyped as BlockDetailsType;
-        await this.store.log(
+        await this.logDetail(
             "8y2yn",
             `latest block from blockfrost: #${typed.height} ${typed.hash}`,
         );
 
         // REQT/9a0nx1gr4b: Update in-memory tip state (independent of processing)
         if (typed.height > this.lastBlockHeight) {
-            await this.store.log(
+            await this.logDetail(
                 "2k3uq",
                 `new latest block: #${typed.height} ${typed.hash}`,
             );
@@ -2489,7 +2540,7 @@ export class CachedUtxoIndex {
         }
 
         if (totalStored > 0) {
-            await this.store.log(
+            await this.logOp(
                 "fnb01",
                 `Discovered and stored ${totalStored} new blocks since #${lastSeen.height}`,
             );
@@ -2545,7 +2596,7 @@ export class CachedUtxoIndex {
             }>(`scripts/${scriptHash}/cbor`);
 
             if (!response.cbor) {
-                await this.store.log(
+                await this.logDetail(
                     "scr0",
                     `Script ${scriptHash} has no CBOR (may be native script)`,
                 );
@@ -2596,7 +2647,7 @@ export class CachedUtxoIndex {
         if (txCbor) {
             return decodeTx(txCbor.cbor);
         }
-        await this.store.log(
+        await this.logDetail(
             "qwmrh",
             `Fetching tx details for ${txId} from blockfrost`,
         );
@@ -2609,7 +2660,7 @@ export class CachedUtxoIndex {
     }
 
     async fetchTxDetails(txId: string): Promise<Tx> {
-        await this.store.log("64qjp", `Fetching tx details for ${txId}`);
+        await this.logDetail("64qjp", `Fetching tx details for ${txId}`);
         const { cbor: cborHex } = await this.fetchFromBlockfrost<{
             cbor: string;
         }>(`txs/${txId}/cbor`);

@@ -102,6 +102,24 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             logs: "logId, [pid+time]",
         });
 
+        // Schema v5: Add level and parentLogId to logs for structured log viewing.
+        // Backfill existing entries with level="debug" (preserves backward compat).
+        this.version(5).stores({
+            blocks: "hash, [state+height]",
+            utxos: "utxoId, *uutIds, address, blockHeight, spentInTx",
+            txs: "txid",
+            scripts: "scriptHash",
+            walletAddresses: "address",
+            records: "id, utxoId, type",
+            pendingTxs: "txHash, status",
+            metadata: "key",
+            logs: "logId, [pid+time], level, parentLogId, time",
+        }).upgrade(tx => {
+            return tx.table("logs").toCollection().modify(log => {
+                if (!log.level) log.level = "info";
+            });
+        });
+
         this.blocks.mapToClass(dexieBlockDetails);
         this.utxos.mapToClass(dexieUtxoDetails);
         this.logs.mapToClass(indexerLogs);
@@ -134,22 +152,41 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // REQT/p7ryk4ztes (Logging Implementation)
-    async log(id: string, message: string): Promise<void> {
-        const location = new Error().stack!.split("\n")[2]!.trim();
+    async log(id: string, message: string, level: import("./types/LogEntry.js").LogLevel = "debug", parentLogId?: string, callerLocation?: string): Promise<string> {
+        const location = callerLocation || new Error().stack!.split("\n")[2]!.trim();
         const pid = this.initializing ? await this.initializing : this.pid;
 
         console.log(`${id}: ${message}`);
         // Use nanoid to generate unique logId, concatenated with the short id for readability
         const logId = `${id}-${nanoid()}`;
-        await this.logs.add(
-            {
-                logId,
-                pid,
-                time: Date.now(),
-                location,
-                message,
-            },
-        );
+        const entry: Record<string, unknown> = {
+            logId,
+            pid,
+            time: Date.now(),
+            location,
+            message,
+            level,
+        };
+        if (parentLogId) entry.parentLogId = parentLogId;
+        await this.logs.add(entry as any);
+        return logId;
+    }
+
+    async getLogs(options?: { since?: number; level?: import("./types/LogEntry.js").LogLevel; pid?: number | "all" }): Promise<import("./types/LogEntry.js").LogEntry[]> {
+        let results: import("./types/LogEntry.js").LogEntry[];
+        if (options?.pid === "all") {
+            // All pids — useful for passive observers (e.g. log viewer UI)
+            const since = options?.since ?? 0;
+            results = await this.logs.where("time").aboveOrEqual(since).sortBy("time");
+        } else {
+            const pid = options?.pid ?? (this.initializing ? await this.initializing : this.pid);
+            const since = options?.since ?? 0;
+            results = await this.logs.where("[pid+time]").between([pid, since], [pid, Infinity]).sortBy("time");
+        }
+        if (options?.level) {
+            return results.filter(r => r.level === options.level || (r as any).level === undefined && options.level === "debug");
+        }
+        return results;
     }
 
     // REQT/76e18y06kp (Block Storage)
