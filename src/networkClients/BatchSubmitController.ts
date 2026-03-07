@@ -582,6 +582,12 @@ export class BatchSubmitController {
             this.$stateInfoCombined = [`${txTrackers.length} confirmed`];
             this.$stateShortSummary = "confirmed";
             this.isConfirmationComplete = true;
+            // Batch lifecycle complete — clear the chain builder from shared setup.
+            // The chain builder's tx list is stale after confirmation and causes
+            // duplicate UTxOs in queries (its getUtxos appends chain outputs that
+            // the source already includes). Per-tx tracking continues independently
+            // via PendingTxTracker / CachedUtxoIndex.
+            this.setup.chainBuilder = undefined;
         } else if (anyFailed) {
             this.$stateInfoCombined = [`${txTrackers.length} failed`];
             this.$stateShortSummary = "failed";

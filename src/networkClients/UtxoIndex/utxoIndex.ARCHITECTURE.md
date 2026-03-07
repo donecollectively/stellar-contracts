@@ -708,8 +708,27 @@ PendingTxEntry (Dexie) {
     txCborHex: string        // unsigned CBOR
     signedTxCborHex: string  // signed CBOR
     deadline: number         // txValidityEnd + graceBuffer, based on chain time
-    status: "pending" | "confirmed" | "rolled-back"
+    status: "pending" | "confirmed" | "rollback-pending" | "rolled-back"
     submittedAt: number
+    contestedByTxs?: Array<{ txHash: string; blockHeight: number }>
+    confirmedAtBlockHeight?: number
+    confirmedAtSlot?: number
+    confirmState?: "provisional" | "likely" | "confident" | "certain"
+
+    // Diagnostic fields — captured at registration/signing for post-reload inspection
+    buildTranscript?: string[]       // tcx.logger.formattedHistory snapshot
+    txStructure?: string             // dumpAny(tx, networkParams) output
+    signedTxStructure?: string       // dumpAny(signedTx, networkParams) output
+    submissionLog?: SubmissionLogEntry[]  // incremental submission event log
+}
+
+SubmissionLogEntry {
+    at: number              // epoch ms
+    event: string           // e.g. "submit-attempt", "submit-success", "submit-failed",
+                            //      "confirm-attempt", "confirmed", "not-confirmed",
+                            //      "backoff", "tx-expired", "rollback-pending", "rolled-back"
+    submitter?: string      // submitter name (when event is per-submitter)
+    detail?: string         // error message, state info, etc.
 }
 ```
 
@@ -861,8 +880,45 @@ registerPendingTx(signedCborHex: string, opts: {
     txName?: string;
     txCborHex: string;
     txd?: TxDescription<any, "submitted">;  // live object, not persisted
+    // Diagnostic capture — persisted for post-reload inspection
+    buildTranscript?: string[];   // tcx.logger.formattedHistory snapshot
+    txStructure?: string;         // dumpAny(tx, networkParams) output
+    signedTxStructure?: string;   // dumpAny(signedTx, networkParams) output
 }): Promise<void>
 ```
+
+#### Submission Log Persistence
+
+The `submissionLog` array on `PendingTxEntry` is written incrementally by `TxSubmitMgr` as state transitions occur. Each transition (submit attempt, success, failure, confirmation check, backoff, expiry) appends a `SubmissionLogEntry` to the array and persists the updated entry to Dexie. This provides a full transcript of submission activity that survives page reload.
+
+The log is written via `CachedUtxoIndex.appendSubmissionLog(txHash, entry)` which updates the Dexie record in place. `TxSubmitMgr` receives a callback at construction (or via its parent `TxSubmissionTracker`) to append log entries without coupling to the storage layer.
+
+#### Tracker Lifecycle and TxBatcher Registry
+
+`TxSubmissionTracker` objects are created by `BatchSubmitController` during transaction building and signing. Once a tracker's transaction is signed and submission begins, the tracker is **registered** with `TxBatcher` by txHash. From that point:
+
+- **`TxBatcher` owns the tracker's lifecycle** — the tracker remains alive and accessible via `txBatcher.findTracker(txHash)` regardless of batch rotation or destruction.
+- **`BatchSubmitController.destroy()` does not touch registered trackers** — they have already been handed off. The batch is purely about building, signing, and handing off.
+- **Terminal cleanup**: `TxBatcher` destroys a tracker when its transaction reaches a terminal state (confirmed-certain or rolled-back). At that point the submission machinery is idle and the Dexie `PendingTxEntry` holds the complete record.
+- **Session scope**: The registry is in-memory only. On page reload, the registry is empty and the `PendingTxTracker` detail panel falls back to Dexie data exclusively.
+
+This separation means:
+- Batches can be rotated freely without affecting in-flight submissions
+- The `PendingTxTracker` can access live submitter state for any in-flight tx via `txBatcher.findTracker(txHash)`, providing richer detail (live submitter status, `tcx.logger`) when available
+- The batch UI is decoupled from submission progress — it's about building and signing, not monitoring
+
+#### TxDetailPanel — Shared Detail Component
+
+`ShowTxDescription` in `TxBatchViewer.tsx` is refactored into an exported `TxDetailPanel` component that accepts a normalized props interface. Both `TxBatchViewer` and `PendingTxTracker` use this component:
+
+- **Live mode** (same session, tracker available): Populates from `TxSubmissionTracker` — live submitter statuses, `tcx.logger.formattedHistory`, decoded tx objects.
+- **Persisted mode** (after reload or tracker destroyed): Populates from Dexie `PendingTxEntry` — `buildTranscript`, `txStructure`, `signedTxStructure`, `submissionLog`.
+
+The transcript tab shows:
+- Live: per-submitter `$$statusSummary` + `tcx.logger.formattedHistory`
+- Persisted: `submissionLog` entries (timestamped event log) + `buildTranscript` (build-time logger output)
+
+Structure and diagnostics tabs work from CBOR (always in Dexie) or pre-captured `txStructure`/`signedTxStructure` strings.
 
 #### Design Decisions Within In-Flight Integration
 
@@ -929,5 +985,5 @@ When `checkForNewTxns` discovers a txHash with no matching PendingTxEntry (the c
 
 ---
 
-**Document Version**: 2.0
-**Last Updated**: 2026-02-27 - Added In-Flight Transaction Integration: pending tx registration, confirmation/rollback lifecycle, PendingTxEntry table, isPending query, startup recovery, events for CapoDappProvider
+**Document Version**: 2.1
+**Last Updated**: 2026-03-07 - Added diagnostic fields to PendingTxEntry (buildTranscript, txStructure, signedTxStructure, submissionLog), tracker lifecycle transfer to TxBatcher, TxDetailPanel shared component design, submission log persistence via appendSubmissionLog
