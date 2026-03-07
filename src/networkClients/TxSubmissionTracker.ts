@@ -58,6 +58,8 @@ export class TxSubmissionTracker extends StateMachine<
     setup: SetupInfo;
 
     isSigned: boolean = false;
+    // REQT/3y050n5m0g (Skip Registered Trackers on Destroy) — lifecycle ownership tag
+    _ownedBy: "batch" | "globalTracker" = "batch";
 
     get initialState() {
         return "registered" as const;

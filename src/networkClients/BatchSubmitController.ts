@@ -197,13 +197,14 @@ export class BatchSubmitController {
 
     destroy() {
         // cleans up all the notifiers
+        // REQT/3y050n5m0g (Skip Registered Trackers on Destroy) — only destroy batch-owned trackers
         for (const [txIdStr, submitTracker] of Object.entries(
             this.$registeredTxs
         )) {
-            submitTracker.destroy();
+            if (submitTracker._ownedBy === "batch") submitTracker.destroy();
         }
         for (const [txIdStr, submitTracker] of Object.entries(this.$txStates)) {
-            submitTracker.destroy();
+            if (submitTracker._ownedBy === "batch") submitTracker.destroy();
         }
         this.$txChanges.emit("destroyed", this);
         this.$txChanges.removeAllListeners();

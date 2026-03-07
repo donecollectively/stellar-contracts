@@ -6,6 +6,7 @@ import {
 } from "./BatchSubmitController.js";
 import { EventEmitter } from "eventemitter3";
 import type { WalletSigningStrategy } from "./WalletSigningStrategy.js";
+import type { TxSubmissionTracker } from "./TxSubmissionTracker.js";
 
 /**
  * @public
@@ -34,14 +35,42 @@ export class TxBatcher {
     setup?: SetupInfo;
     $notifier = new EventEmitter<TxBatcherChanges>();
 
+    // REQT/s92rdnpzm7 (Tracker Registry) — session-scoped, not persisted
+    private _trackerRegistry = new Map<string, TxSubmissionTracker>();
+
     constructor(options: TxBatcherOptions) {
         const { signingStrategy, submitters, setup } = options;
         this.submitters = submitters;
         this.signingStrategy = signingStrategy;
         this.setup = setup;
 
-        // this.previous = new SubmitterMultiClient(submitters, setup);
-        // this.current = new SubmitterMultiClient(submitters, setup);
+        // REQT/s92rdnpzm7 (Tracker Registry) — subscribe to each BatchSubmitController's
+        // "txAdded" event, then register each tracker when it enters "submitting"
+        // (at which point tracker.txId is set after signing).
+        this.$notifier.on("rotated", (bsc) => {
+            if (!bsc) return;
+            bsc.$txChanges.on("txAdded", (tracker) => {
+                tracker.$notifier.on("state:entered", (_sm, state) => {
+                    if (state === "submitting" && tracker.txId) {
+                        this.registerTracker(tracker.txId, tracker);
+                    }
+                });
+            });
+        });
+    }
+
+    // REQT/s92rdnpzm7 (Tracker Registry) — look up live tracker by txHash
+    findTracker(txHash: string): TxSubmissionTracker | undefined {
+        return this._trackerRegistry.get(txHash);
+    }
+
+    // REQT/s92rdnpzm7 (Tracker Registry) — register tracker when submission begins.
+    // Session-scoped: no cleanup logic. Trackers in terminal states are inert (cheap to hold).
+    // Registry empties on page reload. Bounded by transaction count per session.
+    registerTracker(txHash: string, tracker: TxSubmissionTracker): void {
+        // REQT/3y050n5m0g (Skip Registered Trackers on Destroy) — transfer ownership
+        tracker._ownedBy = "globalTracker";
+        this._trackerRegistry.set(txHash, tracker);
     }
 
     get current() {
