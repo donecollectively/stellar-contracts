@@ -1,4 +1,22 @@
 /**
+ * A single entry in the submission event log.
+ * Written incrementally by TxSubmitMgr as state transitions occur,
+ * persisted to Dexie via appendSubmissionLog().
+ *
+ * REQT/h5jhpxf9c8 (Submission Log)
+ */
+export interface SubmissionLogEntry {
+    /** Epoch milliseconds when the event occurred */
+    at: number;
+    /** Event type — e.g. "submit-attempt", "submit-success", "confirmed" */
+    event: string;
+    /** Submitter name (when event is per-submitter) */
+    submitter?: string;
+    /** Error message, state info, etc. */
+    detail?: string;
+}
+
+/**
  * Storage-agnostic pending transaction entry representation.
  *
  * Stores the serializable projection of an in-flight transaction for
@@ -83,4 +101,32 @@ export interface PendingTxEntry {
      * REQT/yn45tvmp6k (Confirmation States)
      */
     confirmState?: "provisional" | "likely" | "confident" | "certain";
+
+    // =========================================================================
+    // Diagnostic fields — captured at registration/signing for post-reload
+    // inspection. All fields are IndexedDB-serializable.
+    // =========================================================================
+
+    /**
+     * Snapshot of tcx.logger.formattedHistory at registration time.
+     * Provides the build transcript for the detail panel's transcript tab
+     * when live TxSubmissionTracker objects are unavailable (after page reload).
+     * REQT/vdkanffv9e (Diagnostic Fields)
+     */
+    buildTranscript?: string[];
+
+    /**
+     * dumpAny(tx, networkParams) output captured at registration time.
+     * Provides human-readable transaction structure for the detail panel's
+     * structure tab when live tracker objects are unavailable.
+     * REQT/vdkanffv9e (Diagnostic Fields)
+     */
+    txStructure?: string;
+
+    /**
+     * Incremental submission event log written by TxSubmitMgr on each
+     * state transition. Survives page reload via Dexie persistence.
+     * REQT/h5jhpxf9c8 (Submission Log)
+     */
+    submissionLog?: SubmissionLogEntry[];
 }

@@ -8,7 +8,7 @@ import type { TxIndexEntry } from "./types/TxIndexEntry.js";
 import type { ScriptIndexEntry } from "./types/ScriptIndexEntry.js";
 import type { WalletAddressEntry } from "./types/WalletAddressEntry.js";
 import type { RecordIndexEntry } from "./types/RecordIndexEntry.js";
-import type { PendingTxEntry } from "./types/PendingTxEntry.js";
+import type { PendingTxEntry, SubmissionLogEntry } from "./types/PendingTxEntry.js";
 import type { MetadataEntry } from "./types/MetadataEntry.js";
 import { dexieBlockDetails } from "./dexieRecords/BlockDetails.js";
 import { indexerLogs } from "./dexieRecords/Logs.js";
@@ -472,6 +472,16 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     async setPendingTxStatus(txHash: string, status: string): Promise<void> {
         await this.pendingTxs.where("txHash").equals(txHash).modify({
             status: status as PendingTxEntry["status"],
+        });
+    }
+
+    // REQT/j5pwm8btay (Append Submission Log) — atomic read-append-write
+    async appendSubmissionLog(txHash: string, entry: SubmissionLogEntry): Promise<void> {
+        await this.pendingTxs.where("txHash").equals(txHash).modify((record: PendingTxEntry) => {
+            if (!record.submissionLog) {
+                record.submissionLog = [];
+            }
+            record.submissionLog.push(entry);
         });
     }
 

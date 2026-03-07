@@ -13,7 +13,7 @@ import type { TxIndexEntry } from "./TxIndexEntry.js";
 import type { ScriptIndexEntry } from "./ScriptIndexEntry.js";
 import type { WalletAddressEntry } from "./WalletAddressEntry.js";
 import type { RecordIndexEntry } from "./RecordIndexEntry.js";
-import type { PendingTxEntry } from "./PendingTxEntry.js";
+import type { PendingTxEntry, SubmissionLogEntry } from "./PendingTxEntry.js";
 import type { LogLevel, LogEntry } from "./LogEntry.js";
 
 export interface UtxoStoreGeneric {
@@ -96,6 +96,9 @@ export interface UtxoStoreGeneric {
     findPendingTx(txHash: string): Promise<PendingTxEntry | undefined>;
     getPendingByStatus(status: string): Promise<PendingTxEntry[]>;
     setPendingTxStatus(txHash: string, status: string): Promise<void>;
+
+    // REQT/j5pwm8btay (Append Submission Log) — atomic append to PendingTxEntry.submissionLog
+    appendSubmissionLog(txHash: string, entry: SubmissionLogEntry): Promise<void>;
 
     // REQT/p0nt8nwtxj: Rollback Store Operations
     /** Nullify spentInTx on UTXOs where spentInTx === txHash */

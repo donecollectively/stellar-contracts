@@ -1158,6 +1158,9 @@ export class CachedUtxoIndex {
             txName?: string;
             txCborHex: string;
             txd?: TxDescription<any, "submitted">;
+            // REQT/vdkanffv9e (Diagnostic Fields) — captured at signing for post-reload inspection
+            buildTranscript?: string[];
+            txStructure?: string;
         },
     ): Promise<void> {
         // REQT/p2ts24jbkg: Decode signed CBOR via existing decodeTx() pipeline
@@ -1205,6 +1208,9 @@ export class CachedUtxoIndex {
             deadlineSlot,
             status: "pending",
             submittedAt: Date.now(),
+            // REQT/vdkanffv9e (Diagnostic Fields) — persist when provided
+            buildTranscript: opts.buildTranscript,
+            txStructure: opts.txStructure,
         };
         await this.store.savePendingTx(pendingEntry);
         this.pendingTxHashes.add(txHash);
