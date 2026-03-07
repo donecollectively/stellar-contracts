@@ -56,6 +56,8 @@ export class TxSubmissionTracker extends StateMachine<
     submitters: namedSubmitters;
     txSubmitters: Record<string, TxSubmitMgr>;
     setup: SetupInfo;
+    /** In-memory accumulation of submission log entries for live UI consumption */
+    liveSubmissionLog: SubmissionLogEntry[] = [];
 
     isSigned: boolean = false;
     // REQT/3y050n5m0g (Skip Registered Trackers on Destroy) — lifecycle ownership tag
@@ -211,6 +213,7 @@ export class TxSubmissionTracker extends StateMachine<
                         id: txd.id,
                         parentId: txd.parentId,
                         depth: txd.depth,
+                        moreInfo: txd.moreInfo,
                         txName: txd.txName,
                         txCborHex: txdSigned.signedTxCborHex,
                         txd: txdSigned,
@@ -315,7 +318,7 @@ export class TxSubmissionTracker extends StateMachine<
         // The callback routes through CachedUtxoIndex.appendSubmissionLog when available.
         // Optional: emulator tests have no CachedUtxoIndex, so no callback is wired.
         const networkClient = this.setup.network as any;
-        const onSubmissionLog: ((entry: SubmissionLogEntry) => void) | undefined =
+        const persistLog: ((entry: SubmissionLogEntry) => void) | undefined =
             typeof networkClient?.appendSubmissionLog === "function"
                 ? (entry: SubmissionLogEntry) => {
                       networkClient.appendSubmissionLog(txId, entry).catch((e: any) => {
@@ -323,6 +326,10 @@ export class TxSubmissionTracker extends StateMachine<
                       });
                   }
                 : undefined;
+        const onSubmissionLog = (entry: SubmissionLogEntry) => {
+            this.liveSubmissionLog.push(entry);
+            persistLog?.(entry);
+        };
 
         this.txSubmitters = Object.fromEntries(
             Object.entries(this.submitters).map(([name, submitter]) => {

@@ -496,6 +496,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     ): RETURNS {
         const txInfo: TxDescription<any, "buildLater!"> = {
             ...(txInfoIn as any),
+            txName: txInfoIn.txName ?? txnName,
         };
         if (!txInfo.id)
             txInfo.id =

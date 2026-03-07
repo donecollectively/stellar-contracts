@@ -14,7 +14,7 @@ import type {
 } from "@donecollectively/stellar-contracts";
 import { dumpAny } from "@donecollectively/stellar-contracts";
 import type { Tx } from "@helios-lang/ledger";
-import { decodeTx } from "@helios-lang/ledger";
+
 import type {
     PendingTxEntry,
     SubmissionLogEntry,
@@ -38,7 +38,7 @@ export interface TxDetailPanelProps {
     /** Show full tabbed view (true) or compact summary (false) */
     advancedView: boolean;
     /** Called when user requests closing the panel */
-    onClose?: () => void;
+
 }
 
 type TabKey = "transcript" | "structure" | "diagnostics";
@@ -57,7 +57,7 @@ export function TxDetailPanel({
     tx,
     entry,
     advancedView,
-    onClose,
+
 }: TxDetailPanelProps) {
     // Copy-to-clipboard with floating confirmation
     const [copyToast, setCopyToast] = React.useState<{ x: number; y: number; label: string } | null>(null);
@@ -88,8 +88,11 @@ export function TxDetailPanel({
             ? dumpAny(tx, txTracker.setup.networkParams)
             : entry?.txStructure;
 
-    // REQT/h5jhpxf9c8 (Submission Log) — persisted log (updated incrementally via Dexie)
-    const submissionLog: SubmissionLogEntry[] | undefined = entry?.submissionLog;
+    // REQT/h5jhpxf9c8 (Submission Log) — live log preferred, persisted fallback
+    const submissionLog: SubmissionLogEntry[] | undefined =
+        (txTracker && txTracker.liveSubmissionLog.length > 0)
+            ? txTracker.liveSubmissionLog
+            : entry?.submissionLog;
 
     // Determine available tabs
     const availableTabs: TabKey[] = [
@@ -98,17 +101,6 @@ export function TxDetailPanel({
         "diagnostics",
     ];
     const [tab, setTab] = React.useState<TabKey>("transcript");
-
-    // Decode signed transaction for diagnostics tab
-    const [signedTx, setSignedTx] = React.useState<Tx | undefined>();
-    React.useEffect(() => {
-        if (!signedTxCborHex) return;
-        try {
-            setSignedTx(decodeTx(signedTxCborHex));
-        } catch (e) {
-            console.error("Failed to decode signed transaction:", e);
-        }
-    }, [signedTxCborHex]);
 
     return (
         <div className="flex flex-col gap-2">
@@ -138,27 +130,6 @@ export function TxDetailPanel({
                 {advancedView && (
                     <>
                         <div className="ml-4 flex-grow self-start">
-                            <div className="flex items-center justify-between">
-                                <Highlight className="text-xl">
-                                    {txName || description}
-                                </Highlight>
-                                {onClose && (
-                                    <button
-                                        onClick={onClose}
-                                        className="text-slate-400 hover:text-slate-200
-                                               w-6 h-6 text-sm flex items-center justify-center rounded-full
-                                               hover:bg-slate-700/50 transition-colors"
-                                        aria-label="Close detail panel"
-                                    >
-                                        ✕
-                                    </button>
-                                )}
-                            </div>
-                            {txName && description && (
-                                <div className="text-md display-inline ml-4 opacity-50">
-                                    {description}
-                                </div>
-                            )}
                             {moreInfo && (
                                 <div className="text-brand-orange/66 ml-8 text-sm italic">
                                     {moreInfo}
@@ -198,47 +169,16 @@ export function TxDetailPanel({
                         {tab === "transcript" && (
                             <>
                                 {/* No data fallback */}
-                                {!txSubmitters && !transcript && (
+                                {!transcript && (
                                     <div className="text-sm text-slate-400">
                                         No transcript data available
-                                    </div>
-                                )}
-                                {/* Live submitter status (only when live tracker available) */}
-                                {txSubmitters && (
-                                    <div className="flex flex-col gap-1">
-                                        {Object.entries(txSubmitters).map(
-                                            ([key, submitter]) => (
-                                                <div
-                                                    key={key}
-                                                    className="flex flex-row justify-between rounded-md border border-white/10 p-2"
-                                                >
-                                                    <div className="w-1/3">
-                                                        <h4 className="text-sm font-semibold">
-                                                            {key}
-                                                        </h4>
-                                                    </div>
-                                                    <div className="w-2/3">
-                                                        <Lowlight>{`${submitter.$$statusSummary.status} - ${submitter.$$statusSummary.currentActivity}`}</Lowlight>
-                                                        <div className="text-xs">
-                                                            <pre>
-                                                                {JSON.stringify(
-                                                                    submitter.$$statusSummary,
-                                                                    null,
-                                                                    2
-                                                                )}
-                                                            </pre>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )
-                                        )}
                                     </div>
                                 )}
 
                                 {/* Build transcript */}
                                 {transcript && (
                                     <code>
-                                        <pre className="mt-4 max-h-[90vh] overflow-auto bg-neutral-200 text-xs text-black">
+                                        <pre className="mt-4 bg-neutral-200 text-xs text-black">
                                             {transcript.map(
                                                 (line1, lineIndex) =>
                                                     line1
@@ -322,7 +262,7 @@ export function TxDetailPanel({
                                             Transaction Structure
                                         </h4>
                                         <code className="text-xs">
-                                            <pre className="font-formal text-[1.05em]/4 tracking-wide max-h-[80vh] overflow-auto">
+                                            <pre className="font-formal text-[1.05em]/4 tracking-wide">
                                                 {txStructure}
                                             </pre>
                                         </code>
@@ -349,12 +289,45 @@ export function TxDetailPanel({
                             </>
                         )}
 
-                        {/* Diagnostics tab — submission log + signed tx details */}
+                        {/* Diagnostics tab — live submitter status + submission log + signed tx details */}
                         {tab === "diagnostics" && (
                             <>
+                                {/* Live submitter status (only when live tracker available) */}
+                                {txSubmitters && (
+                                    <div className="flex flex-col gap-1 mb-3">
+                                        <h4 className="text-sm font-semibold mb-1">Submitters</h4>
+                                        {Object.entries(txSubmitters).map(
+                                            ([key, submitter]) => (
+                                                <div
+                                                    key={key}
+                                                    className="flex flex-row justify-between rounded-md border border-white/10 p-2"
+                                                >
+                                                    <div className="w-1/3">
+                                                        <h4 className="text-sm font-semibold">
+                                                            {key}
+                                                        </h4>
+                                                    </div>
+                                                    <div className="w-2/3">
+                                                        <Lowlight>{`${submitter.$$statusSummary.status} - ${submitter.$$statusSummary.currentActivity}`}</Lowlight>
+                                                        <div className="text-xs">
+                                                            <pre>
+                                                                {JSON.stringify(
+                                                                    submitter.$$statusSummary,
+                                                                    null,
+                                                                    2
+                                                                )}
+                                                            </pre>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Submission log — the primary diagnostic content */}
                                 {submissionLog && submissionLog.length > 0 ? (
-                                    <div className="mb-3 max-h-[50vh] overflow-y-auto">
+                                    <div className="mb-3">
                                         <h4 className="text-sm font-semibold mb-1">Submission Log</h4>
                                         <div className="font-mono text-xs leading-snug">
                                             {submissionLog.map((logEntry, i) => (
@@ -382,32 +355,6 @@ export function TxDetailPanel({
                                         No submission events recorded
                                     </div>
                                 )}
-
-                                {/* Signed tx structure — when live tracker provides networkParams */}
-                                {signedTx && txTracker?.setup?.networkParams && (() => {
-                                    try {
-                                        const dump = dumpAny(signedTx, txTracker.setup.networkParams);
-                                        return (
-                                            <>
-                                                <h4 className="text-sm font-semibold mt-2">Signed Tx Structure</h4>
-                                                <h5 className="text-xs text-slate-400">
-                                                    {signedTx.id?.()?.toString?.() || "Unknown ID"}
-                                                </h5>
-                                                <code className="text-xs">
-                                                    <pre className="max-h-64 overflow-auto">
-                                                        {dump}
-                                                    </pre>
-                                                </code>
-                                            </>
-                                        );
-                                    } catch (e) {
-                                        return (
-                                            <div className="text-sm text-slate-400 mt-2">
-                                                Could not render signed tx structure: {String(e)}
-                                            </div>
-                                        );
-                                    }
-                                })()}
 
                                 {/* CBOR hex — collapsible, click to copy */}
                                 {signedTxCborHex && (

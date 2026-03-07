@@ -1,0 +1,16 @@
+{
+    "colorize": true,
+    "include": "time,level,name,serverId,loggerId,transitionName,reqId,clientid",
+    "Xinclude": "time,msg,transition,level,summary",
+    "messageFormat": "{if loggerId}\u001b[32m‹{loggerId}›\u001b[39m {end}{if indent}{indent} {end}{if reqId}\u001b[32mreq {reqId}\u001b[39m {end}{if clientid}\u001b[32mclient {clientid}\u001b[39m {end}{if color}{color}{end}{msg} {if transitionName}🐲 {transitionName} {end}{if summary}: {summary} {end} {if extra}\n\u001b[32m{extra}\u001b[39m {end} \u001b[39m\u001b[49m\u001b[27m\u001b[0m\n",
+    "customColors": "trace:dim,err:red,error:red,userError:redBright,uErr:redBright,info:blue,warn:yellow,progress:magenta",
+    "customLevelsProduction": "userError:32,ops:45,progress:25",
+    "customTestEnv": "userError:32,ops:28,progress:25",
+    "customLevels": "userError:32,ops:28,progress:25",
+    "customLevelsDev": "userError:42,ops:28,progress:25",
+    "useOnlyCustomProps": false,
+    "singleLine": false,
+    "translateTime": true,
+    "levelFirst": true,
+    "hideObject": true
+  }

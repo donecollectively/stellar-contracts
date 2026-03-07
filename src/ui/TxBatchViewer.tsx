@@ -140,7 +140,7 @@ export function TxBatchViewer({
 
                     return (
                         <div
-                            className={`${indicateSelectedTx} z-3 ${cardStyle} ${width} flex flex-col rounded-md border border-white/10 p-2`}
+                            className={`${indicateSelectedTx} z-3 ${cardStyle} ${width} flex flex-col rounded-md border border-white/10 p-2 max-h-[90vh] overflow-y-auto`}
                         >
                             <ShowTxDescription
                                 txTracker={txTracker}

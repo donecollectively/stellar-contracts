@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { liveQuery } from "dexie";
 import type { PendingTxEntry } from "../networkClients/UtxoIndex/types/PendingTxEntry.js";
 import { DexieUtxoStore } from "../networkClients/UtxoIndex/DexieUtxoStore.js";
@@ -116,6 +117,26 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
     // REQT/3r5g35smyn (Click to Open Detail) — selected entry for detail panel
     const [selectedTxHash, setSelectedTxHash] = useState<string | null>(null);
     const [zoomed, setZoomed] = useState(false);
+    const [copyToast, setCopyToast] = useState<{ x: number; y: number; label: string } | null>(null);
+    const copyToClipboard = React.useCallback((text: string, label: string, e: React.MouseEvent) => {
+        if (e.shiftKey) return;
+        navigator.clipboard.writeText(text);
+        setCopyToast({ x: e.clientX, y: e.clientY, label });
+        setTimeout(() => setCopyToast(null), 3000);
+    }, []);
+    const dotsRef = React.useRef<HTMLDivElement>(null);
+    const [panelPos, setPanelPos] = React.useState<{ top: number; right: number } | null>(null);
+
+    // Compute panel anchor position from dots container
+    React.useEffect(() => {
+        if (dotsRef.current && selectedTxHash) {
+            const rect = dotsRef.current.getBoundingClientRect();
+            setPanelPos({
+                top: rect.bottom + 4,
+                right: window.innerWidth - rect.right,
+            });
+        }
+    }, [selectedTxHash]);
 
     useEffect(() => {
         const subscription = liveQuery(() =>
@@ -159,6 +180,7 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
     return (
         <div style={{ position: "relative" }}>
             <div
+                ref={dotsRef}
                 style={{
                     display: "flex",
                     alignItems: "center",
@@ -181,24 +203,23 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
                 ))}
             </div>
 
-            {/* REQT/3r5g35smyn (Click to Open Detail) — detail panel below dots */}
-            {selectedEntry && (
+            {/* REQT/3r5g35smyn (Click to Open Detail) — portaled to escape stacking contexts */}
+            {selectedEntry && panelPos && createPortal(
                 <div
                     style={zoomed ? {
                         position: "fixed",
-                        top: 0,
+                        top: panelPos.top,
                         left: 0,
+                        zIndex: 9999,
                         width: "100vw",
-                        height: "100vh",
-                        zIndex: 50,
+                        height: `calc(100vh - ${panelPos.top}px)`,
                     } : {
-                        position: "absolute",
-                        top: "100%",
-                        right: 0,
-                        zIndex: 50,
-                        marginTop: "0.5em",
+                        position: "fixed",
+                        top: panelPos.top,
+                        right: panelPos.right,
+                        zIndex: 9999,
                         width: "min(80vw, 600px)",
-                        maxHeight: "80vh",
+                        maxHeight: `calc(100vh - ${panelPos.top}px)`,
                     }}
                     className="rounded-md border border-slate-700/50 bg-slate-900/95 backdrop-blur-sm shadow-2xl flex flex-col overflow-hidden"
                 >
@@ -208,7 +229,14 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
                         onDoubleClick={() => setZoomed(z => !z)}
                     >
                         <span className="text-xs text-slate-400">
-                            {selectedEntry.txHash.slice(0, 8)}… {selectedEntry.description || selectedEntry.txName || ""}
+                            <span
+                                className="font-mono cursor-pointer hover:text-slate-200"
+                                title={`Click to copy: ${selectedEntry.txHash}`}
+                                onClick={(e) => copyToClipboard(selectedEntry.txHash, "Copied tx hash", e)}
+                            >
+                                {selectedEntry.txHash.slice(0, 8)}…
+                            </span>
+                            {" "}{selectedEntry.description || selectedEntry.txName || ""}
                         </span>
                         <div className="flex items-center gap-1">
                             <button
@@ -239,10 +267,31 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
                             tx={selectedTracker?.txd?.tx}
                             entry={selectedEntry}
                             advancedView={true}
-                            onClose={() => { setSelectedTxHash(null); setZoomed(false); }}
+
                         />
                     </div>
-                </div>
+                </div>,
+                document.body
+            )}
+            {copyToast && createPortal(
+                <div
+                    style={{
+                        position: "fixed",
+                        left: copyToast.x + 12,
+                        top: copyToast.y - 12,
+                        zIndex: 9999,
+                        pointerEvents: "none",
+                        backgroundColor: "rgba(22, 101, 52, 0.92)",
+                        color: "#bbf7d0",
+                        padding: "6px 12px",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                    }}
+                >
+                    ✓ {copyToast.label}
+                </div>,
+                document.body
             )}
         </div>
     );
@@ -308,9 +357,10 @@ function PendingTxDot({ entry, onClick, isSelected }: { entry: PendingTxEntry; o
             </span>
             {/* Selection indicator — fixed height so layout doesn't shift */}
             <span style={{
-                fontSize: "0.5em",
+                fontSize: "0.65em",
                 lineHeight: 0,
                 height: 0,
+                marginTop: "0.2em",
                 color: display.color,
                 visibility: isSelected ? "visible" : "hidden",
             }}>
