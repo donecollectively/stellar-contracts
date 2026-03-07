@@ -113,7 +113,7 @@ function getDisplay(entry: PendingTxEntry) {
 export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBatcher?: TxBatcher } = {}) {
     const store = useMemo(() => new DexieUtxoStore(dbName), [dbName]);
     const [entries, setEntries] = useState<PendingTxEntry[]>([]);
-    // REQT/3nvvvnpjnt (Drill-Down from Dots) — selected entry for detail panel
+    // REQT/3r5g35smyn (Click to Open Detail) — selected entry for detail panel
     const [selectedTxHash, setSelectedTxHash] = useState<string | null>(null);
 
     useEffect(() => {
@@ -147,7 +147,7 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
 
     if (sorted.length === 0) return null;
 
-    // REQT/3nvvvnpjnt (Drill-Down from Dots) — resolve selected entry and optional live tracker
+    // REQT/3r5g35smyn (Click to Open Detail) — resolve selected entry and optional live tracker
     const selectedEntry = selectedTxHash
         ? sorted.find((e) => e.txHash === selectedTxHash)
         : undefined;
@@ -180,7 +180,7 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
                 ))}
             </div>
 
-            {/* REQT/3nvvvnpjnt (Drill-Down from Dots) — detail panel below dots */}
+            {/* REQT/3r5g35smyn (Click to Open Detail) — detail panel below dots */}
             {selectedEntry && (
                 <div
                     style={{
