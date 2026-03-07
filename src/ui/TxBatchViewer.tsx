@@ -322,7 +322,7 @@ const ShowSingleTx = (props: {
     );
 };
 
-// REQT/wb4ye3vdtj (Shared TxDetailPanel) — thin wrapper adding batch-specific Sign & Submit button
+// REQT/y8rnvqmgza (TxDetailPanel Component) — thin wrapper adding batch-specific Sign & Submit button
 function ShowTxDescription({
     txTracker,
     tx,

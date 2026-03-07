@@ -109,7 +109,7 @@ function getDisplay(entry: PendingTxEntry) {
  *
  * @public
  */
-// REQT/wb4ye3vdtj (Shared TxDetailPanel) — txBatcher prop for live tracker lookup on drill-down
+// REQT/y8rnvqmgza (TxDetailPanel Component) — txBatcher prop for live tracker lookup on drill-down
 export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBatcher?: TxBatcher } = {}) {
     const store = useMemo(() => new DexieUtxoStore(dbName), [dbName]);
     const [entries, setEntries] = useState<PendingTxEntry[]>([]);

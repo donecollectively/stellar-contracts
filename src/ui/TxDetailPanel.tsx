@@ -5,7 +5,7 @@
  * - TxBatchViewer (live TxSubmissionTracker during active submission)
  * - PendingTxTracker (persisted PendingTxEntry after page reload)
  *
- * REQT/wb4ye3vdtj (Shared TxDetailPanel)
+ * REQT/y8rnvqmgza (TxDetailPanel Component)
  * @public
  */
 import type {
@@ -26,7 +26,7 @@ import {
     Softlight,
 } from "./DashboardTemplate.js";
 
-// REQT/wb4ye3vdtj (Shared TxDetailPanel) — dual data source props
+// REQT/y8rnvqmgza (TxDetailPanel Component) — dual data source props
 export interface TxDetailPanelProps {
     /** Live tracker (available during active session) */
     txTracker?: TxSubmissionTracker;
@@ -49,7 +49,7 @@ type TabKey = "transcript" | "structure" | "diagnostics" | "submissionLog";
  * - Live tracker data preferred when available (fresher)
  * - Falls back to persisted PendingTxEntry fields after reload
  *
- * REQT/wb4ye3vdtj (Shared TxDetailPanel)
+ * REQT/y8rnvqmgza (TxDetailPanel Component)
  */
 export function TxDetailPanel({
     txTracker,
