@@ -121,8 +121,24 @@ export function PendingTxTracker({ dbName }: { dbName?: string } = {}) {
         return () => subscription.unsubscribe();
     }, [store]);
 
-    // Strict time ordering: oldest first (left), newest last (right)
-    const sorted = [...entries].sort((a, b) => a.submittedAt - b.submittedAt);
+    // Strict time ordering: oldest first (left), newest last (right).
+    // Omit rolled-back entries older than 18 hours — they are no longer
+    // actionable and would otherwise persist in the display forever.
+    // Re-evaluate periodically so rolled-back entries age out even
+    // when no Dexie updates are triggering re-renders.
+    const ROLLED_BACK_MAX_AGE_MS = 18 * 60 * 60 * 1000;
+    const [now, setNow] = useState(Date.now);
+    useEffect(() => {
+        const id = setInterval(() => setNow(Date.now()), 60_000);
+        return () => clearInterval(id);
+    }, []);
+
+    const sorted = [...entries]
+        .filter((e) => {
+            if (e.status !== "rolled-back") return true;
+            return now - e.submittedAt < ROLLED_BACK_MAX_AGE_MS;
+        })
+        .sort((a, b) => a.submittedAt - b.submittedAt);
 
     if (sorted.length === 0) return null;
 
@@ -179,12 +195,12 @@ function PendingTxDot({ entry }: { entry: PendingTxEntry }) {
     const desc = entry.description || entry.txName || entry.id;
     const age = formatAge(entry.submittedAt);
 
-    const depthInfo =
-        entry.status === "confirmed" && entry.confirmationBlockDepth > 0
-            ? `\nDepth: ${entry.confirmationBlockDepth} blocks`
-            : "";
+    const chainInfo = entry.confirmedAtBlockHeight != null
+        ? `\n    Block: ${entry.confirmedAtBlockHeight}` +
+          (entry.confirmationBlockDepth > 0 ? `  •  Depth: ${entry.confirmationBlockDepth}` : "")
+        : "";
 
-    const tooltip = `${hashShort}… ${desc}\n${display.label}${depthInfo}\n${age}`;
+    const tooltip = `${hashShort}… ${desc}${chainInfo}\n${age}  •  ${display.label}`;
 
     return (
         <span
