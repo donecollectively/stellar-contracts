@@ -931,8 +931,15 @@ Considered adding a `pendingInTx` dynamic getter to `FoundDatumUtxo` (closing ov
 **`BuiltTcxStats` excluded from PendingTxEntry**:
 `BuiltTcxStats` contains `Wallet`, `WalletHelper` (live objects with methods), and `PubKeyHash[]` (Helios types) — none of which are IndexedDB-serializable. Since stats are not needed for pending-state tracking, confirmation, rollback, or UI display, they are excluded entirely from the persisted entry.
 
-**Register on successful submit, not before**:
-Considered registering the pending tx before network submission (to close the stale-read window entirely) with immediate rollback on submission failure. Chose post-submission registration for simplicity — avoids a rollback path for submission errors, which is distinct from validity-timeout rollback. The brief window between submission and registration is acceptable for now.
+**Register before submission, after signing**:
+Registration happens after signing but before `wallet.submitTx()`. `registerPendingTx()` may trigger async lookups through the index (e.g. `parseDelegatedDatum` → `getDgDataController`) that must not race with submission. Pre-submission registration also closes the stale-read window entirely — speculative outputs and spent inputs are reflected in queries before the tx hits the network.
+
+Submission failures fall into two categories that the system must distinguish:
+
+- **Transient failures** — validity window not yet open, dependency UTXOs not yet visible to the receiving node, temporary node unavailability. These are expected in normal operation (especially for chained transactions where a parent tx hasn't propagated yet). `TxSubmitMgr` retries these automatically; the pending registration is correct because the tx is valid and will eventually succeed or expire.
+- **Permanent failures** — structurally invalid tx, consumed inputs (slot battle). These will never succeed. The validity-timeout rollback path handles cleanup: the tx expires, `checkPendingDeadlines()` transitions to `rollback-pending`, and speculative state is restored.
+
+Pre-submission registration is safe for both categories: transient failures resolve through retry, permanent failures resolve through expiry. No separate submission-failure rollback path is needed.
 
 **CapoDappProvider mediates UI access**:
 UI components do not observe CachedUtxoIndex directly. CapoDappProvider holds the `utxoIndex` reference, subscribes to its events, and manages React state. Pending-tx state flows through CapoDappProvider: it calls `getPendingTxs()` on startup, observes `pendingSyncState`, and subscribes to `txConfirmed`/`txRolledBack`/`pendingSynced` events to update UI state.
