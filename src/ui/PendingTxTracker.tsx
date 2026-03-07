@@ -115,6 +115,7 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
     const [entries, setEntries] = useState<PendingTxEntry[]>([]);
     // REQT/3r5g35smyn (Click to Open Detail) — selected entry for detail panel
     const [selectedTxHash, setSelectedTxHash] = useState<string | null>(null);
+    const [zoomed, setZoomed] = useState(false);
 
     useEffect(() => {
         const subscription = liveQuery(() =>
@@ -183,23 +184,64 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
             {/* REQT/3r5g35smyn (Click to Open Detail) — detail panel below dots */}
             {selectedEntry && (
                 <div
-                    style={{
+                    style={zoomed ? {
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        width: "100vw",
+                        height: "100vh",
+                        zIndex: 50,
+                    } : {
                         position: "absolute",
                         top: "100%",
                         right: 0,
                         zIndex: 50,
                         marginTop: "0.5em",
                         width: "min(80vw, 600px)",
+                        maxHeight: "80vh",
                     }}
-                    className="rounded-md border border-slate-700/50 bg-slate-900/95 backdrop-blur-sm p-3 shadow-2xl"
+                    className="rounded-md border border-slate-700/50 bg-slate-900/95 backdrop-blur-sm shadow-2xl flex flex-col overflow-hidden"
                 >
-                    <TxDetailPanel
-                        txTracker={selectedTracker}
-                        tx={selectedTracker?.txd?.tx}
-                        entry={selectedEntry}
-                        advancedView={true}
-                        onClose={() => setSelectedTxHash(null)}
-                    />
+                    {/* Header — double-click to zoom */}
+                    <div
+                        className="flex items-center justify-between px-3 py-1.5 border-b border-slate-700/50 cursor-default select-none"
+                        onDoubleClick={() => setZoomed(z => !z)}
+                    >
+                        <span className="text-xs text-slate-400">
+                            {selectedEntry.txHash.slice(0, 8)}… {selectedEntry.description || selectedEntry.txName || ""}
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setZoomed(z => !z)}
+                                className="text-slate-400 hover:text-slate-200 w-6 h-6 text-sm
+                                           flex items-center justify-center rounded-full
+                                           hover:bg-slate-700/50 transition-colors"
+                                aria-label={zoomed ? "Restore" : "Expand full-screen"}
+                                title={zoomed ? "Restore" : "Expand full-screen"}
+                            >
+                                ⛶
+                            </button>
+                            <button
+                                onClick={() => { setSelectedTxHash(null); setZoomed(false); }}
+                                className="text-slate-400 hover:text-slate-200 w-6 h-6 text-xs
+                                           flex items-center justify-center rounded-full
+                                           hover:bg-slate-700/50 transition-colors"
+                                aria-label="Close"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                    {/* Scrollable content */}
+                    <div className="flex-1 overflow-y-auto p-3">
+                        <TxDetailPanel
+                            txTracker={selectedTracker}
+                            tx={selectedTracker?.txd?.tx}
+                            entry={selectedEntry}
+                            advancedView={true}
+                            onClose={() => { setSelectedTxHash(null); setZoomed(false); }}
+                        />
+                    </div>
                 </div>
             )}
         </div>
@@ -252,16 +294,28 @@ function PendingTxDot({ entry, onClick, isSelected }: { entry: PendingTxEntry; o
     return (
         <span
             style={{
-                color: display.color,
-                fontSize: "1.1em",
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "center",
                 cursor: onClick ? "pointer" : "default",
                 lineHeight: 1,
-                textShadow: isSelected ? `0 0 6px ${display.color}` : undefined,
             }}
             title={tooltip}
             onClick={onClick}
         >
-            {display.symbol}
+            <span style={{ color: display.color, fontSize: "1.1em" }}>
+                {display.symbol}
+            </span>
+            {/* Selection indicator — fixed height so layout doesn't shift */}
+            <span style={{
+                fontSize: "0.5em",
+                lineHeight: 0,
+                height: 0,
+                color: display.color,
+                visibility: isSelected ? "visible" : "hidden",
+            }}>
+                ▼
+            </span>
         </span>
     );
 }

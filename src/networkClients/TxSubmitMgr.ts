@@ -421,7 +421,7 @@ export class TxSubmitMgr extends StateMachine<
 
     async tryConfirm() {
         this.$mgrState.lastConfirmAttempt = Date.now();
-        this.emitLog("confirm-attempt"); // REQT/7s7e02fc4b
+        // confirm-attempt not logged — redundant since confirmed/not-confirmed follows immediately
         try {
             this.$mgrState.totalConfirmationAttempts++;
             const result = await this.pendingActivity(
@@ -489,7 +489,7 @@ export class TxSubmitMgr extends StateMachine<
             backoff
         );
         this.nextStartTime(retryInterval);
-        this.emitLog("backoff", `reconfirm in ${retryInterval}ms: ${reason}`); // REQT/7s7e02fc4b
+        this.emitLog("backoff", `reconfirm in ${(retryInterval / 1000).toFixed(1)}s: ${reason}`); // REQT/7s7e02fc4b
         this.ignoringListenerErrors("backoff", () => {
             this.$notifier.emit("backoff", this, retryInterval, "confirming");
         });
@@ -688,7 +688,7 @@ export class TxSubmitMgr extends StateMachine<
         );
         this.$mgrState.lastSubmissionAttempt = Date.now();
         this.nextStartTime(retryInterval);
-        this.emitLog("backoff", `resubmit in ${retryInterval}ms: ${displayStatus}`); // REQT/7s7e02fc4b
+        this.emitLog("backoff", `resubmit in ${(retryInterval / 1000).toFixed(1)}s: ${displayStatus}`); // REQT/7s7e02fc4b
         this.ignoringListenerErrors("backoff", () => {
             this.$notifier.emit("backoff", this, retryInterval, "submitting");
         });

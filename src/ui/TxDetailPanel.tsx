@@ -20,6 +20,7 @@ import type {
     SubmissionLogEntry,
 } from "../networkClients/UtxoIndex/types/PendingTxEntry.js";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
     Highlight,
     Lowlight,
@@ -40,7 +41,7 @@ export interface TxDetailPanelProps {
     onClose?: () => void;
 }
 
-type TabKey = "transcript" | "structure" | "diagnostics" | "submissionLog";
+type TabKey = "transcript" | "structure" | "diagnostics";
 
 /**
  * Renders transaction detail with tabs: transcript, structure, diagnostics, submission log.
@@ -58,6 +59,15 @@ export function TxDetailPanel({
     advancedView,
     onClose,
 }: TxDetailPanelProps) {
+    // Copy-to-clipboard with floating confirmation
+    const [copyToast, setCopyToast] = React.useState<{ x: number; y: number; label: string } | null>(null);
+    const copyToClipboard = React.useCallback((text: string, label: string, e: React.MouseEvent) => {
+        if (e.shiftKey) return;
+        navigator.clipboard.writeText(text);
+        setCopyToast({ x: e.clientX, y: e.clientY, label });
+        setTimeout(() => setCopyToast(null), 3000);
+    }, []);
+
     // Resolve data from live tracker or persisted entry
     const description = txTracker?.txd?.description ?? entry?.description ?? "";
     const txName = txTracker?.txd?.txName ?? entry?.txName;
@@ -86,7 +96,6 @@ export function TxDetailPanel({
         "transcript",
         "structure",
         "diagnostics",
-        ...(submissionLog && submissionLog.length > 0 ? ["submissionLog" as TabKey] : []),
     ];
     const [tab, setTab] = React.useState<TabKey>("transcript");
 
@@ -103,6 +112,27 @@ export function TxDetailPanel({
 
     return (
         <div className="flex flex-col gap-2">
+            {/* Floating copy confirmation toast — portaled to body to escape overflow clipping */}
+            {copyToast && createPortal(
+                <div
+                    style={{
+                        position: "fixed",
+                        left: copyToast.x + 12,
+                        top: copyToast.y - 12,
+                        zIndex: 9999,
+                        pointerEvents: "none",
+                        backgroundColor: "rgba(22, 101, 52, 0.92)",
+                        color: "#bbf7d0",
+                        padding: "6px 12px",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                    }}
+                >
+                    ✓ {copyToast.label}
+                </div>,
+                document.body
+            )}
             <div className="flex flex-col justify-between">
                 {/* Header: description + state */}
                 {advancedView && (
@@ -167,6 +197,12 @@ export function TxDetailPanel({
                         {/* Transcript tab */}
                         {tab === "transcript" && (
                             <>
+                                {/* No data fallback */}
+                                {!txSubmitters && !transcript && (
+                                    <div className="text-sm text-slate-400">
+                                        No transcript data available
+                                    </div>
+                                )}
                                 {/* Live submitter status (only when live tracker available) */}
                                 {txSubmitters && (
                                     <div className="flex flex-col gap-1">
@@ -285,8 +321,8 @@ export function TxDetailPanel({
                                         <h4 className="text-sm">
                                             Transaction Structure
                                         </h4>
-                                        <code className="text-sm">
-                                            <pre className="font-formal text-[1.30em]/4.5 tracking-wide max-h-[80vh] overflow-auto">
+                                        <code className="text-xs">
+                                            <pre className="font-formal text-[1.05em]/4 tracking-wide max-h-[80vh] overflow-auto">
                                                 {txStructure}
                                             </pre>
                                         </code>
@@ -297,86 +333,101 @@ export function TxDetailPanel({
                                     </div>
                                 )}
                                 {txCborHex && (
-                                    <div className="mt-2 text-xs">
-                                        CBOR Hex:{" "}
-                                        <span className="break-all">
+                                    <details className="mt-2 text-xs">
+                                        <summary className="text-slate-400 cursor-pointer">
+                                            Unsigned CBOR ({txCborHex.length / 2} bytes)
+                                        </summary>
+                                        <span
+                                            className="break-all text-slate-500 cursor-pointer hover:text-slate-300 transition-colors"
+                                            title="Click to copy unsigned CBOR"
+                                            onClick={(e) => copyToClipboard(txCborHex, "Copied unsigned CBOR", e)}
+                                        >
                                             {txCborHex}
                                         </span>
-                                    </div>
+                                    </details>
                                 )}
                             </>
                         )}
 
-                        {/* Diagnostics tab */}
+                        {/* Diagnostics tab — submission log + signed tx details */}
                         {tab === "diagnostics" && (
                             <>
-                                {signedTx ? (
-                                    <>
-                                        <h3>Signed Tx</h3>
-                                        <h4>
-                                            {signedTx.id?.()?.toString?.() ||
-                                                "Unknown ID"}
-                                        </h4>
-                                        <code className="text-xs">
-                                            <pre className="max-h-64 overflow-auto">
-                                                {dumpAny(
-                                                    signedTx,
-                                                    txTracker?.setup?.networkParams
-                                                )}
-                                            </pre>
-                                            {signedTxCborHex ? (
-                                                <div className="mt-2">
-                                                    CBOR Hex:{" "}
-                                                    <span className="break-all">
-                                                        {signedTxCborHex.length /
-                                                            2}{" "}
-                                                        bytes: <br />
-                                                        {signedTxCborHex}
+                                {/* Submission log — the primary diagnostic content */}
+                                {submissionLog && submissionLog.length > 0 ? (
+                                    <div className="mb-3 max-h-[50vh] overflow-y-auto">
+                                        <h4 className="text-sm font-semibold mb-1">Submission Log</h4>
+                                        <div className="font-mono text-xs leading-snug">
+                                            {submissionLog.map((logEntry, i) => (
+                                                <div key={i} className="flex items-baseline gap-2 py-px">
+                                                    <span className="text-slate-500 whitespace-nowrap">
+                                                        {new Date(logEntry.at).toLocaleTimeString()}
                                                     </span>
+                                                    <span className="text-slate-300 whitespace-nowrap">
+                                                        {logEntry.submitter}
+                                                    </span>
+                                                    <span className="text-slate-200">
+                                                        {logEntry.event}
+                                                    </span>
+                                                    {logEntry.detail && (
+                                                        <span className="text-slate-400 truncate" title={logEntry.detail}>
+                                                            {logEntry.detail}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                            ) : (
-                                                <div>‹not yet signed›</div>
-                                            )}
-                                        </code>
-                                    </>
+                                            ))}
+                                        </div>
+                                    </div>
                                 ) : (
-                                    <div>Not yet signed</div>
+                                    <div className="text-sm text-slate-400 mb-3">
+                                        No submission events recorded
+                                    </div>
+                                )}
+
+                                {/* Signed tx structure — when live tracker provides networkParams */}
+                                {signedTx && txTracker?.setup?.networkParams && (() => {
+                                    try {
+                                        const dump = dumpAny(signedTx, txTracker.setup.networkParams);
+                                        return (
+                                            <>
+                                                <h4 className="text-sm font-semibold mt-2">Signed Tx Structure</h4>
+                                                <h5 className="text-xs text-slate-400">
+                                                    {signedTx.id?.()?.toString?.() || "Unknown ID"}
+                                                </h5>
+                                                <code className="text-xs">
+                                                    <pre className="max-h-64 overflow-auto">
+                                                        {dump}
+                                                    </pre>
+                                                </code>
+                                            </>
+                                        );
+                                    } catch (e) {
+                                        return (
+                                            <div className="text-sm text-slate-400 mt-2">
+                                                Could not render signed tx structure: {String(e)}
+                                            </div>
+                                        );
+                                    }
+                                })()}
+
+                                {/* CBOR hex — collapsible, click to copy */}
+                                {signedTxCborHex && (
+                                    <details className="mt-2 text-xs">
+                                        <summary className="text-slate-400 cursor-pointer">
+                                            Signed CBOR ({signedTxCborHex.length / 2} bytes)
+                                        </summary>
+                                        <span
+                                            className="break-all text-slate-500 cursor-pointer hover:text-slate-300 transition-colors"
+                                            title="Click to copy signed CBOR"
+                                            onClick={(e) => copyToClipboard(signedTxCborHex, "Copied signed CBOR", e)}
+                                        >
+                                            {signedTxCborHex}
+                                        </span>
+                                    </details>
                                 )}
                             </>
                         )}
 
-                        {/* Submission Log tab */}
-                        {/* REQT/h5jhpxf9c8 (Submission Log) — timestamped event display */}
-                        {tab === "submissionLog" && submissionLog && (
-                            <div className="flex flex-col gap-1">
-                                {submissionLog.map((logEntry, i) => (
-                                    <div
-                                        key={i}
-                                        className="flex flex-row items-baseline gap-2 rounded-md border border-white/10 px-2 py-1 text-xs"
-                                    >
-                                        <span className="text-slate-500 font-mono whitespace-nowrap">
-                                            {new Date(logEntry.at).toLocaleTimeString()}
-                                        </span>
-                                        <span className="text-slate-300 font-semibold whitespace-nowrap">
-                                            {logEntry.submitter}
-                                        </span>
-                                        <span className="text-slate-200">
-                                            {logEntry.event}
-                                        </span>
-                                        {logEntry.detail && (
-                                            <span className="text-slate-400 truncate" title={logEntry.detail}>
-                                                {logEntry.detail}
-                                            </span>
-                                        )}
-                                    </div>
-                                ))}
-                                {submissionLog.length === 0 && (
-                                    <div className="text-sm text-slate-400">
-                                        No submission events recorded yet
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        {/* Submission log display moved to diagnostics tab */}
                     </div>
                 )}
 
