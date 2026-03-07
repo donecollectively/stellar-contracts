@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { liveQuery } from "dexie";
 import type { PendingTxEntry } from "../networkClients/UtxoIndex/types/PendingTxEntry.js";
 import { DexieUtxoStore } from "../networkClients/UtxoIndex/DexieUtxoStore.js";
+import type { TxBatcher } from "../networkClients/TxBatcher.js";
+import { TxDetailPanel } from "./TxDetailPanel.js";
 
 /**
  * Visual mapping from confirmation state to Unicode symbol and color.
@@ -107,9 +109,12 @@ function getDisplay(entry: PendingTxEntry) {
  *
  * @public
  */
-export function PendingTxTracker({ dbName }: { dbName?: string } = {}) {
+// REQT/wb4ye3vdtj (Shared TxDetailPanel) — txBatcher prop for live tracker lookup on drill-down
+export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBatcher?: TxBatcher } = {}) {
     const store = useMemo(() => new DexieUtxoStore(dbName), [dbName]);
     const [entries, setEntries] = useState<PendingTxEntry[]>([]);
+    // REQT/3nvvvnpjnt (Drill-Down from Dots) — selected entry for detail panel
+    const [selectedTxHash, setSelectedTxHash] = useState<string | null>(null);
 
     useEffect(() => {
         const subscription = liveQuery(() =>
@@ -142,19 +147,61 @@ export function PendingTxTracker({ dbName }: { dbName?: string } = {}) {
 
     if (sorted.length === 0) return null;
 
+    // REQT/3nvvvnpjnt (Drill-Down from Dots) — resolve selected entry and optional live tracker
+    const selectedEntry = selectedTxHash
+        ? sorted.find((e) => e.txHash === selectedTxHash)
+        : undefined;
+    const selectedTracker = selectedTxHash && txBatcher
+        ? txBatcher.findTracker(selectedTxHash)
+        : undefined;
+
     return (
-        <div
-            style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.25em",
-                fontFamily: "monospace",
-                fontSize: "0.85rem",
-            }}
-        >
-            {sorted.map((entry) => (
-                <PendingTxDot key={entry.txHash} entry={entry} />
-            ))}
+        <div style={{ position: "relative" }}>
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.25em",
+                    fontFamily: "monospace",
+                    fontSize: "0.85rem",
+                }}
+            >
+                {sorted.map((entry) => (
+                    <PendingTxDot
+                        key={entry.txHash}
+                        entry={entry}
+                        isSelected={entry.txHash === selectedTxHash}
+                        onClick={() =>
+                            setSelectedTxHash(
+                                entry.txHash === selectedTxHash ? null : entry.txHash
+                            )
+                        }
+                    />
+                ))}
+            </div>
+
+            {/* REQT/3nvvvnpjnt (Drill-Down from Dots) — detail panel below dots */}
+            {selectedEntry && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "100%",
+                        right: 0,
+                        zIndex: 50,
+                        marginTop: "0.5em",
+                        width: "min(80vw, 600px)",
+                    }}
+                    className="rounded-md border border-slate-700/50 bg-slate-900/95 backdrop-blur-sm p-3 shadow-2xl"
+                >
+                    <TxDetailPanel
+                        txTracker={selectedTracker}
+                        tx={selectedTracker?.txd?.tx}
+                        entry={selectedEntry}
+                        advancedView={true}
+                        onClose={() => setSelectedTxHash(null)}
+                    />
+                </div>
+            )}
         </div>
     );
 }
@@ -189,7 +236,7 @@ function formatAge(submittedAt: number): string {
  *
  * @internal
  */
-function PendingTxDot({ entry }: { entry: PendingTxEntry }) {
+function PendingTxDot({ entry, onClick, isSelected }: { entry: PendingTxEntry; onClick?: () => void; isSelected?: boolean }) {
     const display = getDisplay(entry);
     const hashShort = entry.txHash.slice(0, 8);
     const desc = entry.description || entry.txName || entry.id;
@@ -207,10 +254,12 @@ function PendingTxDot({ entry }: { entry: PendingTxEntry }) {
             style={{
                 color: display.color,
                 fontSize: "1.1em",
-                cursor: "default",
+                cursor: onClick ? "pointer" : "default",
                 lineHeight: 1,
+                textShadow: isSelected ? `0 0 6px ${display.color}` : undefined,
             }}
             title={tooltip}
+            onClick={onClick}
         >
             {display.symbol}
         </span>

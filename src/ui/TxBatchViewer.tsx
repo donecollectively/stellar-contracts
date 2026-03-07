@@ -6,14 +6,13 @@ import type {
 } from "@donecollectively/stellar-contracts";
 import {
     BatchSubmitController,
-    dumpAny,
 } from "@donecollectively/stellar-contracts";
 import type { Tx } from "@helios-lang/ledger";
 import { decodeTx } from "@helios-lang/ledger";
+import { TxDetailPanel } from "./TxDetailPanel.js";
 import * as React from "react";
 import {
     ActionButton,
-    Highlight,
     Lowlight,
     Softlight,
     DashboardRow,
@@ -323,6 +322,7 @@ const ShowSingleTx = (props: {
     );
 };
 
+// REQT/wb4ye3vdtj (Shared TxDetailPanel) — thin wrapper adding batch-specific Sign & Submit button
 function ShowTxDescription({
     txTracker,
     tx,
@@ -332,300 +332,55 @@ function ShowTxDescription({
     tx?: Tx;
     advancedView: boolean;
 }) {
-    const { $state, txSubmitters, id, txd } = txTracker;
-    const { tcx, txCborHex, signedTxCborHex } = txd;
-
-    // Add tab state management
-    const availableTabs = {
-        transcript: true,
-        structure: true,
-        diagnostics: true,
-    };
-    const [tab, setTab] =
-        React.useState<keyof typeof availableTabs>("transcript");
-
-    // Add state for signed transaction
-    const [signedTx, setSignedTx] = React.useState<Tx | undefined>();
-
-    // Decode signed transaction when available
-    React.useEffect(() => {
-        if (!signedTxCborHex) return;
-
-        try {
-            const decodedTx = decodeTx(signedTxCborHex);
-            setSignedTx(decodedTx);
-        } catch (e) {
-            console.error("Failed to decode signed transaction:", e);
-        }
-    }, [signedTxCborHex]);
+    const { $state, txd } = txTracker;
+    const { tcx } = txd;
     const debugSubmitButton = false;
 
     return (
-        <div className="flex flex-col gap-2 ">
-            <div className="flex flex-col justify-between">
-                {/* Sign & Submit button */}
-                <div className="basis-1/9">
-                    {tx && txTracker && tcx && !tcx.isFacade && $state != "confirmed" && (
-                        <ActionButton
-                            className="mt-2 self-start"
-                            onClick={() => txTracker.$signAndSubmit?.()}
-                        >
-                            Sign&nbsp;&amp;&nbsp;Submit
-                        </ActionButton>
-                    ) || (debugSubmitButton && <div className="text-xs">
-                        {!!tx && <div>✅ tx ok</div> || <div>❌  no tx</div>}
-                        {!!txTracker && <div>✅ txTracker ok</div> || <div>❌ no txTracker</div>}
-                        {!!tcx && <div>✅ tcx ok</div> || <div>❌ no tcx</div>}
-                        {!tcx?.isFacade && <div>✅ not a facade</div> || <div>❌ is a facade</div>}
-                        {$state != "confirmed" && <div>✅ state '{$state}' not confirmed</div> || <div>❌ confirmed</div>}
-                    </div>)}
-                </div>
-                {advancedView && (
-                    <>
-                        <div className="ml-4 flex-grow self-start">
-                            <Highlight className="text-xl">
-                                {txd.txName || txd.description}
-                            </Highlight>
-                            {txd.txName && txd.description && (
-                                <div className="text-md display-inline ml-4 opacity-50">
-                                    {txd.description}
-                                </div>
-                            )}
-                            {txd.moreInfo && (
-                                <div className="text-brand-orange/66 ml-8 text-sm italic">
-                                    {txd.moreInfo}
-                                </div>
-                            )}
-                        </div>
-                    </>
-                )}
-                {advancedView && (
-                    <div id="tab-selector" className="mt-1 z-10 -mb-1">
-                        {Object.keys(availableTabs).map((key) => {
-                            const isSelected = key === tab;
-                            const selectedTabClass = isSelected
-                                ? "mt-0 pt-0 pb-1 rounded-t-md bg-card border-x-1 border-t-3 border-border/80"
-                                : "-mt-1 pt-1 pb-0 border-1 rounded-t-md bg-secondary/20 border-border/40";
-                            return (
-                                <button
-                                    key={key}
-                                    className={`${selectedTabClass} ml-1 px-2 text-sm text-card-foreground border-b-0 rounded-b-none`}
-                                    onClick={() =>
-                                        setTab(
-                                            key as keyof typeof availableTabs
-                                        )
-                                    }
-                                >
-                                    {key}
-                                </button>
-                            );
-                        })}
-                        <Lowlight className="float-right">{$state}</Lowlight>
-                    </div>
-                )}
-
-                {/* Tab content */}
-                {advancedView && (
-                    <div className="z-9 bg-card border-t border-white/20 pt-1">
-                        {/* Transcript tab */}
-                        {tab === "transcript" && (
-                            <>
-                                <div className="flex flex-col gap-1">
-                                    {Object.entries(txSubmitters).map(
-                                        ([key, submitter]) => (
-                                            <div
-                                                key={key}
-                                                className="flex flex-row justify-between rounded-md border border-white/10 p-2"
-                                            >
-                                                <div className="w-1/3">
-                                                    <h4 className="text-sm font-semibold">
-                                                        {key}
-                                                    </h4>
-                                                </div>
-                                                <div className="w-2/3">
-                                                    <Lowlight>{`${submitter.$$statusSummary.status} - ${submitter.$$statusSummary.currentActivity}`}</Lowlight>
-                                                    <div className="text-xs">
-                                                        <pre>
-                                                            {JSON.stringify(
-                                                                submitter.$$statusSummary,
-                                                                null,
-                                                                2
-                                                            )}
-                                                        </pre>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    )}
-                                </div>
-
-                                {tcx?.logger?.formattedHistory && (
-                                    <code>
-                                        <pre className="mt-4 max-h-[90vh] overflow-auto bg-neutral-200 text-xs text-black">
-                                            {tcx.logger.formattedHistory?.map(
-                                                (line1, lineIndex) =>
-                                                    line1
-                                                        ?.split("\n")
-                                                        .map((line2, lineIndex2) => {
-                                                            let prefix:
-                                                                | React.ReactNode
-                                                                | string = (
-                                                                    <></>
-                                                                ),
-                                                                rest:
-                                                                    | React.ReactNode
-                                                                    | string = (
-                                                                        <></>
-                                                                    );
-                                                            /*.replaceAll("", "<span className=font-formal")*/
-                                                            [prefix, rest] =
-                                                                line2.split(
-                                                                    "❗",
-                                                                    2
-                                                                );
-                                                            if (rest) {
-                                                                let size = "";
-                                                                if (
-                                                                    (
-                                                                        rest as string
-                                                                    ).match(
-                                                                        /^\s+\.\.\./
-                                                                    )
-                                                                ) {
-                                                                    rest = (
-                                                                        rest as string
-                                                                    ).replace(
-                                                                        /^\s+\.\.\.\s+/,
-                                                                        "…"
-                                                                    );
-                                                                    size =
-                                                                        "text-[1.35em] -ml-2 -mt-2";
-                                                                }
-                                                                rest = (
-                                                                    <span
-                                                                        className={`text-[1.6em] font-formal -ml-5 font-bold -mt-2`}
-                                                                    >
-                                                                        ❗
-                                                                        <span
-                                                                            className={`${size}`}
-                                                                        >
-                                                                            {
-                                                                                rest
-                                                                            }
-                                                                        </span>
-                                                                    </span>
-                                                                );
-                                                            } else {
-                                                                prefix = (
-                                                                    <span className="text-gray-400">
-                                                                        {prefix}
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            return (
-                                                                <React.Fragment key={`${lineIndex}-${lineIndex2}`}>
-                                                                    {" "}{prefix}{" "}
-                                                                    {rest}
-                                                                    <br />
-                                                                </React.Fragment>
-                                                            );
-                                                        })
-                                            )}
-                                        </pre>
-                                    </code>
-                                )}
-                            </>
-                        )}
-
-                        {/* Structure tab */}
-                        {tab === "structure" && tx && (
-                            <>
-                                <h4 className="text-sm">
-                                    Unsigned Tx:{" "}
-                                    {tx.id?.()?.toString?.() || "Unknown ID"}
-                                </h4>
-
-                                <code className="text-sm">
-                                    <pre className="font-formal text-[1.30em]/4.5 tracking-wide max-h-[80vh] overflow-auto">
-                                        {dumpAny(
-                                            tx,
-                                            txTracker.setup.networkParams
-                                        )}
-                                    </pre>
-                                    {txCborHex && (
-                                        <div className="mt-2 text-xs">
-                                            CBOR Hex:{" "}
-                                            <span className="break-all">
-                                                {txCborHex}
-                                            </span>
-                                        </div>
-                                    )}
-                                </code>
-                            </>
-                        )}
-
-                        {/* Diagnostics tab */}
-                        {tab === "diagnostics" && (
-                            <>
-                                {signedTx ? (
-                                    <>
-                                        <h3>Signed Tx</h3>
-                                        <h4>
-                                            {signedTx.id?.()?.toString?.() ||
-                                                "Unknown ID"}
-                                        </h4>
-
-                                        <code className="text-xs">
-                                            <pre className="max-h-64 overflow-auto">
-                                                {dumpAny(
-                                                    signedTx,
-                                                    txTracker.setup
-                                                        .networkParams
-                                                )}
-                                            </pre>
-                                            {signedTxCborHex ? (
-                                                <div className="mt-2">
-                                                    CBOR Hex:{" "}
-                                                    <span className="break-all">
-                                                        {signedTxCborHex.length /
-                                                            2}{" "}
-                                                        bytes: <br />
-                                                        {signedTxCborHex}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <div>‹not yet signed›</div>
-                                            )}
-                                        </code>
-                                    </>
-                                ) : (
-                                    <div>Not yet signed</div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                )}
-
-                {/* Nested Transactions section (shown in all tabs) */}
-                {advancedView &&
-                    txd.tcx?.addlTxns &&
-                    Object.keys(txd.tcx.addlTxns).length > 0 && (
-                        <div className="mt-4 flex flex-col gap-1 border-t border-white/10 pt-4">
-                            <Softlight>Nested Transactions:</Softlight>
-                            {Object.entries(txd.tcx.addlTxns).map(
-                                ([key, tx]) => (
-                                    <div
-                                        key={key}
-                                        className="flex flex-row justify-between"
-                                    >
-                                        <Lowlight>{key}</Lowlight>
-                                        <Lowlight>{tx.id}</Lowlight>
-                                    </div>
-                                )
-                            )}
-                        </div>
-                    )}
+        <div className="flex flex-col gap-2">
+            {/* Sign & Submit button — batch-specific, not in shared TxDetailPanel */}
+            <div className="basis-1/9">
+                {tx && txTracker && tcx && !tcx.isFacade && $state != "confirmed" && (
+                    <ActionButton
+                        className="mt-2 self-start"
+                        onClick={() => txTracker.$signAndSubmit?.()}
+                    >
+                        Sign&nbsp;&amp;&nbsp;Submit
+                    </ActionButton>
+                ) || (debugSubmitButton && <div className="text-xs">
+                    {!!tx && <div>✅ tx ok</div> || <div>❌  no tx</div>}
+                    {!!txTracker && <div>✅ txTracker ok</div> || <div>❌ no txTracker</div>}
+                    {!!tcx && <div>✅ tcx ok</div> || <div>❌ no tcx</div>}
+                    {!tcx?.isFacade && <div>✅ not a facade</div> || <div>❌ is a facade</div>}
+                    {$state != "confirmed" && <div>✅ state '{$state}' not confirmed</div> || <div>❌ confirmed</div>}
+                </div>)}
             </div>
+
+            <TxDetailPanel
+                txTracker={txTracker}
+                tx={tx}
+                advancedView={advancedView}
+            />
+
+            {/* Nested Transactions section — batch-specific */}
+            {advancedView &&
+                txd.tcx?.addlTxns &&
+                Object.keys(txd.tcx.addlTxns).length > 0 && (
+                    <div className="mt-4 flex flex-col gap-1 border-t border-white/10 pt-4">
+                        <Softlight>Nested Transactions:</Softlight>
+                        {Object.entries(txd.tcx.addlTxns).map(
+                            ([key, tx]) => (
+                                <div
+                                    key={key}
+                                    className="flex flex-row justify-between"
+                                >
+                                    <Lowlight>{key}</Lowlight>
+                                    <Lowlight>{tx.id}</Lowlight>
+                                </div>
+                            )
+                        )}
+                    </div>
+                )}
         </div>
     );
 }
