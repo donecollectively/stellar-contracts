@@ -108,17 +108,17 @@ Display lifecycle management for pending transaction entries, including age-base
 
 ## Area 3: Detail Panel
 
-### **REQT-3.1.0/3r5g35smyn**: **NEXT**/draft: **Click to Open Detail**
+### **REQT-3.1.0/3r5g35smyn**: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Click to Open Detail**
 #### Purpose: Enables drill-down from the compact dot display into full transaction detail. Applied when implementing the onClick handler, the detail panel mounting, or reviewing the interaction model.
 
- - 3.1.1: REQT-1vv5gwk3wd: **NEXT**/draft: **Hybrid Data Sourcing** - The detail panel MUST use live TxSubmissionTracker data when a tracker is available for the transaction's txHash (same session, pre-terminal). MUST fall back to Dexie PendingTxEntry data (buildTranscript, txStructure, signedTxStructure, submissionLog) when no live tracker exists (after page reload or tracker destruction). The lookup MUST use txBatcher.findTracker(txHash) to locate live trackers.
- - 3.1.2: REQT-y8rnvqmgza: **NEXT**/draft: **TxDetailPanel Component** - The detail panel MUST be implemented as a shared TxDetailPanel component (refactored from ShowTxDescription in TxBatchViewer) that accepts a normalized props interface. Both TxBatchViewer and PendingTxTracker MUST use this component. The component MUST support transcript, structure, and diagnostics tabs.
- - 3.1.3: REQT-68k790rq7g: **NEXT**/draft: **Persisted Transcript Tab** - The detail panel MUST show the build transcript and submission event log for the transaction, whether sourced from a live tracker or from persisted Dexie data.
- - 3.1.4: REQT-favjamnnwj: **NEXT**/draft: **Persisted Structure and Diagnostics Tabs** - The detail panel MUST show transaction structure and signed transaction diagnostics, whether sourced from a live tracker or from persisted Dexie data.
+ - 3.1.1: REQT-1vv5gwk3wd: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Hybrid Data Sourcing** - The detail panel MUST use live TxSubmissionTracker data when a tracker is available for the transaction's txHash (same session, pre-terminal). MUST fall back to Dexie PendingTxEntry data (buildTranscript, txStructure, submissionLog) when no live tracker exists (after page reload or tracker destruction). The lookup MUST use txBatcher.findTracker(txHash) to locate live trackers.
+ - 3.1.2: REQT-y8rnvqmgza: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **TxDetailPanel Component** - The detail panel MUST be implemented as a shared TxDetailPanel component (refactored from ShowTxDescription in TxBatchViewer) that accepts a normalized props interface. Both TxBatchViewer and PendingTxTracker MUST use this component. The component MUST support transcript, structure, and diagnostics tabs.
+ - 3.1.3: REQT-68k790rq7g: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Persisted Transcript Tab** - The detail panel MUST show the build transcript and submission event log for the transaction, whether sourced from a live tracker or from persisted Dexie data.
+ - 3.1.4: REQT-favjamnnwj: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Persisted Structure and Diagnostics Tabs** - The detail panel MUST show transaction structure and signed transaction diagnostics, whether sourced from a live tracker or from persisted Dexie data.
 
 ## Area 4: Entry Lifecycle
 
-### **REQT-4.1.0/7e7thbzywv**: **NEXT**/draft: **Rolled-Back Entry Age-Out**
+### **REQT-4.1.0/7e7thbzywv**: **IMPLEMENTED/NEEDS VERIFICATION**/draft: **Rolled-Back Entry Age-Out**
 #### Purpose: Prevents stale rolled-back entries from persisting in the display indefinitely. Applied when reviewing entry lifecycle, display filtering, or diagnosing entries that should have disappeared.
 
 
