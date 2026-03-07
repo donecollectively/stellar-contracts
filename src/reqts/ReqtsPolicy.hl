@@ -91,6 +91,16 @@ import {
     BurningActivity 
 } from ReqtsData
 
+// Gov authority exemption hooks — all ReqtsPolicy activities require gov authority
+func isGovExemptSpendingActivity(a: SpendingActivity) -> Bool {
+    a.switch { _ => false }
+}
+func isGovExemptMintingActivity(a: MintingActivity) -> Bool {
+    a.switch { _ => false }
+}
+func isGovExemptBurningActivity(a: BurningActivity) -> Bool {
+    a.switch { _ => false }
+}
 
 func ensureConstrainedTxValidity() -> () {
     assert(

@@ -65,7 +65,10 @@ import {
     DelegateDatum,
     BurningActivity,
     MintingActivity,
-    SpendingActivity
+    SpendingActivity,
+    isGovExemptSpendingActivity,
+    isGovExemptMintingActivity,
+    isGovExemptBurningActivity
 } from specializedDelegate
 
 // formerly was in Capo core contract script
@@ -1469,10 +1472,19 @@ func main(
              });
 
              cctx : CapoCtx = mkCapoCtx(dd.mph).needsCharter();
+             isExemptActivity : Bool = activity.switch {
+                SpendingActivities{a} => isGovExemptSpendingActivity(a),
+                MintingActivities{a} => isGovExemptMintingActivity(a),
+                BurningActivities{a} => isGovExemptBurningActivity(a),
+                _ => false
+             };
              govAuthorityCheck : Bool = if (!isDgDataPolicy) { true } else {
-                if (!requiresGovAuthority) {
+                if (isExemptActivity) {
+                    print("📝 "+delegateName+": gov authority not needed for this activity (exempt per policy)");
+                    true
+                } else if (!requiresGovAuthority) {
                     // "📝" - note  emoji
-                    print("📝 "+delegateName+": requiresGovAuthority is overridden to false in the delegate's .hlb.ts")
+                    print("📝 "+delegateName+": requiresGovAuthority is overridden to false in the delegate's .hlb.ts");
                     print("   -- the policy can still choose to situationally enforce gov-authority");
                     true
                 } else {

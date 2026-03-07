@@ -590,6 +590,7 @@ export abstract class DelegatedDataContract<
             addedUtxoValue,
             // beforeSave = (x) => x,
             updatedFields,
+            needsGovAuthority: optGovAuth,
         } = options;
         // tell Capo to spend the DD record
         const tcx2 = await capo.txnAttachScriptOrRefScript(
@@ -632,7 +633,8 @@ export abstract class DelegatedDataContract<
         // const patchedRecord = beforeSave(recordWithUpdates);
 
         let tcx2c = tcx2b;
-        if (this.needsGovAuthority) {
+        const addGovAuth = optGovAuth ?? this.needsGovAuthority;
+        if (addGovAuth) {
             tcx2c = await this.capo.txnAddGovAuthority(tcx2b);
         }
 
@@ -888,6 +890,14 @@ export type DgDataUpdateOptions<TLike extends AnyDataTemplate<any, any>> = {
 
     addedUtxoValue?: Value;
     // beforeSave?(x: DTL): DTL;
+
+    /**
+     * Override the bundle-level needsGovAuthority flag for this transaction.
+     * When false, skips adding the govAuthority token even if the bundle
+     * declares requiresGovAuthority = true.  Useful for activities like
+     * SellingTokens that don't require governance authority on-chain.
+     */
+    needsGovAuthority?: boolean;
 };
 
 // omits type-wrapper and requires all fields for data-type-like

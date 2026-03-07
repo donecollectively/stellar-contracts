@@ -161,7 +161,10 @@ import {
     DelegateDatum,
     BurningActivity,
     MintingActivity,
-    SpendingActivity
+    SpendingActivity,
+    isGovExemptSpendingActivity,
+    isGovExemptMintingActivity,
+    isGovExemptBurningActivity
 } from ${moduleName}\n`;
         // console.log("mkDelegateWrapper:", new Error( src));
         return makeSource(src, {

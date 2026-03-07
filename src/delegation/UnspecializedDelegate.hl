@@ -152,6 +152,20 @@ enum BurningActivity {
         recId: ByteArray
     }
 }
+
+// Gov authority exemption hooks — specialized delegates override these
+// to declare which activities do NOT require governance authority.
+// Default: all activities require gov authority (return false = not exempt).
+func isGovExemptSpendingActivity(a: SpendingActivity) -> Bool {
+    a.switch { _ => false }
+}
+func isGovExemptMintingActivity(a: MintingActivity) -> Bool {
+    a.switch { _ => false }
+}
+func isGovExemptBurningActivity(a: BurningActivity) -> Bool {
+    a.switch { _ => false }
+}
+
 enum DelegateActivity {
     // must ALWAYS be at Enum position 0
     CapoLifecycleActivities {
@@ -375,4 +389,3 @@ enum DelegateActivity {
         }
     }
 }
-
