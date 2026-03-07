@@ -826,7 +826,7 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
     // =========================================================================
 
     describe("diagnostic fields on PendingTxEntry (REQT/vdkanffv9e)", () => {
-        it("registerPendingTx persists buildTranscript, txStructure, signedTxStructure when provided (persist-diagnostic-fields/REQT/vdkanffv9e)", async (context: localTC) => {
+        it("registerPendingTx persists buildTranscript and txStructure when provided (persist-diagnostic-fields/REQT/vdkanffv9e)", async (context: localTC) => {
             const { h } = context;
             await h.snapToFirstTestRecord();
 
@@ -845,7 +845,6 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
                 txCborHex,
                 buildTranscript: ["line 1: building tx", "line 2: adding inputs", "line 3: done"],
                 txStructure: "Tx { inputs: [...], outputs: [...] }",
-                signedTxStructure: "SignedTx { signatures: [...], body: {...} }",
             };
 
             await index.registerPendingTx(signedTxCborHex, diagnosticOpts);
@@ -855,7 +854,6 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             expect(entry).toBeTruthy();
             expect(entry!.buildTranscript).toEqual(["line 1: building tx", "line 2: adding inputs", "line 3: done"]);
             expect(entry!.txStructure).toBe("Tx { inputs: [...], outputs: [...] }");
-            expect(entry!.signedTxStructure).toBe("SignedTx { signatures: [...], body: {...} }");
         });
 
         it("registerPendingTx works without diagnostic fields (no-diagnostic-fields/REQT/vdkanffv9e)", async (context: localTC) => {
@@ -882,7 +880,6 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             expect(entry).toBeTruthy();
             expect(entry!.buildTranscript).toBeUndefined();
             expect(entry!.txStructure).toBeUndefined();
-            expect(entry!.signedTxStructure).toBeUndefined();
         });
     });
 

@@ -78,7 +78,7 @@ import type { FoundDatumUtxo } from "../../CapoTypes.js";
 // REQT/2w2yyc2m1k: Type-only import for in-memory pending map
 import type { TxDescription } from "../../StellarTxnContext.js";
 import type { RecordIndexEntry } from "./types/RecordIndexEntry.js";
-import type { PendingTxEntry } from "./types/PendingTxEntry.js";
+import type { PendingTxEntry, SubmissionLogEntry } from "./types/PendingTxEntry.js";
 
 // REQT/zzsg63b2fb: Lightweight block-tip poll interval — sole trigger for checkForNewTxns
 const blockPollInterval = 5 * 1000; // 5 seconds
@@ -1135,6 +1135,16 @@ export class CachedUtxoIndex {
     // =========================================================================
     // REQT/3dhhjsav15: In-Flight Transaction Integration
     // =========================================================================
+
+    /**
+     * Appends a submission log entry to a pending transaction's log.
+     * Delegates to the store for atomic persistence.
+     *
+     * REQT/j5pwm8btay (Append Submission Log)
+     */
+    async appendSubmissionLog(txHash: string, entry: SubmissionLogEntry): Promise<void> {
+        await this.store.appendSubmissionLog(txHash, entry);
+    }
 
     /**
      * Registers a pending transaction in the index.

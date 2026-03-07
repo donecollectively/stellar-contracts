@@ -1,4 +1,6 @@
 import { bytesToHex } from "@helios-lang/codec-utils";
+import { dumpAny } from "../diagnostics.js";
+import type { SubmissionLogEntry } from "./UtxoIndex/types/PendingTxEntry.js";
 import { StateMachine, type StateTransitionTable } from "../StateMachine.js";
 import type { SetupInfo } from "../StellarContract.js";
 import type { TxDescription } from "../StellarTxnContext.js";
@@ -182,6 +184,12 @@ export class TxSubmissionTracker extends StateMachine<
             const txdSigned: TxDescription<any, "signed"> = txd as any;
             txdSigned.signedTxCborHex = bytesToHex(tx.toCbor());
 
+            // REQT/46ttdvnkmp (Capture Build Transcript) — snapshot diagnostics before submission
+            const buildTranscript = tcx?.logger?.formattedHistory
+                ? [...tcx.logger.formattedHistory]
+                : undefined;
+            const txStructure = dumpAny(tx, this.setup.networkParams);
+
             console.debug(`🔵 SIGNED TX — about to call $didSignTx()`);
             this.$didSignTx();
             console.debug(`🔵 $didSignTx() returned — about to registerPendingTx`);
@@ -204,6 +212,9 @@ export class TxSubmissionTracker extends StateMachine<
                         txName: txd.txName,
                         txCborHex: txdSigned.signedTxCborHex,
                         txd: txdSigned,
+                        // REQT/vdkanffv9e (Diagnostic Fields) — persist for post-reload inspection
+                        buildTranscript,
+                        txStructure,
                     });
                     console.debug(`🔵 registerPendingTx completed successfully`);
                 } catch (e: any) {
@@ -298,6 +309,19 @@ export class TxSubmissionTracker extends StateMachine<
         }
         const txId = tx.id().toString();
 
+        // REQT/7s7e02fc4b (Emit Submission Log Entries) — bind callback at tracker level
+        // The callback routes through CachedUtxoIndex.appendSubmissionLog when available.
+        // Optional: emulator tests have no CachedUtxoIndex, so no callback is wired.
+        const networkClient = this.setup.network as any;
+        const onSubmissionLog: ((entry: SubmissionLogEntry) => void) | undefined =
+            typeof networkClient?.appendSubmissionLog === "function"
+                ? (entry: SubmissionLogEntry) => {
+                      networkClient.appendSubmissionLog(txId, entry).catch((e: any) => {
+                          console.warn(`appendSubmissionLog failed for ${txId}:`, e.message);
+                      });
+                  }
+                : undefined;
+
         this.txSubmitters = Object.fromEntries(
             Object.entries(this.submitters).map(([name, submitter]) => {
                 const mgr = new TxSubmitMgr({
@@ -305,6 +329,7 @@ export class TxSubmissionTracker extends StateMachine<
                     submitter,
                     txd,
                     setup: this.setup,
+                    onSubmissionLog, // REQT/7s7e02fc4b
                 });
 
                 mgr.$notifier.on(

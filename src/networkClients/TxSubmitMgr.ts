@@ -18,6 +18,7 @@ import type {
     TxSubmitCallbacks,
 } from "../StellarTxnContext.js";
 import { bytesToHex } from "@helios-lang/codec-utils";
+import type { SubmissionLogEntry } from "./UtxoIndex/types/PendingTxEntry.js";
 import {
     StateMachine,
     type $transitions,
@@ -205,6 +206,8 @@ export class TxSubmitMgr extends StateMachine<
     submitIssue?: string = undefined;
     pending: (WrappedPromise<any> & { activity: string }) | undefined;
     retryIntervals: Required<SubmitterRetryIntervals>;
+    // REQT/7s7e02fc4b (Emit Submission Log Entries) — optional callback for persisting submission events
+    onSubmissionLog?: (entry: SubmissionLogEntry) => void;
 
     constructor(args: {
         name: string;
@@ -212,9 +215,11 @@ export class TxSubmitMgr extends StateMachine<
         setup: SetupInfo;
         submitter: CardanoTxSubmitter;
         retryIntervals?: SubmitterRetryIntervals;
+        // REQT/7s7e02fc4b (Emit Submission Log Entries) — optional, not provided in emulator tests
+        onSubmissionLog?: (entry: SubmissionLogEntry) => void;
     }) {
         super();
-        const { name, txd, submitter, setup, retryIntervals = {} } = args;
+        const { name, txd, submitter, setup, retryIntervals = {}, onSubmissionLog } = args;
         this.retryIntervals = {
             reconfirm: 10000,
             submit: 5000,
@@ -227,6 +232,7 @@ export class TxSubmitMgr extends StateMachine<
         this.txd = txd;
         this.submitter = submitter;
         this.setup = setup;
+        this.onSubmissionLog = onSubmissionLog;
         this.pending = undefined;
 
         this.resetState();
@@ -240,6 +246,16 @@ export class TxSubmitMgr extends StateMachine<
             });
         });
         // this.notifier.on("changed", this.wasUpdated.bind(this));
+    }
+
+    // REQT/7s7e02fc4b (Emit Submission Log Entries) — emit at semantic points
+    private emitLog(event: string, detail?: string) {
+        this.onSubmissionLog?.({
+            at: Date.now(),
+            event,
+            submitter: this.name,
+            detail,
+        });
     }
 
     destroy() {
@@ -405,6 +421,7 @@ export class TxSubmitMgr extends StateMachine<
 
     async tryConfirm() {
         this.$mgrState.lastConfirmAttempt = Date.now();
+        this.emitLog("confirm-attempt"); // REQT/7s7e02fc4b
         try {
             this.$mgrState.totalConfirmationAttempts++;
             const result = await this.pendingActivity(
@@ -442,6 +459,7 @@ export class TxSubmitMgr extends StateMachine<
             this.$mgrState.firstConfirmedAt = Date.now();
         }
         this.$mgrState.lastConfirmedAt = Date.now();
+        this.emitLog("confirmed"); // REQT/7s7e02fc4b
     }
 
     notConfirmed(problem?: Error) {
@@ -450,6 +468,7 @@ export class TxSubmitMgr extends StateMachine<
             message,
             ...details,
         });
+        this.emitLog("not-confirmed", message); // REQT/7s7e02fc4b
         this.transition("notOk");
     }
 
@@ -470,6 +489,7 @@ export class TxSubmitMgr extends StateMachine<
             backoff
         );
         this.nextStartTime(retryInterval);
+        this.emitLog("backoff", `reconfirm in ${retryInterval}ms: ${reason}`); // REQT/7s7e02fc4b
         this.ignoringListenerErrors("backoff", () => {
             this.$notifier.emit("backoff", this, retryInterval, "confirming");
         });
@@ -484,6 +504,7 @@ export class TxSubmitMgr extends StateMachine<
     async trySubmit() {
         this.$mgrState.lastSubmissionAttempt = Date.now();
         this.$mgrState.totalSubmissionAttempts++;
+        this.emitLog("submit-attempt"); // REQT/7s7e02fc4b
         const result = this.pendingActivity(
             "submitting",
             this.doSubmit()
@@ -492,6 +513,7 @@ export class TxSubmitMgr extends StateMachine<
         try {
             if (await result) {
                 this.$mgrState.totalSubmissionSuccesses++;
+                this.emitLog("submit-success"); // REQT/7s7e02fc4b
                 this.transition("submitted");
             }
         } catch (e) {
@@ -605,6 +627,7 @@ export class TxSubmitMgr extends StateMachine<
             message,
             ...details,
         });
+        this.emitLog("submit-failed", message); // REQT/7s7e02fc4b
         if (this.isExpiryError(problem)) {
             if (this.isTxExpired(this.tx)) {
                 return this.transition("txExpired");
@@ -665,6 +688,7 @@ export class TxSubmitMgr extends StateMachine<
         );
         this.$mgrState.lastSubmissionAttempt = Date.now();
         this.nextStartTime(retryInterval);
+        this.emitLog("backoff", `resubmit in ${retryInterval}ms: ${displayStatus}`); // REQT/7s7e02fc4b
         this.ignoringListenerErrors("backoff", () => {
             this.$notifier.emit("backoff", this, retryInterval, "submitting");
         });
@@ -688,6 +712,7 @@ export class TxSubmitMgr extends StateMachine<
     txExpired() {
         this.$mgrState.expirationDetected = true;
         this.$mgrState.signsOfServiceLife++;
+        this.emitLog("tx-expired"); // REQT/7s7e02fc4b
     }
 
     resetConfirmationStats() {
