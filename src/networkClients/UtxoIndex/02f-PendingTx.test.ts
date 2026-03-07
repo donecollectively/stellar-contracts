@@ -819,4 +819,168 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             // on restoredUtxos (the ones returned by findUtxosSpentByTx).
         });
     });
+
+    // =========================================================================
+    // Phase 1: Diagnostic fields & submission log persistence
+    // Added by pre-work review for work unit 2z5j6rgbd9
+    // =========================================================================
+
+    describe("diagnostic fields on PendingTxEntry (REQT/vdkanffv9e)", () => {
+        it("registerPendingTx persists buildTranscript, txStructure, signedTxStructure when provided (persist-diagnostic-fields/REQT/vdkanffv9e)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("diagnostic-fields");
+            const index = createTestIndex(h, dbName);
+            setLastSyncedBlock(index, 100, "block100", 500);
+            await prePopulateInputUtxos(index, tx);
+
+            const diagnosticOpts = {
+                description: "test diagnostic fields",
+                id: "test-diag-1",
+                depth: 0,
+                txCborHex,
+                buildTranscript: ["line 1: building tx", "line 2: adding inputs", "line 3: done"],
+                txStructure: "Tx { inputs: [...], outputs: [...] }",
+                signedTxStructure: "SignedTx { signatures: [...], body: {...} }",
+            };
+
+            await index.registerPendingTx(signedTxCborHex, diagnosticOpts);
+
+            const store = getStore(index);
+            const entry = await store.findPendingTx(txHash);
+            expect(entry).toBeTruthy();
+            expect(entry!.buildTranscript).toEqual(["line 1: building tx", "line 2: adding inputs", "line 3: done"]);
+            expect(entry!.txStructure).toBe("Tx { inputs: [...], outputs: [...] }");
+            expect(entry!.signedTxStructure).toBe("SignedTx { signatures: [...], body: {...} }");
+        });
+
+        it("registerPendingTx works without diagnostic fields (no-diagnostic-fields/REQT/vdkanffv9e)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("no-diag-fields");
+            const index = createTestIndex(h, dbName);
+            setLastSyncedBlock(index, 100, "block100", 500);
+            await prePopulateInputUtxos(index, tx);
+
+            await index.registerPendingTx(signedTxCborHex, {
+                description: "no diagnostics",
+                id: "test-nodiag-1",
+                depth: 0,
+                txCborHex,
+            });
+
+            const store = getStore(index);
+            const entry = await store.findPendingTx(txHash);
+            expect(entry).toBeTruthy();
+            expect(entry!.buildTranscript).toBeUndefined();
+            expect(entry!.txStructure).toBeUndefined();
+            expect(entry!.signedTxStructure).toBeUndefined();
+        });
+    });
+
+    describe("appendSubmissionLog (REQT/j5pwm8btay)", () => {
+        it("appends submission log entries incrementally to PendingTxEntry (append-log-entries/REQT/j5pwm8btay)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("append-log");
+            const index = createTestIndex(h, dbName);
+            setLastSyncedBlock(index, 100, "block100", 500);
+            await prePopulateInputUtxos(index, tx);
+
+            await index.registerPendingTx(signedTxCborHex, {
+                description: "log test",
+                id: "test-log-1",
+                depth: 0,
+                txCborHex,
+            });
+
+            const store = getStore(index);
+
+            // Append first log entry
+            // TODO: Coder — appendSubmissionLog may be on CachedUtxoIndex or directly on store.
+            // Adjust the call site once the method is implemented per REQT/j5pwm8btay.
+            await store.appendSubmissionLog(txHash, {
+                at: 1000,
+                event: "submit-attempt",
+                submitter: "blockfrost-preprod",
+                detail: "first attempt",
+            });
+
+            let entry = await store.findPendingTx(txHash);
+            expect(entry!.submissionLog).toHaveLength(1);
+            expect(entry!.submissionLog![0].event).toBe("submit-attempt");
+            expect(entry!.submissionLog![0].submitter).toBe("blockfrost-preprod");
+
+            // Append second log entry
+            await store.appendSubmissionLog(txHash, {
+                at: 2000,
+                event: "submit-success",
+                submitter: "blockfrost-preprod",
+            });
+
+            entry = await store.findPendingTx(txHash);
+            expect(entry!.submissionLog).toHaveLength(2);
+            expect(entry!.submissionLog![1].event).toBe("submit-success");
+
+            // Append third log entry — confirm attempt from different submitter
+            await store.appendSubmissionLog(txHash, {
+                at: 3000,
+                event: "confirm-attempt",
+                submitter: "ogmios-local",
+            });
+
+            entry = await store.findPendingTx(txHash);
+            expect(entry!.submissionLog).toHaveLength(3);
+            expect(entry!.submissionLog![2].submitter).toBe("ogmios-local");
+        });
+
+        it("appendSubmissionLog on entry without prior log initializes array (append-to-empty-log/REQT/h5jhpxf9c8)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("empty-log-init");
+            const index = createTestIndex(h, dbName);
+            setLastSyncedBlock(index, 100, "block100", 500);
+            await prePopulateInputUtxos(index, tx);
+
+            // Register without any submissionLog
+            await index.registerPendingTx(signedTxCborHex, {
+                description: "empty log init test",
+                id: "test-emptylog-1",
+                depth: 0,
+                txCborHex,
+            });
+
+            const store = getStore(index);
+
+            // Verify no log yet
+            let entry = await store.findPendingTx(txHash);
+            expect(entry!.submissionLog ?? []).toHaveLength(0);
+
+            // Append should initialize the array
+            await store.appendSubmissionLog(txHash, {
+                at: 5000,
+                event: "submit-attempt",
+            });
+
+            entry = await store.findPendingTx(txHash);
+            expect(entry!.submissionLog).toHaveLength(1);
+            expect(entry!.submissionLog![0].at).toBe(5000);
+        });
+    });
 });
