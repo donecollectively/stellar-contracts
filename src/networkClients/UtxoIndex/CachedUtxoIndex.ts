@@ -43,6 +43,7 @@ import { bytesToHex, encodeUtf8, hexToBytes } from "@helios-lang/codec-utils";
 import {
     decodeUplcData,
     decodeUplcProgramV2FromCbor,
+    type UplcProgram,
     type UplcProgramV2,
 } from "@helios-lang/uplc";
 import type { CardanoClient } from "@helios-lang/tx-utils";
@@ -517,8 +518,7 @@ export class CachedUtxoIndex {
 
         // REQT/vk2bywdycn: Store all capo UTXOs in the index
         for (const utxo of capoUtxos) {
-            const entry = this.txInputToIndexEntry(utxo);
-            await this.store.saveUtxo(entry);
+            await this.indexUtxoFromTxInput(utxo);
         }
 
         // Extract unique transaction IDs from the UTXOs and fetch/store transaction details
@@ -911,8 +911,7 @@ export class CachedUtxoIndex {
 
         // Store each UTXO in the cache
         for (const utxo of utxos) {
-            const entry = this.txInputToIndexEntry(utxo);
-            await this.store.saveUtxo(entry);
+            await this.indexUtxoFromTxInput(utxo);
         }
 
         // Save wallet address with sync state
@@ -972,8 +971,7 @@ export class CachedUtxoIndex {
 
         // Store fresh UTXOs (put will overwrite existing by utxoId)
         for (const utxo of utxos) {
-            const entry = this.txInputToIndexEntry(utxo);
-            await this.store.saveUtxo(entry);
+            await this.indexUtxoFromTxInput(utxo);
         }
 
         // Update sync state
@@ -2193,6 +2191,25 @@ export class CachedUtxoIndex {
     ): Promise<void> {
         const entry = this.txOutputToIndexEntry(txHash, outputIndex, output, blockHeight);
         await this.store.saveUtxo(entry);
+        await this.cacheRefScriptIfPresent(output.refScript);
+    }
+
+    /**
+     * Pre-caches a reference script's CBOR in the script store, so that
+     * indexEntryToTxInput can reconstruct the TxOutput without a Blockfrost
+     * round-trip.  Essential for pending-tx outputs whose scripts aren't
+     * yet queryable on-chain, and a useful optimisation for confirmed outputs.
+     *
+     * No-op when refScript is undefined.  Idempotent — scripts are
+     * content-addressed, so re-saving the same hash is harmless.
+     */
+    private async cacheRefScriptIfPresent(
+        refScript: UplcProgram | undefined,
+    ): Promise<void> {
+        if (!refScript) return;
+        const scriptHash = bytesToHex(refScript.hash());
+        const cbor = bytesToHex(refScript.toCbor());
+        await this.store.saveScript({ scriptHash, cbor });
     }
 
     /**
@@ -2389,6 +2406,7 @@ export class CachedUtxoIndex {
     private async indexUtxoFromTxInput(txInput: TxInput): Promise<void> {
         const entry = this.txInputToIndexEntry(txInput);
         await this.store.saveUtxo(entry);
+        await this.cacheRefScriptIfPresent(txInput.output?.refScript);
     }
 
     async fetchFromBlockfrost<T>(url: string): Promise<T> {
@@ -2807,13 +2825,6 @@ export class CachedUtxoIndex {
         const entries = await this.store.findUtxosByAddress(addrStr);
 
         if (entries.length > 0) {
-            // 🔍 DIAG: Check for duplicate entries from store
-            const entryIds = entries.map(e => e.utxoId);
-            const entryIdSet = new Set(entryIds);
-            if (entryIdSet.size !== entryIds.length) {
-                console.error(`🔴 getUtxos: store.findUtxosByAddress returned ${entryIds.length} entries but only ${entryIdSet.size} unique! Duplicates:`,
-                    entryIds.filter((id, i) => entryIds.indexOf(id) !== i));
-            }
             return Promise.all(entries.map((e) => this.indexEntryToTxInput(e)));
         }
 
