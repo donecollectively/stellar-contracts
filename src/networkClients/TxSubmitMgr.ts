@@ -69,7 +69,7 @@ const basicRetryInterval = 1000;
 const gradualBackoff = 1.27;
 const firmBackoff = /* ~1.61 */ gradualBackoff * gradualBackoff;
 const halfSlot = 10 * 1000; // half of avg slot-time 20s
-const maxRescueAttempts = 10;
+const maxRescueAttempts = 20;
 
 type txSubmissionDetails = {
     name: string;
@@ -641,8 +641,21 @@ export class TxSubmitMgr extends StateMachine<
                 return this.transition("confirmed");
             }
             if (await this.inputUtxosAreResolvable()) {
-                this.submitIssue = "input utxo already spent";
-                this.$mgrState.isBadTx = problem;
+                // Input parent txs are known, but the utxo error could be transient
+                // (e.g. indexer hasn't refreshed after a batch dependency confirmed).
+                // Log the actual error for diagnosis of spent-vs-unavailable.
+                this.log(`utxo error with resolvable inputs (attempt ${this.$mgrState.failedSubmissions}):`, {
+                    message: problem.message,
+                    ...((problem as any).info ? { info: (problem as any).info } : {}),
+                    ...((problem as any).details ? { details: (problem as any).details } : {}),
+                });
+                this.emitLog("submit-failed", `utxo error (attempt ${this.$mgrState.failedSubmissions}): ${problem.message}`);
+                if (this.$mgrState.failedSubmissions >= 15) {
+                    this.submitIssue = "input utxo already spent";
+                    this.$mgrState.isBadTx = problem;
+                } else {
+                    this.submitIssue = "utxo not yet available (retrying)";
+                }
             } else {
                 const inputStatus = await this.checkTxInputStatus(this.tx);
                 if (inputStatus === "bad") {
