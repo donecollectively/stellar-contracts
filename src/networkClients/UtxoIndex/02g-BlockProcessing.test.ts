@@ -1520,7 +1520,8 @@ describe("Chain Rollback Detection (REQT/jrhh4jg6se)", () => {
         });
 
         // Call detectRolledBackBlocks (private method)
-        const rolledBack: string[] = await (index as any).detectRolledBackBlocks();
+        const result = await (index as any).detectRolledBackBlocks();
+        const rolledBack: string[] = result.rolledBackHashes;
 
         // Should detect the stored block 101 as rolled back
         expect(rolledBack.length).toBe(1);
@@ -1547,7 +1548,8 @@ describe("Chain Rollback Detection (REQT/jrhh4jg6se)", () => {
             [`blocks/${tipHash}/previous`]: canonical,
         });
 
-        const rolledBack: string[] = await (index as any).detectRolledBackBlocks();
+        const result = await (index as any).detectRolledBackBlocks();
+        const rolledBack: string[] = result.rolledBackHashes;
 
         expect(rolledBack.length).toBe(0);
     });
@@ -1726,22 +1728,32 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
         entry!.lastResubmitAt = Date.now() - 20000;
         await store.savePendingTx(entry!);
 
-        // Mock network.submitTx
-        const submitSpy = vi.fn().mockResolvedValue(undefined);
-        (index as any).network = { submitTx: submitSpy };
+        // Mock resubmitTx (private) to bypass CBOR decoding — test data uses dummy hex.
+        // This test validates the revert→resubmit flow, not CBOR validity.
+        const resubmitSpy = vi.fn().mockResolvedValue(undefined);
+        (index as any).resubmitTx = resubmitSpy;
 
         // Run next sync cycle
         const lastProcessedHash = makeBlock(102).hash;
+        const tipBlock = makeBlock(103);
         mockBlockfrost(index, {
-            "blocks/latest": makeBlock(103),
-            [`blocks/${lastProcessedHash}/next`]: [makeBlock(103)],
+            "blocks/latest": tipBlock,
+            [`blocks/${lastProcessedHash}/next`]: [tipBlock],
+            // detectRolledBackBlocks needs canonical chain from tip
+            [`blocks/${tipBlock.hash}/previous`]: [
+                makeBlock(99), makeBlock(100),
+                canonicalBlock101,
+                makeBlock(102), tipBlock,
+            ],
+            // syncIncremental processes the canonical block 101 saved as "unprocessed"
+            "blocks/101/addresses": [],
             "blocks/103/addresses": [],
         });
 
         await index.checkForNewTxns();
 
         // The reverted tx should have been resubmitted
-        expect(submitSpy).toHaveBeenCalled();
+        expect(resubmitSpy).toHaveBeenCalled();
     });
 });
 
@@ -1770,9 +1782,14 @@ describe("Block-Discovered PendingTxEntry (REQT/kfemj6eteg)", () => {
         //
         // Since processTransactionForNewUtxos will be modified to create
         // PendingTxEntry, we mock the tx details fetch but NOT the method itself.
+        const tipBlock = makeBlock(101);
         mockBlockfrost(index, {
-            "blocks/latest": makeBlock(101),
+            "blocks/latest": tipBlock,
             [`blocks/${lastProcessedHash}/next`]: [block101],
+            // detectRolledBackBlocks needs canonical chain from tip
+            [`blocks/${tipBlock.hash}/previous`]: [
+                makeBlock(98), makeBlock(99), makeBlock(100), tipBlock,
+            ],
             "blocks/101/addresses": [
                 {
                     address: TEST_CAPO_ADDRESS,
@@ -1837,12 +1854,20 @@ describe("Block-Discovered PendingTxEntry (REQT/kfemj6eteg)", () => {
             batchDepth: 2,
         });
 
+        // Mock resubmitTx to bypass CBOR decoding (test data uses dummy hex)
+        vi.spyOn(index as any, "resubmitTx").mockResolvedValue(undefined);
+
         const block101 = makeBlock(101, { tx_count: 1 });
         const lastProcessedHash = makeBlock(100).hash;
+        const tipBlock = makeBlock(101);
 
         mockBlockfrost(index, {
-            "blocks/latest": makeBlock(101),
+            "blocks/latest": tipBlock,
             [`blocks/${lastProcessedHash}/next`]: [block101],
+            // detectRolledBackBlocks needs canonical chain from tip
+            [`blocks/${tipBlock.hash}/previous`]: [
+                makeBlock(98), makeBlock(99), makeBlock(100), tipBlock,
+            ],
             "blocks/101/addresses": [
                 {
                     address: TEST_CAPO_ADDRESS,

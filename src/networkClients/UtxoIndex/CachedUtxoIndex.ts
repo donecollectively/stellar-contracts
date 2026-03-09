@@ -139,6 +139,14 @@ export interface TxRolledBackEvent {
     txd?: TxDescription<any, "submitted">;
 }
 
+// REQT/dnr06r6ch5 (Rollback Event) — emitted when a chain rollback is detected
+export interface ChainRollbackEvent {
+    /** Number of blocks rolled back */
+    depth: number;
+    /** Block hashes that were rolled back */
+    rolledBackBlockHashes: string[];
+}
+
 export interface CachedUtxoIndexEvents {
     /** Emitted when initial sync from scratch begins */
     syncStart: [];
@@ -159,6 +167,8 @@ export interface CachedUtxoIndexEvents {
     txRolledBack: [TxRolledBackEvent];
     /** Emitted after first sync cycle resolves pending state (stale → fresh) */
     pendingSynced: [];
+    // REQT/dnr06r6ch5 (Rollback Event) — emitted when rolled-back blocks are detected
+    chainRollback: [ChainRollbackEvent];
 }
 
 export class CachedUtxoIndex {
@@ -610,6 +620,20 @@ export class CachedUtxoIndex {
                         `Failed to fetch latest block: ${e2.message || e2}`,
                     );
                 }
+            }
+
+            // REQT/yasww6cqa4 (Chain Intersection Discovery) — detect rolled-back blocks
+            // before processing new blocks, so we clean up before indexing replacements.
+            try {
+                const { rolledBackHashes, canonicalBlocks } = await this.detectRolledBackBlocks();
+                if (rolledBackHashes.length > 0) {
+                    await this.executeBlockRollback(rolledBackHashes, canonicalBlocks);
+                }
+            } catch (e: any) {
+                await this.logError(
+                    "rbder",
+                    `Failed to detect/execute rollbacks: ${e.message || e}`,
+                );
             }
 
             // REQT/5d4f73c9bf: Determine processing cursor from store
@@ -1835,6 +1859,221 @@ export class CachedUtxoIndex {
     }
 
     // =========================================================================
+    // REQT/jrhh4jg6se: Chain Rollback Detection & Recovery
+    // =========================================================================
+
+    /**
+     * Detects rolled-back blocks by comparing stored block hashes against the
+     * canonical chain from Blockfrost. Returns the hashes of stored blocks that
+     * are no longer on the canonical chain, along with the canonical blocks
+     * (to avoid a redundant API call in executeBlockRollback).
+     *
+     * Uses `blocks/{tipHash}/previous?count=100` — a single API call that
+     * covers any realistic micro-fork rollback depth.
+     *
+     * REQT/yasww6cqa4 (Chain Intersection Discovery)
+     */
+    private async detectRolledBackBlocks(): Promise<{
+        rolledBackHashes: string[];
+        canonicalBlocks: BlockDetailsType[];
+    }> {
+        // Fetch canonical chain's recent blocks from Blockfrost
+        const canonicalBlocks = await this.fetchFromBlockfrost<BlockDetailsType[]>(
+            `blocks/${this.lastBlockId}/previous?count=100`, // REQT/yasww6cqa4
+        );
+
+        if (!Array.isArray(canonicalBlocks) || canonicalBlocks.length === 0) {
+            return { rolledBackHashes: [], canonicalBlocks: [] };
+        }
+
+        // REQT/yasww6cqa4: Sort by height ascending for ordered comparison
+        canonicalBlocks.sort((a, b) => a.height - b.height);
+
+        const rolledBackHashes: string[] = [];
+
+        for (const canonical of canonicalBlocks) {
+            // REQT/yasww6cqa4: Compare canonical hash against stored block at same height
+            const stored = await this.store.findBlockByHeight(canonical.height);
+            if (stored && stored.hash !== canonical.hash) {
+                // Stored block exists but hash differs — it was rolled back
+                rolledBackHashes.push(stored.hash); // REQT/yasww6cqa4
+            }
+        }
+
+        return { rolledBackHashes, canonicalBlocks };
+    }
+
+    /**
+     * Executes rollback recovery for blocks that are no longer on the canonical chain.
+     *
+     * For each rolled-back block:
+     * 1. Discovers which txs were in the rolled-back block
+     * 2. Checks if those txs appear in canonical replacement blocks (re-anchor)
+     *    or are genuinely lost (revert to pending)
+     * 3. Marks rolled-back blocks as "rolled back"
+     * 4. Saves canonical replacement blocks as "unprocessed" for normal sync
+     * 5. Emits chainRollback event
+     *
+     * REQT/4j3rs4pyjt (Rollback Recovery)
+     * REQT/2grpnzb2q0 (Resolve Pending Tx Confirmations)
+     * REQT/epwp74mn8x (Roll Back Processing Cursor)
+     * REQT/dnr06r6ch5 (Rollback Event)
+     */
+    private async executeBlockRollback(
+        rolledBackBlockHashes: string[],
+        canonicalBlocks: BlockDetailsType[],
+    ): Promise<void> {
+        await this.logOp(
+            "rb001",
+            `Executing block rollback: ${rolledBackBlockHashes.length} blocks rolled back`,
+        );
+
+        // REQT/jdkjh536mm: Set sync state to recovering
+        this._syncState = `recovering from rollback (${rolledBackBlockHashes.length} blocks)`;
+
+        // Build a map of canonical block hash → BlockDetailsType for height lookup
+        const canonicalByHeight = new Map<number, BlockDetailsType>();
+        for (const cb of canonicalBlocks) {
+            canonicalByHeight.set(cb.height, cb);
+        }
+
+        // REQT/2grpnzb2q0: Build a set of txHashes present in canonical replacement blocks
+        // For each canonical replacement block (at the same height as a rolled-back block),
+        // fetch its transaction list.
+        const canonicalTxSet = new Set<string>();
+        const canonicalTxBlockMap = new Map<string, BlockDetailsType>(); // txHash → canonical block
+
+        for (const rbHash of rolledBackBlockHashes) {
+            // Find the rolled-back block's height
+            const rbBlock = await this.store.findBlockId(rbHash);
+            if (!rbBlock) continue;
+
+            const canonicalReplacement = canonicalByHeight.get(rbBlock.height);
+            if (!canonicalReplacement) continue;
+
+            // Fetch txs in the canonical replacement block
+            const canonicalTxs = await this.fetchFromBlockfrost<Array<{ tx_hash: string }>>(
+                `blocks/${canonicalReplacement.hash}/txs`, // REQT/2grpnzb2q0
+            );
+
+            if (Array.isArray(canonicalTxs)) {
+                for (const tx of canonicalTxs) {
+                    canonicalTxSet.add(tx.tx_hash); // REQT/2grpnzb2q0
+                    canonicalTxBlockMap.set(tx.tx_hash, canonicalReplacement);
+                }
+            }
+        }
+
+        // REQT/2grpnzb2q0: Resolve each tx confirmed in a rolled-back block
+        // Fetch txs from each rolled-back block to know which txs are affected
+        for (const rbHash of rolledBackBlockHashes) {
+            const rbBlockTxs = await this.fetchFromBlockfrost<Array<{ tx_hash: string }>>(
+                `blocks/${rbHash}/txs`, // REQT/2grpnzb2q0
+            );
+
+            if (!Array.isArray(rbBlockTxs)) continue;
+
+            for (const tx of rbBlockTxs) {
+                const entry = await this.store.findPendingTx(tx.tx_hash);
+                if (!entry) continue; // No PendingTxEntry — nothing to resolve
+
+                if (canonicalTxSet.has(tx.tx_hash)) {
+                    // REQT/2grpnzb2q0: Re-anchor path — tx found on canonical fork
+                    const canonicalBlock = canonicalTxBlockMap.get(tx.tx_hash)!;
+                    entry.confirmedInBlockHash = canonicalBlock.hash; // REQT/2grpnzb2q0
+                    entry.confirmedAtBlockHeight = canonicalBlock.height; // REQT/2grpnzb2q0
+                    entry.confirmedAtSlot = canonicalBlock.slot; // REQT/2grpnzb2q0
+                    // Recalculate depth and confirmState from new height
+                    const blockDepth = this.lastBlockHeight - canonicalBlock.height;
+                    entry.confirmationBlockDepth = blockDepth;
+                    const { provisionalDepth, confidentDepth } = this.confirmationThresholds;
+                    if (blockDepth >= confidentDepth) {
+                        entry.confirmState = "confident";
+                    } else if (blockDepth >= provisionalDepth) {
+                        entry.confirmState = "likely";
+                    } else {
+                        entry.confirmState = "provisional";
+                    }
+                    await this.store.savePendingTx(entry);
+                    await this.logDetail(
+                        "rb2ra",
+                        `Re-anchored tx ${tx.tx_hash.slice(0, 8)}… to canonical block #${canonicalBlock.height} (${canonicalBlock.hash.slice(0, 12)}…)`,
+                    );
+                } else {
+                    // REQT/2grpnzb2q0: Revert path — tx NOT found on canonical fork
+                    await this.revertConfirmedPendingTx(entry); // REQT/2grpnzb2q0
+                }
+            }
+        }
+
+        // REQT/epwp74mn8x (Roll Back Processing Cursor):
+        // Mark rolled-back blocks as "rolled back" and save canonical replacements as "unprocessed"
+        for (const rbHash of rolledBackBlockHashes) {
+            const rbBlock = await this.store.findBlockId(rbHash);
+            if (rbBlock) {
+                await this.store.saveBlock({ ...rbBlock, state: "rolled back" }); // REQT/epwp74mn8x
+            }
+
+            // Save canonical replacement at same height as "unprocessed"
+            if (rbBlock) {
+                const canonicalReplacement = canonicalByHeight.get(rbBlock.height);
+                if (canonicalReplacement) {
+                    const entry = this.blockfrostBlockToIndexEntry(canonicalReplacement, "unprocessed");
+                    await this.store.saveBlock(entry); // REQT/epwp74mn8x
+                }
+            }
+        }
+
+        // REQT/dnr06r6ch5 (Rollback Event) — emit chainRollback event
+        this.events.emit("chainRollback", {
+            depth: rolledBackBlockHashes.length, // REQT/dnr06r6ch5
+            rolledBackBlockHashes, // REQT/dnr06r6ch5
+        });
+
+        await this.logOp(
+            "rb099",
+            `Block rollback complete: ${rolledBackBlockHashes.length} blocks rolled back`,
+        );
+    }
+
+    /**
+     * Reverts a confirmed PendingTxEntry back to "pending" status.
+     * Called when a tx's confirming block was rolled back and the tx
+     * is NOT found on the canonical fork.
+     *
+     * Does NOT touch UTxOs or records — speculative state from
+     * registration is still correct. Depth tracking and quiet
+     * resubmission resume automatically.
+     *
+     * REQT/b6h7km6h44 (Rollback Interaction)
+     * REQT/2grpnzb2q0 (Resolve Pending Tx Confirmations — revert path)
+     */
+    private async revertConfirmedPendingTx(entry: PendingTxEntry): Promise<void> {
+        const { txHash } = entry;
+
+        // REQT/b6h7km6h44: Revert to pending
+        entry.status = "pending"; // REQT/b6h7km6h44
+        entry.confirmedAtBlockHeight = undefined; // REQT/2grpnzb2q0
+        entry.confirmedAtSlot = undefined; // REQT/2grpnzb2q0
+        entry.confirmedInBlockHash = undefined; // REQT/2grpnzb2q0
+        entry.confirmState = undefined; // REQT/b6h7km6h44
+        entry.confirmationBlockDepth = 0; // REQT/2grpnzb2q0
+
+        // REQT/k55zssabq2 (forkRecoveryCount Field) — increment diagnostic counter
+        entry.forkRecoveryCount = (entry.forkRecoveryCount ?? 0) + 1; // REQT/k55zssabq2
+
+        await this.store.savePendingTx(entry);
+
+        // REQT/b6h7km6h44: Re-add to pendingTxHashes for resubmission eligibility
+        this.pendingTxHashes.add(txHash); // REQT/b6h7km6h44
+
+        await this.logDetail(
+            "rb2rv",
+            `Reverted tx ${txHash.slice(0, 8)}… to pending (forkRecoveryCount: ${entry.forkRecoveryCount})`,
+        );
+    }
+
+    // =========================================================================
     // REQT/mjhf1yezr9: isPending Query
     // REQT/r0y7s2vggr: getPendingTxs Query
     // =========================================================================
@@ -2036,6 +2275,59 @@ export class CachedUtxoIndex {
                 this._charterData = charterData;
                 await this.catalogDelegateUuts(charterData);
             }
+        }
+
+        // REQT/kfemj6eteg (Block-Discovered PendingTxEntry Creation) — create a
+        // PendingTxEntry for every tx processed from a confirmed block, unless one
+        // already exists (self-submitted txs have entries from registerPendingTx).
+        // This ensures all txs in the index have uniform tracking for rollback resolution.
+        const existingPendingEntry = await this.store.findPendingTx(txHash);
+        if (!existingPendingEntry) {
+            // REQT/kfemj6eteg: Extract validity interval from the already-decoded tx
+            // for deadlineSlot calculation. The tx was decoded above by findOrFetchTxDetails.
+            // Uses same pattern as registerPendingTx (tx.body.lastValidSlot).
+            const lastValidSlot = tx.body.lastValidSlot;
+            const deadlineSlot = lastValidSlot !== undefined
+                ? lastValidSlot + this.graceBufferSlots
+                : summary.block_height + this.graceBufferSlots; // fallback for txs without validity end
+
+            // REQT/kfemj6eteg: Fetch CBOR for this tx (for resubmission if needed).
+            // The CBOR is already in the store from findOrFetchTxDetails — retrieve it.
+            const txEntry = await this.store.findTxId(txHash);
+            const cborHex = txEntry?.cbor ?? ""; // REQT/kfemj6eteg — sensible default if missing
+
+            // Look up confirming block details
+            const confirmingBlock = await this.store.findBlockByHeight(summary.block_height);
+
+            const blockDepth = this.lastBlockHeight - summary.block_height;
+            const { provisionalDepth, confidentDepth } = this.confirmationThresholds;
+            let confirmState: "provisional" | "likely" | "confident" | "certain";
+            if (blockDepth >= confidentDepth) {
+                confirmState = "confident";
+            } else if (blockDepth >= provisionalDepth) {
+                confirmState = "likely";
+            } else {
+                confirmState = "provisional";
+            }
+
+            // REQT/kfemj6eteg: Sensible defaults for block-discovered entries
+            const blockDiscoveredEntry: PendingTxEntry = {
+                txHash,
+                description: "tx discovered from on-chain data", // REQT/kfemj6eteg
+                id: txHash, // REQT/kfemj6eteg — no TxDescription available
+                batchDepth: 86, // REQT/kfemj6eteg — sentinel identifying block-discovered origin
+                confirmationBlockDepth: blockDepth,
+                txCborHex: cborHex, // REQT/kfemj6eteg — same as signed for block-discovered
+                signedTxCborHex: cborHex, // REQT/kfemj6eteg
+                deadlineSlot, // REQT/kfemj6eteg
+                status: "confirmed", // REQT/kfemj6eteg
+                submittedAt: Date.now(),
+                confirmedAtBlockHeight: summary.block_height, // REQT/kfemj6eteg
+                confirmedAtSlot: confirmingBlock?.slot, // REQT/kfemj6eteg
+                confirmedInBlockHash: confirmingBlock?.hash, // REQT/kfemj6eteg
+                confirmState, // REQT/kfemj6eteg
+            };
+            await this.store.savePendingTx(blockDiscoveredEntry); // REQT/kfemj6eteg
         }
     }
 
