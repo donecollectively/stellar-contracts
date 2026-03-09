@@ -1,0 +1,9 @@
+{
+  "id": "7",
+  "subject": "7. Cross-file structural quality pass",
+  "description": "Check naming consistency, duplicated logic, implicit coupling across the changeset.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

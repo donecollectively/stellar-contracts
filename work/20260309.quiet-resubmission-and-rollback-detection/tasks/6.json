@@ -1,0 +1,9 @@
+{
+  "id": "6",
+  "subject": "6. Requirements vs implementation alignment — full pass",
+  "description": "Systematic check of each REQT marked IMPLEMENTED/NEEDS VERIFICATION against the actual code implementation.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

@@ -1,0 +1,9 @@
+{
+  "id": "4",
+  "subject": "4. Test meaningfulness — startup populates provisional entries",
+  "description": "loadPendingFromStore now loads provisional entries into pendingTxHashes. Check if the test covers this new behavior or only tests the original \"pending\" path.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

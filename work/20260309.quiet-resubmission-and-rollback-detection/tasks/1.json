@@ -1,0 +1,9 @@
+{
+  "id": "1",
+  "subject": "1. Block hash vs height correctness in rollback detection",
+  "description": "Verify detectRolledBackBlocks and executeBlockRollback use block hashes correctly for Blockfrost API queries. Check if height-based canonical block matching is correct or if it misses txs that landed at different heights on the winning fork.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

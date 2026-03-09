@@ -1,0 +1,9 @@
+{
+  "id": "5",
+  "subject": "5. Rollback canonical tx scan scope — same-height-only vs all-canonical",
+  "description": "The design discussion established txs can land at any height on the winning fork. Check if executeBlockRollback scans ALL canonical blocks or only same-height replacements.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

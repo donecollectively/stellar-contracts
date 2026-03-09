@@ -1,0 +1,9 @@
+{
+  "id": "3",
+  "subject": "3. Test meaningfulness — harmless errors test gutted",
+  "description": "The harmless-errors test was rewritten to only test CBOR decode failure, no longer testing SubmissionUtxoError or SubmissionExpiryError swallowing. Assess severity.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

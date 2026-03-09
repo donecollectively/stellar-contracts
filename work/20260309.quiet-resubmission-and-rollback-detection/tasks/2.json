@@ -1,0 +1,9 @@
+{
+  "id": "2",
+  "subject": "2. Test meaningfulness — mocking resubmitTx vs network.submitTx",
+  "description": "Assess whether mocking the private resubmitTx method instead of network.submitTx makes the resubmission tests meaningless. Check if resubmitTx itself is tested anywhere.",
+  "owner": "klaus",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}
