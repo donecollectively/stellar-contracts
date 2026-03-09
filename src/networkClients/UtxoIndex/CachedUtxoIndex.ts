@@ -635,6 +635,12 @@ export class CachedUtxoIndex {
                 }
             }
 
+            // REQT/z9d167q2mw (Resubmission Loop) — resubmit pending/provisional txs
+            // after block processing, before depth advancement. This ensures txs
+            // that were reverted by rollback detection (Phase 3/4, above) are
+            // immediately eligible for resubmission in this same cycle.
+            await this.resubmitStalePendingTxs();
+
             // REQT/ddzcp753jr: Recalculate confirmation depths after sync
             // Runs even when no new blocks were processed — tip may have
             // advanced in a prior cycle and depths need rechecking
@@ -1716,6 +1722,10 @@ export class CachedUtxoIndex {
         // Roll back any expired pending entries
         await this.checkPendingDeadlines();
 
+        // REQT/qdrr0es7bm (Resubmission on Startup) — trigger resubmission for all
+        // surviving pending entries after page reload, before flipping to "fresh"
+        await this.resubmitStalePendingTxs();
+
         // REQT/9r9rc1hrfv: Flip to fresh
         this._pendingSyncState = "fresh";
 
@@ -1726,6 +1736,102 @@ export class CachedUtxoIndex {
             "pt7rs",
             `Pending state resolved: pendingSyncState is now "fresh"`,
         );
+    }
+
+    // =========================================================================
+    // REQT/cbpw1a6j8q: Quiet Transaction Resubmission
+    // =========================================================================
+
+    /**
+     * Resubmits a signed transaction to the network. Decodes the CBOR and
+     * calls this.network.submitTx(). Designed for future extensibility:
+     * when Ogmios or Dred submitters are added, this method grows to route
+     * through multiple submission paths.
+     *
+     * REQT/zyw6grz9t1 (Submission Path Abstraction)
+     * REQT/zhgbnajdjg (Harmless Error Handling) — swallow expected errors
+     */
+    private async resubmitTx(signedCborHex: string): Promise<void> {
+        const tx = decodeTx(signedCborHex); // REQT/zyw6grz9t1
+        try {
+            await this.network.submitTx(tx); // REQT/zyw6grz9t1
+        } catch (e: any) {
+            // REQT/zhgbnajdjg (Harmless Error Handling) — swallow expected errors
+            if (e.kind === "SubmissionUtxoError") {
+                // UTxO already consumed — tx already landed or was outcompeted. Harmless.
+                return;
+            }
+            if (e.kind === "SubmissionExpiryError") {
+                // Validity window expired — deadline rollback will handle cleanup. Harmless.
+                return;
+            }
+            // Unexpected error — log warning but do NOT interrupt the resubmission loop
+            await this.logWarn(
+                "rs1er",
+                `Unexpected error resubmitting tx: ${e.message || e}`,
+            );
+        }
+    }
+
+    /**
+     * Iterates all txHashes in pendingTxHashes, loads each PendingTxEntry,
+     * checks eligibility, and calls resubmitTx for eligible entries.
+     * Called from checkForNewTxns() each sync cycle and from resolvePendingState()
+     * on startup.
+     *
+     * REQT/z9d167q2mw (Resubmission Loop)
+     * REQT/bq1nmd4c8x (Resubmission Scope)
+     * REQT/sg0pqr0dx7 (Resubmission Throttle)
+     */
+    private async resubmitStalePendingTxs(): Promise<void> {
+        if (this.pendingTxHashes.size === 0) return;
+
+        let resubmitCount = 0;
+        const now = Date.now();
+
+        for (const txHash of this.pendingTxHashes) {
+            const entry = await this.store.findPendingTx(txHash);
+            if (!entry) continue;
+
+            // REQT/bq1nmd4c8x (Resubmission Scope) — eligibility criteria:
+            // (1) status === "pending" OR (status === "confirmed" AND confirmState === "provisional")
+            const isEligibleStatus =
+                entry.status === "pending" ||
+                (entry.status === "confirmed" && entry.confirmState === "provisional"); // REQT/bq1nmd4c8x
+            if (!isEligibleStatus) continue;
+
+            // (2) validity window still open: raw validity end >= lastBlockSlot
+            const lastValidSlot = entry.deadlineSlot - this.graceBufferSlots; // REQT/bq1nmd4c8x
+            if (lastValidSlot < this.lastBlockSlot) continue; // REQT/bq1nmd4c8x — expired
+
+            // (3) deadline block has NOT reached "likely" depth
+            // If the deadline block itself has sufficient depth, the tx is either
+            // confirmed deep enough or will be rolled back — no need to resubmit
+            const deadlineBlock = await this.store.findFirstProcessedBlockAtOrAfterSlot(entry.deadlineSlot);
+            if (deadlineBlock) {
+                const depthPastDeadline = this.lastBlockHeight - deadlineBlock.height;
+                if (depthPastDeadline >= this.confirmationThresholds.provisionalDepth) continue;
+            }
+
+            // (4) throttle: at most once per 10 seconds per tx
+            // REQT/sg0pqr0dx7 (Resubmission Throttle)
+            if (entry.lastResubmitAt && (now - entry.lastResubmitAt) < 10_000) continue;
+
+            // All checks passed — resubmit
+            await this.resubmitTx(entry.signedTxCborHex); // REQT/z9d167q2mw
+
+            // REQT/sg0pqr0dx7: Update lastResubmitAt and persist
+            entry.lastResubmitAt = now;
+            await this.store.savePendingTx(entry);
+            resubmitCount++;
+        }
+
+        if (resubmitCount > 0) {
+            await this.logDetail(
+                "rs1ok",
+                `Resubmitted ${resubmitCount} pending/provisional txs`,
+            );
+        }
     }
 
     // =========================================================================
