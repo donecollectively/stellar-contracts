@@ -482,6 +482,44 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             await (index2 as any).resolvePendingState();
             expect(index2.pendingSyncState).toBe("fresh");
         });
+
+        it("resolvePendingState triggers resubmission for surviving entries (startup-resubmit/REQT/qdrr0es7bm)", async (context: localTC) => {
+            const { h } = context;
+            await h.snapToFirstTestRecord();
+
+            const submittedTcx = await createTestDataRecordTx(h);
+            const { tx, txCborHex, signedTxCborHex, txHash } = extractTxFromBatch(submittedTcx);
+
+            const dbName = createIsolatedDbName("startup-resubmit");
+
+            // First index: register a pending tx
+            const index1 = createTestIndex(h, dbName);
+            setLastSyncedBlock(index1, 100, "block100", 500);
+            await prePopulateInputUtxos(index1, tx);
+            await index1.registerPendingTx(signedTxCborHex, {
+                description: "resubmission test",
+                id: "test-txd-resubmit",
+                depth: 0,
+                txCborHex,
+            });
+
+            // Second index: same db — simulates page reload
+            const index2 = createTestIndex(h, dbName);
+            setLastSyncedBlock(index2, 100, "block100", 500);
+
+            // Mock network.submitTx to track resubmission
+            const submitSpy = vi.fn().mockResolvedValue(undefined);
+            (index2 as any).network = { ...h.network, submitTx: submitSpy };
+
+            // Load pending state from Dexie
+            await (index2 as any).loadPendingFromStore();
+
+            // resolvePendingState should trigger resubmission for surviving pending entries
+            await (index2 as any).resolvePendingState();
+
+            // The pending tx should have been resubmitted via quiet resubmission
+            expect(submitSpy).toHaveBeenCalled();
+        });
     });
 
     // =========================================================================
