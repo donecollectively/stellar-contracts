@@ -1775,24 +1775,52 @@ export class CachedUtxoIndex {
      * REQT/zyw6grz9t1 (Submission Path Abstraction)
      * REQT/zhgbnajdjg (Harmless Error Handling) — swallow expected errors
      */
-    private async resubmitTx(signedCborHex: string): Promise<void> {
+    private async resubmitTx(txHash: string, signedCborHex: string): Promise<void> {
+        // Log the resubmission attempt to the tx's submission log
+        await this.store.appendSubmissionLog(txHash, {
+            at: Date.now(),
+            event: "silent-resubmit",
+            detail: "quiet resubmission by CachedUtxoIndex",
+        });
+
         // REQT/zhgbnajdjg (Harmless Error Handling) — all errors caught to protect
         // the resubmission loop. decodeTx is inside try/catch because corrupted
         // CBOR in a stored entry must not crash the entire loop.
         try {
             const tx = decodeTx(signedCborHex); // REQT/zyw6grz9t1
             await this.network.submitTx(tx); // REQT/zyw6grz9t1
+
+            // Submission succeeded — log it
+            await this.store.appendSubmissionLog(txHash, {
+                at: Date.now(),
+                event: "silent-resubmit-succeeded",
+            });
         } catch (e: any) {
             // REQT/zhgbnajdjg (Harmless Error Handling) — swallow expected errors
             if (e.kind === "SubmissionUtxoError") {
                 // UTxO already consumed — tx already landed or was outcompeted. Harmless.
+                await this.store.appendSubmissionLog(txHash, {
+                    at: Date.now(),
+                    event: "silent-resubmit",
+                    detail: "swallowed SubmissionUtxoError — tx inputs already consumed (harmless)",
+                });
                 return;
             }
             if (e.kind === "SubmissionExpiryError") {
                 // Validity window expired — deadline rollback will handle cleanup. Harmless.
+                await this.store.appendSubmissionLog(txHash, {
+                    at: Date.now(),
+                    event: "silent-resubmit",
+                    detail: "swallowed SubmissionExpiryError — validity window expired (harmless)",
+                });
                 return;
             }
             // Unexpected error — log warning but do NOT interrupt the resubmission loop
+            await this.store.appendSubmissionLog(txHash, {
+                at: Date.now(),
+                event: "silent-resubmit",
+                detail: `unexpected error: ${e.message || e}`,
+            });
             await this.logWarn(
                 "rs1er",
                 `Unexpected error resubmitting tx: ${e.message || e}`,
@@ -1845,7 +1873,7 @@ export class CachedUtxoIndex {
             if (entry.lastResubmitAt && (now - entry.lastResubmitAt) < 10_000) continue;
 
             // All checks passed — resubmit
-            await this.resubmitTx(entry.signedTxCborHex); // REQT/z9d167q2mw
+            await this.resubmitTx(entry.txHash, entry.signedTxCborHex); // REQT/z9d167q2mw
 
             // REQT/sg0pqr0dx7: Update lastResubmitAt and persist
             entry.lastResubmitAt = now;
@@ -1941,10 +1969,19 @@ export class CachedUtxoIndex {
         canonicalBlocks: BlockDetailsType[],
         forkHeight: number,
     ): Promise<void> {
-        await this.logOp(
+        await this.logWarn(
             "rb001",
-            `Executing block rollback: ${rolledBackBlockHashes.length} blocks rolled back, fork at height ${forkHeight}`,
+            `⚠ Chain rollback detected: ${rolledBackBlockHashes.length} block(s) rolled back, fork at height ${forkHeight}`,
         );
+
+        // Log each rolled-back block with its height for diagnostics
+        for (const rbHash of rolledBackBlockHashes) {
+            const rbBlock = await this.store.findBlockId(rbHash);
+            await this.logWarn(
+                "rb0rb",
+                `  rolled-back block #${rbBlock?.height ?? "?"}: ${rbHash.slice(0, 16)}…`,
+            );
+        }
 
         // REQT/jdkjh536mm: Set sync state to recovering
         this._syncState = `recovering from rollback (${rolledBackBlockHashes.length} blocks)`;
@@ -1982,6 +2019,7 @@ export class CachedUtxoIndex {
         // REQT/2grpnzb2q0: Resolve each tx confirmed in a rolled-back block
         // Fetch txs from each rolled-back block to know which txs are affected
         for (const rbHash of rolledBackBlockHashes) {
+            const rbBlock = await this.store.findBlockId(rbHash);
             const rbBlockTxs = await this.fetchFromBlockfrost<Array<{ tx_hash: string }>>(
                 `blocks/${rbHash}/txs`, // REQT/2grpnzb2q0
             );
@@ -1990,7 +2028,13 @@ export class CachedUtxoIndex {
 
             for (const tx of rbBlockTxs) {
                 const entry = await this.store.findPendingTx(tx.tx_hash);
-                if (!entry) continue; // No PendingTxEntry — nothing to resolve
+                if (!entry) {
+                    await this.logWarn(
+                        "rb2na",
+                        `  tx ${tx.tx_hash.slice(0, 12)}… in rolled-back block #${rbBlock?.height ?? "?"}: no PendingTxEntry — skipped`,
+                    );
+                    continue;
+                }
 
                 if (canonicalTxSet.has(tx.tx_hash)) {
                     // REQT/2grpnzb2q0: Re-anchor path — tx found on canonical fork
@@ -2010,13 +2054,24 @@ export class CachedUtxoIndex {
                         entry.confirmState = "provisional";
                     }
                     await this.store.savePendingTx(entry);
-                    await this.logDetail(
+
+                    // Log re-anchor to submission log and warn log
+                    await this.store.appendSubmissionLog(tx.tx_hash, {
+                        at: Date.now(),
+                        event: "re-anchored",
+                        detail: `re-anchored from rolled-back block #${rbBlock?.height ?? "?"} to canonical block #${canonicalBlock.height} (${canonicalBlock.hash.slice(0, 16)}…)`,
+                    });
+                    await this.logWarn(
                         "rb2ra",
-                        `Re-anchored tx ${tx.tx_hash.slice(0, 8)}… to canonical block #${canonicalBlock.height} (${canonicalBlock.hash.slice(0, 12)}…)`,
+                        `  tx ${tx.tx_hash.slice(0, 12)}…: found on canonical fork → re-anchored to block #${canonicalBlock.height} (${canonicalBlock.hash.slice(0, 16)}…)`,
                     );
                 } else {
                     // REQT/2grpnzb2q0: Revert path — tx NOT found on canonical fork
-                    await this.revertConfirmedPendingTx(entry); // REQT/2grpnzb2q0
+                    await this.logWarn(
+                        "rb2rv",
+                        `  tx ${tx.tx_hash.slice(0, 12)}…: NOT found on canonical fork → reverting to pending`,
+                    );
+                    await this.revertConfirmedPendingTx(entry, rbBlock?.height); // REQT/2grpnzb2q0
                 }
             }
         }
@@ -2063,7 +2118,7 @@ export class CachedUtxoIndex {
      * REQT/b6h7km6h44 (Rollback Interaction)
      * REQT/2grpnzb2q0 (Resolve Pending Tx Confirmations — revert path)
      */
-    private async revertConfirmedPendingTx(entry: PendingTxEntry): Promise<void> {
+    private async revertConfirmedPendingTx(entry: PendingTxEntry, rolledBackBlockHeight?: number): Promise<void> {
         const { txHash } = entry;
 
         // REQT/b6h7km6h44: Revert to pending
@@ -2078,6 +2133,16 @@ export class CachedUtxoIndex {
         entry.forkRecoveryCount = (entry.forkRecoveryCount ?? 0) + 1; // REQT/k55zssabq2
 
         await this.store.savePendingTx(entry);
+
+        // Log to submission log — note the rolled-back block for diagnostics
+        const blockNote = rolledBackBlockHeight !== undefined
+            ? `Note: was confirmed at rolled-back block #${rolledBackBlockHeight}`
+            : "Note: was confirmed at a rolled-back block (height unknown)";
+        await this.store.appendSubmissionLog(txHash, {
+            at: Date.now(),
+            event: "rollback-revert",
+            detail: `${blockNote}. Reverted to pending (forkRecoveryCount: ${entry.forkRecoveryCount})`,
+        });
 
         // REQT/b6h7km6h44: Re-add to pendingTxHashes for resubmission eligibility
         this.pendingTxHashes.add(txHash); // REQT/b6h7km6h44
