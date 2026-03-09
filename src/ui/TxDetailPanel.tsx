@@ -88,11 +88,28 @@ export function TxDetailPanel({
             ? dumpAny(tx, txTracker.setup.networkParams)
             : entry?.txStructure;
 
-    // REQT/h5jhpxf9c8 (Submission Log) — live log preferred, persisted fallback
-    const submissionLog: SubmissionLogEntry[] | undefined =
-        (txTracker && txTracker.liveSubmissionLog.length > 0)
-            ? txTracker.liveSubmissionLog
-            : entry?.submissionLog;
+    // REQT/h5jhpxf9c8 (Submission Log) — merge live + persisted, deduplicated by timestamp+event.
+    // Live tracker entries and store-written entries (silent-resubmit, rollback-revert, etc.)
+    // both accumulate in Dexie via appendSubmissionLog, but the live array only has tracker-generated
+    // entries. Merge both sources so all events are visible regardless of origin.
+    const submissionLog: SubmissionLogEntry[] | undefined = (() => {
+        const live = txTracker?.liveSubmissionLog ?? [];
+        const persisted = entry?.submissionLog ?? [];
+        if (live.length === 0) return persisted.length > 0 ? persisted : undefined;
+        if (persisted.length === 0) return live;
+        // Merge: persisted is the superset (both live and store-written entries end up there).
+        // Live entries may be more current (not yet flushed). Use persisted as base,
+        // then append any live entries not yet in persisted (by at+event identity).
+        const seen = new Set(persisted.map(e => `${e.at}:${e.event}:${e.submitter ?? ""}`));
+        const merged = [...persisted];
+        for (const e of live) {
+            if (!seen.has(`${e.at}:${e.event}:${e.submitter ?? ""}`)) {
+                merged.push(e);
+            }
+        }
+        merged.sort((a, b) => a.at - b.at);
+        return merged.length > 0 ? merged : undefined;
+    })();
 
     // Determine available tabs
     const availableTabs: TabKey[] = [
