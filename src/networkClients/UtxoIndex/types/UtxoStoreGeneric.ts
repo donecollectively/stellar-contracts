@@ -97,6 +97,12 @@ export interface UtxoStoreGeneric {
     getPendingByStatus(status: string): Promise<PendingTxEntry[]>;
     setPendingTxStatus(txHash: string, status: string): Promise<void>;
 
+    /** Targeted single-field update on a PendingTxEntry — avoids full-record overwrite
+     *  that would clobber concurrently-appended submissionLog entries. */
+    updatePendingTxField<K extends keyof PendingTxEntry>(
+        txHash: string, field: K, value: PendingTxEntry[K]
+    ): Promise<void>;
+
     // REQT/j5pwm8btay (Append Submission Log) — atomic append to PendingTxEntry.submissionLog
     appendSubmissionLog(txHash: string, entry: SubmissionLogEntry): Promise<void>;
 

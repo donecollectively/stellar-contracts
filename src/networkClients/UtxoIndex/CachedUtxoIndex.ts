@@ -1875,9 +1875,9 @@ export class CachedUtxoIndex {
             // All checks passed — resubmit
             await this.resubmitTx(entry.txHash, entry.signedTxCborHex); // REQT/z9d167q2mw
 
-            // REQT/sg0pqr0dx7: Update lastResubmitAt and persist
-            entry.lastResubmitAt = now;
-            await this.store.savePendingTx(entry);
+            // REQT/sg0pqr0dx7: Update lastResubmitAt via targeted modify — NOT savePendingTx,
+            // which would overwrite the submissionLog entries that resubmitTx just appended.
+            await this.store.updatePendingTxField(entry.txHash, "lastResubmitAt", now);
             resubmitCount++;
         }
 

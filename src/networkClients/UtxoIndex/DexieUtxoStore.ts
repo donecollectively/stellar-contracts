@@ -475,6 +475,14 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
         });
     }
 
+    async updatePendingTxField<K extends keyof PendingTxEntry>(
+        txHash: string, field: K, value: PendingTxEntry[K]
+    ): Promise<void> {
+        await this.pendingTxs.where("txHash").equals(txHash).modify((record) => {
+            (record as any)[field] = value;
+        });
+    }
+
     // REQT/j5pwm8btay (Append Submission Log) — atomic read-append-write
     async appendSubmissionLog(txHash: string, entry: SubmissionLogEntry): Promise<void> {
         await this.pendingTxs.where("txHash").equals(txHash).modify((record: PendingTxEntry) => {
