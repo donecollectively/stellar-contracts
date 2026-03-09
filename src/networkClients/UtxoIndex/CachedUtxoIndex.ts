@@ -1323,23 +1323,29 @@ export class CachedUtxoIndex {
         const pendingEntry = await this.store.findPendingTx(txHash);
         if (!pendingEntry || pendingEntry.status !== "pending") return;
 
-        // Look up the confirming block's slot from the store
+        // Look up the confirming block's slot and hash from the store
         const confirmingBlock = await this.store.findBlockByHeight(blockHeight);
         const confirmedAtSlot = confirmingBlock?.slot;
+        // REQT/xsvqyh5gwb (confirmedInBlockHash Field) — store block hash for precise rollback matching
+        const confirmedInBlockHash = confirmingBlock?.hash;
 
         console.debug(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot}`);
         await this.logOp(
             "pt4cf",
-            `Confirming pending tx ${txHash}: ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot}`,
+            `Confirming pending tx ${txHash}: ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot} hash ${confirmedInBlockHash?.slice(0, 12)}…`,
         );
 
         // REQT/58b9nzgcbj: Set status, confirmedAtBlockHeight, and initial confirmState
         pendingEntry.status = "confirmed";
         pendingEntry.confirmedAtBlockHeight = blockHeight; // REQT/58b9nzgcbj
         pendingEntry.confirmedAtSlot = confirmedAtSlot;
+        pendingEntry.confirmedInBlockHash = confirmedInBlockHash; // REQT/xsvqyh5gwb
         pendingEntry.confirmState = "provisional";         // REQT/ddzcp753jr
         await this.store.savePendingTx(pendingEntry);
-        this.pendingTxHashes.delete(txHash);
+        // REQT/pgyqdvwn17 (pendingTxHashes Lifecycle) — do NOT remove from pendingTxHashes here.
+        // Entry remains in pendingTxHashes until confirmState reaches "likely" (in updateConfirmationDepths).
+        // This keeps provisionally-confirmed txs eligible for quiet resubmission during the
+        // micro-fork vulnerability window.
 
         // REQT/fz6z7rr702: Emit txConfirmed event with confirmState
         const txd = this.pendingTxMap.get(txHash);
@@ -1350,13 +1356,14 @@ export class CachedUtxoIndex {
             txd,
         });
 
-        // Clean up in-memory maps
+        // Clean up in-memory maps — pendingTxMap and pendingSpentUtxoIds are session-scoped
+        // and not needed for resubmission (which uses pendingTxHashes + Dexie store)
         this.pendingTxMap.delete(txHash);
         this.cleanupPendingSpentUtxoIds(txHash);
 
         await this.logOp(
             "pt4ok",
-            `Confirmed pending tx ${txHash} at block #${blockHeight}`,
+            `Confirmed pending tx ${txHash} at block #${blockHeight} (retained in pendingTxHashes until "likely")`,
         );
     }
 
@@ -1420,6 +1427,13 @@ export class CachedUtxoIndex {
                 const previousState = entry.confirmState;
                 entry.confirmState = newState;
                 await this.store.savePendingTx(entry);
+
+                // REQT/pgyqdvwn17 (pendingTxHashes Lifecycle) — remove from pendingTxHashes
+                // when confirmState reaches "likely". At this point the tx has sufficient
+                // depth to be considered reliably confirmed, so it exits resubmission scope.
+                if (previousState === "provisional" && newState !== "provisional") {
+                    this.pendingTxHashes.delete(entry.txHash);
+                }
 
                 // REQT/fz6z7rr702: Emit confirmStateChanged event
                 this.events.emit("confirmStateChanged", {
@@ -1650,6 +1664,7 @@ export class CachedUtxoIndex {
      * REQT/fn70x96nxm (Startup Recovery)
      */
     private async loadPendingFromStore(): Promise<void> {
+        // REQT/fn70x96nxm (Startup Recovery) — load pending entries
         const pendingEntries = await this.store.getPendingByStatus("pending");
         for (const entry of pendingEntries) {
             this.pendingTxHashes.add(entry.txHash);
@@ -1667,10 +1682,23 @@ export class CachedUtxoIndex {
                 );
             }
         }
-        if (pendingEntries.length > 0) {
+
+        // REQT/pgyqdvwn17 (pendingTxHashes Lifecycle) — also load provisionally-confirmed
+        // entries back into pendingTxHashes. These haven't reached "likely" depth yet and
+        // must remain in resubmission scope across page reloads.
+        const confirmedEntries = await this.store.getPendingByStatus("confirmed");
+        const provisionalEntries = confirmedEntries.filter(
+            e => e.confirmState === "provisional"
+        );
+        for (const entry of provisionalEntries) {
+            this.pendingTxHashes.add(entry.txHash);
+        }
+
+        const totalLoaded = pendingEntries.length + provisionalEntries.length;
+        if (totalLoaded > 0) {
             await this.logDetail(
                 "pt6ld",
-                `Loaded ${pendingEntries.length} pending entries from store for recovery`,
+                `Loaded ${pendingEntries.length} pending + ${provisionalEntries.length} provisional entries from store for recovery`,
             );
         }
     }

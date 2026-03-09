@@ -102,6 +102,33 @@ export interface PendingTxEntry {
      */
     confirmState?: "provisional" | "likely" | "confident" | "certain";
 
+    /**
+     * Block hash in which the transaction was confirmed.
+     * Enables precise rollback matching: when a block is rolled back,
+     * we match confirmedInBlockHash against the rolled-back block hash
+     * rather than relying on height alone (which is ambiguous during forks).
+     * Set by confirmPendingTx; cleared on revert.
+     * REQT/xsvqyh5gwb (confirmedInBlockHash Field)
+     */
+    confirmedInBlockHash?: string;
+
+    /**
+     * Diagnostic counter: how many times this tx's confirming block was
+     * rolled back and the entry reverted to pending. Used by UI
+     * (PendingTxTracker) to display fork recovery status.
+     * Incremented by revertConfirmedPendingTx on each rollback reversion.
+     * REQT/k55zssabq2 (forkRecoveryCount Field)
+     */
+    forkRecoveryCount?: number;
+
+    /**
+     * Epoch milliseconds of the last resubmission attempt. Used for
+     * throttling: at most once per 10 seconds per transaction.
+     * Persisted to Dexie for cross-reload throttling.
+     * REQT/sg0pqr0dx7 (Resubmission Throttle)
+     */
+    lastResubmitAt?: number;
+
     // =========================================================================
     // Diagnostic fields — captured at registration/signing for post-reload
     // inspection. All fields are IndexedDB-serializable.
