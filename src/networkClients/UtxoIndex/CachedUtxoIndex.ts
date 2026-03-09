@@ -625,9 +625,9 @@ export class CachedUtxoIndex {
             // REQT/yasww6cqa4 (Chain Intersection Discovery) — detect rolled-back blocks
             // before processing new blocks, so we clean up before indexing replacements.
             try {
-                const { rolledBackHashes, canonicalBlocks } = await this.detectRolledBackBlocks();
+                const { rolledBackHashes, canonicalBlocks, forkHeight } = await this.detectRolledBackBlocks();
                 if (rolledBackHashes.length > 0) {
-                    await this.executeBlockRollback(rolledBackHashes, canonicalBlocks);
+                    await this.executeBlockRollback(rolledBackHashes, canonicalBlocks, forkHeight);
                 }
             } catch (e: any) {
                 await this.logError(
@@ -1879,6 +1879,7 @@ export class CachedUtxoIndex {
     private async detectRolledBackBlocks(): Promise<{
         rolledBackHashes: string[];
         canonicalBlocks: BlockDetailsType[];
+        forkHeight: number;
     }> {
         // Fetch canonical chain's recent blocks from Blockfrost
         const canonicalBlocks = await this.fetchFromBlockfrost<BlockDetailsType[]>(
@@ -1886,7 +1887,7 @@ export class CachedUtxoIndex {
         );
 
         if (!Array.isArray(canonicalBlocks) || canonicalBlocks.length === 0) {
-            return { rolledBackHashes: [], canonicalBlocks: [] };
+            return { rolledBackHashes: [], canonicalBlocks: [], forkHeight: 0 };
         }
 
         // REQT/yasww6cqa4: Sort by height ascending for ordered comparison
@@ -1894,16 +1895,29 @@ export class CachedUtxoIndex {
 
         const rolledBackHashes: string[] = [];
 
+        // Walk canonical blocks ascending, comparing hashes against stored blocks.
+        // Track the last height where hashes agree (the chain intersection).
+        // The fork point is lastSharedHeight + 1 — where the chains first diverge.
+        let lastSharedHeight = -1;
+        let divergenceFound = false;
+
         for (const canonical of canonicalBlocks) {
             // REQT/yasww6cqa4: Compare canonical hash against stored block at same height
             const stored = await this.store.findBlockByHeight(canonical.height);
             if (stored && stored.hash !== canonical.hash) {
                 // Stored block exists but hash differs — it was rolled back
                 rolledBackHashes.push(stored.hash); // REQT/yasww6cqa4
+                divergenceFound = true;
+            } else if (stored && stored.hash === canonical.hash && !divergenceFound) {
+                // Hashes match and we haven't diverged yet — update intersection
+                lastSharedHeight = canonical.height;
             }
+            // No stored block at this height — can't confirm agreement
         }
 
-        return { rolledBackHashes, canonicalBlocks };
+        const forkHeight = lastSharedHeight + 1;
+
+        return { rolledBackHashes, canonicalBlocks, forkHeight };
     }
 
     /**
@@ -1925,10 +1939,11 @@ export class CachedUtxoIndex {
     private async executeBlockRollback(
         rolledBackBlockHashes: string[],
         canonicalBlocks: BlockDetailsType[],
+        forkHeight: number,
     ): Promise<void> {
         await this.logOp(
             "rb001",
-            `Executing block rollback: ${rolledBackBlockHashes.length} blocks rolled back`,
+            `Executing block rollback: ${rolledBackBlockHashes.length} blocks rolled back, fork at height ${forkHeight}`,
         );
 
         // REQT/jdkjh536mm: Set sync state to recovering
@@ -1942,26 +1957,11 @@ export class CachedUtxoIndex {
 
         // REQT/2grpnzb2q0: Build a set of txHashes present in canonical replacement blocks.
         // A tx from a rolled-back block can land at a DIFFERENT height on the winning fork,
-        // so we scan ALL canonical blocks above the fork point. The fork point is the last
-        // height where canonical and stored block hashes agree — found by walking the
-        // canonical chain (sorted ascending) and comparing hashes.
+        // so we scan ALL canonical blocks from the fork point upward. The fork point
+        // (forkHeight) was determined by detectRolledBackBlocks during the same chain walk
+        // that identified rolled-back blocks — no duplicate store queries needed.
         const canonicalTxSet = new Set<string>();
         const canonicalTxBlockMap = new Map<string, BlockDetailsType>(); // txHash → canonical block
-
-        // Find the fork point: last height where canonical hash matches stored hash.
-        // canonicalBlocks is sorted ascending by height. Walk it to find the chain
-        // intersection — the first height where hashes diverge is lastSharedHeight + 1.
-        let lastSharedHeight = -1;
-        for (const cb of canonicalBlocks) {
-            const stored = await this.store.findBlockByHeight(cb.height);
-            if (stored && stored.hash === cb.hash) {
-                lastSharedHeight = cb.height; // hashes match — chains agree at this height
-            } else if (stored && stored.hash !== cb.hash) {
-                break; // first divergence — fork starts here
-            }
-            // No stored block at this height — can't confirm agreement, keep looking
-        }
-        const forkHeight = lastSharedHeight + 1; // first divergent height
 
         // Scan all canonical blocks from the fork point upward
         for (const cb of canonicalBlocks) {

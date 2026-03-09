@@ -1601,25 +1601,40 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
         return { index, store: getStore(index) };
     }
 
+    // Full canonical chain for rollback tests: blocks 98-102, with 101 forked.
+    // Pre-fork blocks (98-100) match stored blocks. Block 101 has a different hash.
+    // Block 102 matches stored (fork was only 1 block deep).
+    // Passing the full chain exercises the fork-point exclusion logic — pre-fork
+    // blocks' /txs endpoints are deliberately NOT mocked, so any attempt to scan
+    // them triggers a mockBlockfrost "unmatched URL" error.
+    const FORK_HEIGHT = 101; // first divergent height; blocks 98-100 are shared
+    function fullCanonicalChain() {
+        return [
+            makeBlock(98), makeBlock(99), makeBlock(100),
+            makeBlock(101, { hash: CANONICAL_BLOCK_101_HASH }),
+            makeBlock(102),
+        ];
+    }
+
     it("re-anchors tx found on canonical fork (re-anchor/REQT/2grpnzb2q0)", async () => {
         const { index, store } = await setupForRollback("re-anchor");
 
-        const canonicalBlock101 = makeBlock(101, { hash: CANONICAL_BLOCK_101_HASH });
-
-        // Mock: canonical block 101' contains the same txHash
+        // Mock only post-fork block txs — pre-fork blocks NOT mocked (proves exclusion)
         mockBlockfrost(index, {
             [`blocks/${CANONICAL_BLOCK_101_HASH}/txs`]: [
                 { tx_hash: CONFIRMED_TX_HASH },
             ],
+            [`blocks/${makeBlock(102).hash}/txs`]: [],
             [`blocks/${STORED_BLOCK_101_HASH}/txs`]: [
                 { tx_hash: CONFIRMED_TX_HASH },
             ],
         });
 
-        // Execute rollback
+        // Execute rollback with full canonical chain and fork height
         await (index as any).executeBlockRollback(
             [STORED_BLOCK_101_HASH],
-            [canonicalBlock101]
+            fullCanonicalChain(),
+            FORK_HEIGHT,
         );
 
         // Tx should be re-anchored to the canonical block
@@ -1633,11 +1648,10 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
     it("reverts tx not found on canonical fork (revert-to-pending/REQT/2grpnzb2q0)", async () => {
         const { index, store } = await setupForRollback("revert-pending");
 
-        const canonicalBlock101 = makeBlock(101, { hash: CANONICAL_BLOCK_101_HASH });
-
-        // Mock: canonical block 101' does NOT contain the txHash
+        // Mock: canonical fork blocks do NOT contain the txHash
         mockBlockfrost(index, {
             [`blocks/${CANONICAL_BLOCK_101_HASH}/txs`]: [],
+            [`blocks/${makeBlock(102).hash}/txs`]: [],
             [`blocks/${STORED_BLOCK_101_HASH}/txs`]: [
                 { tx_hash: CONFIRMED_TX_HASH },
             ],
@@ -1645,7 +1659,8 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
 
         await (index as any).executeBlockRollback(
             [STORED_BLOCK_101_HASH],
-            [canonicalBlock101]
+            fullCanonicalChain(),
+            FORK_HEIGHT,
         );
 
         // Tx should be reverted to pending
@@ -1663,16 +1678,16 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
     it("marks rolled-back blocks and saves canonical as unprocessed (block-state/REQT/epwp74mn8x)", async () => {
         const { index, store } = await setupForRollback("block-state");
 
-        const canonicalBlock101 = makeBlock(101, { hash: CANONICAL_BLOCK_101_HASH });
-
         mockBlockfrost(index, {
             [`blocks/${CANONICAL_BLOCK_101_HASH}/txs`]: [],
+            [`blocks/${makeBlock(102).hash}/txs`]: [],
             [`blocks/${STORED_BLOCK_101_HASH}/txs`]: [],
         });
 
         await (index as any).executeBlockRollback(
             [STORED_BLOCK_101_HASH],
-            [canonicalBlock101]
+            fullCanonicalChain(),
+            FORK_HEIGHT,
         );
 
         // Stored block 101 should be "rolled back"
@@ -1689,10 +1704,9 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
     it("emits chainRollback event (rollback-event/REQT/dnr06r6ch5)", async () => {
         const { index } = await setupForRollback("rollback-event");
 
-        const canonicalBlock101 = makeBlock(101, { hash: CANONICAL_BLOCK_101_HASH });
-
         mockBlockfrost(index, {
             [`blocks/${CANONICAL_BLOCK_101_HASH}/txs`]: [],
+            [`blocks/${makeBlock(102).hash}/txs`]: [],
             [`blocks/${STORED_BLOCK_101_HASH}/txs`]: [],
         });
 
@@ -1703,7 +1717,8 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
 
         await (index as any).executeBlockRollback(
             [STORED_BLOCK_101_HASH],
-            [canonicalBlock101]
+            fullCanonicalChain(),
+            FORK_HEIGHT,
         );
 
         expect(rollbackEvents.length).toBe(1);
@@ -1714,11 +1729,10 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
     it("reverted pending tx resubmitted next cycle (revert-resubmit/REQT/z9d167q2mw)", async () => {
         const { index, store } = await setupForRollback("revert-resubmit");
 
-        const canonicalBlock101 = makeBlock(101, { hash: CANONICAL_BLOCK_101_HASH });
-
         // Revert: tx not on canonical fork
         mockBlockfrost(index, {
             [`blocks/${CANONICAL_BLOCK_101_HASH}/txs`]: [],
+            [`blocks/${makeBlock(102).hash}/txs`]: [],
             [`blocks/${STORED_BLOCK_101_HASH}/txs`]: [
                 { tx_hash: CONFIRMED_TX_HASH },
             ],
@@ -1726,7 +1740,8 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
 
         await (index as any).executeBlockRollback(
             [STORED_BLOCK_101_HASH],
-            [canonicalBlock101]
+            fullCanonicalChain(),
+            FORK_HEIGHT,
         );
 
         // Verify tx is now pending
@@ -1751,7 +1766,7 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
             // detectRolledBackBlocks needs canonical chain from tip
             [`blocks/${tipBlock.hash}/previous`]: [
                 makeBlock(99), makeBlock(100),
-                canonicalBlock101,
+                makeBlock(101, { hash: CANONICAL_BLOCK_101_HASH }),
                 makeBlock(102), tipBlock,
             ],
             // syncIncremental processes the canonical block 101 saved as "unprocessed"
