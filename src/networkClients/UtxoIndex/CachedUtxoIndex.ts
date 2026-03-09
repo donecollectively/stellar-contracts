@@ -1776,8 +1776,11 @@ export class CachedUtxoIndex {
      * REQT/zhgbnajdjg (Harmless Error Handling) — swallow expected errors
      */
     private async resubmitTx(signedCborHex: string): Promise<void> {
-        const tx = decodeTx(signedCborHex); // REQT/zyw6grz9t1
+        // REQT/zhgbnajdjg (Harmless Error Handling) — all errors caught to protect
+        // the resubmission loop. decodeTx is inside try/catch because corrupted
+        // CBOR in a stored entry must not crash the entire loop.
         try {
+            const tx = decodeTx(signedCborHex); // REQT/zyw6grz9t1
             await this.network.submitTx(tx); // REQT/zyw6grz9t1
         } catch (e: any) {
             // REQT/zhgbnajdjg (Harmless Error Handling) — swallow expected errors
