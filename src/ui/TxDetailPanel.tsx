@@ -41,7 +41,7 @@ export interface TxDetailPanelProps {
 
 }
 
-type TabKey = "transcript" | "structure" | "diagnostics";
+type TabKey = "transcript" | "structure" | "diagnostics" | "submissionLog";
 
 /**
  * Renders transaction detail with tabs: transcript, structure, diagnostics, submission log.
@@ -158,7 +158,21 @@ export function TxDetailPanel({
                                 </button>
                             );
                         })}
-                        <Lowlight className="float-right">{state}</Lowlight>
+                        <span className="float-right flex items-center gap-2">
+                            {txSubmitters && state === "failed" && (
+                                <button
+                                    className="text-xs px-2 py-0.5 rounded bg-amber-700/80 hover:bg-amber-600 text-amber-100 transition-colors"
+                                    onClick={() => {
+                                        for (const mgr of Object.values(txSubmitters)) {
+                                            mgr.transition("resubmit");
+                                        }
+                                    }}
+                                >
+                                    resubmit
+                                </button>
+                            )}
+                            <Lowlight>{state}</Lowlight>
+                        </span>
                     </div>
                 )}
 
