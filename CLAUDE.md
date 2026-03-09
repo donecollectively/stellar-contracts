@@ -4,6 +4,12 @@ This file provides guidance specific to maintaining the stellar-contracts
 repository itself. For architectural concepts, patterns, and reference material
 that applies to both this repo and downstream dApps, see `AGENTS.md`.
 
+## Related Project Symlinks
+
+Note that ./skillz/ may exist as symlink for local co-development of those repositories.  If you get an error accessing them, you may look in node_modules/ for them instead.
+
+You MUST load ./skillz/index.md !!!
+
 ## Development Commands
 
 ### Build & Development
@@ -54,5 +60,5 @@ Use `nvm use` to switch to the correct Node.js version (requires Node >= 20)
 
 ## MUST LOAD Related skills index
 
-Before you do anything, you MUST ensure you loaded ../skillz/index.md and use
+Before you do anything, you MUST ensure you loaded ./skillz/index.md and use
 this to load any of the mentioned skills just in time when needed.
