@@ -692,7 +692,7 @@ export class CachedUtxoIndex {
         this._syncState = "syncing";
         this.events.emit("syncing");
 
-        await this.logOp(
+        await this.logDetail(
             "si001",
             `Incremental sync: ${unprocessedBlocks.length} unprocessed blocks`,
         );
@@ -726,7 +726,7 @@ export class CachedUtxoIndex {
             await this.store.saveBlock({ ...block, state: "processed" });
         }
 
-        await this.logOp(
+        await this.logDetail(
             "si003",
             `Incremental sync complete: processed ${unprocessedBlocks.length} blocks`,
         );
@@ -933,7 +933,7 @@ export class CachedUtxoIndex {
             return;
         }
 
-        await this.logOp("wa1rg", `Registering wallet address: ${address}`);
+        await this.logDetail("wa1rg", `Registering wallet address: ${address}`);
 
         // Fetch current UTXOs from network
         const heliosAddress = makeAddress(address);
@@ -1032,7 +1032,7 @@ export class CachedUtxoIndex {
      */
     async attachCapo(capo: Capo<any>): Promise<void> {
         this._capo = capo;
-        await this.logOp(
+        await this.logDetail(
             "ac1at",
             "Capo attached for datum parsing",
         );
@@ -3080,7 +3080,7 @@ export class CachedUtxoIndex {
         }
 
         if (totalStored > 0) {
-            await this.logOp(
+            await this.logDetail(
                 "fnb01",
                 `Discovered and stored ${totalStored} new blocks since #${lastSeen.height}`,
             );
