@@ -1940,29 +1940,41 @@ export class CachedUtxoIndex {
             canonicalByHeight.set(cb.height, cb);
         }
 
-        // REQT/2grpnzb2q0: Build a set of txHashes present in canonical replacement blocks
-        // For each canonical replacement block (at the same height as a rolled-back block),
-        // fetch its transaction list.
+        // REQT/2grpnzb2q0: Build a set of txHashes present in canonical replacement blocks.
+        // A tx from a rolled-back block can land at a DIFFERENT height on the winning fork,
+        // so we scan ALL canonical blocks above the fork point. The fork point is the last
+        // height where canonical and stored block hashes agree — found by walking the
+        // canonical chain (sorted ascending) and comparing hashes.
         const canonicalTxSet = new Set<string>();
         const canonicalTxBlockMap = new Map<string, BlockDetailsType>(); // txHash → canonical block
 
-        for (const rbHash of rolledBackBlockHashes) {
-            // Find the rolled-back block's height
-            const rbBlock = await this.store.findBlockId(rbHash);
-            if (!rbBlock) continue;
+        // Find the fork point: last height where canonical hash matches stored hash.
+        // canonicalBlocks is sorted ascending by height. Walk it to find the chain
+        // intersection — the first height where hashes diverge is lastSharedHeight + 1.
+        let lastSharedHeight = -1;
+        for (const cb of canonicalBlocks) {
+            const stored = await this.store.findBlockByHeight(cb.height);
+            if (stored && stored.hash === cb.hash) {
+                lastSharedHeight = cb.height; // hashes match — chains agree at this height
+            } else if (stored && stored.hash !== cb.hash) {
+                break; // first divergence — fork starts here
+            }
+            // No stored block at this height — can't confirm agreement, keep looking
+        }
+        const forkHeight = lastSharedHeight + 1; // first divergent height
 
-            const canonicalReplacement = canonicalByHeight.get(rbBlock.height);
-            if (!canonicalReplacement) continue;
+        // Scan all canonical blocks from the fork point upward
+        for (const cb of canonicalBlocks) {
+            if (cb.height < forkHeight) continue; // below fork — identical on both chains
 
-            // Fetch txs in the canonical replacement block
             const canonicalTxs = await this.fetchFromBlockfrost<Array<{ tx_hash: string }>>(
-                `blocks/${canonicalReplacement.hash}/txs`, // REQT/2grpnzb2q0
+                `blocks/${cb.hash}/txs`, // REQT/2grpnzb2q0
             );
 
             if (Array.isArray(canonicalTxs)) {
                 for (const tx of canonicalTxs) {
                     canonicalTxSet.add(tx.tx_hash); // REQT/2grpnzb2q0
-                    canonicalTxBlockMap.set(tx.tx_hash, canonicalReplacement);
+                    canonicalTxBlockMap.set(tx.tx_hash, cb);
                 }
             }
         }
