@@ -37,9 +37,8 @@ export function useCapoDappProvider<
     const [isMounted, setIsMounted] = React.useState(false);
     const [capo, setCapo] = React.useState<C | undefined>(provider.capo!);
     const [checking, keepChecking] = React.useState(1);
-    const [timeout, replaceTimeout] = React.useState<NodeJS.Timeout | null>(
-        null
-    );
+    // REQT/fbxxqtz6rd (No Consumer Changes Required) — polling detects gated capo transition
+    // REQT/z8zk3jxna7 (Deferred Readiness Polling) — checking in deps keeps polling alive
     React.useEffect(() => {
         if (!isMounted) {
             setIsMounted(true);
@@ -56,13 +55,12 @@ export function useCapoDappProvider<
             setCapo(provider?.capo);
         }
         if (!capo?.isConnected || !provider?.userInfo.wallet) {
-            replaceTimeout(
-                setTimeout(() => {
-                    keepChecking(1 + checking);
-                }, 2000)
-            );
+            const t = setTimeout(() => {
+                keepChecking(1 + checking);
+            }, 2000);
+            return () => clearTimeout(t);
         }
-    }, [provider, provider?.userInfo.wallet, capo, provider.capo]);
+    }, [provider, provider?.userInfo.wallet, capo, provider.capo, checking]);
 
     const memoized = useMemo(() => {
         debugBox(

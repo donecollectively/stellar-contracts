@@ -200,6 +200,8 @@ let singleton = undefined as CapoDAppProvider<any> | undefined;
  */
 export type CapoDappProviderState<CapoType extends Capo<any>> = {
     capo?: CapoType;
+    /** When true, the capo instance is fully initialized and safe to expose to consumers */
+    capoReady?: boolean;
     networkParams?: NetworkParams;
 
     status: CapoDappStatus<any>;
@@ -947,7 +949,7 @@ export class CapoDAppProvider<
         }
 
         // await this.updateState('connecting to wallet', {
-        if (!this.capo) {
+        if (!this.rawCapo) {
             await this.updateStatus(
                 "initializing on-chain contracts",
                 {
@@ -1268,8 +1270,8 @@ export class CapoDAppProvider<
             }
 
             // Only update capo network if not already using CachedUtxoIndex
-            if (this.capo && !this.state.utxoIndex) {
-                this.capo.setup.network = networkClient;
+            if (this.rawCapo && !this.state.utxoIndex) {
+                this.rawCapo.setup.network = networkClient;
             }
         } else {
             if (!!this.props.hydra) {
@@ -1386,12 +1388,12 @@ export class CapoDAppProvider<
             }
             wallet = simpleWallet;
             foundNetworkName = this.props.targetNetwork;
-            if (this.capo) {
+            if (this.rawCapo) {
                 // Only update network if not already using CachedUtxoIndex
                 if (!this.state.utxoIndex) {
-                    this.capo.setup.network = simpleWallet.cardanoClient;
+                    this.rawCapo.setup.network = simpleWallet.cardanoClient;
                 }
-                this.capo.setup.actorContext.wallet = wallet;
+                this.rawCapo.setup.actorContext.wallet = wallet;
             }
             const networkParams = await simpleWallet.cardanoClient.parameters;
             const addr = (await wallet.usedAddresses)[0];
@@ -1458,7 +1460,7 @@ export class CapoDAppProvider<
             newState
         );
 
-        if (this.capo) this.capo.actorContext.wallet = wallet;
+        if (this.rawCapo) this.rawCapo.actorContext.wallet = wallet;
 
         // Register wallet address with CachedUtxoIndex so it can serve wallet UTXOs from cache
         if (this.state.utxoIndex && addrString) {
@@ -1801,7 +1803,8 @@ export class CapoDAppProvider<
                             "capture this capo object for use in transaction-building...",
                     },
                     `//${id}: Capo is connected to wallet, ready to do an on-chain activity`,
-                    { capo }
+                    // REQT/w475q7ahbm (Readiness Gate) — capo and capoReady set atomically
+                    { capo, capoReady: true }
                 );
                 // Still check wallet tokens if wallet is connected
                 if (wallet) {
@@ -1819,7 +1822,9 @@ export class CapoDAppProvider<
                 },
                 `//${id}: searching (or freshening search after wallet connection)`,
                 {
+                    // REQT/w475q7ahbm (Readiness Gate) — capo and capoReady set atomically
                     capo: capo,
+                    capoReady: true,
                 }
             );
             this.checkWalletTokens();
@@ -2309,7 +2314,13 @@ export class CapoDAppProvider<
      * including including status updates, error-reporting and default UI
      * elements
      */
+    // REQT/w475q7ahbm (Readiness Gate) — gate capo exposure until fully initialized
     get capo(): CapoType | undefined {
+        return this.state.capoReady ? this.state.capo : undefined;
+    }
+
+    // REQT/hdckrer5gq (Bootstrap Path Exemption) — internal access bypasses the readiness gate
+    private get rawCapo(): CapoType | undefined {
         return this.state.capo;
     }
 }
