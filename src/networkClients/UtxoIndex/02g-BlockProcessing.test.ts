@@ -1469,20 +1469,21 @@ describe("Quiet Resubmission (REQT/cbpw1a6j8q)", () => {
         expect(resubmitSpy).not.toHaveBeenCalled();
     });
 
-    it("swallows harmless errors, logs unexpected (harmless-errors/REQT/zhgbnajdjg)", async () => {
+    // TODO: REQT/zhgbnajdjg also requires swallowing SubmissionUtxoError and
+    // SubmissionExpiryError by checking e.kind. Those paths are untested —
+    // exercising them requires valid CBOR that decodes successfully but
+    // triggers a typed error from network.submitTx.
+    it("catches errors in resubmitTx without crashing sync loop (error-catch/REQT/zhgbnajdjg)", async () => {
         const index = createTestIndex(uniqueDbName("harmless-err"));
 
         await seedProcessedBlocks(index, 98, 100);
 
         await seedPendingTx(index, PENDING_TX_HASH, {
-            signedTxCborHex: "aabbccdd",
+            signedTxCborHex: "aabbccdd", // invalid CBOR — triggers decode error
             deadlineSlot: 99999999,
             lastResubmitAt: Date.now() - 20000,
         });
 
-        // Test that CBOR decode errors inside resubmitTx are caught and don't
-        // crash the resubmission loop or checkForNewTxns. With dummy CBOR hex,
-        // decodeTx fails — this exercises the try/catch boundary in resubmitTx.
         const lastProcessedHash = makeBlock(100).hash;
         const tipBlock = makeBlock(101);
         mockBlockfrost(index, {
@@ -1494,7 +1495,7 @@ describe("Quiet Resubmission (REQT/cbpw1a6j8q)", () => {
             "blocks/101/addresses": [],
         });
 
-        // Should NOT throw — CBOR decode error caught inside resubmitTx's try/catch
+        // CBOR decode error caught inside resubmitTx's try/catch — sync loop continues
         await expect(index.checkForNewTxns()).resolves.toBeUndefined();
     });
 });
