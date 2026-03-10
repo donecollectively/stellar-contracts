@@ -1,5 +1,6 @@
 import * as React from "react";
-import { makeShelleyAddress } from "@helios-lang/ledger";
+import { makeShelleyAddress, makeAssetClass } from "@helios-lang/ledger";
+import type { MintingPolicyHash } from "@helios-lang/ledger";
 import {
     DashHighlightItem,
     Highlight,
@@ -32,6 +33,29 @@ import {
 } from "./CapoDappProviderContext.js";
 
 /**
+ * Hook for hosting a shared copy-feedback indicator.
+ * Call `showCopyFeedback(msg)` from any child; the message auto-clears after 2s.
+ */
+function useCopyFeedback(timeout = 2000) {
+    const [message, setMessage] = React.useState<string | null>(null);
+    const timerRef = React.useRef<ReturnType<typeof setTimeout>>();
+
+    const show = React.useCallback(
+        (msg: string) => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+            setMessage(msg);
+            timerRef.current = setTimeout(() => setMessage(null), timeout);
+        },
+        [timeout]
+    );
+
+    // Cleanup on unmount
+    React.useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+    return { copyFeedback: message, showCopyFeedback: show };
+}
+
+/**
  * Shows a Capo-based dApp's charter status as a dashboard-style screen
  * @public
  */
@@ -41,6 +65,7 @@ export function CharterStatus() {
 
     const [charterData, setCharterData] = React.useState<CharterData>();
     const [statusMessage, setStatusMessage] = React.useState("");
+    const { copyFeedback, showCopyFeedback } = useCopyFeedback();
 
     React.useEffect(() => {
         if (!provider?.userInfo?.wallet) {
@@ -227,22 +252,31 @@ export function CharterStatus() {
             <DashboardHighlights
                 title="Highlights"
                 footer={
-                    <>
-                        Capo:{" "}
-                        <Softlight as="span">
-                            {capo?.address?.toString()}
-                        </Softlight>
-                        <div>
-                            Minting policy:{" "}
+                    <div className="flex justify-between items-end w-full gap-4">
+                        <span
+                            className={`text-[11px] text-green-400/80 transition-opacity duration-300 whitespace-nowrap ${
+                                copyFeedback ? "opacity-100" : "opacity-0"
+                            }`}
+                        >
+                            {copyFeedback || "\u00A0"}
+                        </span>
+                        <span className="text-right">
+                            Capo:{" "}
                             <Softlight as="span">
-                                {capo?.mintingPolicyHash?.toString()}
+                                {capo?.address?.toString()}
                             </Softlight>
-                        </div>
-                    </>
+                            <div>
+                                Minting policy:{" "}
+                                <Softlight as="span">
+                                    {capo?.mintingPolicyHash?.toString()}
+                                </Softlight>
+                            </div>
+                        </span>
+                    </div>
                 }
             >
                 {capo && charterData && (
-                    <CharterHighlights capo={capo} charterData={charterData} />
+                    <CharterHighlights capo={capo} charterData={charterData} showCopyFeedback={showCopyFeedback} />
                 )}
                 {upgradeInfo}
             </DashboardHighlights>
@@ -289,9 +323,11 @@ export function CharterStatus() {
 export function CharterHighlights({
     capo,
     charterData,
+    showCopyFeedback,
 }: {
     capo: Capo<any, any>;
     charterData: CharterData;
+    showCopyFeedback: (msg: string) => void;
 }) {
     const isMainnet = capo.setup.isMainnet;
     const [{ mintDgt, spendDgt }, setDelegates] = React.useState<{
@@ -413,6 +449,8 @@ export function CharterHighlights({
                             delegate={dataControllers[roleName]}
                             mainnet={isMainnet}
                             foundRole={foundRole}
+                            capoMph={capo.mintingPolicyHash as MintingPolicyHash}
+                            showCopyFeedback={showCopyFeedback}
                         />
                     );
                 }
@@ -426,12 +464,48 @@ function DelegatedDataPolicyItem({
     delegate,
     mainnet,
     foundRole,
+    capoMph,
+    showCopyFeedback,
 }: {
     roleName: string;
     delegate: DelegatedDataContract<any, any>;
     mainnet: boolean;
     foundRole: ErgoCapoManifestEntry;
+    capoMph: MintingPolicyHash;
+    showCopyFeedback: (msg: string) => void;
 }) {
+    const tokenName = bytesToText(foundRole.tokenName);
+    const policyHex = delegate?.validatorHash.toHex() ?? "";
+    // Trim: show first 8 + … + last 8 of the 56-char policy hash
+    const policyTrimmed =
+        policyHex.length > 20
+            ? `${policyHex.slice(0, 8)}…${policyHex.slice(-8)}`
+            : policyHex;
+
+    // Token name: split at last dash for prefix/suffix trimming (matches MemberStatusPanel UUT pattern)
+    const dashIdx = tokenName.lastIndexOf("-");
+    const tnPrefix = dashIdx > 0 ? tokenName.slice(0, dashIdx) : tokenName;
+    const tnSuffix = dashIdx > 0 ? tokenName.slice(dashIdx) : "";
+
+    const copyAssetClass = async () => {
+        try {
+            const ac = makeAssetClass(capoMph, foundRole.tokenName);
+            await navigator.clipboard.writeText(ac.toString());
+            showCopyFeedback(`Copied assetId ${tokenName}`);
+        } catch {
+            showCopyFeedback("Copy failed");
+        }
+    };
+
+    const copyPolicyId = async () => {
+        try {
+            await navigator.clipboard.writeText(policyHex);
+            showCopyFeedback(`Copied policy ${policyTrimmed}`);
+        } catch {
+            showCopyFeedback("Copy failed");
+        }
+    };
+
     return (
         <DashHighlightItem
             title={roleName}
@@ -451,18 +525,55 @@ function DelegatedDataPolicyItem({
                         Delegated data policy
                         <div key="thing1" className="text-xs">
                             &nbsp;&nbsp;&nbsp;
-                            {bytesToText(foundRole.tokenName)}
+                            <Lowlight as="span" className="text-xs">for type </Lowlight>
+                            <Highlight as="span" className="whitespace-nowrap">
+                                {foundRole.entryType.DgDataPolicy?.idPrefix}-*
+                            </Highlight>
                         </div>
                         <div key="thing2" className="text-xs">
-                        policy {delegate?.validatorHash.toHex()}
+                            policy{" "}
+                            <span
+                                className="cursor-pointer hover:bg-slate-700/50 transition-all
+                                           rounded-sm px-0.5"
+                                title="Click to copy policy hash"
+                                onClick={copyPolicyId}
+                            >
+                                <span className="text-slate-300">{policyTrimmed}</span>
+                            </span>
                         </div>
                     </Softlight>
                 </div>
                 <div className="flex flex-col items-end">
-                    <Lowlight className="text-xs">for type</Lowlight>
-                    <Highlight as="span" className="whitespace-nowrap">
-                        {foundRole.entryType.DgDataPolicy?.idPrefix}-*
-                    </Highlight>
+                    <span
+                        className="group/tn inline-flex items-center cursor-pointer
+                                   bg-slate-700/50 hover:bg-slate-600/50
+                                   rounded-l-full rounded-r-sm
+                                   origin-center transition-transform duration-300 ease-out
+                                   hover:scale-125"
+                        title="Click to copy AssetClass"
+                        onClick={copyAssetClass}
+                    >
+                        {/* Coin circle — always visible */}
+                        <span className="relative flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                            <span
+                                className="absolute inset-0 rounded-full"
+                                style={{
+                                    background:
+                                        "radial-gradient(circle at 35% 35%, #d1d5db 0%, #94a3b8 60%, #64748b 100%)",
+                                    opacity: 0.35,
+                                }}
+                            />
+                            <span className="relative text-slate-200 text-[9px] font-semibold leading-none">
+                                {(tnPrefix.charAt(0) + tnPrefix.slice(1).replace(/[^A-Z]/g, "")).toUpperCase()}
+                            </span>
+                        </span>
+                        <span className="pl-0.5 pr-1.5 h-5 flex items-center text-xs">
+                            <span className="text-slate-300 group-hover/tn:text-slate-100 leading-none flex-shrink-0 transition-colors duration-300">{tnPrefix}</span>
+                            <span className="text-slate-500/70 group-hover/tn:text-slate-300 text-[9px] leading-none whitespace-nowrap transition-colors duration-300">
+                                {tnSuffix}
+                            </span>
+                        </span>
+                    </span>
                 </div>
             </div>
             {delegate?.preloadedBundle.previousOnchainScript ? (
