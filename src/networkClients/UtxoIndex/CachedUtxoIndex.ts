@@ -829,9 +829,14 @@ export class CachedUtxoIndex {
         }
 
         // Find cached unspent UTxOs at capo address that are no longer on-chain
+        // REQT/2he55bafxd (Catchup Mode) — skip speculative outputs from pending txs
         const cachedUtxos = await this.store.findUtxosByAddress(this.capoAddress);
         for (const cached of cachedUtxos) {
             if (!onChainIds.has(cached.utxoId)) {
+                const txHash = cached.utxoId.split("#")[0];
+                if (this.pendingTxHashes.has(txHash)) {
+                    continue;
+                }
                 // REQT/2he55bafxd: Mark stale UTxO as spent during reconciliation
                 await this.store.markUtxoSpent(cached.utxoId, "reconciled");
                 await this.logDetail(
@@ -996,10 +1001,15 @@ export class CachedUtxoIndex {
         const freshUtxoIds = new Set(utxos.map((u) => u.id.toString()));
 
         // Find cached unspent UTxOs for this address that are no longer on-chain
+        // REQT/06b01nyf51 (Wallet Snapshot Sync) — skip speculative outputs from pending txs
         const cachedUtxos = await this.store.findUtxosByAddress(address);
         let removedCount = 0;
         for (const cached of cachedUtxos) {
             if (!freshUtxoIds.has(cached.utxoId)) {
+                const txHash = cached.utxoId.split("#")[0];
+                if (this.pendingTxHashes.has(txHash)) {
+                    continue;
+                }
                 await this.store.deleteUtxo(cached.utxoId);
                 removedCount++;
             }
