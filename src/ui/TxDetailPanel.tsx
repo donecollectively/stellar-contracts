@@ -71,7 +71,7 @@ export function TxDetailPanel({
     // Resolve data from live tracker or persisted entry
     const description = txTracker?.txd?.description ?? entry?.description ?? "";
     const txName = txTracker?.txd?.txName ?? entry?.txName;
-    const moreInfo = txTracker?.txd?.moreInfo;
+    const moreInfo = txTracker?.txd?.moreInfo ?? entry?.moreInfo;
     const state = txTracker?.$state ?? entry?.status ?? "unknown";
     const txSubmitters = txTracker?.txSubmitters;
     const tcx = txTracker?.txd?.tcx;
