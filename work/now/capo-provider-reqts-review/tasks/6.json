@@ -1,0 +1,8 @@
+{
+  "id": "6",
+  "subject": "1.6: Review Areas 5+6 — Consumer Hook & Transaction Infrastructure (5 reqts)",
+  "description": "Review hook contract, TxBatcher setup, bootstrap charter, role discovery. Correct scope boundaries? Status accuracy? Work unit alignment?",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

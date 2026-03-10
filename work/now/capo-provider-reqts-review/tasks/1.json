@@ -1,0 +1,8 @@
+{
+  "id": "1",
+  "subject": "1.1: Review module identity — name, description, techs, background, goals",
+  "description": "Review the MOD record: does the description accurately capture what CapoDAppProvider is? Are essential vs related techs correct? Is the background/motivation clear? Do the 6 design goals cover the right outcomes?",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

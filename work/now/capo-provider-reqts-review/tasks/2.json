@@ -1,0 +1,8 @@
+{
+  "id": "2",
+  "subject": "1.2: Review Area 1 — Initialization Lifecycle (4 reqts)",
+  "description": "Review REQT-33gv0bvvw5 (Boot Sequence), REQT-w475q7ahbm (Readiness Gate + 2 children), REQT-mtv0dw4j7n (Singleton), REQT-esrk1ghs89 (Unmount). Are these the right guarantees? Correct statuses?",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}
