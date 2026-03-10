@@ -155,7 +155,7 @@ This section defines where each specific area of functionality belongs.
 |----------------|-----------------|
 | Fetch transaction CBOR from Blockfrost | `fetchFromBlockfrost()`, `findOrFetchTxDetails()` |
 | Fetch block details from Blockfrost | `fetchFromBlockfrost()`, `fetchAndStoreLatestBlock()` |
-| Fetch address transactions from Blockfrost | `fetchFromBlockfrost()`, `checkForNewTxns()` |
+| Fetch address transactions from Blockfrost | `fetchFromBlockfrost()`, `runSyncCycle()` |
 | Fetch UTXOs by asset from Blockfrost | `fetchFromBlockfrost()` |
 | Determine Blockfrost URL from API key | Constructor |
 
@@ -215,7 +215,7 @@ This section defines where each specific area of functionality belongs.
 | Responsibility | Method |
 |----------------|--------|
 | Initial full sync | `syncNow()` |
-| Periodic transaction monitoring | `checkForNewTxns()` |
+| Periodic transaction monitoring | `runSyncCycle()` |
 | Process transaction outputs | `processTransactionForNewUtxos()` |
 | Index individual UTXO | `indexUtxoFromOutput()` |
 | Catalog delegate UUTs from charter | `catalogDelegateUuts()` |
@@ -297,7 +297,7 @@ const capo = new MyCapo({
 
 **Core Methods**:
 - `syncNow(): Promise<void>` - Full synchronization of Capo address and UUT catalog
-- `checkForNewTxns(): Promise<void>` - Check for new transactions at Capo address
+- `runSyncCycle(): Promise<void>` - Orchestrate chain state synchronization (tip discovery, rollback detection, incremental/catchup sync, pending tx verification, resubmission, depth tracking, rollback execution)
 - `catalogDelegateUuts(charterData: CharterData): Promise<void>` - Catalog delegate UUTs from charter
 - `startPeriodicRefresh(): void` - Start automatic 60-second monitoring interval
 - `stopPeriodicRefresh(): void` - Stop automatic monitoring
@@ -440,30 +440,72 @@ interface UtxoStoreGeneric {
 └──────────────────────────────────┘
 ```
 
-### Workflow 2: Transaction Monitoring (Every 60 seconds)
+### Workflow 2: Sync Cycle (5s block-tip poll trigger)
 
 ```
-┌────────────────────────┐
-│ setInterval(60s)       │
-│ checkForNewTxns()      │
-└────────┬───────────────┘
+┌─────────────────────────┐
+│ blockPollTimer (5s)     │
+│ → runSyncCycle()        │
+└────────┬────────────────┘
          │
          ▼
-┌──────────────────────────────┐
-│ Monitor Capo address:        │
-│ 1. Get lastSyncedBlock       │
-│ 2. Fetch new transactions    │──────► GET addresses/{capo}/txs?from={block}
-│ 3. Validate summaries        │──────► AddressTxSummariesFactory.validate()
-└────────┬─────────────────────┘
+┌──────────────────────────────────────────────┐
+│ Step 1: discoverChainTip()                   │
+│ Fetch blocks/latest from Blockfrost.         │──────► GET blocks/latest
+│ Update IN-MEMORY tip state only.             │
+│ ⚠ MUST NOT store to blocks table.            │
+└────────┬─────────────────────────────────────┘
          │
          ▼
-┌──────────────────────────────┐
-│ processTransactionForNewUtxos│
-│ 1. Fetch full tx CBOR        │──────► GET txs/{txHash}/cbor
-│ 2. Decode transaction        │──────► Helios.decodeTx() → Tx (Helios type)
-│ 3. For each output:          │
-│    indexUtxoFromOutput()     │
-└────────┬─────────────────────┘
+┌──────────────────────────────────────────────┐
+│ Step 2: detectAndHandleRollbacks()           │
+│ Fetch blocks/{tipHash}/previous?count=100    │──────► GET blocks/{hash}/previous
+│ Compare against stored blocks.               │
+│ Runs in BOTH modes (1 API call).             │
+└────────┬─────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────┐
+│ Step 3: syncChainState (mode selection)      │
+│ gap = tipHeight - lastProcessedHeight        │
+│                                              │
+│ [incremental: gap ≤ catchupThreshold]        │
+│   fetchAndStoreNewBlocks()                   │──────► GET blocks/{hash}/next
+│   Per-block walk: blocks/{height}/addresses  │──────► GET blocks/{h}/addresses
+│   processTransactionForNewUtxos() per tx     │
+│   Mark each block processed                  │
+│                                              │
+│ [catchup: gap > catchupThreshold]            │
+│   addresses/{capoAddr}/transactions?from=N   │──────► GET addresses/{addr}/txs
+│   processTransactionForNewUtxos() per tx     │
+│   addresses/{capoAddr}/utxos (reconcile)     │──────► GET addresses/{addr}/utxos
+│   Save tip block as "processed" (cursor)     │
+└────────┬─────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────┐
+│ Step 4: tryConfirmPendingTxs()               │
+│ For each entry still at status==="pending":  │
+│   Query Blockfrost txs/{txHash}              │──────► GET txs/{txHash}
+│   If on-chain: confirmPendingTx(hash, h)     │
+│   If 404: skip (resubmission handles it)     │
+│ Safety net for post-reload confirmation.     │
+└────────┬─────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────┐
+│ Step 5: resubmitStalePendingTxs()            │
+│ Step 6: updateConfirmationDepths()           │
+│ Step 7: executeSettledRollbacks()             │
+└──────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────┐
+│ processTransactionForNewUtxos (per tx)       │
+│ 1. Fetch full tx CBOR                        │──────► GET txs/{txHash}/cbor
+│ 2. Decode transaction                        │──────► Helios.decodeTx()
+│ 3. For each output: indexUtxoFromOutput()    │
+└────────┬─────────────────────────────────────┘
          │
          ▼
 ┌──────────────────────────────────────────────────────┐
@@ -473,13 +515,6 @@ interface UtxoStoreGeneric {
 │ 2. Convert TxOutput → UtxoIndexEntry                 │
 │ 3. Call store.saveUtxo(entry)                        │
 └──────────────────────────────────────────────────────┘
-         │
-         ▼
-┌──────────────────────────────┐
-│ DexieUtxoStore.saveUtxo()    │
-│ (receives UtxoIndexEntry,    │
-│  no Helios types)            │
-└──────────────────────────────┘
 ```
 
 ### Workflow 3: Charter Change Detection
@@ -673,7 +708,7 @@ New TX monitored → processTransactionForNewUtxos()
 **Decision**: Connect the transaction submission path to the UTXO index, allowing submitted transactions to be reflected in query results while tracking their pending/confirmed/rolled-back lifecycle.
 
 **Rationale**:
-- **Stale reads after writes**: Without this, the index is blind to locally-submitted transactions for up to 60 seconds (next Blockfrost poll). Queries return stale data — spent UTXOs appear unspent, new outputs don't exist.
+- **Stale reads after writes**: Without this, the index is blind to locally-submitted transactions until the next sync cycle (5s block-tip poll). Queries return stale data — spent UTXOs appear unspent, new outputs don't exist.
 - **Double-spend prevention**: Transaction builders query the index for available UTXOs. If a just-submitted tx consumed a UTXO but the index doesn't know, a second transaction could try to spend the same input.
 - **Pending-state visibility**: Downstream consumers (UI, transaction builders) need to know a change is in-flight — for pending indicators, deferring conflicting operations, and user feedback.
 - **Timeout and rollback**: Each Cardano transaction has a validity window. If the tx isn't confirmed by the deadline, in-flight state must be rolled back with failure notification.
@@ -791,7 +826,7 @@ Extends CachedUtxoIndex's existing EventEmitter:
 On page reload, pending state survives in Dexie but the in-memory `pendingTxMap` is empty:
 
 1. **Immediate**: Load PendingTxEntry rows with `status === "pending"` from Dexie. Expose to consumers with `pendingSyncState: "stale"`. UI can show count/list immediately.
-2. **After first sync**: `checkForNewTxns()` confirms any that landed in blocks. `checkPendingDeadlines()` rolls back any that expired. Emit events for transitions. Flip `pendingSyncState` to `"fresh"`, emit `pendingSynced`.
+2. **After first sync**: `runSyncCycle()` confirms any that landed in blocks — block processing provides fast-path confirmation, and `tryConfirmPendingTxs()` catches any remaining unconfirmed entries (e.g. when the confirming block was already processed in a prior session). `checkPendingDeadlines()` rolls back any that expired. Emit events for transitions. Flip `pendingSyncState` to `"fresh"`, emit `pendingSynced`.
 
 #### Dataflow: Register Pending Transaction
 
@@ -827,7 +862,7 @@ On page reload, pending state survives in Dexie but the in-memory `pendingTxMap`
 
 #### Dataflow: Confirm Pending Transaction
 
-When `checkForNewTxns()` discovers a txHash that exists in the pending-tx table:
+When `runSyncCycle()` discovers a txHash that exists in the pending-tx table (via block processing in `processTransactionForNewUtxos`):
 
 1. Skip normal indexing (outputs already indexed, inputs already marked spent)
 2. `setPendingTxStatus(txHash, "confirmed")`
@@ -950,8 +985,8 @@ Confirmed and rolled-back PendingTxEntries are purged after 72 hours. The purge 
 **One `registerPendingTx` call per transaction, in submission order**:
 For chained batches (txA → txB where txB spends txA's output), each tx is registered separately with its own txHash. This means rollback of txB doesn't affect txA's entries, since rollback operates by txHash. Registration order matches submission order.
 
-**Non-registered transactions in `checkForNewTxns` use existing path**:
-When `checkForNewTxns` discovers a txHash with no matching PendingTxEntry (the common case — transactions submitted by other users, or before the index existed), the existing indexing path runs unmodified. The pending-tx check is additive, not a gate.
+**Non-registered transactions in `runSyncCycle` use existing path**:
+When `runSyncCycle` discovers a txHash with no matching PendingTxEntry (the common case — transactions submitted by other users, or before the index existed), the existing indexing path runs unmodified. The pending-tx check is additive, not a gate.
 
 #### Open Questions
 
@@ -963,7 +998,7 @@ When `checkForNewTxns` discovers a txHash with no matching PendingTxEntry (the c
 ## Key Expectations
 
 ### Periodic Refresh:
-- Implement automatic monitoring intervals (currently 60s defined, plus manual trigger)
+- Automatic 5s block-tip poll triggers `runSyncCycle()` when a new block is detected
 - Incremental sync optimization (get deltas since lastSyncedBlock)
 
 ## Future work
