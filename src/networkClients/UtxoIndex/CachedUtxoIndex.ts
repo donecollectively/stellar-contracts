@@ -1808,21 +1808,22 @@ export class CachedUtxoIndex {
             });
         } catch (e: any) {
             // REQT/zhgbnajdjg (Harmless Error Handling) — swallow expected errors
-            if (e.kind === "SubmissionUtxoError") {
+            const msg = e.message || String(e);
+            if (e.kind === "SubmissionUtxoError" || /All inputs are spent/i.test(msg) || /UtxoFailure/i.test(msg)) {
                 // UTxO already consumed — tx already landed or was outcompeted. Harmless.
                 await this.store.appendSubmissionLog(txHash, {
                     at: Date.now(),
                     event: "silent-resubmit",
-                    detail: "swallowed SubmissionUtxoError — tx inputs already consumed (harmless)",
+                    detail: "swallowed UTxO error — tx inputs already consumed (harmless)",
                 });
                 return;
             }
-            if (e.kind === "SubmissionExpiryError") {
+            if (e.kind === "SubmissionExpiryError" || /OutsideValidityInterval/i.test(msg)) {
                 // Validity window expired — deadline rollback will handle cleanup. Harmless.
                 await this.store.appendSubmissionLog(txHash, {
                     at: Date.now(),
                     event: "silent-resubmit",
-                    detail: "swallowed SubmissionExpiryError — validity window expired (harmless)",
+                    detail: "swallowed expiry error — validity window expired (harmless)",
                 });
                 return;
             }
@@ -1923,6 +1924,11 @@ export class CachedUtxoIndex {
         // Fetch canonical chain's recent blocks from Blockfrost
         const canonicalBlocks = await this.fetchFromBlockfrost<BlockDetailsType[]>(
             `blocks/${this.lastBlockId}/previous?count=100`, // REQT/yasww6cqa4
+            {
+                formatForLog: (blocks) =>
+                    [...blocks].sort((a, b) => b.height - a.height),
+                logLabel: "Fetched & sorted from BF",
+            },
         );
 
         if (!Array.isArray(canonicalBlocks) || canonicalBlocks.length === 0) {
@@ -2942,7 +2948,12 @@ export class CachedUtxoIndex {
         await this.cacheRefScriptIfPresent(txInput.output?.refScript);
     }
 
-    async fetchFromBlockfrost<T>(url: string): Promise<T> {
+    async fetchFromBlockfrost<T>(url: string, opts?: {
+        /** Optional post-processing for debug log rendering — does NOT affect the returned data */
+        formatForLog?: (result: T) => unknown;
+        /** Custom label for the debug log line (default: "Successfully fetched from blockfrost") */
+        logLabel?: string;
+    }): Promise<T> {
         // Use global rate limiter to avoid exceeding Blockfrost's rate limits
         console.log(`⚡ fetchFromBlockfrost: ${url}`);
         const callerLoc = this._captureLocation();
@@ -2961,9 +2972,10 @@ export class CachedUtxoIndex {
                     );
                     throw new Error(result.message);
                 }
+                const logResult = opts?.formatForLog ? opts.formatForLog(result) : result;
                 await this.store.log(
                     "rm7g8",
-                    `Successfully fetched from blockfrost: ${url} ${JSON.stringify(result)}`,
+                    `${opts?.logLabel ?? "Successfully fetched from blockfrost"}: ${url} ${JSON.stringify(logResult)}`,
                     "debug", this._currentOpLogId, callerLoc,
                 );
                 return result as T;
