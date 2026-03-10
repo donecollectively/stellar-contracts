@@ -299,7 +299,7 @@ const capo = new MyCapo({
 - `syncNow(): Promise<void>` - Full synchronization of Capo address and UUT catalog
 - `runSyncCycle(): Promise<void>` - Orchestrate chain state synchronization (tip discovery, rollback detection, incremental/catchup sync, pending tx verification, resubmission, depth tracking, rollback execution)
 - `catalogDelegateUuts(charterData: CharterData): Promise<void>` - Catalog delegate UUTs from charter
-- `startPeriodicRefresh(): void` - Start automatic 60-second monitoring interval
+- `startPeriodicRefresh(): void` - Start automatic 5-second block-tip polling
 - `stopPeriodicRefresh(): void` - Stop automatic monitoring
 
 **ReadonlyCardanoClient Interface** (REQT/rc7km2x8hp):
