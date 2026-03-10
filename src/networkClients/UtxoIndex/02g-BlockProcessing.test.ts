@@ -286,7 +286,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
                 .spyOn(index as any, "processTransactionForNewUtxos")
                 .mockResolvedValue(undefined);
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             // Assert: processTransactionForNewUtxos called for block 101's tx
             expect(processSpy).toHaveBeenCalledTimes(1);
@@ -331,7 +331,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
                 .spyOn(index as any, "processTransactionForNewUtxos")
                 .mockResolvedValue(undefined);
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             // Assert: no txns processed
             expect(processSpy).not.toHaveBeenCalled();
@@ -391,7 +391,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
                 .spyOn(index as any, "processTransactionForNewUtxos")
                 .mockResolvedValue(undefined);
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             // Assert: both txns processed
             expect(processSpy).toHaveBeenCalledTimes(2);
@@ -440,7 +440,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
 
             vi.spyOn(index as any, "processTransactionForNewUtxos").mockResolvedValue(undefined);
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             // Assert: the stale UTxO was removed or marked spent during reconciliation
             const staleEntry = await store.findUtxoId("stale_tx_hash#0");
@@ -493,7 +493,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
 
             vi.spyOn(index as any, "processTransactionForNewUtxos").mockResolvedValue(undefined);
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             // Assert: block walk started from 195 (last processed), NOT from 200 (tip)
             // The blocks/{hash}/next call should use the hash of block 195
@@ -555,7 +555,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
                 latestBlock!.slot
             );
 
-            await index2.checkForNewTxns();
+            await index2.runSyncCycle();
 
             // Assert: walked from block 100's hash
             expect(mock.calls).toContain(
@@ -604,7 +604,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
 
             vi.spyOn(index as any, "processTransactionForNewUtxos").mockResolvedValue(undefined);
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             // Assert: newly stored block has state = "processed" (an enum string, not boolean)
             const store = getStore(index);
@@ -648,7 +648,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
 
             vi.spyOn(index as any, "processTransactionForNewUtxos").mockResolvedValue(undefined);
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             // Assert: both pages of /next were called
             const nextCalls = mock.calls.filter((url) => url.includes("/next"));
@@ -671,7 +671,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
 
             await seedProcessedBlocks(index, 98, 100);
 
-            // Create a slow checkForNewTxns by making fetchFromBlockfrost delay
+            // Create a slow runSyncCycle by making fetchFromBlockfrost delay
             let resolveBlocking: () => void;
             const blockingPromise = new Promise<void>(
                 (resolve) => (resolveBlocking = resolve)
@@ -706,11 +706,11 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
             vi.spyOn(index as any, "processTransactionForNewUtxos").mockResolvedValue(undefined);
 
             // Start first sync (will block on the /next call)
-            const firstSync = index.checkForNewTxns();
+            const firstSync = index.runSyncCycle();
 
             // Try starting second sync while first is running
             // Phase 1 adds _syncInProgress guard — second call should skip
-            const secondSync = index.checkForNewTxns();
+            const secondSync = index.runSyncCycle();
 
             // Release the blocking call
             resolveBlocking!();
@@ -755,7 +755,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
                 states.push((index as any).syncState);
             }
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             if ("syncState" in index) {
                 states.push((index as any).syncState);
@@ -798,7 +798,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
                 states.push((index as any).syncState);
             }
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             if ("syncState" in index) {
                 states.push((index as any).syncState);
@@ -854,7 +854,7 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
                 ] as BlockAddressEntry[],
             });
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             // Assert: pending tx confirmed with block height recorded
             const confirmedEntry = await store.findPendingTx(PENDING_TX_HASH);
@@ -866,13 +866,13 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
     });
 
     describe("Dead code removal", () => {
-        it("highestBlockHeight variable does not exist in checkForNewTxns (dead-code-removed)", async () => {
+        it("highestBlockHeight variable does not exist in runSyncCycle (dead-code-removed)", async () => {
             // This test verifies the advisory note from pre-work review:
             // highestBlockHeight was dead code that MUST be deleted during the rewrite.
             //
-            // We verify by inspecting the source code string of checkForNewTxns.
+            // We verify by inspecting the source code string of runSyncCycle.
             const methodSource =
-                CachedUtxoIndex.prototype.checkForNewTxns.toString();
+                CachedUtxoIndex.prototype.runSyncCycle.toString();
             expect(methodSource).not.toContain("highestBlockHeight");
         });
     });
@@ -920,7 +920,7 @@ async function advanceTipAndSync(
     mockBlockfrost(index, responses);
     vi.spyOn(index as any, "processTransactionForNewUtxos").mockResolvedValue(undefined);
 
-    await index.checkForNewTxns();
+    await index.runSyncCycle();
 }
 
 // =========================================================================
@@ -1112,7 +1112,7 @@ describe("Confirmation Depth Tracking (REQT/ddzcp753jr)", () => {
                 ] as BlockAddressEntry[],
             });
 
-            await index.checkForNewTxns();
+            await index.runSyncCycle();
 
             // Assert: txConfirmed event includes confirmState
             expect(confirmedEvents.length).toBe(1);
@@ -1262,7 +1262,7 @@ describe("pendingTxHashes Lifecycle (REQT/pgyqdvwn17)", () => {
             ] as BlockAddressEntry[],
         });
 
-        await index.checkForNewTxns();
+        await index.runSyncCycle();
 
         // Entry is confirmed…
         const store = getStore(index);
@@ -1373,7 +1373,7 @@ describe("Quiet Resubmission (REQT/cbpw1a6j8q)", () => {
             "blocks/101/addresses": [],
         });
 
-        await index.checkForNewTxns();
+        await index.runSyncCycle();
 
         // Both txs should have been resubmitted
         expect(resubmitSpy).toHaveBeenCalledTimes(2);
@@ -1395,7 +1395,7 @@ describe("Quiet Resubmission (REQT/cbpw1a6j8q)", () => {
         const resubmitSpy = vi.fn().mockResolvedValue(undefined);
         (index as any).resubmitTx = resubmitSpy;
 
-        // Call resubmitStalePendingTxs directly (if accessible) or via checkForNewTxns
+        // Call resubmitStalePendingTxs directly (if accessible) or via runSyncCycle
         const lastProcessedHash = makeBlock(100).hash;
         const tipBlock = makeBlock(101);
         mockBlockfrost(index, {
@@ -1407,7 +1407,7 @@ describe("Quiet Resubmission (REQT/cbpw1a6j8q)", () => {
             "blocks/101/addresses": [],
         });
 
-        await index.checkForNewTxns();
+        await index.runSyncCycle();
 
         // Should NOT have resubmitted (throttle active)
         expect(resubmitSpy).not.toHaveBeenCalled();
@@ -1429,7 +1429,7 @@ describe("Quiet Resubmission (REQT/cbpw1a6j8q)", () => {
             "blocks/102/addresses": [],
         });
 
-        await index.checkForNewTxns();
+        await index.runSyncCycle();
 
         // Now it should have been resubmitted
         expect(resubmitSpy).toHaveBeenCalledTimes(1);
@@ -1463,7 +1463,7 @@ describe("Quiet Resubmission (REQT/cbpw1a6j8q)", () => {
             "blocks/101/addresses": [],
         });
 
-        await index.checkForNewTxns();
+        await index.runSyncCycle();
 
         // Expired tx should NOT be resubmitted
         expect(resubmitSpy).not.toHaveBeenCalled();
@@ -1496,7 +1496,7 @@ describe("Quiet Resubmission (REQT/cbpw1a6j8q)", () => {
         });
 
         // CBOR decode error caught inside resubmitTx's try/catch — sync loop continues
-        await expect(index.checkForNewTxns()).resolves.toBeUndefined();
+        await expect(index.runSyncCycle()).resolves.toBeUndefined();
     });
 });
 
@@ -1775,7 +1775,7 @@ describe("Rollback Execution (REQT/4j3rs4pyjt)", () => {
             "blocks/103/addresses": [],
         });
 
-        await index.checkForNewTxns();
+        await index.runSyncCycle();
 
         // The reverted tx should have been resubmitted
         expect(resubmitSpy).toHaveBeenCalled();
@@ -1854,7 +1854,7 @@ describe("Block-Discovered PendingTxEntry (REQT/kfemj6eteg)", () => {
                 }
             });
 
-        await index.checkForNewTxns();
+        await index.runSyncCycle();
 
         // Verify PendingTxEntry created with sensible defaults
         const entry = await store.findPendingTx(BLOCK_TX_HASH);
@@ -1912,7 +1912,7 @@ describe("Block-Discovered PendingTxEntry (REQT/kfemj6eteg)", () => {
                 // Would create block-discovered entry here, but we skip
             });
 
-        await index.checkForNewTxns();
+        await index.runSyncCycle();
 
         // Verify original entry is unchanged
         const entry = await store.findPendingTx(BLOCK_TX_HASH);

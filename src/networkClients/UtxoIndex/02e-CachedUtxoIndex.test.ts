@@ -933,11 +933,11 @@ if (!BLOCKFROST_API_KEY) {
         // Plan A Tests: Post-Sync Operations
         // ============================================================
 
-        describe("checkForNewTxns (uses shared index)", () => {
+        describe("runSyncCycle (uses shared index)", () => {
             it("should return cleanly when no new transactions exist", async () => {
-                // After sync, calling checkForNewTxns should find nothing new
+                // After sync, calling runSyncCycle should find nothing new
                 await expect(
-                    sharedIndex.checkForNewTxns(),
+                    sharedIndex.runSyncCycle(),
                 ).resolves.toBeUndefined();
             });
 
@@ -954,9 +954,9 @@ if (!BLOCKFROST_API_KEY) {
                 // Force lastBlockHeight to 0 to simulate unsynced state
                 setLastSyncedBlock(isolatedIndex, 0, "", 0);
 
-                // With decoupled cursors, checkForNewTxns gracefully skips
+                // With decoupled cursors, runSyncCycle gracefully skips
                 // when there are no processed blocks (logs and returns)
-                await expect(isolatedIndex.checkForNewTxns()).resolves.toBeUndefined();
+                await expect(isolatedIndex.runSyncCycle()).resolves.toBeUndefined();
             });
 
             it("should load transactions when syncing from an earlier block", async () => {
@@ -989,8 +989,8 @@ if (!BLOCKFROST_API_KEY) {
                     0,
                 );
 
-                // Call checkForNewTxns - should find transactions after charter mint
-                await isolatedIndex.checkForNewTxns();
+                // Call runSyncCycle - should find transactions after charter mint
+                await isolatedIndex.runSyncCycle();
 
                 // Should have loaded some transactions (up to page limit)
                 const txCountAfterCheck = (await getAllTxs(isolatedIndex))
@@ -1030,7 +1030,7 @@ if (!BLOCKFROST_API_KEY) {
                 );
 
                 // Sync with limited pages
-                await isolatedIndex.checkForNewTxns();
+                await isolatedIndex.runSyncCycle();
 
                 // Count should increase by at most syncPageSize (3)
                 const txCountAfter = (await getAllTxs(isolatedIndex)).length;
@@ -1065,7 +1065,7 @@ if (!BLOCKFROST_API_KEY) {
                     "",
                     0,
                 );
-                await isolatedIndex.checkForNewTxns();
+                await isolatedIndex.runSyncCycle();
                 const txCountAfterOnePage = (await getAllTxs(isolatedIndex))
                     .length;
 
@@ -1077,7 +1077,7 @@ if (!BLOCKFROST_API_KEY) {
                     "",
                     0,
                 );
-                await isolatedIndex.checkForNewTxns();
+                await isolatedIndex.runSyncCycle();
                 const txCountAfterThreePages = (await getAllTxs(isolatedIndex))
                     .length;
 
