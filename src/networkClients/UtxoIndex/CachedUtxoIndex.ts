@@ -628,6 +628,12 @@ export class CachedUtxoIndex {
                 const { rolledBackHashes, canonicalBlocks, forkHeight } = await this.detectRolledBackBlocks();
                 if (rolledBackHashes.length > 0) {
                     await this.executeBlockRollback(rolledBackHashes, canonicalBlocks, forkHeight);
+                    // temporary: block browser after rollback so logs can be reviewed
+                    if ("undefined" !== typeof window) {
+                        setTimeout(() => {
+                            alert(`Chain rollback detected: ${rolledBackHashes.length} block(s) rolled back at fork height ${forkHeight}. Check console for details.`);
+                        }, 5000);
+                    }
                 }
             } catch (e: any) {
                 await this.logError(
@@ -999,9 +1005,14 @@ export class CachedUtxoIndex {
             }
         }
 
-        // Store fresh UTXOs (put will overwrite existing by utxoId)
+        // Store fresh UTXOs, preserving any speculative-spend markers from pending txs
         for (const utxo of utxos) {
+            const utxoId = utxo.id.toString();
+            const existing = await this.store.findUtxoId(utxoId);
             await this.indexUtxoFromTxInput(utxo);
+            if (existing?.spentInTx) {
+                await this.store.markUtxoSpent(utxoId, existing.spentInTx);
+            }
         }
 
         // Update sync state
