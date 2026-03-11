@@ -270,7 +270,7 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             expect(pending.length).toBe(0);
         });
 
-        it("confirms pending tx, preserves outputs, clears isPending, fires txConfirmed (confirm-pending-lifecycle/REQT/58b9nzgcbj)", async (context: localTC) => {
+        it("confirms pending tx, preserves outputs, retains isPending until likely, fires txConfirmed (confirm-pending-lifecycle/REQT/58b9nzgcbj)", async (context: localTC) => {
             const { h } = context;
             await h.snapToFirstTestRecord();
 
@@ -302,8 +302,10 @@ describe("Pending Transaction Lifecycle (REQT/3dhhjsav15)", () => {
             const entry = await store.findPendingTx(txHash);
             expect(entry!.status).toBe("confirmed");
 
-            // Verify: isPending no longer matches origin or spent-by
-            expect(index.isPending(`${txHash}#0`)).toBeUndefined();
+            // Verify: isPending still returns txHash for outputs (REQT/pgyqdvwn17 —
+            // provisionally-confirmed txs remain in pendingTxHashes until "likely" depth)
+            expect(index.isPending(`${txHash}#0`)).toBe(txHash);
+            // Verify: isPending no longer matches spent-by (cleanupPendingSpentUtxoIds ran)
             expect(index.isPending(tx.body.inputs[0].id.toString())).toBeUndefined();
 
             // Verify: output UTXOs still exist
