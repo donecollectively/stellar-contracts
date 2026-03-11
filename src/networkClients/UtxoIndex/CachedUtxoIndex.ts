@@ -120,7 +120,7 @@ const DEFAULT_WALLET_STALENESS_MS = 30 * 1000;
 export interface TxConfirmedEvent {
     txHash: string;
     description: string;
-    // REQT/58b9nzgcbj: Initial confirmState on first confirmation
+    // REQT/y53cwz1dk4 (Confirmation Event) — confirmState included in event payload
     confirmState: string;
     txd?: TxDescription<any, "submitted">;
 }
@@ -1394,7 +1394,7 @@ export class CachedUtxoIndex {
      * Skips normal indexing since outputs are already indexed and inputs already marked spent.
      * Records the confirming block height and sets initial confirmState.
      *
-     * REQT/58b9nzgcbj (Confirm Pending Transaction) — confirmedAtBlockHeight + confirmState
+     * REQT/58b9nzgcbj (Confirm Pending Transaction)
      * REQT/fz6z7rr702 (Pending Transaction Events)
      */
     private async confirmPendingTx(
@@ -1441,7 +1441,7 @@ export class CachedUtxoIndex {
             `Confirming pending tx ${txHash}: ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot} hash ${confirmedInBlockHash?.slice(0, 12)}…`,
         );
 
-        // REQT/58b9nzgcbj: Set status, confirmedAtBlockHeight, and confirmState based on actual depth.
+        // REQT/klknoqvg4k (Depth-Accurate confirmState) — calculate from actual block depth, not hardcoded
         // After page reload or catchup, the tx may already be many blocks deep —
         // hardcoding "provisional" would leave it stuck in resubmission scope.
         const blockDepth = this.lastBlockHeight - blockHeight;
@@ -1458,7 +1458,7 @@ export class CachedUtxoIndex {
         }
 
         pendingEntry.status = "confirmed";
-        pendingEntry.confirmedAtBlockHeight = blockHeight; // REQT/58b9nzgcbj
+        pendingEntry.confirmedAtBlockHeight = blockHeight; // REQT/1doel3r4ol (Confirmation Metadata Resolution)
         pendingEntry.confirmedAtSlot = confirmedAtSlot;
         pendingEntry.confirmedInBlockHash = confirmedInBlockHash; // REQT/xsvqyh5gwb
         pendingEntry.confirmState = confirmState;          // REQT/ddzcp753jr
@@ -1476,7 +1476,7 @@ export class CachedUtxoIndex {
         this.events.emit("txConfirmed", {
             txHash,
             description: pendingEntry.description,
-            confirmState, // REQT/58b9nzgcbj
+            confirmState, // REQT/y53cwz1dk4 (Confirmation Event)
             txd,
         });
 
@@ -2404,7 +2404,7 @@ export class CachedUtxoIndex {
 
     /**
      * Processes a transaction to identify and index new UTXOs.
-     * REQT/58b9nzgcbj: If the txHash matches a pending entry, skip normal indexing
+     * REQT/58b9nzgcbj: If the txHash matches a pending entry, confirm it
      * and confirm the pending transaction instead.
      *
      * REQT/0vrkpk6a6h (processTransactionForNewUtxos)
@@ -2414,6 +2414,7 @@ export class CachedUtxoIndex {
         summary: AddressTransactionSummariesType,
     ): Promise<void> {
         // REQT/58b9nzgcbj: Check if this tx is a pending entry being confirmed
+        // REQT/05lkfji14c (Output Verification on Confirm) — confirmPendingTx verifies outputs
         if (this.pendingTxHashes.has(txHash)) {
             console.debug(`🟢 SYNC found pending tx ${txHash.slice(0, 8)}… — fast-path confirm (skip re-index)`);
             await this.confirmPendingTx(txHash, summary.block_height);
