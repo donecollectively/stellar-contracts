@@ -619,6 +619,9 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
     describe("Block discovery pagination (REQT/9gq8rwg9ng)", () => {
         it("paginates blocks/{hash}/next when more than 100 blocks exist (block-discovery-pagination/REQT/9gq8rwg9ng)", async () => {
             const index = createTestIndex(uniqueDbName("discovery-pages"));
+            // Gap of 110 blocks exceeds default catchup threshold (20) —
+            // raise it so this test stays in incremental mode where /next pagination applies.
+            (index as any).catchupThreshold = 200;
 
             // Seed: processed up to block 100
             await seedProcessedBlocks(index, 98, 100);
@@ -646,7 +649,9 @@ describe("Block Processing Model (REQT/fh56sce22g)", () => {
                 [`addresses/${TEST_CAPO_ADDRESS}/utxos`]: [],
             });
 
-            vi.spyOn(index as any, "processTransactionForNewUtxos").mockResolvedValue(undefined);
+            // Mock syncIncremental — this test verifies fetchAndStoreNewBlocks pagination,
+            // not per-block address processing (which would need 110 blocks/{h}/addresses mocks).
+            vi.spyOn(index as any, "syncIncremental").mockResolvedValue(undefined);
 
             await index.runSyncCycle();
 
