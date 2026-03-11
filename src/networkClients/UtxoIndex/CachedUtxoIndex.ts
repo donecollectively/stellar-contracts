@@ -1406,6 +1406,36 @@ export class CachedUtxoIndex {
         const pendingEntry = await this.store.findPendingTx(txHash);
         if (!pendingEntry || pendingEntry.status !== "pending") return;
 
+        // REQT/05lkfji14c (Output Verification on Confirm) — registerPendingTx writes
+        // outputs non-atomically; page reload mid-write can leave outputs partially indexed.
+        // Decode the tx and verify each output is in the store, indexing any that are missing.
+        try {
+            const tx = decodeTx(pendingEntry.signedTxCborHex);
+            let indexedCount = 0;
+            for (let outputIndex = 0; outputIndex < tx.body.outputs.length; outputIndex++) {
+                const utxoId = this.formatUtxoId(txHash, outputIndex);
+                const existing = await this.store.findUtxoId(utxoId);
+                if (!existing) {
+                    // REQT/05lkfji14c — output missing from store, index it now
+                    const output = tx.body.outputs[outputIndex];
+                    await this.indexUtxoFromOutput(txHash, outputIndex, output, blockHeight);
+                    indexedCount++;
+                }
+                // If existing with spentInTx set, leave it — a later batch tx may have consumed it
+            }
+            if (indexedCount > 0) {
+                await this.logWarn(
+                    "pt4ix",
+                    `confirmPendingTx: indexed ${indexedCount} missing output(s) for tx ${txHash.slice(0, 8)}…`,
+                );
+            }
+        } catch (e: any) {
+            await this.logWarn(
+                "pt4de",
+                `confirmPendingTx: failed to decode CBOR for output verification on tx ${txHash.slice(0, 8)}…: ${e.message || e}`,
+            );
+        }
+
         // Resolve slot and block hash: prefer caller-provided values, then store lookup,
         // then Blockfrost fetch. confirmedAtSlot and confirmedInBlockHash MUST be set —
         // updateConfirmationDepths skips entries where confirmedAtSlot is undefined.
@@ -1571,21 +1601,22 @@ export class CachedUtxoIndex {
             // REQT/thy7tkrxh7: Skip entries without confirmation block height
             if (entry.confirmedAtBlockHeight === undefined) continue;
 
-            // Repair entries with missing slot/hash — these were persisted before
-            // confirmPendingTx populated these fields (e.g., from tryConfirmPendingTxs
+            // Repair entries with missing confirmedAtSlot — these were persisted before
+            // confirmPendingTx populated this field (e.g., from tryConfirmPendingTxs
             // when the confirming block wasn't in the store). Without repair, the entry
-            // stays stuck at "provisional" forever.
-            if (entry.confirmedAtSlot === undefined || entry.confirmedInBlockHash === undefined) {
+            // can't calculate slot depth and stays stuck at "provisional" forever.
+            // confirmedInBlockHash is repaired opportunistically but doesn't block advancement.
+            if (entry.confirmedAtSlot === undefined) {
                 try {
                     const blockDetails = await this.fetchFromBlockfrost<{ slot: number; hash: string }>(
                         `blocks/${entry.confirmedAtBlockHeight}`,
                     );
-                    if (entry.confirmedAtSlot === undefined) entry.confirmedAtSlot = blockDetails.slot;
+                    entry.confirmedAtSlot = blockDetails.slot;
                     if (entry.confirmedInBlockHash === undefined) entry.confirmedInBlockHash = blockDetails.hash;
                     await this.store.savePendingTx(entry);
                     await this.logDetail(
                         "cd0rp",
-                        `Repaired missing slot/hash for confirmed tx ${entry.txHash.slice(0, 8)}… at block #${entry.confirmedAtBlockHeight}`,
+                        `Repaired missing slot for confirmed tx ${entry.txHash.slice(0, 8)}… at block #${entry.confirmedAtBlockHeight}`,
                     );
                 } catch (e: any) {
                     await this.logWarn(
@@ -2416,9 +2447,9 @@ export class CachedUtxoIndex {
         // REQT/58b9nzgcbj: Check if this tx is a pending entry being confirmed
         // REQT/05lkfji14c (Output Verification on Confirm) — confirmPendingTx verifies outputs
         if (this.pendingTxHashes.has(txHash)) {
-            console.debug(`🟢 SYNC found pending tx ${txHash.slice(0, 8)}… — fast-path confirm (skip re-index)`);
+            console.debug(`🟢 SYNC found pending tx ${txHash.slice(0, 8)}… — fast-path confirm`);
             await this.confirmPendingTx(txHash, summary.block_height);
-            return; // Skip normal indexing — outputs already indexed, inputs already marked spent
+            return; // confirmPendingTx handles output verification and metadata
         }
 
         const tx = await this.findOrFetchTxDetails(txHash);
