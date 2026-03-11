@@ -83,6 +83,9 @@ import type { PendingTxEntry, SubmissionLogEntry } from "./types/PendingTxEntry.
 // REQT/zzsg63b2fb: Lightweight block-tip poll interval — sole trigger for runSyncCycle
 const blockPollInterval = 5 * 1000; // 5 seconds
 
+// REQT/ekyatca2kq: Sync mutex staleness threshold (default 15 seconds)
+const DEFAULT_MUTEX_STALENESS_MS = 15 * 1000;
+
 // REQT/fh56sce22g: Default threshold for dual-mode sync selection
 // Gap ≤ threshold → incremental block-walk; gap > threshold → catchup mode
 const DEFAULT_CATCHUP_THRESHOLD = 20;
@@ -172,6 +175,9 @@ export interface CachedUtxoIndexEvents {
 }
 
 export class CachedUtxoIndex {
+    // REQT/37y4v8z8bq (Process ID Assignment) — unique random pid for mutex ownership
+    readonly pid: number;
+
     blockfrostKey: string;
     blockfrostBaseUrl: string = "https://cardano-mainnet.blockfrost.io";
     // remembers the last block-id, height, and slot seen in any capo utxo
@@ -209,6 +215,11 @@ export class CachedUtxoIndex {
 
     // REQT/zzsg63b2fb: Concurrency guard — prevents overlapping runSyncCycle calls
     private _syncInProgress: boolean = false;
+
+    // REQT/3c2s5nryvn: Sync mutex — tracks whether this tab owns sync responsibility
+    private _isSyncOwner: boolean = false;
+    // REQT/ekyatca2kq: Configurable staleness threshold for sync mutex
+    private mutexStalenessMs: number = DEFAULT_MUTEX_STALENESS_MS;
 
     // REQT/jdkjh536mm: Observable sync state for downstream consumers (UI status display)
     private _syncState: string = "idle";
@@ -419,6 +430,9 @@ export class CachedUtxoIndex {
         /** REQT/yn45tvmp6k: Custom confirmation depth thresholds (default: provisional<4, confident≥10, certain≥180) */
         confirmationThresholds?: Partial<ConfirmationThresholds>;
     }) {
+        // REQT/37y4v8z8bq (Process ID Assignment) — random integer < 2 billion
+        this.pid = Math.floor(Math.random() * 2_000_000_000);
+
         // Convert string inputs to proper types if needed
         this._address =
             typeof address === "string" ? makeAddress(address) : address;
@@ -495,9 +509,174 @@ export class CachedUtxoIndex {
         this.events.emit("syncStart");
 
         // REQT/fn70x96nxm: Startup Recovery — load pending entries from Dexie
+        // REQT/q2aqr5rh7g: Populate pendingTxHashes BEFORE any sync activity
         await this.loadPendingFromStore();
 
-        // REQT/gz9a5b8qv: Initialize from cached block data if available
+        // REQT/3c2s5nryvn (Sync Mutex) — attempt to become the sync owner.
+        // If another tab already owns sync, wait for initialSyncDone instead.
+        const acquired = await this.store.tryAcquireSyncMutex(this.pid, this.mutexStalenessMs);
+        if (!acquired) {
+            // REQT/hn1mv0cp7h (Non-Owner Behavior) — another tab is syncing.
+            // Initialize from cache and wait for initialSyncDone metadata.
+            await this.logOp(
+                "mx1no",
+                `Sync mutex owned by another tab — waiting for initialSyncDone`,
+            );
+            await this.waitForInitialSyncDone();
+            return;
+        }
+
+        // We are the sync owner
+        this._isSyncOwner = true;
+        await this.logOp("mx1ok", `Acquired sync mutex (pid=${this.pid})`);
+
+        try {
+            // REQT/gz9a5b8qv: Initialize from cached block data if available
+            const cachedBlock = await this.store.getLatestBlock();
+            if (cachedBlock) {
+                this.lastBlockId = cachedBlock.hash;
+                this.lastBlockHeight = cachedBlock.height;
+                this.lastBlockSlot = cachedBlock.slot;
+                this.lastBlockTime = cachedBlock.time;
+                await this.logOp(
+                    "c8init",
+                    `Initialized from cache: block #${cachedBlock.height}, slot ${cachedBlock.slot}`,
+                );
+
+                // Have cached data - just do incremental sync for new transactions
+                await this.runSyncCycle();
+
+                // REQT/fn70x96nxm: After first sync, resolve pending state
+                await this.resolvePendingState();
+
+                // Signal other tabs that initial sync is done
+                await this.store.setLastParsedBlockHeight(
+                    await this.store.getLastParsedBlockHeight()
+                ); // no-op write to keep existing behavior
+                await this.markInitialSyncDone();
+
+                this.syncReadyResolve();
+                this.events.emit("syncComplete");
+                return;
+            }
+
+            // No cached data - do full initial sync
+            // Fetch all UTXOs from the capo address using the network
+            const capoUtxos = await this.network.getUtxos(this._address);
+
+            await this.logDetail("yz58q", `Found ${capoUtxos.length} capo UTXOs`);
+
+            // REQT/vk2bywdycn: Store all capo UTXOs in the index
+            for (const utxo of capoUtxos) {
+                await this.indexUtxoFromTxInput(utxo);
+            }
+
+            // Extract unique transaction IDs from the UTXOs and fetch/store transaction details
+            const uniqueTxIds = new Set(
+                capoUtxos.map((utxo) => {
+                    const id = utxo.id.toString();
+                    return id.split("#")[0];
+                }),
+            );
+
+            await this.logDetail(
+                "yuyqy",
+                `Found ${uniqueTxIds.size} unique transaction IDs`,
+            );
+            for (const txId of uniqueTxIds) {
+                await this.logDetail(
+                    "48nyb",
+                    `Fetching transaction details for ${txId}`,
+                );
+                await this.findOrFetchTxDetails(txId);
+            }
+
+            // Find the charter UTXO (contains the "charter" token from capo mph)
+            const charterUtxo = this.findCharterUtxo(capoUtxos);
+            if (!charterUtxo) {
+                throw new Error("Charter UTXO not found at capo address");
+            }
+
+            // Decode charter data using the bridge
+            const charterData = this.decodeCharterData(charterUtxo);
+            this._charterData = charterData;
+
+            // Resolve and catalog delegate UUTs
+            await this.catalogDelegateUuts(charterData);
+
+            // Fetch and store the latest block details
+            // REQT/5d4f73c9bf: Full sync fetched all UTxOs — mark tip as "processed"
+            const tipEntry = await this.fetchAndStoreLatestBlock();
+            await this.store.saveBlock({ ...tipEntry, state: "processed" });
+
+            // REQT/fn70x96nxm: After first sync, resolve pending state
+            await this.resolvePendingState();
+
+            // Signal other tabs that initial sync is done
+            await this.markInitialSyncDone();
+
+            this.syncReadyResolve();
+            this.events.emit("syncComplete");
+        } catch (e) {
+            // Release mutex on error so another tab can take over
+            await this.store.releaseSyncMutex(this.pid);
+            this._isSyncOwner = false;
+            throw e;
+        }
+    }
+
+    /**
+     * Marks initial sync as complete in the metadata table.
+     * Other tabs poll for this to know when they can read from cache.
+     */
+    private async markInitialSyncDone(): Promise<void> {
+        // Reuse metadata table — store a simple flag
+        // Uses setLastParsedBlockHeight pattern but with its own key
+        const store = this.store as any;
+        if (store.metadata?.put) {
+            await store.metadata.put({
+                key: "initialSyncDone",
+                value: "true",
+            });
+        }
+    }
+
+    /**
+     * Non-owner tab: poll for initialSyncDone metadata, then initialize from cache.
+     * REQT/hn1mv0cp7h (Non-Owner Behavior) — serve reads from Dexie cache without sync.
+     */
+    private async waitForInitialSyncDone(): Promise<void> {
+        const store = this.store as any;
+        const pollIntervalMs = 500;
+        const maxWaitMs = 120_000; // 2 minutes max wait
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < maxWaitMs) {
+            // Check if initialSyncDone flag is set
+            if (store.metadata?.get) {
+                const entry = await store.metadata.get("initialSyncDone");
+                if (entry?.value === "true") {
+                    break;
+                }
+            }
+
+            // Also check if mutex became stale (owner crashed before completing)
+            const acquired = await this.store.tryAcquireSyncMutex(this.pid, this.mutexStalenessMs);
+            if (acquired) {
+                // Owner crashed — we take over. Re-run syncNow as owner.
+                this._isSyncOwner = true;
+                await this.logOp("mx2to", `Took over stale sync mutex (pid=${this.pid})`);
+                // Remove our mutex so the recursive call can re-acquire cleanly
+                await this.store.releaseSyncMutex(this.pid);
+                this._isSyncOwner = false;
+                await this.syncNow();
+                return;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+        }
+
+        // Initialize from cache regardless of flag
         const cachedBlock = await this.store.getLatestBlock();
         if (cachedBlock) {
             this.lastBlockId = cachedBlock.hash;
@@ -505,71 +684,12 @@ export class CachedUtxoIndex {
             this.lastBlockSlot = cachedBlock.slot;
             this.lastBlockTime = cachedBlock.time;
             await this.logOp(
-                "c8init",
-                `Initialized from cache: block #${cachedBlock.height}, slot ${cachedBlock.slot}`,
+                "mx3ok",
+                `Non-owner initialized from cache: block #${cachedBlock.height}`,
             );
-
-            // Have cached data - just do incremental sync for new transactions
-            await this.runSyncCycle();
-
-            // REQT/fn70x96nxm: After first sync, resolve pending state
-            await this.resolvePendingState();
-
-            this.syncReadyResolve();
-            this.events.emit("syncComplete");
-            return;
         }
 
-        // No cached data - do full initial sync
-        // Fetch all UTXOs from the capo address using the network
-        const capoUtxos = await this.network.getUtxos(this._address);
-
-        await this.logDetail("yz58q", `Found ${capoUtxos.length} capo UTXOs`);
-
-        // REQT/vk2bywdycn: Store all capo UTXOs in the index
-        for (const utxo of capoUtxos) {
-            await this.indexUtxoFromTxInput(utxo);
-        }
-
-        // Extract unique transaction IDs from the UTXOs and fetch/store transaction details
-        const uniqueTxIds = new Set(
-            capoUtxos.map((utxo) => {
-                const id = utxo.id.toString();
-                return id.split("#")[0];
-            }),
-        );
-
-        await this.logDetail(
-            "yuyqy",
-            `Found ${uniqueTxIds.size} unique transaction IDs`,
-        );
-        for (const txId of uniqueTxIds) {
-            await this.logDetail(
-                "48nyb",
-                `Fetching transaction details for ${txId}`,
-            );
-            await this.findOrFetchTxDetails(txId);
-        }
-
-        // Find the charter UTXO (contains the "charter" token from capo mph)
-        const charterUtxo = this.findCharterUtxo(capoUtxos);
-        if (!charterUtxo) {
-            throw new Error("Charter UTXO not found at capo address");
-        }
-
-        // Decode charter data using the bridge
-        const charterData = this.decodeCharterData(charterUtxo);
-        this._charterData = charterData;
-
-        // Resolve and catalog delegate UUTs
-        await this.catalogDelegateUuts(charterData);
-
-        // Fetch and store the latest block details
-        // REQT/5d4f73c9bf: Full sync fetched all UTxOs — mark tip as "processed"
-        const tipEntry = await this.fetchAndStoreLatestBlock();
-        await this.store.saveBlock({ ...tipEntry, state: "processed" });
-
-        // REQT/fn70x96nxm: After first sync, resolve pending state
+        // REQT/fn70x96nxm: Resolve pending state for non-owner too
         await this.resolvePendingState();
 
         this.syncReadyResolve();
@@ -892,16 +1012,46 @@ export class CachedUtxoIndex {
         }
         this.logOp(
             "pr5t1",
-            `Starting block-tip poll every ${blockPollInterval / 1000}s`,
+            `Starting block-tip poll every ${blockPollInterval / 1000}s (pid=${this.pid}, syncOwner=${this._isSyncOwner})`,
         );
 
         // REQT/zzsg63b2fb: Sole trigger — lightweight block-tip poll at 5s intervals
+        // REQT/3c2s5nryvn (Sync Mutex) — only sync if this tab owns the mutex
+        // REQT/hn1mv0cp7h (Non-Owner Behavior) — non-owners poll mutex for staleness
         this.blockPollTimerId = setInterval(async () => {
             try {
-                const newBlock = await this.checkBlockTip();
-                if (newBlock) {
-                    console.debug(`🔵 new block detected — triggering sync`);
-                    await this.runSyncCycle();
+                if (this._isSyncOwner) {
+                    // REQT/ekyatca2kq (Mutex Freshening) — freshen on each poll tick
+                    const stillOwner = await this.store.freshenSyncMutex(this.pid);
+                    if (!stillOwner) {
+                        // Lost ownership (another tab took over stale mutex)
+                        this._isSyncOwner = false;
+                        console.debug(`🔴 Lost sync mutex ownership (pid=${this.pid})`);
+                        return;
+                    }
+
+                    // Owner: check for new blocks and sync
+                    const newBlock = await this.checkBlockTip();
+                    if (newBlock) {
+                        console.debug(`🔵 new block detected — triggering sync`);
+                        await this.runSyncCycle();
+                    }
+                } else {
+                    // REQT/hn1mv0cp7h (Non-Owner Behavior) — poll mutex for staleness
+                    const acquired = await this.store.tryAcquireSyncMutex(
+                        this.pid,
+                        this.mutexStalenessMs,
+                    );
+                    if (acquired) {
+                        // REQT/hn1mv0cp7h — stale or missing mutex, take over
+                        this._isSyncOwner = true;
+                        console.debug(`🟢 Acquired sync mutex (pid=${this.pid}) — becoming sync owner`);
+                        // Immediately run a sync cycle
+                        const newBlock = await this.checkBlockTip();
+                        if (newBlock) {
+                            await this.runSyncCycle();
+                        }
+                    }
                 }
             } catch (e) {
                 console.warn("Block-tip poll failed:", e);
@@ -936,6 +1086,14 @@ export class CachedUtxoIndex {
         if (this.deadlineTimerId) {
             clearInterval(this.deadlineTimerId);
             this.deadlineTimerId = null;
+        }
+        // REQT/e0rzdrc7ts (Graceful Release) — release mutex so another tab can take over
+        if (this._isSyncOwner) {
+            this.store.releaseSyncMutex(this.pid).then(() => {
+                this._isSyncOwner = false;
+            }).catch(e => {
+                console.warn("Failed to release sync mutex:", e);
+            });
         }
     }
 
@@ -1281,107 +1439,122 @@ export class CachedUtxoIndex {
             `  typeof lastValidSlot = ${typeof lastValidSlot}`,
         ].join("\n"));
 
-        // REQT/p2ts24jbkg: Persist PendingTxEntry to store
-        const pendingEntry: PendingTxEntry = {
-            txHash,
-            description: opts.description,
-            id: opts.id,
-            parentId: opts.parentId,
-            batchDepth: opts.depth,
-            confirmationBlockDepth: 0,
-            moreInfo: opts.moreInfo,
-            txName: opts.txName,
-            txCborHex: opts.txCborHex,
-            signedTxCborHex: signedCborHex,
-            deadlineSlot,
-            status: "pending",
-            submittedAt: Date.now(),
-            // REQT/vdkanffv9e (Diagnostic Fields) — persist when provided
-            buildTranscript: opts.buildTranscript,
-            txStructure: opts.txStructure,
-        };
-        await this.store.savePendingTx(pendingEntry);
-        this.pendingTxHashes.add(txHash);
+        // REQT/phj1ne600k (Callers) — wrap full write sequence in withWriteLock
+        // Tables: pendingTxs (save entry), utxos (mark spent + index outputs),
+        //         records (parse datums), txs (save CBOR)
+        await this.store.withWriteLock(
+            this.pid,
+            "registerPendingTx",
+            ["pendingTxs", "utxos", "records", "txs"],
+            async () => {
+                // REQT/p2ts24jbkg: Persist PendingTxEntry to store
+                const pendingEntry: PendingTxEntry = {
+                    txHash,
+                    description: opts.description,
+                    id: opts.id,
+                    parentId: opts.parentId,
+                    batchDepth: opts.depth,
+                    confirmationBlockDepth: 0,
+                    moreInfo: opts.moreInfo,
+                    txName: opts.txName,
+                    txCborHex: opts.txCborHex,
+                    signedTxCborHex: signedCborHex,
+                    deadlineSlot,
+                    status: "pending",
+                    submittedAt: Date.now(),
+                    // REQT/vdkanffv9e (Diagnostic Fields) — persist when provided
+                    buildTranscript: opts.buildTranscript,
+                    txStructure: opts.txStructure,
+                };
+                await this.store.savePendingTx(pendingEntry);
 
-        // REQT/p2ts24jbkg: Mark each input as speculatively spent
-        // REQT/mjhf1yezr9: Track consumed utxoIds for isPending() spent-by-pending lookup
-        for (const input of tx.body.inputs) {
-            const utxoId = input.id.toString();
-            this.pendingSpentUtxoIds.set(utxoId, txHash);
-            const existingUtxo = await this.store.findUtxoId(utxoId);
-            if (existingUtxo && !existingUtxo.spentInTx) {
-                await this.store.markUtxoSpent(utxoId, txHash);
-                await this.logDetail(
-                    "pt2sp",
-                    `Marked UTXO ${utxoId} as speculatively spent by pending tx ${txHash}`,
-                );
-            }
-        }
-
-        // REQT/p2ts24jbkg: Index each output via existing indexUtxoFromOutput()
-        for (
-            let outputIndex = 0;
-            outputIndex < tx.body.outputs.length;
-            outputIndex++
-        ) {
-            const output = tx.body.outputs[outputIndex];
-            await this.indexUtxoFromOutput(txHash, outputIndex, output, 0);
-            const utxoId = this.formatUtxoId(txHash, outputIndex);
-            const indexed = await this.store.findUtxoId(utxoId);
-            await this.logDetail(
-                "pt2ix",
-                `Indexed pending output ${utxoId} at address ${indexed?.address ?? "UNKNOWN"}, hasDatum=${!!indexed?.inlineDatum}`,
-            );
-        }
-
-        // REQT/p2ts24jbkg: Parse inline datums into records if Capo is attached
-        if (this._capo) {
-            let parsedCount = 0;
-            let skippedCount = 0;
-            for (
-                let outputIndex = 0;
-                outputIndex < tx.body.outputs.length;
-                outputIndex++
-            ) {
-                const utxoId = this.formatUtxoId(txHash, outputIndex);
-                const entry = await this.store.findUtxoId(utxoId);
-                if (entry && entry.inlineDatum) {
-                    const saved = await this.parseAndSaveRecord(entry);
-                    if (saved) {
-                        parsedCount++;
+                // REQT/p2ts24jbkg: Mark each input as speculatively spent
+                for (const input of tx.body.inputs) {
+                    const utxoId = input.id.toString();
+                    const existingUtxo = await this.store.findUtxoId(utxoId);
+                    if (existingUtxo && !existingUtxo.spentInTx) {
+                        await this.store.markUtxoSpent(utxoId, txHash);
                         await this.logDetail(
-                            "pt2rc",
-                            `Parsed pending record from ${utxoId}`,
-                        );
-                    } else {
-                        skippedCount++;
-                        await this.logDetail(
-                            "pt2rs",
-                            `Datum at ${utxoId} did not parse to a record (parseAndSaveRecord returned false)`,
+                            "pt2sp",
+                            `Marked UTXO ${utxoId} as speculatively spent by pending tx ${txHash}`,
                         );
                     }
                 }
-            }
-            console.debug(`🟡 PENDING RECORDS: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`);
-            await this.logDetail(
-                "pt2rd",
-                `Pending record parsing complete: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`,
-            );
-        } else {
-            console.warn(`🔴 NO CAPO — skipping record parsing for pending tx ${txHash.slice(0, 8)}…`);
-            await this.logDetail(
-                "pt2nc",
-                `⚠️ No Capo attached — skipping record parsing for pending tx ${txHash}. Records will NOT be queryable until confirmation sync.`,
-            );
+
+                // REQT/p2ts24jbkg: Index each output via existing indexUtxoFromOutput()
+                for (
+                    let outputIndex = 0;
+                    outputIndex < tx.body.outputs.length;
+                    outputIndex++
+                ) {
+                    const output = tx.body.outputs[outputIndex];
+                    await this.indexUtxoFromOutput(txHash, outputIndex, output, 0);
+                    const utxoId = this.formatUtxoId(txHash, outputIndex);
+                    const indexed = await this.store.findUtxoId(utxoId);
+                    await this.logDetail(
+                        "pt2ix",
+                        `Indexed pending output ${utxoId} at address ${indexed?.address ?? "UNKNOWN"}, hasDatum=${!!indexed?.inlineDatum}`,
+                    );
+                }
+
+                // REQT/p2ts24jbkg: Parse inline datums into records if Capo is attached
+                if (this._capo) {
+                    let parsedCount = 0;
+                    let skippedCount = 0;
+                    for (
+                        let outputIndex = 0;
+                        outputIndex < tx.body.outputs.length;
+                        outputIndex++
+                    ) {
+                        const utxoId = this.formatUtxoId(txHash, outputIndex);
+                        const entry = await this.store.findUtxoId(utxoId);
+                        if (entry && entry.inlineDatum) {
+                            const saved = await this.parseAndSaveRecord(entry);
+                            if (saved) {
+                                parsedCount++;
+                                await this.logDetail(
+                                    "pt2rc",
+                                    `Parsed pending record from ${utxoId}`,
+                                );
+                            } else {
+                                skippedCount++;
+                                await this.logDetail(
+                                    "pt2rs",
+                                    `Datum at ${utxoId} did not parse to a record (parseAndSaveRecord returned false)`,
+                                );
+                            }
+                        }
+                    }
+                    console.debug(`🟡 PENDING RECORDS: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`);
+                    await this.logDetail(
+                        "pt2rd",
+                        `Pending record parsing complete: ${parsedCount} parsed, ${skippedCount} skipped, ${tx.body.outputs.length} total outputs`,
+                    );
+                } else {
+                    console.warn(`🔴 NO CAPO — skipping record parsing for pending tx ${txHash.slice(0, 8)}…`);
+                    await this.logDetail(
+                        "pt2nc",
+                        `⚠️ No Capo attached — skipping record parsing for pending tx ${txHash}. Records will NOT be queryable until confirmation sync.`,
+                    );
+                }
+
+                // Also store the tx CBOR for future reference
+                await this.store.saveTx({ txid: txHash, cbor: signedCborHex });
+            },
+        );
+
+        // In-memory state updates (outside write lock — these are session-scoped, not persisted)
+        this.pendingTxHashes.add(txHash);
+
+        // REQT/mjhf1yezr9: Track consumed utxoIds for isPending() spent-by-pending lookup
+        for (const input of tx.body.inputs) {
+            this.pendingSpentUtxoIds.set(input.id.toString(), txHash);
         }
 
         // REQT/2w2yyc2m1k: Store live txd in memory map for same-session consumers
         if (opts.txd) {
             this.pendingTxMap.set(txHash, opts.txd);
         }
-
-        // Also store the tx CBOR for future reference
-        await this.store.saveTx({ txid: txHash, cbor: signedCborHex });
 
         await this.logOp(
             "pt3ok",
@@ -1409,30 +1582,38 @@ export class CachedUtxoIndex {
         // REQT/05lkfji14c (Output Verification on Confirm) — registerPendingTx writes
         // outputs non-atomically; page reload mid-write can leave outputs partially indexed.
         // Decode the tx and verify each output is in the store, indexing any that are missing.
+        // REQT/phj1ne600k (Callers) — wrap output verification + status update in withWriteLock
         try {
             const tx = decodeTx(pendingEntry.signedTxCborHex);
-            let indexedCount = 0;
-            for (let outputIndex = 0; outputIndex < tx.body.outputs.length; outputIndex++) {
-                const utxoId = this.formatUtxoId(txHash, outputIndex);
-                const existing = await this.store.findUtxoId(utxoId);
-                if (!existing) {
-                    // REQT/05lkfji14c — output missing from store, index it now
-                    const output = tx.body.outputs[outputIndex];
-                    await this.indexUtxoFromOutput(txHash, outputIndex, output, blockHeight);
-                    indexedCount++;
-                }
-                // If existing with spentInTx set, leave it — a later batch tx may have consumed it
-            }
-            if (indexedCount > 0) {
-                await this.logWarn(
-                    "pt4ix",
-                    `confirmPendingTx: indexed ${indexedCount} missing output(s) for tx ${txHash.slice(0, 8)}…`,
-                );
-            }
+            await this.store.withWriteLock(
+                this.pid,
+                "confirmPendingTx",
+                ["pendingTxs", "utxos", "records"],
+                async () => {
+                    let indexedCount = 0;
+                    for (let outputIndex = 0; outputIndex < tx.body.outputs.length; outputIndex++) {
+                        const utxoId = this.formatUtxoId(txHash, outputIndex);
+                        const existing = await this.store.findUtxoId(utxoId);
+                        if (!existing) {
+                            // REQT/05lkfji14c — output missing from store, index it now
+                            const output = tx.body.outputs[outputIndex];
+                            await this.indexUtxoFromOutput(txHash, outputIndex, output, blockHeight);
+                            indexedCount++;
+                        }
+                        // If existing with spentInTx set, leave it — a later batch tx may have consumed it
+                    }
+                    if (indexedCount > 0) {
+                        await this.logWarn(
+                            "pt4ix",
+                            `confirmPendingTx: indexed ${indexedCount} missing output(s) for tx ${txHash.slice(0, 8)}…`,
+                        );
+                    }
+                },
+            );
         } catch (e: any) {
             await this.logWarn(
                 "pt4de",
-                `confirmPendingTx: failed to decode CBOR for output verification on tx ${txHash.slice(0, 8)}…: ${e.message || e}`,
+                `confirmPendingTx: failed to verify/index outputs for tx ${txHash.slice(0, 8)}…: ${e.message || e}`,
             );
         }
 

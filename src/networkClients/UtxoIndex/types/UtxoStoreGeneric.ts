@@ -132,4 +132,53 @@ export interface UtxoStoreGeneric {
     // REQT/h4m8p3x16c: Purge Operation
     /** Delete PendingTxEntry rows at terminal confidence: confirmed+certain older than certainOlderThan, rolled-back older than rolledBackOlderThan */
     purgeOldPendingTxs(certainOlderThan: number, rolledBackOlderThan: number): Promise<void>;
+
+    // =========================================================================
+    // REQT/3c2s5nryvn: Sync Mutex (Multi-Tab Coordination)
+    // =========================================================================
+
+    /**
+     * Attempt to acquire the sync mutex via compare-and-swap.
+     * Succeeds if the mutex is absent, stale (older than stalenessMs), or already owned by this pid.
+     * When already owned by this pid, freshens the timestamp (acts as freshen).
+     * MUST be atomic (e.g., inside a Dexie transaction) to prevent TOCTOU races.
+     *
+     * REQT/f3w3hkjt4t (Mutex Acquisition)
+     */
+    tryAcquireSyncMutex(pid: number, stalenessMs: number): Promise<boolean>;
+
+    /**
+     * Update the mutex timestamp if this pid currently owns it.
+     * Returns false if the mutex is not owned by this pid.
+     *
+     * REQT/ekyatca2kq (Mutex Freshening)
+     */
+    freshenSyncMutex(pid: number): Promise<boolean>;
+
+    /**
+     * Release the sync mutex if this pid currently owns it.
+     * Returns false if the mutex is not owned by this pid.
+     *
+     * REQT/e0rzdrc7ts (Graceful Release)
+     */
+    releaseSyncMutex(pid: number): Promise<boolean>;
+
+    // =========================================================================
+    // REQT/4tsvn6259v: Write Lock (Multi-Step Write Atomicity)
+    // =========================================================================
+
+    /**
+     * Acquires a cross-tab write lock, executes the callback, and releases the lock.
+     * For transactional stores (e.g., Dexie), the callback additionally runs inside
+     * a native transaction for atomicity and rollback on error.
+     * The `tables` parameter declares which store tables the callback will write to.
+     * Implementations SHOULD automatically include infrastructure tables (metadata, logs).
+     * Stale locks (>1s) are automatically broken.
+     *
+     * REQT/4tsvn6259v (withWriteLock API)
+     * REQT/jb5dhgsyfq (Lock Protocol)
+     * REQT/r7t394zt2x (Dexie Transaction Shim)
+     * REQT/n11m1k9wvg (Non-Transactional Store Compatibility)
+     */
+    withWriteLock<T>(pid: number, activityName: string, tables: string[], callback: () => Promise<T>): Promise<T>;
 }

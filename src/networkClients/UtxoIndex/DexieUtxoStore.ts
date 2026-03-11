@@ -608,4 +608,218 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
             await this.pendingTxs.bulkDelete(toDelete);
         }
     }
+
+    // =========================================================================
+    // REQT/f3w3hkjt4t: Sync Mutex — CAS with Dexie transaction for atomicity
+    // =========================================================================
+
+    /**
+     * Atomic compare-and-swap mutex acquisition.
+     * Succeeds if the mutex is absent, stale, or already owned by this pid (freshens).
+     * The CAS read-check-write runs inside a Dexie transaction to prevent TOCTOU races.
+     *
+     * REQT/f3w3hkjt4t (Mutex Acquisition)
+     * REQT/ekyatca2kq (Mutex Freshening) — also freshens when already owned
+     */
+    async tryAcquireSyncMutex(pid: number, stalenessMs: number): Promise<boolean> {
+        return this.transaction("rw", this.metadata, async () => {
+            const entry = await this.metadata.get("syncMutex");
+            const now = Date.now();
+
+            if (!entry) {
+                // REQT/f3w3hkjt4t — absent: acquire
+                await this.metadata.put({
+                    key: "syncMutex",
+                    value: JSON.stringify({ pid, timestamp: now }),
+                });
+                return true;
+            }
+
+            const mutex = JSON.parse(entry.value) as { pid: number; timestamp: number };
+
+            if (mutex.pid === pid) {
+                // Already ours — freshen timestamp (REQT/ekyatca2kq)
+                await this.metadata.put({
+                    key: "syncMutex",
+                    value: JSON.stringify({ pid, timestamp: now }),
+                });
+                return true;
+            }
+
+            if (now - mutex.timestamp > stalenessMs) {
+                // REQT/f3w3hkjt4t — stale: take over
+                await this.metadata.put({
+                    key: "syncMutex",
+                    value: JSON.stringify({ pid, timestamp: now }),
+                });
+                return true;
+            }
+
+            // Another tab owns it and it's fresh — fail
+            return false;
+        });
+    }
+
+    /**
+     * Freshens the mutex timestamp if this pid owns it.
+     *
+     * REQT/ekyatca2kq (Mutex Freshening)
+     */
+    async freshenSyncMutex(pid: number): Promise<boolean> {
+        return this.transaction("rw", this.metadata, async () => {
+            const entry = await this.metadata.get("syncMutex");
+            if (!entry) return false;
+
+            const mutex = JSON.parse(entry.value) as { pid: number; timestamp: number };
+            if (mutex.pid !== pid) return false;
+
+            // REQT/ekyatca2kq — update timestamp
+            await this.metadata.put({
+                key: "syncMutex",
+                value: JSON.stringify({ pid, timestamp: Date.now() }),
+            });
+            return true;
+        });
+    }
+
+    /**
+     * Releases the sync mutex if this pid owns it.
+     *
+     * REQT/e0rzdrc7ts (Graceful Release)
+     */
+    async releaseSyncMutex(pid: number): Promise<boolean> {
+        return this.transaction("rw", this.metadata, async () => {
+            const entry = await this.metadata.get("syncMutex");
+            if (!entry) return false;
+
+            const mutex = JSON.parse(entry.value) as { pid: number; timestamp: number };
+            if (mutex.pid !== pid) return false;
+
+            // REQT/e0rzdrc7ts — remove mutex row
+            await this.metadata.delete("syncMutex");
+            return true;
+        });
+    }
+
+    // =========================================================================
+    // REQT/jb5dhgsyfq: Write Lock — metadata-row protocol + Dexie transaction
+    // =========================================================================
+
+    /** Stale lock threshold in milliseconds */
+    private static readonly WRITE_LOCK_STALE_MS = 1000;
+    /** Retry interval for write lock contention */
+    private static readonly WRITE_LOCK_RETRY_MS = 10;
+
+    /**
+     * Acquires a write lock, executes the callback inside a Dexie transaction
+     * for atomicity, and releases the lock.
+     *
+     * The metadata-row protocol provides cross-tab mutual exclusion.
+     * The Dexie transaction provides intra-tab atomicity and rollback on error.
+     *
+     * Infrastructure tables (metadata, logs) are automatically included.
+     *
+     * REQT/4tsvn6259v (withWriteLock API)
+     * REQT/jb5dhgsyfq (Lock Protocol)
+     * REQT/r7t394zt2x (Dexie Transaction Shim)
+     */
+    async withWriteLock<T>(
+        pid: number,
+        activityName: string,
+        tables: string[],
+        callback: () => Promise<T>,
+    ): Promise<T> {
+        // REQT/jb5dhgsyfq — acquire lock with spin+backoff
+        await this.acquireWriteLock(pid, activityName);
+
+        try {
+            // REQT/r7t394zt2x — resolve table names to Dexie table objects,
+            // auto-including metadata (for lock) and logs (for diagnostics)
+            const allTableNames = new Set([...tables, "metadata", "logs"]);
+            const dexieTables = [...allTableNames].map(name => {
+                const table = (this as any)[name];
+                if (!table) throw new Error(`withWriteLock: unknown table "${name}"`);
+                return table;
+            });
+
+            // REQT/r7t394zt2x — wrap callback in Dexie transaction for atomicity
+            const result = await this.transaction("rw", dexieTables, callback);
+            return result;
+        } finally {
+            // REQT/jb5dhgsyfq — always release lock, even on error
+            await this.releaseWriteLock(pid);
+        }
+    }
+
+    /**
+     * Spins until the write lock is acquired or a stale lock is broken.
+     *
+     * REQT/jb5dhgsyfq (Lock Protocol)
+     */
+    private async acquireWriteLock(pid: number, activityName: string): Promise<void> {
+        while (true) {
+            const acquired = await this.transaction("rw", this.metadata, async () => {
+                const entry = await this.metadata.get("writeLock");
+                const now = Date.now();
+
+                if (!entry) {
+                    // REQT/jb5dhgsyfq — absent: acquire
+                    await this.metadata.put({
+                        key: "writeLock",
+                        value: JSON.stringify({ pid, activityName, timestamp: now }),
+                    });
+                    return true;
+                }
+
+                const lock = JSON.parse(entry.value) as {
+                    pid: number;
+                    activityName: string;
+                    timestamp: number;
+                };
+
+                if (lock.pid === pid) {
+                    // Re-entrant from same pid — update activity
+                    await this.metadata.put({
+                        key: "writeLock",
+                        value: JSON.stringify({ pid, activityName, timestamp: now }),
+                    });
+                    return true;
+                }
+
+                if (now - lock.timestamp > DexieUtxoStore.WRITE_LOCK_STALE_MS) {
+                    // REQT/jb5dhgsyfq — stale (>1s): break and acquire
+                    await this.metadata.put({
+                        key: "writeLock",
+                        value: JSON.stringify({ pid, activityName, timestamp: now }),
+                    });
+                    return true;
+                }
+
+                // Another pid holds a fresh lock — retry
+                return false;
+            });
+
+            if (acquired) return;
+
+            // REQT/jb5dhgsyfq — brief backoff before retry
+            await new Promise(resolve => setTimeout(resolve, DexieUtxoStore.WRITE_LOCK_RETRY_MS));
+        }
+    }
+
+    /**
+     * Releases the write lock if owned by this pid.
+     *
+     * REQT/jb5dhgsyfq (Lock Protocol)
+     */
+    private async releaseWriteLock(pid: number): Promise<void> {
+        await this.transaction("rw", this.metadata, async () => {
+            const entry = await this.metadata.get("writeLock");
+            if (!entry) return;
+
+            const lock = JSON.parse(entry.value) as { pid: number };
+            if (lock.pid === pid) {
+                await this.metadata.delete("writeLock");
+            }
+        });
+    }
 }
