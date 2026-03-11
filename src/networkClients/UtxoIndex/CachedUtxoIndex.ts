@@ -1397,15 +1397,43 @@ export class CachedUtxoIndex {
      * REQT/58b9nzgcbj (Confirm Pending Transaction) — confirmedAtBlockHeight + confirmState
      * REQT/fz6z7rr702 (Pending Transaction Events)
      */
-    private async confirmPendingTx(txHash: string, blockHeight: number): Promise<void> {
+    private async confirmPendingTx(
+        txHash: string,
+        blockHeight: number,
+        knownSlot?: number,
+        knownBlockHash?: string,
+    ): Promise<void> {
         const pendingEntry = await this.store.findPendingTx(txHash);
         if (!pendingEntry || pendingEntry.status !== "pending") return;
 
-        // Look up the confirming block's slot and hash from the store
-        const confirmingBlock = await this.store.findBlockByHeight(blockHeight);
-        const confirmedAtSlot = confirmingBlock?.slot;
-        // REQT/xsvqyh5gwb (confirmedInBlockHash Field) — store block hash for precise rollback matching
-        const confirmedInBlockHash = confirmingBlock?.hash;
+        // Resolve slot and block hash: prefer caller-provided values, then store lookup,
+        // then Blockfrost fetch. confirmedAtSlot and confirmedInBlockHash MUST be set —
+        // updateConfirmationDepths skips entries where confirmedAtSlot is undefined.
+        let confirmedAtSlot = knownSlot;
+        let confirmedInBlockHash = knownBlockHash; // REQT/xsvqyh5gwb (confirmedInBlockHash Field)
+
+        if (confirmedAtSlot === undefined || confirmedInBlockHash === undefined) {
+            const confirmingBlock = await this.store.findBlockByHeight(blockHeight);
+            if (confirmedAtSlot === undefined) confirmedAtSlot = confirmingBlock?.slot;
+            if (confirmedInBlockHash === undefined) confirmedInBlockHash = confirmingBlock?.hash;
+        }
+
+        // Last resort: fetch block details from Blockfrost when block isn't in the store
+        // (common when tryConfirmPendingTxs catches a tx after page reload or catchup)
+        if (confirmedAtSlot === undefined || confirmedInBlockHash === undefined) {
+            try {
+                const blockDetails = await this.fetchFromBlockfrost<{ slot: number; hash: string }>(
+                    `blocks/${blockHeight}`,
+                );
+                if (confirmedAtSlot === undefined) confirmedAtSlot = blockDetails.slot;
+                if (confirmedInBlockHash === undefined) confirmedInBlockHash = blockDetails.hash;
+            } catch (e: any) {
+                await this.logWarn(
+                    "pt4bk",
+                    `confirmPendingTx: failed to fetch block ${blockHeight} details: ${e.message || e}`,
+                );
+            }
+        }
 
         console.debug(`🟢 CONFIRM PENDING TX: ${txHash.slice(0, 8)}… — ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot}`);
         await this.logOp(
@@ -1413,24 +1441,42 @@ export class CachedUtxoIndex {
             `Confirming pending tx ${txHash}: ${pendingEntry.description} at block #${blockHeight} slot ${confirmedAtSlot} hash ${confirmedInBlockHash?.slice(0, 12)}…`,
         );
 
-        // REQT/58b9nzgcbj: Set status, confirmedAtBlockHeight, and initial confirmState
+        // REQT/58b9nzgcbj: Set status, confirmedAtBlockHeight, and confirmState based on actual depth.
+        // After page reload or catchup, the tx may already be many blocks deep —
+        // hardcoding "provisional" would leave it stuck in resubmission scope.
+        const blockDepth = this.lastBlockHeight - blockHeight;
+        const { provisionalDepth, confidentDepth, certaintyDepth } = this.confirmationThresholds;
+        let confirmState: "provisional" | "likely" | "confident" | "certain";
+        if (confirmedAtSlot !== undefined && (this.lastBlockSlot - confirmedAtSlot) >= certaintyDepth) {
+            confirmState = "certain";
+        } else if (blockDepth >= confidentDepth) {
+            confirmState = "confident";
+        } else if (blockDepth >= provisionalDepth) {
+            confirmState = "likely";
+        } else {
+            confirmState = "provisional";
+        }
+
         pendingEntry.status = "confirmed";
         pendingEntry.confirmedAtBlockHeight = blockHeight; // REQT/58b9nzgcbj
         pendingEntry.confirmedAtSlot = confirmedAtSlot;
         pendingEntry.confirmedInBlockHash = confirmedInBlockHash; // REQT/xsvqyh5gwb
-        pendingEntry.confirmState = "provisional";         // REQT/ddzcp753jr
+        pendingEntry.confirmState = confirmState;          // REQT/ddzcp753jr
+        pendingEntry.confirmationBlockDepth = blockDepth;
         await this.store.savePendingTx(pendingEntry);
-        // REQT/pgyqdvwn17 (pendingTxHashes Lifecycle) — do NOT remove from pendingTxHashes here.
-        // Entry remains in pendingTxHashes until confirmState reaches "likely" (in updateConfirmationDepths).
-        // This keeps provisionally-confirmed txs eligible for quiet resubmission during the
-        // micro-fork vulnerability window.
+
+        // REQT/pgyqdvwn17 (pendingTxHashes Lifecycle) — remove from pendingTxHashes if already
+        // past provisional depth. Otherwise retain until updateConfirmationDepths advances it.
+        if (confirmState !== "provisional") {
+            this.pendingTxHashes.delete(txHash);
+        }
 
         // REQT/fz6z7rr702: Emit txConfirmed event with confirmState
         const txd = this.pendingTxMap.get(txHash);
         this.events.emit("txConfirmed", {
             txHash,
             description: pendingEntry.description,
-            confirmState: "provisional", // REQT/58b9nzgcbj
+            confirmState, // REQT/58b9nzgcbj
             txd,
         });
 
@@ -1466,12 +1512,16 @@ export class CachedUtxoIndex {
         for (const entry of pendingEntries) {
             try {
                 // REQT/ba6eq9x10s: Query Blockfrost txs/{txHash} to check on-chain status
-                const txInfo = await this.fetchFromBlockfrost<{ block_height: number }>(
+                const txInfo = await this.fetchFromBlockfrost<{
+                    block_height: number;
+                    slot: number;
+                    block: string; // block hash
+                }>(
                     `txs/${entry.txHash}`,
                 );
                 // If we get here without error, the tx is on-chain
-                // REQT/ba6eq9x10s: Call confirmPendingTx with block height from response
-                await this.confirmPendingTx(entry.txHash, txInfo.block_height);
+                // REQT/ba6eq9x10s: Call confirmPendingTx with block height, slot, and block hash
+                await this.confirmPendingTx(entry.txHash, txInfo.block_height, txInfo.slot, txInfo.block);
                 confirmedCount++;
             } catch (e: any) {
                 // Blockfrost returns "The requested component has not been found."
@@ -1518,9 +1568,33 @@ export class CachedUtxoIndex {
             // REQT/thy7tkrxh7: Skip entries already at "certain" — no further advancement
             if (entry.confirmState === "certain") continue;
 
-            // REQT/thy7tkrxh7: Skip entries without confirmation data
+            // REQT/thy7tkrxh7: Skip entries without confirmation block height
             if (entry.confirmedAtBlockHeight === undefined) continue;
-            if (entry.confirmedAtSlot === undefined) continue;
+
+            // Repair entries with missing slot/hash — these were persisted before
+            // confirmPendingTx populated these fields (e.g., from tryConfirmPendingTxs
+            // when the confirming block wasn't in the store). Without repair, the entry
+            // stays stuck at "provisional" forever.
+            if (entry.confirmedAtSlot === undefined || entry.confirmedInBlockHash === undefined) {
+                try {
+                    const blockDetails = await this.fetchFromBlockfrost<{ slot: number; hash: string }>(
+                        `blocks/${entry.confirmedAtBlockHeight}`,
+                    );
+                    if (entry.confirmedAtSlot === undefined) entry.confirmedAtSlot = blockDetails.slot;
+                    if (entry.confirmedInBlockHash === undefined) entry.confirmedInBlockHash = blockDetails.hash;
+                    await this.store.savePendingTx(entry);
+                    await this.logDetail(
+                        "cd0rp",
+                        `Repaired missing slot/hash for confirmed tx ${entry.txHash.slice(0, 8)}… at block #${entry.confirmedAtBlockHeight}`,
+                    );
+                } catch (e: any) {
+                    await this.logWarn(
+                        "cd0re",
+                        `Failed to repair confirmation data for tx ${entry.txHash.slice(0, 8)}…: ${e.message || e}`,
+                    );
+                    continue; // Can't calculate slot depth — skip this cycle, retry next
+                }
+            }
 
             // Block depth for provisional/likely/confident thresholds
             const blockDepth = currentHeight - entry.confirmedAtBlockHeight;
@@ -2480,8 +2554,28 @@ export class CachedUtxoIndex {
             const txEntry = await this.store.findTxId(txHash);
             const cborHex = txEntry?.cbor ?? ""; // REQT/kfemj6eteg — sensible default if missing
 
-            // Look up confirming block details
+            // Look up confirming block details — store first, then Blockfrost fallback
+            // (catchup mode doesn't store intermediate blocks, so store lookup may miss)
+            let confirmedAtSlot: number | undefined;
+            let confirmedInBlockHash: string | undefined;
             const confirmingBlock = await this.store.findBlockByHeight(summary.block_height);
+            confirmedAtSlot = confirmingBlock?.slot;
+            confirmedInBlockHash = confirmingBlock?.hash;
+
+            if (confirmedAtSlot === undefined || confirmedInBlockHash === undefined) {
+                try {
+                    const blockDetails = await this.fetchFromBlockfrost<{ slot: number; hash: string }>(
+                        `blocks/${summary.block_height}`,
+                    );
+                    if (confirmedAtSlot === undefined) confirmedAtSlot = blockDetails.slot;
+                    if (confirmedInBlockHash === undefined) confirmedInBlockHash = blockDetails.hash;
+                } catch (e: any) {
+                    await this.logWarn(
+                        "bd1bk",
+                        `block-discovered PendingTxEntry: failed to fetch block ${summary.block_height} details: ${e.message || e}`,
+                    );
+                }
+            }
 
             const blockDepth = this.lastBlockHeight - summary.block_height;
             const { provisionalDepth, confidentDepth } = this.confirmationThresholds;
@@ -2507,8 +2601,8 @@ export class CachedUtxoIndex {
                 status: "confirmed", // REQT/kfemj6eteg
                 submittedAt: Date.now(),
                 confirmedAtBlockHeight: summary.block_height, // REQT/kfemj6eteg
-                confirmedAtSlot: confirmingBlock?.slot, // REQT/kfemj6eteg
-                confirmedInBlockHash: confirmingBlock?.hash, // REQT/kfemj6eteg
+                confirmedAtSlot, // REQT/kfemj6eteg
+                confirmedInBlockHash, // REQT/kfemj6eteg
                 confirmState, // REQT/kfemj6eteg
             };
             await this.store.savePendingTx(blockDiscoveredEntry); // REQT/kfemj6eteg
