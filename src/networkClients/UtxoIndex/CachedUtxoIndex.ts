@@ -1668,13 +1668,21 @@ export class CachedUtxoIndex {
             confirmState = "provisional";
         }
 
+        // REQT/phj1ne600k (Callers) — wrap status update in withWriteLock for atomicity
         pendingEntry.status = "confirmed";
         pendingEntry.confirmedAtBlockHeight = blockHeight; // REQT/1doel3r4ol (Confirmation Metadata Resolution)
         pendingEntry.confirmedAtSlot = confirmedAtSlot;
         pendingEntry.confirmedInBlockHash = confirmedInBlockHash; // REQT/xsvqyh5gwb
         pendingEntry.confirmState = confirmState;          // REQT/ddzcp753jr
         pendingEntry.confirmationBlockDepth = blockDepth;
-        await this.store.savePendingTx(pendingEntry);
+        await this.store.withWriteLock(
+            this.pid,
+            "confirmPendingTx-status",
+            ["pendingTxs"],
+            async () => {
+                await this.store.savePendingTx(pendingEntry);
+            },
+        );
 
         // REQT/pgyqdvwn17 (pendingTxHashes Lifecycle) — remove from pendingTxHashes if already
         // past provisional depth. Otherwise retain until updateConfirmationDepths advances it.
