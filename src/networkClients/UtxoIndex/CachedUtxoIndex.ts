@@ -2224,6 +2224,17 @@ export class CachedUtxoIndex {
      * REQT/sg0pqr0dx7 (Resubmission Throttle)
      */
     private async resubmitStalePendingTxs(): Promise<void> {
+        // Refresh pendingTxHashes from store — picks up entries registered by other tabs
+        const pendingEntries = await this.store.getPendingByStatus("pending");
+        for (const entry of pendingEntries) {
+            this.pendingTxHashes.add(entry.txHash);
+        }
+        const provisionalEntries = (await this.store.getPendingByStatus("confirmed"))
+            .filter(e => e.confirmState === "provisional");
+        for (const entry of provisionalEntries) {
+            this.pendingTxHashes.add(entry.txHash);
+        }
+
         if (this.pendingTxHashes.size === 0) return;
 
         let resubmitCount = 0;
