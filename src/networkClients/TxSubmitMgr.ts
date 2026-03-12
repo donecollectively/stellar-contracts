@@ -627,6 +627,17 @@ export class TxSubmitMgr extends StateMachine<
             message,
             ...details,
         });
+
+        // "All inputs are spent ... probably already been included" means the tx
+        // landed before our confirmation check saw it — treat as success, not failure.
+        if (/All inputs are spent.*probably already been included/i.test(message)) {
+            this.log(`inputs already spent (probably already submitted) — treating as success`);
+            this.emitLog("submit-success", "inputs already consumed (probably already included)");
+            this.$mgrState.totalSubmissionSuccesses++;
+            this.transition("submitted");
+            return;
+        }
+
         this.emitLog("submit-failed", message); // REQT/7s7e02fc4b
         if (this.isExpiryError(problem)) {
             if (this.isTxExpired(this.tx)) {
@@ -677,12 +688,18 @@ export class TxSubmitMgr extends StateMachine<
             return this.transition("notOk");
         }
 
+        console.error(
+            `TxSubmitMgr: submission failed with unexpected error for tx ${this.txd?.id?.slice(0, 8) ?? "?"}…:`,
+            message,
+            details,
+        );
         this.log(
             `unknown error: ${message}\n  - details: `,
             details,
             "\n\n   ... if this error is really not an expired tx or not-yet-valid, \n" +
                 "    ... then the tx is almost certainly invalid and will never work"
         );
+        this.emitLog("submit-failed", `UNEXPECTED: ${message}`);
         this.$mgrState.isBadTx = problem;
 
         this.transition("failed");
