@@ -610,6 +610,19 @@ export class DexieUtxoStore extends Dexie implements UtxoStoreGeneric {
     }
 
     // =========================================================================
+    // Generic metadata access
+    // =========================================================================
+
+    async getMetadata(key: string): Promise<string | undefined> {
+        const entry = await this.metadata.get(key);
+        return entry?.value;
+    }
+
+    async setMetadata(key: string, value: string): Promise<void> {
+        await this.metadata.put({ key, value });
+    }
+
+    // =========================================================================
     // REQT/f3w3hkjt4t: Sync Mutex — CAS with Dexie transaction for atomicity
     // =========================================================================
 

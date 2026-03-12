@@ -134,6 +134,16 @@ export interface UtxoStoreGeneric {
     purgeOldPendingTxs(certainOlderThan: number, rolledBackOlderThan: number): Promise<void>;
 
     // =========================================================================
+    // Generic metadata access (key-value store for coordination signals)
+    // =========================================================================
+
+    /** Read a metadata value by key. Returns undefined if the key doesn't exist. */
+    getMetadata(key: string): Promise<string | undefined>;
+
+    /** Write a metadata value by key. Creates the key if it doesn't exist, overwrites if it does. */
+    setMetadata(key: string, value: string): Promise<void>;
+
+    // =========================================================================
     // REQT/3c2s5nryvn: Sync Mutex (Multi-Tab Coordination)
     // =========================================================================
 

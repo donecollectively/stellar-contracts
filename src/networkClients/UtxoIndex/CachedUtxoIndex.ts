@@ -630,15 +630,7 @@ export class CachedUtxoIndex {
      * Other tabs poll for this to know when they can read from cache.
      */
     private async markInitialSyncDone(): Promise<void> {
-        // Reuse metadata table — store a simple flag
-        // Uses setLastParsedBlockHeight pattern but with its own key
-        const store = this.store as any;
-        if (store.metadata?.put) {
-            await store.metadata.put({
-                key: "initialSyncDone",
-                value: "true",
-            });
-        }
+        await this.store.setMetadata("initialSyncDone", "true");
     }
 
     /**
@@ -646,18 +638,15 @@ export class CachedUtxoIndex {
      * REQT/hn1mv0cp7h (Non-Owner Behavior) — serve reads from Dexie cache without sync.
      */
     private async waitForInitialSyncDone(): Promise<void> {
-        const store = this.store as any;
         const pollIntervalMs = 500;
         const maxWaitMs = 120_000; // 2 minutes max wait
         const startTime = Date.now();
 
         while (Date.now() - startTime < maxWaitMs) {
             // Check if initialSyncDone flag is set
-            if (store.metadata?.get) {
-                const entry = await store.metadata.get("initialSyncDone");
-                if (entry?.value === "true") {
-                    break;
-                }
+            const flag = await this.store.getMetadata("initialSyncDone");
+            if (flag === "true") {
+                break;
             }
 
             // Also check if mutex became stale (owner crashed before completing)
