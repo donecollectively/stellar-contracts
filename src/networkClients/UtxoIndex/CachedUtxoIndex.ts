@@ -1441,11 +1441,11 @@ export class CachedUtxoIndex {
 
         // REQT/phj1ne600k (Callers) — wrap full write sequence in withWriteLock
         // Tables: pendingTxs (save entry), utxos (mark spent + index outputs),
-        //         records (parse datums), txs (save CBOR)
+        //         records (parse datums), txs (save CBOR), scripts (cacheRefScriptIfPresent)
         await this.store.withWriteLock(
             this.pid,
             "registerPendingTx",
-            ["pendingTxs", "utxos", "records", "txs"],
+            ["pendingTxs", "utxos", "records", "txs", "scripts"],
             async () => {
                 // REQT/p2ts24jbkg: Persist PendingTxEntry to store
                 const pendingEntry: PendingTxEntry = {
@@ -1588,7 +1588,7 @@ export class CachedUtxoIndex {
             await this.store.withWriteLock(
                 this.pid,
                 "confirmPendingTx",
-                ["pendingTxs", "utxos", "records"],
+                ["pendingTxs", "utxos", "records", "scripts"],
                 async () => {
                     let indexedCount = 0;
                     for (let outputIndex = 0; outputIndex < tx.body.outputs.length; outputIndex++) {
