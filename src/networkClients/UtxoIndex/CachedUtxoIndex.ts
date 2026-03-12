@@ -2163,8 +2163,8 @@ export class CachedUtxoIndex {
         // Log the resubmission attempt to the tx's submission log
         await this.store.appendSubmissionLog(txHash, {
             at: Date.now(),
-            event: "silent-resubmit",
-            detail: "quiet resubmission by CachedUtxoIndex",
+            event: "resubmit",
+            detail: "by CachedUtxoIndex",
         });
 
         // REQT/zhgbnajdjg (Harmless Error Handling) — all errors caught to protect
@@ -2174,10 +2174,10 @@ export class CachedUtxoIndex {
             const tx = decodeTx(signedCborHex); // REQT/zyw6grz9t1
             await this.network.submitTx(tx); // REQT/zyw6grz9t1
 
-            // Submission succeeded — log it
             await this.store.appendSubmissionLog(txHash, {
                 at: Date.now(),
-                event: "silent-resubmit-succeeded",
+                event: "resubmit",
+                detail: "succeeded",
             });
         } catch (e: any) {
             // REQT/zhgbnajdjg (Harmless Error Handling) — swallow expected errors
@@ -2186,8 +2186,8 @@ export class CachedUtxoIndex {
                 // UTxO already consumed — tx already landed or was outcompeted. Harmless.
                 await this.store.appendSubmissionLog(txHash, {
                     at: Date.now(),
-                    event: "silent-resubmit",
-                    detail: "swallowed UTxO error — tx inputs already consumed (harmless)",
+                    event: "resubmit",
+                    detail: `swallowed UTxO error (harmless): ${msg}`,
                 });
                 return;
             }
@@ -2195,15 +2195,15 @@ export class CachedUtxoIndex {
                 // Validity window expired — deadline rollback will handle cleanup. Harmless.
                 await this.store.appendSubmissionLog(txHash, {
                     at: Date.now(),
-                    event: "silent-resubmit",
-                    detail: "swallowed expiry error — validity window expired (harmless)",
+                    event: "resubmit",
+                    detail: `not in validity window: ${msg}`,
                 });
                 return;
             }
             // Unexpected error — log warning but do NOT interrupt the resubmission loop
             await this.store.appendSubmissionLog(txHash, {
                 at: Date.now(),
-                event: "silent-resubmit",
+                event: "resubmit",
                 detail: `unexpected error: ${e.message || e}`,
             });
             await this.logWarn(
