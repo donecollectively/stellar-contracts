@@ -125,7 +125,7 @@ describe("Sync Mutex (REQT/3c2s5nryvn)", () => {
 
         const rawAfter = await storeA.getMetadata("syncMutex");
         const tsAfter = JSON.parse(rawAfter!).timestamp;
-        expect(tsAfter).toBeGreaterThanOrEqual(tsBefore);
+        expect(tsAfter).toBeGreaterThan(tsBefore);
     });
 
     it("takes over stale mutex (mutex-stale-takeover/REQT/f3w3hkjt4t)", async () => {
@@ -228,6 +228,33 @@ describe("Sync Mutex (REQT/3c2s5nryvn)", () => {
         const raw = await storeB.getMetadata("syncMutex");
         expect(JSON.parse(raw!).pid).toBe(PID_B);
     });
+
+    it("release returns false when no mutex exists (release-absent/REQT/e0rzdrc7ts)", async () => {
+        const { storeA } = makeDualStores("release-absent");
+        const released = await storeA.releaseSyncMutex(PID_A);
+        expect(released).toBe(false);
+    });
+
+    it("does not take over mutex that is well within staleness window (mutex-boundary-fresh/REQT/f3w3hkjt4t)", async () => {
+        const { storeA, storeB } = makeDualStores("boundary-fresh");
+
+        // Write mutex with timestamp safely inside the staleness window.
+        // Use half the staleness threshold to avoid timing races between
+        // test setup and the CAS read inside tryAcquireSyncMutex.
+        const recentTimestamp = Date.now() - Math.floor(STALENESS_MS / 2);
+        await storeA.setMetadata(
+            "syncMutex",
+            JSON.stringify({ pid: PID_A, timestamp: recentTimestamp })
+        );
+
+        // B should fail — mutex is fresh (well within threshold)
+        const acqB = await storeB.tryAcquireSyncMutex(PID_B, STALENESS_MS);
+        expect(acqB).toBe(false);
+
+        // A still owns it
+        const mutex = JSON.parse((await storeA.getMetadata("syncMutex"))!);
+        expect(mutex.pid).toBe(PID_A);
+    });
 });
 
 // =========================================================================
@@ -238,25 +265,39 @@ describe("Write Lock (REQT/jp1wtj9pfz)", () => {
     // --- Basic Lifecycle (REQT/jb5dhgsyfq) ---
 
     it("acquires and releases lock around callback (lock-lifecycle/REQT/jb5dhgsyfq)", async () => {
-        const { storeA } = makeDualStores("lock-lifecycle");
+        const { storeA, storeB } = makeDualStores("lock-lifecycle");
 
-        let lockVisibleDuringCallback = false;
+        // Verify lock is acquired before callback runs by checking from
+        // storeB (separate connection) after acquireWriteLock but before
+        // the Dexie transaction. We use the private methods directly to
+        // observe the lock row between acquisition and callback execution.
+        await (storeA as any).acquireWriteLock(PID_A, "test-op");
+
+        // Lock row should now be visible to storeB
+        const rawDuring = await storeB.getMetadata("writeLock");
+        expect(rawDuring).toBeDefined();
+        const lockDuring = JSON.parse(rawDuring!);
+        expect(lockDuring.pid).toBe(PID_A);
+        expect(lockDuring.activityName).toBe("test-op");
+
+        // Release and verify cleanup
+        await (storeA as any).releaseWriteLock(PID_A);
+        const rawAfter = await storeA.getMetadata("writeLock");
+        expect(rawAfter).toBeUndefined();
+    });
+
+    it("withWriteLock runs callback and returns result (lock-callback/REQT/jb5dhgsyfq)", async () => {
+        const { storeA } = makeDualStores("lock-callback");
+
         const result = await storeA.withWriteLock(
             PID_A,
             "test-op",
             ["utxos"],
-            async () => {
-                // Check lock row exists during callback
-                const raw = await storeA.getMetadata("writeLock");
-                lockVisibleDuringCallback = raw !== undefined;
-                return "done";
-            }
+            async () => "done"
         );
-
         expect(result).toBe("done");
-        // Note: lock row visibility inside a Dexie transaction depends on
-        // whether the metadata read joins the same transaction. The important
-        // thing is that the lock is released after:
+
+        // Lock released after callback completes
         const rawAfter = await storeA.getMetadata("writeLock");
         expect(rawAfter).toBeUndefined();
     });
@@ -275,7 +316,7 @@ describe("Write Lock (REQT/jp1wtj9pfz)", () => {
         expect(raw).toBeUndefined();
     });
 
-    it("returns callback result (lock-return-value/REQT/4tsvn6259v)", async () => {
+    it("returns complex callback result (lock-return-value/REQT/4tsvn6259v)", async () => {
         const { storeA } = makeDualStores("lock-return");
 
         const result = await storeA.withWriteLock(
@@ -283,11 +324,23 @@ describe("Write Lock (REQT/jp1wtj9pfz)", () => {
             "compute",
             ["utxos"],
             async () => {
+                // Perform a real Dexie write and return a result
+                await storeA.saveUtxo({
+                    utxoId: "result#0",
+                    txHash: "result",
+                    outputIndex: 0,
+                    address: "addr_test1_result",
+                    lovelace: "5000000",
+                    blockHeight: 1,
+                } as any);
                 return { answer: 42 };
             }
         );
 
         expect(result).toEqual({ answer: 42 });
+        // Verify the write persisted (not rolled back)
+        const utxo = await storeA.findUtxoId("result#0");
+        expect(utxo).toBeDefined();
     });
 
     // --- Contention (REQT/jb5dhgsyfq) ---
@@ -416,12 +469,28 @@ describe("Write Lock (REQT/jp1wtj9pfz)", () => {
         // Note: Dexie doesn't support nested transactions on different table sets,
         // but the metadata-row protocol should handle re-entrant acquisition from same pid.
         // This tests the lock acquisition logic, not nested Dexie transactions.
-        const acquired1 = await (storeA as any).acquireWriteLock(PID_A, "outer");
-        const acquired2 = await (storeA as any).acquireWriteLock(PID_A, "inner");
+        await (storeA as any).acquireWriteLock(PID_A, "outer");
 
-        // Both should succeed (same pid)
+        // Verify lock row exists with outer activity
+        const rawOuter = await storeA.getMetadata("writeLock");
+        expect(rawOuter).toBeDefined();
+        const lockOuter = JSON.parse(rawOuter!);
+        expect(lockOuter.pid).toBe(PID_A);
+        expect(lockOuter.activityName).toBe("outer");
+
+        // Re-acquire with same pid — should succeed and update activity
+        await (storeA as any).acquireWriteLock(PID_A, "inner");
+
+        const rawInner = await storeA.getMetadata("writeLock");
+        expect(rawInner).toBeDefined();
+        const lockInner = JSON.parse(rawInner!);
+        expect(lockInner.pid).toBe(PID_A);
+        expect(lockInner.activityName).toBe("inner");
+
         // Clean up
         await (storeA as any).releaseWriteLock(PID_A);
+        const rawAfter = await storeA.getMetadata("writeLock");
+        expect(rawAfter).toBeUndefined();
     });
 
     // --- Metadata interface (getMetadata/setMetadata) ---
@@ -452,5 +521,17 @@ describe("Write Lock (REQT/jp1wtj9pfz)", () => {
         await storeA.setMetadata("shared", "hello");
         const val = await storeB.getMetadata("shared");
         expect(val).toBe("hello");
+    });
+
+    // --- Error paths ---
+
+    it("rejects unknown table name (unknown-table/REQT/4tsvn6259v)", async () => {
+        const { storeA } = makeDualStores("unknown-table");
+
+        await expect(
+            storeA.withWriteLock(PID_A, "bad-tables", ["nonExistentTable"], async () => {
+                return "should not reach";
+            })
+        ).rejects.toThrow(/withWriteLock: unknown table/);
     });
 });
