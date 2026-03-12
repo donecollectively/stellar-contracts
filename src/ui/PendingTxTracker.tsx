@@ -111,7 +111,7 @@ function getDisplay(entry: PendingTxEntry) {
  * @public
  */
 // REQT/y8rnvqmgza (TxDetailPanel Component) — txBatcher prop for live tracker lookup on drill-down
-export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBatcher?: TxBatcher } = {}) {
+export function PendingTxTracker({ dbName, txBatcher, pid }: { dbName?: string; txBatcher?: TxBatcher; pid?: number } = {}) {
     const store = useMemo(() => new DexieUtxoStore(dbName), [dbName]);
     const [entries, setEntries] = useState<PendingTxEntry[]>([]);
     // REQT/3r5g35smyn (Click to Open Detail) — selected entry for detail panel
@@ -137,6 +137,27 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
             });
         }
     }, [selectedTxHash]);
+
+    // Sync mutex indicator — read syncMutex metadata to show which tab owns sync
+    const [syncOwnerPid, setSyncOwnerPid] = useState<number | null>(null);
+    useEffect(() => {
+        const subscription = liveQuery(() =>
+            store.metadata.get("syncMutex")
+        ).subscribe({
+            next: (entry) => {
+                if (entry?.value) {
+                    try {
+                        const parsed = JSON.parse(entry.value);
+                        setSyncOwnerPid(parsed.pid ?? null);
+                    } catch { setSyncOwnerPid(null); }
+                } else {
+                    setSyncOwnerPid(null);
+                }
+            },
+            error: () => setSyncOwnerPid(null),
+        });
+        return () => subscription.unsubscribe();
+    }, [store]);
 
     useEffect(() => {
         const subscription = liveQuery(() =>
@@ -201,6 +222,19 @@ export function PendingTxTracker({ dbName, txBatcher }: { dbName?: string; txBat
                         }
                     />
                 ))}
+                {/* Sync mutex owner indicator — shown when this tab holds the sync lock */}
+                {pid !== undefined && syncOwnerPid === pid && (
+                    <span
+                        title="Syncing with the network"
+                        style={{
+                            fontSize: "0.75em",
+                            marginLeft: "0.15em",
+                            cursor: "pointer",
+                        }}
+                    >
+                        💪
+                    </span>
+                )}
             </div>
 
             {/* REQT/3r5g35smyn (Click to Open Detail) — portaled to escape stacking contexts */}
