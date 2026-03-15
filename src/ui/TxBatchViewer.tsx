@@ -81,17 +81,17 @@ export function TxBatchViewer({
         };
     }, [batch]);
 
-    console.error("rendering TxBatchViewer", {
-        selectedId,
-        batch,
-        initialId,
-        renderNow, 
-        advancedView, 
-        txTracker, 
-        selectedTx,
-        batchSize,
-        gen        
-    });
+    // console.error("rendering TxBatchViewer", {
+    //     selectedId,
+    //     batch,
+    //     initialId,
+    //     renderNow, 
+    //     advancedView, 
+    //     txTracker, 
+    //     selectedTx,
+    //     batchSize,
+    //     gen        
+    // });
     const width = advancedView ? "w-9/12" : "";
 
     return (
