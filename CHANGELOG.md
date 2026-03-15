@@ -1,3 +1,30 @@
+## 0.9.5-beta.2  2026-03-15
+
+[Detailed release notes](.proj/releases/0.9.5-beta.2.release-notes.md) ([remote](https://raw.githubusercontent.com/donecollectively/stellar-contracts/0.9.5-beta.2/.proj/releases/0.9.5-beta.2.release-notes.md))
+
+**Download / package.json dependency:** <https://raw.githubusercontent.com/donecollectively/stellar-contracts/0.9.5-beta.2/stellar-contracts-0.9.5-beta.2.tgz>
+
+- Multi-Tab Chain Synchronization (beta)
+  - **Multi-tab chain synchronization (beta)**: Multiple browser tabs can now safely share the Dexie-backed UTxO index. One tab owns sync responsibility; others read from cache, with automatic recovery.
+- Transaction Confidence and Recovery
+  - **Graduated confirmation tracking**: Confirmed transactions now progress through confidence levels: provisional, likely, confident, certain. Configurable thresholds. New confirmStateChanged event for UI updates.
+  - **Background re-submission for reliability**: The system silently resubmits pending and provisionally-confirmed transactions that have not reached sufficient depth, with eligibility guards and per-transaction throttling.
+  - **Continuous chain synchronization**: The system stays aligned with the canonical chain, automatically adjusting transaction status when the chain state evolves. Robust to normal micro-forks that can occur while chain state is settling.
+  - **Pending transaction confirmation safety net**: Transactions that were confirmed while the page was closed are now detected and updated on reload, ensuring tracking of pending transactions even after page reload.
+  - **Safe handling of conflicting transactions**: When on-chain activity conflicts with a pending transaction, the system waits for the chain to settle before cleaning up, preventing premature state changes.
+- Transaction Observability and Diagnostics
+  - **Chain sync log viewer (beta)**: See what the chain synchronization system is doing in real time, with filterable structured logs organized by operation.
+  - **Transaction detail panel**: Click any pending transaction indicator to inspect more details of the transaction and its submission logs.
+  - **Transaction UI refinements**: Log-style submission rows, click-to-copy CBOR with floating toast, zoom/close controls, resubmit button on the detail panel, and selection indicators on pending transaction dots.
+- Various Consistency Fixes
+  - **Network time and wallet balance fixes**: Transaction time, the indexer's clock, and wallet sync now use correct sources, eliminating time drift and stale balance display.
+  - **Transaction submission resilience**: Rate-limit errors, transient failures, and several state machine issues handled gracefully. Delegate setup recovers from partial failures automatically.
+  - **Per-activity governance exemption**: On-chain policies can now provide granular exemptions from the normal "governance authority required" rule for specific activities. Downstream delegates must add isGovExempt* functions.
+- Release Infrastructure
+  - **Release pipeline**: Release output now includes tarball download URL and links to detailed release notes, and works with any package name.
+  - **Release CLI**: scripts/release now supports --help with all bump modes computed from the current version, and validates unknown arguments.
+
+
 ## Version 0.9.5-beta.1 - February 2026
 
 
